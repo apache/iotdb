@@ -1703,7 +1703,8 @@ public class ClusterSchemaManager {
     // the table read above is a copy, which this check expands and returns
     final String errorMsg =
         String.format(
-            ManagerMessages.MESSAGE_COLUMN_ARG_ALREADY_EXIST_92F91B6A,
+            ManagerMessages
+                .MESSAGE_COLUMN_ARG_ALREADY_EXISTS_OR_ITS_SOURCE_MEASUREMENT_IS_ALREADY_MAPPED_8421FEAD,
             columnSchemaList.stream()
                 .map(TsTableColumnSchema::getColumnName)
                 .collect(Collectors.joining(", ")));
@@ -2017,7 +2018,8 @@ public class ClusterSchemaManager {
             key -> {
               if (TsTable.TTL_PROPERTY.equals(key)
                   && IoTDBConstant.TTL_INFINITE.equalsIgnoreCase(updatedProperties.get(key))) {
-                return originalTable.getTableTTL() == Long.MAX_VALUE;
+                return IoTDBConstant.TTL_INFINITE.equalsIgnoreCase(
+                    originalTable.getPropValue(key).orElse(IoTDBConstant.TTL_INFINITE));
               }
               return Objects.equals(
                   updatedProperties.get(key), originalTable.getPropValue(key).orElse(null));

@@ -691,6 +691,8 @@ struct TDataNodeInfo {
   // The reason why the DataNode is in its current status, independent of status.
   // Absent when the ConfigNode is an old version.
   8: optional string statusReason
+  // DataNode internal RPC endpoint. Absent when the ConfigNode is an old version.
+  9: optional common.TEndPoint internalRpcEndPoint
 }
 
 struct TAINodeInfo {

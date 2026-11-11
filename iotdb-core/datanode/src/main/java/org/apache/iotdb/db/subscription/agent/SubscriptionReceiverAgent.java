@@ -182,7 +182,8 @@ public class SubscriptionReceiverAgent {
                   if (currentReceiver != null && currentReceiver != receiver) {
                     releaseInFlightEventsOnNewInstanceTakeover(
                         currentReceiver, receiver.getConsumerInstanceId());
-                    invalidateReplacedReceiver(currentReceiver, identity);
+                    invalidateReplacedReceiver(
+                        currentReceiver, identity, receiver.getConsumerInstanceId());
                   }
                   return receiver;
                 }
@@ -321,7 +322,8 @@ public class SubscriptionReceiverAgent {
       final TPipeSubscribeReq req,
       final SubscriptionReceiver currentReceiver) {
     if (!isHandshake(req) && currentReceiver != null && currentReceiver != receiver) {
-      receiver.invalidateConsumer();
+      invalidateReplacedReceiver(
+          receiver, getConsumerIdentity(receiver), currentReceiver.getConsumerInstanceId());
     }
     return receiver.handle(req);
   }
@@ -344,14 +346,14 @@ public class SubscriptionReceiverAgent {
               && !shouldKeepCurrentReceiver(currentReceiver, receiver.getConsumerInstanceId())) {
             releaseInFlightEventsOnNewInstanceTakeover(
                 currentReceiver, receiver.getConsumerInstanceId());
-            invalidateReplacedReceiver(currentReceiver, key);
+            invalidateReplacedReceiver(currentReceiver, key, receiver.getConsumerInstanceId());
             registered.set(true);
             return receiver;
           }
           // The receiver completed its handshake after another receiver had already claimed the
           // identity. Keep the current owner and fence this late receiver instead of allowing an
           // old connection to take the consumer back.
-          invalidateReplacedReceiver(receiver, key);
+          invalidateReplacedReceiver(receiver, key, currentReceiver.getConsumerInstanceId());
           return currentReceiver;
         });
     if (registered.get()) {
@@ -377,7 +379,14 @@ public class SubscriptionReceiverAgent {
   }
 
   private void invalidateReplacedReceiver(
-      final SubscriptionReceiver receiver, final ConsumerIdentity identity) {
+      final SubscriptionReceiver receiver,
+      final ConsumerIdentity identity,
+      final String incomingConsumerInstanceId) {
+    if (incomingConsumerInstanceId != null
+        && incomingConsumerInstanceId.equals(receiver.getConsumerInstanceId())) {
+      receiver.invalidateConnection();
+      return;
+    }
     LOGGER.info(
         DataNodePipeMessages
             .LOG_SUBSCRIPTION_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_WAS_TAKEN_OVER_BY_A_NEWER_CONNECTION_FENCED_THE_PREVIOUS_CONNECTION_4E72DBD9,

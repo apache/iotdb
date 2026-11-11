@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.utils;
 
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -34,6 +35,7 @@ import org.junit.runner.RunWith;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
@@ -42,6 +44,7 @@ import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -171,6 +174,129 @@ public class IoTDBTestUtilsIT {
               }
               return result;
             }));
+  }
+
+  @Test
+  public void testNonQueryResourceCleanupOnSuccess() {
+    for (boolean retry : new boolean[] {false, true}) {
+      for (boolean borrowedConnection : new boolean[] {false, true}) {
+        final NonQueryResources resources = new NonQueryResources(null);
+        executeNonQuery(resources, retry, borrowedConnection);
+        assertResourcesClosed(resources, borrowedConnection);
+      }
+    }
+  }
+
+  @Test
+  public void testNonQueryResourceCleanupOnRuntimeFailure() {
+    for (boolean retry : new boolean[] {false, true}) {
+      for (boolean borrowedConnection : new boolean[] {false, true}) {
+        final IllegalStateException failure =
+            new IllegalStateException("Expected execution failure");
+        final NonQueryResources resources = new NonQueryResources(failure);
+        assertSame(
+            failure,
+            assertThrows(
+                IllegalStateException.class,
+                () -> executeNonQuery(resources, retry, borrowedConnection)));
+        assertResourcesClosed(resources, borrowedConnection);
+      }
+    }
+  }
+
+  @Test
+  public void testNonQueryResourceCleanupOnSqlFailure() {
+    for (boolean borrowedConnection : new boolean[] {false, true}) {
+      final SQLException failure = new SQLException("Expected execution failure");
+      final NonQueryResources resources = new NonQueryResources(failure);
+      assertSame(
+          failure,
+          assertThrows(
+                  RuntimeException.class,
+                  () -> executeNonQuery(resources, false, borrowedConnection))
+              .getCause());
+      assertResourcesClosed(resources, borrowedConnection);
+    }
+  }
+
+  private void executeNonQuery(
+      NonQueryResources resources, boolean retry, boolean borrowedConnection) {
+    final Connection connection = borrowedConnection ? resources.connection : null;
+    if (retry) {
+      assertTrue(
+          TestUtils.tryExecuteNonQueriesWithRetry(
+              resources.env,
+              Collections.singletonList("flush"),
+              SessionConfig.DEFAULT_USER,
+              SessionConfig.DEFAULT_PASSWORD,
+              connection));
+    } else {
+      TestUtils.executeNonQuery(resources.env, "flush", connection);
+    }
+  }
+
+  private void assertResourcesClosed(NonQueryResources resources, boolean borrowedConnection) {
+    assertEquals(1, resources.statementsClosed);
+    assertEquals(borrowedConnection ? 0 : 1, resources.connectionsOpened);
+    assertEquals(borrowedConnection ? 0 : 1, resources.connectionsClosed);
+  }
+
+  private static class NonQueryResources {
+    private final Connection connection;
+    private final BaseEnv env;
+    private int connectionsOpened;
+    private int connectionsClosed;
+    private int statementsClosed;
+
+    private NonQueryResources(Exception executionFailure) {
+      final Statement statement =
+          (Statement)
+              Proxy.newProxyInstance(
+                  Statement.class.getClassLoader(),
+                  new Class<?>[] {Statement.class},
+                  (proxy, method, args) -> {
+                    switch (method.getName()) {
+                      case "execute":
+                        if (executionFailure != null) {
+                          throw executionFailure;
+                        }
+                        return false;
+                      case "close":
+                        statementsClosed++;
+                        return null;
+                      default:
+                        throw new UnsupportedOperationException(method.getName());
+                    }
+                  });
+      connection =
+          (Connection)
+              Proxy.newProxyInstance(
+                  Connection.class.getClassLoader(),
+                  new Class<?>[] {Connection.class},
+                  (proxy, method, args) -> {
+                    switch (method.getName()) {
+                      case "createStatement":
+                        return statement;
+                      case "close":
+                        connectionsClosed++;
+                        return null;
+                      default:
+                        throw new UnsupportedOperationException(method.getName());
+                    }
+                  });
+      env =
+          (BaseEnv)
+              Proxy.newProxyInstance(
+                  BaseEnv.class.getClassLoader(),
+                  new Class<?>[] {BaseEnv.class},
+                  (proxy, method, args) -> {
+                    if ("getConnection".equals(method.getName())) {
+                      connectionsOpened++;
+                      return connection;
+                    }
+                    throw new UnsupportedOperationException(method.getName());
+                  });
+    }
   }
 
   private void assertObservationPeriod(final Runnable assertion) {

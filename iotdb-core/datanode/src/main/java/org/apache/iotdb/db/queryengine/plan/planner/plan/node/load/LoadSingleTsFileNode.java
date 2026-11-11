@@ -62,6 +62,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private final boolean isTableModel;
   private final String database;
   private final boolean deleteAfterLoad;
+  private final boolean autoCreateSchema;
   private final long writePointCount;
   private boolean needDecodeTsFile;
 
@@ -75,12 +76,33 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       final boolean deleteAfterLoad,
       final long writePointCount,
       final boolean needDecodeTsFile) {
+    this(
+        id,
+        resource,
+        isTableModel,
+        database,
+        deleteAfterLoad,
+        writePointCount,
+        needDecodeTsFile,
+        true);
+  }
+
+  public LoadSingleTsFileNode(
+      final PlanNodeId id,
+      final TsFileResource resource,
+      final boolean isTableModel,
+      final String database,
+      final boolean deleteAfterLoad,
+      final long writePointCount,
+      final boolean needDecodeTsFile,
+      final boolean autoCreateSchema) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
     this.isTableModel = isTableModel;
     this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
+    this.autoCreateSchema = autoCreateSchema;
     this.writePointCount = writePointCount;
     this.needDecodeTsFile = needDecodeTsFile;
   }
@@ -161,6 +183,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public boolean isTableModel() {
     return isTableModel;
+  }
+
+  public boolean isAutoCreateSchema() {
+    return autoCreateSchema;
   }
 
   public long getWritePointCount() {
@@ -245,21 +271,26 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     if (!deleteAfterLoad) {
       return;
     }
-    deleteFile(tsFile);
+    // A retained source TsFile still needs its sidecars for any later explicit LOAD.
+    if (!deleteFile(tsFile)) {
+      return;
+    }
     deleteFile(new File(LoadUtil.getTsFileResourcePath(tsFile.getAbsolutePath())));
     deleteFile(ModificationFile.getExclusiveMods(tsFile));
     deleteFile(new File(LoadUtil.getTsFileModsV1Path(tsFile.getAbsolutePath())));
   }
 
-  private void deleteFile(final File file) {
+  private boolean deleteFile(final File file) {
     try {
       RetryUtils.retryOnException(
           () -> {
             Files.deleteIfExists(file.toPath());
             return null;
           });
+      return true;
     } catch (final Exception e) {
       LOGGER.warn(DataNodeQueryMessages.DELETE_AFTER_LOADING_ERROR, file, e);
+      return false;
     }
   }
 
@@ -278,6 +309,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         && Objects.equals(database, loadSingleTsFileNode.database)
         && Objects.equals(needDecodeTsFile, loadSingleTsFileNode.needDecodeTsFile)
         && Objects.equals(deleteAfterLoad, loadSingleTsFileNode.deleteAfterLoad)
+        && autoCreateSchema == loadSingleTsFileNode.autoCreateSchema
         && Objects.equals(localRegionReplicaSet, loadSingleTsFileNode.localRegionReplicaSet);
   }
 
@@ -290,6 +322,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         database,
         needDecodeTsFile,
         deleteAfterLoad,
+        autoCreateSchema,
         localRegionReplicaSet);
   }
 }

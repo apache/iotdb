@@ -407,7 +407,7 @@ public class WALRecoverManagerTest {
     tsFileWithWALResource = new TsFileResource(fileWithWAL);
     UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileWithWALResource, true, performer -> assertFalse(performer.canWrite()));
+            tsFileWithWALResource, true, false, performer -> assertFalse(performer.canWrite()));
     recoverManager.addRecoverPerformer(recoverPerformer);
     recoverListeners.add(recoverPerformer.getRecoverListener());
     // recover
@@ -563,7 +563,7 @@ public class WALRecoverManagerTest {
     tsFileWithWALResource = new TsFileResource(fileWithWAL);
     UnsealedTsFileRecoverPerformer recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileWithWALResource, true, performer -> assertFalse(performer.canWrite()));
+            tsFileWithWALResource, true, false, performer -> assertFalse(performer.canWrite()));
     recoverManager.addRecoverPerformer(recoverPerformer);
     recoverListeners.add(recoverPerformer.getRecoverListener());
 
@@ -573,7 +573,7 @@ public class WALRecoverManagerTest {
     tsFileWithoutWALResource = new TsFileResource(fileWithoutWAL);
     recoverPerformer =
         new UnsealedTsFileRecoverPerformer(
-            tsFileWithoutWALResource, true, performer -> assertFalse(performer.canWrite()));
+            tsFileWithoutWALResource, true, false, performer -> assertFalse(performer.canWrite()));
     recoverManager.addRecoverPerformer(recoverPerformer);
     recoverListeners.add(recoverPerformer.getRecoverListener());
 

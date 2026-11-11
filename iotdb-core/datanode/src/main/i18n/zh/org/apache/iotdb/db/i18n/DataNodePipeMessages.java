@@ -336,6 +336,8 @@ public final class DataNodePipeMessages {
   public static final String SUBTASK_IS_CLOSED_IGNORE_EXCEPTION =
       "subtask {} 已关闭，忽略异常";
   public static final String SUBTASK_WORKER_IS_INTERRUPTED = "子任务工作线程被中断";
+  public static final String LOG_FAILED_TO_SUBMIT_PIPE_PROCESSOR_WORKER_BECAUSE_THE_WORKER_THREAD_POOL_HAS_BEEN_SHUT_DOWN_CA28ED14 =
+      "工作线程池已被关闭，无法提交 Pipe processor 工作线程";
   public static final String SUCCESSFULLY_PERSISTED_ALL_PIPE_S_INFO_TO =
       "成功将所有 Pipe 信息持久化到 ConfigNode。";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
@@ -2861,6 +2863,9 @@ public final class DataNodePipeMessages {
       MESSAGE_SUBSCRIPTION_REQUEST_BODY_SIZE_ARG_BYTES_EXCEEDS_THE_RECEIVER_LIMIT_OF_ARG_BYTES_SPLIT_THE_OPERATION_INTO_SMALLER_REQUESTS_C9513027 =
           "Subscription：请求体大小为 %d 字节，超过接收端上限 %d 字节。请将操作拆分为更小的请求。";
 
+  public static final String
+      MESSAGE_SUBSCRIPTION_CONNECTION_WAS_REPLACED_BY_A_RECONNECTION_FROM_THE_SAME_CONSUMER_INSTANCE_RETRY_ON_THE_CURRENT_CONNECTION_687C78B4 =
+          "订阅连接已被同一 consumer 实例的重连替换，请在当前连接上重试。";
   public static final String MESSAGE_MISSING_CONSUMER_CONFIG_PLEASE_HANDSHAKE_FIRST_CE588329 =
       "缺少 consumer 配置，请先完成 handshake。";
   public static final String MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTTYPE_ARG_7EBB93F8 =
@@ -2874,6 +2879,9 @@ public final class DataNodePipeMessages {
   public static final String
       EXCEPTION_SUBSCRIPTION_FAILED_TO_FETCH_ENDPOINTS_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_267904CB =
           "Subscription：在 ConfigNode 中为 consumer %s 获取节点端点失败，异常：%s。";
+  public static final String
+      EXCEPTION_INTERNAL_SUBSCRIPTION_ENDPOINT_DISCOVERY_FAILED_BECAUSE_DATANODE_ARG_DID_NOT_REPORT_AN_INTERNAL_RPC_ENDPOINT_45E4D232 =
+          "内部订阅 endpoint 发现失败，DataNode %d 未上报 internal RPC endpoint";
   public static final String
       MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SUBSCRIBING_WITH_REQUEST_ARG_ARG_084648A4 =
           "Subscription：处理 subscribe 请求 %s 时发生意外错误：%s";

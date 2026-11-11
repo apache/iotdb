@@ -41,6 +41,7 @@ import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
+import com.google.common.util.concurrent.ListeningExecutorService;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.junit.Assert;
@@ -209,7 +210,8 @@ public class PipeProcessorSubtaskExecutionGuardTest {
               () -> suppliedEvent.getAndSet(null),
               new DoNothingProcessor(),
               outputQueue);
-      final PipeProcessorSubtaskWorker worker = new PipeProcessorSubtaskWorker();
+      final PipeProcessorSubtaskWorker worker =
+          new PipeProcessorSubtaskWorker(mock(ListeningExecutorService.class));
       worker.schedule(subtask);
       subtask.allowSubmittingSelf();
       final Field parserField = PipeTsFileInsertionEvent.class.getDeclaredField("eventParser");
@@ -299,7 +301,8 @@ public class PipeProcessorSubtaskExecutionGuardTest {
     final PipeProcessorSubtask subtask =
         new ParserSubtask(
             "lifecyclePipe", () -> suppliedEvent.getAndSet(null), processor, outputQueue);
-    final PipeProcessorSubtaskWorker worker = new PipeProcessorSubtaskWorker();
+    final PipeProcessorSubtaskWorker worker =
+        new PipeProcessorSubtaskWorker(mock(ListeningExecutorService.class));
     PipeTsFileInsertionEvent first = null;
     PipeTsFileInsertionEvent dropped = null;
     boolean blockerReserved = false;

@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
+      "Fail to insert measurements %s caused by %s";
 
   public static final String EXCEPTION_UNSUPPORTED_JOIN_CRETERIA_ARG_AFTER_PREDICATE_PUSH_DOWN_92BDB23B =
       "Unsupported Join creteria [%s] after predicate push down";
@@ -523,6 +525,9 @@ public final class DataNodeQueryMessages {
       "Auto create or verify schema error.";
   public static final String LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
       "Device %s does not exist in IoTDB and can not be created. Please check whether auto-create-schema is enabled.";
+  public static final String
+      EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A =
+          "The database %s does not exist and auto-create-schema is disabled.";
   public static final String LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
       "Measurement %s does not exist in IoTDB and can not be created. Please check whether auto-create-schema is enabled.";
   public static final String PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA =
@@ -896,6 +901,9 @@ public final class DataNodeQueryMessages {
   public static final String
       EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
           "Cannot reference %s column '%s' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.";
+  public static final String
+      EXCEPTION_EXTERNAL_USER_DEFINED_FUNCTION_ARG_IS_NOT_SUPPORTED_IN_THIS_WRITE_STATEMENT_8329DC8E =
+          "External user-defined function %s is not supported in this write statement";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "Drop Function statement is not supported yet.";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
@@ -2750,6 +2758,12 @@ public final class DataNodeQueryMessages {
       "Failed to check if device {} is deleted by mods. Will see it as not deleted.";
   public static final String COLUMN_ARG_IN_TABLE_ARG_IS_NOT_FOUND_IN_IOTDB_WHILE_LOADING_TSFILE =
       "Column {} in table {} is not found in IoTDB while loading TsFile.";
+  public static final String EXCEPTION_THE_SCHEMA_OF_TABLE_ARG_IS_MISSING_IN_THE_TSFILE_AND_THE_TABLE_DOES_NOT_EXIST_IN_DATABASE_ARG_SO_THE_FILE_CANNOT_BE_LOADED_D910A1AA =
+      "The schema of table %s is missing in the TsFile and the table does not exist in database %s, so the file cannot be loaded.";
+  public static final String LOG_TABLE_ARG_HAS_NO_SCHEMA_ENTRY_IN_THE_TSFILE_WILL_USE_THE_SCHEMA_OF_THE_TABLE_IN_IOTDB_F7ED883F =
+      "Table {} has no schema entry in the TsFile, will use the schema of the table in IoTDB.";
+  public static final String LOG_TABLE_ARG_HAS_NO_COLUMN_OTHER_THAN_TIME_IN_ITS_SCHEMA_ENTRY_IN_THE_TSFILE_WILL_USE_THE_SCHEMA_OF_THE_TABLE_IN_IOTDB_EB6C0BE1 =
+      "Table {} has no column other than time in its schema entry in the TsFile, will use the schema of the table in IoTDB.";
   public static final String DEVICE_ARG_IS_NOT_IN_THE_TSFILEDEVICE2ISALIGNED_CACHE_ARG =
       "Device {} is not in the tsFileDevice2IsAligned cache {}.";
   public static final String LOADTSFILEANALYZER_CURRENT_DATANODE_IS_READ_ONLY_WILL_TRY_TO_CONVERT_TO_TABLETS_AND =

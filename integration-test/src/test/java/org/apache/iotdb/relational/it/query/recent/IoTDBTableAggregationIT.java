@@ -57,6 +57,7 @@ public class IoTDBTableAggregationIT {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
         "CREATE TABLE table1(province STRING TAG, city STRING TAG, region STRING TAG, device_id STRING TAG, color STRING ATTRIBUTE, type STRING ATTRIBUTE, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD)",
+        "CREATE TABLE empty_table(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s6 TEXT FIELD, s8 BLOB FIELD)",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s1,s3,s6,s8,s9) values (2024-09-24T06:15:30.000+00:00,'shanghai','shanghai','huangpu','d01','red','A',30,30.0,'shanghai_huangpu_red_A_d01_30', X'cafebabe30',2024-09-24T06:15:30.000+00:00)",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s2,s3,s4,s6,s7,s9,s10) values (2024-09-24T06:15:35.000+00:00,'shanghai','shanghai','huangpu','d01','red','A',35000,35.0,35.0,'shanghai_huangpu_red_A_d01_35','shanghai_huangpu_red_A_d01_35',2024-09-24T06:15:35.000+00:00,'2024-09-24')",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s1,s3,s5,s7,s9) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','huangpu','d01','red','A',40,40.0,true,'shanghai_huangpu_red_A_d01_40',2024-09-24T06:15:40.000+00:00)",
@@ -4377,32 +4378,101 @@ public class IoTDBTableAggregationIT {
     expectedHeader = new String[] {"time", "province", "_col2"};
     retArray =
         new String[] {
-          "2024-09-24T06:15:30.000Z,beijing,{},",
+          "2024-09-24T06:15:30.000Z,beijing,null,",
           "2024-09-24T06:15:31.000Z,beijing,{\"31000\":2},",
           "2024-09-24T06:15:35.000Z,beijing,{\"35000\":2},",
-          "2024-09-24T06:15:36.000Z,beijing,{},",
+          "2024-09-24T06:15:36.000Z,beijing,null,",
           "2024-09-24T06:15:40.000Z,beijing,{\"40000\":2},",
-          "2024-09-24T06:15:41.000Z,beijing,{},",
+          "2024-09-24T06:15:41.000Z,beijing,null,",
           "2024-09-24T06:15:46.000Z,beijing,{\"46000\":2},",
           "2024-09-24T06:15:50.000Z,beijing,{\"50000\":4},",
-          "2024-09-24T06:15:51.000Z,beijing,{},",
-          "2024-09-24T06:15:55.000Z,beijing,{},",
-          "2024-09-24T06:15:30.000Z,shanghai,{},",
+          "2024-09-24T06:15:51.000Z,beijing,null,",
+          "2024-09-24T06:15:55.000Z,beijing,null,",
+          "2024-09-24T06:15:30.000Z,shanghai,null,",
           "2024-09-24T06:15:31.000Z,shanghai,{\"31000\":2},",
           "2024-09-24T06:15:35.000Z,shanghai,{\"35000\":2},",
-          "2024-09-24T06:15:36.000Z,shanghai,{},",
+          "2024-09-24T06:15:36.000Z,shanghai,null,",
           "2024-09-24T06:15:40.000Z,shanghai,{\"40000\":2},",
-          "2024-09-24T06:15:41.000Z,shanghai,{},",
+          "2024-09-24T06:15:41.000Z,shanghai,null,",
           "2024-09-24T06:15:46.000Z,shanghai,{\"46000\":2},",
           "2024-09-24T06:15:50.000Z,shanghai,{\"50000\":4},",
-          "2024-09-24T06:15:51.000Z,shanghai,{},",
-          "2024-09-24T06:15:55.000Z,shanghai,{},",
+          "2024-09-24T06:15:51.000Z,shanghai,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,null,",
         };
 
     tableResultSetEqualTest(
         "SELECT time,province,approx_most_frequent(s2, 1, 10) from table1 group by 1,2 order by 2,1",
         expectedHeader,
         retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void blobGroupedApproxMostFrequentTest() {
+    // Groups whose BLOB column is entirely NULL must yield NULL instead of an empty map.
+    // Under a PARTIAL -> FINAL aggregation the partial side emits NULL for these groups and
+    // the final side never initializes their state, so evaluateFinal must handle that too.
+    tableResultSetEqualTest(
+        "select time,province,approx_most_frequent(s8, 1, 10) from table1 group by 1,2 order by 2,1",
+        new String[] {"time", "province", "_col2"},
+        new String[] {
+          "2024-09-24T06:15:30.000Z,beijing,{\"0xcafebabe30\":2},",
+          "2024-09-24T06:15:31.000Z,beijing,{\"0xcafebabe31\":2},",
+          "2024-09-24T06:15:35.000Z,beijing,null,",
+          "2024-09-24T06:15:36.000Z,beijing,null,",
+          "2024-09-24T06:15:40.000Z,beijing,null,",
+          "2024-09-24T06:15:41.000Z,beijing,{\"0xcafebabe41\":2},",
+          "2024-09-24T06:15:46.000Z,beijing,null,",
+          "2024-09-24T06:15:50.000Z,beijing,{\"0xcafebabe50\":2},",
+          "2024-09-24T06:15:51.000Z,beijing,null,",
+          "2024-09-24T06:15:55.000Z,beijing,{\"0xcafebabe55\":4},",
+          "2024-09-24T06:15:30.000Z,shanghai,{\"0xcafebabe30\":2},",
+          "2024-09-24T06:15:31.000Z,shanghai,{\"0xcafebabe31\":2},",
+          "2024-09-24T06:15:35.000Z,shanghai,null,",
+          "2024-09-24T06:15:36.000Z,shanghai,null,",
+          "2024-09-24T06:15:40.000Z,shanghai,null,",
+          "2024-09-24T06:15:41.000Z,shanghai,{\"0xcafebabe41\":2},",
+          "2024-09-24T06:15:46.000Z,shanghai,null,",
+          "2024-09-24T06:15:50.000Z,shanghai,{\"0xcafebabe50\":2},",
+          "2024-09-24T06:15:51.000Z,shanghai,null,",
+          "2024-09-24T06:15:55.000Z,shanghai,{\"0xcafebabe55\":4},",
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void approxAggregationEmptyInputTest() {
+    // No block reaches the aggregation operator, so the accumulator state is never created
+    tableResultSetEqualTest(
+        "select approx_most_frequent(s1, 2, 10), approx_most_frequent(s2, 2, 10), approx_most_frequent(s6, 2, 10), approx_most_frequent(s8, 2, 10) from empty_table",
+        buildHeaders(4),
+        new String[] {"null,null,null,null,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select approx_count_distinct(s1), approx_count_distinct(s6) from empty_table",
+        buildHeaders(2),
+        new String[] {"0,0,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select device_id, approx_most_frequent(s1, 2, 10) from empty_table group by device_id",
+        new String[] {"device_id", "_col1"},
+        new String[] {},
+        DATABASE_NAME);
+
+    // All rows are filtered out by the predicate
+    tableResultSetEqualTest(
+        "select approx_most_frequent(s1, 2, 10), approx_count_distinct(s1) from table1 where s1 < 0",
+        buildHeaders(2),
+        new String[] {"null,0,"},
+        DATABASE_NAME);
+
+    // Rows exist but every value is null, so there is nothing to count
+    tableResultSetEqualTest(
+        "select approx_most_frequent(s2, 2, 10), approx_count_distinct(s2) from table1 where s2 is null",
+        buildHeaders(2),
+        new String[] {"null,0,"},
         DATABASE_NAME);
   }
 
