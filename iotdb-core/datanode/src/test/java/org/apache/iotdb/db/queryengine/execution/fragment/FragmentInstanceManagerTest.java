@@ -66,6 +66,52 @@ public class FragmentInstanceManagerTest {
     assertFailureInfoAfterConcurrentContextRemoval(false);
   }
 
+  @Test
+  public void testPartialDispatchReleasesAttemptContextAndRejectsLateFragment() {
+    QueryId queryId = new QueryId("partial_attempt_dispatch");
+    long deadline = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1);
+    FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
+    org.apache.iotdb.db.queryengine.common.QueryAttemptId key =
+        new org.apache.iotdb.db.queryengine.common.QueryAttemptId(queryId, 0);
+    try {
+      for (int i = 0; i < 2; i++) {
+        FragmentInstance instance = mock(FragmentInstance.class);
+        PlanFragment fragment = mock(PlanFragment.class);
+        FragmentInstanceId id = new FragmentInstanceId(new PlanFragmentId(queryId, i), "0");
+        when(instance.getId()).thenReturn(id);
+        when(instance.getFragment()).thenReturn(fragment);
+        when(instance.hasQueryAttempt()).thenReturn(true);
+        when(instance.getQueryAttemptId()).thenReturn(0);
+        when(instance.getQueryDeadline()).thenReturn(deadline);
+        when(instance.getAdmissionDeadline()).thenReturn(deadline);
+        when(instance.getDataNodeFINum()).thenReturn(3);
+        when(instance.getTimeOut()).thenReturn(TimeUnit.MINUTES.toMillis(1));
+        when(fragment.getPlanNodeTree())
+            .thenThrow(new MetadataLeaseFencedException(FAILURE_MESSAGE, RETRY_UNTIL_SUCCESS));
+        FragmentInstanceInfo result =
+            manager.execDataQueryFragmentInstance(instance, mock(IDataRegionForQuery.class));
+        assertTrue(result.getState().isFailed());
+      }
+      assertTrue(manager.getQueryAttempts().hasSharedContext(key));
+      manager.closeQueryAttempt(queryId, 0, deadline, true);
+      org.junit.Assert.assertFalse(manager.getQueryAttempts().hasSharedContext(key));
+      FragmentInstance late = mock(FragmentInstance.class);
+      when(late.getId()).thenReturn(new FragmentInstanceId(new PlanFragmentId(queryId, 2), "0"));
+      when(late.hasQueryAttempt()).thenReturn(true);
+      when(late.getQueryAttemptId()).thenReturn(0);
+      when(late.getQueryDeadline()).thenReturn(deadline);
+      when(late.getAdmissionDeadline()).thenReturn(deadline);
+      org.junit.Assert.assertThrows(
+          org.apache.iotdb.commons.exception.IoTDBRuntimeException.class,
+          () -> manager.execDataQueryFragmentInstance(late, mock(IDataRegionForQuery.class)));
+    } finally {
+      manager.closeQueryAttempt(queryId, 0, deadline, true);
+      for (int i = 0; i < 3; i++) {
+        manager.cancelTask(new FragmentInstanceId(new PlanFragmentId(queryId, i), "0"), true);
+      }
+    }
+  }
+
   private void assertFailureInfoAfterConcurrentContextRemoval(boolean dataQuery) throws Exception {
     String queryType = dataQuery ? "data" : "schema";
     FragmentInstanceId instanceId =

@@ -45,7 +45,8 @@ public interface IPlanner {
   DistributedQueryPlan doDistributionPlan(
       IAnalysis analysis, LogicalQueryPlan logicalPlan, MPPQueryContext context);
 
-  IScheduler doSchedule(
+  /** Creates an unstarted scheduler. QueryExecution publishes it before calling start. */
+  IScheduler createScheduler(
       IAnalysis analysis,
       DistributedQueryPlan distributedPlan,
       MPPQueryContext context,

@@ -94,7 +94,7 @@ public class QueryExecution implements IQueryExecution {
   private static final long RETRY_INTERVAL_IN_MS = 2000;
   private int retryCount = 0;
   private final MPPQueryContext context;
-  private IScheduler scheduler;
+  private volatile SchedulingAttempt schedulingAttempt = new SchedulingAttempt();
   private final QueryStateMachine stateMachine;
 
   private final IPlanner planner;
@@ -109,8 +109,6 @@ public class QueryExecution implements IQueryExecution {
 
   // used for cleaning resultHandle up exactly once
   private final AtomicBoolean resultHandleCleanUp;
-
-  private final AtomicBoolean stopped;
 
   // cost time in ns of finished rpc
   private long totalExecutionTime = 0;
@@ -168,7 +166,6 @@ public class QueryExecution implements IQueryExecution {
             this.stop(cause);
           }
         });
-    this.stopped = new AtomicBoolean(false);
     this.resultHandleCleanUp = new AtomicBoolean(false);
   }
 
@@ -296,7 +293,7 @@ public class QueryExecution implements IQueryExecution {
     // clear runtime variables in MPPQueryContext
     context.prepareForRetry();
     // re-stop
-    this.stopped.compareAndSet(true, false);
+    this.schedulingAttempt = new SchedulingAttempt();
     this.resultHandleCleanUp.compareAndSet(true, false);
     // re-analyze the query
     planner.beginAnalysisAttempt();
@@ -339,7 +336,13 @@ public class QueryExecution implements IQueryExecution {
 
   private void schedule() {
     final long startTime = System.nanoTime();
-    this.scheduler = planner.doSchedule(analysis, distributedPlan, context, stateMachine);
+    SchedulingAttempt attempt = schedulingAttempt;
+    IScheduler scheduler =
+        planner.createScheduler(analysis, distributedPlan, context, stateMachine);
+    if (stateMachine.getState().isDone()) {
+      attempt.stop(stateMachine.getFailureException());
+    }
+    attempt.start(scheduler);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleCost(System.nanoTime() - startTime);
   }
 
@@ -389,9 +392,44 @@ public class QueryExecution implements IQueryExecution {
   // Stop the workers for this query
   @Override
   public void stop(Throwable t) {
-    // only stop once
-    if (stopped.compareAndSet(false, true) && this.scheduler != null) {
-      this.scheduler.stop(t);
+    schedulingAttempt.stop(t);
+  }
+
+  /** One-shot handoff between scheduler creation and concurrent stop requests. */
+  static class SchedulingAttempt {
+    private IScheduler scheduler;
+    private boolean stopped;
+    private Throwable stopCause;
+
+    void start(IScheduler candidate) {
+      boolean stopBeforeStart;
+      Throwable cause;
+      synchronized (this) {
+        scheduler = candidate;
+        stopBeforeStart = stopped;
+        cause = stopCause;
+      }
+      if (stopBeforeStart) {
+        candidate.stop(cause);
+      } else {
+        // The scheduler also supports stop-before-start: stop may win after publication above.
+        candidate.start();
+      }
+    }
+
+    void stop(Throwable cause) {
+      IScheduler toStop;
+      synchronized (this) {
+        if (stopped) {
+          return;
+        }
+        stopped = true;
+        stopCause = cause;
+        toStop = scheduler;
+      }
+      if (toStop != null) {
+        toStop.stop(cause);
+      }
     }
   }
 

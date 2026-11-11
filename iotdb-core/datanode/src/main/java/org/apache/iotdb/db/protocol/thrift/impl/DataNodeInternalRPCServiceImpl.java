@@ -132,6 +132,7 @@ import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
@@ -532,6 +533,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final FragmentInstance fragmentInstance;
     try {
       fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
+      if (req.isSetQueryAttemptId() && req.isSetQueryDeadline()) {
+        fragmentInstance.setQueryAttempt(req.getQueryAttemptId(), req.getQueryDeadline());
+        fragmentInstance.setAdmissionDeadline(req.getAdmissionDeadline());
+      }
     } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED, e);
       TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
@@ -611,6 +616,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TCancelResp cancelQuery(TCancelQueryReq req) {
     try (SetThreadName threadName = new SetThreadName(req.getQueryId())) {
+      if (req.isSetQueryAttemptId() && req.isSetAdmissionDeadline()) {
+        FragmentInstanceManager.getInstance()
+            .closeQueryAttempt(
+                new QueryId(req.getQueryId()),
+                req.getQueryAttemptId(),
+                req.getAdmissionDeadline(),
+                req.hasThrowable);
+      }
       List<FragmentInstanceId> taskIds =
           req.getFragmentInstanceIds().stream()
               .map(FragmentInstanceId::fromThrift)

@@ -43,6 +43,7 @@ import java.util.Objects;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
 public class SimpleQueryTerminator implements IQueryTerminator {
@@ -50,6 +51,9 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   private static final long TERMINATION_GRACE_PERIOD_IN_MS = 1000L;
   protected ScheduledExecutorService scheduledExecutor;
   private final QueryId queryId;
+  private final int queryAttemptId;
+  private final LongSupplier admissionDeadlineSupplier;
+  private long admissionDeadline;
   private final MPPQueryContext queryContext;
 
   private final IFragInstanceStateTracker stateTracker;
@@ -67,9 +71,12 @@ public class SimpleQueryTerminator implements IQueryTerminator {
       final List<FragmentInstance> fragmentInstances,
       final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
           internalServiceClientManager,
-      final IFragInstanceStateTracker stateTracker) {
+      final IFragInstanceStateTracker stateTracker,
+      final LongSupplier admissionDeadlineSupplier) {
     this.scheduledExecutor = scheduledExecutor;
     this.queryId = queryContext.getQueryId();
+    this.queryAttemptId = queryContext.getQueryAttemptId();
+    this.admissionDeadlineSupplier = admissionDeadlineSupplier;
     this.queryContext = queryContext;
     this.internalServiceClientManager = internalServiceClientManager;
     this.stateTracker = stateTracker;
@@ -101,6 +108,9 @@ public class SimpleQueryTerminator implements IQueryTerminator {
             .filter(endPoint -> !queryContext.getEndPointBlackList().contains(endPoint))
             .collect(Collectors.toList());
     this.hasThrowable = Objects.nonNull(t);
+    // ClusterScheduler aborts the dispatcher before termination: no later request can obtain an
+    // admission deadline beyond this cutoff. Transport retries reuse their original deadline.
+    this.admissionDeadline = admissionDeadlineSupplier.getAsLong();
 
     return scheduledExecutor.schedule(this::syncTerminate, delayInMs, TimeUnit.MILLISECONDS);
   }
@@ -108,10 +118,11 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   public Boolean syncTerminate() {
     boolean succeed = true;
     for (final TEndPoint endPoint : relatedHost) {
-      // We only send cancel query request if there is remaining unfinished FI in that node
+      // Attempt closure is required even when every received FI finished: planned but unsent FIs
+      // can still keep the shared DataNode context alive. Legacy receivers only use the FI list.
       final List<FragmentInstanceId> unfinishedFIs =
           stateTracker.filterUnFinishedFIs(ownedFragmentInstance.get(endPoint));
-      if (unfinishedFIs.isEmpty()) {
+      if (unfinishedFIs.isEmpty() && admissionDeadline <= 0) {
         continue;
       }
 
@@ -119,6 +130,10 @@ public class SimpleQueryTerminator implements IQueryTerminator {
       final int internalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
       if (internalAddress.equalsIgnoreCase(endPoint.getIp())
           && internalPort == endPoint.getPort()) {
+        if (admissionDeadline > 0) {
+          FragmentInstanceManager.getInstance()
+              .closeQueryAttempt(queryId, queryAttemptId, admissionDeadline, hasThrowable);
+        }
         for (final FragmentInstanceId insId : unfinishedFIs) {
           FragmentInstanceManager.getInstance().cancelTask(insId, hasThrowable);
         }
@@ -127,13 +142,17 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
       try (final SyncDataNodeInternalServiceClient client =
           internalServiceClientManager.borrowClient(endPoint)) {
-        client.cancelQuery(
+        TCancelQueryReq request =
             new TCancelQueryReq(
                 queryId.getId(),
                 unfinishedFIs.stream()
                     .map(FragmentInstanceId::toThrift)
                     .collect(Collectors.toList()),
-                hasThrowable));
+                hasThrowable);
+        if (admissionDeadline > 0) {
+          request.setQueryAttemptId(queryAttemptId).setAdmissionDeadline(admissionDeadline);
+        }
+        client.cancelQuery(request);
       } catch (final ClientManagerException e) {
         logger.warn(DataNodeQueryMessages.CAN_T_CONNECT_TO_NODE, endPoint, e);
         // we shouldn't return here and need to cancel queryTasks in other nodes

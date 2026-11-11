@@ -71,6 +71,37 @@ public class FragmentInstance implements IConsensusRequest {
   // The num of all FI on the dispatched DataNode in this query
   private int dataNodeFINum;
 
+  // Admission metadata travels in the optional RPC envelope, not the binary FI body, so older
+  // DataNodes can still deserialize the plan. Local dispatch sets the same fields directly.
+  private int queryAttemptId = -1;
+  private long queryDeadline;
+  private long admissionDeadline;
+
+  public void setQueryAttempt(int queryAttemptId, long queryDeadline) {
+    this.queryAttemptId = queryAttemptId;
+    this.queryDeadline = queryDeadline;
+  }
+
+  public boolean hasQueryAttempt() {
+    return queryAttemptId >= 0 && queryDeadline > 0;
+  }
+
+  public int getQueryAttemptId() {
+    return queryAttemptId;
+  }
+
+  public long getQueryDeadline() {
+    return queryDeadline;
+  }
+
+  public void setAdmissionDeadline(long admissionDeadline) {
+    this.admissionDeadline = admissionDeadline;
+  }
+
+  public long getAdmissionDeadline() {
+    return admissionDeadline;
+  }
+
   private boolean isHighestPriority;
 
   // indicate which index we are retrying

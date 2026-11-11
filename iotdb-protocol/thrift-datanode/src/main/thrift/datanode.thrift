@@ -142,6 +142,11 @@ struct TPlanNode {
 struct TSendFragmentInstanceReq {
   1: required TFragmentInstance fragmentInstance
   2: optional common.TConsensusGroupId consensusGroupId
+  // Attempt metadata is absent for a legacy coordinator. Do not change the binary FI body.
+  3: optional i32 queryAttemptId
+  4: optional i64 queryDeadline
+  // Admission expires independently of a potentially long query execution timeout.
+  5: optional i64 admissionDeadline
 }
 
 struct TSendFragmentInstanceResp {
@@ -187,6 +192,9 @@ struct TCancelQueryReq {
   1: required string queryId
   2: required list<TFragmentInstanceId> fragmentInstanceIds
   3: required bool hasThrowable
+  // Close this attempt even if some of its planned FIs were never dispatched.
+  4: optional i32 queryAttemptId
+  5: optional i64 admissionDeadline
 }
 
 struct TCancelPlanFragmentReq {

@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputForm
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.math.LongMath;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -108,6 +109,8 @@ public class MPPQueryContext implements IAuditEntity {
 
   // time unit is ms
   private long startTime;
+
+  private int queryAttemptId;
 
   private TEndPoint localDataBlockEndpoint;
   private TEndPoint localInternalEndpoint;
@@ -280,6 +283,7 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void prepareForRetry() {
+    queryAttemptId++;
     if (!isInnerTriggeredQuery()) {
       cleanUpCte();
     }
@@ -301,6 +305,14 @@ public class MPPQueryContext implements IAuditEntity {
 
   public QueryId getQueryId() {
     return queryId;
+  }
+
+  public int getQueryAttemptId() {
+    return queryAttemptId;
+  }
+
+  public long getQueryDeadline() {
+    return LongMath.saturatedAdd(startTime, timeOut);
   }
 
   public ExternalTsFileQueryResource createExternalTsFileQueryResource(

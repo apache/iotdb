@@ -39,6 +39,7 @@ import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.exception.query.KilledByOthersException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -62,6 +63,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.math.LongMath;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
@@ -93,6 +95,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private final QueryType type;
   private final MPPQueryContext queryContext;
+  private final int queryAttemptId;
+  private final long queryDeadline;
+  private final long admissionWindowMs;
+  private long lastAdmissionDeadline;
+  private volatile boolean aborted;
+  private volatile LinkedBlockingQueue<Pair<SubPlan, Boolean>> dispatchQueue;
   private final String localhostIpAddr;
   private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
@@ -120,6 +128,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           asyncInternalServiceClientManager) {
     this.type = type;
     this.queryContext = queryContext;
+    this.queryAttemptId = queryContext.getQueryAttemptId();
+    this.queryDeadline = queryContext.getQueryDeadline();
+    // A zero socket timeout means unlimited waiting, but admission fences must remain finite.
+    this.admissionWindowMs =
+        COMMON_CONFIG.getDnConnectionTimeoutInMS() > 0
+            ? COMMON_CONFIG.getDnConnectionTimeoutInMS()
+            : TimeUnit.MINUTES.toMillis(1);
     this.syncInternalServiceClientManager = syncInternalServiceClientManager;
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
@@ -134,6 +149,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   public Future<FragInstanceDispatchResult> dispatch(
       SubPlan root, List<FragmentInstance> instances) {
     if (isQuery()) {
+      for (FragmentInstance instance : instances) {
+        instance.setQueryAttempt(queryAttemptId, queryDeadline);
+      }
       return instances.size() == 1 || root == null
           ? dispatchRead(instances)
           : topologicalParallelDispatchRead(root, instances);
@@ -145,11 +163,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private Future<FragInstanceDispatchResult> topologicalParallelDispatchRead(
       SubPlan root, List<FragmentInstance> instances) {
     long startTime = System.nanoTime();
-    LinkedBlockingQueue<Pair<SubPlan, Boolean>> queue = new LinkedBlockingQueue<>(instances.size());
+    LinkedBlockingQueue<Pair<SubPlan, Boolean>> queue = new LinkedBlockingQueue<>();
+    dispatchQueue = queue;
     List<Future<FragInstanceDispatchResult>> futures = new ArrayList<>(instances.size());
     queue.add(new Pair<>(root, true));
     try {
-      while (futures.size() < instances.size()) {
+      while (!aborted && futures.size() < instances.size()) {
         Pair<SubPlan, Boolean> pair = queue.take();
         SubPlan next = pair.getLeft();
         boolean previousSuccess = pair.getRight();
@@ -188,6 +207,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               RpcUtils.getStatus(
                   TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
     } finally {
+      dispatchQueue = null;
       long queryDispatchReadTime = System.nanoTime() - startTime;
       QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, queryDispatchReadTime);
       queryContext.recordDispatchCost(queryDispatchReadTime);
@@ -218,7 +238,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   // If the failure is not notified and the child FI is not sent, the outer loop
                   // won't be able to exit.
                   queue.add(new Pair<>(null, false));
-                } else {
+                } else if (!aborted) {
                   for (SubPlan child : plan.getChildren()) {
                     queue.add(new Pair<>(child, true));
                   }
@@ -463,8 +483,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
+    checkNotAborted();
     TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
     if (isDispatchedToLocal(endPoint)) {
+      prepareAdmission(instance);
       dispatchLocally(instance);
     } else {
       dispatchRemote(instance, endPoint);
@@ -493,6 +515,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         case READ:
           final TSendFragmentInstanceReq sendFragmentInstanceReq =
               new TSendFragmentInstanceReq(new TFragmentInstance(instance.serializeToByteBuffer()));
+          prepareAdmission(instance);
+          if (instance.hasQueryAttempt()) {
+            sendFragmentInstanceReq
+                .setQueryAttemptId(instance.getQueryAttemptId())
+                .setQueryDeadline(instance.getQueryDeadline())
+                .setAdmissionDeadline(instance.getAdmissionDeadline());
+          }
           if (instance.getExecutorType().isStorageExecutor()) {
             sendFragmentInstanceReq.setConsensusGroupId(
                 instance.getRegionReplicaSet().getRegionId());
@@ -662,6 +691,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                     currentTime)));
       }
       // we just retry once to clear stale connection for a restart node.
+      checkNotAborted();
       try {
         dispatchRemoteHelper(instance, endPoint);
       } catch (ClientManagerException
@@ -767,7 +797,37 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   @Override
-  public void abort() {}
+  public synchronized void abort() {
+    aborted = true;
+    LinkedBlockingQueue<Pair<SubPlan, Boolean>> queue = dispatchQueue;
+    if (queue != null) {
+      queue.offer(new Pair<>(null, false));
+    }
+  }
+
+  private synchronized void prepareAdmission(FragmentInstance instance)
+      throws FragmentInstanceDispatchException {
+    checkNotAborted();
+    long deadline = instance.getAdmissionDeadline();
+    if (deadline == 0) {
+      deadline =
+          Math.min(
+              queryDeadline, LongMath.saturatedAdd(System.currentTimeMillis(), admissionWindowMs));
+      instance.setAdmissionDeadline(deadline);
+    }
+    lastAdmissionDeadline = Math.max(lastAdmissionDeadline, deadline);
+  }
+
+  public synchronized long getLastAdmissionDeadline() {
+    return lastAdmissionDeadline;
+  }
+
+  private void checkNotAborted() throws FragmentInstanceDispatchException {
+    if (aborted) {
+      throw new FragmentInstanceDispatchException(
+          RpcUtils.getStatus(TSStatusCode.QUERY_WAS_KILLED, KilledByOthersException.MESSAGE));
+    }
+  }
 
   private boolean isQuery() {
     return type == QueryType.READ || type == QueryType.READ_WRITE;

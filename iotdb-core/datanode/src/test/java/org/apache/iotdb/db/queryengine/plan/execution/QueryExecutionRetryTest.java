@@ -88,6 +88,7 @@ public class QueryExecutionRetryTest {
 
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
     assertEquals(2, planner.getScheduleAttempts());
+    assertEquals(1, execution.getContext().getQueryAttemptId());
     assertEquals(
         Arrays.asList("begin", "analyze", "rollback", "begin", "analyze", "commit"),
         planner.getAnalysisEvents());
@@ -223,19 +224,25 @@ public class QueryExecutionRetryTest {
     }
 
     @Override
-    public IScheduler doSchedule(
+    public IScheduler createScheduler(
         IAnalysis analysis,
         DistributedQueryPlan distributedPlan,
         MPPQueryContext context,
         QueryStateMachine stateMachine) {
-      scheduleAttempts++;
-      stateMachine.transitionToDispatching();
-      if (alwaysFailDispatch || scheduleAttempts == 1) {
-        TSStatus dispatchFailure = RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR);
-        stateMachine.transitionToPendingRetry(dispatchFailure);
-      } else {
-        stateMachine.transitionToRunning();
-      }
+      org.mockito.Mockito.doAnswer(
+              invocation -> {
+                scheduleAttempts++;
+                stateMachine.transitionToDispatching();
+                if (alwaysFailDispatch || scheduleAttempts == 1) {
+                  TSStatus dispatchFailure = RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR);
+                  stateMachine.transitionToPendingRetry(dispatchFailure);
+                } else {
+                  stateMachine.transitionToRunning();
+                }
+                return null;
+              })
+          .when(scheduler)
+          .start();
       return scheduler;
     }
 

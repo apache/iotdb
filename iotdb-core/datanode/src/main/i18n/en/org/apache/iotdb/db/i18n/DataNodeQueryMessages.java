@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_OR_EXPIRED_F45E3DCF = "Query attempt %s is closed or expired.";
+
   public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
       "Fail to insert measurements %s caused by %s";
 

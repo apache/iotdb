@@ -66,8 +66,6 @@ public class DataNodeQueryContext {
   private static final TableDeviceSchemaCache TABLE_DEVICE_SCHEMA_CACHE =
       TableDeviceSchemaCache.getInstance();
 
-  private final AtomicInteger dataNodeFINum;
-
   // Used for TableModel information table_disk_usage scan
   @GuardedBy("lock")
   private Map<String, List<TTableInfo>> databaseTableInfoMap;
@@ -96,9 +94,8 @@ public class DataNodeQueryContext {
     return runtimeFilters.get(filterId);
   }
 
-  public DataNodeQueryContext(int dataNodeFINum) {
+  public DataNodeQueryContext() {
     this.uncachedPathToSeriesScanInfo = new ConcurrentHashMap<>();
-    this.dataNodeFINum = new AtomicInteger(dataNodeFINum);
     this.deviceCountAndMeasurementValues = new HashMap<>();
   }
 
@@ -182,10 +179,6 @@ public class DataNodeQueryContext {
 
   public Map<PartialPath, Pair<AtomicInteger, TimeValuePair>> getUncachedPathToSeriesScanInfo() {
     return uncachedPathToSeriesScanInfo;
-  }
-
-  public int decreaseDataNodeFINum() {
-    return dataNodeFINum.decrementAndGet();
   }
 
   public void lock(boolean isDeviceInMultiRegion) {
