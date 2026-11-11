@@ -1004,8 +1004,14 @@ public class ConfigNodeDescriptor {
               + procedureCompletedEvictTTL
               + ".");
     }
+    long timeseriesDeletionExecutionIntervalMs =
+        Long.parseLong(
+            properties.getProperty(
+                "timeseries_deletion_execution_interval_ms",
+                String.valueOf(conf.getTimeseriesDeletionExecutionIntervalMs())));
     conf.setProcedureCompletedCleanInterval(procedureCompletedCleanInterval);
     conf.setProcedureCompletedEvictTTL(procedureCompletedEvictTTL);
+    conf.setTimeseriesDeletionExecutionIntervalMs(timeseriesDeletionExecutionIntervalMs);
   }
 
   private void loadPipeHotModifiedProp(TrimProperties properties) throws IOException {

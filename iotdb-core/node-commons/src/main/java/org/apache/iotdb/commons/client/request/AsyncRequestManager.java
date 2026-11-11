@@ -228,12 +228,20 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
       }
     } finally {
       if (!dispatched && client != null && clientManager instanceof ClientManager) {
-        ((ClientManager<TEndPoint, Client>) clientManager).returnClient(endPoint, client);
+        try {
+          restoreClientTimeoutIfNecessary(client);
+        } finally {
+          ((ClientManager<TEndPoint, Client>) clientManager).returnClient(endPoint, client);
+        }
       }
     }
   }
 
   protected void adjustClientTimeoutIfNecessary(RequestType type, Client client, Long timeoutInMs) {
+    // In default, no need to do this
+  }
+
+  protected void restoreClientTimeoutIfNecessary(Client client) {
     // In default, no need to do this
   }
 

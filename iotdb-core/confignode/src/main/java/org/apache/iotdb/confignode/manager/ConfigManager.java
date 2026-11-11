@@ -1941,6 +1941,8 @@ public class ConfigManager implements IManager {
       boolean wasTopologyProbingEnabled = CONF.isEnableTopologyProbing();
       int previousProcedureCompletedCleanInterval = CONF.getProcedureCompletedCleanInterval();
       int previousProcedureCompletedEvictTTL = CONF.getProcedureCompletedEvictTTL();
+      long previousTimeseriesDeletionExecutionIntervalMs =
+          CONF.getTimeseriesDeletionExecutionIntervalMs();
       if (configurationFileFound) {
         File file = new File(url.getFile());
         try {
@@ -1948,7 +1950,8 @@ public class ConfigManager implements IManager {
               file,
               properties,
               mergedProps -> {
-                ConfigNodeDescriptor.getInstance().loadHotModifiedProps(mergedProps);
+                loadHotModifiedProperties(
+                    mergedProps, previousTimeseriesDeletionExecutionIntervalMs);
               });
         } catch (Exception e) {
           tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
@@ -1958,7 +1961,7 @@ public class ConfigManager implements IManager {
             ManagerMessages
                 .EXCEPTION_UNABLE_TO_FIND_THE_CONFIGURATION_FILE_SOME_MODIFICATIONS_ARE_MADE_ONLY_IN_MEMORY_70BB69F5;
         try {
-          ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
+          loadHotModifiedProperties(properties, previousTimeseriesDeletionExecutionIntervalMs);
           tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
         } catch (Exception e) {
           tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
@@ -1986,6 +1989,14 @@ public class ConfigManager implements IManager {
     statusList.add(tsStatus);
     statusList.addAll(statusListOfOtherNodes);
     return RpcUtils.squashResponseStatusList(statusList);
+  }
+
+  private void loadHotModifiedProperties(
+      TrimProperties properties, long previousTimeseriesDeletionExecutionIntervalMs)
+      throws IOException {
+    ConfigNodeDescriptor.getInstance().loadHotModifiedProps(properties);
+    handleTimeseriesDeletionExecutionIntervalHotReload(
+        previousTimeseriesDeletionExecutionIntervalMs);
   }
 
   private TSStatus checkConsistentClusterConfigSetConfigurationTarget(TSetConfigurationReq req) {
@@ -2067,6 +2078,15 @@ public class ConfigManager implements IManager {
       return;
     }
     getProcedureManager().updateCompletedProcedureCleaner();
+  }
+
+  private void handleTimeseriesDeletionExecutionIntervalHotReload(long previousIntervalMs) {
+    if (previousIntervalMs == CONF.getTimeseriesDeletionExecutionIntervalMs()) {
+      return;
+    }
+    getProcedureManager()
+        .updateTimeseriesDeletionExecutionIntervalMs(
+            CONF.getTimeseriesDeletionExecutionIntervalMs());
   }
 
   @Override

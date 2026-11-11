@@ -37,7 +37,7 @@ public class DeleteTimeSeriesProcedureScheduler implements ProcedureScheduler {
   private final Deque<Procedure> runnable = new ArrayDeque<>();
   private final Set<Long> active = new HashSet<>();
   private final int maxConcurrentTasks;
-  private final long executionIntervalNanos;
+  private long executionIntervalNanos;
   private boolean running;
   private boolean taskStarted;
   private long lastStartNanos;
@@ -45,6 +45,16 @@ public class DeleteTimeSeriesProcedureScheduler implements ProcedureScheduler {
   public DeleteTimeSeriesProcedureScheduler(int maxConcurrentTasks, long executionIntervalMs) {
     this.maxConcurrentTasks = maxConcurrentTasks;
     this.executionIntervalNanos = TimeUnit.MILLISECONDS.toNanos(executionIntervalMs);
+  }
+
+  public void setExecutionIntervalMs(long executionIntervalMs) {
+    lock.lock();
+    try {
+      executionIntervalNanos = TimeUnit.MILLISECONDS.toNanos(executionIntervalMs);
+      changed.signalAll();
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override

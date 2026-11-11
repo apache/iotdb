@@ -312,6 +312,10 @@ public class ProcedureManager {
     }
   }
 
+  public void updateTimeseriesDeletionExecutionIntervalMs(long intervalMs) {
+    executor.updateTimeseriesDeletionExecutionIntervalMs(intervalMs);
+  }
+
   public boolean isProcedureExecutionThread() {
     return ProcedureExecutor.isProcedureExecutionThread();
   }

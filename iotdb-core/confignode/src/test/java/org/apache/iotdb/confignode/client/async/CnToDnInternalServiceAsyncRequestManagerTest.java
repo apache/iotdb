@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.confignode.client.async;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.client.request.AsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -30,12 +34,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class CnToDnInternalServiceAsyncRequestManagerTest {
 
@@ -102,6 +109,32 @@ public class CnToDnInternalServiceAsyncRequestManagerTest {
       assertEquals(DEFAULT_TIMEOUT_MS, client.getTimeout());
     }
     verify(clientManager, times(DELETION_REQUEST_TYPES.length)).returnClient(endpoint, client);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void synchronousDispatchFailureRestoresTimeoutBeforeReturningClient() throws Exception {
+    final Field clientManagerField = AsyncRequestManager.class.getDeclaredField("clientManager");
+    clientManagerField.setAccessible(true);
+    final Object originalClientManager = clientManagerField.get(requestManager);
+    try {
+      clientManagerField.set(requestManager, clientManager);
+      when(clientManager.borrowClient(endpoint)).thenReturn(client);
+      final DataNodeAsyncRequestContext<Object, TSStatus> context =
+          new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.DELETE_COLUMN_DATA);
+      context.putNodeLocation(
+          1, new TDataNodeLocation().setDataNodeId(1).setInternalEndPoint(endpoint));
+      // The wrong request type makes the dispatch adapter throw synchronously after timeout setup.
+      context.putRequest(1, new Object());
+
+      requestManager.sendAsyncRequest(context, 1, null);
+
+      assertTrue(client.hasTimeout());
+      assertEquals(DEFAULT_TIMEOUT_MS, client.getTimeout());
+      verify(clientManager).returnClient(endpoint, client);
+    } finally {
+      clientManagerField.set(requestManager, originalClientManager);
+    }
   }
 
   @Test

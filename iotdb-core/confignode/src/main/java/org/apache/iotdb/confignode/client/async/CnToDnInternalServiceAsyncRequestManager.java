@@ -584,6 +584,13 @@ public class CnToDnInternalServiceAsyncRequestManager
     }
   }
 
+  @Override
+  protected void restoreClientTimeoutIfNecessary(AsyncDataNodeInternalServiceClient client) {
+    if (client.originalTimeout != -1) {
+      client.recoverTimeout();
+    }
+  }
+
   private static class ClientPoolHolder {
 
     private static final CnToDnInternalServiceAsyncRequestManager INSTANCE =

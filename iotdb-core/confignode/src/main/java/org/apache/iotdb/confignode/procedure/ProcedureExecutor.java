@@ -1413,6 +1413,12 @@ public class ProcedureExecutor<Env> {
     return deleteTimeSeriesScheduler;
   }
 
+  public synchronized void updateTimeseriesDeletionExecutionIntervalMs(long intervalMs) {
+    if (deleteTimeSeriesScheduler != null) {
+      deleteTimeSeriesScheduler.setExecutionIntervalMs(intervalMs);
+    }
+  }
+
   private synchronized ProcedureScheduler getDropTableScheduler() {
     // Recovery can enqueue drops before startWorkers(), while new submissions arrive after it.
     // Share the lifecycle lock so the first drop creates and starts exactly one worker.

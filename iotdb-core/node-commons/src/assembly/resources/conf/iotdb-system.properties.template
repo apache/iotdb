@@ -2388,7 +2388,7 @@ timeseries_deletion_queue_capacity=1024
 
 # Minimum interval between starting tree-model timeseries deletion tasks, in milliseconds.
 # Measured when tasks leave the queue to start execution; submissions are not rate-limited.
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: long, greater than 0
 timeseries_deletion_execution_interval_ms=1000
 

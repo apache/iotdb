@@ -143,7 +143,7 @@ public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.Asyn
     setTimeout(timeout);
   }
 
-  private synchronized void recoverTimeout() {
+  public synchronized void recoverTimeout() {
     if (originalTimeout == -1) {
       logger.warn(ClientMessages.TIMEOUT_NOT_MODIFIED);
     }
