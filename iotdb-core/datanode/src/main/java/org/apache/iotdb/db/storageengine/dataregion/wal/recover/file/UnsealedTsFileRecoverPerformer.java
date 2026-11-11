@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -29,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
@@ -43,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.Fu
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
@@ -91,11 +89,12 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   public UnsealedTsFileRecoverPerformer(
       TsFileResource tsFileResource,
       boolean sequence,
+      boolean isTableModel,
       Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered) {
     super(tsFileResource);
     this.databaseName = tsFileResource.getDatabaseName();
     this.dataRegionId = tsFileResource.getDataRegionId();
-    this.isTableModel = PathUtils.isTableModelDatabase(databaseName);
+    this.isTableModel = isTableModel;
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
     this.walRedoer = new TsFilePlanRedoer(tsFileResource);
@@ -253,16 +252,13 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   }
 
   private void registerToTsFile(String tableName) {
-    if (tableName != null) {
-      writer
-          .getSchema()
-          .getTableSchemaMap()
-          .computeIfAbsent(
-              tableName,
-              t ->
-                  TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(
-                      DataNodeTableCache.getInstance().getTable(databaseName, t)));
+    // Only a table-model DataRegion owns TsTables, so only its recovered file may carry a
+    // TableSchema entry. The model comes from the owning DataRegion instead of being derived from
+    // the database name here.
+    if (!isTableModel) {
+      return;
     }
+    TsFileTableSchemaRegistrationUtils.registerTableSchemaIfAbsent(writer, databaseName, tableName);
   }
 
   /**
@@ -326,6 +322,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         // if we put following codes in the 'if' clause above, this file can be continued writing
         // into it
         // currently, we close this file anyway
+        if (isTableModel) {
+          TsFileTableSchemaRegistrationUtils.markTableModel(writer);
+        }
         writer.endFile();
         tsFileResource.serialize();
         FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);

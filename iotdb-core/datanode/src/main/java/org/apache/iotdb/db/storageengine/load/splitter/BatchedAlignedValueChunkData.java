@@ -25,6 +25,7 @@ import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
+import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
@@ -33,7 +34,6 @@ import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,6 +53,12 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
 
   private static final ByteBuffer EMPTY_CHUNK_DATA = ByteBuffer.allocate(0);
 
+  // An empty page holds no page body and no page statistics: it serializes to the single 0 varint
+  // that stands for it. The header must therefore not carry statistics, otherwise the page writer
+  // appends a compressed-size varint to a page without data and the reader sees a phantom page.
+  private static final ByteBuffer EMPTY_PAGE_DATA = ByteBuffer.allocate(0);
+  private static final PageHeader EMPTY_PAGE_HEADER = new PageHeader(0, 0, null);
+
   // Used for splitter
   public BatchedAlignedValueChunkData(AlignedChunkData alignedChunkData) {
     super(alignedChunkData);
@@ -64,9 +70,9 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
   }
 
   /**
-   * Override the encoding process to handle standalone Value Chunks without a Time Chunk. It uses
-   * ValueChunkWriter directly, writes a dummy time (0), and manually corrects the start/end time in
-   * the statistics.
+   * Encodes standalone value chunks while preserving the row and the page positions of their time
+   * chunks: a row whose value is null still occupies a bitmap position, and an all-null page still
+   * occupies a page slot.
    */
   protected void encodeAndBuildChunks() throws IOException, PageException {
     final long startTime = timePartitionSlot.getStartTime();
@@ -112,28 +118,31 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
               measurementSchema.getEncodingType(),
               measurementSchema.getValueEncoder());
 
-      // Filter and process the pages that belong to the current value chunk (index 'i').
-      // A chunk header can exist for a physical chunk whose points all belong to another time
-      // partition. Such a chunk stays empty here and must be emitted without any page: sealing an
-      // untouched writer would produce a zero-point page whose data size does not match the bytes
-      // actually written, and the resulting TsFile could not be parsed back.
-      boolean hasBufferedData = false;
-      for (PageBuffer page : chunkPages) {
+      // Whether this chunk covers any row of this time partition. Such a chunk writes one page for
+      // every page slot of its time chunk, all-null pages included: the aligned reader pairs the
+      // pages of a value chunk with the pages of its time chunk by position, so a missing page
+      // shifts every later page onto the wrong timestamps. A chunk that covers no row at all keeps
+      // the zero-page layout of an all-null column, which the metadata reader reports as null.
+      final boolean chunkHasRows = hasPageWithRows(chunkPages);
+      for (final PageBuffer page : chunkPages) {
         if (!page.needDecode) {
-          // An undecoded page may carry no data at all (for aligned series an all-null column is
-          // stored as an empty page). Writing its page header alone would produce a chunk whose
-          // data size does not describe a parsable page, so such a page is dropped.
-          if (page.pageData.remaining() > 0) {
-            valueChunkWriter.writePageHeaderAndDataIntoBuff(page.pageData, page.pageHeader);
-            hasBufferedData = true;
+          if (page.pageData.remaining() == 0) {
+            // An all-null page is stored as an empty page and keeps its slot. Its header is
+            // normalized because the page writer decides on the presence of the statistics instead
+            // of the page size: the placeholder page built by
+            // TsFileSplitter#handleEmptyValueChunk carries the statistics of an empty chunk, and
+            // those would turn the empty page into two bytes that the reader parses as a page
+            // followed by a phantom one.
+            if (chunkHasRows) {
+              valueChunkWriter.writePageHeaderAndDataIntoBuff(EMPTY_PAGE_DATA, EMPTY_PAGE_HEADER);
+            }
+            continue;
           }
+          valueChunkWriter.writePageHeaderAndDataIntoBuff(page.pageData, page.pageHeader);
           continue;
         }
 
-        // Keep track of actual bounds since we will write '0' as dummy time
-        long pageStartTime = Long.MAX_VALUE;
-        long pageEndTime = Long.MIN_VALUE;
-        boolean pageHasValue = false;
+        boolean pageHasRows = false;
 
         final TypeServices.TsPrimitiveValueChunkWriter valueChunkValueWriter =
             TypeServices.StorageEngine.TS_PRIMITIVE_VALUE_CHUNK_WRITER_SERVICE.call(
@@ -144,44 +153,34 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
           if (time >= startTime && time <= endTime) {
             boolean isNull =
                 (page.valueBatch == null
-                    || page.valueBatch.length == 0
+                    || j >= page.valueBatch.length
                     || page.valueBatch[j] == null);
-            if (!isNull) {
-              hasBufferedData = true;
-              pageHasValue = true;
-              pageStartTime = Math.min(pageStartTime, time);
-              pageEndTime = Math.max(pageEndTime, time);
-
-              // Write 0 as a dummy time, valueChunkWriter will ignore it anyway for value columns
-              valueChunkValueWriter.write(valueChunkWriter, 0, page.valueBatch[j], false);
-            }
-            // A standalone value chunk cannot store nulls: for aligned series a missing value is
-            // represented by the absence of the point, the time chunk still carries the row.
+            // The bitmap has one position per timestamp, including nulls. Use the real timestamp
+            // so the writer also computes the statistics of the non-null values correctly.
+            valueChunkValueWriter.write(
+                valueChunkWriter, time, isNull ? null : page.valueBatch[j], isNull);
+            pageHasRows = true;
           }
         }
 
-        // Correct the page statistics with the actual Start/End time
-        Statistics<? extends Serializable> statistics =
-            valueChunkWriter.getPageWriter().getStatistics();
-        if (pageStartTime <= pageEndTime) {
-          statistics.setStartTime(pageStartTime);
-          statistics.setEndTime(pageEndTime);
-        }
-
-        if (pageHasValue) {
+        // Sealing an untouched writer would count a page that holds no byte.
+        if (pageHasRows) {
           valueChunkWriter.sealCurrentPage();
         }
       }
 
-      // Directly assemble the final standard Chunk into memory
+      // Directly assemble the final standard Chunk into memory. A chunk without any row of this
+      // partition stays empty: sealing its untouched writer would produce a page whose data size
+      // does not match the bytes actually written, and the resulting TsFile could not be parsed
+      // back.
       final ByteBuffer valueData =
-          hasBufferedData ? valueChunkWriter.getByteBuffer() : EMPTY_CHUNK_DATA;
+          chunkHasRows ? valueChunkWriter.getByteBuffer() : EMPTY_CHUNK_DATA;
       final Statistics<?> valueStat = valueChunkWriter.getStatistics();
       final ChunkHeader encodedHeader =
           createEncodedChunkHeader(
               chunkHeader,
               valueData.remaining(),
-              hasBufferedData ? valueChunkWriter.getNumOfPages() : 0,
+              chunkHasRows ? valueChunkWriter.getNumOfPages() : 0,
               VALUE_COLUMN_MASK);
 
       entireChunks.add(new Chunk(encodedHeader, valueData, null, valueStat));
@@ -189,5 +188,23 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
       // Update global size (optional, since it will be fully recalculated during serialize anyway)
       dataSize += valueData.remaining() + valueStat.getSerializedSize();
     }
+  }
+
+  /**
+   * Whether any page of the chunk holds rows of this time partition. Only such a chunk mirrors the
+   * page slots of its time chunk, because only then does the time chunk have a page to pair with; a
+   * chunk that holds no row at all keeps the zero-page layout. This is the counterpart of the rule
+   * applied by the base class to the chunks it writes itself.
+   */
+  private static boolean hasPageWithRows(final List<PageBuffer> chunkPages) {
+    for (final PageBuffer page : chunkPages) {
+      // A decoded page already records how many of its rows belong to this partition, and a page
+      // copied as it is was read from this partition, so a body means rows and only an all-null
+      // page has no body.
+      if (page.needDecode ? page.satisfiedLength > 0 : page.pageData.remaining() > 0) {
+        return true;
+      }
+    }
+    return false;
   }
 }

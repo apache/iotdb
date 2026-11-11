@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.disk;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategy;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
@@ -40,9 +38,10 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
 public class FolderManager {
   private static final Logger logger = LoggerFactory.getLogger(FolderManager.class);
@@ -61,7 +60,7 @@ public class FolderManager {
    * Map storing the state of each folder (HEALTHY/ABNORMAL). Key: folder path as String Value:
    * corresponding FolderState enum value
    */
-  private final Map<String, FolderState> foldersStates = new HashMap<>();
+  private final Map<String, FolderState> foldersStates = new ConcurrentHashMap<>();
 
   private final DirectoryStrategy selectStrategy;
 
@@ -74,6 +73,21 @@ public class FolderManager {
 
   public FolderManager(
       List<String> folders, DirectoryStrategyType type, boolean changeSystemStatusToReadOnly)
+      throws DiskSpaceInsufficientException {
+    this(folders, type, changeSystemStatusToReadOnly, null);
+  }
+
+  /** For an owner that replaces this manager on configuration reload. */
+  public FolderManager(List<String> folders, DirectoryStrategyType type, Runnable diskFullHandler)
+      throws DiskSpaceInsufficientException {
+    this(folders, type, true, diskFullHandler);
+  }
+
+  private FolderManager(
+      List<String> folders,
+      DirectoryStrategyType type,
+      boolean changeSystemStatusToReadOnly,
+      Runnable diskFullHandler)
       throws DiskSpaceInsufficientException {
     this.folders = folders;
     this.changeSystemStatusToReadOnly = changeSystemStatusToReadOnly;
@@ -95,6 +109,7 @@ public class FolderManager {
         throw new RuntimeException();
     }
     this.selectStrategy.setChangeSystemStatusToReadOnly(changeSystemStatusToReadOnly);
+    this.selectStrategy.setDiskFullHandler(diskFullHandler);
     this.selectStrategy.setFolders(folders);
     this.selectStrategy.setFoldersStates(foldersStates);
   }
@@ -120,12 +135,16 @@ public class FolderManager {
                 foldersStates.getOrDefault(folder, FolderState.ABNORMAL) == FolderState.HEALTHY);
   }
 
-  private boolean hasFolderWithAvailableDiskSpace() {
+  private boolean hasFolderWithAvailableDiskSpace(Predicate<String> hasSpace) {
     return folders.stream()
         .anyMatch(
             folder ->
                 foldersStates.getOrDefault(folder, FolderState.ABNORMAL) == FolderState.HEALTHY
-                    && JVMCommonUtils.hasSpace(folder));
+                    && hasSpace.test(folder));
+  }
+
+  public boolean hasSpaceForRecovery() {
+    return hasFolderWithAvailableDiskSpace(JVMCommonUtils::hasSpaceWithoutRetry);
   }
 
   private void changeToReadOnlyIfDiskFull(DiskSpaceInsufficientException e) {
@@ -133,13 +152,11 @@ public class FolderManager {
       return;
     }
 
-    if (!hasFolderWithAvailableDiskSpace()) {
+    if (!hasFolderWithAvailableDiskSpace(JVMCommonUtils::hasSpace)) {
       if (LoggerPeriodicalLogReducer.shouldLog(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY)) {
         logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
       }
-      CommonDescriptor.getInstance()
-          .getConfig()
-          .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+      selectStrategy.reportDiskFull(this, this::hasSpaceForRecovery);
     } else {
       logger.warn(UtilMessages.CANNOT_SELECT_FOLDER_BUT_DISK_HAS_SPACE, e);
     }

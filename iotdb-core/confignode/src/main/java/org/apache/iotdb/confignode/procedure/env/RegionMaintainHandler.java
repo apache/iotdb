@@ -56,6 +56,7 @@ import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHe
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -178,7 +179,7 @@ public class RegionMaintainHandler {
     List<TDataNodeLocation> currentPeerNodes;
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
         && (IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())
-            || IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass()))) {
+            || isIoTConsensusV2Configured())) {
       // parameter of createPeer for MultiLeader should be all peers; callers (e.g.
       // AddRegionPeerProcedure) may have already inserted destDataNode into the partition
       // table before reaching here, so append only when not already present to avoid
@@ -556,7 +557,7 @@ public class RegionMaintainHandler {
    * are activated.
    */
   public void createInitialConsensusPipes(CreateRegionGroupsPlan persistPlan) {
-    if (!IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass())) {
+    if (!isIoTConsensusV2Configured()) {
       return;
     }
 
@@ -619,12 +620,28 @@ public class RegionMaintainHandler {
   }
 
   /**
+   * Cheap probe: compares how many consensus pipes the replica sets require (N * (N - 1) per
+   * region) with how many exist, without building a pipe name. A mismatch means a region lost its
+   * replication channel, so PipeMetaSyncer reconciles immediately; equal counts are still
+   * reconciled periodically, because a same-size but different pipe set cannot be detected by
+   * counting.
+   */
+  public boolean hasConsensusPipeCountMismatch() {
+    if (!isIoTConsensusV2Configured()) {
+      return false;
+    }
+
+    return configManager.getPartitionManager().getReplicaPairCount(TConsensusGroupType.DataRegion)
+        != configManager.getPipeManager().getPipeTaskCoordinator().getConsensusPipeCount();
+  }
+
+  /**
    * Periodically called by PipeMetaSyncer to reconcile expected consensus pipes (derived from
    * PartitionManager replica sets) with actually existing consensus pipes (from PipeTaskInfo).
    * Creates missing pipes, drops unexpected pipes, and restarts stopped pipes.
    */
   public void checkAndRepairConsensusPipes() {
-    if (!IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass())) {
+    if (!isIoTConsensusV2Configured()) {
       return;
     }
 
@@ -710,7 +727,19 @@ public class RegionMaintainHandler {
 
   private boolean isIoTConsensusV2DataRegion(TConsensusGroupId regionId) {
     return TConsensusGroupType.DataRegion.equals(regionId.getType())
-        && IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass());
+        && isIoTConsensusV2Configured();
+  }
+
+  /**
+   * Compares the configured protocol through the same normalization DataNode applies, so a legacy
+   * PipeConsensus / implementation class name in the configuration is still recognized as
+   * IoTConsensusV2. Without this, consensus pipes would silently never be created or repaired, and
+   * V2 replication (which only writes the local state machine) would stop working.
+   */
+  private static boolean isIoTConsensusV2Configured() {
+    return IOT_CONSENSUS_V2.equals(
+        ConsensusFactory.normalizeConsensusProtocolClass(
+            CONF.getDataRegionConsensusProtocolClass()));
   }
 
   private TCreatePipeReq buildConsensusPipeReq(

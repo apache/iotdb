@@ -35,6 +35,7 @@ import java.net.ConnectException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeoutException;
 
 /** General RPC handler for TSStatus response type. */
 public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSStatus> {
@@ -81,8 +82,13 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
     logFailure(errorMsg);
     // the DN throw Exception -> TApplicationException
     // the DN crash -> TTransportException or ConnectException
+    // the thrift frame timeout -> TimeoutException
+    // A timeout means no response was received, not that the DataNode failed to execute the
+    // request.
     int code =
-        e instanceof TTransportException || e instanceof ConnectException
+        e instanceof TTransportException
+                || e instanceof ConnectException
+                || e instanceof TimeoutException
             ? TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode()
             : TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode();
 

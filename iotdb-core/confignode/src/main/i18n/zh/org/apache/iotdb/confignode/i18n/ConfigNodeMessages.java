@@ -415,6 +415,9 @@ public final class ConfigNodeMessages {
   public static final String SUCCESSFULLY_ON_DATANODE = "在 DataNode: {} 上成功执行 {}";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE_CURRENT_CONFIGNODEGROUP =
       "成功移除 ConfigNode: {}。当前 ConfigNodeGroup: {}";
+  public static final String
+      LOG_NORMALIZE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_FROM_ARG_TO_ARG_FOR_COMPATIBILITY_6E662489 =
+          "为兼容性将 data_region_consensus_protocol_class 从 {} 规范化为 {}。";
   public static final String SUCCESSFULLY_SETUP_INTERNAL_SERVICES = "成功初始化内部服务。";
   public static final String SUCCESSFULLY_UPDATE_NODE_S_VERSION = "成功更新 Node {} 的版本。";
   public static final String SYSTEMPROPERTIES_NORMALIZE_FROM_TO_FOR_COMPATIBILITY =
@@ -605,6 +608,10 @@ public final class ConfigNodeMessages {
   public static final String EXCEPTION_AVAILABLE_ONLY_DATA_REPLICATION_FACTOR_SET_1_71748D3D =
       "仅在 data_replication_factor 设置为 1 时可用";
   public static final String EXCEPTION_ARG_ARG_6E068B23 = "%s 或 %s";
+  public static final String EXCEPTION_ARG_ARG_ARG_OR_ARG_E950ED19 = "%s、%s、%s 或 %s";
+  public static final String
+      EXCEPTION_UNRECOGNIZED_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_IS_SET_DAB37EAF =
+          "设置了无法识别的 data_region_consensus_protocol_class";
   public static final String
       EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUS_84350FD1 =
           "SchemaRegion 不支持 org.apache.iotdb.consensus.iot.IoTConsensus";
@@ -861,4 +868,7 @@ public final class ConfigNodeMessages {
       "序列化模式树时发生错误。";
 
   public static final String EXCEPTION_NO_SUCH_USER_9F8AB2B7 = "用户不存在：";
+  public static final String
+      EXCEPTION_REGIONGROUP_POLICY_HOT_RELOAD_REQUIRES_IDENTICAL_CONFIGNODE_VERSIONS_AND_BUILDS_FA3BBFEA =
+          "RegionGroup 策略热更新要求所有 ConfigNode 的版本及构建信息一致。";
 }

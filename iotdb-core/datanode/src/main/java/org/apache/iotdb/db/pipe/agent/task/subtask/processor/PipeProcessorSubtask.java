@@ -119,17 +119,21 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskScheduler = subtaskScheduler;
 
-    // double check locking for constructing PipeProcessorSubtaskWorkerManager
-    if (subtaskWorkerManager.get() == null) {
+    // Double-checked locking. Recreate the manager if the cached one is bound to a shut-down
+    // executor, so subtasks are not scheduled to workers that can never run.
+    PipeProcessorSubtaskWorkerManager manager = subtaskWorkerManager.get();
+    if (manager == null || manager.isShutdown()) {
       synchronized (PipeProcessorSubtaskWorkerManager.class) {
-        if (subtaskWorkerManager.get() == null) {
-          subtaskWorkerManager.set(
+        manager = subtaskWorkerManager.get();
+        if (manager == null || manager.isShutdown()) {
+          manager =
               new PipeProcessorSubtaskWorkerManager(
-                  subtaskWorkerThreadPoolExecutor, subtaskWorkerScheduledExecutor));
+                  subtaskWorkerThreadPoolExecutor, subtaskWorkerScheduledExecutor);
+          subtaskWorkerManager.set(manager);
         }
       }
     }
-    subtaskWorkerManager.get().schedule(this);
+    manager.schedule(this);
   }
 
   @Override
@@ -353,6 +357,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   public boolean isStoppedByException() {
     return lastEvent instanceof EnrichedEvent && retryCount.get() > MAX_RETRY_TIMES;
+  }
+
+  boolean isWaitingForTsFileParserMemory() {
+    final Event event = lastEvent;
+    return event instanceof PipeTsFileInsertionEvent
+        && ((PipeTsFileInsertionEvent) event).isWaitingForTsFileParserMemory();
   }
 
   @Override

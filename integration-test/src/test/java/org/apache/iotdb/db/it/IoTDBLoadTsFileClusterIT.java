@@ -26,6 +26,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.ClusterConstant;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -37,6 +38,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -57,14 +59,17 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.junit.runners.MethodSorters;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -85,8 +90,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 @RunWith(IoTDBTestRunner.class)
+// Keep the cleanup and immediate-reuse cases consecutive at the end of this shared-cluster suite.
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @Category({ClusterIT.class})
 public class IoTDBLoadTsFileClusterIT {
 
@@ -183,6 +191,7 @@ public class IoTDBLoadTsFileClusterIT {
       statement.execute("delete database " + DATABASE);
     } catch (final Exception ignored) {
     }
+    awaitDatabaseDataRegionsDeleted();
 
     final File[] files = tmpDir.listFiles();
     if (files != null) {
@@ -296,18 +305,22 @@ public class IoTDBLoadTsFileClusterIT {
       statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
     }
 
+    awaitAllReplicasHaveData();
+
     EnvFactory.getEnv().getDataNodeWrapper(0).stop();
     Thread.sleep(1_000L);
 
-    final long secondPointCount = generateTsFile(tmpDir, "load-second.tsfile", 3_000, 100_000L);
+    final File secondDir = new File(tmpDir, "load-second");
+    Assert.assertTrue(secondDir.mkdirs());
+    final long secondPointCount = generateTsFile(secondDir, "load-second.tsfile", 3_000, 100_000L);
     try (final Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX
                     + EnvFactory.getEnv().getDataNodeWrapper(1).getIpAndPortString(),
-                "root",
-                "root");
+                SessionConfig.DEFAULT_USER,
+                SessionConfig.DEFAULT_PASSWORD);
         final Statement statement = connection.createStatement()) {
-      statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
+      statement.execute("load \"" + secondDir.getAbsolutePath() + "\"");
 
       final long expectedPointCount = firstPointCount + secondPointCount;
       long actualPointCount = queryPointCount(statement);
@@ -316,6 +329,28 @@ public class IoTDBLoadTsFileClusterIT {
         actualPointCount = queryPointCount(statement);
       }
       Assert.assertEquals(expectedPointCount, actualPointCount);
+    }
+  }
+
+  @Test
+  public void testZDatabaseDataRegionsDeletedByTeardown() throws Exception {
+    final long expectedPointCount = generateTsFile(tmpDir, "delete-database.tsfile", 10, 1L);
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      createDatabaseAndSchema(statement);
+      statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
+      awaitPointCount(statement, expectedPointCount);
+    }
+  }
+
+  @Test
+  public void testZZDatabaseNameCanBeReusedAfterTeardown() throws Exception {
+    final long expectedPointCount = generateTsFile(tmpDir, "reuse-database.tsfile", 10, 1L);
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      createDatabaseAndSchema(statement);
+      statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
+      awaitPointCount(statement, expectedPointCount);
     }
   }
 
@@ -334,23 +369,26 @@ public class IoTDBLoadTsFileClusterIT {
       statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
       awaitPointCount(statement, firstPointCount);
     }
+    awaitAllReplicasHaveData();
 
-    // LOAD the second file while DataNode 0 is down. With three replicas it holds a copy of every
-    // region, so it is the DataNode that has to catch up with the LOAD when it comes back.
+    // LOAD only the second file while DataNode 0 is down. With three replicas it holds a copy of
+    // every region, so it is the DataNode that has to catch up with the LOAD when it comes back.
     final DataNodeWrapper restartedDataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
     restartedDataNode.stop();
     Assert.assertFalse(restartedDataNode.isAlive());
 
-    final long secondPointCount = generateTsFile(tmpDir, "sync-second.tsfile", 3_000, 100_000L);
+    final File secondDir = new File(tmpDir, "sync-second");
+    Assert.assertTrue(secondDir.mkdirs());
+    final long secondPointCount = generateTsFile(secondDir, "sync-second.tsfile", 3_000, 100_000L);
     final long expectedPointCount = firstPointCount + secondPointCount;
     try (final Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX
                     + EnvFactory.getEnv().getDataNodeWrapper(1).getIpAndPortString(),
-                "root",
-                "root");
+                SessionConfig.DEFAULT_USER,
+                SessionConfig.DEFAULT_PASSWORD);
         final Statement statement = connection.createStatement()) {
-      statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
+      statement.execute("load \"" + secondDir.getAbsolutePath() + "\"");
       awaitPointCount(statement, expectedPointCount);
     }
 
@@ -469,7 +507,42 @@ public class IoTDBLoadTsFileClusterIT {
     return points.size();
   }
 
-  /** Hard-links the TsFiles below a replica directory into the snapshot directory. */
+  @Test
+  public void testReplicaSnapshotsSkipUnsealedTsFiles() throws Exception {
+    final File regionDir = new File(tmpDir, "region");
+    final File partitionDir = new File(regionDir, "0");
+    Assert.assertTrue(partitionDir.mkdirs());
+    final File sealed = new File(partitionDir, "1-1-0-0.tsfile");
+    final long expectedPointCount = generateTsFile(partitionDir, sealed.getName(), 10, 1L);
+    new TsFileResource(sealed).serialize();
+
+    // An active writer may have no bytes on disk yet, or just an incomplete header.
+    final File empty = new File(partitionDir, "2-1-0-0.tsfile");
+    Assert.assertTrue(empty.createNewFile());
+    final File unsealed = new File(partitionDir, "3-1-0-0.tsfile");
+    Files.write(unsealed.toPath(), TSFileConfig.MAGIC_STRING.getBytes(TSFileConfig.STRING_CHARSET));
+
+    final List<File> snapshots = snapshotTsFiles(regionDir, new File(tmpDir, "snapshots"));
+    Assert.assertEquals(1, snapshots.size());
+    final Set<String> points = new HashSet<>();
+    readPoints(snapshots.get(0), points);
+    Assert.assertEquals(expectedPointCount, points.size());
+
+    // A damaged file advertised as sealed must still be read and rejected, rather than skipped.
+    new TsFileResource(empty).serialize();
+    final List<File> damagedSnapshots =
+        snapshotTsFiles(regionDir, new File(tmpDir, "damaged-snapshots"));
+    Assert.assertEquals(2, damagedSnapshots.size());
+    Assert.assertThrows(
+        NotCompatibleTsFileException.class,
+        () -> {
+          for (final File snapshot : damagedSnapshots) {
+            readPoints(snapshot, new HashSet<>());
+          }
+        });
+  }
+
+  /** Hard-links only sealed TsFiles below a replica directory into the snapshot directory. */
   private static List<File> snapshotTsFiles(final File regionDir, final File snapshotDir)
       throws IOException {
     final List<File> tsFiles = new ArrayList<>();
@@ -480,6 +553,11 @@ public class IoTDBLoadTsFileClusterIT {
     Files.createDirectories(snapshotDir.toPath());
     final List<File> snapshots = new ArrayList<>();
     for (final File tsFile : tsFiles) {
+      // The resource sidecar is published after the writer finishes the file. A hard link to an
+      // unsealed file still shares its writes and may not even contain a readable header yet.
+      if (!new File(tsFile + TsFileResource.RESOURCE_SUFFIX).exists()) {
+        continue;
+      }
       // The time partition directory keeps the names unique inside one replica.
       final File snapshot =
           new File(snapshotDir, tsFile.getParentFile().getName() + "-" + tsFile.getName());
@@ -556,6 +634,113 @@ public class IoTDBLoadTsFileClusterIT {
             + pointCounts);
   }
 
+  /** Whether a local region contains at least one TsFile. */
+  private static boolean hasData(final Long size) {
+    return size != null && size > 0;
+  }
+
+  /** Waits until every DataNode has materialized each DataRegion replica locally. */
+  private static void awaitAllReplicasHaveData() {
+    Awaitility.await()
+        .atMost(2, TimeUnit.MINUTES)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              final Map<Integer, Map<Integer, Long>> regionSizes = dataRegionSizes();
+              Assert.assertFalse(
+                  "the loaded database must have data regions", regionSizes.isEmpty());
+              for (final Map<Integer, Long> replicaSizes : regionSizes.values()) {
+                Assert.assertEquals(DATA_NODE_NUM, replicaSizes.size());
+                Assert.assertTrue(
+                    replicaSizes.values().stream().allMatch(IoTDBLoadTsFileClusterIT::hasData));
+              }
+            });
+  }
+
+  /** The local TsFile sizes of this database, mapped to each DataNode's region replica. */
+  private static Map<Integer, Map<Integer, Long>> dataRegionSizes() throws Exception {
+    final Map<Integer, Map<Integer, Long>> regionSizes = new HashMap<>();
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      for (int dataNodeIndex = 0; dataNodeIndex < DATA_NODE_NUM; dataNodeIndex++) {
+        final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(dataNodeIndex);
+        final int dataNodeId = dataNodeId(statement, dataNode);
+        for (final String order : Arrays.asList("sequence", "unsequence")) {
+          final java.nio.file.Path databaseDir =
+              Paths.get(dataNode.getDataNodeDir(), "data", order, DATABASE);
+          if (!Files.isDirectory(databaseDir)) {
+            continue;
+          }
+          try (Stream<java.nio.file.Path> regionDirectories = Files.list(databaseDir)) {
+            regionDirectories
+                .filter(Files::isDirectory)
+                .forEach(
+                    regionDirectory -> {
+                      try {
+                        final int regionId =
+                            Integer.parseInt(regionDirectory.getFileName().toString());
+                        final long size = tsFileSize(regionDirectory);
+                        regionSizes
+                            .computeIfAbsent(regionId, ignored -> new HashMap<>())
+                            .merge(dataNodeId, size, Long::sum);
+                      } catch (final IOException | NumberFormatException e) {
+                        throw new AssertionError(
+                            "cannot inspect " + regionDirectory + " on " + dataNode, e);
+                      }
+                    });
+          }
+        }
+      }
+    }
+    return regionSizes;
+  }
+
+  private static long tsFileSize(final java.nio.file.Path regionDirectory) throws IOException {
+    try (Stream<java.nio.file.Path> files = Files.walk(regionDirectory)) {
+      return files
+          .filter(Files::isRegularFile)
+          .filter(path -> path.getFileName().toString().endsWith(".tsfile"))
+          .mapToLong(
+              path -> {
+                try {
+                  return Files.size(path);
+                } catch (final IOException e) {
+                  throw new AssertionError("cannot read " + path, e);
+                }
+              })
+          .sum();
+    }
+  }
+
+  /** Waits for asynchronous region deletion before the next test reuses this database name. */
+  private static void awaitDatabaseDataRegionsDeleted() {
+    Awaitility.await()
+        .atMost(5, TimeUnit.MINUTES)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .ignoreExceptions()
+        .until(IoTDBLoadTsFileClusterIT::areDatabaseDataRegionsDeleted);
+  }
+
+  private static boolean areDatabaseDataRegionsDeleted() throws IOException {
+    for (int dataNodeIndex = 0; dataNodeIndex < DATA_NODE_NUM; dataNodeIndex++) {
+      final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(dataNodeIndex);
+      for (final String order : TSFILE_DIRECTORIES) {
+        final java.nio.file.Path databaseDir =
+            Paths.get(dataNode.getDataNodeDir(), "data", order, DATABASE);
+        if (!Files.isDirectory(databaseDir)) {
+          continue;
+        }
+        try (Stream<java.nio.file.Path> regionDirs = Files.list(databaseDir)) {
+          if (regionDirs.anyMatch(Files::isDirectory)) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
   /** The cluster id of the given DataNode, matched by its client RPC endpoint. */
   private static int dataNodeId(final Statement statement, final DataNodeWrapper dataNode)
       throws SQLException {
@@ -612,8 +797,8 @@ public class IoTDBLoadTsFileClusterIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX
                     + EnvFactory.getEnv().getDataNodeWrapper(0).getIpAndPortString(),
-                "root",
-                "root");
+                SessionConfig.DEFAULT_USER,
+                SessionConfig.DEFAULT_PASSWORD);
         final Statement statement = connection.createStatement()) {
       statement.setQueryTimeout(DEGRADED_LOAD_TIMEOUT_SECONDS);
 

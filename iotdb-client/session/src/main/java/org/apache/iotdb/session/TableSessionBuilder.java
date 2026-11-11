@@ -159,6 +159,20 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
+   * Buffer requests larger than this threshold use temporary arrays and reset reusable buffers to
+   * {@code thriftDefaultBufferSize}. Applies to compressed and uncompressed transports. Zero makes
+   * every nonempty buffer request use temporary storage.
+   *
+   * @param thriftMaxReusableBufferSize the buffer reuse threshold in bytes.
+   * @return the current {@link TableSessionBuilder} instance.
+   * @defaultValue Integer.MAX_VALUE (keeps the original reuse policy)
+   */
+  public TableSessionBuilder thriftMaxReusableBufferSize(int thriftMaxReusableBufferSize) {
+    this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
+    return this;
+  }
+
+  /**
    * Enables or disables redirection for cluster nodes.
    *
    * @param enableRedirection whether to enable redirection.
@@ -437,7 +451,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
           Collections.singletonList(SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT);
     }
     this.sqlDialect = TABLE;
-    Session newSession = new Session(this);
+    Session newSession = createSession();
     newSession.enableIoTDBRpcCompression = isIoTDBRpcCompressionEnabled;
     newSession.tabletCompressionMinRowSize = tabletCompressionMinRowSize;
 
@@ -448,5 +462,9 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
       throw e;
     }
     return new TableSession(newSession);
+  }
+
+  protected Session createSession() {
+    return new Session(this);
   }
 }

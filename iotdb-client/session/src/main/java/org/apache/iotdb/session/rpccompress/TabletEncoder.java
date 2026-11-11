@@ -27,12 +27,9 @@ import org.apache.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
-import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.PublicBAOS;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -40,7 +37,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 
 public class TabletEncoder {
@@ -57,6 +54,10 @@ public class TabletEncoder {
   }
 
   public ByteBuffer encodeTime(Tablet tablet) {
+    if (encodingList.get(0) == TSEncoding.PLAIN) {
+      // the same bytes as PlainEncoder (big-endian longs), written in one go
+      return compressBuffer(SessionUtils.getTimeBuffer(tablet));
+    }
     Encoder encoder =
         TSEncodingBuilder.getEncodingBuilder(encodingList.get(0)).getEncoder(TSDataType.INT64);
     PublicBAOS baos = new PublicBAOS();
@@ -74,25 +75,16 @@ public class TabletEncoder {
   }
 
   public ByteBuffer encodeValues(Tablet tablet) {
-    PublicBAOS baos = new PublicBAOS();
     List<IMeasurementSchema> schemas = tablet.getSchemas();
+    PublicBAOS baos = newValueStream(tablet, schemas);
     for (int j = 0, schemasSize = schemas.size(); j < schemasSize; j++) {
-      IMeasurementSchema schema = schemas.get(j);
-      TSDataType dataType = schema.getType();
+      TSDataType dataType = schemas.get(j).getType();
       TSEncoding encoding = encodingList.get(j + 1);
-      Encoder encoder = TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
       if (encoding == TSEncoding.PLAIN) {
-        // PlainEncoder uses var int, which may cause compatibility problem
-        if (dataType.isBinary()) {
-          encodePlainBinary(tablet, j, baos);
-        } else if (dataType == TSDataType.INT32) {
-          encodePlainI32(tablet, j, baos);
-        } else if (dataType == TSDataType.DATE) {
-          encodePlainDate(tablet, j, baos);
-        } else {
-          SessionUtils.encodeValue(dataType, tablet, j, encoder, baos);
-        }
+        // not through PlainEncoder, which writes INT32 as a var int
+        SessionUtils.encodePlainValue(dataType, tablet, j, baos);
       } else {
+        Encoder encoder = TSEncodingBuilder.getEncodingBuilder(encoding).getEncoder(dataType);
         SessionUtils.encodeValue(dataType, tablet, j, encoder, baos);
       }
     }
@@ -103,45 +95,29 @@ public class TabletEncoder {
     return compressBuffer(buffer);
   }
 
-  private void encodePlainBinary(Tablet tablet, int j, ByteArrayOutputStream baos) {
-    Binary[] binaryValues = (Binary[]) tablet.getValues()[j];
-    try {
-      for (int index = 0; index < tablet.getRowSize(); index++) {
-        if (!tablet.isNull(index, j)) {
-          ReadWriteIOUtils.write(binaryValues[index], baos);
-        } else {
-          ReadWriteIOUtils.write(Binary.EMPTY_VALUE, baos);
-        }
+  /**
+   * Pre-sizes the stream for the PLAIN columns, whose size is known up front, and the bit maps
+   * after them, so that the stream does not have to double for the last few bytes. Other encodings
+   * and binary values let the stream grow, as does a size that does not fit in an array.
+   */
+  private PublicBAOS newValueStream(Tablet tablet, List<IMeasurementSchema> schemas) {
+    int rows = tablet.getRowSize();
+    long size = 0;
+    for (int j = 0, schemasSize = schemas.size(); j < schemasSize; j++) {
+      if (encodingList.get(j + 1) == TSEncoding.PLAIN) {
+        size += (long) rows * SessionUtils.getPlainRowSize(schemas.get(j).getType());
       }
-    } catch (IOException e) {
-      throw new IllegalStateException(e);
     }
-  }
-
-  private void encodePlainI32(Tablet tablet, int j, ByteArrayOutputStream baos) {
-    int[] intValues = (int[]) tablet.getValues()[j];
-    try {
-      for (int index = 0; index < tablet.getRowSize(); index++) {
-        ReadWriteIOUtils.write(intValues[index], baos);
-      }
-    } catch (IOException e) {
-      throw new IllegalStateException(e);
+    if (size == 0) {
+      return new PublicBAOS();
     }
-  }
-
-  private void encodePlainDate(Tablet tablet, int j, ByteArrayOutputStream baos) {
-    LocalDate[] dateValues = (LocalDate[]) tablet.getValues()[j];
-    try {
-      for (int index = 0; index < tablet.getRowSize(); index++) {
-        if (!tablet.isNull(index, j)) {
-          ReadWriteIOUtils.write(DateUtils.parseDateExpressionToInt(dateValues[index]), baos);
-        } else {
-          ReadWriteIOUtils.write(0, baos);
-        }
-      }
-    } catch (IOException e) {
-      throw new IllegalStateException(e);
+    BitMap[] bitMaps = tablet.getBitMaps();
+    if (bitMaps != null) {
+      // at most a marker byte and the truncated bit map per column
+      size += bitMaps.length * (1L + rows / Byte.SIZE + 1);
     }
+    // stay clear of the VM's array size limit
+    return size <= Integer.MAX_VALUE - 8 ? new PublicBAOS((int) size) : new PublicBAOS();
   }
 
   private void encodeBitMap(Tablet tablet, ByteArrayOutputStream baos) {
@@ -165,14 +141,22 @@ public class TabletEncoder {
     if (compressionType != CompressionType.UNCOMPRESSED) {
       ICompressor compressor = ICompressor.getCompressor(compressionType);
       int uncompressedSize = buffer.remaining();
-      byte[] compressed = new byte[compressor.getMaxBytesForCompression(uncompressedSize) + 4];
+      int offset = buffer.arrayOffset() + buffer.position();
       try {
-        int compressedLength =
-            compressor.compress(
-                buffer.array(),
-                buffer.arrayOffset() + buffer.position(),
-                uncompressedSize,
-                compressed);
+        byte[] compressed;
+        int compressedLength;
+        // getMaxBytesForCompression is a real bound except for GZIP and LZMA2, whose output can
+        // outgrow it on data that hardly compresses. Those two size their own output instead; the
+        // others write straight into one buffer, which saves an array and a copy.
+        if (compressionType == CompressionType.GZIP || compressionType == CompressionType.LZMA2) {
+          byte[] output = compressor.compress(buffer.array(), offset, uncompressedSize);
+          compressedLength = output.length;
+          compressed = Arrays.copyOf(output, compressedLength + 4);
+        } else {
+          compressed = new byte[compressor.getMaxBytesForCompression(uncompressedSize) + 4];
+          compressedLength =
+              compressor.compress(buffer.array(), offset, uncompressedSize, compressed);
+        }
         buffer = ByteBuffer.wrap(compressed, 0, compressedLength + 4);
         buffer.position(compressedLength);
         buffer.putInt(uncompressedSize);

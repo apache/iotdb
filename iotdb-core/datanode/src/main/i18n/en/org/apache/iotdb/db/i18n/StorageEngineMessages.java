@@ -635,7 +635,7 @@ public final class StorageEngineMessages {
   public static final String CANNOT_SNAPSHOT_UNCLOSED_TSFILE =
       "Cannot create snapshot because TsFile {} is not closed";
   public static final String HARD_LINK_TARGET_DIR_NOT_EXIST = "Hard link target dir {} doesn't exist";
-  public static final String HARD_LINK_SOURCE_FILE_NOT_EXIST = "Hard link source file {} doesn't exist, this file will be ignored.";
+  public static final String HARD_LINK_SOURCE_FILE_NOT_EXIST = "Hard link source file {} doesn't exist.";
   public static final String COPY_TARGET_DIR_NOT_EXIST = "Copy target dir {} doesn't exist";
   public static final String COPY_SOURCE_FILE_NOT_EXIST = "Copy source file {} doesn't exist";
   public static final String CANNOT_CREATE_DIRECTORY = "Cannot create directory ";

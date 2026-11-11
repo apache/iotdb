@@ -46,6 +46,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -94,7 +95,9 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       final String dbName = "test";
-      TableModelUtils.createDatabase(senderEnv, dbName, 300);
+      // Keep rows alive while asynchronous metadata and data synchronization finish.
+      final long databaseTtl = TimeUnit.DAYS.toMillis(1);
+      TableModelUtils.createDatabase(senderEnv, dbName, databaseTtl);
 
       TestUtils.executeNonQueries(
           dbName,
@@ -115,7 +118,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           receiverEnv,
           "show tables from test",
           "TableName,TTL(ms),",
-          Collections.singleton("table1,300,"),
+          Collections.singleton("table1," + databaseTtl + ","),
           dbName);
 
       // Test devices
@@ -159,7 +162,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           receiverEnv,
           "show tables from test",
           "TableName,TTL(ms),",
-          Collections.singleton("table1,300,"),
+          Collections.singleton("table1," + databaseTtl + ","),
           dbName);
 
       TestUtils.assertDataEventuallyOnEnv(

@@ -210,10 +210,12 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
+      long outerQueryDeadlineMs,
       boolean debug,
       boolean isVerbose) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(id, stateMachine, sessionInfo, debug, isVerbose);
+    instanceContext.outerQueryDeadlineMs = outerQueryDeadlineMs;
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -522,11 +524,11 @@ public class FragmentInstanceContext extends QueryContext {
         modsTreeMatcher);
   }
 
-  // the state change listener is added here in a separate initialize() method
+  // the final-state listener is added here in a separate initialize() method
   // instead of the constructor to prevent leaking the "this" reference to
-  // another thread, which will cause unsafe publication of this instance.
+  // listener code before this instance has been fully constructed.
   private void initialize() {
-    stateMachine.addStateChangeListener(this::updateStatsIfDone);
+    stateMachine.addFinalStateChangeListener(this::updateStatsIfDone);
   }
 
   private void updateStatsIfDone(FragmentInstanceState newState) {

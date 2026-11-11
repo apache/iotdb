@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.TsFileParserMemoryReservation;
 
@@ -39,6 +41,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeMemoryManagerTest {
 
@@ -102,6 +105,397 @@ public class PipeMemoryManagerTest {
     Assert.assertEquals(1, pipeBWakeUps.get());
     Assert.assertTrue(tryAcquire(pipeB));
     Assert.assertEquals(0, memoryManager.getWaitingTsFileParserCount());
+  }
+
+  @Test
+  public void testFreeSlotsAreAvailableWithoutWaitingForTheFirstWorker() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(4);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+    final List<Reservation> blockers = new ArrayList<>();
+    final List<Reservation> waiting = new ArrayList<>();
+    final AtomicInteger[] wakeUps = new AtomicInteger[100];
+    for (int i = 0; i < 4; i++) {
+      final Reservation blocker = new Reservation("blocker" + i, 0);
+      blockers.add(blocker);
+      Assert.assertTrue(tryAcquire(blocker));
+    }
+    for (int i = 0; i < 100; i++) {
+      final Reservation request = new Reservation("waiting" + i, 0);
+      waiting.add(request);
+      wakeUps[i] = new AtomicInteger();
+      request.key.setWakeUpCallback(wakeUps[i]::incrementAndGet);
+      Assert.assertFalse(tryAcquire(request));
+    }
+    blockers.forEach(this::release);
+    memoryManager.notifyNextTsFileParserMemoryReservation();
+    for (int i = 0; i < 100; i++) {
+      Assert.assertEquals(i < 4 ? 1 : 0, wakeUps[i].get());
+    }
+
+    // The first worker is still busy. Other eligible workers can fill three slots, but must leave
+    // the remaining slot for the oldest request instead of allowing a fifth pipe to overtake it.
+    Assert.assertFalse(tryAcquire(waiting.get(4)));
+    Assert.assertTrue(tryAcquire(waiting.get(3)));
+    Assert.assertTrue(tryAcquire(waiting.get(2)));
+    Assert.assertTrue(tryAcquire(waiting.get(1)));
+    Assert.assertEquals(3, memoryManager.getReservedTsFileParserCount());
+    Assert.assertFalse(tryAcquire(waiting.get(4)));
+    Assert.assertTrue(tryAcquire(waiting.get(0)));
+    Assert.assertEquals(4, memoryManager.getReservedTsFileParserCount());
+    Assert.assertEquals(96, memoryManager.getWaitingTsFileParserCount());
+  }
+
+  @Test
+  public void testAdmissionWindowRespectsPipeFairnessAcrossRegions() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(2);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+    final PipeMemoryManager manager = createTestMemoryManager();
+    final Reservation blockerA = new Reservation("blockerA", 0);
+    final Reservation blockerB = new Reservation("blockerB", 0);
+    final Reservation pipeARegion1 = new Reservation("pipeA", 1, "1");
+    final Reservation pipeARegion2 = new Reservation("pipeA", 1, "2");
+    final Reservation pipeB = new Reservation("pipeB", 2);
+    final List<Reservation> testReservations =
+        List.of(blockerA, blockerB, pipeARegion1, pipeARegion2, pipeB);
+    try {
+      Assert.assertTrue(tryAcquire(manager, blockerA));
+      Assert.assertTrue(tryAcquire(manager, blockerB));
+      Assert.assertFalse(tryAcquire(manager, pipeARegion1));
+      Assert.assertFalse(tryAcquire(manager, pipeARegion2));
+      Assert.assertFalse(tryAcquire(manager, pipeB));
+      release(manager, blockerA);
+      release(manager, blockerB);
+
+      // Even with soft memory headroom for both slots, admit another pipe before a second region
+      // of the first pipe. This keeps the admission window fair independently of memory pressure.
+      Assert.assertFalse(tryAcquire(manager, pipeARegion2));
+      Assert.assertTrue(tryAcquire(manager, pipeB));
+      Assert.assertTrue(tryAcquire(manager, pipeARegion1));
+    } finally {
+      for (final Reservation reservation : testReservations) {
+        manager.cancelTsFileParserMemoryReservation(
+            reservation.pipeName,
+            reservation.creationTime,
+            reservation.dataRegionId,
+            reservation.key);
+        release(manager, reservation);
+      }
+    }
+  }
+
+  @Test
+  public void testAdmissionWindowUsesAvailableSlotsWhenOnlyOnePipeIsWaiting() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(2);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+    final PipeMemoryManager manager = createTestMemoryManager();
+    final Reservation blockerA = new Reservation("blockerA", 0);
+    final Reservation blockerB = new Reservation("blockerB", 0);
+    final Reservation pipeARegion1 = new Reservation("pipeA", 1, "1");
+    final Reservation pipeARegion2 = new Reservation("pipeA", 1, "2");
+    final List<Reservation> testReservations =
+        List.of(blockerA, blockerB, pipeARegion1, pipeARegion2);
+    try {
+      Assert.assertTrue(tryAcquire(manager, blockerA));
+      Assert.assertTrue(tryAcquire(manager, blockerB));
+      Assert.assertFalse(tryAcquire(manager, pipeARegion1));
+      Assert.assertFalse(tryAcquire(manager, pipeARegion2));
+      release(manager, blockerA);
+      release(manager, blockerB);
+
+      Assert.assertTrue(tryAcquire(manager, pipeARegion1));
+      Assert.assertTrue(tryAcquire(manager, pipeARegion2));
+      Assert.assertEquals(2, manager.getReservedTsFileParserCount());
+    } finally {
+      for (final Reservation reservation : testReservations) {
+        manager.cancelTsFileParserMemoryReservation(
+            reservation.pipeName,
+            reservation.creationTime,
+            reservation.dataRegionId,
+            reservation.key);
+        release(manager, reservation);
+      }
+    }
+  }
+
+  @Test
+  public void testAdmissionWindowHonorsPerPipeRegionLimitAboveOne() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(4);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(2);
+    Assert.assertEquals(2, commonConfig.getPipeTsFileParserInFlightMaxNumPerPipeRegion());
+    final PipeMemoryManager manager = createTestMemoryManager();
+    final List<Reservation> blockers = new ArrayList<>();
+    final List<Reservation> waiting = new ArrayList<>();
+    final AtomicInteger[] wakeUps = new AtomicInteger[3];
+    for (int i = 0; i < 4; i++) {
+      final Reservation blocker = new Reservation("blocker" + i, 0);
+      blockers.add(blocker);
+    }
+    for (int i = 0; i < 3; i++) {
+      final Reservation request = new Reservation("pipeA", 1);
+      waiting.add(request);
+      wakeUps[i] = new AtomicInteger();
+      request.key.setWakeUpCallback(wakeUps[i]::incrementAndGet);
+    }
+    final List<Reservation> testReservations = new ArrayList<>(blockers);
+    testReservations.addAll(waiting);
+    try {
+      for (final Reservation blocker : blockers) {
+        Assert.assertTrue(tryAcquire(manager, blocker));
+      }
+      for (final Reservation request : waiting) {
+        Assert.assertFalse(tryAcquire(manager, request));
+      }
+      blockers.forEach(blocker -> release(manager, blocker));
+      manager.notifyNextTsFileParserMemoryReservation();
+
+      Assert.assertEquals(1, wakeUps[0].get());
+      Assert.assertEquals(1, wakeUps[1].get());
+      Assert.assertEquals(0, wakeUps[2].get());
+      Assert.assertTrue(tryAcquire(manager, waiting.get(1)));
+      Assert.assertTrue(tryAcquire(manager, waiting.get(0)));
+      Assert.assertEquals(2, manager.getReservedTsFileParserCount());
+      Assert.assertFalse(tryAcquire(manager, waiting.get(2)));
+    } finally {
+      for (final Reservation reservation : testReservations) {
+        manager.cancelTsFileParserMemoryReservation(
+            reservation.pipeName,
+            reservation.creationTime,
+            reservation.dataRegionId,
+            reservation.key);
+        release(manager, reservation);
+      }
+    }
+  }
+
+  @Test
+  public void testNewPipesCannotOvertakeNotifiedRequestsAfterReverseAdmission() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(2);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+    final PipeMemoryManager manager = createTestMemoryManager();
+    final Reservation blockerA = new Reservation("blockerA", 0);
+    final Reservation blockerB = new Reservation("blockerB", 0);
+    final Reservation oldest = new Reservation("oldest", 1);
+    final Reservation multiRegion1 = new Reservation("multi", 2, "1");
+    final Reservation multiRegion2 = new Reservation("multi", 2, "2");
+    final List<Reservation> testReservations = new ArrayList<>();
+    testReservations.addAll(List.of(blockerA, blockerB, oldest, multiRegion1, multiRegion2));
+    try {
+      Assert.assertTrue(tryAcquire(manager, blockerA));
+      Assert.assertTrue(tryAcquire(manager, blockerB));
+      Assert.assertFalse(tryAcquire(manager, oldest));
+      Assert.assertFalse(tryAcquire(manager, multiRegion1));
+      Assert.assertFalse(tryAcquire(manager, multiRegion2));
+      release(manager, blockerA);
+      release(manager, blockerB);
+      Assert.assertFalse(oldest.key.isWaitingForSignal());
+      Assert.assertTrue(tryAcquire(manager, multiRegion1));
+
+      // A continuously replenished tail must not steal the remaining notified request's slot.
+      for (int i = 0; i < 10; i++) {
+        final Reservation newcomer = new Reservation("newcomer" + i, 3);
+        testReservations.add(newcomer);
+        Assert.assertFalse(tryAcquire(manager, newcomer));
+      }
+      Assert.assertTrue(tryAcquire(manager, oldest));
+      Assert.assertFalse(tryAcquire(manager, multiRegion2));
+    } finally {
+      for (final Reservation reservation : testReservations) {
+        manager.cancelTsFileParserMemoryReservation(
+            reservation.pipeName,
+            reservation.creationTime,
+            reservation.dataRegionId,
+            reservation.key);
+        release(manager, reservation);
+      }
+    }
+  }
+
+  @Test
+  public void testImmediateAdmissionsCannotContinuouslyOvertakeWaitingPipe() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(2);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(2);
+    final PipeMemoryManager manager = createTestMemoryManager();
+    final Reservation blockerA = new Reservation("blockerA", 0);
+    final Reservation blockerB = new Reservation("blockerB", 0);
+    final Reservation oldest = new Reservation("pipeA", 1);
+    final Reservation second = new Reservation("pipeA", 1);
+    final Reservation firstNewcomer = new Reservation("firstNewcomer", 2);
+    final List<Reservation> testReservations =
+        new ArrayList<>(List.of(blockerA, blockerB, oldest, second, firstNewcomer));
+    try {
+      Assert.assertTrue(tryAcquire(manager, blockerA));
+      Assert.assertTrue(tryAcquire(manager, blockerB));
+      Assert.assertFalse(tryAcquire(manager, oldest));
+      Assert.assertFalse(tryAcquire(manager, second));
+      release(manager, blockerA);
+      release(manager, blockerB);
+      Assert.assertTrue(tryAcquire(manager, second));
+
+      // Another pipe can take a fair turn, even when its first attempt needs no retry. That turn
+      // must advance the cursor so a stream of new pipes cannot indefinitely bypass pipe A.
+      Assert.assertTrue(tryAcquire(manager, firstNewcomer));
+      release(manager, firstNewcomer);
+      for (int i = 0; i < 10; i++) {
+        final Reservation newcomer = new Reservation("newcomer" + i, 3);
+        testReservations.add(newcomer);
+        Assert.assertFalse(tryAcquire(manager, newcomer));
+      }
+      Assert.assertTrue(tryAcquire(manager, oldest));
+      Assert.assertEquals(2, manager.getReservedTsFileParserCount());
+    } finally {
+      for (final Reservation reservation : testReservations) {
+        manager.cancelTsFileParserMemoryReservation(
+            reservation.pipeName,
+            reservation.creationTime,
+            reservation.dataRegionId,
+            reservation.key);
+        release(manager, reservation);
+      }
+    }
+  }
+
+  @Test
+  public void testSoftMemoryWindowAccountsForEarlierTurnsOfSamePipe() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(2);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+    final PipeMemoryManager manager = createTestMemoryManager();
+    final Reservation blockerA = new Reservation("blockerA", 0);
+    final Reservation blockerB = new Reservation("blockerB", 0);
+    final Reservation oldest = new Reservation("pipeA", 1, "1");
+    final Reservation second = new Reservation("pipeA", 1, "2");
+    final Reservation otherPipe = new Reservation("pipeB", 2);
+    final AtomicInteger secondWakeUps = new AtomicInteger();
+    second.key.setWakeUpCallback(secondWakeUps::incrementAndGet);
+    final AtomicInteger otherPipeWakeUps = new AtomicInteger();
+    otherPipe.key.setWakeUpCallback(otherPipeWakeUps::incrementAndGet);
+    final List<Reservation> testReservations =
+        List.of(blockerA, blockerB, oldest, second, otherPipe);
+    try {
+      Assert.assertTrue(tryAcquire(manager, blockerA));
+      Assert.assertTrue(tryAcquire(manager, blockerB));
+      Assert.assertFalse(tryAcquire(manager, oldest));
+      Assert.assertFalse(tryAcquire(manager, second));
+      Assert.assertFalse(tryAcquire(manager, otherPipe));
+      final long totalMemory = manager.getTotalNonFloatingMemorySizeInBytes();
+      final double tabletLimit =
+          (commonConfig.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
+                  + commonConfig.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()
+                      / 2)
+              * totalMemory;
+      final double combinedLimit =
+          (commonConfig.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
+                  + commonConfig.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold())
+              * totalMemory;
+      // One turn fits below the soft threshold; two fit only below the hard threshold.
+      commonConfig.setPipeTsFileParserMemory((long) (Math.min(tabletLimit, combinedLimit) * 0.49));
+      release(manager, blockerA);
+      release(manager, blockerB);
+
+      Assert.assertFalse(oldest.key.isWaitingForSignal());
+      Assert.assertEquals(0, secondWakeUps.get());
+      Assert.assertEquals(1, otherPipeWakeUps.get());
+      Assert.assertFalse(tryAcquire(manager, second));
+      Assert.assertTrue(tryAcquire(manager, oldest));
+      Assert.assertFalse(tryAcquire(manager, second));
+      Assert.assertTrue(tryAcquire(manager, otherPipe));
+      release(manager, oldest);
+      Assert.assertTrue(tryAcquire(manager, second));
+    } finally {
+      for (final Reservation reservation : testReservations) {
+        manager.cancelTsFileParserMemoryReservation(
+            reservation.pipeName,
+            reservation.creationTime,
+            reservation.dataRegionId,
+            reservation.key);
+        release(manager, reservation);
+      }
+    }
+  }
+
+  @Test
+  public void testAdmissionWindowIsBoundedByAvailableMemory() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(4);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+    final List<Reservation> blockers = new ArrayList<>();
+    for (int i = 0; i < 4; i++) {
+      final Reservation blocker = new Reservation("blocker" + i, 0);
+      blockers.add(blocker);
+      Assert.assertTrue(tryAcquire(blocker));
+    }
+    final Reservation pipeA = new Reservation("pipeA", 1);
+    final Reservation pipeB = new Reservation("pipeB", 2);
+    final AtomicInteger pipeAWakeUps = new AtomicInteger();
+    final AtomicInteger pipeBWakeUps = new AtomicInteger();
+    pipeA.key.setWakeUpCallback(pipeAWakeUps::incrementAndGet);
+    pipeB.key.setWakeUpCallback(pipeBWakeUps::incrementAndGet);
+    Assert.assertFalse(tryAcquire(pipeA));
+    Assert.assertFalse(tryAcquire(pipeB));
+    final double tabletLimit =
+        (commonConfig.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()
+                + commonConfig.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold() / 2)
+            * memoryManager.getTotalNonFloatingMemorySizeInBytes();
+    commonConfig.setPipeTsFileParserMemory((long) (tabletLimit * 0.6));
+    blockers.forEach(this::release);
+
+    Assert.assertEquals(1, pipeAWakeUps.get());
+    Assert.assertEquals(0, pipeBWakeUps.get());
+    Assert.assertFalse(tryAcquire(pipeB));
+    Assert.assertTrue(tryAcquire(pipeA));
+    Assert.assertFalse(tryAcquire(pipeB));
+    release(pipeA);
+    Assert.assertTrue(tryAcquire(pipeB));
+  }
+
+  @Test
+  public void testCancellationClearsWaitStateAndWakesNextRequest() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(1);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+    final Reservation blocker = new Reservation("blocker", 0);
+    final Reservation pipeA = new Reservation("pipeA", 1);
+    final Reservation pipeB = new Reservation("pipeB", 2);
+    Assert.assertTrue(tryAcquire(blocker));
+    Assert.assertFalse(tryAcquire(pipeA));
+    Assert.assertFalse(tryAcquire(pipeB));
+    Assert.assertTrue(pipeA.key.isWaitingForSignal());
+    release(blocker);
+    Assert.assertFalse(pipeA.key.isWaitingForSignal());
+    Assert.assertTrue(pipeB.key.isWaitingForSignal());
+
+    memoryManager.cancelTsFileParserMemoryReservation("pipeA", 1, "0", pipeA.key);
+    Assert.assertFalse(pipeA.key.isWaitingForSignal());
+    Assert.assertFalse(pipeB.key.isWaitingForSignal());
+    Assert.assertTrue(tryAcquire(pipeB));
+  }
+
+  @Test
+  public void testFloatingMemoryReleaseWakesAdmissionDuringMaintenance() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(1);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+    commonConfig.setPipeTsFileParserMemory(500);
+    final AtomicLong floatingUsage = new AtomicLong(1500);
+    final PipeMemoryManager manager =
+        new PipeMemoryManager(
+            new AtomicLongMemoryBlock("test", null, 2000, MemoryBlockType.DYNAMIC),
+            floatingUsage::get);
+    final TsFileParserMemoryReservation request = new TsFileParserMemoryReservation();
+    final AtomicInteger wakeUps = new AtomicInteger();
+    request.setWakeUpCallback(wakeUps::incrementAndGet);
+    boolean reserved = false;
+    try {
+      Assert.assertFalse(manager.tryReserveTsFileParserMemory("pipe", 0, "0", request));
+      Assert.assertTrue(request.isWaitingForSignal());
+      floatingUsage.set(0);
+      manager.tryExpandAllAndCheckConsistency();
+      Assert.assertEquals(1, wakeUps.get());
+      Assert.assertFalse(request.isWaitingForSignal());
+      reserved = manager.tryReserveTsFileParserMemory("pipe", 0, "0", request);
+      Assert.assertTrue(reserved);
+    } finally {
+      manager.cancelTsFileParserMemoryReservation("pipe", 0, "0", request);
+      if (reserved) {
+        manager.releaseTsFileParserMemory("pipe", 0, "0");
+      }
+    }
   }
 
   @Test
@@ -374,6 +768,16 @@ public class PipeMemoryManagerTest {
     return reservation.acquired;
   }
 
+  private boolean tryAcquire(final PipeMemoryManager manager, final Reservation reservation) {
+    reservation.acquired =
+        manager.tryReserveTsFileParserMemory(
+            reservation.pipeName,
+            reservation.creationTime,
+            reservation.dataRegionId,
+            reservation.key);
+    return reservation.acquired;
+  }
+
   private boolean tryAcquireWithoutTracking(final Reservation reservation) {
     reservation.acquired =
         memoryManager.tryReserveTsFileParserMemory(
@@ -385,12 +789,21 @@ public class PipeMemoryManagerTest {
   }
 
   private void release(final Reservation reservation) {
+    release(memoryManager, reservation);
+  }
+
+  private void release(final PipeMemoryManager manager, final Reservation reservation) {
     if (!reservation.acquired) {
       return;
     }
-    memoryManager.releaseTsFileParserMemory(
+    manager.releaseTsFileParserMemory(
         reservation.pipeName, reservation.creationTime, reservation.dataRegionId);
     reservation.acquired = false;
+  }
+
+  private PipeMemoryManager createTestMemoryManager() {
+    return new PipeMemoryManager(
+        new AtomicLongMemoryBlock("test", null, 2_000_000_000L, MemoryBlockType.DYNAMIC), () -> 0);
   }
 
   private static class Reservation {

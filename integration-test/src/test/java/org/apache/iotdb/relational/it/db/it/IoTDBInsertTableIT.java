@@ -87,7 +87,9 @@ public class IoTDBInsertTableIT {
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeCommonConfig()
-        .setWriteMemoryProportion("10000000:1");
+        .setWriteMemoryProportion("10000000:1")
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -1184,6 +1186,26 @@ public class IoTDBInsertTableIT {
       fail();
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+    }
+  }
+
+  @Test
+  public void testInsertWithPipeAndTTL() throws Exception {
+    final Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    final Statement statement = connection.createStatement();
+    try {
+      statement.execute("use \"test\"");
+      statement.execute("create pipe placeholder ('sink'='do-nothing-sink')");
+      statement.execute("create table t_big (dev string tag, v double field) with (ttl=100000)");
+      statement.execute("insert into t_big (time, dev, v) values (now(), 'd1', 11)");
+      statement.execute("insert into t_big (time, dev, v) values (1793772199053, 'd1', 13)");
+    } catch (final Exception e) {
+      Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+    } finally {
+      statement.execute("drop pipe if exists placeholder_history");
+      statement.execute("drop pipe placeholder_realtime");
+      statement.close();
+      connection.close();
     }
   }
 
