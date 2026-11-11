@@ -24,14 +24,22 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -92,12 +100,14 @@ public class IoTDBComplexQueryIT {
   }
 
   @Test
-  public void testTimeFilterWithTimestampCast() {
+  public void testTimeFilterWithTimestampCast() throws Exception {
     String[] expectedHeader = new String[] {"time", "name"};
-    tableResultSetEqualTest(
+    String rangeQuery =
         "SELECT time, name FROM employees"
             + " WHERE time >= CAST(2 AS TIMESTAMP) AND time < CAST(5 AS TIMESTAMP)"
-            + " ORDER BY time",
+            + " ORDER BY time";
+    tableResultSetEqualTest(
+        rangeQuery,
         expectedHeader,
         new String[] {
           "1970-01-01T00:00:00.002Z,John,",
@@ -105,12 +115,79 @@ public class IoTDBComplexQueryIT {
           "1970-01-01T00:00:00.004Z,Jack,"
         },
         DATABASE_NAME);
+    // Time predicates must reach the table scan so partition pruning remains effective.
+    assertHasTimePredicate(rangeQuery);
+
+    String betweenQuery =
+        "SELECT time, name FROM employees"
+            + " WHERE time BETWEEN CAST(2 AS TIMESTAMP) AND CAST(4 AS TIMESTAMP)"
+            + " ORDER BY time";
+    tableResultSetEqualTest(
+        betweenQuery,
+        expectedHeader,
+        new String[] {
+          "1970-01-01T00:00:00.002Z,John,",
+          "1970-01-01T00:00:00.003Z,Nancy,",
+          "1970-01-01T00:00:00.004Z,Jack,"
+        },
+        DATABASE_NAME);
+    assertHasTimePredicate(betweenQuery);
+
     tableResultSetEqualTest(
         "SELECT time, name FROM employees"
             + " WHERE time IN (CAST(2 AS TIMESTAMP), CAST(4 AS TIMESTAMP)) ORDER BY time",
         expectedHeader,
         new String[] {"1970-01-01T00:00:00.002Z,John,", "1970-01-01T00:00:00.004Z,Jack,"},
         DATABASE_NAME);
+
+    String singleValueInQuery =
+        "SELECT time, name FROM employees WHERE time IN (CAST(2 AS TIMESTAMP)) ORDER BY time";
+    tableResultSetEqualTest(
+        singleValueInQuery,
+        expectedHeader,
+        new String[] {"1970-01-01T00:00:00.002Z,John,"},
+        DATABASE_NAME);
+    assertHasTimePredicate(singleValueInQuery);
+  }
+
+  private static void assertHasTimePredicate(String query) throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      try (ResultSet resultSet = statement.executeQuery("EXPLAIN (FORMAT JSON) " + query)) {
+        assertTrue(resultSet.next());
+        assertTrue(
+            "Expected DeviceTableScanNode to contain a TimePredicate",
+            containsTimePredicate(JsonParser.parseString(resultSet.getString(1))));
+      }
+    }
+  }
+
+  private static boolean containsTimePredicate(JsonElement element) {
+    if (element == null || element.isJsonNull()) {
+      return false;
+    }
+    if (element.isJsonObject()) {
+      JsonObject object = element.getAsJsonObject();
+      JsonElement properties = object.get("properties");
+      if (properties != null
+          && properties.isJsonObject()
+          && properties.getAsJsonObject().has("TimePredicate")) {
+        return true;
+      }
+      for (String key : object.keySet()) {
+        if (containsTimePredicate(object.get(key))) {
+          return true;
+        }
+      }
+    } else if (element.isJsonArray()) {
+      for (JsonElement child : element.getAsJsonArray()) {
+        if (containsTimePredicate(child)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   @Test
