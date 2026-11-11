@@ -238,7 +238,6 @@ com.google.j2objc:j2objc-annotations:2.8
 com.zaxxer:HikariCP:2.4.7
 commons-cli:commons-cli:1.5.0
 commons-codec:commons-codec:1.16.1
-io.airlift:airline:0.9
 io.airlift:units:1.7
 io.dropwizard.metrics:metrics-core:4.2.19
 io.micrometer:micrometer-commons:1.11.4
