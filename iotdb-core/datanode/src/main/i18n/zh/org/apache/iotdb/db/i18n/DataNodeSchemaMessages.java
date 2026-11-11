@@ -45,4 +45,5 @@ public final class DataNodeSchemaMessages {
   public static final String GET_ALL_TEMPLATE_ERROR = "从 ConfigNode 获取元数据模板列表失败：%s";
   public static final String GET_TEMPLATE_INFO_ERROR = "从 ConfigNode 获取元数据模板 [%s] 失败：%s";
   public static final String ILLEGAL_PATH_LOG = "非法路径 {}";
+  public static final String SCHEMA_FILE_WRONG_VERSION = "SchemaFile 版本错误，请检查或升级。";
 }
