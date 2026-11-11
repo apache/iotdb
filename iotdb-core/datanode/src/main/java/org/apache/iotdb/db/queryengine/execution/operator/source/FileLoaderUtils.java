@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.exception.CorruptedTsFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -468,7 +469,9 @@ public class FileLoaderUtils {
           CorruptedTsFileException.Stage.READ_TIMESERIES_METADATA,
           DataNodeQueryMessages
               .EXCEPTION_FAILED_TO_READ_TIMESERIES_METADATA_THE_TSFILE_MAY_BE_CORRUPTED_PLEASE_CHECK_THE_LOGS_FOR_THE_CORRUPTED_FILE_PATH_0B9E652E,
-          null);
+          new IOException(
+              String.format(
+                  StorageEngineMessages.DEVICE_DOES_NOT_EXIST_IN_RESOURCE_FILE_FMT, deviceId)));
     }
     TimeseriesMetadata timeColumn = deviceMetadata.get("");
     if (timeColumn == null) {

@@ -346,24 +346,15 @@ public class TimeSeriesMetadataCache {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
               .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, externalTsFile);
-      // Use the chunk-metadata-including variant: the returned TimeseriesMetadata are passed to
-      // setModifications and then to DiskAlignedChunkMetadataLoader, which dereferences the chunk
-      // metadata list, so readDeviceMetadata (which skips chunk metadata) would NPE at query time.
-      List<TimeseriesMetadata> deviceMetadataList = reader.getDeviceTimeseriesMetadata(device);
-
-      Map<String, TimeseriesMetadata> result = new HashMap<>(deviceMetadataList.size());
-      for (TimeseriesMetadata metadata : deviceMetadataList) {
-        String measurementId = metadata.getMeasurementId();
-        if (metadata.getStatistics().getCount() == 0) {
-          result.put(measurementId, null);
-          continue;
+      if (CACHE_ENABLE && !externalTsFile) {
+        // serialize concurrent reads of the same device+file (same lock key as get) so threads
+        // don't each deserialize the whole device and race on the shared reader
+        synchronized (
+            devices.computeIfAbsent(device.toString() + SEPARATOR + filePath, WeakReference::new)) {
+          return readDeviceTimeSeriesMetadata(reader, tsFileID, device, true);
         }
-        if (CACHE_ENABLE && !externalTsFile) {
-          lruCache.put(new TimeSeriesMetadataCacheKey(tsFileID, device, measurementId), metadata);
-        }
-        result.put(measurementId, new TimeseriesMetadata(metadata));
       }
-      return result;
+      return readDeviceTimeSeriesMetadata(reader, tsFileID, device, false);
     } finally {
       queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().incrementAndGet();
       queryContext
@@ -371,6 +362,29 @@ public class TimeSeriesMetadataCache {
           .getLoadTimeSeriesMetadataFromDiskTime()
           .getAndAdd(System.nanoTime() - startTime);
     }
+  }
+
+  private Map<String, TimeseriesMetadata> readDeviceTimeSeriesMetadata(
+      TsFileSequenceReader reader, TsFileID tsFileID, IDeviceID device, boolean cacheEnabled)
+      throws IOException {
+    // Use the chunk-metadata-including variant: the returned TimeseriesMetadata are passed to
+    // setModifications and then to DiskAlignedChunkMetadataLoader, which dereferences the chunk
+    // metadata list, so readDeviceMetadata (which skips chunk metadata) would NPE at query time.
+    List<TimeseriesMetadata> deviceMetadataList = reader.getDeviceTimeseriesMetadata(device);
+
+    Map<String, TimeseriesMetadata> result = new HashMap<>(deviceMetadataList.size());
+    for (TimeseriesMetadata metadata : deviceMetadataList) {
+      String measurementId = metadata.getMeasurementId();
+      if (metadata.getStatistics().getCount() == 0) {
+        result.put(measurementId, null);
+        continue;
+      }
+      if (cacheEnabled) {
+        lruCache.put(new TimeSeriesMetadataCacheKey(tsFileID, device, measurementId), metadata);
+      }
+      result.put(measurementId, new TimeseriesMetadata(metadata));
+    }
+    return result;
   }
 
   public double calculateTimeSeriesMetadataHitRatio() {
