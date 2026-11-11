@@ -54,7 +54,6 @@
         <airlift-units.version>1.7</airlift-units.version>
         <airlift.version>206</airlift.version>
         <!--airlift-stats.version>235</airlift-stats.version-->
-        <airline.version>0.9</airline.version>
         <antlr4.version>4.13.2</antlr4.version>
         <!-- By default, the argLine is empty-->
         <argLine/>
@@ -353,18 +352,6 @@
                 <groupId>io.airlift</groupId>
                 <artifactId>units</artifactId>
                 <version>${airlift-units.version}</version>
-            </dependency>
-            <!-- TODO: Deprecated: Use Airline 2 or Picocli instead -->
-            <dependency>
-                <groupId>io.airlift</groupId>
-                <artifactId>airline</artifactId>
-                <version>${airline.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>javax.inject</groupId>
-                        <artifactId>javax.inject</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.reflections</groupId>
