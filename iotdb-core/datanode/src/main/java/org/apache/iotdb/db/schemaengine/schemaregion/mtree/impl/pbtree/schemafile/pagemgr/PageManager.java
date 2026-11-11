@@ -85,14 +85,23 @@ public abstract class PageManager implements IPageManager {
       pageIOChannel = new PageIOChannel(channel, pmtFile, true, logPath);
     }
 
-    // construct first page if file to init
-    if (lastPageIndex < 0) {
-      ISegmentedPage rootPage =
-          ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), 0);
-      rootPage.allocNewSegment(SchemaFileConfig.SEG_MAX_SIZ);
-      pagePool.put(rootPage);
-      rootPage.syncPageBuffer();
-      rootPage.flushPageToChannel(channel);
+    try {
+      // construct first page if file to init
+      if (lastPageIndex < 0) {
+        ISegmentedPage rootPage =
+            ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), 0);
+        rootPage.allocNewSegment(SchemaFileConfig.SEG_MAX_SIZ);
+        pagePool.put(rootPage);
+        rootPage.syncPageBuffer();
+        rootPage.flushPageToChannel(channel);
+      }
+    } catch (IOException | MetadataException e) {
+      try {
+        pageIOChannel.close();
+      } catch (IOException closeException) {
+        e.addSuppressed(closeException);
+      }
+      throw e;
     }
   }
 
@@ -525,7 +534,7 @@ public abstract class PageManager implements IPageManager {
 
   @Override
   public void close() throws IOException {
-    pageIOChannel.closeLogWriter();
+    pageIOChannel.close();
   }
 
   // endregion
