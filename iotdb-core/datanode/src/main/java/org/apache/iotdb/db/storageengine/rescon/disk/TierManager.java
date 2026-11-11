@@ -46,6 +46,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -53,6 +54,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /** The main class of multiple directories. Used to allocate folders to data files. */
@@ -62,7 +64,10 @@ public class TierManager {
 
   private record TierDirectory(int tierLevel, String folderName) {}
 
-  private volatile Map<TierDirectory, TierFolderManager> folderManagers = Map.of();
+  /** Replaced as a whole by {@link #rebuildFolders()}; the published maps are unmodifiable. */
+  private final AtomicReference<Map<TierDirectory, TierFolderManager>> folderManagers =
+      new AtomicReference<>(Map.of());
+
   // A failed constructor can report DiskFull before the replacement managers are published.
   private volatile boolean rebuildingFolders;
 
@@ -75,7 +80,7 @@ public class TierManager {
   private List<String> objectDirs;
 
   /** total space of each tier, Long.MAX_VALUE when one tier contains remote storage */
-  private volatile long[] tierDiskTotalSpace = new long[0];
+  private final AtomicReference<long[]> tierDiskTotalSpace = new AtomicReference<>(new long[0]);
 
   private TierManager() {
     initFolders();
@@ -206,10 +211,10 @@ public class TierManager {
       }
     }
 
-    tierDiskTotalSpace = getTierDiskSpace(DiskSpaceType.TOTAL);
+    tierDiskTotalSpace.set(getTierDiskSpace(DiskSpaceType.TOTAL));
     seqDir2TierLevel = newSeqDir2TierLevel;
     unSeqDir2TierLevel = newUnSeqDir2TierLevel;
-    folderManagers = newManagers;
+    folderManagers.set(Collections.unmodifiableMap(newManagers));
   }
 
   private void addFolderManager(
@@ -233,20 +238,22 @@ public class TierManager {
   private final class TierFolderManager {
     private final List<String> folders;
     private final MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException> supplier;
-    private volatile FolderManager manager;
+    private final AtomicReference<FolderManager> manager = new AtomicReference<>();
 
     private TierFolderManager(TierDirectory key, List<String> folders, DirectoryStrategyType type) {
       this.folders = folders;
       supplier =
           MemoizedCheckedSupplier.valueOf(
               () -> {
-                manager = new FolderManager(folders, type, () -> reportDiskFull(key, this));
-                return manager;
+                FolderManager created =
+                    new FolderManager(folders, type, () -> reportDiskFull(key, this));
+                manager.set(created);
+                return created;
               });
     }
 
     private boolean hasSpaceForRecovery() {
-      FolderManager current = manager;
+      FolderManager current = manager.get();
       return current == null
           ? folders.stream().anyMatch(JVMCommonUtils::hasSpaceWithoutRetry)
           : current.hasSpaceForRecovery();
@@ -254,7 +261,7 @@ public class TierManager {
   }
 
   private void reportDiskFull(TierDirectory key, TierFolderManager source) {
-    if (!rebuildingFolders && folderManagers.get(key) != source) {
+    if (!rebuildingFolders && folderManagers.get().get(key) != source) {
       return;
     }
     CommonDescriptor.getInstance()
@@ -263,13 +270,13 @@ public class TierManager {
   }
 
   private boolean hasSpaceForRecovery(TierDirectory key) {
-    Map<TierDirectory, TierFolderManager> active = folderManagers;
+    Map<TierDirectory, TierFolderManager> active = folderManagers.get();
     if (rebuildingFolders) {
       return false;
     }
     TierFolderManager current = active.get(key);
     boolean recovered = current == null || current.hasSpaceForRecovery();
-    return recovered && active == folderManagers && !rebuildingFolders;
+    return recovered && active == folderManagers.get() && !rebuildingFolders;
   }
 
   public synchronized void resetFolders() {
@@ -319,7 +326,7 @@ public class TierManager {
   private FolderManager getFolderManager(int tierLevel, String folderName)
       throws DiskSpaceInsufficientException {
     TierDirectory key = new TierDirectory(tierLevel, folderName);
-    TierFolderManager entry = folderManagers.get(key);
+    TierFolderManager entry = folderManagers.get().get(key);
     if (entry == null) {
       throw new IndexOutOfBoundsException(key.toString());
     }
@@ -414,7 +421,7 @@ public class TierManager {
   }
 
   public int getTiersNum() {
-    return tierDiskTotalSpace.length;
+    return tierDiskTotalSpace.get().length;
   }
 
   public int getFileTierLevel(File file) {
@@ -445,7 +452,7 @@ public class TierManager {
   }
 
   public long[] getTierDiskTotalSpace() {
-    return Arrays.copyOf(tierDiskTotalSpace, tierDiskTotalSpace.length);
+    return tierDiskTotalSpace.get().clone();
   }
 
   public long[] getTierDiskUsableSpace() {
