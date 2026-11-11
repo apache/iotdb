@@ -1076,7 +1076,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     synchronized (isTsFileParserMemoryReserved) {
       if (isTsFileParserMemoryReserved.compareAndSet(true, false)) {
         PipeDataNodeResourceManager.memory()
-            .releaseTsFileParserMemory(pipeName, creationTime, dataRegionId);
+            .releaseTsFileParserMemory(
+                pipeName, creationTime, dataRegionId, tsFileParserMemoryReservationKey);
       }
     }
   }
@@ -1339,7 +1340,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
         synchronized (isTsFileParserMemoryReserved) {
           if (isTsFileParserMemoryReserved.compareAndSet(true, false)) {
             PipeDataNodeResourceManager.memory()
-                .releaseTsFileParserMemory(pipeName, creationTime, dataRegionId);
+                .releaseTsFileParserMemory(
+                    pipeName, creationTime, dataRegionId, tsFileParserMemoryReservationKey);
           }
         }
       } catch (final Exception e) {
