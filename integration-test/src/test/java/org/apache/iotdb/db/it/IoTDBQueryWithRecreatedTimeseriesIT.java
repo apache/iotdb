@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -61,7 +62,7 @@ public class IoTDBQueryWithRecreatedTimeseriesIT {
       Thread.sleep(100);
       statement.execute("FLUSH");
       Thread.sleep(100);
-      statement.execute("DELETE TIMESERIES root.sg.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES root.sg.d1.s1");
       statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
       try (ResultSet resultSet =
           statement.executeQuery("SELECT s1 FROM root.sg.d1 WHERE s1 > 10")) {

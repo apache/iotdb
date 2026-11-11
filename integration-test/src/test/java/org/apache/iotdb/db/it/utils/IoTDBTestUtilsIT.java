@@ -25,6 +25,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -35,6 +36,7 @@ import org.junit.runner.RunWith;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
@@ -61,6 +63,49 @@ public class IoTDBTestUtilsIT {
   @AfterClass
   public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testColumnDeletionWaitsForFinalization() {
+    final AtomicInteger probes = new AtomicInteger();
+    final ResultSet absentColumn =
+        (ResultSet)
+            Proxy.newProxyInstance(
+                ResultSet.class.getClassLoader(),
+                new Class<?>[] {ResultSet.class},
+                (proxy, method, args) -> {
+                  if ("next".equals(method.getName())) {
+                    return false;
+                  }
+                  if ("close".equals(method.getName())) {
+                    return null;
+                  }
+                  throw new UnsupportedOperationException(method.getName());
+                });
+    final Statement statement =
+        (Statement)
+            Proxy.newProxyInstance(
+                Statement.class.getClassLoader(),
+                new Class<?>[] {Statement.class},
+                (proxy, method, args) -> {
+                  if ("executeQuery".equals(method.getName())) {
+                    return absentColumn;
+                  }
+                  if ("execute".equals(method.getName())) {
+                    assertEquals(
+                        "ALTER TABLE test.t DROP COLUMN IF EXISTS \"removed\"\"column\"", args[0]);
+                    if (probes.incrementAndGet() == 1) {
+                      throw new SQLException(
+                          "deletion still finalizing",
+                          null,
+                          TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode());
+                    }
+                    return false;
+                  }
+                  throw new UnsupportedOperationException(method.getName());
+                });
+    TestUtils.waitForColumnDeletion(statement, "test.t", "removed\"column");
+    assertEquals(2, probes.get());
   }
 
   @Test

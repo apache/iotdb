@@ -198,7 +198,9 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.TABLES:
           return new TableSupplier(dataTypes, userEntity);
         case InformationSchema.DROP_TABLE_PROCEDURES:
-          return new DropTableProceduresSupplier(dataTypes, userEntity);
+          return new DropTableProceduresSupplier(dataTypes, userEntity, false);
+        case InformationSchema.DROP_TABLE_COLUMN_PROCEDURES:
+          return new DropTableProceduresSupplier(dataTypes, userEntity, true);
         case InformationSchema.COLUMNS:
           return new ColumnSupplier(dataTypes, userEntity);
         case InformationSchema.REGIONS:
@@ -497,15 +499,21 @@ public class InformationSchemaContentSupplierFactory {
   private static class DropTableProceduresSupplier extends TsBlockSupplier {
     private final Iterator<TDropTableProcedureInfo> procedures;
     private final UserEntity userEntity;
+    private final boolean columnDeletion;
     private TDropTableProcedureInfo currentProcedure;
 
     private DropTableProceduresSupplier(
-        final List<TSDataType> dataTypes, final UserEntity userEntity) throws Exception {
+        final List<TSDataType> dataTypes, final UserEntity userEntity, final boolean columnDeletion)
+        throws Exception {
       super(dataTypes);
       this.userEntity = userEntity;
+      this.columnDeletion = columnDeletion;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        final TShowDropTableProceduresResp response = client.showDropTableProcedures();
+        final TShowDropTableProceduresResp response =
+            columnDeletion
+                ? client.showDropTableColumnProcedures()
+                : client.showDropTableProcedures();
         if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new IoTDBRuntimeException(response.getStatus());
         }
@@ -521,26 +529,31 @@ public class InformationSchemaContentSupplierFactory {
           new Binary(currentProcedure.getDatabase(), TSFileConfig.STRING_CHARSET));
       columnBuilders[1].writeBinary(
           new Binary(currentProcedure.getTableName(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[2].writeLong(currentProcedure.getProcedureId());
-      columnBuilders[3].writeBinary(
+      final int offset = columnDeletion ? 1 : 0;
+      if (columnDeletion) {
+        columnBuilders[2].writeBinary(
+            new Binary(currentProcedure.getColumnName(), TSFileConfig.STRING_CHARSET));
+      }
+      columnBuilders[2 + offset].writeLong(currentProcedure.getProcedureId());
+      columnBuilders[3 + offset].writeBinary(
           new Binary(currentProcedure.getState(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[4].writeBinary(
+      columnBuilders[4 + offset].writeBinary(
           new Binary(currentProcedure.getProgress(), TSFileConfig.STRING_CHARSET));
       if (currentProcedure.isSetErrorMessage()) {
-        columnBuilders[5].writeBinary(
+        columnBuilders[5 + offset].writeBinary(
             new Binary(currentProcedure.getErrorMessage(), TSFileConfig.STRING_CHARSET));
       } else {
-        columnBuilders[5].appendNull();
+        columnBuilders[5 + offset].appendNull();
       }
       if (currentProcedure.isSetWrittenModFileCount()) {
-        columnBuilders[6].writeLong(currentProcedure.getWrittenModFileCount());
+        columnBuilders[6 + offset].writeLong(currentProcedure.getWrittenModFileCount());
       } else {
-        columnBuilders[6].appendNull();
+        columnBuilders[6 + offset].appendNull();
       }
       if (currentProcedure.isSetRemainingModFileCount()) {
-        columnBuilders[7].writeLong(currentProcedure.getRemainingModFileCount());
+        columnBuilders[7 + offset].writeLong(currentProcedure.getRemainingModFileCount());
       } else {
-        columnBuilders[7].appendNull();
+        columnBuilders[7 + offset].appendNull();
       }
       resultBuilder.declarePosition();
       currentProcedure = null;

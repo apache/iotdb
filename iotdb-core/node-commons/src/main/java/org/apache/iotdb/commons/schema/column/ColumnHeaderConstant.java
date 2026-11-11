@@ -688,6 +688,15 @@ public class ColumnHeaderConstant {
           new ColumnHeader(IS_DEGRADED, TSDataType.BOOLEAN),
           new ColumnHeader(RECENT_FAILURES, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showDeleteTimeSeriesProgressColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader("ProcedureId", TSDataType.INT64),
+          new ColumnHeader(QUERY_ID, TSDataType.TEXT),
+          new ColumnHeader(PATHS, TSDataType.TEXT),
+          new ColumnHeader(STATE, TSDataType.TEXT),
+          new ColumnHeader("Progress", TSDataType.TEXT),
+          new ColumnHeader("ErrorMessage", TSDataType.TEXT));
+
   public static final List<ColumnHeader> showRepairDataPartitionTableProgressColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(REPAIR_DATA_PARTITION_TABLE_STATUS, TSDataType.TEXT),

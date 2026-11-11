@@ -4933,4 +4933,8 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s: %s ms, %s invocations, %s applications";
+  public static final String MESSAGE_COLUMN_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_OR_COLUMN_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_08F7DB64 =
+      "Column deletion is asynchronous. The specified table or column does not exist; no task was submitted.";
+  public static final String MESSAGE_TABLE_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_74E6521A =
+      "Table deletion is asynchronous. The specified table does not exist; no task was submitted.";
 }

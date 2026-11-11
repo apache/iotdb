@@ -383,6 +383,7 @@ struct TDeleteColumnDataReq {
   2: required string tableName,
   3: required string columnName,
   4: required bool isAttributeColumn
+  5: optional i64 procedureId
 }
 
 struct TDeleteDataOrDevicesForDropTableReq {

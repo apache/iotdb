@@ -1317,6 +1317,11 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
   }
 
   @Override
+  public TShowDropTableProceduresResp showDropTableColumnProcedures() throws TException {
+    return null;
+  }
+
+  @Override
   public TDescTableResp describeTable(String database, String tableName, boolean isDetails)
       throws TException {
     return null;

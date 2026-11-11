@@ -48,6 +48,7 @@ public class InformationSchema {
   public static final String DATABASES = "databases";
   public static final String TABLES = "tables";
   public static final String DROP_TABLE_PROCEDURES = "drop_table_procedures";
+  public static final String DROP_TABLE_COLUMN_PROCEDURES = "drop_table_column_procedures";
   public static final String COLUMNS = "columns";
   public static final String REGIONS = "regions";
   public static final String PIPES = "pipes";
@@ -150,30 +151,8 @@ public class InformationSchema {
     tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TABLES, tableTable);
 
-    final TsTable dropTableProceduresTable = new TsTable(DROP_TABLE_PROCEDURES);
-    dropTableProceduresTable.addColumnSchema(
-        new TagColumnSchema(
-            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    dropTableProceduresTable.addColumnSchema(
-        new TagColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
-    dropTableProceduresTable.addColumnSchema(
-        new AttributeColumnSchema(ColumnHeaderConstant.PROCEDURE_ID_TABLE_MODEL, TSDataType.INT64));
-    dropTableProceduresTable.addColumnSchema(
-        new AttributeColumnSchema(
-            ColumnHeaderConstant.STATE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    dropTableProceduresTable.addColumnSchema(
-        new AttributeColumnSchema(ColumnHeaderConstant.PROGRESS_TABLE_MODEL, TSDataType.STRING));
-    dropTableProceduresTable.addColumnSchema(
-        new AttributeColumnSchema(
-            ColumnHeaderConstant.ERROR_MESSAGE_TABLE_MODEL, TSDataType.STRING));
-    dropTableProceduresTable.addColumnSchema(
-        new AttributeColumnSchema(
-            ColumnHeaderConstant.WRITTEN_MOD_FILE_COUNT_TABLE_MODEL, TSDataType.INT64));
-    dropTableProceduresTable.addColumnSchema(
-        new AttributeColumnSchema(
-            ColumnHeaderConstant.REMAINING_MOD_FILE_COUNT_TABLE_MODEL, TSDataType.INT64));
-    dropTableProceduresTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
-    schemaTables.put(DROP_TABLE_PROCEDURES, dropTableProceduresTable);
+    registerTableDeletionProceduresTable(DROP_TABLE_PROCEDURES, false);
+    registerTableDeletionProceduresTable(DROP_TABLE_COLUMN_PROCEDURES, true);
 
     final TsTable columnTable = new TsTable(COLUMNS);
     columnTable.addColumnSchema(
@@ -612,5 +591,37 @@ public class InformationSchema {
 
   private InformationSchema() {
     // Utils
+  }
+
+  private static void registerTableDeletionProceduresTable(
+      final String tableName, final boolean columnDeletion) {
+    final TsTable dropTableProceduresTable = new TsTable(tableName);
+    dropTableProceduresTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
+    if (columnDeletion) {
+      dropTableProceduresTable.addColumnSchema(
+          new TagColumnSchema(ColumnHeaderConstant.COLUMN_NAME_TABLE_MODEL, TSDataType.STRING));
+    }
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PROCEDURE_ID_TABLE_MODEL, TSDataType.INT64));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.STATE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PROGRESS_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ERROR_MESSAGE_TABLE_MODEL, TSDataType.STRING));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.WRITTEN_MOD_FILE_COUNT_TABLE_MODEL, TSDataType.INT64));
+    dropTableProceduresTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.REMAINING_MOD_FILE_COUNT_TABLE_MODEL, TSDataType.INT64));
+    dropTableProceduresTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(tableName, dropTableProceduresTable);
   }
 }

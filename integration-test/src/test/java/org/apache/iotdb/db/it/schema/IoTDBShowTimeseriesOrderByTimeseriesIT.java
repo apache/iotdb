@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -147,7 +148,7 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
     prepareComplexSchema();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("delete timeseries root.db2.devC.**");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.db2.devC.**");
     }
 
     List<String> expected = new ArrayList<>(BASE_TIMESERIES_DB2);
@@ -164,7 +165,7 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
     prepareComplexSchema();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("delete timeseries root.db1.devB.x");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.db1.devB.x");
       statement.execute(
           "create timeseries root.db1.devC.m0 with datatype=INT32, encoding=RLE, compression=SNAPPY");
       statement.execute(

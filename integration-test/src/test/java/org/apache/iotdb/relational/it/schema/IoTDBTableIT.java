@@ -581,7 +581,7 @@ public class IoTDBTableIT {
           "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
 
       // Test drop column
-      statement.execute("alter table table2 drop column color");
+      TestUtils.dropColumn(statement, "alter table table2 drop column color");
 
       // Test comment
       // Before
@@ -638,7 +638,7 @@ public class IoTDBTableIT {
         assertEquals(columnNames.length, cnt);
       }
 
-      statement.execute("alter table table2 drop column speed");
+      TestUtils.dropColumn(statement, "alter table table2 drop column speed");
 
       try {
         statement.executeQuery("select color from table2");
@@ -655,13 +655,13 @@ public class IoTDBTableIT {
       }
 
       try {
-        statement.execute("alter table table2 drop column speed");
+        TestUtils.dropColumn(statement, "alter table table2 drop column speed");
       } catch (final SQLException e) {
         assertEquals("616: Column speed in table 'test2.table2' does not exist.", e.getMessage());
       }
 
       try {
-        statement.execute("alter table table2 drop column t1");
+        TestUtils.dropColumn(statement, "alter table table2 drop column t1");
       } catch (final SQLException e) {
         assertEquals("701: Dropping tag or time column is not supported.", e.getMessage());
       }
@@ -724,7 +724,7 @@ public class IoTDBTableIT {
       }
 
       try {
-        statement.execute("alter table test1.test drop column a");
+        TestUtils.dropColumn(statement, "alter table test1.test drop column a");
         fail();
       } catch (final SQLException e) {
         assertEquals("500: Unknown database test1", e.getMessage());
@@ -998,7 +998,8 @@ public class IoTDBTableIT {
               () -> {
                 for (int i = 0; i < 100; ++i) {
                   try {
-                    adminStmt.execute(String.format("alter table db1.table8 drop column m%s", i));
+                    TestUtils.dropColumn(
+                        adminStmt, String.format("alter table db1.table8 drop column m%s", i));
                   } catch (final SQLException e) {
                     throw new RuntimeException(e);
                   }
@@ -1150,7 +1151,7 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("drop timeSeries root.`重庆`.`1`.b.`1`.s1");
+      TestUtils.deleteTimeSeries(statement, "drop timeSeries root.`重庆`.`1`.b.`1`.s1");
       statement.execute("create device template t1 (S1 boolean, s9 int32)");
       statement.execute("set schema template t1 to root.`重庆`.`1`.b.`1`");
       statement.execute("create timeSeries root.`重庆`.`1`.b.`2`.f.g.h.S1 int32");
@@ -1422,6 +1423,41 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals("551: Table 'tree_view_db.a' already exists.", e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testAsyncDropColumn() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement();
+        Statement progress = TestUtils.createSingleNodeStatement(connection)) {
+      statement.execute("CREATE DATABASE async_drop_column_db");
+      try {
+        statement.execute("USE async_drop_column_db");
+        statement.execute(
+            "CREATE TABLE t (device STRING TAG, attr STRING ATTRIBUTE, removed INT32, kept INT32)");
+        statement.execute("INSERT INTO t(time,device,attr,removed,kept) VALUES(1,'d','a',11,21)");
+        statement.execute("FLUSH");
+        statement.execute("INSERT INTO t(time,device,attr,removed,kept) VALUES(2,'d','a',12,22)");
+        statement.execute("ALTER TABLE t DROP COLUMN removed");
+        TestUtils.waitForColumnDeletion(progress, "async_drop_column_db.t", "removed");
+        statement.execute("ALTER TABLE t ADD COLUMN removed STRING");
+        try (ResultSet result =
+            statement.executeQuery("SELECT removed,kept,attr FROM t ORDER BY time")) {
+          TestUtils.assertResultSetEqual(
+              result, "removed,kept,attr,", new String[] {"null,21,a,", "null,22,a,"});
+        }
+        // Attribute deletion has a different region/cache path from field deletion.
+        statement.execute("ALTER TABLE t DROP COLUMN attr");
+        TestUtils.waitForColumnDeletion(progress, "async_drop_column_db.t", "attr");
+        statement.execute("ALTER TABLE t ADD COLUMN attr STRING ATTRIBUTE");
+        try (ResultSet result = statement.executeQuery("SELECT attr,kept FROM t ORDER BY time")) {
+          TestUtils.assertResultSetEqual(
+              result, "attr,kept,", new String[] {"null,21,", "null,22,"});
+        }
+      } finally {
+        statement.execute("DROP DATABASE async_drop_column_db");
       }
     }
   }

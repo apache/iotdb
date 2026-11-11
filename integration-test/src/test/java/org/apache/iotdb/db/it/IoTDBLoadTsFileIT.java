@@ -383,7 +383,8 @@ public class IoTDBLoadTsFileIT {
     // Try to delete after loading. Expect no deadlock
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute(
+      TestUtils.deleteTimeSeries(
+          statement,
           String.format(
               "delete timeseries %s.%s",
               SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementName()));
@@ -485,7 +486,8 @@ public class IoTDBLoadTsFileIT {
     // Try to delete after loading. Expect no deadlock
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute(
+      TestUtils.deleteTimeSeries(
+          statement,
           String.format(
               "delete timeseries %s.%s",
               SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementName()));

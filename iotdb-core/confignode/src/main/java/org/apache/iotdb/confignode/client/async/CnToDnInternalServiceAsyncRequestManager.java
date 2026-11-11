@@ -570,9 +570,14 @@ public class CnToDnInternalServiceAsyncRequestManager
       Long timeoutInMs) {
     if (CnToDnAsyncRequestType.SUBMIT_TEST_CONNECTION_TASK.equals(requestType)) {
       client.setTimeoutTemporarily(TestConnectionUtils.calculateCnLeaderToAllDnMaxTime());
-    } else if (CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE.equals(requestType)
+    } else if (CnToDnAsyncRequestType.CONSTRUCT_SCHEMA_BLACK_LIST.equals(requestType)
+        || CnToDnAsyncRequestType.ROLLBACK_SCHEMA_BLACK_LIST.equals(requestType)
+        || CnToDnAsyncRequestType.DELETE_DATA_FOR_DELETE_SCHEMA.equals(requestType)
+        || CnToDnAsyncRequestType.DELETE_TIMESERIES.equals(requestType)
+        || CnToDnAsyncRequestType.DELETE_COLUMN_DATA.equals(requestType)
+        || CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE.equals(requestType)
         || CnToDnAsyncRequestType.DELETE_DEVICES_FOR_DROP_TABLE.equals(requestType)) {
-      // Asynchronous DROP TABLE deletion can take arbitrarily long to finish.
+      // Background timeseries, column, and table deletion can take arbitrarily long to finish.
       client.setTimeoutTemporarily(-1);
     } else if (timeoutInMs != null) {
       client.setTimeoutTemporarily(timeoutInMs);

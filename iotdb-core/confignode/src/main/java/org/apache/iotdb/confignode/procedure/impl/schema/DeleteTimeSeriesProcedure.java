@@ -23,18 +23,28 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteTimeSeriesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
@@ -42,6 +52,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -53,7 +64,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -61,6 +74,8 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 
 public class DeleteTimeSeriesProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteTimeSeriesState> {
@@ -70,6 +85,9 @@ public class DeleteTimeSeriesProcedure
   private String queryId;
 
   private PathPatternTree patternTree;
+  private PathPatternTree originalPatternTree;
+  private final List<TDatabaseSchema> deleteDatabaseSchemas = new ArrayList<>();
+  private String databaseDeletionFailure;
   private transient ByteBuffer patternTreeBytes;
   private boolean mayDeleteAudit;
 
@@ -104,6 +122,9 @@ public class DeleteTimeSeriesProcedure
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
+        case PREPARE_DELETE:
+          prepareDelete(env);
+          break;
         case CONSTRUCT_BLACK_LIST:
           LOGGER.info(
               ProcedureMessages.CONSTRUCT_SCHEMAENGINE_BLACK_LIST_OF_TIMESERIES, requestMessage);
@@ -133,6 +154,28 @@ public class DeleteTimeSeriesProcedure
           LOGGER.info(ProcedureMessages.DELETE_TIMESERIES_SCHEMAENGINE_OF, requestMessage);
           deleteTimeSeriesSchema(env);
           collectPayload4Pipe(env);
+          if (!isFailed() && !deleteDatabaseSchemas.isEmpty()) {
+            setNextState(DeleteTimeSeriesState.DELETE_DATABASES);
+            break;
+          }
+          return Flow.NO_MORE_STATE;
+        case DELETE_DATABASES:
+          // This is a background task: an RPC wait timeout must not allow recreation while a
+          // database-deletion procedure is still running.
+          final TSStatus deleteStatus =
+              env.getConfigManager()
+                  .getProcedureManager()
+                  .deleteDatabases(
+                      deleteDatabaseSchemas, isGeneratedByPipe, Long.MAX_VALUE, queryId);
+          if (deleteStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            databaseDeletionFailure = deleteStatus.toString();
+          }
+          // Persist deletion's result before recreating any database. Recovery must never delete
+          // databases again once their schemas have been recreated and accept new writes.
+          setNextState(DeleteTimeSeriesState.RECREATE_DATABASES);
+          break;
+        case RECREATE_DATABASES:
+          recreateDatabases(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
@@ -144,6 +187,86 @@ public class DeleteTimeSeriesProcedure
           ProcedureMessages.DELETETIMESERIES_COSTS_MS,
           state,
           (System.currentTimeMillis() - startTime));
+    }
+  }
+
+  /** Keep the full-database optimization inside the durable asynchronous deletion task. */
+  private void prepareDelete(final ConfigNodeProcedureEnv env) {
+    final ConfigManager manager = env.getConfigManager();
+    final Set<TDatabaseSchema> databases = new HashSet<>();
+    final List<PartialPath> databasePatterns = new ArrayList<>();
+    final PathPatternTree remaining = new PathPatternTree();
+    for (PartialPath path : patternTree.getAllPathPatterns()) {
+      if (PathPatternUtil.isMultiLevelMatchWildcard(path.getMeasurement())
+          && path.getNodeLength() > 1) {
+        // Pattern-tree paths are PartialPaths, whose getDevicePath() includes the final **.
+        final PartialPath prefix =
+            new PartialPath(Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1));
+        if (prefix.hasWildcard()) {
+          remaining.appendPathPattern(path);
+          continue;
+        }
+        final Map<String, TDatabaseSchema> matched =
+            manager.getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(prefix);
+        matched.remove(TREE_MODEL_AUDIT_DATABASE);
+        if (!matched.isEmpty()) {
+          databases.addAll(matched.values());
+          databasePatterns.add(path);
+          continue;
+        }
+      }
+      remaining.appendPathPattern(path);
+    }
+    if (!databases.isEmpty()) {
+      try {
+        SchemaUtils.checkSchemaRegionUsingTemplate(manager, databasePatterns);
+      } catch (MetadataException e) {
+        setFailure(new ProcedureException(e));
+        return;
+      }
+      remaining.constructTree();
+      setPatternTree(remaining);
+      deleteDatabaseSchemas.addAll(databases);
+    }
+    setNextState(
+        patternTree.isEmpty() && !deleteDatabaseSchemas.isEmpty()
+            ? DeleteTimeSeriesState.DELETE_DATABASES
+            : DeleteTimeSeriesState.CONSTRUCT_BLACK_LIST);
+  }
+
+  private void recreateDatabases(final ConfigNodeProcedureEnv env) {
+    final ConfigManager manager = env.getConfigManager();
+    final List<TSStatus> failures = new ArrayList<>();
+    if (databaseDeletionFailure != null) {
+      failures.add(
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, databaseDeletionFailure));
+    }
+    // Recreate the original database schemas even when deletion reports a failure, as before.
+    for (TDatabaseSchema database : deleteDatabaseSchemas) {
+      final TSStatus status =
+          manager
+              .getClusterSchemaManager()
+              .setDatabase(
+                  new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, database),
+                  isGeneratedByPipe);
+      if (status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        try {
+          if (database.equals(
+              manager.getClusterSchemaManager().getDatabaseSchemaByName(database.getName()))) {
+            // A previous execution may have recreated this database before the state was stored.
+            continue;
+          }
+        } catch (DatabaseNotExistsException e) {
+          failures.add(RpcUtils.getStatus(TSStatusCode.DATABASE_NOT_EXIST, e.getMessage()));
+        }
+      }
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failures.add(status);
+      }
+    }
+    if (!failures.isEmpty()) {
+      setFailure(
+          new ProcedureException(new IoTDBException(RpcUtils.squashResponseStatusList(failures))));
     }
   }
 
@@ -317,7 +440,7 @@ public class DeleteTimeSeriesProcedure
 
   @Override
   protected DeleteTimeSeriesState getInitialState() {
-    return DeleteTimeSeriesState.CONSTRUCT_BLACK_LIST;
+    return DeleteTimeSeriesState.PREPARE_DELETE;
   }
 
   public String getQueryId() {
@@ -325,10 +448,47 @@ public class DeleteTimeSeriesProcedure
   }
 
   public PathPatternTree getPatternTree() {
-    return patternTree;
+    return originalPatternTree == null ? patternTree : originalPatternTree;
+  }
+
+  public boolean deletesDatabase(final String database) {
+    // Table and tree databases have separate namespaces, even with the same qualified path.
+    if (PathUtils.isTableModelDatabase(database)) {
+      return false;
+    }
+    final PartialPath databasePath;
+    try {
+      databasePath = PartialPath.getQualifiedDatabasePartialPath(database);
+    } catch (IllegalPathException e) {
+      return false;
+    }
+    final String[] databaseNodes = databasePath.getNodes();
+    for (PartialPath path : getPatternTree().getAllPathPatterns()) {
+      if (!PathPatternUtil.isMultiLevelMatchWildcard(path.getMeasurement())
+          || path.getNodeLength() <= 1) {
+        continue;
+      }
+      final PartialPath prefix =
+          new PartialPath(Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1));
+      if (!prefix.hasWildcard()
+          && prefix.getNodeLength() <= databaseNodes.length
+          && Arrays.equals(
+              prefix.getNodes(), Arrays.copyOf(databaseNodes, prefix.getNodeLength()))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public String getDeleteProgress() {
+    final DeleteTimeSeriesState state = getCurrentState();
+    return isFinished() || state == null ? getState().name() : state.name();
   }
 
   public void setPatternTree(final PathPatternTree patternTree) {
+    if (originalPatternTree == null) {
+      originalPatternTree = patternTree;
+    }
     this.patternTree = patternTree;
     requestMessage = patternTree.getAllPathPatterns().toString();
     patternTreeBytes = preparePatternTreeBytesData(patternTree);
@@ -355,12 +515,24 @@ public class DeleteTimeSeriesProcedure
     ReadWriteIOUtils.write(queryId, stream);
     patternTree.serialize(stream);
     ReadWriteIOUtils.write(mayDeleteAudit, stream);
+    ReadWriteIOUtils.write(originalPatternTree != patternTree, stream);
+    if (originalPatternTree != patternTree) {
+      originalPatternTree.serialize(stream);
+    }
+    ReadWriteIOUtils.write(deleteDatabaseSchemas.size(), stream);
+    for (TDatabaseSchema database : deleteDatabaseSchemas) {
+      ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(database, stream);
+    }
+    ReadWriteIOUtils.write(databaseDeletionFailure, stream);
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     queryId = ReadWriteIOUtils.readString(byteBuffer);
+    originalPatternTree = null;
+    deleteDatabaseSchemas.clear();
+    databaseDeletionFailure = null;
     setPatternTree(PathPatternTree.deserialize(byteBuffer));
     if (getCurrentState() == DeleteTimeSeriesState.CLEAN_DATANODE_SCHEMA_CACHE
         || getCurrentState() == DeleteTimeSeriesState.DELETE_DATA) {
@@ -368,6 +540,20 @@ public class DeleteTimeSeriesProcedure
     }
     if (byteBuffer.hasRemaining()) {
       mayDeleteAudit = ReadWriteIOUtils.readBoolean(byteBuffer);
+    }
+    if (byteBuffer.hasRemaining()) {
+      originalPatternTree =
+          ReadWriteIOUtils.readBoolean(byteBuffer)
+              ? PathPatternTree.deserialize(byteBuffer)
+              : patternTree;
+      final int size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; i++) {
+        deleteDatabaseSchemas.add(
+            ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(byteBuffer));
+      }
+      if (byteBuffer.hasRemaining()) {
+        databaseDeletionFailure = ReadWriteIOUtils.readString(byteBuffer);
+      }
     }
   }
 
@@ -384,13 +570,23 @@ public class DeleteTimeSeriesProcedure
         && Objects.equals(this.getCurrentState(), that.getCurrentState())
         && this.getCycles() == getCycles()
         && this.isGeneratedByPipe == that.isGeneratedByPipe
-        && this.patternTree.equals(that.patternTree);
+        && this.patternTree.equals(that.patternTree)
+        && Objects.equals(originalPatternTree, that.originalPatternTree)
+        && deleteDatabaseSchemas.equals(that.deleteDatabaseSchemas)
+        && Objects.equals(databaseDeletionFailure, that.databaseDeletionFailure);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        patternTree,
+        originalPatternTree,
+        deleteDatabaseSchemas,
+        databaseDeletionFailure);
   }
 
   private class DeleteTimeSeriesRegionTaskExecutor<Q> extends DataNodeTSStatusTaskExecutor<Q> {

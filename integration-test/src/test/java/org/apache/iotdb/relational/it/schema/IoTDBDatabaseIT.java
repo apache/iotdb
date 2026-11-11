@@ -532,6 +532,7 @@ public class IoTDBDatabaseIT {
               "current_queries,INF,",
               "data_nodes,INF,",
               "databases,INF,",
+              "drop_table_column_procedures,INF,",
               "drop_table_procedures,INF,",
               "functions,INF,",
               "keywords,INF,",
@@ -894,6 +895,7 @@ public class IoTDBDatabaseIT {
               Arrays.asList(
                   "information_schema,databases,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,tables,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,drop_table_column_procedures,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,drop_table_procedures,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,columns,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,queries,INF,USING,null,SYSTEM VIEW,false,",

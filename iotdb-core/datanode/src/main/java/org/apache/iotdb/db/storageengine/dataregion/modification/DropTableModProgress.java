@@ -22,7 +22,9 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 
-/** Counts the distinct mod files processed by one region's current DROP TABLE attempt. */
+/**
+ * Counts the distinct mod files processed by one region's current table or column deletion attempt.
+ */
 public class DropTableModProgress {
   private static final String PLAN_NODE_ID_PREFIX = "drop-table-";
 

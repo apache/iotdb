@@ -276,6 +276,12 @@ public class IoTDBTableDDLHAIT {
       final String message)
       throws Exception {
     statement.execute(sql);
+    if (sql.startsWith("DELETE TIMESERIES ")) {
+      try (final Statement progressStatement =
+          TestUtils.createSingleNodeStatement(statement.getConnection())) {
+        TestUtils.waitForTimeSeriesDeletion(progressStatement, sql);
+      }
+    }
     assertTrue(message, effect.call());
   }
 

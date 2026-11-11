@@ -50,13 +50,11 @@ import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
@@ -79,7 +77,6 @@ import org.apache.iotdb.confignode.audit.CNAuditLogger;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -148,7 +145,6 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
-import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
@@ -247,6 +243,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDeleteTimeSeriesProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -734,7 +731,13 @@ public class ConfigManager implements IManager {
       SetSchemaReplicationFactorPlan setSchemaReplicationFactorPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setSchemaReplicationFactor(setSchemaReplicationFactorPlan);
+      synchronized (procedureManager) {
+        if (procedureManager.hasPendingFullDatabaseTimeSeriesDeletion(
+            setSchemaReplicationFactorPlan.getDatabase())) {
+          return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+        }
+        return clusterSchemaManager.setSchemaReplicationFactor(setSchemaReplicationFactorPlan);
+      }
     } else {
       return status;
     }
@@ -745,7 +748,13 @@ public class ConfigManager implements IManager {
       SetDataReplicationFactorPlan setDataReplicationFactorPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setDataReplicationFactor(setDataReplicationFactorPlan);
+      synchronized (procedureManager) {
+        if (procedureManager.hasPendingFullDatabaseTimeSeriesDeletion(
+            setDataReplicationFactorPlan.getDatabase())) {
+          return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+        }
+        return clusterSchemaManager.setDataReplicationFactor(setDataReplicationFactorPlan);
+      }
     } else {
       return status;
     }
@@ -756,7 +765,13 @@ public class ConfigManager implements IManager {
       SetTimePartitionIntervalPlan setTimePartitionIntervalPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setTimePartitionInterval(setTimePartitionIntervalPlan);
+      synchronized (procedureManager) {
+        if (procedureManager.hasPendingFullDatabaseTimeSeriesDeletion(
+            setTimePartitionIntervalPlan.getDatabase())) {
+          return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+        }
+        return clusterSchemaManager.setTimePartitionInterval(setTimePartitionIntervalPlan);
+      }
     } else {
       return status;
     }
@@ -802,7 +817,13 @@ public class ConfigManager implements IManager {
   public TSStatus setDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
+      synchronized (procedureManager) {
+        if (procedureManager.hasPendingFullDatabaseTimeSeriesDeletion(
+            databaseSchemaPlan.getSchema().getName())) {
+          return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+        }
+        return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
+      }
     } else {
       return status;
     }
@@ -812,7 +833,13 @@ public class ConfigManager implements IManager {
   public TSStatus alterDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false);
+      synchronized (procedureManager) {
+        if (procedureManager.hasPendingFullDatabaseTimeSeriesDeletion(
+            databaseSchemaPlan.getSchema().getName())) {
+          return RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+        }
+        return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false);
+      }
     } else {
       return status;
     }
@@ -2537,92 +2564,14 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      String queryId = req.getQueryId();
-      PathPatternTree rawPatternTree =
-          PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-      boolean isGeneratedByPipe = req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe();
-      /**
-       * If delete pattern is prefix path (such as root.db.**), it may be optimized to delete
-       * database plus create database. We need to determine two conditions: whether the pattern
-       * ends in **, and that the device is a full path and is matched in the ConfigMTree.
-       */
-      boolean canOptimize = false;
-      HashSet<TDatabaseSchema> deleteDatabaseSchemas = new HashSet<>();
-      List<PartialPath> deleteTimeSeriesPatternPaths = new ArrayList<>();
-      List<PartialPath> deleteDatabasePatternPaths = new ArrayList<>();
-      for (PartialPath path : rawPatternTree.getAllPathPatterns()) {
-        if (PathPatternUtil.isMultiLevelMatchWildcard(path.getMeasurement())
-            && !path.getDevicePath().hasWildcard()) {
-          Map<String, TDatabaseSchema> databaseSchemaMap =
-              getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(path.getDevicePath());
-          // root.__audit can never be deleted
-          databaseSchemaMap.remove(TREE_MODEL_AUDIT_DATABASE);
-          if (!databaseSchemaMap.isEmpty()) {
-            deleteDatabaseSchemas.addAll(databaseSchemaMap.values());
-            deleteDatabasePatternPaths.add(path);
-            canOptimize = true;
-            continue;
-          }
-        }
-        deleteTimeSeriesPatternPaths.add(path);
-      }
-      if (!canOptimize) {
-        return procedureManager.deleteTimeSeries(
-            queryId,
-            rawPatternTree,
-            isGeneratedByPipe,
-            req.isSetMayDeleteAudit() && req.isMayDeleteAudit());
-      }
-      // check if the database is using template
-      try {
-        SchemaUtils.checkSchemaRegionUsingTemplate(this, deleteDatabasePatternPaths);
-      } catch (MetadataException e) {
-        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-      }
-      if (!deleteTimeSeriesPatternPaths.isEmpty()) {
-        // 1. delete time series that can not be optimized
-        PathPatternTree deleteTimeSeriesPatternTree = new PathPatternTree();
-        for (PartialPath path : deleteTimeSeriesPatternPaths) {
-          deleteTimeSeriesPatternTree.appendPathPattern(path);
-        }
-        deleteTimeSeriesPatternTree.constructTree();
-        status =
-            procedureManager.deleteTimeSeries(
-                queryId,
-                deleteTimeSeriesPatternTree,
-                isGeneratedByPipe,
-                req.isSetMayDeleteAudit() && req.isMayDeleteAudit());
-      }
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // 2. delete database
-        List<TSStatus> failedStatus = new ArrayList<>();
-        status =
-            procedureManager.deleteDatabases(
-                new ArrayList<>(deleteDatabaseSchemas), isGeneratedByPipe);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          failedStatus.add(status);
-        }
-        // 3. create database whatever the delete database operation is successful or not
-        for (TDatabaseSchema databaseSchema : deleteDatabaseSchemas) {
-          status =
-              clusterSchemaManager.setDatabase(
-                  new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema),
-                  isGeneratedByPipe);
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            failedStatus.add(status);
-          }
-        }
-        // 4. squash or generate status
-        if (!failedStatus.isEmpty()) {
-          status = RpcUtils.squashResponseStatusList(failedStatus);
-        } else {
-          status = StatusUtils.OK;
-        }
-      }
-    }
-    return status;
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? procedureManager.deleteTimeSeries(
+            req.getQueryId(),
+            PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree())),
+            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe(),
+            req.isSetMayDeleteAudit() && req.isMayDeleteAudit())
+        : status;
   }
 
   @Override
@@ -3525,11 +3474,29 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TShowDeleteTimeSeriesProceduresResp showDeleteTimeSeriesProcedures() {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? new TShowDeleteTimeSeriesProceduresResp(status)
+            .setProcedureInfoList(procedureManager.getDeleteTimeSeriesProcedures())
+        : new TShowDeleteTimeSeriesProceduresResp(status);
+  }
+
+  @Override
   public TShowDropTableProceduresResp showDropTableProcedures() {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? new TShowDropTableProceduresResp(status)
             .setDropTableProcedureInfoList(procedureManager.getDropTableProcedures())
+        : new TShowDropTableProceduresResp(status);
+  }
+
+  @Override
+  public TShowDropTableProceduresResp showDropTableColumnProcedures() {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? new TShowDropTableProceduresResp(status)
+            .setDropTableProcedureInfoList(procedureManager.getDropTableColumnProcedures())
         : new TShowDropTableProceduresResp(status);
   }
 

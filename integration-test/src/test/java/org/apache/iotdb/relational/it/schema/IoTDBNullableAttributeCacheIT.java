@@ -25,6 +25,7 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.relational.it.schema.fault.MetadataFaultController.Node;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.awaitility.Awaitility;
 import org.junit.Test;
@@ -44,6 +45,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
@@ -112,7 +114,7 @@ public class IoTDBNullableAttributeCacheIT extends TableMetadataPropagationTestB
               () -> {
                 assertLease(target, lease);
                 if (ddl.isDone()) {
-                  assertInvalidationFailure(ddl.get());
+                  assertNull("The asynchronous drop must be accepted", ddl.get());
                 }
                 for (Node node : NODES.values()) {
                   assertEquals(
@@ -133,12 +135,37 @@ public class IoTDBNullableAttributeCacheIT extends TableMetadataPropagationTestB
         assertTrue(target.count(INVALIDATE) > 0);
       }
       target.release(hook);
-      SQLException failure = ddl.get(30, TimeUnit.SECONDS);
-      if (failure != null) {
-        assertInvalidationFailure(failure);
-        // DropTableColumnProcedure does not roll back its pre-delete marker. Reissuing the same
-        // drop is supported: preDeleteColumn adds that marker idempotently and completes the drop.
-        update("ALTER TABLE sensor DROP COLUMN changing");
+      assertNull("The asynchronous drop must be accepted", ddl.get(30, TimeUnit.SECONDS));
+      try (Connection connection = connection(remote);
+          Statement statement = connection.createStatement()) {
+        Awaitility.await()
+            .pollInterval(200, TimeUnit.MILLISECONDS)
+            .atMost(60, TimeUnit.SECONDS)
+            .until(
+                () -> {
+                  boolean present = false;
+                  try (ResultSet result =
+                      statement.executeQuery("DESCRIBE " + database + ".sensor DETAILS")) {
+                    while (result.next()) {
+                      present |= "changing".equals(result.getString(1));
+                    }
+                  }
+                  if (!present) {
+                    return true;
+                  }
+                  // A failed task retains its pre-delete marker. Retrying the drop after restoring
+                  // the RPC completes it; a still-running task rejects the overlapping request.
+                  try {
+                    update("ALTER TABLE sensor DROP COLUMN changing");
+                  } catch (SQLException e) {
+                    assertTrue(
+                        e.getMessage(),
+                        e.getErrorCode() == TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()
+                            || e.getErrorCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+                  }
+                  return false;
+                });
+        TestUtils.waitForColumnDeletion(statement, database + ".sensor", "changing");
       }
       TestUtils.tableResultSetEqualTestUnordered(
           "SELECT device, kept, reading FROM sensor",
