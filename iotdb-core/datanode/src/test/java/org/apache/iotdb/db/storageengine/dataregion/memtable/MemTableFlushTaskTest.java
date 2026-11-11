@@ -687,23 +687,29 @@ public class MemTableFlushTaskTest {
   /**
    * With the IO consumer stalled the encoder fills the IO queue; the temporary reservation must
    * cover the capacity of the queued chunk buffers, which grow by doubling and can exceed the raw
-   * data counted by memSize (PLAIN time and values: 9% to 37% here, up to 2x in general).
+   * data counted by memSize (up to 2x), and whose encoded data can itself exceed the raw values
+   * (variable-length integers: up to 1.25x).
    */
   @Test(timeout = 60000)
   public void testReservationCoversQueuedChunkBuffersWithStalledIo() throws Exception {
     String oldTimeEncoder = TSFileDescriptor.getInstance().getConfig().getTimeEncoder();
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("PLAIN");
     try {
-      assertReservationCoversQueuedBuffers(9, 60_000); // fewer series than queue slots
-      assertReservationCoversQueuedBuffers(1, 60_000);
-      assertReservationCoversQueuedBuffers(300, 6_000); // more series than queue slots
+      // fewer series than queue slots
+      assertReservationCoversQueuedBuffers(9, 60_000, TSDataType.DOUBLE, TSEncoding.PLAIN);
+      assertReservationCoversQueuedBuffers(1, 60_000, TSDataType.DOUBLE, TSEncoding.PLAIN);
+      // more series than queue slots
+      assertReservationCoversQueuedBuffers(300, 6_000, TSDataType.DOUBLE, TSEncoding.PLAIN);
+      // the encoded values are larger than the raw ones (5 bytes per PLAIN INT32), and the buffer
+      // has just grown past 512 KiB to 1 MiB: 1,048,912 B for a memSize of 492,000 B
+      assertReservationCoversQueuedBuffers(1, 41_000, TSDataType.INT32, TSEncoding.PLAIN);
     } finally {
       TSFileDescriptor.getInstance().getConfig().setTimeEncoder(oldTimeEncoder);
     }
   }
 
-  private void assertReservationCoversQueuedBuffers(int seriesNumber, int rowCount)
-      throws Exception {
+  private void assertReservationCoversQueuedBuffers(
+      int seriesNumber, int rowCount, TSDataType dataType, TSEncoding encoding) throws Exception {
     IMemTable table = new PrimitiveMemTable(storageGroup, dataRegionId);
     String[] measurements = new String[seriesNumber];
     TSDataType[] dataTypes = new TSDataType[seriesNumber];
@@ -715,15 +721,10 @@ public class MemTableFlushTaskTest {
     }
     for (int i = 0; i < seriesNumber; i++) {
       measurements[i] = String.format("s%03d", i);
-      dataTypes[i] = TSDataType.DOUBLE;
+      dataTypes[i] = dataType;
       schemas[i] =
-          new MeasurementSchema(
-              measurements[i], TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED);
-      double[] column = new double[rowCount];
-      for (int row = 0; row < rowCount; row++) {
-        column[row] = row * 1.5 + i;
-      }
-      columns[i] = column;
+          new MeasurementSchema(measurements[i], dataType, encoding, CompressionType.UNCOMPRESSED);
+      columns[i] = largeValues(dataType, rowCount, i);
     }
     table.insertTablet(
         new InsertTabletNode(
@@ -802,6 +803,26 @@ public class MemTableFlushTaskTest {
       system.setEncodingFasterThanIo(old);
     }
     assertEquals(before, system.getFlushMemoryManager().getMemoryUsageInBytes());
+  }
+
+  /** Values of large magnitude, which take the most bytes in variable-length encodings. */
+  private static Object largeValues(TSDataType dataType, int rowCount, int series) {
+    switch (dataType) {
+      case INT32:
+        int[] ints = new int[rowCount];
+        for (int row = 0; row < rowCount; row++) {
+          ints[row] = Integer.MAX_VALUE - row - series;
+        }
+        return ints;
+      case DOUBLE:
+        double[] doubles = new double[rowCount];
+        for (int row = 0; row < rowCount; row++) {
+          doubles[row] = row * 1.5 + series;
+        }
+        return doubles;
+      default:
+        throw new IllegalArgumentException(dataType.toString());
+    }
   }
 
   private static org.apache.iotdb.db.conf.IoTDBConfig config() {

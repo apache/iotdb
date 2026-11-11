@@ -29,19 +29,20 @@ public class FlushMemoryEstimateTest {
   private static final long MB = 1024 * 1024;
 
   @Test
-  public void manySeriesReserveTwiceTheQueuedShare() {
-    // 300 series, a queue of 10 encoded chunks: 10 series' share of the memtable, doubled for the
-    // growth slack of the chunk buffers
+  public void manySeriesReserveTheQueuedShareWithHeadroom() {
+    // 300 series, a queue of 10 encoded chunks: 10 series' share of the memtable, times 2.5 for the
+    // encoding expansion and the growth slack of the chunk buffers
     assertEquals(
-        30 * MB / 300 * 10 * 2, MemTableFlushTask.estimateTemporaryMemory(30 * MB, 300, 10, true));
+        30 * MB / 300 * 10 * 5 / 2,
+        MemTableFlushTask.estimateTemporaryMemory(30 * MB, 300, 10, true));
   }
 
   @Test
-  public void fewSeriesReserveAtMostTwiceTheMemTable() {
+  public void fewSeriesReserveAtMostTwoAndAHalfTimesTheMemTable() {
     // 3 series cannot fill 10 queue slots: at most the memtable itself is queued
-    assertEquals(104 * MB, MemTableFlushTask.estimateTemporaryMemory(52 * MB, 3, 10, true));
-    assertEquals(104 * MB, MemTableFlushTask.estimateTemporaryMemory(52 * MB, 1, 10, true));
-    assertEquals(104 * MB, MemTableFlushTask.estimateTemporaryMemory(52 * MB, 10, 10, true));
+    assertEquals(130 * MB, MemTableFlushTask.estimateTemporaryMemory(52 * MB, 3, 10, true));
+    assertEquals(130 * MB, MemTableFlushTask.estimateTemporaryMemory(52 * MB, 1, 10, true));
+    assertEquals(130 * MB, MemTableFlushTask.estimateTemporaryMemory(52 * MB, 10, 10, true));
   }
 
   @Test
