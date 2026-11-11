@@ -412,6 +412,35 @@ public class WritePlanNodeSplitTest {
   }
 
   @Test
+  public void testSplitRelationalInsertTabletUsesRowCountForRedirects()
+      throws IllegalPathException {
+    RelationalInsertTabletNode relationalInsertTabletNode =
+        new RelationalInsertTabletNode(new PlanNodeId("plan node with spare row capacity"));
+    relationalInsertTabletNode.setTargetPath(new PartialPath("root.sg1"));
+    relationalInsertTabletNode.setTimes(new long[] {1, 2, 3, 4});
+    relationalInsertTabletNode.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.INT32});
+    Binary device = new Binary("d1", StandardCharsets.UTF_8);
+    relationalInsertTabletNode.setColumns(
+        new Object[] {new Binary[] {device, device, device, device}, new int[] {10, 20, 30, 40}});
+    relationalInsertTabletNode.setColumnCategories(
+        new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
+    relationalInsertTabletNode.setRowCount(2);
+
+    DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+    dataPartitionQueryParam.setDeviceID(relationalInsertTabletNode.getDeviceID(0));
+    dataPartitionQueryParam.setTimePartitionSlotList(
+        relationalInsertTabletNode.getTimePartitionSlots());
+    Analysis analysis = new Analysis();
+    analysis.setDataPartitionInfo(
+        getDataPartition(Collections.singletonList(dataPartitionQueryParam)));
+
+    List<WritePlanNode> splitNodes = relationalInsertTabletNode.splitByPartition(analysis);
+
+    Assert.assertEquals(1, splitNodes.size());
+    Assert.assertEquals(2, analysis.getRedirectNodeList().size());
+  }
+
+  @Test
   public void testInsertMultiTablets() throws IllegalPathException {
     InsertMultiTabletsNode insertMultiTabletsNode =
         new InsertMultiTabletsNode(new PlanNodeId("plan node 3"));
