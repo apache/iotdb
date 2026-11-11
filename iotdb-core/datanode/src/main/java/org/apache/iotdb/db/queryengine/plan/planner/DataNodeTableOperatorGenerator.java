@@ -1231,7 +1231,10 @@ public class DataNodeTableOperatorGenerator
         DataNodeTableCache.getInstance()
             .getTableInCache(
                 qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
-    return tsTable == null ? 0 : tsTable.getFieldNum();
+    // count every value column (FIELD + ATTRIBUTE) the scan may select, matching the denominator
+    // used by shouldUseDeviceMetadataBatchScan; getColumnNum() also includes the tag (id) columns
+    // and the time column, hence the subtraction.
+    return tsTable == null ? 0 : tsTable.getColumnNum() - tsTable.getTagNum() - 1;
   }
 
   private BatchDeviceEntrySource createAggregationDeviceEntrySource(AggregationTableScanNode node) {

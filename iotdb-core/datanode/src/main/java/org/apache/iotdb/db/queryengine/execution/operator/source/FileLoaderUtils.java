@@ -456,7 +456,8 @@ public class FileLoaderUtils {
       IDeviceID deviceId)
       throws IOException {
     Map<String, TimeseriesMetadata> deviceMetadata =
-        cache.getDeviceTimeSeriesMetadata(filePath, resource.getTsFileID(), deviceId, context);
+        cache.getDeviceTimeSeriesMetadata(
+            filePath, resource.getTsFileID(), deviceId, context, ignoreNotExists);
     if (deviceMetadata.isEmpty()) {
       // device not found in this file. With a file-level time index (or during recovery) that is
       // expected, so skip; with a device-level time index the device should be present, so surface

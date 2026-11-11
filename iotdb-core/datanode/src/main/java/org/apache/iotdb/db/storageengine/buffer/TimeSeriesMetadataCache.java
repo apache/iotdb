@@ -335,7 +335,11 @@ public class TimeSeriesMetadataCache {
    * @throws IOException if the metadata cannot be read from disk
    */
   public Map<String, TimeseriesMetadata> getDeviceTimeSeriesMetadata(
-      String filePath, TsFileID tsFileID, IDeviceID device, QueryContext queryContext)
+      String filePath,
+      TsFileID tsFileID,
+      IDeviceID device,
+      QueryContext queryContext,
+      boolean ignoreNotExists)
       throws IOException {
     long startTime = System.nanoTime();
     boolean externalTsFile = queryContext.isExternalTsFileScan();
@@ -351,10 +355,10 @@ public class TimeSeriesMetadataCache {
         // don't each deserialize the whole device and race on the shared reader
         synchronized (
             devices.computeIfAbsent(device.toString() + SEPARATOR + filePath, WeakReference::new)) {
-          return readDeviceTimeSeriesMetadata(reader, tsFileID, device, true);
+          return readDeviceTimeSeriesMetadata(reader, tsFileID, device, true, ignoreNotExists);
         }
       }
-      return readDeviceTimeSeriesMetadata(reader, tsFileID, device, false);
+      return readDeviceTimeSeriesMetadata(reader, tsFileID, device, false, ignoreNotExists);
     } finally {
       queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().incrementAndGet();
       queryContext
@@ -365,7 +369,11 @@ public class TimeSeriesMetadataCache {
   }
 
   private Map<String, TimeseriesMetadata> readDeviceTimeSeriesMetadata(
-      TsFileSequenceReader reader, TsFileID tsFileID, IDeviceID device, boolean cacheEnabled)
+      TsFileSequenceReader reader,
+      TsFileID tsFileID,
+      IDeviceID device,
+      boolean cacheEnabled,
+      boolean ignoreNotExists)
       throws IOException {
     // Use the chunk-metadata-including variant: the returned TimeseriesMetadata are passed to
     // setModifications and then to DiskAlignedChunkMetadataLoader, which dereferences the chunk
@@ -377,6 +385,11 @@ public class TimeSeriesMetadataCache {
       String measurementId = metadata.getMeasurementId();
       if (metadata.getStatistics().getCount() == 0) {
         result.put(measurementId, null);
+        if (cacheEnabled && !ignoreNotExists && memoryConfig.isMayCacheNonExistSeries()) {
+          lruCache.put(
+              new TimeSeriesMetadataCacheKey(tsFileID, device, measurementId),
+              NULL_EXISTS_CACHE_PLACE_HOLDER);
+        }
         continue;
       }
       if (cacheEnabled) {
