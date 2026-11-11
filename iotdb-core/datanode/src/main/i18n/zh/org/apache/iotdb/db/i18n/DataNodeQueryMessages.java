@@ -5633,4 +5633,19 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s：%s ms，调用 %s 次，应用 %s 次";
+
+  public static final String EXCEPTION_THE_PATHS_LIST_MUST_NOT_BE_EMPTY_950C8343 =
+      "paths 列表不能为空。";
+  public static final String EXCEPTION_THE_ARG_LIST_MUST_CONTAIN_ARG_ENTRIES_8545AC0F =
+      "%s 列表必须包含 %d 个元素。";
+  public static final String EXCEPTION_ALIGNMENT_FLAGS_MUST_NOT_BE_NULL_5FAC3B71 =
+      "对齐标记不能为 null。";
+  public static final String
+      EXCEPTION_TIME_SERIES_UNDER_DEVICE_ARG_MUST_USE_THE_SAME_ALIGNMENT_64142589 =
+          "设备 %s 下的时间序列必须使用相同的对齐标记。";
+  public static final String EXCEPTION_DUPLICATE_TIME_SERIES_IN_BATCH_ARG_C81567AE =
+      "批次中包含重复的时间序列：%s。";
+  public static final String
+      EXCEPTION_PROPERTIES_ARE_NOT_SUPPORTED_FOR_ALIGNED_TIME_SERIES_ARG_695D2CD7 =
+          "对齐时间序列不支持 properties：%s。";
 }

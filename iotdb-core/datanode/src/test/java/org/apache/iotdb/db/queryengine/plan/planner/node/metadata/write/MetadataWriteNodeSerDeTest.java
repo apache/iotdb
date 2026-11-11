@@ -60,6 +60,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -236,6 +237,7 @@ public class MetadataWriteNodeSerDeTest {
     PlanNodeId planNodeId = new PlanNodeId("InternalCreateMultiTimeSeriesNode");
     MeasurementGroup measurementGroup = new MeasurementGroup();
     measurementGroup.addMeasurement("s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.GZIP);
+    measurementGroup.addProps(Collections.singletonMap("max_point_number", "3"));
     Map<PartialPath, Pair<Boolean, MeasurementGroup>> deviceMap = new HashMap<>();
     deviceMap.put(new PartialPath("root.db"), new Pair<>(false, measurementGroup));
     InternalCreateMultiTimeSeriesNode internalCreateMultiTimeSeriesNode =

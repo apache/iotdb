@@ -36,6 +36,8 @@ import java.util.Set;
 
 public class MeasurementGroup {
 
+  private static final int PROPS_LIST_SERIALIZATION_MARKER = -1;
+
   private List<String> measurements = new ArrayList<>();
   private List<TSDataType> dataTypes = new ArrayList<>();
   private List<TSEncoding> encodings = new ArrayList<>();
@@ -202,22 +204,23 @@ public class MeasurementGroup {
   private MeasurementGroup getSubMeasurementGroup(int startIndex, int endIndex) {
     MeasurementGroup subMeasurementGroup;
     subMeasurementGroup = new MeasurementGroup();
-    subMeasurementGroup.measurements = measurements.subList(startIndex, endIndex);
+    subMeasurementGroup.measurements = new ArrayList<>(measurements.subList(startIndex, endIndex));
     subMeasurementGroup.measurementSet.addAll(subMeasurementGroup.measurements);
-    subMeasurementGroup.dataTypes = dataTypes.subList(startIndex, endIndex);
-    subMeasurementGroup.encodings = encodings.subList(startIndex, endIndex);
-    subMeasurementGroup.compressors = compressors.subList(startIndex, endIndex);
+    subMeasurementGroup.dataTypes = new ArrayList<>(dataTypes.subList(startIndex, endIndex));
+    subMeasurementGroup.encodings = new ArrayList<>(encodings.subList(startIndex, endIndex));
+    subMeasurementGroup.compressors = new ArrayList<>(compressors.subList(startIndex, endIndex));
     if (aliasList != null) {
-      subMeasurementGroup.aliasList = aliasList.subList(startIndex, endIndex);
+      subMeasurementGroup.aliasList = new ArrayList<>(aliasList.subList(startIndex, endIndex));
     }
     if (propsList != null) {
-      subMeasurementGroup.propsList = propsList.subList(startIndex, endIndex);
+      subMeasurementGroup.propsList = new ArrayList<>(propsList.subList(startIndex, endIndex));
     }
     if (tagsList != null) {
-      subMeasurementGroup.tagsList = tagsList.subList(startIndex, endIndex);
+      subMeasurementGroup.tagsList = new ArrayList<>(tagsList.subList(startIndex, endIndex));
     }
     if (attributesList != null) {
-      subMeasurementGroup.attributesList = attributesList.subList(startIndex, endIndex);
+      subMeasurementGroup.attributesList =
+          new ArrayList<>(attributesList.subList(startIndex, endIndex));
     }
     return subMeasurementGroup;
   }
@@ -279,6 +282,11 @@ public class MeasurementGroup {
         ReadWriteIOUtils.write(attributes, byteBuffer);
       }
     }
+
+    // Props were added after the original MeasurementGroup wire format. Keep the marker so old
+    // consensus requests can still be deserialized without treating the following field as props.
+    ReadWriteIOUtils.write(PROPS_LIST_SERIALIZATION_MARKER, byteBuffer);
+    serializePropsList(byteBuffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -338,6 +346,35 @@ public class MeasurementGroup {
         ReadWriteIOUtils.write(attributes, stream);
       }
     }
+
+    ReadWriteIOUtils.write(PROPS_LIST_SERIALIZATION_MARKER, stream);
+    serializePropsList(stream);
+  }
+
+  private void serializePropsList(ByteBuffer byteBuffer) {
+    if (propsList == null) {
+      byteBuffer.put((byte) -1);
+    } else if (propsList.isEmpty()) {
+      byteBuffer.put((byte) 0);
+    } else {
+      byteBuffer.put((byte) 1);
+      for (Map<String, String> props : propsList) {
+        ReadWriteIOUtils.write(props, byteBuffer);
+      }
+    }
+  }
+
+  private void serializePropsList(DataOutputStream stream) throws IOException {
+    if (propsList == null) {
+      stream.write((byte) -1);
+    } else if (propsList.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      for (Map<String, String> props : propsList) {
+        ReadWriteIOUtils.write(props, stream);
+      }
+    }
   }
 
   public void deserialize(ByteBuffer byteBuffer) {
@@ -391,6 +428,24 @@ public class MeasurementGroup {
           attributesList.add(ReadWriteIOUtils.readMap(byteBuffer));
         }
       }
+    }
+
+    // The next field is the plan node's data in the original format. Rewind when reading an old
+    // request so adding props does not make existing consensus logs unreadable.
+    final int propsMarkerPosition = byteBuffer.position();
+    if (byteBuffer.remaining() >= Integer.BYTES
+        && ReadWriteIOUtils.readInt(byteBuffer) == PROPS_LIST_SERIALIZATION_MARKER) {
+      label = byteBuffer.get();
+      if (label >= 0) {
+        propsList = new ArrayList<>(label == 1 ? size : 0);
+        if (label == 1) {
+          for (int i = 0; i < size; i++) {
+            propsList.add(ReadWriteIOUtils.readMap(byteBuffer));
+          }
+        }
+      }
+    } else {
+      byteBuffer.position(propsMarkerPosition);
     }
   }
 
