@@ -707,9 +707,12 @@ public class SessionPool implements ISessionPool {
   // is incorrect.
   @SuppressWarnings({"squid:S3776", "squid:S2446"}) // Suppress high Cognitive Complexity warning
   private ISession getSession() throws IoTDBConnectionException {
-    ISession session = queue.poll();
-    if (closed) {
-      throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
+    ISession session;
+    synchronized (this) {
+      if (closed) {
+        throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
+      }
+      session = queue.poll();
     }
     if (session != null) {
       return session;
@@ -720,6 +723,9 @@ public class SessionPool implements ISessionPool {
     long start = System.currentTimeMillis();
     while (session == null) {
       synchronized (this) {
+        if (closed) {
+          throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
+        }
         if (size < maxSize) {
           // we can create more session
           size++;
@@ -804,7 +810,15 @@ public class SessionPool implements ISessionPool {
   }
 
   protected ITableSession getPooledTableSession() throws IoTDBConnectionException {
-    return new TableSessionWrapper((Session) getSession(), this);
+    Session session = (Session) getSession();
+    synchronized (this) {
+      if (closed) {
+        closeSession(session);
+        throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
+      }
+      occupied.put(session, session);
+    }
+    return new TableSessionWrapper(session, this);
   }
 
   @Override
@@ -819,15 +833,58 @@ public class SessionPool implements ISessionPool {
 
   @SuppressWarnings({"squid:S2446"})
   protected void putBack(ISession session) {
-    queue.push(session);
     synchronized (this) {
-      // we do not need to notifyAll as any waited thread can continue to work after waked up.
-      this.notify();
-      // comment the following codes as putBack is too frequently called.
-      //      if (logger.isTraceEnabled()) {
-      //        logger.trace("put a session back and notify others..., queue.size = {}",
-      // queue.size());
-      //      }
+      if (!closed) {
+        queue.push(session);
+        // we do not need to notifyAll as any waited thread can continue to work after waked up.
+        this.notify();
+        return;
+      }
+    }
+    closeSession(session);
+  }
+
+  /**
+   * Releases a session borrowed from this pool. A session that cannot be reused is closed and
+   * replaced while the pool remains open.
+   *
+   * @return whether the session was still owned by the pool and has been released
+   */
+  protected boolean releaseSession(ISession session, boolean reusable) {
+    boolean replenish = false;
+    synchronized (this) {
+      if (occupied.remove(session) == null) {
+        return false;
+      }
+      if (reusable && !closed) {
+        queue.push(session);
+        this.notifyAll();
+        return true;
+      }
+      replenish = !closed;
+    }
+
+    closeSession(session);
+    if (replenish) {
+      tryConstructNewSession();
+    }
+    return true;
+  }
+
+  private void discardSession(ISession session) {
+    boolean replenish;
+    synchronized (this) {
+      replenish = !closed;
+    }
+    closeSession(session);
+    if (replenish) {
+      tryConstructNewSession();
+    }
+  }
+
+  protected boolean isPoolClosed() {
+    synchronized (this) {
+      return closed;
     }
   }
 
@@ -838,22 +895,21 @@ public class SessionPool implements ISessionPool {
   /** close all connections in the pool */
   @Override
   public synchronized void close() {
+    if (closed) {
+      return;
+    }
+    closed = true;
+
     for (ISession session : queue) {
-      try {
-        session.close();
-      } catch (IoTDBConnectionException e) {
-        // do nothing
-        LOGGER.warn(CLOSE_THE_SESSION_FAILED, e);
-      }
+      closeSession(session);
     }
     for (ISession session : occupied.keySet()) {
-      try {
-        session.close();
-      } catch (IoTDBConnectionException e) {
-        // do nothing
-        LOGGER.warn(CLOSE_THE_SESSION_FAILED, e);
-      }
+      closeSession(session);
     }
+    queue.clear();
+    occupied.clear();
+    this.notifyAll();
+
     if (this.executorService != null) {
       this.executorService.shutdown();
       this.executorService = null;
@@ -865,9 +921,6 @@ public class SessionPool implements ISessionPool {
       this.availableNodes = null;
     }
     LOGGER.info(SessionMessages.CLOSING_SESSION_POOL);
-    this.closed = true;
-    queue.clear();
-    occupied.clear();
   }
 
   @Override
@@ -876,18 +929,20 @@ public class SessionPool implements ISessionPool {
     try {
       wrapper.getSessionDataSet().closeOperationHandle();
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      tryConstructNewSession();
       putback = false;
     } finally {
-      ISession session = occupied.remove(wrapper.getSession());
-      if (putback && session != null) {
-        putBack(wrapper.getSession());
-      }
+      releaseSession(wrapper.getSession(), putback);
     }
   }
 
   @SuppressWarnings({"squid:S2446"})
   private void tryConstructNewSession() {
+    synchronized (this) {
+      if (closed) {
+        return;
+      }
+    }
+
     Session session = constructNewSession();
     try {
       session.open(
@@ -928,8 +983,9 @@ public class SessionPool implements ISessionPool {
 
   private void cleanSessionAndMayThrowConnectionException(
       ISession session, int times, IoTDBConnectionException e) throws IoTDBConnectionException {
-    closeSession(session);
-    tryConstructNewSession();
+    if (!releaseSession(session, false)) {
+      discardSession(session);
+    }
     if (times == FINAL_RETRY) {
       throw new IoTDBConnectionException(
           String.format(
@@ -942,8 +998,9 @@ public class SessionPool implements ISessionPool {
   }
 
   protected void cleanSessionAndMayThrowConnectionException(ISession session) {
-    closeSession(session);
-    tryConstructNewSession();
+    if (!releaseSession(session, false)) {
+      discardSession(session);
+    }
   }
 
   /**
