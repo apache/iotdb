@@ -1218,6 +1218,33 @@ public class SessionPoolTest {
   }
 
   @Test
+  public void testSortTabletExceptionReturnsSessionToPool() throws IoTDBConnectionException {
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    MeasurementSchema schema = new MeasurementSchema();
+    schema.setMeasurementName("pressure");
+    schema.setDataType(TSDataType.BOOLEAN);
+    schema.setCompressionType(CompressionType.SNAPPY);
+    schema.setEncoding(TSEncoding.PLAIN);
+    schemas.add(schema);
+    long[] timestamp = new long[] {1L, 2L};
+    Object[] values = new Object[] {true, false};
+    BitMap[] partBitMap = new BitMap[2];
+    Tablet tablet = new Tablet("device", schemas, timestamp, values, partBitMap, 2);
+    Mockito.doThrow(new IllegalArgumentException("sort failed")).when(session).sortTablet(tablet);
+
+    try {
+      sessionPool.sortTablet(tablet);
+      fail("Expected sortTablet to throw");
+    } catch (IllegalArgumentException expected) {
+      // expected
+    }
+
+    assertEquals(
+        1,
+        ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
+  }
+
+  @Test
   public void testSetSchemaTemplate() throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.setSchemaTemplate("template2", "root.ut0.sensor2");
     assertEquals(

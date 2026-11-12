@@ -997,12 +997,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  protected void cleanSessionAndMayThrowConnectionException(ISession session) {
-    if (!releaseSession(session, false)) {
-      discardSession(session);
-    }
-  }
-
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
@@ -3028,8 +3022,11 @@ public class SessionPool implements ISessionPool {
   @Override
   public void sortTablet(Tablet tablet) throws IoTDBConnectionException {
     ISession session = getSession();
-    session.sortTablet(tablet);
-    putBack(session);
+    try {
+      session.sortTablet(tablet);
+    } finally {
+      putBack(session);
+    }
   }
 
   @Override
