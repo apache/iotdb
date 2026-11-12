@@ -2077,7 +2077,12 @@ public class TableDistributedPlanGenerator
     //  push down aggregation if the child of aggregation node only has the union Node
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
-      AggregationNode physicalAggregation = withRateFunctionInputOrdering(node, childOrdering);
+      AggregationNode physicalAggregation =
+          withRateFunctionInputOrdering(
+              node,
+              childOrdering,
+              isChildTimeOrderedPerGroup(node, childrenNodes.get(0)),
+              childrenNodes.get(0));
 
       if (childrenNodes.get(0) instanceof UnionNode
           && physicalAggregation.getAggregations().values().stream()
@@ -2246,6 +2251,15 @@ public class TableDistributedPlanGenerator
 
   private static AggregationNode withRateFunctionInputOrdering(
       AggregationNode node, OrderingScheme childOrdering) {
+    return withRateFunctionInputOrdering(node, childOrdering, false, null);
+  }
+
+  private static AggregationNode withRateFunctionInputOrdering(
+      AggregationNode node,
+      OrderingScheme childOrdering,
+      boolean childTimeOrderedPerGroup,
+      PlanNode child) {
+    DeviceTableScanNode scan = childTimeOrderedPerGroup ? findOrderedDeviceScan(child) : null;
     Map<Symbol, AggregationNode.Aggregation> aggregations = new LinkedHashMap<>();
     node.getAggregations()
         .forEach(
@@ -2259,8 +2273,15 @@ public class TableDistributedPlanGenerator
                         aggregation.getFilter(),
                         aggregation.getOrderingScheme(),
                         aggregation.getMask(),
-                        isInputOrderedByTimeAscending(
-                            aggregation, node.getStep(), node.getGroupingKeys(), childOrdering))));
+                        (childTimeOrderedPerGroup
+                                && isOrderedInputFunction(
+                                    aggregation.getResolvedFunction().getSignature().getName())
+                                && isTimeArgumentNativeTime(aggregation, child, scan))
+                            || isInputOrderedByTimeAscending(
+                                aggregation,
+                                node.getStep(),
+                                node.getGroupingKeys(),
+                                childOrdering))));
     return AggregationNode.builderFrom(node).setAggregations(aggregations).build();
   }
 
@@ -2273,10 +2294,7 @@ public class TableDistributedPlanGenerator
     if (step != SINGLE
         || childOrdering == null
         || aggregation.getArguments().size() < 2
-        || !(RATE.equalsIgnoreCase(functionName)
-            || INCREASE.equalsIgnoreCase(functionName)
-            || IRATE.equalsIgnoreCase(functionName)
-            || DELTA.equalsIgnoreCase(functionName))) {
+        || !isOrderedInputFunction(functionName)) {
       return false;
     }
 
@@ -2294,6 +2312,121 @@ public class TableDistributedPlanGenerator
       }
     }
     return true;
+  }
+
+  private boolean isChildTimeOrderedPerGroup(AggregationNode node, PlanNode child) {
+    DeviceTableScanNode scan = findOrderedDeviceScan(child);
+    if (scan == null) {
+      return false;
+    }
+    return isDeviceScanTimeOrderedPerGroup(
+        node.getStep(),
+        node.getGroupingKeys(),
+        child,
+        scan,
+        analysis.getTableColumnSchema(scan.getQualifiedObjectName()));
+  }
+
+  static boolean isDeviceScanTimeOrderedPerGroup(
+      AggregationNode.Step step,
+      List<Symbol> groupingKeys,
+      PlanNode child,
+      DeviceTableScanNode scan,
+      Map<Symbol, ColumnSchema> tableColumnSchema) {
+    if (step != AggregationNode.Step.SINGLE || scan.getScanOrder() != Ordering.ASC) {
+      return false;
+    }
+    int deviceEntryCount = scan.getDeviceEntryCount();
+    if (deviceEntryCount <= 0) {
+      return false;
+    }
+    if (deviceEntryCount == 1) {
+      return true;
+    }
+    if (tableColumnSchema == null) {
+      return false;
+    }
+    Set<String> tagColumnNames = new HashSet<>();
+    for (ColumnSchema columnSchema : tableColumnSchema.values()) {
+      if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
+        tagColumnNames.add(columnSchema.getName());
+      }
+    }
+    Map<Symbol, ColumnSchema> scanColumnSchema = scan.getAssignments();
+    Set<String> groupedColumnNames = new HashSet<>();
+    for (Symbol symbol : resolveSymbolsToScanLevel(child, groupingKeys)) {
+      ColumnSchema columnSchema = scanColumnSchema.get(symbol);
+      if (columnSchema != null) {
+        groupedColumnNames.add(columnSchema.getName());
+      }
+    }
+    return groupedColumnNames.containsAll(tagColumnNames);
+  }
+
+  private static boolean isTimeArgumentNativeTime(
+      AggregationNode.Aggregation aggregation, PlanNode child, DeviceTableScanNode scan) {
+    if (scan == null || aggregation.getArguments().size() < 2) {
+      return false;
+    }
+    Expression timeArgument = aggregation.getArguments().get(1);
+    if (!(timeArgument instanceof SymbolReference)) {
+      return false;
+    }
+    for (Symbol symbol :
+        resolveSymbolsToScanLevel(child, Collections.singletonList(Symbol.from(timeArgument)))) {
+      if (scan.isTimeColumn(symbol)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static DeviceTableScanNode findOrderedDeviceScan(PlanNode node) {
+    PlanNode cursor = node;
+    while (cursor instanceof ProjectNode || cursor instanceof FilterNode) {
+      if (cursor.getChildren().size() != 1) {
+        return null;
+      }
+      cursor = cursor.getChildren().get(0);
+    }
+    if (cursor instanceof AggregationTableScanNode
+        || cursor instanceof TreeDeviceViewScanNode
+        || cursor instanceof ExternalTsFileScanNode) {
+      return null;
+    }
+    return cursor instanceof DeviceTableScanNode ? (DeviceTableScanNode) cursor : null;
+  }
+
+  private static Set<Symbol> resolveSymbolsToScanLevel(PlanNode node, Collection<Symbol> symbols) {
+    Set<Symbol> current = new HashSet<>(symbols);
+    PlanNode cursor = node;
+    while (true) {
+      if (cursor instanceof ProjectNode) {
+        Map<Symbol, Expression> assignments = ((ProjectNode) cursor).getAssignments().getMap();
+        Set<Symbol> mapped = new HashSet<>();
+        for (Symbol symbol : current) {
+          Expression expression = assignments.get(symbol);
+          if (expression instanceof SymbolReference) {
+            mapped.add(Symbol.from(expression));
+          }
+        }
+        current = mapped;
+        cursor = cursor.getChildren().get(0);
+      } else if (cursor instanceof FilterNode) {
+        cursor = cursor.getChildren().get(0);
+      } else {
+        return current;
+      }
+    }
+  }
+
+  private static boolean isOrderedInputFunction(String functionName) {
+    // Aggregation families whose accumulators require strictly ascending time input. New families
+    // (for example the integral family) must be added here as well.
+    return RATE.equalsIgnoreCase(functionName)
+        || INCREASE.equalsIgnoreCase(functionName)
+        || IRATE.equalsIgnoreCase(functionName)
+        || DELTA.equalsIgnoreCase(functionName);
   }
 
   private boolean prefixMatched(OrderingScheme childOrdering, List<Symbol> preGroupedSymbols) {
