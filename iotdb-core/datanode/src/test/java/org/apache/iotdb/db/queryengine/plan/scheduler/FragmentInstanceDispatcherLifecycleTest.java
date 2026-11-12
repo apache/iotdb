@@ -155,6 +155,20 @@ public class FragmentInstanceDispatcherLifecycleTest {
   }
 
   @Test
+  public void admissionValidityDoesNotOutliveRemainingQueryBudget() throws Exception {
+    FragmentInstanceDispatcherImpl dispatcher = dispatcher();
+    FragmentInstance shortQuery = instance(0);
+    doReturn(5L).when(shortQuery).getTimeOut();
+    when(client.fetchQueryAdmissionToken(anyLong()))
+        .thenAnswer(
+            invocation -> new TQueryAdmissionToken("receiver", 123456L, invocation.getArgument(0)));
+    when(client.sendFragmentInstance(any())).thenReturn(new TSendFragmentInstanceResp(true));
+    assertTrue(
+        dispatcher.dispatch(null, Collections.singletonList(shortQuery)).get().isSuccessful());
+    verify(client).fetchQueryAdmissionToken(5L);
+  }
+
+  @Test
   public void legacyReceiverUsesTheOriginalProtocol() throws Exception {
     FragmentInstanceDispatcherImpl dispatcher = dispatcher();
     when(client.fetchQueryAdmissionToken(anyLong()))

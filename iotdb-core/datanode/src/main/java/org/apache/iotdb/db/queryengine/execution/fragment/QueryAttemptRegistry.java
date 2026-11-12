@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.DelayQueue;
+import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -52,7 +54,11 @@ class QueryAttemptRegistry {
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryAttemptRegistry.class);
   private static final long MAX_ADMISSION_VALIDITY_MS = TimeUnit.DAYS.toMillis(1);
 
+  // Only live attempts are scanned for execution timeout. Completed attempts retain a compact
+  // marker, indexed by deadline, rather than a full Entry on the management sweep's hot path.
   private final Map<QueryAttemptId, Entry> attempts = new ConcurrentHashMap<>();
+  private final Map<QueryAttemptId, ClosedAttempt> closedAttempts = new ConcurrentHashMap<>();
+  private final DelayQueue<ClosedAttempt> closedExpirations = new DelayQueue<>();
   private final LongSupplier ticker;
   private final String issuer = UUID.randomUUID().toString();
 
@@ -115,7 +121,7 @@ class QueryAttemptRegistry {
                     now),
                 TSStatusCode.DISPATCH_ERROR.getStatusCode());
           }
-          if (existing != null && existing.closed) {
+          if ((existing != null && existing.closed) || closedAttempts.containsKey(key)) {
             throw new IoTDBRuntimeException(
                 String.format(
                     DataNodeQueryMessages.EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_12143E89, key),
@@ -163,10 +169,11 @@ class QueryAttemptRegistry {
         key,
         (ignored, existing) -> {
           long now = ticker.getAsLong();
-          if (existing == null && expired(token.getDeadlineNanos(), now)) {
+          if (existing == null) {
+            retainClosure(key, token.getDeadlineNanos(), now);
             return null;
           }
-          Entry entry = existing == null ? new Entry(now, 0, 0) : existing;
+          Entry entry = existing;
           if (!entry.closed && entry.active != null) {
             toCancel.addAll(entry.active.values());
           }
@@ -194,6 +201,13 @@ class QueryAttemptRegistry {
           });
     }
     terminate(timedOut, true, true);
+    ClosedAttempt fence;
+    while ((fence = closedExpirations.poll()) != null) {
+      ClosedAttempt expiredFence = fence;
+      // A later close may have extended the cutoff. An old queue event must not remove it.
+      closedAttempts.computeIfPresent(
+          fence.key, (key, current) -> current == expiredFence ? null : current);
+    }
   }
 
   private static void terminate(
@@ -215,21 +229,47 @@ class QueryAttemptRegistry {
     }
   }
 
-  private static Entry retireIfUnused(QueryAttemptId key, Entry entry, long now) {
+  private Entry retireIfUnused(QueryAttemptId key, Entry entry, long now) {
     if ((entry.active == null || entry.active.isEmpty())
         && (entry.closed || entry.remaining == 0)) {
       entry.closed = true;
       entry.context = null;
       entry.active = null;
-      if (key.isLegacy() || expired(entry.fenceDeadline, now)) {
-        return null;
-      }
+      retainClosure(key, entry.fenceDeadline, now);
+      return null;
     }
     return entry;
   }
 
+  private void retainClosure(QueryAttemptId key, long deadline, long now) {
+    if (key.isLegacy() || expired(deadline, now)) {
+      return;
+    }
+    // Called while holding the active-map key lock, before removing that Entry. Registration
+    // checks this map under the same key lock, so there is no gap in the admission fence.
+    closedAttempts.compute(
+        key,
+        (ignored, current) -> {
+          if (current != null && current.deadline - deadline >= 0) {
+            return current;
+          }
+          ClosedAttempt next =
+              new ClosedAttempt(current == null ? key : current.key, deadline, ticker);
+          closedExpirations.add(next);
+          return next;
+        });
+  }
+
   int getRetainedEntryCount() {
+    return attempts.size() + closedAttempts.size();
+  }
+
+  int getActiveEntryCount() {
     return attempts.size();
+  }
+
+  int getPendingExpirationCount() {
+    return closedExpirations.size();
   }
 
   boolean hasSharedContext(QueryAttemptId key) {
@@ -241,6 +281,29 @@ class QueryAttemptRegistry {
           return entry;
         });
     return present.get();
+  }
+
+  private static class ClosedAttempt implements Delayed {
+    private final QueryAttemptId key;
+    private final long deadline;
+    private final LongSupplier ticker;
+
+    private ClosedAttempt(QueryAttemptId key, long deadline, LongSupplier ticker) {
+      this.key = key;
+      this.deadline = deadline;
+      this.ticker = ticker;
+    }
+
+    @Override
+    public long getDelay(TimeUnit unit) {
+      return unit.convert(deadline - ticker.getAsLong(), TimeUnit.NANOSECONDS);
+    }
+
+    @Override
+    public int compareTo(Delayed other) {
+      // All queued cutoffs are within the bounded token window, including nanoTime wraparound.
+      return Long.compare(deadline - ((ClosedAttempt) other).deadline, 0);
+    }
   }
 
   private static class Entry {

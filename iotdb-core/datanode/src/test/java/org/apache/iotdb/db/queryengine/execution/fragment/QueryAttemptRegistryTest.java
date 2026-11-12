@@ -293,6 +293,65 @@ public class QueryAttemptRegistryTest {
     registry.register(fresh, state(fresh), true).close();
   }
 
+  @Test
+  public void completedAttemptsAreNotScannedBeforeTheirExpiry() {
+    java.util.concurrent.atomic.AtomicInteger reads =
+        new java.util.concurrent.atomic.AtomicInteger();
+    QueryAttemptRegistry many =
+        new QueryAttemptRegistry(
+            () -> {
+              reads.incrementAndGet();
+              return clock.get();
+            });
+    TQueryAdmissionToken issued = many.issueAdmissionToken(1000);
+    for (int i = 0; i < 10000; i++) {
+      many.close(new QueryAttemptId(new QueryId("closed_" + i), 0), issued, true);
+    }
+    assertEquals(0, many.getActiveEntryCount());
+    assertEquals(10000, many.getRetainedEntryCount());
+    reads.set(0);
+    many.removeExpired();
+    // Only the queue head needs a clock check, independently of the retained marker count.
+    assertTrue(reads.get() <= 2);
+    assertEquals(10000, many.getRetainedEntryCount());
+    clock.set(issued.getDeadlineNanos());
+    many.removeExpired();
+    assertEquals(0, many.getRetainedEntryCount());
+    assertEquals(0, many.getPendingExpirationCount());
+  }
+
+  @Test
+  public void earlierExpiryCannotDeleteAnExtendedFence() {
+    TQueryAdmissionToken shortToken = registry.issueAdmissionToken(100);
+    registry.close(key(0), shortToken, true);
+    clock.addAndGet(TimeUnit.MILLISECONDS.toNanos(50));
+    TQueryAdmissionToken extended = registry.issueAdmissionToken(1000);
+    registry.close(key(0), extended, true);
+    clock.set(shortToken.getDeadlineNanos());
+    registry.removeExpired();
+    assertEquals(1, registry.getRetainedEntryCount());
+    FragmentInstance late = instance(0, 0, 1);
+    when(late.getAdmissionToken()).thenReturn(extended);
+    assertEquals(
+        TSStatusCode.QUERY_WAS_KILLED.getStatusCode(),
+        assertThrows(IoTDBRuntimeException.class, () -> registry.register(late, state(late), true))
+            .getErrorCode());
+    clock.set(extended.getDeadlineNanos());
+    registry.removeExpired();
+    assertEquals(0, registry.getRetainedEntryCount());
+  }
+
+  @Test
+  public void repeatedCloseDoesNotAccumulateExpiryEvents() {
+    registry.close(key(0), token, true);
+    for (int i = 0; i < 1000; i++) {
+      registry.close(key(0), token, true);
+    }
+    assertEquals(1, registry.getPendingExpirationCount());
+    assertEquals(1, registry.getRetainedEntryCount());
+    assertEquals(0, registry.getActiveEntryCount());
+  }
+
   private QueryAttemptId key(int attempt) {
     return new QueryAttemptId(queryId, attempt);
   }

@@ -533,22 +533,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 instance.getFragment().getPlanNodeTree(),
                 instance.getSessionInfo() == null ? null : instance.getSessionInfo().getUserName());
     boolean transferAttemptRecorded = false;
-    boolean legacyAdmissionFallback = false;
     try (final SyncDataNodeInternalServiceClient client =
         syncInternalServiceClientManager.borrowClient(endPoint)) {
       switch (instance.getType()) {
         case READ:
           final TSendFragmentInstanceReq sendFragmentInstanceReq =
               new TSendFragmentInstanceReq(new TFragmentInstance(instance.serializeToByteBuffer()));
-          try {
-            prepareAdmission(instance, endPoint, client);
-          } catch (TApplicationException e) {
-            if (e.getType() != TApplicationException.UNKNOWN_METHOD) {
-              throw e;
-            }
-            legacyAdmissionFallback = true;
-            throw e;
-          }
+          prepareAdmission(instance, endPoint, client);
           if (instance.hasQueryAttempt()) {
             sendFragmentInstanceReq
                 .setQueryAttemptId(instance.getQueryAttemptId())
@@ -657,14 +648,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         recordWriteTransferFailureIfNecessary(endPoint, containsUserData, e);
       }
       throw e;
+    } catch (LegacyAdmissionException ignored) {
+      // The resource scope has returned the invalidated connection. Capability negotiation
+      // needs a fresh connection without consuming the FI's normal reconnect retry.
+      dispatchRemoteHelper(instance, endPoint);
     } catch (TException e) {
-      if (legacyAdmissionFallback) {
-        // UNKNOWN_METHOD invalidates the pooled connection. The resource scope above must
-        // return it before borrowing again, including when the pool has only one slot.
-        // Capability negotiation does not consume the FI's normal reconnect retry.
-        dispatchRemoteHelper(instance, endPoint);
-        return;
-      }
       if (!transferAttemptRecorded) {
         recordWriteTransferFailureIfNecessary(endPoint, containsUserData, e);
       }
@@ -866,12 +854,14 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           || ticker.getAsLong() - cached.requestStart
               >= TimeUnit.MILLISECONDS.toNanos(cached.token.getValidityMs())) {
         long requestStart = ticker.getAsLong();
+        // A short query must not leave a fence for the full socket-timeout window. This is a
+        // relative duration, so capping it does not compare coordinator and receiver clocks.
+        long validityMs = Math.min(admissionWindowMs, Math.max(1, instance.getTimeOut()));
         try {
           cached.token =
               client == null
-                  ? FragmentInstanceManager.getInstance()
-                      .fetchQueryAdmissionToken(admissionWindowMs)
-                  : client.fetchQueryAdmissionToken(admissionWindowMs);
+                  ? FragmentInstanceManager.getInstance().fetchQueryAdmissionToken(validityMs)
+                  : client.fetchQueryAdmissionToken(validityMs);
           cached.requestStart = requestStart;
         } catch (TException e) {
           Throwable cause = ExceptionUtils.getRootCause(e);
@@ -884,7 +874,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           // as legacy, then let the caller replace the connection invalidated by that handler.
           checkNotAborted();
           cached.legacy = true;
-          throw (TApplicationException) cause;
+          throw new LegacyAdmissionException(cause);
         }
       }
       synchronized (this) {
@@ -904,6 +894,15 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     Map<TEndPoint, TQueryAdmissionToken> snapshot = new HashMap<>();
     issuedAdmissionTokens.forEach((endPoint, token) -> snapshot.put(endPoint, token.deepCopy()));
     return snapshot;
+  }
+
+  /** Distinguishes capability negotiation from an error returned by the FI RPC itself. */
+  private static class LegacyAdmissionException extends TException {
+    private static final long serialVersionUID = 1L;
+
+    private LegacyAdmissionException(Throwable cause) {
+      super(cause);
+    }
   }
 
   private static class CachedAdmission {
