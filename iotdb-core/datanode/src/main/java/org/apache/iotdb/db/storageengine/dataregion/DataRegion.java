@@ -570,28 +570,29 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public LoadTsFileManager getLoadTsFileManager() {
-    LoadTsFileManager manager = loadTsFileManager;
-    if (manager == null) {
-      synchronized (this) {
-        manager = loadTsFileManager;
-        if (manager == null) {
-          manager = new LoadTsFileManager(this);
-          loadTsFileManager = manager;
+    insertLock.readLock().lock();
+    try {
+      if (deleted) {
+        throw new IllegalStateException(
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_IT_TAKES_NO_LOAD_WORK_6E05108F,
+                databaseName + "-" + dataRegionIdString));
+      }
+      LoadTsFileManager manager = loadTsFileManager;
+      if (manager == null) {
+        synchronized (this) {
+          manager = loadTsFileManager;
+          if (manager == null) {
+            manager = new LoadTsFileManager(this);
+            loadTsFileManager = manager;
+          }
         }
       }
+      return manager;
+    } finally {
+      insertLock.readLock().unlock();
     }
-    if (deleted) {
-      // The region went away: it takes no LOAD work, and the manager is stopped for good. A manager
-      // created in this window stops itself here, the one stopLoadTsFileManager saw was stopped by
-      // it.
-      manager.stop();
-      throw new IllegalStateException(
-          String.format(
-              StorageEngineMessages
-                  .STORAGE_EXCEPTION_REGION_ARG_IS_DELETED_SO_IT_TAKES_NO_LOAD_WORK_6E05108F,
-              databaseName + "-" + dataRegionIdString));
-    }
-    return manager;
   }
 
   public Optional<LoadTsFileManager> getLoadTsFileManagerIfPresent() {

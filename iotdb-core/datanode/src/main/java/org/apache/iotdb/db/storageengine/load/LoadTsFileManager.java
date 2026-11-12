@@ -435,6 +435,26 @@ public class LoadTsFileManager {
     return result;
   }
 
+  static boolean hasTerminalHistory(
+      final String databaseName, final String dataRegionId, final String loadId) {
+    for (final File historyDir : getTerminalHistoryDirs(databaseName, dataRegionId)) {
+      try {
+        if (LoadTsFileProgress.readTerminal(
+                LoadTsFileProgress.progressFileFor(new File(historyDir, loadId)))
+            != null) {
+          return true;
+        }
+      } catch (final IOException e) {
+        LOGGER.warn(
+            StorageEngineMessages.LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB,
+            historyDir.getPath(),
+            e);
+        return false;
+      }
+    }
+    return false;
+  }
+
   /** Region deletion ends consensus retries; ordinary shutdown must keep these records. */
   public static void clearTerminalHistory(final String databaseName, final String dataRegionId) {
     for (final String baseDir : LoadStagingDirs.configuredBaseDirs()) {

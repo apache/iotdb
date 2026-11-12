@@ -173,47 +173,66 @@ public class LoadTsFileCleaner {
                 new File(baseDir),
                 dataRegion.getDatabaseName(),
                 dataRegion.getDataRegionIdString());
+        scanRegion(dataRegion, regionDir);
+      }
+    }
+  }
 
-        final File[] taskDirs = regionDir.listFiles();
-        if (taskDirs == null) {
+  private void scanRegion(final DataRegion dataRegion, final File regionDir) {
+    File[] taskDirs = regionDir.listFiles();
+    if (taskDirs == null) {
+      return;
+    }
+
+    for (final File taskDir : taskDirs) {
+      if (!taskDir.isDirectory()
+          || LoadTsFileManager.TERMINAL_HISTORY_DIR.equals(taskDir.getName())
+          || loadId2RetainedTask.containsKey(taskDir.getName())) {
+        continue;
+      }
+
+      // A task the region still holds is in progress: the command path and the terminal path
+      // own it, and reading its records here would open every progress file of the directory on
+      // every scan to learn nothing. The idle timeout is still applied to it.
+      final long recordedCommandTimeMillis =
+          recordedCommandTimeMillis(dataRegion, taskDir.getName());
+      if (recordedCommandTimeMillis >= 0L) {
+        reclaimIfIdle(dataRegion, taskDir.getName(), taskDir, recordedCommandTimeMillis);
+        continue;
+      }
+
+      final LoadTsFileProgress.TerminalRecord terminal =
+          LoadTsFileProgress.readTerminalOfTaskDir(taskDir);
+      // A task that never reached COMMIT or ABORT belongs to a coordinator that died before it
+      // sent one: nothing else would ever revisit its staged data.
+      if (terminal == null) {
+        reclaimIfIdle(
+            dataRegion, taskDir.getName(), taskDir, lastCommandTimeMillis(dataRegion, taskDir));
+        continue;
+      }
+
+      // Do not release the only copy of a legacy terminal decision if its migration failed. This
+      // check also covers a manager that was initialized before this scan.
+      if (!LoadTsFileManager.hasTerminalHistory(
+          dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString(), taskDir.getName())) {
+        try {
+          dataRegion.getLoadTsFileManager();
+        } catch (final IllegalStateException e) {
+          return;
+        }
+        if (!LoadTsFileManager.hasTerminalHistory(
+                dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString(), taskDir.getName())
+            || loadId2RetainedTask.containsKey(taskDir.getName())) {
           continue;
         }
+      }
 
-        for (final File taskDir : taskDirs) {
-          if (!taskDir.isDirectory()
-              || LoadTsFileManager.TERMINAL_HISTORY_DIR.equals(taskDir.getName())
-              || loadId2RetainedTask.containsKey(taskDir.getName())) {
-            continue;
-          }
+      final RetainedTask unmanagedTask =
+          new RetainedTask(
+              taskDir.getName(), dataRegion, taskDir, terminal.searchIndex(), terminal.op());
 
-          // A task the region still holds is in progress: the command path and the terminal path
-          // own it, and reading its records here would open every progress file of the directory on
-          // every scan to learn nothing. The idle timeout is still applied to it.
-          final long recordedCommandTimeMillis =
-              recordedCommandTimeMillis(dataRegion, taskDir.getName());
-          if (recordedCommandTimeMillis >= 0L) {
-            reclaimIfIdle(dataRegion, taskDir.getName(), taskDir, recordedCommandTimeMillis);
-            continue;
-          }
-
-          final LoadTsFileProgress.TerminalRecord terminal =
-              LoadTsFileProgress.readTerminalOfTaskDir(taskDir);
-          // A task that never reached COMMIT or ABORT belongs to a coordinator that died before it
-          // sent one: nothing else would ever revisit its staged data.
-          if (terminal == null) {
-            reclaimIfIdle(
-                dataRegion, taskDir.getName(), taskDir, lastCommandTimeMillis(dataRegion, taskDir));
-            continue;
-          }
-
-          final RetainedTask unmanagedTask =
-              new RetainedTask(
-                  taskDir.getName(), dataRegion, taskDir, terminal.searchIndex(), terminal.op());
-
-          if (canDelete(unmanagedTask)) {
-            delete(unmanagedTask);
-          }
-        }
+      if (canDelete(unmanagedTask)) {
+        delete(unmanagedTask);
       }
     }
   }

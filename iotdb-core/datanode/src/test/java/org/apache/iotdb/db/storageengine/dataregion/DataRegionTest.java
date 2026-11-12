@@ -2523,6 +2523,22 @@ public class DataRegionTest {
     }
   }
 
+  @Test
+  public void testDeletedRegionDoesNotInitializeItsLoadManager() throws Exception {
+    Assert.assertTrue(dataRegion.getLoadTsFileManagerIfPresent().isEmpty());
+
+    StorageEngine.getInstance().deleteDataRegion(new DataRegionId(0));
+
+    Assert.assertTrue(dataRegion.getLoadTsFileManagerIfPresent().isEmpty());
+    try {
+      dataRegion.getLoadTsFileManager();
+      Assert.fail("A deleted region must not initialize a LOAD manager");
+    } catch (final IllegalStateException e) {
+      Assert.assertTrue(e.getMessage().contains("is deleted"));
+    }
+    Assert.assertTrue(dataRegion.getLoadTsFileManagerIfPresent().isEmpty());
+  }
+
   public static class DummyDataRegion extends DataRegion {
 
     public DummyDataRegion(String systemInfoDir, String storageGroupName)
