@@ -304,7 +304,7 @@ org.yaml:snakeyaml:2.6
 BSD 3-Clause
 ------------
 org.antlr:antlr4-runtime:4.13.2
-org.jline:jline:3.26.2
+org.jline:jline:3.30.17
 org.ow2.asm:asm:9.3
 
 

@@ -283,7 +283,7 @@ public class Cli extends AbstractCli {
     return Config.IOTDB_URL_PREFIX + formatEndpoint(host, port) + "/";
   }
 
-  private static boolean readerReadLine(CliContext ctx, IoTDBConnection connection) {
+  static boolean readerReadLine(CliContext ctx, IoTDBConnection connection) {
     String s;
     try {
       s = ctx.getLineReader().readLine(cliPrefix + "> ", null);
@@ -295,8 +295,13 @@ public class Cli extends AbstractCli {
       // Exit on signal INT requires confirmation.
       readLine(ctx);
     } catch (EndOfFileException e) {
-      // Exit on EOF (usually by pressing CTRL+D).
-      ctx.exit(CODE_OK);
+      // JLine 3.30.16 and later can report a SIGINT-interrupted PTY read as EOF.
+      if (Thread.interrupted()) {
+        readLine(ctx);
+      } else {
+        // Exit on EOF (usually by pressing CTRL+D).
+        ctx.exit(CODE_OK);
+      }
     } catch (IllegalArgumentException e) {
       if (e.getMessage().contains("history")) {
         return false;
