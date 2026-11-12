@@ -82,6 +82,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1651,6 +1652,141 @@ public class PipeRealtimeExtractTest {
   }
 
   @Test
+  public void testTsFileSourceWaitsForProcessedTabletCommits() throws Exception {
+    verifyProcessedTabletCompletion(false, false);
+  }
+
+  @Test
+  public void testTsFileSourceWaitsForDiscardedProcessedTablets() throws Exception {
+    verifyProcessedTabletCompletion(true, false);
+  }
+
+  @Test
+  public void testTsFileSourceWaitsForOriginalOrderedCommitAfterProcessedTablets()
+      throws Exception {
+    verifyProcessedTabletCompletion(true, true);
+  }
+
+  private void verifyProcessedTabletCompletion(
+      final boolean discardTablets, final boolean originalCommitPending) throws Exception {
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    final UnboundedBlockingPendingQueue<Event> pendingQueue =
+        new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
+    final List<PipeRawTabletInsertionEvent> parsedTablets = new ArrayList<>();
+    final List<PipeRawTabletInsertionEvent> generatedTablets = new ArrayList<>();
+    final PipeRealtimeEvent[] events = new PipeRealtimeEvent[2];
+    final ProgressReportEvent earlierEvent =
+        new ProgressReportEvent(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, pipeTaskMeta);
+    try (final PipeRealtimeDataRegionTsFileSource extractor =
+        createTsFileSourceForTest(
+            PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY, pipeTaskMeta)) {
+      events[0] =
+          extractTsFileForTest(
+              extractor, pipeTaskMeta, createTreeTsFileResource("127-1-0-0.tsfile"), false);
+      events[1] =
+          extractTsFileForTest(
+              extractor,
+              pipeTaskMeta,
+              createTsFileResource(dataRegion1, "127-2-0-0.tsfile"),
+              false);
+      final PipeTsFileInsertionEvent firstTsFile = (PipeTsFileInsertionEvent) extractor.supply();
+      final AtomicInteger completionCount = new AtomicInteger();
+      firstTsFile.addOnTransferredHook(completionCount::incrementAndGet);
+      if (originalCommitPending) {
+        Assert.assertTrue(earlierEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+        commitManager.enrichWithCommitterKeyAndCommitId(
+            earlierEvent, TEST_PIPE_CREATION_TIME, dataRegion1);
+        commitManager.enrichWithCommitterKeyAndCommitId(
+            firstTsFile, TEST_PIPE_CREATION_TIME, dataRegion1);
+        Assert.assertNotNull(earlierEvent.getCommitterKey());
+        Assert.assertNotNull(firstTsFile.getCommitterKey());
+      } else {
+        Assert.assertNull(firstTsFile.getCommitterKey());
+      }
+      final PipeEventCollector collector =
+          new PipeEventCollector(
+              pendingQueue,
+              TEST_PIPE_CREATION_TIME,
+              dataRegion1,
+              extractor.getSourceId(),
+              false,
+              false,
+              false);
+      firstTsFile.consumeTabletInsertionEventsWithRetry(
+          parsedTablet -> {
+            Assert.assertTrue(parsedTablet.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+            parsedTablets.add(parsedTablet);
+            // A processor may produce multiple outputs from the same parsed tablet.
+            for (int i = 0; i < 2; i++) {
+              for (final TabletInsertionEvent processedTablet :
+                  parsedTablet.processRowByRow(
+                      (row, rowCollector) -> {
+                        try {
+                          rowCollector.collectRow(row);
+                        } catch (final IOException e) {
+                          throw new RuntimeException(e);
+                        }
+                      })) {
+                collector.collect(processedTablet);
+              }
+            }
+          },
+          TEST_REFERENCE_HOLDER);
+      Assert.assertEquals(1, parsedTablets.size());
+      Assert.assertEquals(2, pendingQueue.size());
+      Assert.assertFalse(collector.isFailedToIncreaseReferenceCount());
+      while (!pendingQueue.isEmpty()) {
+        final PipeRawTabletInsertionEvent generatedTablet =
+            (PipeRawTabletInsertionEvent) pendingQueue.directPoll();
+        Assert.assertSame(parsedTablets.get(0), generatedTablet.getSourceEvent());
+        Assert.assertNotNull(generatedTablet.getCommitterKey());
+        generatedTablets.add(generatedTablet);
+      }
+
+      Assert.assertTrue(firstTsFile.decreaseReferenceCount(TEST_REFERENCE_HOLDER, false));
+      Assert.assertTrue(firstTsFile.isReleased());
+      Assert.assertEquals(0, completionCount.get());
+      Assert.assertNull(extractor.supply());
+      for (int i = 0; i < generatedTablets.size(); i++) {
+        final PipeRawTabletInsertionEvent generatedTablet = generatedTablets.get(i);
+        if (discardTablets) {
+          Assert.assertTrue(generatedTablet.clearReferenceCount(TEST_REFERENCE_HOLDER));
+        } else {
+          Assert.assertTrue(generatedTablet.decreaseReferenceCount(TEST_REFERENCE_HOLDER, true));
+        }
+        Assert.assertFalse(generatedTablet.clearReferenceCount(TEST_REFERENCE_HOLDER));
+        if (i == 0 || originalCommitPending) {
+          Assert.assertEquals(0, completionCount.get());
+          Assert.assertNull(extractor.supply());
+        }
+      }
+      if (originalCommitPending) {
+        Assert.assertTrue(earlierEvent.decreaseReferenceCount(TEST_REFERENCE_HOLDER, true));
+      }
+      Assert.assertEquals(1, completionCount.get());
+      final Event secondTsFile = extractor.supply();
+      Assert.assertSame(events[1].getEvent(), secondTsFile);
+      generatedTablets.forEach(tablet -> tablet.clearReferenceCount(TEST_REFERENCE_HOLDER));
+      Assert.assertEquals(1, completionCount.get());
+      Assert.assertNull(extractor.supply());
+      releaseSuppliedEvent(secondTsFile);
+    } finally {
+      pendingQueue.discardAllEvents();
+      generatedTablets.forEach(tablet -> tablet.clearReferenceCount(TEST_REFERENCE_HOLDER));
+      parsedTablets.forEach(tablet -> tablet.clearReferenceCount(TEST_REFERENCE_HOLDER));
+      for (final PipeRealtimeEvent event : events) {
+        if (event != null) {
+          event.clearReferenceCount(TEST_REFERENCE_HOLDER);
+        }
+      }
+      earlierEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
+  @Test
   public void testTsFileSourceRegionLevelDowngradingCompensatesForDiscardedEvents()
       throws Exception {
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
@@ -1875,6 +2011,29 @@ public class PipeRealtimeExtractTest {
   private TsFileResource createTsFileResource(final int dataRegionId, final String fileName)
       throws IOException {
     return createTsFileResource(dataRegionId, "0", fileName);
+  }
+
+  private TsFileResource createTreeTsFileResource(final String fileName) throws Exception {
+    final File dataRegionDir = new File(tsFileDir, dataRegion1 + File.separator + "0");
+    Assert.assertTrue(dataRegionDir.mkdirs() || dataRegionDir.isDirectory());
+    final File tsFile = new File(dataRegionDir, fileName);
+    final Tablet tablet =
+        new Tablet(
+            "root.sg.d",
+            Collections.singletonList(new MeasurementSchema("s0", TSDataType.INT64)),
+            1);
+    tablet.addTimestamp(0, 1);
+    tablet.addValue(0, 0, 1L);
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerTimeseries(new PartialPath("root.sg.d"), tablet.getSchemas());
+      writer.writeTree(tablet);
+    }
+    final TsFileResource resource = new TsFileResource(tsFile);
+    final IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d");
+    resource.updateStartTime(deviceId, 1);
+    resource.updateEndTime(deviceId, 1);
+    resource.close();
+    return resource;
   }
 
   private TsFileResource createTableTsFileResource(final String fileName) throws Exception {
