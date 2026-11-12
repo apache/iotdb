@@ -73,6 +73,9 @@ public class IoTDBMQTTServiceJsonIT {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableMQTTService(true);
     baseEnv.getConfig().getDataNodeConfig().setMqttPayloadFormatter(FORMATTER);
+    // Serialize CONNECT and PUBLISH callbacks so the session is registered before each
+    // payload's single publish is processed.
+    baseEnv.getConfig().getDataNodeConfig().setMqttHandlerPoolSize(1);
     baseEnv.initClusterEnvironment();
   }
 
