@@ -2814,6 +2814,9 @@ public final class DataNodeQueryMessages {
       "Failures happened during running ConfigExecution when executing {}, message: {}, status: {}";
   public static final String FAILURES_HAPPENED_DURING_RUNNING_CONFIGEXECUTION_WHEN_EXECUTING_ARG =
       "Failures happened during running ConfigExecution when executing {}.";
+  public static final String
+      LOG_FAILED_TO_CREATE_THE_TREE_TO_TABLE_VIEW_ARG_ARG_WITH_STATUS_CODE_ARG_ARG_0A3C8F10 =
+          "Failed to create the tree to table view {}.{} with status code {}: {}.";
   public static final String FAILED_TO_EXECUTE_CREATE_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG =
       "Failed to execute create database {} in config node, status is {}.";
   public static final String FAILED_TO_EXECUTE_ALTER_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG =

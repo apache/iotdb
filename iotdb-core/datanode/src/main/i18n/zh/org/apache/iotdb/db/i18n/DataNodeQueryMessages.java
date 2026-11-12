@@ -3261,6 +3261,10 @@ public final class DataNodeQueryMessages {
   public static final String FAILURES_HAPPENED_DURING_RUNNING_CONFIGEXECUTION_WHEN_EXECUTING_ARG =
 
       "执行 {} 的 ConfigExecution 期间发生失败。";
+  public static final String
+      LOG_FAILED_TO_CREATE_THE_TREE_TO_TABLE_VIEW_ARG_ARG_WITH_STATUS_CODE_ARG_ARG_0A3C8F10 =
+
+      "创建树转表视图 {}.{} 失败，状态码为 {}：{}。";
   public static final String FAILED_TO_EXECUTE_CREATE_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG =
 
       "在 config node 中执行 create database {} 失败，状态为 {}。";
