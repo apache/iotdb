@@ -32,6 +32,8 @@ import org.apache.iotdb.tool.common.Constants;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.csv.CSVFormat;
@@ -85,7 +87,7 @@ public abstract class AbstractSchemaTool {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSchemaTool.class);
 
   private static final Gson JSON_GSON = new GsonBuilder().disableHtmlEscaping().create();
-  private static final Type JSON_CELL_TYPE = new TypeToken<Map<String, String>>() {}.getType();
+  private static final Type JSON_CELL_TYPE = new TypeToken<Map<String, JsonElement>>() {}.getType();
 
   protected AbstractSchemaTool() {}
 
@@ -259,7 +261,8 @@ public abstract class AbstractSchemaTool {
    * Parses a Tags / Attributes cell written by {@link #toJsonCell(Map)}.
    *
    * @return {@code null} when the cell carries no value, never an empty map
-   * @throws com.google.gson.JsonParseException when the cell is not a JSON object
+   * @throws com.google.gson.JsonParseException when the cell is not a JSON object with string
+   *     values
    */
   static Map<String, String> parseJsonCell(String cell) {
     if (cell == null) {
@@ -269,8 +272,20 @@ public abstract class AbstractSchemaTool {
     if (trimmed.isEmpty() || "null".equals(trimmed)) {
       return null;
     }
-    Map<String, String> parsed = JSON_GSON.fromJson(trimmed, JSON_CELL_TYPE);
-    return parsed == null || parsed.isEmpty() ? null : new TreeMap<>(parsed);
+    Map<String, JsonElement> parsed = JSON_GSON.fromJson(trimmed, JSON_CELL_TYPE);
+    if (parsed == null || parsed.isEmpty()) {
+      return null;
+    }
+    Map<String, String> values = new TreeMap<>();
+    for (Map.Entry<String, JsonElement> entry : parsed.entrySet()) {
+      JsonElement value = entry.getValue();
+      if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+        throw new JsonParseException(
+            CliMessages.EXCEPTION_TAGS_AND_ATTRIBUTES_VALUES_MUST_BE_JSON_STRINGS_C0A5BF8E);
+      }
+      values.put(entry.getKey(), value.getAsString());
+    }
+    return values;
   }
 
   static class CSVPrinterWrapper {

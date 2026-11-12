@@ -115,7 +115,18 @@ public class SchemaTagsFidelityTest {
 
   @Test
   public void invalidJsonCellIsRejected() {
-    for (String cell : Arrays.asList("not json", "[1,2]", "\"abc\"", "{\"k\":\"v\"} trailing")) {
+    for (String cell :
+        Arrays.asList(
+            "not json",
+            "[1,2]",
+            "\"abc\"",
+            "{\"k\":\"v\"} trailing",
+            "{\"room\":null}",
+            "{\"room\":101}",
+            "{\"room\":true}",
+            "{\"room\":[]}",
+            "{\"room\":{}}",
+            "{\"room\":\"101\",\"room\":\"102\"}")) {
       try {
         AbstractSchemaTool.parseJsonCell(cell);
         throw new AssertionError("expected a parse failure for " + cell);
@@ -265,6 +276,56 @@ public class SchemaTagsFidelityTest {
 
     assertTrue(
         ImportSchemaTree.isV2Format(ImportSchemaTree.readHeaderNames(csv.getAbsolutePath())));
+  }
+
+  @Test
+  public void v2HeaderDetectionAndParsingSkipEmptyLinesAndBom() throws IOException {
+    for (String prefix : Arrays.asList("\n", "\r\n\r\n", "\uFEFF", "\uFEFF\r\n\r\n")) {
+      for (boolean quotedHeader : Arrays.asList(false, true)) {
+        File csv = temporaryFolder.newFile();
+        String header =
+            quotedHeader
+                ? "\"" + String.join("\",\"", Constants.HEAD_COLUMNS_V2) + "\""
+                : String.join(",", Constants.HEAD_COLUMNS_V2);
+        Files.write(
+            csv.toPath(),
+            (prefix
+                    + header
+                    + "\r\nroot.sg.d.s1,,INT64,TS_2DIFF,SNAPPY,"
+                    + "\"{\"\"room\"\":\"\"a,b\"\"}\",\r\n")
+                .getBytes(StandardCharsets.UTF_8));
+
+        assertEquals(
+            Constants.HEAD_COLUMNS_V2, ImportSchemaTree.readHeaderNames(csv.getAbsolutePath()));
+        try (CSVParser parser = ImportSchemaTree.readCsvFile(csv.getAbsolutePath())) {
+          assertEquals(Constants.HEAD_COLUMNS_V2, parser.getHeaderNames());
+          assertTrue(ImportSchemaTree.checkHeader(parser.getHeaderNames()));
+          List<CSVRecord> records = parser.getRecords();
+          assertEquals(1, records.size());
+          assertEquals(7, records.get(0).size());
+          assertEquals("{\"room\":\"a,b\"}", records.get(0).get(Constants.HEADER_TAGS));
+        }
+      }
+    }
+  }
+
+  @Test
+  public void legacyHeaderHandlingPreservesBackticksAndBackslashEscapes() throws IOException {
+    File csv = temporaryFolder.newFile();
+    Files.write(
+        csv.toPath(),
+        ("\uFEFF\n\nTimeseries,Alias,DataType,Encoding,Compression\n"
+                + "`root.sg.d.s1`,a\\,b,INT64,TS_2DIFF,SNAPPY\n")
+            .getBytes(StandardCharsets.UTF_8));
+
+    assertEquals(Constants.HEAD_COLUMNS, ImportSchemaTree.readHeaderNames(csv.getAbsolutePath()));
+    try (CSVParser parser = ImportSchemaTree.readCsvFile(csv.getAbsolutePath())) {
+      assertEquals(Constants.HEAD_COLUMNS, parser.getHeaderNames());
+      CSVRecord record = parser.getRecords().get(0);
+      assertEquals(5, record.size());
+      assertEquals("root.sg.d.s1", record.get(Constants.HEADER_TIMESERIES));
+      assertEquals("a,b", record.get(Constants.HEADER_ALIAS));
+    }
   }
 
   @Test

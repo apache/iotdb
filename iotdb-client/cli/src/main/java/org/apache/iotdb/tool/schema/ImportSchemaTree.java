@@ -22,6 +22,7 @@ package org.apache.iotdb.tool.schema;
 import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -104,8 +105,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
 
   @Override
   protected void importSchemaFromCsvFile(File file) {
-    try {
-      CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
+    try (CSVParser csvRecords = readCsvFile(file.getAbsolutePath())) {
       List<String> headerNames = csvRecords.getHeaderNames();
       Stream<CSVRecord> records = csvRecords.stream();
       if (headerNames.isEmpty()) {
@@ -145,9 +145,18 @@ public class ImportSchemaTree extends AbstractImportSchema {
     } else {
       builder.setQuote('`').setEscape('\\');
     }
-    return builder
-        .build()
-        .parse(new InputStreamReader(new FileInputStream(path), StandardCharsets.UTF_8));
+    return builder.build().parse(openCsvReader(path));
+  }
+
+  private static BufferedReader openCsvReader(String path) throws IOException {
+    BufferedReader reader =
+        new BufferedReader(
+            new InputStreamReader(new FileInputStream(path), StandardCharsets.UTF_8));
+    reader.mark(1);
+    if (reader.read() != '\uFEFF') {
+      reader.reset();
+    }
+    return reader;
   }
 
   /**
@@ -155,10 +164,11 @@ public class ImportSchemaTree extends AbstractImportSchema {
    * file can be selected before it is read.
    */
   static List<String> readHeaderNames(String path) throws IOException {
-    try (BufferedReader reader =
-        new BufferedReader(
-            new InputStreamReader(new FileInputStream(path), StandardCharsets.UTF_8))) {
-      String headerLine = reader.readLine();
+    try (BufferedReader reader = openCsvReader(path)) {
+      String headerLine;
+      do {
+        headerLine = reader.readLine();
+      } while (headerLine != null && headerLine.isEmpty());
       if (headerLine == null) {
         return Collections.emptyList();
       }
@@ -237,7 +247,6 @@ public class ImportSchemaTree extends AbstractImportSchema {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
     records.forEach(
         recordObj -> {
-          boolean failed = false;
           if (!aligned) {
             if (Boolean.FALSE.equals(hasStarted.get())) {
               hasStarted.set(true);
@@ -284,6 +293,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
               pointSize.set(0);
             }
           } else {
+            hasStarted.set(true);
             paths.clear();
             dataTypes.clear();
             encodings.clear();
@@ -337,7 +347,6 @@ public class ImportSchemaTree extends AbstractImportSchema {
                     headerNames,
                     path));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
-            failed = true;
           } else if (ObjectUtils.isEmpty(dataType)) {
             ioTPrinter.println(
                 String.format(
@@ -346,7 +355,6 @@ public class ImportSchemaTree extends AbstractImportSchema {
                     path,
                     dataTypeRaw));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
-            failed = true;
           } else if (ObjectUtils.isEmpty(encodingType)) {
             ioTPrinter.println(
                 String.format(
@@ -355,7 +363,6 @@ public class ImportSchemaTree extends AbstractImportSchema {
                     path,
                     encodingTypeRaw));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
-            failed = true;
           } else if (ObjectUtils.isEmpty(compressionType)) {
             ioTPrinter.println(
                 String.format(
@@ -364,10 +371,41 @@ public class ImportSchemaTree extends AbstractImportSchema {
                     path,
                     compressionTypeRaw));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
-            failed = true;
           } else if (!tagsParsed) {
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
-            failed = true;
+          } else if (aligned) {
+            MeasurementPath timeseries;
+            try {
+              timeseries = new MeasurementPath(path);
+            } catch (IllegalPathException | IllegalArgumentException e) {
+              ioTPrinter.println(
+                  String.format(
+                      CliMessages.MESSAGE_LINE_ARG_COLUMN_ARG_ILLEGAL_PATH_ARG_D5C1EBD6,
+                      recordObj.getRecordNumber(),
+                      headerNames,
+                      path));
+              failedRecords.add(recordObj.stream().collect(Collectors.toList()));
+              return;
+            }
+            paths.add(timeseries.getMeasurement());
+            dataTypes.add(dataType);
+            encodings.add(encodingType);
+            compressors.add(compressionType);
+            measurementAlias.add(StringUtils.isBlank(alias) ? null : alias);
+            if (v2) {
+              tags.add(recordTags);
+              attributes.add(recordAttributes);
+            }
+            writeAndEmptyDataSetAligned(
+                timeseries.getDevicePath().getFullPath(),
+                paths,
+                dataTypes,
+                encodings,
+                compressors,
+                measurementAlias,
+                tags,
+                attributes,
+                3);
           } else {
             if (StringUtils.isBlank(alias)) {
               paths.add(path);
@@ -390,25 +428,6 @@ public class ImportSchemaTree extends AbstractImportSchema {
               }
             }
             pointSize.getAndIncrement();
-          }
-          if (!failed && aligned) {
-            String deviceId = path.substring(0, path.lastIndexOf("."));
-            paths.add(0, path.substring(deviceId.length() + 1));
-            if (v2) {
-              // keep the maps aligned with the measurements list, whose head now holds this one
-              tags.add(0, recordTags);
-              attributes.add(0, recordAttributes);
-            }
-            writeAndEmptyDataSetAligned(
-                deviceId,
-                paths,
-                dataTypes,
-                encodings,
-                compressors,
-                measurementAlias,
-                tags,
-                attributes,
-                3);
           }
         });
     try {

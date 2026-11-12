@@ -34,6 +34,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -50,6 +51,7 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -198,6 +200,140 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
     } else {
       testOnUnix();
     }
+  }
+
+  @Test
+  public void alignedImportThroughCliPreservesEveryRow() throws Exception {
+    String database = "root.aligned_schema_import";
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.createDatabase(database);
+    }
+    Map<String, Series> expected = new LinkedHashMap<>();
+    expected.put(
+        database + ".d1.s1",
+        new Series(
+            Format.INT32_TS_2DIFF_SNAPPY, mapOf("room", "a,b"), mapOf("owner", "中文😀"), "alias1"));
+    expected.put(
+        database + ".d1.s2",
+        new Series(Format.TEXT_DICTIONARY_SNAPPY, NO_VALUES, mapOf("note", "v2"), null));
+    expected.put(
+        database + ".d2.`s.3`",
+        new Series(Format.FLOAT_GORILLA_GZIP, mapOf("room", "101"), NO_VALUES, "alias3"));
+    Path csv = writeSchemaFile("aligned.csv", expected, false);
+    // Exercise the same BOM/empty-line rules through the actual script and parser as well.
+    Files.writeString(
+        csv, "\uFEFF\n\n" + Files.readString(csv, StandardCharsets.UTF_8), StandardCharsets.UTF_8);
+    boolean windows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+    testOutput(
+        importProcessBuilder(windows, csv, "-aligned", "true"),
+        new String[] {Constants.IMPORT_COMPLETELY},
+        0);
+    assertSchemaEquals(expected, readSchema(database));
+
+    Map<String, Series> legacy = new LinkedHashMap<>();
+    legacy.put(
+        database + ".legacy.s1",
+        new Series(Format.BOOLEAN_PLAIN_SNAPPY, NO_VALUES, NO_VALUES, null));
+    legacy.put(
+        database + ".legacy.s2",
+        new Series(Format.DOUBLE_GORILLA_LZ4, NO_VALUES, NO_VALUES, "legacyAlias"));
+    testOutput(
+        importProcessBuilder(
+            windows, writeSchemaFile("legacy-aligned.csv", legacy, true), "-aligned", "true"),
+        new String[] {Constants.IMPORT_COMPLETELY},
+        0);
+    expected.putAll(legacy);
+    assertSchemaEquals(expected, readSchema(database));
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection();
+        SessionDataSet devices =
+            session.executeQueryStatement("SHOW DEVICES " + database + ".**")) {
+      int alignedIndex = devices.getColumnNames().indexOf("IsAligned");
+      assertTrue(devices.getColumnNames().toString(), alignedIndex >= 0);
+      int count = 0;
+      while (devices.hasNext()) {
+        assertEquals("true", cell(devices.next().getFields(), alignedIndex));
+        count++;
+      }
+      assertEquals(3, count);
+    }
+  }
+
+  @Test
+  public void invalidMetadataIsIsolatedFromValidRowsThroughCli() throws Exception {
+    String database = "root.invalid_schema_metadata";
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.createDatabase(database);
+    }
+    Map<String, Series> expected = new LinkedHashMap<>();
+    expected.put(
+        database + ".d1.s1",
+        new Series(Format.INT32_TS_2DIFF_SNAPPY, mapOf("room", "101"), NO_VALUES, null));
+    expected.put(
+        database + ".d2.s2",
+        new Series(Format.TEXT_DICTIONARY_SNAPPY, NO_VALUES, mapOf("note", "null"), "alias2"));
+    Path csv = writeSchemaFile("invalid-metadata.csv", expected, false);
+    List<List<String>> invalidRows = new ArrayList<>();
+    StringWriter invalidContent = new StringWriter();
+    try (CSVPrinter printer = CSVFormat.DEFAULT.print(invalidContent)) {
+      for (String value : Arrays.asList("null", "101", "true", "[]", "{}")) {
+        for (int column = 5; column <= 6; column++) {
+          List<String> row =
+              new ArrayList<>(
+                  Arrays.asList(
+                      database + ".invalid.s" + invalidRows.size(),
+                      "",
+                      "INT32",
+                      "TS_2DIFF",
+                      "SNAPPY",
+                      "",
+                      ""));
+          row.set(column, "{\"room\":" + value + "}");
+          invalidRows.add(row);
+          printer.printRecord(row);
+        }
+      }
+    }
+    Files.writeString(
+        csv,
+        "\uFEFF\n\n" + Files.readString(csv, StandardCharsets.UTF_8) + invalidContent,
+        StandardCharsets.UTF_8);
+    boolean windows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+    testOutput(importProcessBuilder(windows, csv), new String[] {Constants.IMPORT_COMPLETELY}, 0);
+    assertSchemaEquals(expected, readSchema(database));
+    try (CSVParser parser =
+        CSVParser.parse(new File(csv + ".failed_0"), StandardCharsets.UTF_8, CSVFormat.DEFAULT)) {
+      assertEquals(
+          invalidRows,
+          parser.getRecords().stream()
+              .map(record -> record.stream().collect(Collectors.toList()))
+              .collect(Collectors.toList()));
+    }
+  }
+
+  private Path writeSchemaFile(String name, Map<String, Series> schema, boolean legacy)
+      throws IOException {
+    Path csv = folder.newFile(name).toPath();
+    try (CSVPrinter printer = CSVFormat.DEFAULT.print(csv, StandardCharsets.UTF_8)) {
+      printer.printRecord(legacy ? Constants.HEAD_COLUMNS : Constants.HEAD_COLUMNS_V2);
+      for (Map.Entry<String, Series> entry : schema.entrySet()) {
+        Series series = entry.getValue();
+        List<String> row =
+            new ArrayList<>(
+                Arrays.asList(
+                    entry.getKey(),
+                    series.alias == null ? "" : series.alias,
+                    series.format.dataType.name(),
+                    series.format.encoding.name(),
+                    series.format.compression.name()));
+        if (!legacy) {
+          row.add(GSON.toJson(series.tags));
+          row.add(GSON.toJson(series.attributes));
+        }
+        printer.printRecord(row);
+      }
+    }
+    return csv;
   }
 
   @Override
@@ -399,9 +535,14 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
 
   private static void assertSchemaRestored()
       throws IoTDBConnectionException, StatementExecutionException {
-    final Map<String, Series> restored = readSchema();
-    assertEquals("the import must restore every time series", CREATED.keySet(), restored.keySet());
-    for (Map.Entry<String, Series> entry : CREATED.entrySet()) {
+    assertSchemaEquals(CREATED, readSchema());
+  }
+
+  private static void assertSchemaEquals(
+      Map<String, Series> expectedSchema, Map<String, Series> restored) {
+    assertEquals(
+        "the import must restore every time series", expectedSchema.keySet(), restored.keySet());
+    for (Map.Entry<String, Series> entry : expectedSchema.entrySet()) {
       final String path = entry.getKey();
       final Series expected = entry.getValue();
       final Series actual = restored.get(path);
@@ -415,10 +556,15 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
   /** Reads the tags, attributes and alias of every time series of the test database. */
   private static Map<String, Series> readSchema()
       throws IoTDBConnectionException, StatementExecutionException {
+    return readSchema(DATABASE);
+  }
+
+  private static Map<String, Series> readSchema(String database)
+      throws IoTDBConnectionException, StatementExecutionException {
     final Map<String, Series> schema = new TreeMap<>();
     try (ISession session = EnvFactory.getEnv().getSessionConnection();
         SessionDataSet dataSet =
-            session.executeQueryStatement("SHOW TIMESERIES " + DATABASE + ".**")) {
+            session.executeQueryStatement("SHOW TIMESERIES " + database + ".**")) {
       final List<String> columns = dataSet.getColumnNames();
       final int timeseriesIndex = columns.indexOf("Timeseries");
       final int aliasIndex = columns.indexOf("Alias");
@@ -502,11 +648,12 @@ public class SchemaTagsRoundTripIT extends AbstractScriptIT {
     return processBuilder(command, windows);
   }
 
-  private ProcessBuilder importProcessBuilder(boolean windows, Path csv) {
+  private ProcessBuilder importProcessBuilder(boolean windows, Path csv, String... options) {
     final List<String> command = new ArrayList<>();
     addScriptInvocation(command, windows, "import-schema");
     addConnectionArguments(command);
     command.addAll(Arrays.asList("-db", DATABASE, "-s", csv.toAbsolutePath().toString()));
+    command.addAll(Arrays.asList(options));
     return processBuilder(command, windows);
   }
 

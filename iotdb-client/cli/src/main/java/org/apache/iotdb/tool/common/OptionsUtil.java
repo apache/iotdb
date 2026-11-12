@@ -1210,6 +1210,15 @@ public class OptionsUtil extends Constants {
   public static Options createImportSchemaOptions() {
     Options options = createCommonOptions(new Options());
 
+    Option opAligned =
+        Option.builder(ALIGNED_ARGS)
+            .longOpt(ALIGNED_NAME)
+            .argName(ALIGNED_ARGS_NAME_IMPORT)
+            .hasArg()
+            .desc(ALIGNED_IMPORT_DESC)
+            .build();
+    options.addOption(opAligned);
+
     Option opFile =
         Option.builder(FILE_ARGS)
             .required()

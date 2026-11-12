@@ -21,7 +21,13 @@ package org.apache.iotdb.tool.schema;
 
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tool.common.Constants;
+import org.apache.iotdb.tool.common.OptionsUtil;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.collections4.CollectionUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -41,7 +47,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -50,6 +55,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /** Checks that the import passes the parsed tags and attributes on to the client API. */
@@ -62,6 +68,18 @@ public class SchemaTagsImportTest {
     ImportSchemaTree.sessionPool = null;
     ImportSchemaTree.aligned = false;
     ImportSchemaTree.batchPointSize = Constants.BATCH_POINT_SIZE;
+  }
+
+  @Test
+  public void alignedOptionIsAcceptedByTheImportSchemaCli() throws Exception {
+    for (String option : Arrays.asList("-aligned", "--use_aligned")) {
+      CommandLine commandLine =
+          new DefaultParser()
+              .parse(
+                  OptionsUtil.createImportSchemaOptions(),
+                  new String[] {"-s", "schema.csv", option, "true"});
+      assertEquals("true", commandLine.getOptionValue(Constants.ALIGNED_ARGS));
+    }
   }
 
   @Test
@@ -157,21 +175,168 @@ public class SchemaTagsImportTest {
             + AbstractSchemaTool.toJsonCell(attributes).replace("\"", "\"\"")
             + "\"\n");
 
-    // the pre-existing aligned path hands over both the measurement and the full path, so the maps
-    // must be built with the same shape to stay positionally aligned
     assertEquals(
         Arrays.asList(
             "root.sg.d",
-            Arrays.asList("s1", "root.sg.d.s1"),
+            Arrays.asList("s1"),
             Arrays.asList(TSDataType.INT64),
             Arrays.asList(TSEncoding.TS_2DIFF),
             Arrays.asList(CompressionType.SNAPPY),
-            new ArrayList<String>(),
-            Arrays.asList(new LinkedHashMap<>(tags), new LinkedHashMap<>(tags)),
-            Arrays.asList(new LinkedHashMap<>(attributes), new LinkedHashMap<>(attributes))),
+            Arrays.asList((String) null),
+            Arrays.asList(new LinkedHashMap<>(tags)),
+            Arrays.asList(new LinkedHashMap<>(attributes))),
         alignedCall);
     verify(pool, never())
         .createMultiTimeseries(any(), any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  public void alignedRowsKeepAliasesAndMetadataPairedAcrossDevices() throws Exception {
+    SessionPool pool = mock(SessionPool.class);
+    ImportSchemaTree.sessionPool = pool;
+    ImportSchemaTree.aligned = true;
+    List<List<Object>> calls = new ArrayList<>();
+    doAnswer(
+            call -> {
+              List<Object> snapshot = new ArrayList<>();
+              for (Object argument : call.getArguments()) {
+                snapshot.add(
+                    argument instanceof List ? new ArrayList<>((List<?>) argument) : argument);
+              }
+              calls.add(snapshot);
+              return null;
+            })
+        .when(pool)
+        .createAlignedTimeseries(any(), any(), any(), any(), any(), any(), any(), any());
+
+    runImport(
+        String.join(",", Constants.HEAD_COLUMNS_V2)
+            + "\nroot.sg.d.s1,alias1,INT64,TS_2DIFF,SNAPPY,\"{\"\"k\"\":\"\"v1\"\"}\",\n"
+            + "root.sg.d.s2,,TEXT,PLAIN,LZ4,,\"{\"\"k\"\":\"\"v2\"\"}\"\n"
+            + "root.sg.other.`s.3`,alias3,BOOLEAN,PLAIN,GZIP,,\n");
+
+    assertEquals(
+        Arrays.asList(
+            Arrays.asList(
+                "root.sg.d",
+                Collections.singletonList("s1"),
+                Collections.singletonList(TSDataType.INT64),
+                Collections.singletonList(TSEncoding.TS_2DIFF),
+                Collections.singletonList(CompressionType.SNAPPY),
+                Collections.singletonList("alias1"),
+                Collections.singletonList(Collections.singletonMap("k", "v1")),
+                Collections.singletonList(null)),
+            Arrays.asList(
+                "root.sg.d",
+                Collections.singletonList("s2"),
+                Collections.singletonList(TSDataType.TEXT),
+                Collections.singletonList(TSEncoding.PLAIN),
+                Collections.singletonList(CompressionType.LZ4),
+                Collections.singletonList(null),
+                Collections.singletonList(null),
+                Collections.singletonList(Collections.singletonMap("k", "v2"))),
+            Arrays.asList(
+                "root.sg.other",
+                Collections.singletonList("`s.3`"),
+                Collections.singletonList(TSDataType.BOOLEAN),
+                Collections.singletonList(TSEncoding.PLAIN),
+                Collections.singletonList(CompressionType.GZIP),
+                Collections.singletonList("alias3"),
+                Collections.singletonList(null),
+                Collections.singletonList(null))),
+        calls);
+    verify(pool, never())
+        .createMultiTimeseries(any(), any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  public void legacyAlignedImportKeepsTheLegacyApi() throws Exception {
+    SessionPool pool = mock(SessionPool.class);
+    ImportSchemaTree.sessionPool = pool;
+    ImportSchemaTree.aligned = true;
+    // Snapshot mutable arguments before the writer clears them.
+    List<Object> callArguments = new ArrayList<>();
+    doAnswer(
+            call -> {
+              for (Object argument : call.getArguments()) {
+                callArguments.add(
+                    argument instanceof List ? new ArrayList<>((List<?>) argument) : argument);
+              }
+              return null;
+            })
+        .when(pool)
+        .createAlignedTimeseries(any(), any(), any(), any(), any(), any());
+
+    runImport(
+        "Timeseries,Alias,DataType,Encoding,Compression\n"
+            + "root.sg.d.s1,alias1,INT64,TS_2DIFF,SNAPPY\n");
+
+    assertEquals(
+        Arrays.asList(
+            "root.sg.d",
+            Collections.singletonList("s1"),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList(TSEncoding.TS_2DIFF),
+            Collections.singletonList(CompressionType.SNAPPY),
+            Collections.singletonList("alias1")),
+        callArguments);
+    verify(pool, never())
+        .createAlignedTimeseries(any(), any(), any(), any(), any(), any(), any(), any());
+    verify(pool, never())
+        .createMultiTimeseries(any(), any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  public void invalidMetadataDoesNotPoisonTheBatchAndIsWrittenToFailedFile() throws Exception {
+    SessionPool pool = mock(SessionPool.class);
+    ImportSchemaTree.sessionPool = pool;
+    File csv = temporaryFolder.newFile("invalid-metadata.csv");
+    List<List<String>> invalidRecords = new ArrayList<>();
+    try (CSVPrinter printer = CSVFormat.DEFAULT.print(csv.toPath(), StandardCharsets.UTF_8)) {
+      printer.printRecord(Constants.HEAD_COLUMNS_V2);
+      printer.printRecord("root.sg.d.valid1", "", "INT64", "TS_2DIFF", "SNAPPY", "", "");
+      for (String invalidValue : Arrays.asList("null", "101", "true", "[]", "{}")) {
+        for (int column = 5; column <= 6; column++) {
+          List<String> row =
+              new ArrayList<>(
+                  Arrays.asList(
+                      "root.sg.d.invalid" + invalidRecords.size(),
+                      "",
+                      "INT64",
+                      "TS_2DIFF",
+                      "SNAPPY",
+                      "",
+                      ""));
+          row.set(column, "{\"room\":" + invalidValue + "}");
+          invalidRecords.add(row);
+          printer.printRecord(row);
+        }
+      }
+      printer.printRecord("root.sg.d.valid2", "", "TEXT", "PLAIN", "LZ4", "", "");
+    }
+    runImportCsv(csv);
+
+    verify(pool, times(1))
+        .createMultiTimeseries(
+            Arrays.asList("root.sg.d.valid1", "root.sg.d.valid2"),
+            Arrays.asList(TSDataType.INT64, TSDataType.TEXT),
+            Arrays.asList(TSEncoding.TS_2DIFF, TSEncoding.PLAIN),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.LZ4),
+            null,
+            Arrays.asList(null, null),
+            Arrays.asList(null, null),
+            null);
+    try (CSVParser parser =
+        CSVParser.parse(
+            new File(temporaryFolder.getRoot(), "failed_0"),
+            StandardCharsets.UTF_8,
+            CSVFormat.DEFAULT)) {
+      assertEquals(
+          invalidRecords,
+          parser.getRecords().stream()
+              .map(record -> record.stream().collect(Collectors.toList()))
+              .collect(Collectors.toList()));
+    }
   }
 
   @Test
@@ -279,10 +444,10 @@ public class SchemaTagsImportTest {
 
   private void runImportCsv(File csv) throws Exception {
     String failedFilePath = temporaryFolder.getRoot().getAbsolutePath() + "/failed";
-    try (Stream<org.apache.commons.csv.CSVRecord> records =
-        ImportSchemaTree.readCsvFile(csv.getAbsolutePath()).stream()) {
-      List<String> headerNames = ImportSchemaTree.readHeaderNames(csv.getAbsolutePath());
-      ImportSchemaTree.writeScheme(csv.getName(), headerNames, records, failedFilePath);
+    try (CSVParser parser = ImportSchemaTree.readCsvFile(csv.getAbsolutePath())) {
+      List<String> headerNames = parser.getHeaderNames();
+      assertTrue(ImportSchemaTree.checkHeader(headerNames));
+      ImportSchemaTree.writeScheme(csv.getName(), headerNames, parser.stream(), failedFilePath);
     }
   }
 }

@@ -152,6 +152,8 @@ public final class CliMessages {
   public static final String
       MESSAGE_FAILED_TO_PARSE_THE_ARG_COLUMN_OF_TIMESERIES_ARG_AS_JSON_THE_RECORD_IS_SKIPPED_ARG_35D898C8 =
           "时序 JSON 解析失败，列：%s，时序：%s，已跳过该记录，原因：%s";
+  public static final String EXCEPTION_TAGS_AND_ATTRIBUTES_VALUES_MUST_BE_JSON_STRINGS_C0A5BF8E =
+      "Tags 和 Attributes 的值必须是 JSON 字符串";
 
   private CliMessages() {}
 
