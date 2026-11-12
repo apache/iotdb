@@ -73,7 +73,7 @@ public class IoTDBAggregationFirstInGroupIT {
             + "(-21,  40,   40,   40.0,   40.0,   false, '40s',   40,   'p2')," // Previous Valid
             + "(-102, 20,   20,   20.0,   20.0,   true,  '20s',   NULL, 'p2')," // Null Time
             + "(33,   NULL, 5,    5.0,    NULL,   false,  NULL,   5,    'p2'),"
-            + "(100,  100,  100,  100.0,  100,    100,    100,    100,  'p2'),"
+            + "(100,  100,  100,  100.0,  100,    true,   100,    100,  'p2'),"
 
             // Partition 'p3': Only Null Time Scenario
             // Logic: No Valid Time. "First Null Wins" strategy applies.
