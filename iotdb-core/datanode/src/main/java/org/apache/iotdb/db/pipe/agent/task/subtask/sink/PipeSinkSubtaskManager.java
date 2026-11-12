@@ -148,6 +148,13 @@ public class PipeSinkSubtaskManager {
         try {
           if (pipeSink instanceof IoTDBDataRegionAsyncSink) {
             ((IoTDBDataRegionAsyncSink) pipeSink).setTransferTsFileCounter(counter);
+            if (pendingQueue instanceof PipeRealtimePriorityBlockingQueue) {
+              final PipeRealtimePriorityBlockingQueue realtimeQueue =
+                  (PipeRealtimePriorityBlockingQueue) pendingQueue;
+              realtimeQueue.enableTsFileStartupReservation();
+              ((IoTDBDataRegionAsyncSink) pipeSink)
+                  .setTransferTsFileStartupReservationQueue(realtimeQueue);
+            }
           }
           pipeSink.validate(new PipeParameterValidator(pipeSinkParameters));
           pipeSink.customize(pipeSinkParameters, new PipeTaskRuntimeConfiguration(environment));

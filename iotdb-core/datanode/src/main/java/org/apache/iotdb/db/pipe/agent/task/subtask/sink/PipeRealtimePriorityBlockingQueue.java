@@ -41,8 +41,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -75,6 +77,11 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   private AtomicInteger offerTsFileCounter = new AtomicInteger(0);
 
   private final AtomicInteger waitingPollers = new AtomicInteger(0);
+
+  private final Set<TsFileInsertionEvent> reservedTsFileStartupEvents =
+      Collections.newSetFromMap(new IdentityHashMap<>());
+
+  private volatile boolean reserveTsFileStartupOnPoll;
 
   public PipeRealtimePriorityBlockingQueue() {
     this(false);
@@ -132,7 +139,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
     if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()
         && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
-      event = pollTsFileEvent(pollHistoricalTsFileThreshold);
+      event =
+          pollTsFileEventIfCapacityAvailable(
+              pollHistoricalTsFileThreshold, realTimeQueueMaxWaitingTsFileSize);
       pollTsFileCounter.set(0);
     }
 
@@ -140,7 +149,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
       if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
-        event = pollTsFileEvent(pollHistoricalTsFileThreshold);
+        event =
+            pollTsFileEventIfCapacityAvailable(
+                pollHistoricalTsFileThreshold, realTimeQueueMaxWaitingTsFileSize);
       }
       if (event != null) {
         pollTsFileCounter.incrementAndGet();
@@ -171,7 +182,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
     if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()
         && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
-      event = pollTsFileEvent(pollHistoricalTsFileThreshold);
+      event =
+          pollTsFileEventIfCapacityAvailable(
+              pollHistoricalTsFileThreshold, realTimeQueueMaxWaitingTsFileSize);
       pollTsFileCounter.set(0);
     }
     if (event == null) {
@@ -179,7 +192,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       event = super.directPoll();
       if (event == null && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
         // Keep excess TsFiles in this queue so compaction can still replace them.
-        event = pollTsFileEventIfPresent(pollHistoricalTsFileThreshold);
+        event =
+            pollTsFileEventIfCapacityAvailable(
+                pollHistoricalTsFileThreshold, realTimeQueueMaxWaitingTsFileSize);
       }
       if (event != null) {
         pollTsFileCounter.incrementAndGet();
@@ -190,7 +205,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     if (Objects.isNull(event)) {
       event = waitedPollNonTsFileEvent(realTimeQueueMaxWaitingTsFileSize);
       if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
-        event = pollTsFileEvent(pollHistoricalTsFileThreshold);
+        event =
+            pollTsFileEventIfCapacityAvailable(
+                pollHistoricalTsFileThreshold, realTimeQueueMaxWaitingTsFileSize);
       }
       if (event != null) {
         pollTsFileCounter.incrementAndGet();
@@ -403,6 +420,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   @Override
   public void clear() {
+    clearTsFileStartupReservations(event -> true);
     super.clear();
     tsfileInsertEventDeque.clear();
   }
@@ -415,6 +433,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   @Override
   public void discardAllEvents() {
+    clearTsFileStartupReservations(event -> true);
     super.discardAllEvents();
     tsfileInsertEventDeque.removeIf(
         event -> {
@@ -437,6 +456,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public void discardEventsOfPipe(final CommitterKey committerKey) {
     super.discardEventsOfPipe(committerKey);
+    clearTsFileStartupReservations(
+        event ->
+            event instanceof EnrichedEvent && isEventFromPipe((EnrichedEvent) event, committerKey));
     tsfileInsertEventDeque.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
@@ -466,14 +488,20 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     return tsfileInsertEventDeque.size();
   }
 
-  private TsFileInsertionEvent pollTsFileEvent(final int pollHistoricalTsFileThreshold) {
-    return pollTsFileEventWithoutLock(pollHistoricalTsFileThreshold);
-  }
+  private TsFileInsertionEvent pollTsFileEventIfCapacityAvailable(
+      final int pollHistoricalTsFileThreshold, final int maxWaitingTsFiles) {
+    synchronized (offerTsFileCounter) {
+      if (offerTsFileCounter.get() >= maxWaitingTsFiles) {
+        return null;
+      }
 
-  private TsFileInsertionEvent pollTsFileEventIfPresent(final int pollHistoricalTsFileThreshold) {
-    return tsfileInsertEventDeque.isEmpty()
-        ? null
-        : pollTsFileEventWithoutLock(pollHistoricalTsFileThreshold);
+      final TsFileInsertionEvent event = pollTsFileEventWithoutLock(pollHistoricalTsFileThreshold);
+      if (event != null && reserveTsFileStartupOnPoll) {
+        offerTsFileCounter.incrementAndGet();
+        reservedTsFileStartupEvents.add(event);
+      }
+      return event;
+    }
   }
 
   private TsFileInsertionEvent pollTsFileEventWithoutLock(final int pollHistoricalTsFileThreshold) {
@@ -488,5 +516,39 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   public synchronized void setOfferTsFileCounter(AtomicInteger offerTsFileCounter) {
     this.offerTsFileCounter = offerTsFileCounter;
+  }
+
+  public void enableTsFileStartupReservation() {
+    reserveTsFileStartupOnPoll = true;
+  }
+
+  public boolean consumeTsFileStartupReservation(final TsFileInsertionEvent event) {
+    synchronized (offerTsFileCounter) {
+      return reservedTsFileStartupEvents.remove(event);
+    }
+  }
+
+  public boolean cancelTsFileStartupReservation(final TsFileInsertionEvent event) {
+    synchronized (offerTsFileCounter) {
+      if (!reservedTsFileStartupEvents.remove(event)) {
+        return false;
+      }
+      offerTsFileCounter.decrementAndGet();
+      offerTsFileCounter.notifyAll();
+      return true;
+    }
+  }
+
+  private void clearTsFileStartupReservations(
+      final java.util.function.Predicate<TsFileInsertionEvent> predicate) {
+    synchronized (offerTsFileCounter) {
+      final int sizeBefore = reservedTsFileStartupEvents.size();
+      reservedTsFileStartupEvents.removeIf(predicate);
+      final int canceledReservations = sizeBefore - reservedTsFileStartupEvents.size();
+      if (canceledReservations > 0) {
+        offerTsFileCounter.addAndGet(-canceledReservations);
+        offerTsFileCounter.notifyAll();
+      }
+    }
   }
 }

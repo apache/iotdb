@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler.PipeTransferTsFileHandler;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.junit.Assert;
@@ -53,22 +54,48 @@ import static org.awaitility.Awaitility.await;
 public class IoTDBDataRegionAsyncSinkTest {
 
   @Test
+  public void testUnsupportedTsFileReleasesStartupReservation() throws Exception {
+    final AtomicInteger counter = new AtomicInteger(0);
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue();
+    queue.setOfferTsFileCounter(counter);
+    queue.enableTsFileStartupReservation();
+
+    final TsFileInsertionEvent event = Mockito.mock(TsFileInsertionEvent.class);
+    Assert.assertTrue(queue.offer(event));
+    Assert.assertSame(event, queue.directPoll());
+    Assert.assertEquals(1, counter.get());
+
+    final IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink();
+    sink.setTransferTsFileCounter(counter);
+    sink.setTransferTsFileStartupReservationQueue(queue);
+    sink.transfer(event);
+
+    Assert.assertEquals(0, counter.get());
+  }
+
+  @Test
   public void testTsFileStartupWakesBackpressuredQueueBeforeTransferCompletes() throws Exception {
-    assertTsFileStartupWakesBackpressuredQueue(false);
+    assertTsFileStartupWakesBackpressuredQueue(false, false);
   }
 
   @Test
   public void testRejectedTsFileStartupWakesBackpressuredQueue() throws Exception {
-    assertTsFileStartupWakesBackpressuredQueue(true);
+    assertTsFileStartupWakesBackpressuredQueue(true, false);
   }
 
-  private void assertTsFileStartupWakesBackpressuredQueue(final boolean rejectStartup)
-      throws Exception {
+  @Test
+  public void testPreReservedTsFileStartupDoesNotIncrementCounterAgain() throws Exception {
+    assertTsFileStartupWakesBackpressuredQueue(false, true);
+  }
+
+  private void assertTsFileStartupWakesBackpressuredQueue(
+      final boolean rejectStartup, final boolean startupCountReserved) throws Exception {
     final long previousBlockingTimeMs =
         PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
     final int initialCounter =
         PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize() - 1;
-    final AtomicInteger counter = new AtomicInteger(initialCounter);
+    final AtomicInteger counter =
+        new AtomicInteger(initialCounter + (startupCountReserved ? 1 : 0));
     final IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink();
     sink.setTransferTsFileCounter(counter);
     // Also cover the default realtime-first queue with compaction disabled.
@@ -111,8 +138,11 @@ public class IoTDBDataRegionAsyncSinkTest {
     clientManagerField.setAccessible(true);
     clientManagerField.set(sink, clientManager);
     final Method transfer =
-        IoTDBDataRegionAsyncSink.class.getDeclaredMethod(
-            "transfer", PipeTransferTsFileHandler.class);
+        startupCountReserved
+            ? IoTDBDataRegionAsyncSink.class.getDeclaredMethod(
+                "transfer", PipeTransferTsFileHandler.class, boolean.class)
+            : IoTDBDataRegionAsyncSink.class.getDeclaredMethod(
+                "transfer", PipeTransferTsFileHandler.class);
     transfer.setAccessible(true);
     final FutureTask<Event> poll = new FutureTask<>(queue::waitedPoll);
     final Thread pollingThread = new Thread(poll);
@@ -123,7 +153,11 @@ public class IoTDBDataRegionAsyncSinkTest {
       final Future<?> submission =
           submittingExecutor.submit(
               () -> {
-                transfer.invoke(sink, handler);
+                if (startupCountReserved) {
+                  transfer.invoke(sink, handler, true);
+                } else {
+                  transfer.invoke(sink, handler);
+                }
                 return null;
               });
       Assert.assertTrue(startupEntered.await(5, TimeUnit.SECONDS));

@@ -200,6 +200,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
     if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
+      cancelTsFileStartupReservation(event);
       lastEvent = null;
       return true;
     }
@@ -349,6 +350,14 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       return true;
     } finally {
       outputPipeSinkOperationLock.unlock();
+    }
+  }
+
+  private void cancelTsFileStartupReservation(final Event event) {
+    if (event instanceof TsFileInsertionEvent
+        && inputPendingQueue instanceof PipeRealtimePriorityBlockingQueue) {
+      ((PipeRealtimePriorityBlockingQueue) inputPendingQueue)
+          .cancelTsFileStartupReservation((TsFileInsertionEvent) event);
     }
   }
 

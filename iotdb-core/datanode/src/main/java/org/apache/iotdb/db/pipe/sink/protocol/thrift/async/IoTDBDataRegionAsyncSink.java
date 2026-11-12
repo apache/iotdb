@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeRealtimePriorityBlockingQueue;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -164,6 +165,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
 
   // It is necessary to ensure that other classes that inherit Async Connector will not have NPE
   public AtomicInteger transferTsFileCounter = new AtomicInteger(0);
+
+  private volatile PipeRealtimePriorityBlockingQueue transferTsFileStartupReservationQueue;
 
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
 
@@ -559,6 +562,9 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     transferBatchedEventsIfNecessary();
 
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
+      if (transferTsFileStartupReservationQueue != null) {
+        transferTsFileStartupReservationQueue.cancelTsFileStartupReservation(tsFileInsertionEvent);
+      }
       LOGGER.warn(
           DataNodePipeMessages
               .IOTDBTHRIFTASYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVENT,
@@ -571,15 +577,28 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
 
   private boolean transferWithoutCheck(final TsFileInsertionEvent tsFileInsertionEvent)
       throws Exception {
+    return transferWithoutCheck(tsFileInsertionEvent, false);
+  }
+
+  private boolean transferWithoutCheck(
+      final TsFileInsertionEvent tsFileInsertionEvent, final boolean startupCountReserved)
+      throws Exception {
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeTsFileInsertionEvent.increaseReferenceCount(
         IoTDBDataRegionAsyncSink.class.getName())) {
+      if (startupCountReserved) {
+        decreaseTransferTsFileCounter();
+      } else if (transferTsFileStartupReservationQueue != null) {
+        transferTsFileStartupReservationQueue.cancelTsFileStartupReservation(
+            pipeTsFileInsertionEvent);
+      }
       return false;
     }
 
     PipeTransferTsFileHandler pipeTransferTsFileHandler = null;
+    boolean startupCountHandedToTransfer = false;
     try {
       // Just in case. To avoid the case that exception occurred when constructing the handler.
       if (!pipeTsFileInsertionEvent.getTsFile().exists()) {
@@ -622,7 +641,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       trackRetryHandler(
           pipeTransferTsFileHandler, Collections.singletonList(pipeTsFileInsertionEvent));
 
-      transfer(pipeTransferTsFileHandler);
+      final boolean hasQueueReservation =
+          !startupCountReserved
+              && transferTsFileStartupReservationQueue != null
+              && transferTsFileStartupReservationQueue.consumeTsFileStartupReservation(
+                  pipeTsFileInsertionEvent);
+      startupCountHandedToTransfer = true;
+      transfer(pipeTransferTsFileHandler, startupCountReserved || hasQueueReservation);
       return true;
     } catch (final Exception e) {
       if (pipeTransferTsFileHandler != null) {
@@ -636,11 +661,25 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       pipeTsFileInsertionEvent.decreaseReferenceCount(
           IoTDBDataRegionAsyncSink.class.getName(), false);
       throw e;
+    } finally {
+      if (startupCountReserved && !startupCountHandedToTransfer) {
+        decreaseTransferTsFileCounter();
+      }
     }
   }
 
   private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler) {
-    transferTsFileCounter.incrementAndGet();
+    transfer(pipeTransferTsFileHandler, false);
+  }
+
+  private void transfer(
+      final PipeTransferTsFileHandler pipeTransferTsFileHandler,
+      final boolean startupCountAlreadyReserved) {
+    if (!startupCountAlreadyReserved) {
+      synchronized (transferTsFileCounter) {
+        transferTsFileCounter.incrementAndGet();
+      }
+    }
     final CompletableFuture<Void> completableFuture;
     try {
       completableFuture =
@@ -825,6 +864,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     final int remainingEvents = retryEventQueue.size() + retryTsFileQueue.size();
     while (!retryEventQueue.isEmpty() || !retryTsFileQueue.isEmpty()) {
       final Event retryEvent;
+      boolean startupCountReserved = false;
       synchronized (this) {
         if (isClosed.get()) {
           return;
@@ -836,11 +876,17 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
         if (!retryEventQueue.isEmpty()) {
           retryEvent = retryEventQueue.poll();
         } else {
-          if (transferTsFileCounter.get()
-              >= PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize()) {
-            return;
+          synchronized (transferTsFileCounter) {
+            if (transferTsFileCounter.get()
+                >= PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize()) {
+              return;
+            }
+            retryEvent = retryTsFileQueue.poll();
+            if (retryEvent != null) {
+              transferTsFileCounter.incrementAndGet();
+              startupCountReserved = true;
+            }
           }
-          retryEvent = retryTsFileQueue.poll();
         }
 
         if (retryEvent == null) {
@@ -859,8 +905,11 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
       } else if (retryEvent instanceof PipeRawTabletInsertionEvent) {
         retryTransfer((PipeRawTabletInsertionEvent) retryEvent);
       } else if (retryEvent instanceof PipeTsFileInsertionEvent) {
-        retryTransfer((PipeTsFileInsertionEvent) retryEvent);
+        retryTransfer((PipeTsFileInsertionEvent) retryEvent, startupCountReserved);
       } else {
+        if (startupCountReserved) {
+          decreaseTransferTsFileCounter();
+        }
         LOGGER.warn(
             DataNodePipeMessages.IOTDBTHRIFTASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFER_GENERIC_EVENT,
             retryEvent);
@@ -955,9 +1004,10 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
     }
   }
 
-  private void retryTransfer(final PipeTsFileInsertionEvent tsFileInsertionEvent) {
+  private void retryTransfer(
+      final PipeTsFileInsertionEvent tsFileInsertionEvent, final boolean startupCountReserved) {
     try {
-      if (transferWithoutCheck(tsFileInsertionEvent)) {
+      if (transferWithoutCheck(tsFileInsertionEvent, startupCountReserved)) {
         tsFileInsertionEvent.decreaseReferenceCount(
             IoTDBDataRegionAsyncSink.class.getName(), false);
       } else {
@@ -1594,6 +1644,11 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
 
   public void setTransferTsFileCounter(AtomicInteger transferTsFileCounter) {
     this.transferTsFileCounter = transferTsFileCounter;
+  }
+
+  public void setTransferTsFileStartupReservationQueue(
+      final PipeRealtimePriorityBlockingQueue transferTsFileStartupReservationQueue) {
+    this.transferTsFileStartupReservationQueue = transferTsFileStartupReservationQueue;
   }
 
   private boolean isDroppedPipe(final EnrichedEvent event) {

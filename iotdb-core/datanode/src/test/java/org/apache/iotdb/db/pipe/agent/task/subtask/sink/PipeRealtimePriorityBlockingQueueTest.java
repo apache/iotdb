@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeCompactedTsFileInsertion
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.junit.Assert;
 import org.junit.Rule;
@@ -97,6 +98,63 @@ public class PipeRealtimePriorityBlockingQueueTest {
     Assert.assertSame(event, queue.waitedPoll());
     Assert.assertEquals(0, queue.getTsFileInsertionEventCount());
     verify(event, never()).decreaseReferenceCount(anyString(), anyBoolean());
+  }
+
+  @Test
+  public void testConcurrentPollReservesOnlyAvailableTsFileStartupSlot() throws Exception {
+    final int previousMaxWaitingTsFiles =
+        PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize();
+    final AtomicInteger startupCount = new AtomicInteger(0);
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
+    final ExecutorService pollers = Executors.newFixedThreadPool(16);
+    final CountDownLatch startPollers = new CountDownLatch(1);
+    try {
+      CommonDescriptor.getInstance().getConfig().setPipeRealTimeQueueMaxWaitingTsFileSize(1);
+      queue.setOfferTsFileCounter(startupCount);
+      queue.enableTsFileStartupReservation();
+      for (int i = 0; i < 16; i++) {
+        Assert.assertTrue(
+            queue.offer(
+                createEvent(
+                    newTsFile("parallel-" + i + ".tsfile"),
+                    new CommitterKey("pipe", 1L, 1, 0),
+                    i)));
+      }
+
+      final List<Future<Event>> polls = new ArrayList<>();
+      for (int i = 0; i < 16; i++) {
+        polls.add(
+            pollers.submit(
+                () -> {
+                  startPollers.await();
+                  return queue.directPoll();
+                }));
+      }
+      startPollers.countDown();
+
+      TsFileInsertionEvent polledEvent = null;
+      int polledEventCount = 0;
+      for (final Future<Event> poll : polls) {
+        final Event event = poll.get(5, TimeUnit.SECONDS);
+        if (event != null) {
+          polledEvent = (TsFileInsertionEvent) event;
+          polledEventCount++;
+        }
+      }
+
+      Assert.assertEquals(1, polledEventCount);
+      Assert.assertEquals(1, startupCount.get());
+      Assert.assertEquals(15, queue.getTsFileInsertionEventCount());
+      Assert.assertTrue(queue.cancelTsFileStartupReservation(polledEvent));
+      Assert.assertEquals(0, startupCount.get());
+    } finally {
+      pollers.shutdownNow();
+      pollers.awaitTermination(5, TimeUnit.SECONDS);
+      queue.discardAllEvents();
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeRealTimeQueueMaxWaitingTsFileSize(previousMaxWaitingTsFiles);
+    }
   }
 
   @Test
