@@ -344,9 +344,9 @@ public class CommonDescriptor {
     loadRetryProperties(properties);
   }
 
-  private void loadSubscriptionProps(TrimProperties properties) {
+  private void loadSubscriptionProps(TrimProperties properties) throws IOException {
     config.setSubscriptionCacheMemoryUsagePercentage(
-        Float.parseFloat(
+        parseSubscriptionCacheMemoryUsagePercentage(
             properties.getProperty(
                 "subscription_cache_memory_usage_percentage",
                 String.valueOf(config.getSubscriptionCacheMemoryUsagePercentage()))));
@@ -561,6 +561,18 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_consensus_idle_safe_time_barrier_interval_ms",
                 String.valueOf(config.getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs()))));
+  }
+
+  static float parseSubscriptionCacheMemoryUsagePercentage(final String value) throws IOException {
+    final float percentage = Float.parseFloat(value);
+    if (!Float.isFinite(percentage) || percentage < 0 || percentage > 1) {
+      throw new IOException(
+          String.format(
+              CommonMessages
+                  .EXCEPTION_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE_MUST_BE_IN_0_1_BUT_WAS_ARG_57FE2C66,
+              percentage));
+    }
+    return percentage;
   }
 
   public void loadRetryProperties(TrimProperties properties) throws IOException {

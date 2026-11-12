@@ -1057,7 +1057,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case OBJECT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
-          size += ReadWriteIOUtils.sizeToWrite(binaryValues[j]);
+          // WAL writes a zero length for null values; nullness is preserved in the bitmap.
+          size +=
+              ReadWriteIOUtils.sizeToWrite(
+                  binaryValues[j] == null ? Binary.EMPTY_VALUE : binaryValues[j]);
         }
         break;
     }
