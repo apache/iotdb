@@ -318,26 +318,32 @@ public class TimeSeriesMetadataCache {
   }
 
   /**
-   * Load all TimeseriesMetadata of a device in a single batch read and populate the per-measurement
-   * cache. This is used by wide-table scans (a device with many columns) to avoid walking the
-   * device metadata index once per column / leaf node.
+   * Load the TimeseriesMetadata of {@code allSensors} of a device, reading the device in a single
+   * batch when the per-measurement cache does not already hold all of them. This is used by
+   * wide-table scans (a device with many columns) to avoid walking the device metadata index once
+   * per column / leaf node.
    *
-   * <p>The returned map holds copies of the cached metadata (or the freshly read objects when the
-   * cache is disabled / for external tsfiles), so the caller may apply {@code setModified} and
-   * {@code setChunkMetadataLoader} without corrupting cached entries — matching {@link #get}.
+   * <p>The returned map always holds copies of the cached (or freshly read) metadata, so the caller
+   * may apply {@code setModified} and {@code setChunkMetadataLoader} without corrupting cached
+   * entries — matching {@link #get}.
    *
    * @param filePath path of the tsfile
    * @param tsFileID id of the tsfile
    * @param device target device
+   * @param allSensors measurements the caller needs, including the time column keyed by ""
    * @param queryContext query context used for metrics and to detect external tsfiles
+   * @param ignoreNotExists whether a device missing from a file that claims a device-level time
+   *     index should be skipped instead of reported as an inconsistency
    * @return map from measurementId (including the time column, keyed by "") to TimeseriesMetadata;
-   *     entries whose series is empty (count == 0) are mapped to null.
-   * @throws IOException if the metadata cannot be read from disk
+   *     entries whose series is empty (count == 0) are mapped to null
+   * @throws IOException if the metadata cannot be read from disk or the device is unexpectedly
+   *     absent
    */
   public Map<String, TimeseriesMetadata> getDeviceTimeSeriesMetadata(
       String filePath,
       TsFileID tsFileID,
       IDeviceID device,
+      Set<String> allSensors,
       QueryContext queryContext,
       boolean ignoreNotExists)
       throws IOException {
@@ -345,33 +351,85 @@ public class TimeSeriesMetadataCache {
     boolean externalTsFile = queryContext.isExternalTsFileScan();
     LongConsumer timeSeriesMetadataIoSizeRecorder =
         queryContext.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet;
+    boolean cacheHit = true;
 
     try {
-      TsFileSequenceReader reader =
-          FileReaderManager.getInstance()
-              .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, externalTsFile);
       if (CACHE_ENABLE && !externalTsFile) {
+        Map<String, TimeseriesMetadata> cached =
+            getCachedDeviceTimeSeriesMetadata(tsFileID, device, allSensors);
+        if (cached != null) {
+          return cached;
+        }
         // serialize concurrent reads of the same device+file (same lock key as get) so threads
         // don't each deserialize the whole device and race on the shared reader
         synchronized (
             devices.computeIfAbsent(device.toString() + SEPARATOR + filePath, WeakReference::new)) {
-          return readDeviceTimeSeriesMetadata(reader, tsFileID, device, true, ignoreNotExists);
+          cached = getCachedDeviceTimeSeriesMetadata(tsFileID, device, allSensors);
+          if (cached != null) {
+            return cached;
+          }
+          cacheHit = false;
+          TsFileSequenceReader reader =
+              FileReaderManager.getInstance()
+                  .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, false);
+          return readDeviceTimeSeriesMetadata(
+              reader, tsFileID, device, allSensors, true, ignoreNotExists);
         }
       }
-      return readDeviceTimeSeriesMetadata(reader, tsFileID, device, false, ignoreNotExists);
+      cacheHit = false;
+      TsFileSequenceReader reader =
+          FileReaderManager.getInstance()
+              .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, externalTsFile);
+      return readDeviceTimeSeriesMetadata(
+          reader, tsFileID, device, allSensors, false, ignoreNotExists);
     } finally {
-      queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().incrementAndGet();
-      queryContext
-          .getQueryStatistics()
-          .getLoadTimeSeriesMetadataFromDiskTime()
-          .getAndAdd(System.nanoTime() - startTime);
+      if (cacheHit) {
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromCacheCount()
+            .incrementAndGet();
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromCacheTime()
+            .getAndAdd(System.nanoTime() - startTime);
+      } else {
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromDiskCount()
+            .incrementAndGet();
+        queryContext
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromDiskTime()
+            .getAndAdd(System.nanoTime() - startTime);
+      }
     }
+  }
+
+  /**
+   * @return copies of the cached metadata for every measurement in {@code allSensors}, or null as
+   *     soon as one of them is not cached and the device therefore has to be read from disk
+   */
+  private Map<String, TimeseriesMetadata> getCachedDeviceTimeSeriesMetadata(
+      TsFileID tsFileID, IDeviceID device, Set<String> allSensors) {
+    Map<String, TimeseriesMetadata> result = new HashMap<>(allSensors.size());
+    for (String measurement : allSensors) {
+      TimeseriesMetadata metadata =
+          lruCache.getIfPresent(new TimeSeriesMetadataCacheKey(tsFileID, device, measurement));
+      if (metadata == null) {
+        return null;
+      }
+      result.put(
+          measurement,
+          metadata == NULL_EXISTS_CACHE_PLACE_HOLDER ? null : new TimeseriesMetadata(metadata));
+    }
+    return result;
   }
 
   private Map<String, TimeseriesMetadata> readDeviceTimeSeriesMetadata(
       TsFileSequenceReader reader,
       TsFileID tsFileID,
       IDeviceID device,
+      Set<String> allSensors,
       boolean cacheEnabled,
       boolean ignoreNotExists)
       throws IOException {
@@ -379,10 +437,27 @@ public class TimeSeriesMetadataCache {
     // setModifications and then to DiskAlignedChunkMetadataLoader, which dereferences the chunk
     // metadata list, so readDeviceMetadata (which skips chunk metadata) would NPE at query time.
     List<TimeseriesMetadata> deviceMetadataList = reader.getDeviceTimeseriesMetadata(device);
+    if (deviceMetadataList.isEmpty()) {
+      // Match get(): an absent device is only an inconsistency when ignoreNotExists is false and
+      // the bloom filter does not already prove that the device is missing from this file
+      if (ignoreNotExists) {
+        return Collections.emptyMap();
+      }
+      BloomFilter bloomFilter = reader.readBloomFilter();
+      if (bloomFilter != null
+          && !bloomFilter.contains(device.toString() + IoTDBConstant.PATH_SEPARATOR)) {
+        return Collections.emptyMap();
+      }
+      throw new IOException(
+          String.format(StorageEngineMessages.DEVICE_DOES_NOT_EXIST_IN_RESOURCE_FILE_FMT, device));
+    }
 
-    Map<String, TimeseriesMetadata> result = new HashMap<>(deviceMetadataList.size());
+    Map<String, TimeseriesMetadata> result = new HashMap<>(allSensors.size());
     for (TimeseriesMetadata metadata : deviceMetadataList) {
       String measurementId = metadata.getMeasurementId();
+      if (!allSensors.contains(measurementId)) {
+        continue;
+      }
       if (metadata.getStatistics().getCount() == 0) {
         result.put(measurementId, null);
         if (cacheEnabled && !ignoreNotExists && memoryConfig.isMayCacheNonExistSeries()) {
@@ -396,6 +471,19 @@ public class TimeSeriesMetadataCache {
         lruCache.put(new TimeSeriesMetadataCacheKey(tsFileID, device, measurementId), metadata);
       }
       result.put(measurementId, new TimeseriesMetadata(metadata));
+    }
+    // remember selected measurements that do not exist in this file, so a later lookup of the same
+    // device can be served from the cache instead of reading the device again
+    for (String measurement : allSensors) {
+      if (result.containsKey(measurement)) {
+        continue;
+      }
+      result.put(measurement, null);
+      if (cacheEnabled && !ignoreNotExists && memoryConfig.isMayCacheNonExistSeries()) {
+        lruCache.put(
+            new TimeSeriesMetadataCacheKey(tsFileID, device, measurement),
+            NULL_EXISTS_CACHE_PLACE_HOLDER);
+      }
     }
     return result;
   }
