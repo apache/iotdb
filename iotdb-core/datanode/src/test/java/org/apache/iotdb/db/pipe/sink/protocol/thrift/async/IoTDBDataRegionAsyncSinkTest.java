@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeRealtimePriorityBlockingQueue;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler.PipeTransferTsFileHandler;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -68,6 +69,13 @@ public class IoTDBDataRegionAsyncSinkTest {
     final IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink();
     sink.setTransferTsFileCounter(counter);
     sink.setTransferTsFileStartupReservationQueue(queue);
+    final PipeTransferBatchReqBuilder tabletBatchBuilder =
+        Mockito.mock(PipeTransferBatchReqBuilder.class);
+    Mockito.when(tabletBatchBuilder.isEmpty()).thenReturn(true);
+    final Field tabletBatchBuilderField =
+        IoTDBDataRegionAsyncSink.class.getDeclaredField("tabletBatchBuilder");
+    tabletBatchBuilderField.setAccessible(true);
+    tabletBatchBuilderField.set(sink, tabletBatchBuilder);
     sink.transfer(event);
 
     Assert.assertEquals(0, counter.get());

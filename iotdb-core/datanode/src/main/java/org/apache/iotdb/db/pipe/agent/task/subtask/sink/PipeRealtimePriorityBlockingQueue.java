@@ -456,9 +456,6 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public void discardEventsOfPipe(final CommitterKey committerKey) {
     super.discardEventsOfPipe(committerKey);
-    clearTsFileStartupReservations(
-        event ->
-            event instanceof EnrichedEvent && isEventFromPipe((EnrichedEvent) event, committerKey));
     tsfileInsertEventDeque.removeIf(
         event -> {
           if (event instanceof EnrichedEvent

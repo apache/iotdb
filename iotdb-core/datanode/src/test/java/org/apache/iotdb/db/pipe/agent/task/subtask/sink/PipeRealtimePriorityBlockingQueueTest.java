@@ -158,6 +158,37 @@ public class PipeRealtimePriorityBlockingQueueTest {
   }
 
   @Test
+  public void testDiscardedPipeKeepsPolledStartupReservationUntilSinkCancelsIt() throws Exception {
+    final int previousMaxWaitingTsFiles =
+        PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize();
+    final AtomicInteger startupCount = new AtomicInteger(0);
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
+    final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
+    final PipeTsFileInsertionEvent event =
+        createEvent(newTsFile("discarded.tsfile"), committerKey, 1L);
+    try {
+      CommonDescriptor.getInstance().getConfig().setPipeRealTimeQueueMaxWaitingTsFileSize(1);
+      queue.setOfferTsFileCounter(startupCount);
+      queue.enableTsFileStartupReservation();
+      Assert.assertTrue(queue.offer(event));
+      Assert.assertSame(event, queue.directPoll());
+      Assert.assertEquals(1, startupCount.get());
+
+      queue.discardEventsOfPipe(committerKey);
+
+      Assert.assertEquals(1, startupCount.get());
+      Assert.assertNull(queue.directPoll());
+      Assert.assertTrue(queue.cancelTsFileStartupReservation(event));
+      Assert.assertEquals(0, startupCount.get());
+    } finally {
+      queue.discardAllEvents();
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeRealTimeQueueMaxWaitingTsFileSize(previousMaxWaitingTsFiles);
+    }
+  }
+
+  @Test
   public void testWaitedPollDeliversHeartbeatsWhileTsFileSendQueueIsFull() throws Exception {
     final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
     queue.setOfferTsFileCounter(
