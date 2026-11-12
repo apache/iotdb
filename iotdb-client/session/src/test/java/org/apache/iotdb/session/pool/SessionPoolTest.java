@@ -1234,7 +1234,7 @@ public class SessionPoolTest {
 
     try {
       sessionPool.sortTablet(tablet);
-      fail("Expected sortTablet to throw");
+      Assert.fail("Expected sortTablet to throw");
     } catch (IllegalArgumentException expected) {
       // expected
     }
