@@ -455,12 +455,12 @@ public abstract class AbstractDataTool {
       String number = StringUtils.trim(strValue);
       if (INTEGER_PATTERN.matcher(number).matches()) {
         return Constants.TYPE_INFER_KEY_DICT.get(
-            isFloatExactInteger(number) ? Constants.DATATYPE_INT : Constants.DATATYPE_LONG);
+            fitsIntKeyType(number) ? Constants.DATATYPE_INT : Constants.DATATYPE_LONG);
       }
-      return Constants.TYPE_INFER_KEY_DICT.get(
-          isOutOfFloatRange(Double.parseDouble(number))
-              ? Constants.DATATYPE_DOUBLE
-              : Constants.DATATYPE_FLOAT);
+      TSDataType floatKeyType = Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_FLOAT);
+      return floatKeyType == TSDataType.FLOAT && isOutOfFloatRange(Double.parseDouble(number))
+          ? Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_DOUBLE)
+          : floatKeyType;
     } else if (Constants.DATATYPE_NULL.equals(strValue)
         || Constants.DATATYPE_NULL.toUpperCase().equals(strValue)) {
       return null;
@@ -508,17 +508,25 @@ public abstract class AbstractDataTool {
   }
 
   /**
-   * The inferred type applies to the whole column, so an integer only gets the "int" type when
-   * FLOAT holds every integer of its magnitude exactly, i.e. |value| <= 2^24.
+   * Whether an integer gets the type the "int" key maps to. The inferred type applies to the whole
+   * column, so with FLOAT the bound is |value| <= 2^24, where FLOAT holds every integer exactly.
    */
-  private static boolean isFloatExactInteger(String s) {
+  private static boolean fitsIntKeyType(String s) {
+    long value;
     try {
-      long value = Long.parseLong(s);
-      return value >= -FLOAT_EXACT_INTEGER_BOUND && value <= FLOAT_EXACT_INTEGER_BOUND;
+      value = Long.parseLong(s);
     } catch (NumberFormatException e) {
       // Integer literal outside the long range
       return false;
     }
+    TSDataType intKeyType = Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_INT);
+    if (intKeyType == TSDataType.FLOAT) {
+      return value >= -FLOAT_EXACT_INTEGER_BOUND && value <= FLOAT_EXACT_INTEGER_BOUND;
+    }
+    if (intKeyType == TSDataType.INT32) {
+      return value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE;
+    }
+    return true;
   }
 
   /** A finite value that FLOAT would turn into infinity or lose to underflow. */

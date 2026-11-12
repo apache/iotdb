@@ -1007,10 +1007,43 @@ public class DataToolRegressionTest extends AbstractDataTool {
     try {
       assertInferred("16777216", TSDataType.INT32, 16777216);
       assertInferred("-16777216", TSDataType.INT32, -16777216);
+      assertInferred("20000000", TSDataType.INT32, 20000000);
+      assertInferred("-20000000", TSDataType.INT32, -20000000);
+      assertInferred("2147483647", TSDataType.INT32, Integer.MAX_VALUE);
+      assertInferred("-2147483648", TSDataType.INT32, Integer.MIN_VALUE);
+      assertInferred("2147483648", TSDataType.DOUBLE, 2147483648d);
+      assertInferred("-2147483649", TSDataType.DOUBLE, -2147483649d);
       assertInferred("3000000001", TSDataType.DOUBLE, 3000000001d);
       assertInferred("-3000000001", TSDataType.DOUBLE, -3000000001d);
     } finally {
       Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_INT, original);
+    }
+  }
+
+  @Test
+  public void testTypeInferRespectsNonFloatMappings() {
+    TSDataType originalInt = Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_INT);
+    TSDataType originalFloat = Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_FLOAT);
+    try {
+      Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_INT, TSDataType.INT64);
+      assertInferred("20000000", TSDataType.INT64, 20000000L);
+      assertInferred("-20000000", TSDataType.INT64, -20000000L);
+      assertInferred("-2000000000", TSDataType.INT64, -2000000000L);
+      assertInferred("9223372036854775807", TSDataType.INT64, Long.MAX_VALUE);
+      assertInferred("-9223372036854775808", TSDataType.INT64, Long.MIN_VALUE);
+      assertInferred("99999999999999999999", TSDataType.DOUBLE, 1e20);
+
+      Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_INT, TSDataType.STRING);
+      assertEquals(TSDataType.STRING, typeInfer("-20000000"));
+      assertEquals(TSDataType.STRING, typeInfer("-2000000000"));
+
+      Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_FLOAT, TSDataType.TEXT);
+      assertEquals(TSDataType.TEXT, typeInfer("1.0e39"));
+      assertEquals(TSDataType.TEXT, typeInfer("1.0e-50"));
+      assertEquals(TSDataType.TEXT, typeInfer("1.5"));
+    } finally {
+      Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_INT, originalInt);
+      Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_FLOAT, originalFloat);
     }
   }
 
