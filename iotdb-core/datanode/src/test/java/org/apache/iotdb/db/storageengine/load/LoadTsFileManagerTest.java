@@ -796,6 +796,44 @@ public class LoadTsFileManagerTest {
   }
 
   @Test
+  public void testReplicatedRetriesUseLegacyTerminalWhenMigrationFails() throws Exception {
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    final String loadId = "unmigratable-legacy-abort";
+    final File regionDir =
+        LoadStagingDirs.regionLoadDir(tempDir, dataRegion.getDatabaseName(), "0");
+    final File taskDir = new File(regionDir, loadId);
+    final File historyDir = new File(regionDir, LoadTsFileManager.TERMINAL_HISTORY_DIR);
+    try {
+      assertTrue(taskDir.mkdirs());
+      new LoadTsFileProgress(new File(taskDir, "legacy.tsfile"))
+          .recordTerminal(LoadTsFileConsensusOp.ABORT, 10L);
+      Files.write(historyDir.toPath(), new byte[0]);
+
+      final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+      try {
+        final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
+        final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+        final LoadTsFileConsensusNode commit = commitNode(loadId);
+        piece.markAsGeneratedByRemoteConsensusLeader();
+        prepare.markAsGeneratedByRemoteConsensusLeader();
+        commit.markAsGeneratedByRemoteConsensusLeader();
+
+        assertTrue(manager.writePiece(piece).isEmpty());
+        assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+        assertFalse(manager.loadAll(commit, Collections.emptyMap()));
+        assertFalse(manager.deleteAll(abortNode(loadId)));
+        assertTrue(taskDir.isDirectory());
+        assertTrue(historyDir.isFile());
+      } finally {
+        manager.stop();
+      }
+    } finally {
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
   public void testSnapshotPreservesLegacyTerminalsWhenMigrationCannotPersist() throws Exception {
     final String originalProtocol = config.getDataRegionConsensusProtocolClass();
     config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);

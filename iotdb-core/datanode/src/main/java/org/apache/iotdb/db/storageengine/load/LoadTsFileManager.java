@@ -557,7 +557,15 @@ public class LoadTsFileManager {
           continue;
         }
         if (terminal != null) {
-          rememberTerminal(loadId, terminal.op(), terminal.searchIndex());
+          try {
+            rememberTerminal(loadId, terminal.op(), terminal.searchIndex());
+          } catch (final IOException e) {
+            // The legacy terminal is still authoritative when its migration cannot be published.
+            LOGGER.warn(
+                StorageEngineMessages.LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB,
+                file.getPath(),
+                e);
+          }
           return terminal.op();
         }
       }
