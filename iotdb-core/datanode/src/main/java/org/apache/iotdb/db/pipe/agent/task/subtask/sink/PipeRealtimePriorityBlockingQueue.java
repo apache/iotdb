@@ -37,6 +37,9 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -45,7 +48,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -61,6 +63,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   private final BlockingDeque<TsFileInsertionEvent> tsfileInsertEventDeque =
       new LinkedBlockingDeque<>();
 
+  private final boolean enableCompaction;
+
   private final AtomicInteger pollTsFileCounter = new AtomicInteger(0);
 
   private final AtomicLong pollHistoricalTsFileCounter = new AtomicLong(0);
@@ -69,18 +73,26 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   private AtomicInteger offerTsFileCounter = new AtomicInteger(0);
 
   public PipeRealtimePriorityBlockingQueue() {
+    this(false);
+  }
+
+  public PipeRealtimePriorityBlockingQueue(final boolean enableCompaction) {
     super(new PipeDataRegionEventCounter());
+    this.enableCompaction = enableCompaction;
   }
 
   @Override
   public boolean offer(final Event event) {
-    if (!checkBeforeOffer(event)) {
-      return false;
-    }
-
     if (event instanceof TsFileInsertionEvent) {
+      if (!checkBeforeOffer(event)) {
+        return false;
+      }
       tsfileInsertEventDeque.add((TsFileInsertionEvent) event);
       return true;
+    }
+
+    if (!checkBeforeOffer(event)) {
+      return false;
     }
 
     if (event instanceof PipeHeartbeatEvent
@@ -110,10 +122,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
     if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()
         && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
-      event =
-          pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
-              ? tsfileInsertEventDeque.pollFirst()
-              : tsfileInsertEventDeque.pollLast();
+      event = pollTsFileEvent(pollHistoricalTsFileThreshold);
       pollTsFileCounter.set(0);
     }
 
@@ -121,10 +130,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
       if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
-        event =
-            pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
-                ? tsfileInsertEventDeque.pollFirst()
-                : tsfileInsertEventDeque.pollLast();
+        event = pollTsFileEvent(pollHistoricalTsFileThreshold);
       }
       if (event != null) {
         pollTsFileCounter.incrementAndGet();
@@ -155,20 +161,15 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
     if (pollTsFileCounter.get() >= PIPE_CONFIG.getPipeRealTimeQueuePollTsFileThreshold()
         && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
-      event =
-          pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
-              ? tsfileInsertEventDeque.pollFirst()
-              : tsfileInsertEventDeque.pollLast();
+      event = pollTsFileEvent(pollHistoricalTsFileThreshold);
       pollTsFileCounter.set(0);
     }
     if (event == null) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
-      if (event == null && !tsfileInsertEventDeque.isEmpty()) {
-        event =
-            pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
-                ? tsfileInsertEventDeque.pollFirst()
-                : tsfileInsertEventDeque.pollLast();
+      if (event == null && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
+        // Keep excess TsFiles in this queue so compaction can still replace them.
+        event = pollTsFileEventIfPresent(pollHistoricalTsFileThreshold);
       }
       if (event != null) {
         pollTsFileCounter.incrementAndGet();
@@ -178,11 +179,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     // If no event is available, block until an event is available
     if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
       event = super.waitedPoll();
-      if (Objects.isNull(event)) {
-        event =
-            pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
-                ? tsfileInsertEventDeque.pollFirst()
-                : tsfileInsertEventDeque.pollLast();
+      if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
+        event = pollTsFileEvent(pollHistoricalTsFileThreshold);
       }
       if (event != null) {
         pollTsFileCounter.incrementAndGet();
@@ -203,22 +201,46 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   public synchronized void replace(
       String dataRegionId, Set<TsFileResource> sourceFiles, List<TsFileResource> targetFiles) {
+    if (!enableCompaction) {
+      return;
+    }
 
     final int regionId = Integer.parseInt(dataRegionId);
-    final Map<CommitterKey, Set<PipeTsFileInsertionEvent>> eventsToBeRemovedGroupByCommitterKey =
+    final Set<Path> sourceFilePaths =
+        sourceFiles.stream()
+            .map(TsFileResource::getTsFile)
+            .map(PipeRealtimePriorityBlockingQueue::normalizePath)
+            .collect(Collectors.toSet());
+    final List<PipeTsFileInsertionEvent> regionEventsInQueue =
         tsfileInsertEventDeque.stream()
             .filter(
                 event ->
                     event instanceof PipeTsFileInsertionEvent
                         && ((PipeTsFileInsertionEvent) event).getRegionId() == regionId)
             .map(event -> (PipeTsFileInsertionEvent) event)
+            .collect(Collectors.toList());
+
+    final Map<CommitterKey, Set<PipeTsFileInsertionEvent>> eventsToBeRemovedGroupByCommitterKey =
+        regionEventsInQueue.stream()
+            .filter(event -> sourceFilePaths.contains(normalizePath(event.getSourceTsFile())))
             .collect(
                 Collectors.groupingBy(
                     PipeTsFileInsertionEvent::getCommitterKey, Collectors.toSet()))
             .entrySet()
             .stream()
-            // Replace if all source files are present in the queue
-            .filter(entry -> entry.getValue().size() == sourceFiles.size())
+            // Replace only when every source file is present exactly once for this pipe.
+            .filter(entry -> entry.getValue().size() == sourceFilePaths.size())
+            .filter(
+                entry ->
+                    entry.getValue().stream()
+                        .map(PipeTsFileInsertionEvent::getSourceTsFile)
+                        .map(PipeRealtimePriorityBlockingQueue::normalizePath)
+                        .collect(Collectors.toSet())
+                        .equals(sourceFilePaths))
+            .filter(
+                entry ->
+                    areSourceEventsAtQueueHead(
+                        regionEventsInQueue, entry.getKey(), entry.getValue()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     if (eventsToBeRemovedGroupByCommitterKey.isEmpty()) {
       LOGGER.info(
@@ -230,13 +252,13 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       return;
     }
 
-    final Map<CommitterKey, Set<PipeTsFileInsertionEvent>> eventsToBeAddedGroupByCommitterKey =
+    final Map<CommitterKey, List<PipeTsFileInsertionEvent>> eventsToBeAddedGroupByCommitterKey =
         new HashMap<>();
     for (final Map.Entry<CommitterKey, Set<PipeTsFileInsertionEvent>> entry :
         eventsToBeRemovedGroupByCommitterKey.entrySet()) {
       final CommitterKey committerKey = entry.getKey();
       final PipeTsFileInsertionEvent anyEvent = entry.getValue().stream().findFirst().orElse(null);
-      final Set<PipeTsFileInsertionEvent> newEvents = new HashSet<>();
+      final List<PipeTsFileInsertionEvent> newEvents = new ArrayList<>();
       for (int i = 0; i < targetFiles.size(); i++) {
         newEvents.add(
             new PipeCompactedTsFileInsertionEvent(
@@ -249,33 +271,25 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       eventsToBeAddedGroupByCommitterKey.put(committerKey, newEvents);
     }
 
-    // Handling new events
-    final Set<PipeTsFileInsertionEvent> successfullyReferenceIncreasedEvents = new HashSet<>();
-    final AtomicBoolean
-        allSuccess = // To track if all events successfully increased the reference count
-        new AtomicBoolean(true);
+    final List<PipeTsFileInsertionEvent> successfullyReferenceIncreasedEvents = new ArrayList<>();
+    boolean allSuccess = true;
     outerLoop:
-    for (final Map.Entry<CommitterKey, Set<PipeTsFileInsertionEvent>> committerKeySetEntry :
-        eventsToBeAddedGroupByCommitterKey.entrySet()) {
-      for (final PipeTsFileInsertionEvent event : committerKeySetEntry.getValue()) {
-        if (event != null) {
-          try {
-            if (!event.increaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
-              allSuccess.set(false);
-              break outerLoop;
-            } else {
-              successfullyReferenceIncreasedEvents.add(event);
-            }
-          } catch (final Exception e) {
-            allSuccess.set(false);
+    for (final List<PipeTsFileInsertionEvent> events :
+        eventsToBeAddedGroupByCommitterKey.values()) {
+      for (final PipeTsFileInsertionEvent event : events) {
+        try {
+          if (!event.increaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
+            allSuccess = false;
             break outerLoop;
           }
+          successfullyReferenceIncreasedEvents.add(event);
+        } catch (final Exception e) {
+          allSuccess = false;
+          break outerLoop;
         }
       }
     }
-    if (!allSuccess.get()) {
-      // If any event failed to increase the reference count,
-      // we need to decrease the reference count for all successfully increased events
+    if (!allSuccess) {
       for (final PipeTsFileInsertionEvent event : successfullyReferenceIncreasedEvents) {
         try {
           event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
@@ -283,37 +297,39 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
           LOGGER.warn(DataNodePipeMessages.FAILED_TO_DECREASE_REFERENCE_COUNT_FOR_EVENT, event, e);
         }
       }
-      return; // Exit early if any event failed to increase the reference count
-    } else {
-      // If all events successfully increased reference count,
-      // we can proceed to add them to the deque
-      for (final PipeTsFileInsertionEvent event : successfullyReferenceIncreasedEvents) {
-        tsfileInsertEventDeque.add(event);
+      return;
+    }
+
+    final Set<PipeTsFileInsertionEvent> eventsToRemove = new HashSet<>();
+    for (final Set<PipeTsFileInsertionEvent> events :
+        eventsToBeRemovedGroupByCommitterKey.values()) {
+      eventsToRemove.addAll(events);
+    }
+
+    // The deque is concurrent, so a source event may be polled while replacement is in progress.
+    // Only release events that are still owned by this queue. If a poll wins the race, both the
+    // source event and its compacted replacement may be delivered; this deliberately favors the
+    // hot-path throughput over strict de-duplication.
+    final Set<PipeTsFileInsertionEvent> removedEvents =
+        eventsToRemove.stream().filter(tsfileInsertEventDeque::remove).collect(Collectors.toSet());
+    for (final List<PipeTsFileInsertionEvent> events :
+        eventsToBeAddedGroupByCommitterKey.values()) {
+      // Insert outputs at the oldest source position while preserving their file order.
+      for (int i = events.size() - 1; i >= 0; i--) {
+        final PipeTsFileInsertionEvent event = events.get(i);
+        tsfileInsertEventDeque.addFirst(event);
         eventCounter.increaseEventCount(event);
       }
     }
 
-    // Handling old events
-    for (final Map.Entry<CommitterKey, Set<PipeTsFileInsertionEvent>> entry :
-        eventsToBeRemovedGroupByCommitterKey.entrySet()) {
-      for (final PipeTsFileInsertionEvent event : entry.getValue()) {
-        if (event != null) {
-          try {
-            event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
-          } catch (final Exception e) {
-            LOGGER.warn(
-                DataNodePipeMessages.FAILED_TO_DECREASE_REFERENCE_COUNT_FOR_EVENT, event, e);
-          }
-          eventCounter.decreaseEventCount(event);
-        }
+    for (final PipeTsFileInsertionEvent event : removedEvents) {
+      try {
+        event.decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
+      } catch (final Exception e) {
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_DECREASE_REFERENCE_COUNT_FOR_EVENT, event, e);
       }
+      eventCounter.decreaseEventCount(event);
     }
-    final Set<PipeTsFileInsertionEvent> eventsToRemove = new HashSet<>();
-    for (Set<PipeTsFileInsertionEvent> pipeTsFileInsertionEvents :
-        eventsToBeRemovedGroupByCommitterKey.values()) {
-      eventsToRemove.addAll(pipeTsFileInsertionEvents);
-    }
-    tsfileInsertEventDeque.removeIf(eventsToRemove::contains);
 
     LOGGER.info(
         DataNodePipeMessages.REGION_REPLACED_TSFILEINSERTIONEVENTS_WITH,
@@ -323,9 +339,21 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
             .map(PipeTsFileInsertionEvent::coreReportMessage)
             .collect(Collectors.joining(", ")),
         eventsToBeAddedGroupByCommitterKey.values().stream()
-            .flatMap(Set::stream)
+            .flatMap(List::stream)
             .map(PipeTsFileInsertionEvent::coreReportMessage)
             .collect(Collectors.joining(", ")));
+  }
+
+  private static boolean areSourceEventsAtQueueHead(
+      final List<PipeTsFileInsertionEvent> regionEventsInQueue,
+      final CommitterKey committerKey,
+      final Set<PipeTsFileInsertionEvent> sourceEvents) {
+    final List<PipeTsFileInsertionEvent> eventsFromCommitter =
+        regionEventsInQueue.stream()
+            .filter(event -> committerKey.equals(event.getCommitterKey()))
+            .collect(Collectors.toList());
+    return eventsFromCommitter.size() >= sourceEvents.size()
+        && new HashSet<>(eventsFromCommitter.subList(0, sourceEvents.size())).equals(sourceEvents);
   }
 
   @Override
@@ -391,6 +419,26 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public int getTsFileInsertionEventCount() {
     return tsfileInsertEventDeque.size();
+  }
+
+  private TsFileInsertionEvent pollTsFileEvent(final int pollHistoricalTsFileThreshold) {
+    return pollTsFileEventWithoutLock(pollHistoricalTsFileThreshold);
+  }
+
+  private TsFileInsertionEvent pollTsFileEventIfPresent(final int pollHistoricalTsFileThreshold) {
+    return tsfileInsertEventDeque.isEmpty()
+        ? null
+        : pollTsFileEventWithoutLock(pollHistoricalTsFileThreshold);
+  }
+
+  private TsFileInsertionEvent pollTsFileEventWithoutLock(final int pollHistoricalTsFileThreshold) {
+    return pollHistoricalTsFileCounter.incrementAndGet() % pollHistoricalTsFileThreshold == 0
+        ? tsfileInsertEventDeque.pollFirst()
+        : tsfileInsertEventDeque.pollLast();
+  }
+
+  private static Path normalizePath(final File file) {
+    return file.toPath().toAbsolutePath().normalize();
   }
 
   public synchronized void setOfferTsFileCounter(AtomicInteger offerTsFileCounter) {

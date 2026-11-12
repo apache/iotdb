@@ -365,7 +365,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("show create pipe test_show_create_pipe"),
           "Pipe,Create Pipe,",
           Collections.singleton(
-              "test_show_create_pipe,CREATE PIPE \"test_show_create_pipe\" WITH SINK ('sink'='do-nothing-sink'),"));
+              "test_show_create_pipe,CREATE PIPE \"test_show_create_pipe\" WITH SINK ('sink'='do-nothing-sink','sink.enable-compaction'='true'),"));
     }
   }
 
