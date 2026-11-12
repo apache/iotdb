@@ -292,9 +292,11 @@ public class TimeSeriesMetadataCacheTest {
   @Test
   public void testGetDeviceTimeSeriesMetadata() throws Exception {
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     FileReaderManager fileReaderManager = FileReaderManager.getInstance();
     TsFileID tsFileID = new TsFileID();
     cache.clear();
+    bloomFilterCache.clear();
     try {
       String filePath = "target/batch-device.tsfile";
       IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.device");
@@ -370,6 +372,7 @@ public class TimeSeriesMetadataCacheTest {
       assertEquals("s1", cached.getMeasurementId());
     } finally {
       cache.clear();
+      bloomFilterCache.clear();
       fileReaderManager.closeFileAndRemoveReader(tsFileID);
     }
   }
@@ -377,9 +380,11 @@ public class TimeSeriesMetadataCacheTest {
   @Test
   public void testAbsentDeviceSkippedWhenBloomFilterExcludesIt() throws Exception {
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     FileReaderManager fileReaderManager = FileReaderManager.getInstance();
     TsFileID tsFileID = new TsFileID();
     cache.clear();
+    bloomFilterCache.clear();
     try {
       String filePath = "target/batch-absent-device-bloom.tsfile";
       IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
@@ -387,10 +392,9 @@ public class TimeSeriesMetadataCacheTest {
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
       fileReaderManager.setReaderForTest(tsFileID, true, reader);
-      Mockito.when(reader.getDeviceTimeseriesMetadata(deviceID))
-          .thenReturn(Collections.emptyList());
-      // the bloom filter proves the device is missing, so the per-column path would skip it too
-      Mockito.when(reader.readBloomFilter()).thenReturn(BloomFilter.getEmptyBloomFilter(0.05, 1));
+      // the bloom filter proves the device is missing, so the device must not be read at all
+      Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class)))
+          .thenReturn(BloomFilter.getEmptyBloomFilter(0.05, 1));
 
       // an absent device yields an empty map, which loadAlignedTimeSeriesMetadataBatch then
       // distinguishes from "present but empty time column"
@@ -399,8 +403,10 @@ public class TimeSeriesMetadataCacheTest {
               .getDeviceTimeSeriesMetadata(
                   filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false)
               .isEmpty());
+      Mockito.verify(reader, Mockito.never()).getDeviceTimeseriesMetadata(deviceID);
     } finally {
       cache.clear();
+      bloomFilterCache.clear();
       fileReaderManager.closeFileAndRemoveReader(tsFileID);
     }
   }
@@ -408,9 +414,11 @@ public class TimeSeriesMetadataCacheTest {
   @Test
   public void testAbsentDeviceThrowsWhenBloomFilterCannotExcludeIt() throws Exception {
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     FileReaderManager fileReaderManager = FileReaderManager.getInstance();
     TsFileID tsFileID = new TsFileID();
     cache.clear();
+    bloomFilterCache.clear();
     try {
       String filePath = "target/batch-absent-device-throw.tsfile";
       IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
@@ -422,7 +430,7 @@ public class TimeSeriesMetadataCacheTest {
           .thenReturn(Collections.emptyList());
       BloomFilter bloomFilter = BloomFilter.getEmptyBloomFilter(0.05, 1);
       bloomFilter.add(deviceID.toString() + ".");
-      Mockito.when(reader.readBloomFilter()).thenReturn(bloomFilter);
+      Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class))).thenReturn(bloomFilter);
 
       assertThrows(
           IOException.class,
