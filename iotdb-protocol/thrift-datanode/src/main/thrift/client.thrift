@@ -274,6 +274,7 @@ struct TSInsertTabletReq {
   11: optional bool isCompressed
   12: optional list<byte> encodingTypes
   13: optional byte compressType
+  14: optional string database
 }
 
 struct TSInsertTabletsReq {

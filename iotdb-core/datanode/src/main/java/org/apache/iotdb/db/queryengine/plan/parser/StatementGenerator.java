@@ -24,11 +24,14 @@ import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
@@ -116,6 +119,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -385,6 +389,19 @@ public class StatementGenerator {
                 ColumnCategory.values()[insertTabletReq.columnCategories.get(i).intValue()]);
       }
       insertStatement.setColumnCategories(columnCategories);
+      if (insertTabletReq.isSetDatabase()) {
+        if (insertTabletReq.getDatabase().isEmpty()) {
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.DATABASE_IS_NOT_SPECIFIED_FOR_INSERT);
+        }
+        if (!PathUtils.isTableModelDatabase(insertTabletReq.getDatabase())) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeMiscMessages.DATABASE_NAME_IS_TREE_MODEL_DATABASE,
+                  insertTabletReq.getDatabase()));
+        }
+        insertStatement.setDatabaseName(insertTabletReq.getDatabase().toLowerCase(Locale.ENGLISH));
+      }
     }
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;

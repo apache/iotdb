@@ -2907,11 +2907,22 @@ public class Session implements ISession {
    */
   public void insertRelationalTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
+    insertRelationalTablet(tablet, null);
+  }
+
+  /**
+   * Inserts a relational {@link Tablet} into the specified database for this invocation only.
+   *
+   * @param tablet data batch
+   * @param database target database; if null, use the current database of this session
+   */
+  public void insertRelationalTablet(Tablet tablet, String database)
+      throws IoTDBConnectionException, StatementExecutionException {
     if (tablet.getRowSize() == 0) {
       return;
     }
     if (enableRedirection) {
-      insertRelationalTabletWithLeaderCache(tablet);
+      insertRelationalTabletWithLeaderCache(tablet, database);
     } else {
       TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
       if (request == null) {
@@ -2923,6 +2934,7 @@ public class Session implements ISession {
         return;
       }
       request.setWriteToTable(true);
+      setRelationalRequestDatabase(request, database);
       try {
         getDefaultSessionConnection().insertTablet(request);
       } catch (RedirectException ignored) {
@@ -2930,7 +2942,7 @@ public class Session implements ISession {
     }
   }
 
-  private void insertRelationalTabletWithLeaderCache(Tablet tablet)
+  private void insertRelationalTabletWithLeaderCache(Tablet tablet, String database)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
     if (tableModelDeviceIdToEndpoint.isEmpty()) {
@@ -2975,13 +2987,14 @@ public class Session implements ISession {
       }
     }
     if (relationalTabletGroup.size() == 1) {
-      insertRelationalTabletOnce(relationalTabletGroup);
+      insertRelationalTabletOnce(relationalTabletGroup, database);
     } else {
-      insertRelationalTabletByGroup(relationalTabletGroup);
+      insertRelationalTabletByGroup(relationalTabletGroup, database);
     }
   }
 
-  private void insertRelationalTabletOnce(Map<SessionConnection, Tablet> relationalTabletGroup)
+  private void insertRelationalTabletOnce(
+      Map<SessionConnection, Tablet> relationalTabletGroup, String database)
       throws IoTDBConnectionException, StatementExecutionException {
     Map.Entry<SessionConnection, Tablet> entry = relationalTabletGroup.entrySet().iterator().next();
     SessionConnection connection = entry.getKey();
@@ -2996,6 +3009,7 @@ public class Session implements ISession {
       return;
     }
     request.setWriteToTable(true);
+    setRelationalRequestDatabase(request, database);
     try {
       connection.insertTablet(request);
     } catch (RedirectException e) {
@@ -3024,7 +3038,8 @@ public class Session implements ISession {
   @SuppressWarnings({
     "squid:S3776"
   }) // ignore Cognitive Complexity of methods should not be too high
-  private void insertRelationalTabletByGroup(Map<SessionConnection, Tablet> relationalTabletGroup)
+  private void insertRelationalTabletByGroup(
+      Map<SessionConnection, Tablet> relationalTabletGroup, String database)
       throws IoTDBConnectionException, StatementExecutionException {
     List<CompletableFuture<Void>> completableFutures =
         relationalTabletGroup.entrySet().stream()
@@ -3044,6 +3059,7 @@ public class Session implements ISession {
                           return;
                         }
                         request.setWriteToTable(true);
+                        setRelationalRequestDatabase(request, database);
                         InsertConsumer<TSInsertTabletReq> insertConsumer =
                             SessionConnection::insertTablet;
                         try {
@@ -3098,6 +3114,12 @@ public class Session implements ISession {
           new StatementExecutionException(errMsgBuilder.toString());
       errors.forEach(exception::addSuppressed);
       throw exception;
+    }
+  }
+
+  private static void setRelationalRequestDatabase(TSInsertTabletReq request, String database) {
+    if (database != null) {
+      request.setDatabase(database);
     }
   }
 
