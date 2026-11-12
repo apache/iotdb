@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
@@ -41,10 +42,12 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
+import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionHybridSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionLogSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
@@ -61,8 +64,11 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -80,6 +86,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -1506,8 +1513,9 @@ public class PipeRealtimeExtractTest {
 
       final PipeTsFileInsertionEvent firstTsFile = (PipeTsFileInsertionEvent) extractor.supply();
       firstTsFile.markGeneratedTabletInsertionEventsParsingStarted();
-      commitSuppliedEvent(firstTsFile, commitManager);
-      // Committing a TsFile with a retained iterable and no tablets yet must not release the gate.
+      Assert.assertNull(firstTsFile.getCommitterKey());
+      Assert.assertTrue(firstTsFile.decreaseReferenceCount(TEST_REFERENCE_HOLDER, false));
+      // Releasing the original event must not release the gate while generation is still open.
       Assert.assertNull(extractor.supply());
       final PipeRawTabletInsertionEvent firstTablet =
           createGeneratedTabletEvent(firstTsFile, pipeTaskMeta, "first", false);
@@ -1531,6 +1539,113 @@ public class PipeRealtimeExtractTest {
       releaseSuppliedEvent(progressEvent.getEvent());
       Assert.assertNull(extractor.supply());
     } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+    }
+  }
+
+  @Test
+  public void testTsFileSourceReleasesSplitTableFileAfterTabletCommit() throws Exception {
+    verifySplitTableFileCompletion(false);
+  }
+
+  @Test
+  public void testTsFileSourceReleasesSplitTableFileAfterOriginalRelease() throws Exception {
+    verifySplitTableFileCompletion(true);
+  }
+
+  private void verifySplitTableFileCompletion(final boolean commitTabletBeforeOriginalRelease)
+      throws Exception {
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    final UnboundedBlockingPendingQueue<Event> pendingQueue =
+        new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
+    final PipeRealtimeEvent[] events = new PipeRealtimeEvent[2];
+    try (final PipeRealtimeDataRegionTsFileSource extractor =
+        new PipeRealtimeDataRegionTsFileSource()) {
+      final PipeParameters parameters =
+          new PipeParameters(
+              Map.of(
+                  PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "true",
+                  PipeSourceConstant.SOURCE_TABLE_NAME_KEY, "t0",
+                  PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY, "true"));
+      extractor.validate(new PipeParameterValidator(parameters));
+      extractor.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta)));
+      for (int i = 0; i < events.length; i++) {
+        events[i] =
+            PipeRealtimeEventFactory.createRealtimeEvent(
+                    true,
+                    "table_db",
+                    createTableTsFileResource("126-" + (i + 1) + "-0-0.tsfile"),
+                    false)
+                .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+                    TEST_PIPE_NAME,
+                    TEST_PIPE_CREATION_TIME,
+                    pipeTaskMeta,
+                    extractor.getTreePattern(),
+                    extractor.getTablePattern(),
+                    "0",
+                    "root",
+                    "localhost",
+                    true,
+                    Long.MIN_VALUE,
+                    Long.MAX_VALUE);
+        Assert.assertTrue(events[i].increaseReferenceCount(TEST_REFERENCE_HOLDER));
+        extractor.extract(events[i]);
+      }
+
+      final PipeTsFileInsertionEvent firstTsFile = (PipeTsFileInsertionEvent) extractor.supply();
+      final PipeEventCollector collector =
+          new PipeEventCollector(
+              pendingQueue,
+              TEST_PIPE_CREATION_TIME,
+              dataRegion1,
+              extractor.getSourceId(),
+              false,
+              false,
+              false);
+      collector.collect(firstTsFile);
+      Assert.assertFalse(collector.hasNoGeneratedEvent());
+      Assert.assertFalse(collector.isFailedToIncreaseReferenceCount());
+      Assert.assertNull(firstTsFile.getCommitterKey());
+      Assert.assertEquals(1, pendingQueue.size());
+      final Event generatedTablet = pendingQueue.directPoll();
+      Assert.assertTrue(generatedTablet instanceof PipeRawTabletInsertionEvent);
+      Assert.assertNotNull(((EnrichedEvent) generatedTablet).getCommitterKey());
+      try {
+        if (commitTabletBeforeOriginalRelease) {
+          Assert.assertTrue(
+              ((EnrichedEvent) generatedTablet)
+                  .decreaseReferenceCount(TEST_REFERENCE_HOLDER, true));
+          Assert.assertNull(extractor.supply());
+        }
+
+        // Mirror the processor: only the generated tablet enters the commit queue.
+        Assert.assertTrue(firstTsFile.decreaseReferenceCount(TEST_REFERENCE_HOLDER, false));
+        if (!commitTabletBeforeOriginalRelease) {
+          Assert.assertNull(extractor.supply());
+          Assert.assertTrue(
+              ((EnrichedEvent) generatedTablet)
+                  .decreaseReferenceCount(TEST_REFERENCE_HOLDER, true));
+        }
+
+        final Event secondTsFile = extractor.supply();
+        Assert.assertSame(events[1].getEvent(), secondTsFile);
+        releaseSuppliedEvent(secondTsFile);
+      } finally {
+        ((EnrichedEvent) generatedTablet).clearReferenceCount(TEST_REFERENCE_HOLDER);
+      }
+    } finally {
+      pendingQueue.discardAllEvents();
+      for (final PipeRealtimeEvent event : events) {
+        if (event != null) {
+          event.clearReferenceCount(TEST_REFERENCE_HOLDER);
+        }
+      }
       commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
     }
   }
@@ -1760,6 +1875,39 @@ public class PipeRealtimeExtractTest {
   private TsFileResource createTsFileResource(final int dataRegionId, final String fileName)
       throws IOException {
     return createTsFileResource(dataRegionId, "0", fileName);
+  }
+
+  private TsFileResource createTableTsFileResource(final String fileName) throws Exception {
+    final File dataRegionDir = new File(tsFileDir, dataRegion1 + File.separator + "0");
+    Assert.assertTrue(dataRegionDir.mkdirs() || dataRegionDir.isDirectory());
+    final File tsFile = new File(dataRegionDir, fileName);
+    final List<ColumnCategory> categories = List.of(ColumnCategory.TAG, ColumnCategory.FIELD);
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerTableSchema(
+          new TableSchema(
+              "t0",
+              List.of(
+                  new MeasurementSchema("device_id", TSDataType.STRING),
+                  new MeasurementSchema("s0", TSDataType.INT64)),
+              categories));
+      final Tablet tablet =
+          new Tablet(
+              "t0",
+              List.of("device_id", "s0"),
+              List.of(TSDataType.STRING, TSDataType.INT64),
+              categories,
+              1);
+      tablet.addTimestamp(0, 1);
+      tablet.addValue(0, 0, "d0");
+      tablet.addValue(0, 1, 1L);
+      writer.writeTable(tablet);
+    }
+    final TsFileResource resource = new TsFileResource(tsFile);
+    final IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"t0", "d0"});
+    resource.updateStartTime(deviceId, 1);
+    resource.updateEndTime(deviceId, 1);
+    resource.close();
+    return resource;
   }
 
   private TsFileResource createTsFileResource(
