@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -31,6 +32,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.ParameterMetaData;
@@ -45,6 +47,7 @@ import java.time.LocalDate;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
@@ -351,6 +354,131 @@ public class IoTDBTablePreparedStatementJDBCIT {
         assertEquals("TestName", rs.getString("name"));
       }
     }
+  }
+
+  @Test
+  public void testPreparedStatementBatchFailureAndReuse() throws SQLException {
+    assertPreparedStatementBatchFailureAndReuse(
+        "prepared_batch_failure_test", true, TSStatusCode.SEMANTIC_ERROR);
+  }
+
+  @Test
+  public void testPreparedStatementBatchStatusFailureAndReuse() throws SQLException {
+    assertPreparedStatementBatchFailureAndReuse(
+        "prepared_batch_status_failure_test", false, TSStatusCode.METADATA_ERROR);
+  }
+
+  @Test
+  public void testBatchFailureKeepsDefaultDatabaseInSync() throws SQLException {
+    String database = "prepared_batch_database_sync_test";
+    String table = "prepared_batch_database_sync_table";
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE " + database);
+      statement.execute("USE " + database);
+      statement.execute("CREATE TABLE " + table + "(device_id STRING TAG, reading INT32 FIELD)");
+      statement.execute("USE " + DATABASE_NAME);
+
+      Connection batchConnection =
+          connection instanceof ClusterTestConnection
+              ? ((ClusterTestConnection) connection).writeConnection.getUnderlyingConnection()
+              : connection;
+      assertEquals(DATABASE_NAME, batchConnection.getSchema());
+      try (Statement batchStatement = batchConnection.createStatement()) {
+        batchStatement.addBatch("USE " + database);
+        batchStatement.addBatch(
+            "INSERT INTO "
+                + table
+                + "(time, device_id, reading) VALUES (1, 'rejected', 'not_an_int')");
+
+        BatchUpdateException error =
+            assertThrows(BatchUpdateException.class, batchStatement::executeBatch);
+        int[] updateCounts = error.getUpdateCounts();
+        assertEquals(2, updateCounts.length);
+        assertBatchSuccessStatus(updateCounts[0]);
+        assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), updateCounts[1]);
+        assertEquals(database, batchConnection.getSchema());
+      }
+    }
+  }
+
+  private void assertPreparedStatementBatchFailureAndReuse(
+      String table, boolean invalidTime, TSStatusCode expectedFailureStatus) throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute("CREATE TABLE " + table + "(device_id STRING TAG, reading INT32 FIELD)");
+
+      Connection preparedConnection =
+          connection instanceof ClusterTestConnection
+              ? ((ClusterTestConnection) connection).writeConnection.getUnderlyingConnection()
+              : connection;
+      try (PreparedStatement preparedStatement =
+          preparedConnection.prepareStatement(
+              "INSERT INTO " + table + "(time, device_id, reading) VALUES (?, ?, ?)")) {
+        preparedStatement.setLong(1, 1L);
+        preparedStatement.setString(2, "before_failure");
+        preparedStatement.setInt(3, 11);
+        preparedStatement.addBatch();
+
+        if (invalidTime) {
+          preparedStatement.setString(1, "not_a_timestamp");
+          preparedStatement.setInt(3, 22);
+        } else {
+          preparedStatement.setLong(1, 2L);
+          preparedStatement.setString(3, "not_an_int");
+        }
+        preparedStatement.setString(2, "rejected");
+        preparedStatement.addBatch();
+
+        preparedStatement.setLong(1, 3L);
+        preparedStatement.setString(2, "after_failure");
+        preparedStatement.setInt(3, 33);
+        preparedStatement.addBatch();
+
+        BatchUpdateException error =
+            assertThrows(BatchUpdateException.class, preparedStatement::executeBatch);
+        int[] updateCounts = error.getUpdateCounts();
+        assertEquals(3, updateCounts.length);
+        assertBatchSuccessStatus(updateCounts[0]);
+        assertEquals(expectedFailureStatus.getStatusCode(), updateCounts[1]);
+        assertBatchSuccessStatus(updateCounts[2]);
+
+        preparedStatement.setLong(1, 4L);
+        preparedStatement.setString(2, "after_reuse");
+        preparedStatement.setInt(3, 44);
+        preparedStatement.addBatch();
+        int[] retryCounts = preparedStatement.executeBatch();
+        assertEquals(1, retryCounts.length);
+        assertBatchSuccessStatus(retryCounts[0]);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT time, device_id, reading FROM " + table + " ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(1L, resultSet.getLong("time"));
+        assertEquals("before_failure", resultSet.getString("device_id"));
+        assertEquals(11, resultSet.getInt("reading"));
+
+        assertTrue(resultSet.next());
+        assertEquals(3L, resultSet.getLong("time"));
+        assertEquals("after_failure", resultSet.getString("device_id"));
+        assertEquals(33, resultSet.getInt("reading"));
+
+        assertTrue(resultSet.next());
+        assertEquals(4L, resultSet.getLong("time"));
+        assertEquals("after_reuse", resultSet.getString("device_id"));
+        assertEquals(44, resultSet.getInt("reading"));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  private void assertBatchSuccessStatus(int statusCode) {
+    assertTrue(
+        statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || statusCode == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
   }
 
   @Test
