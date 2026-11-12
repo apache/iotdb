@@ -6234,6 +6234,11 @@ public class StatementAnalyzer {
       passedArguments.put(
           LTTBTableFunction.WINDOW_MODE_PARAMETER_NAME,
           new ScalarArgument(org.apache.iotdb.udf.api.type.Type.BOOLEAN, isTimeWindow));
+      // Presence, not value: Long.MIN_VALUE is a legal timestamp, so the value alone cannot tell
+      // an explicit ORIGIN from the injected default.
+      passedArguments.put(
+          LTTBTableFunction.ORIGIN_SPECIFIED_PARAMETER_NAME,
+          new ScalarArgument(org.apache.iotdb.udf.api.type.Type.BOOLEAN, originSpecified));
     }
 
     private void validateM4OrderBySortOrder(

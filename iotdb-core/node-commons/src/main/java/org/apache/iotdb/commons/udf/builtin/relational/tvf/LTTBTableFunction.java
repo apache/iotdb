@@ -122,6 +122,13 @@ public class LTTBTableFunction implements TableFunction {
   /** Internal boolean argument injected by the analyzer: {@code true} if SIZE is a duration. */
   public static final String WINDOW_MODE_PARAMETER_NAME = "__LTTB_WINDOW_MODE";
 
+  /**
+   * Internal boolean argument injected by the analyzer: {@code true} if the user passed {@code
+   * ORIGIN}. The analyzer knows this from the argument list, which is more precise than comparing
+   * against {@link #UNSPECIFIED_ORIGIN}: {@link Long#MIN_VALUE} is a legal timestamp.
+   */
+  public static final String ORIGIN_SPECIFIED_PARAMETER_NAME = "__LTTB_ORIGIN_SPECIFIED";
+
   public static final long UNSPECIFIED_N = Long.MIN_VALUE;
   public static final long UNSPECIFIED_SIZE = Long.MIN_VALUE;
   public static final long UNSPECIFIED_SLIDE = Long.MIN_VALUE;
@@ -228,7 +235,10 @@ public class LTTBTableFunction implements TableFunction {
     boolean nSpecified = n != UNSPECIFIED_N;
     boolean sizeSpecified = size != UNSPECIFIED_SIZE;
     boolean slideSpecified = slide != UNSPECIFIED_SLIDE;
-    boolean originSpecified = origin != UNSPECIFIED_ORIGIN;
+    boolean originSpecified =
+        arguments.containsKey(ORIGIN_SPECIFIED_PARAMETER_NAME)
+            ? (boolean) ((ScalarArgument) arguments.get(ORIGIN_SPECIFIED_PARAMETER_NAME)).getValue()
+            : origin != UNSPECIFIED_ORIGIN;
     if (nSpecified == sizeSpecified) {
       throw new SemanticException(
           CommonMessages

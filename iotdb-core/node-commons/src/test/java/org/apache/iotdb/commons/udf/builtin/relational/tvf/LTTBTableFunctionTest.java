@@ -158,6 +158,42 @@ public class LTTBTableFunctionTest {
     assertEquals(1000L, handle.getProperty(LTTBTableFunction.ORIGIN_PARAMETER_NAME));
   }
 
+  /**
+   * {@link Long#MIN_VALUE} is a legal timestamp, so it must not be confused with an absent ORIGIN:
+   * an explicit extreme origin is kept as given, not replaced by the epoch.
+   */
+  @Test
+  public void testTimeWindowKeepsTheMinimumRepresentableOrigin() throws UDFException {
+    Map<String, Argument> arguments = windowArguments(2L, 2L, true);
+    arguments.put(
+        LTTBTableFunction.ORIGIN_PARAMETER_NAME,
+        new ScalarArgument(Type.TIMESTAMP, Long.MIN_VALUE));
+    arguments.put(
+        LTTBTableFunction.ORIGIN_SPECIFIED_PARAMETER_NAME, new ScalarArgument(Type.BOOLEAN, true));
+    TableFunctionAnalysis analysis = new LTTBTableFunction().analyze(arguments);
+    MapTableFunctionHandle handle = (MapTableFunctionHandle) analysis.getTableFunctionHandle();
+    assertEquals(Long.MIN_VALUE, handle.getProperty(LTTBTableFunction.ORIGIN_PARAMETER_NAME));
+  }
+
+  @Test
+  public void testAnalyzeRejectsMinimumOriginInCountWindowMode() throws UDFException {
+    Map<String, Argument> arguments = windowArguments(2L, 2L, false);
+    arguments.put(
+        LTTBTableFunction.ORIGIN_PARAMETER_NAME,
+        new ScalarArgument(Type.TIMESTAMP, Long.MIN_VALUE));
+    arguments.put(
+        LTTBTableFunction.ORIGIN_SPECIFIED_PARAMETER_NAME, new ScalarArgument(Type.BOOLEAN, true));
+    try {
+      new LTTBTableFunction().analyze(arguments);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(
+          QueryMessages
+              .EXCEPTION_THE_ORIGIN_ARGUMENT_IS_ONLY_SUPPORTED_IN_TIME_WINDOW_MODE_B3F358B9,
+          e.getMessage());
+    }
+  }
+
   @Test
   public void testTimeWindowWithoutOriginUsesTheEpoch() throws UDFException {
     TableFunctionAnalysis analysis = new LTTBTableFunction().analyze(windowArguments(2L, 2L, true));
