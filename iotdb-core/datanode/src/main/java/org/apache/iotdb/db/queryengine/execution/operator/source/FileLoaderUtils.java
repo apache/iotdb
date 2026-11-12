@@ -365,9 +365,13 @@ public class FileLoaderUtils {
     // For a wide device (a table scan that selects almost all field columns), deserialize the
     // whole device's TimeSeriesMetadata in a single batch read instead of walking the device
     // metadata index once per column. External tsfiles address metadata by offset, so they must
-    // stay on the per-column path.
-    if (rootMeasurementMetadataIndexNodeOffset == null
-        && shouldUseDeviceMetadataBatchScan(valueMeasurementList.size(), totalFieldColumnCount)) {
+    // stay on the per-column path; DEBUG queries also stay there so the per-column cache's
+    // diagnostic logs are preserved.
+    if (shouldUseDeviceMetadataBatchScan(
+        valueMeasurementList.size(),
+        totalFieldColumnCount,
+        isDebug,
+        rootMeasurementMetadataIndexNodeOffset != null)) {
       return loadAlignedTimeSeriesMetadataBatch(
           resource,
           alignedPath,
@@ -434,10 +438,13 @@ public class FileLoaderUtils {
   }
 
   static boolean shouldUseDeviceMetadataBatchScan(
-      int selectedColumnCount, int totalFieldColumnCount) {
-    // a single-column device gains nothing from a batch read (one leaf either way), and it would
-    // bypass the per-column cache's debug logging
-    return totalFieldColumnCount > 1
+      int selectedColumnCount, int totalFieldColumnCount, boolean debug, boolean offsetAddressed) {
+    // DEBUG queries keep the per-column cache's diagnostic logs; offset-addressed external
+    // tsfiles cannot be resolved through the table metadata index; a single-column device gains
+    // nothing from a batch read (one leaf either way)
+    return !debug
+        && !offsetAddressed
+        && totalFieldColumnCount > 1
         && (double) selectedColumnCount / totalFieldColumnCount >= DEVICE_METADATA_BATCH_SCAN_RATIO;
   }
 
