@@ -664,6 +664,27 @@ public class Session implements ISession {
       boolean enableThriftRpcCompaction,
       int connectionTimeoutInMs,
       Map<String, TEndPoint> deviceIdToEndpoint,
+      Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint,
+      INodeSupplier nodesSupplier)
+      throws IoTDBConnectionException {
+    Map<String, Map<IDeviceID, TEndPoint>> databaseToDeviceIdToEndpoint = new ConcurrentHashMap<>();
+    if (tableModelDeviceIdToEndpoint != null) {
+      databaseToDeviceIdToEndpoint.put(
+          resolveTableModelRouteDatabase(null), tableModelDeviceIdToEndpoint);
+    }
+    openWithTableModelDatabaseCache(
+        enableThriftRpcCompaction,
+        connectionTimeoutInMs,
+        deviceIdToEndpoint,
+        databaseToDeviceIdToEndpoint,
+        nodesSupplier);
+  }
+
+  /** Opens this Session with a database-aware table-model route cache for internal callers. */
+  public synchronized void openWithTableModelDatabaseCache(
+      boolean enableThriftRpcCompaction,
+      int connectionTimeoutInMs,
+      Map<String, TEndPoint> deviceIdToEndpoint,
       Map<String, Map<IDeviceID, TEndPoint>> tableModelDeviceIdToEndpoint,
       INodeSupplier nodesSupplier)
       throws IoTDBConnectionException {

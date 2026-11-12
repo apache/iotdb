@@ -774,7 +774,7 @@ public class SessionPool implements ISessionPool {
       session = constructNewSession();
 
       try {
-        session.open(
+        session.openWithTableModelDatabaseCache(
             enableThriftCompression,
             connectionTimeoutInMs,
             deviceIdToEndpoint,
@@ -890,7 +890,7 @@ public class SessionPool implements ISessionPool {
   private void tryConstructNewSession() {
     Session session = constructNewSession();
     try {
-      session.open(
+      session.openWithTableModelDatabaseCache(
           enableThriftCompression,
           connectionTimeoutInMs,
           deviceIdToEndpoint,

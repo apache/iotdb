@@ -47,6 +47,7 @@ import org.junit.Test;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -736,7 +737,7 @@ public class SessionCacheLeaderTest {
                   }
                   return;
                 }
-                throw new RedirectException(leader);
+                throw new RedirectException(Collections.singletonList(leader));
               }
             };
           }
