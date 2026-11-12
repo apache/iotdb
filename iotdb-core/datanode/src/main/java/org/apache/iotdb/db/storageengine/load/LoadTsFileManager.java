@@ -129,6 +129,9 @@ public class LoadTsFileManager {
   /** Pieces read, stop() and closing a writer write. Fair, so a stop is not starved. */
   private final ReentrantReadWriteLock writersLock = new ReentrantReadWriteLock(true);
 
+  /** Fences COMMIT/ABORT publication against the data and LOAD-state snapshot boundary. */
+  private final ReentrantReadWriteLock snapshotBoundaryLock = new ReentrantReadWriteLock(true);
+
   /** Set under the write side, read as the fast path of a piece. */
   private volatile boolean stopped = false;
 
@@ -255,6 +258,13 @@ public class LoadTsFileManager {
             continue;
           }
           if (retention.recoverTerminalTask(uuid, uuidDir)) {
+            // Older versions kept the decision only in each staged file's progress tail.
+            final LoadTsFileProgress.TerminalRecord retainedTerminal =
+                LoadTsFileProgress.readTerminalOfTaskDir(uuidDir);
+            if (retainedTerminal != null) {
+              rememberTerminal(uuid, retainedTerminal.op(), retainedTerminal.searchIndex());
+              finishedLoadIds.put(uuid, retainedTerminal.op());
+            }
             continue;
           }
           final TsFileWriterManager recovered =
@@ -396,6 +406,15 @@ public class LoadTsFileManager {
       result.add(writerManager.getTaskDir());
     }
     return result;
+  }
+
+  /** Holds the write side while a region snapshot selects its data and LOAD state. */
+  public void lockSnapshotBoundary() {
+    snapshotBoundaryLock.writeLock().lock();
+  }
+
+  public void unlockSnapshotBoundary() {
+    snapshotBoundaryLock.writeLock().unlock();
   }
 
   /** Terminal metadata is snapshotted separately from active tasks and their staged bytes. */
@@ -574,54 +593,70 @@ public class LoadTsFileManager {
       final LoadTsFileConsensusNode node,
       final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
-    final LoadTsFileConsensusOp terminalOp = getTerminalOp(node.getLoadId());
-    if (terminalOp != null) {
-      return terminalOp == LoadTsFileConsensusOp.COMMIT;
-    }
-    if (!uuid2WriterManager.containsKey(node.getLoadId())) {
-      if (node.isGeneratedByRemoteConsensusLeader()) {
-        throw new LoadFileNotReadyException();
+    final Lock snapshotReadLock = snapshotBoundaryLock.readLock();
+    snapshotReadLock.lock();
+    final boolean mustRetainStagedFiles;
+    try {
+      final LoadTsFileConsensusOp terminalOp = getTerminalOp(node.getLoadId());
+      if (terminalOp != null) {
+        return terminalOp == LoadTsFileConsensusOp.COMMIT;
       }
-      return false;
+      if (!uuid2WriterManager.containsKey(node.getLoadId())) {
+        if (node.isGeneratedByRemoteConsensusLeader()) {
+          throw new LoadFileNotReadyException();
+        }
+        return false;
+      }
+      LOGGER.info(
+          StorageEngineMessages
+              .LOG_COMMITTING_LOAD_TSFILE_ARG_LOADING_PREPARED_RESOURCES_INTO_DATAREGION_EA1D6335,
+          node.getLoadId());
+      // Whether the staged bytes are still needed has to be decided before they are imported: the
+      // WAL entries of the pieces of this task only reference those bytes, and they are expanded on
+      // this node for a replica that has not applied them yet. Importing them by moving the staged
+      // file away would leave those entries unexpandable, so a copy is imported while the watermark
+      // of the WAL has not got past this command yet.
+      mustRetainStagedFiles = retention.mustRetain(node.getSearchIndex());
+      uuid2WriterManager
+          .get(node.getLoadId())
+          .loadAll(
+              node.isGeneratedByPipe(),
+              !mustRetainStagedFiles && !node.isGeneratedByRemoteConsensusLeader());
+      // Keep a follower's staged copy until the terminal answer is durable, even without a local
+      // WAL watermark to retain it. A restart before this record can then resume the prepared task.
+      rememberTerminal(node, LoadTsFileConsensusOp.COMMIT);
+      finishConsensusTask(node, mustRetainStagedFiles, LoadTsFileConsensusOp.COMMIT);
+    } finally {
+      snapshotReadLock.unlock();
     }
-    LOGGER.info(
-        StorageEngineMessages
-            .LOG_COMMITTING_LOAD_TSFILE_ARG_LOADING_PREPARED_RESOURCES_INTO_DATAREGION_EA1D6335,
-        node.getLoadId());
-    // Whether the staged bytes are still needed has to be decided before they are imported: the WAL
-    // entries of the pieces of this task only reference those bytes, and they are expanded on this
-    // node for a replica that has not applied them yet. Importing them by moving the staged file
-    // away would leave those entries unexpandable, so a copy is imported while the watermark of the
-    // WAL has not got past this command yet.
-    final boolean mustRetainStagedFiles = retention.mustRetain(node.getSearchIndex());
-    uuid2WriterManager
-        .get(node.getLoadId())
-        .loadAll(
-            node.isGeneratedByPipe(),
-            !mustRetainStagedFiles && !node.isGeneratedByRemoteConsensusLeader());
-    // Keep a follower's staged copy until the terminal answer is durable, even without a local WAL
-    // watermark to retain it. A restart before this record can then resume the prepared task.
-    rememberTerminal(node, LoadTsFileConsensusOp.COMMIT);
-    finishConsensusTask(node, mustRetainStagedFiles, LoadTsFileConsensusOp.COMMIT);
     logLoadNodeToWAL(node);
     dataRegion.insertSeparatorToWAL(node);
     return true;
   }
 
   public boolean deleteAll(final LoadTsFileConsensusNode node) throws IOException {
-    if (getTerminalOp(node.getLoadId()) != null) {
-      return false;
-    }
-    if (!uuid2WriterManager.containsKey(node.getLoadId())) {
+    final Lock snapshotReadLock = snapshotBoundaryLock.readLock();
+    snapshotReadLock.lock();
+    final boolean hasWriter;
+    try {
+      if (getTerminalOp(node.getLoadId()) != null) {
+        return false;
+      }
+      hasWriter = uuid2WriterManager.containsKey(node.getLoadId());
       // ABORT may overtake every PIECE. Its success must still settle pending PREPARE retries.
       rememberTerminal(node, LoadTsFileConsensusOp.ABORT);
+      if (hasWriter) {
+        finishConsensusTask(
+            node, retention.mustRetain(node.getSearchIndex()), LoadTsFileConsensusOp.ABORT);
+      }
+    } finally {
+      snapshotReadLock.unlock();
+    }
+    if (!hasWriter) {
       logLoadNodeToWAL(node);
       dataRegion.insertSeparatorToWAL(node);
       return false;
     }
-    rememberTerminal(node, LoadTsFileConsensusOp.ABORT);
-    finishConsensusTask(
-        node, retention.mustRetain(node.getSearchIndex()), LoadTsFileConsensusOp.ABORT);
     logLoadNodeToWAL(node);
     dataRegion.insertSeparatorToWAL(node);
     return true;

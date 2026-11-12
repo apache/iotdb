@@ -89,6 +89,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
@@ -727,6 +728,110 @@ public class LoadTsFileManagerTest {
       }
     } finally {
       manager.stop();
+    }
+  }
+
+  @Test
+  public void testRecoveryMigratesLegacyTerminalRecordIntoSnapshotHistory() throws Exception {
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    final String loadId = "legacy-terminal-load";
+    try {
+      final LoadTsFileManager beforeUpgrade = new LoadTsFileManager(dataRegion);
+      try {
+        beforeUpgrade.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+        assertTrue(beforeUpgrade.prepare(prepareNode(loadId), Collections.emptyMap()));
+        final TsFileWriterManager writer = writerOf(beforeUpgrade, loadId);
+        writer.recordTerminal(LoadTsFileConsensusOp.COMMIT, 10L, Collections.emptyMap());
+        writer.close(true);
+
+        final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+        try {
+          final List<File> terminalHistory = LoadTsFileSnapshot.captureTerminalHistory(dataRegion);
+          assertEquals(1, terminalHistory.size());
+          assertEquals(
+              loadId + LoadTsFileProgress.PROGRESS_SUFFIX, terminalHistory.get(0).getName());
+        } finally {
+          recovered.stop();
+        }
+      } finally {
+        beforeUpgrade.stop();
+      }
+    } finally {
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testCommitCannotSplitSnapshotDataAndTerminalBoundary() throws Exception {
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    final String loadId = "commit-at-snapshot-boundary";
+    try {
+      final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+      final AtomicBoolean commitStarted = new AtomicBoolean();
+      final CountDownLatch commitFinished = new CountDownLatch(1);
+      final AtomicReference<Throwable> commitFailure = new AtomicReference<>();
+      final AtomicReference<Thread> commitThread = new AtomicReference<>();
+      try {
+        final LoadTsFileConsensusNode commit = commitNode(loadId);
+        commit.markAsGeneratedByRemoteConsensusLeader();
+        Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+        emulateStagedFileImport();
+        manager.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+        assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+
+        final TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+        Mockito.when(tsFileManager.getTsFileList(Mockito.anyBoolean()))
+            .thenAnswer(invocation -> new ArrayList<>());
+        Mockito.when(dataRegion.getTsFileManager())
+            .thenAnswer(
+                invocation -> {
+                  if (commitStarted.compareAndSet(false, true)) {
+                    final Thread thread =
+                        new Thread(
+                            () -> {
+                              try {
+                                assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+                              } catch (final Throwable t) {
+                                commitFailure.set(t);
+                              } finally {
+                                commitFinished.countDown();
+                              }
+                            });
+                    commitThread.set(thread);
+                    thread.start();
+                    assertFalse(
+                        "COMMIT must wait for snapshot boundary capture",
+                        commitFinished.await(1, TimeUnit.SECONDS));
+                  }
+                  return tsFileManager;
+                });
+
+        final File snapshot = new File(tempDir, "commit-boundary-snapshot");
+        assertTrue(
+            new SnapshotTaker(dataRegion).takeFullSnapshot(snapshot.getAbsolutePath(), true));
+        assertTrue(
+            "COMMIT must continue after snapshot boundary capture",
+            commitFinished.await(10, TimeUnit.SECONDS));
+        commitThread.get().join(10_000L);
+        assertFalse(commitThread.get().isAlive());
+        assertNull(commitFailure.get());
+
+        final File history =
+            new File(
+                new File(snapshot, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME),
+                LoadTsFileManager.TERMINAL_HISTORY_DIR);
+        assertFalse(LoadTsFileProgress.progressFileFor(new File(history, loadId)).exists());
+      } finally {
+        final Thread thread = commitThread.get();
+        if (thread != null) {
+          thread.join(10_000L);
+        }
+        manager.stop();
+      }
+    } finally {
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
     }
   }
 
