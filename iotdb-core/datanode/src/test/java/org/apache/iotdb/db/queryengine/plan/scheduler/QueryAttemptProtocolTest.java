@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 
 import org.apache.thrift.TDeserializer;
@@ -46,13 +48,13 @@ public class QueryAttemptProtocolTest {
     new TDeserializer().deserialize(received, new TSerializer().serialize(original));
     assertEquals(original, received);
     assertFalse(received.isSetQueryAttemptId());
-    assertFalse(received.isSetQueryDeadline());
+    assertFalse(received.isSetAdmissionToken());
     TCancelQueryReq cancel = new TCancelQueryReq("query", Collections.emptyList(), true);
     TCancelQueryReq receivedCancel = new TCancelQueryReq();
     new TDeserializer().deserialize(receivedCancel, new TSerializer().serialize(cancel));
     assertEquals(cancel, receivedCancel);
     assertFalse(receivedCancel.isSetQueryAttemptId());
-    assertFalse(receivedCancel.isSetAdmissionDeadline());
+    assertFalse(receivedCancel.isSetAdmissionToken());
   }
 
   @Test
@@ -61,8 +63,7 @@ public class QueryAttemptProtocolTest {
     TSendFragmentInstanceReq request =
         new TSendFragmentInstanceReq(body)
             .setQueryAttemptId(2)
-            .setQueryDeadline(123456L)
-            .setAdmissionDeadline(123450L);
+            .setAdmissionToken(new TQueryAdmissionToken("receiver", 123450L, 1000L));
     byte[] serialized = new TSerializer().serialize(request);
     TSendFragmentInstanceReq received = new TSendFragmentInstanceReq();
     new TDeserializer().deserialize(received, serialized);
@@ -86,7 +87,7 @@ public class QueryAttemptProtocolTest {
     TCancelQueryReq cancel =
         new TCancelQueryReq("query", Collections.emptyList(), true)
             .setQueryAttemptId(2)
-            .setAdmissionDeadline(123450L);
+            .setAdmissionToken(new TQueryAdmissionToken("receiver", 123450L, 1000L));
     TCancelQueryReq receivedCancel = new TCancelQueryReq();
     new TDeserializer().deserialize(receivedCancel, new TSerializer().serialize(cancel));
     assertEquals(cancel, receivedCancel);

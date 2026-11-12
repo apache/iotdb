@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -30,22 +31,32 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -54,41 +65,29 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class FragmentInstanceDispatcherLifecycleTest {
-  @Test
-  public void abortPreventsDispatchAndRetainsOriginalAttemptMetadata() throws Exception {
-    QueryId queryId = new QueryId("aborted_dispatch");
-    MPPQueryContext context = new MPPQueryContext(queryId);
-    context.setStartTime(1000);
-    context.setTimeOut(2000);
-    FragmentInstanceDispatcherImpl dispatcher =
-        new FragmentInstanceDispatcherImpl(QueryType.READ, context, null, null);
-    context.prepareForRetry();
-    FragmentInstance instance = mock(FragmentInstance.class);
-    when(instance.getId()).thenReturn(new FragmentInstanceId(new PlanFragmentId(queryId, 0), "0"));
-    PlanFragment fragment = mock(PlanFragment.class);
-    when(instance.getFragment()).thenReturn(fragment);
-    dispatcher.abort();
-    FragInstanceDispatchResult result =
-        dispatcher.dispatch(null, Collections.singletonList(instance)).get();
-    assertFalse(result.isSuccessful());
-    assertEquals(
-        TSStatusCode.QUERY_WAS_KILLED.getStatusCode(), result.getFailureStatus().getCode());
-    verify(instance, never()).getHostDataNode();
-    verify(instance).setQueryAttempt(0, 3000);
-  }
+  private final QueryId queryId = new QueryId("dispatch_admission");
+  private final MPPQueryContext context = new MPPQueryContext(queryId);
+  private final TEndPoint endpoint = new TEndPoint("remote-host", 10730);
+  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients =
+      mock(IClientManager.class);
+  private final SyncDataNodeInternalServiceClient client =
+      mock(SyncDataNodeInternalServiceClient.class);
+  private final TQueryAdmissionToken token = new TQueryAdmissionToken("receiver", 123456L, 60000L);
 
-  @Test
-  public void transportRetryReusesAdmissionDeadlineAndStopFreezesCutoff() throws Exception {
-    QueryId queryId = new QueryId("retry_admission");
-    MPPQueryContext context = new MPPQueryContext(queryId);
+  private FragmentInstanceDispatcherImpl dispatcher() throws Exception {
     context.setStartTime(System.currentTimeMillis());
     context.setTimeOut(Long.MAX_VALUE);
-    PlanFragment fragment = mock(PlanFragment.class);
+    when(clients.borrowClient(endpoint)).thenReturn(client);
+    when(client.fetchQueryAdmissionToken(anyLong())).thenReturn(token);
+    return new FragmentInstanceDispatcherImpl(QueryType.READ, context, clients, null);
+  }
+
+  private FragmentInstance instance(int fragmentId) {
     FragmentInstance instance =
         spy(
             new FragmentInstance(
-                fragment,
-                new FragmentInstanceId(new PlanFragmentId(queryId, 0), "0"),
+                mock(PlanFragment.class),
+                new FragmentInstanceId(new PlanFragmentId(queryId, fragmentId), "0"),
                 null,
                 QueryType.READ,
                 Long.MAX_VALUE,
@@ -96,15 +95,30 @@ public class FragmentInstanceDispatcherLifecycleTest {
                 false,
                 false));
     doReturn(ByteBuffer.wrap(new byte[] {1})).when(instance).serializeToByteBuffer();
-    TEndPoint endpoint = new TEndPoint("remote-host", 10730);
     doReturn(new TDataNodeLocation().setInternalEndPoint(endpoint))
         .when(instance)
         .getHostDataNode();
     instance.setExecutorType(mock(ExecutorType.class));
-    IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients =
-        mock(IClientManager.class);
-    SyncDataNodeInternalServiceClient client = mock(SyncDataNodeInternalServiceClient.class);
-    when(clients.borrowClient(endpoint)).thenReturn(client);
+    return instance;
+  }
+
+  @Test
+  public void abortPreventsTokenAcquisitionAndDispatch() throws Exception {
+    FragmentInstanceDispatcherImpl dispatcher = dispatcher();
+    dispatcher.abort();
+    FragInstanceDispatchResult result =
+        dispatcher.dispatch(null, Collections.singletonList(instance(0))).get();
+    assertFalse(result.isSuccessful());
+    assertEquals(
+        TSStatusCode.QUERY_WAS_KILLED.getStatusCode(), result.getFailureStatus().getCode());
+    verify(client, never()).fetchQueryAdmissionToken(anyLong());
+    verify(client, never()).sendFragmentInstance(any());
+  }
+
+  @Test
+  public void transportRetryReusesTokenAndStopFreezesIssuedTokens() throws Exception {
+    FragmentInstanceDispatcherImpl dispatcher = dispatcher();
+    context.prepareForRetry();
     List<TSendFragmentInstanceReq> requests = new ArrayList<>();
     when(client.sendFragmentInstance(any()))
         .thenAnswer(
@@ -116,18 +130,120 @@ public class FragmentInstanceDispatcherLifecycleTest {
               }
               return new TSendFragmentInstanceResp(true);
             });
-    FragmentInstanceDispatcherImpl dispatcher =
-        new FragmentInstanceDispatcherImpl(QueryType.READ, context, clients, null);
+    FragmentInstance instance = instance(0);
     assertTrue(dispatcher.dispatch(null, Collections.singletonList(instance)).get().isSuccessful());
     assertEquals(2, requests.size());
-    assertEquals(Long.MAX_VALUE, requests.get(0).getQueryDeadline());
-    assertTrue(requests.get(0).getAdmissionDeadline() < Long.MAX_VALUE);
-    assertEquals(requests.get(0).getAdmissionDeadline(), requests.get(1).getAdmissionDeadline());
-    long cutoff = dispatcher.getLastAdmissionDeadline();
+    assertEquals(0, requests.get(0).getQueryAttemptId());
+    assertEquals(token, requests.get(0).getAdmissionToken());
+    assertEquals(requests.get(0).getAdmissionToken(), requests.get(1).getAdmissionToken());
+    verify(client).fetchQueryAdmissionToken(anyLong());
+    Map<TEndPoint, TQueryAdmissionToken> issued = dispatcher.getIssuedAdmissionTokens();
     dispatcher.abort();
     assertFalse(
         dispatcher.dispatch(null, Collections.singletonList(instance)).get().isSuccessful());
     assertEquals(2, requests.size());
-    assertEquals(cutoff, dispatcher.getLastAdmissionDeadline());
+    assertEquals(issued, dispatcher.getIssuedAdmissionTokens());
+  }
+
+  @Test
+  public void fragmentsOnTheSameNodeReuseOneTokenRpc() throws Exception {
+    FragmentInstanceDispatcherImpl dispatcher = dispatcher();
+    when(client.sendFragmentInstance(any())).thenReturn(new TSendFragmentInstanceResp(true));
+    assertTrue(
+        dispatcher.dispatch(null, Arrays.asList(instance(0), instance(1))).get().isSuccessful());
+    verify(client).fetchQueryAdmissionToken(anyLong());
+  }
+
+  @Test
+  public void legacyReceiverUsesTheOriginalProtocol() throws Exception {
+    FragmentInstanceDispatcherImpl dispatcher = dispatcher();
+    when(client.fetchQueryAdmissionToken(anyLong()))
+        .thenThrow(
+            new TApplicationException(TApplicationException.UNKNOWN_METHOD, "unknown method"));
+    when(client.sendFragmentInstance(any()))
+        .thenAnswer(
+            invocation -> {
+              TSendFragmentInstanceReq request = invocation.getArgument(0);
+              assertFalse(request.isSetQueryAttemptId());
+              assertFalse(request.isSetAdmissionToken());
+              return new TSendFragmentInstanceResp(true);
+            });
+    assertTrue(
+        dispatcher.dispatch(null, Arrays.asList(instance(0), instance(1))).get().isSuccessful());
+    verify(client).fetchQueryAdmissionToken(anyLong());
+    assertTrue(dispatcher.getIssuedAdmissionTokens().isEmpty());
+  }
+
+  @Test
+  public void wrappedUnknownMethodUsesAFreshClientForLegacyDispatch() throws Exception {
+    FragmentInstanceDispatcherImpl dispatcher = dispatcher();
+    SyncDataNodeInternalServiceClient fresh = mock(SyncDataNodeInternalServiceClient.class);
+    java.util.concurrent.atomic.AtomicBoolean returned =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    java.util.concurrent.atomic.AtomicInteger borrows =
+        new java.util.concurrent.atomic.AtomicInteger();
+    org.mockito.Mockito.doAnswer(
+            ignored -> {
+              returned.set(true);
+              return null;
+            })
+        .when(client)
+        .close();
+    when(clients.borrowClient(endpoint))
+        .thenAnswer(
+            ignored -> {
+              if (borrows.getAndIncrement() == 0) {
+                return client;
+              }
+              assertTrue(returned.get());
+              return fresh;
+            });
+    when(client.fetchQueryAdmissionToken(anyLong()))
+        .thenThrow(
+            new TException(
+                new TApplicationException(TApplicationException.UNKNOWN_METHOD, "unknown method")));
+    when(fresh.sendFragmentInstance(any()))
+        .thenAnswer(
+            invocation -> {
+              TSendFragmentInstanceReq request = invocation.getArgument(0);
+              assertFalse(request.isSetAdmissionToken());
+              return new TSendFragmentInstanceResp(true);
+            });
+    assertTrue(
+        dispatcher.dispatch(null, Collections.singletonList(instance(0))).get().isSuccessful());
+    verify(client, never()).sendFragmentInstance(any());
+    verify(fresh, never()).fetchQueryAdmissionToken(anyLong());
+    verify(fresh).sendFragmentInstance(any());
+  }
+
+  @Test
+  public void abortDuringTokenRpcCannotPublishALateFragment() throws Exception {
+    FragmentInstanceDispatcherImpl dispatcher = dispatcher();
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    CountDownLatch acquiring = new CountDownLatch(1);
+    CountDownLatch returnToken = new CountDownLatch(1);
+    when(client.fetchQueryAdmissionToken(anyLong()))
+        .thenAnswer(
+            invocation -> {
+              acquiring.countDown();
+              assertTrue(returnToken.await(10, TimeUnit.SECONDS));
+              return token;
+            });
+    try {
+      Future<FragInstanceDispatchResult> result =
+          executor.submit(
+              () -> dispatcher.dispatch(null, Collections.singletonList(instance(0))).get());
+      assertTrue(acquiring.await(10, TimeUnit.SECONDS));
+      dispatcher.abort();
+      assertTrue(dispatcher.getIssuedAdmissionTokens().isEmpty());
+      returnToken.countDown();
+      assertFalse(result.get(10, TimeUnit.SECONDS).isSuccessful());
+      verify(client, never()).sendFragmentInstance(any());
+      assertTrue(dispatcher.getIssuedAdmissionTokens().isEmpty());
+    } finally {
+      returnToken.countDown();
+      executor.shutdownNow();
+      assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
   }
 }

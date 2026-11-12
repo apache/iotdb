@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.common;
 
 /** Identifies one execution of a query, independently of transport-level RPC retries. */

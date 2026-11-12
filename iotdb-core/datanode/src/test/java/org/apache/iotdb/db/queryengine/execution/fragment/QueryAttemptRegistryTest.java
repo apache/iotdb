@@ -16,14 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryAttemptId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Test;
@@ -45,8 +48,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class QueryAttemptRegistryTest {
-  private final AtomicLong clock = new AtomicLong(1000);
+  private final AtomicLong clock = new AtomicLong(TimeUnit.MILLISECONDS.toNanos(1000));
   private final QueryAttemptRegistry registry = new QueryAttemptRegistry(clock::get);
+  private final TQueryAdmissionToken token = registry.issueAdmissionToken(1000);
   private final QueryId queryId = new QueryId("attempt_test");
 
   @Test
@@ -69,12 +73,12 @@ public class QueryAttemptRegistryTest {
     QueryAttemptRegistry.Registration first = registry.register(instance, state, true);
     QueryAttemptRegistry.Registration failed = register(0, 1, 3);
     failed.close();
-    registry.close(key(0), 2000, true);
+    registry.close(key(0), token, true);
     assertEquals(FragmentInstanceState.CANCELLED, state.getState());
     assertTrue(registry.hasSharedContext(key(0)));
     first.close();
     first.close();
-    registry.close(key(0), 2000, true);
+    registry.close(key(0), token, true);
     assertFalse(registry.hasSharedContext(key(0)));
     // The third FI never arrived; it cannot keep the shared LAST/filter state alive.
     assertEquals(1, registry.getRetainedEntryCount());
@@ -85,9 +89,9 @@ public class QueryAttemptRegistryTest {
     QueryAttemptRegistry.Registration old = register(0, 0, 3);
     QueryAttemptRegistry.Registration retry = register(1, 3, 1);
     assertNotSame(old.getContext(), retry.getContext());
-    registry.close(key(0), 2000, true);
+    registry.close(key(0), token, true);
     old.close();
-    registry.close(key(0), 2000, true);
+    registry.close(key(0), token, true);
     assertTrue(registry.hasSharedContext(key(1)));
     assertFalse(registry.hasSharedContext(key(0)));
     retry.close();
@@ -95,18 +99,16 @@ public class QueryAttemptRegistryTest {
 
   @Test
   public void closedBeforeFirstDispatchRemainsFencedAfterRecordExpires() {
-    registry.close(key(0), 2000, true);
+    registry.close(key(0), token, true);
     assertEquals(
         TSStatusCode.QUERY_WAS_KILLED.getStatusCode(),
         assertThrows(IoTDBRuntimeException.class, () -> register(0, 0, 1)).getErrorCode());
-    clock.set(2000);
+    clock.set(TimeUnit.MILLISECONDS.toNanos(2000));
     registry.removeExpired();
     assertEquals(0, registry.getRetainedEntryCount());
     assertEquals(
-        TSStatusCode.QUERY_TIMEOUT.getStatusCode(),
+        TSStatusCode.DISPATCH_ERROR.getStatusCode(),
         assertThrows(IoTDBRuntimeException.class, () -> register(0, 0, 1)).getErrorCode());
-    clock.set(1500);
-    assertThrows(IoTDBRuntimeException.class, () -> register(0, 0, 1));
     assertEquals(0, registry.getRetainedEntryCount());
   }
 
@@ -115,9 +117,15 @@ public class QueryAttemptRegistryTest {
     FragmentInstance instance = instance(0, 0, 3);
     FragmentInstanceStateMachine state = state(instance);
     QueryAttemptRegistry.Registration first = registry.register(instance, state, true);
-    clock.set(2000);
+    clock.set(TimeUnit.MILLISECONDS.toNanos(2000));
     registry.removeExpired();
-    assertEquals(FragmentInstanceState.CANCELLED, state.getState());
+    assertEquals(FragmentInstanceState.FAILED, state.getState());
+    FragmentInstanceContext context =
+        FragmentInstanceContext.createFragmentInstanceContext(
+            instance.getId(), state, null, Long.MAX_VALUE, false, false);
+    assertEquals(
+        TSStatusCode.QUERY_TIMEOUT.getStatusCode(),
+        context.getInstanceInfo().getErrorCode().get().getCode());
     first.close();
     assertEquals(0, registry.getRetainedEntryCount());
   }
@@ -134,7 +142,7 @@ public class QueryAttemptRegistryTest {
             .getErrorCode());
     first.close();
     assertTrue(registry.hasSharedContext(key(0)));
-    registry.close(key(0), 2000, true);
+    registry.close(key(0), token, true);
     assertFalse(registry.hasSharedContext(key(0)));
   }
 
@@ -168,7 +176,7 @@ public class QueryAttemptRegistryTest {
       Future<QueryAttemptRegistry.Registration> registration =
           executor.submit(() -> registry.register(instance, state, true));
       assertTrue(registering.await(10, TimeUnit.SECONDS));
-      Future<?> cancellation = executor.submit(() -> registry.close(key(0), 2000, true));
+      Future<?> cancellation = executor.submit(() -> registry.close(key(0), token, true));
       allowRegistration.countDown();
       QueryAttemptRegistry.Registration result = registration.get(10, TimeUnit.SECONDS);
       cancellation.get(10, TimeUnit.SECONDS);
@@ -186,15 +194,16 @@ public class QueryAttemptRegistryTest {
   @Test
   public void admissionExpiryDoesNotCancelAnAlreadyRunningLongQuery() {
     FragmentInstance instance = instance(0, 0, 3);
-    when(instance.getQueryDeadline()).thenReturn(Long.MAX_VALUE);
-    when(instance.getAdmissionDeadline()).thenReturn(1200L);
+    when(instance.getTimeOut()).thenReturn(Long.MAX_VALUE);
+    TQueryAdmissionToken shortToken = registry.issueAdmissionToken(200);
+    when(instance.getAdmissionToken()).thenReturn(shortToken);
     FragmentInstanceStateMachine state = state(instance);
     QueryAttemptRegistry.Registration running = registry.register(instance, state, true);
-    clock.set(1300);
+    clock.set(TimeUnit.MILLISECONDS.toNanos(1300));
     registry.removeExpired();
     assertEquals(FragmentInstanceState.RUNNING, state.getState());
     assertTrue(registry.hasSharedContext(key(0)));
-    registry.close(key(0), 1200, true);
+    registry.close(key(0), shortToken, true);
     running.close();
     assertEquals(0, registry.getRetainedEntryCount());
     assertThrows(
@@ -204,14 +213,84 @@ public class QueryAttemptRegistryTest {
   @Test
   public void completedLongQueryRetainsOnlyABoundedAdmissionFence() {
     FragmentInstance instance = instance(0, 0, 1);
-    when(instance.getQueryDeadline()).thenReturn(Long.MAX_VALUE);
-    when(instance.getAdmissionDeadline()).thenReturn(1200L);
+    when(instance.getTimeOut()).thenReturn(Long.MAX_VALUE);
+    TQueryAdmissionToken shortToken = registry.issueAdmissionToken(200);
+    when(instance.getAdmissionToken()).thenReturn(shortToken);
     registry.register(instance, state(instance), true).close();
     assertEquals(1, registry.getRetainedEntryCount());
     assertFalse(registry.hasSharedContext(key(0)));
-    clock.set(1200);
+    clock.set(TimeUnit.MILLISECONDS.toNanos(1200));
     registry.removeExpired();
     assertEquals(0, registry.getRetainedEntryCount());
+  }
+
+  @Test
+  public void expiryOfClosedFenceDoesNotAddATimeoutCause() {
+    FragmentInstance instance = instance(0, 0, 3);
+    FragmentInstanceStateMachine state = state(instance);
+    QueryAttemptRegistry.Registration registration = registry.register(instance, state, true);
+    registry.close(key(0), token, true);
+    clock.addAndGet(TimeUnit.SECONDS.toNanos(2));
+    registry.removeExpired();
+    assertEquals(FragmentInstanceState.CANCELLED, state.getState());
+    assertTrue(state.getFailureCauses().isEmpty());
+    registration.close();
+    assertEquals(0, registry.getRetainedEntryCount());
+  }
+
+  @Test
+  public void receiverClockOriginDoesNotShortenExecutionBudget() {
+    // The receiver can have an entirely different clock origin from the coordinator. Only the
+    // receiver's issued token and local relative execution timeout enter admission/expiry.
+    AtomicLong receiverTick = new AtomicLong(TimeUnit.DAYS.toNanos(123));
+    QueryAttemptRegistry receiver = new QueryAttemptRegistry(receiverTick::get);
+    FragmentInstance instance = instance(0, 0, 1);
+    when(instance.getAdmissionToken()).thenReturn(receiver.issueAdmissionToken(20));
+    FragmentInstanceStateMachine state = state(instance);
+    QueryAttemptRegistry.Registration registration = receiver.register(instance, state, true);
+    receiverTick.addAndGet(TimeUnit.MILLISECONDS.toNanos(999));
+    receiver.removeExpired();
+    assertEquals(FragmentInstanceState.RUNNING, state.getState());
+    receiverTick.addAndGet(TimeUnit.MILLISECONDS.toNanos(1));
+    receiver.removeExpired();
+    assertEquals(FragmentInstanceState.FAILED, state.getState());
+    assertTrue(state.getFailureCauses().peek() instanceof QueryTimeoutException);
+    registration.close();
+  }
+
+  @Test
+  public void oldProcessTokenCannotAdmitOrCloseANewProcessAttempt() {
+    QueryAttemptRegistry restarted = new QueryAttemptRegistry(clock::get);
+    FragmentInstance instance = instance(0, 0, 1);
+    assertEquals(
+        TSStatusCode.DISPATCH_ERROR.getStatusCode(),
+        assertThrows(
+                IoTDBRuntimeException.class,
+                () -> restarted.register(instance, state(instance), true))
+            .getErrorCode());
+    when(instance.getAdmissionToken()).thenReturn(restarted.issueAdmissionToken(1000));
+    QueryAttemptRegistry.Registration registration =
+        restarted.register(instance, state(instance), true);
+    restarted.close(key(0), token, true);
+    assertTrue(restarted.hasSharedContext(key(0)));
+    registration.close();
+  }
+
+  @Test
+  public void freshAttemptWorksAfterOldFenceExpiresAndMonotonicCounterWraps() {
+    clock.set(Long.MAX_VALUE - TimeUnit.MILLISECONDS.toNanos(5));
+    TQueryAdmissionToken issued = registry.issueAdmissionToken(10);
+    FragmentInstance instance = instance(0, 0, 1);
+    when(instance.getAdmissionToken()).thenReturn(issued);
+    registry.register(instance, state(instance), true).close();
+    clock.addAndGet(TimeUnit.MILLISECONDS.toNanos(10));
+    registry.removeExpired();
+    assertEquals(0, registry.getRetainedEntryCount());
+    assertThrows(
+        IoTDBRuntimeException.class, () -> registry.register(instance, state(instance), true));
+    FragmentInstance fresh = instance(1, 1, 1);
+    when(fresh.getAdmissionToken()).thenReturn(registry.issueAdmissionToken(1000));
+    registry.register(fresh, state(fresh), true).close();
   }
 
   private QueryAttemptId key(int attempt) {
@@ -233,8 +312,7 @@ public class QueryAttemptRegistryTest {
         .thenReturn(new FragmentInstanceId(new PlanFragmentId(queryId, fragment), "0"));
     when(instance.hasQueryAttempt()).thenReturn(true);
     when(instance.getQueryAttemptId()).thenReturn(attempt);
-    when(instance.getQueryDeadline()).thenReturn(2000L);
-    when(instance.getAdmissionDeadline()).thenReturn(2000L);
+    when(instance.getAdmissionToken()).thenReturn(token);
     when(instance.getTimeOut()).thenReturn(1000L);
     when(instance.getDataNodeFINum()).thenReturn(planned);
     return instance;

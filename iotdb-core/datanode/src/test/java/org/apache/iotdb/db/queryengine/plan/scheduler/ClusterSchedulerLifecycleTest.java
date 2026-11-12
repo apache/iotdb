@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -102,6 +103,19 @@ public class ClusterSchedulerLifecycleTest {
     Throwable cause = new RuntimeException("dispatch failed");
     scheduler.stop(cause);
     verify(terminator).terminateImmediately(cause);
+  }
+
+  @Test
+  public void admissionFailureCanStartAFreshQueryAttempt() {
+    state.transitionToPlanned();
+    when(dispatcher.dispatch(any(), any()))
+        .thenReturn(
+            immediateFuture(
+                new FragInstanceDispatchResult(
+                    new TSStatus(TSStatusCode.DISPATCH_ERROR.getStatusCode()))));
+    scheduler.start();
+    org.junit.Assert.assertEquals(
+        org.apache.iotdb.db.queryengine.execution.QueryState.PENDING_RETRY, state.getState());
   }
 
   @Test

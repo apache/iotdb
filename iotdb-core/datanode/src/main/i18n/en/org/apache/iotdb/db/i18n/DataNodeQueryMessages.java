@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
-  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_OR_EXPIRED_F45E3DCF = "Query attempt %s is closed or expired.";
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_12143E89 = "Query attempt %s is closed.";
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_ADMISSION_EXPIRED_DEADLINE_ARG_NS_NOW_ARG_NS_16A9846C = "Query attempt %s admission expired: deadline=%d ns, now=%d ns.";
+  public static final String EXCEPTION_INVALID_QUERY_ADMISSION_ISSUER_FOR_ATTEMPT_ARG_9D1C4E9C = "Invalid query admission issuer for attempt %s.";
+
 
   public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
       "Fail to insert measurements %s caused by %s";

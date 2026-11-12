@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -65,7 +66,7 @@ public class SimpleQueryTerminatorTest {
             Collections.emptyList(),
             null,
             mock(IFragInstanceStateTracker.class),
-            () -> 0L);
+            Collections::emptyMap);
   }
 
   @Test
@@ -88,9 +89,9 @@ public class SimpleQueryTerminatorTest {
     final QueryId queryId = new QueryId("attempt_to_close");
     when(queryContext.getQueryId()).thenReturn(queryId);
     when(queryContext.getQueryAttemptId()).thenReturn(2);
-    when(queryContext.getQueryDeadline()).thenReturn(123456L);
     when(queryContext.getEndPointBlackList()).thenReturn(Collections.emptySet());
     final TEndPoint endpoint = new TEndPoint("remote-host", 10730);
+    final TQueryAdmissionToken token = new TQueryAdmissionToken("receiver", 123456L, 1000L);
     final FragmentInstance instance = mock(FragmentInstance.class);
     when(instance.getHostDataNode())
         .thenReturn(new TDataNodeLocation().setInternalEndPoint(endpoint));
@@ -108,7 +109,7 @@ public class SimpleQueryTerminatorTest {
             Collections.singletonList(instance),
             clients,
             tracker,
-            () -> 123456L);
+            () -> Collections.singletonMap(endpoint, token));
     // A delayed termination must retain the old attempt, even after the context starts a retry.
     when(queryContext.getQueryAttemptId()).thenReturn(3);
     terminator.terminateImmediately(new RuntimeException("dispatch failure"));
@@ -116,7 +117,7 @@ public class SimpleQueryTerminatorTest {
     ArgumentCaptor<TCancelQueryReq> request = ArgumentCaptor.forClass(TCancelQueryReq.class);
     verify(client).cancelQuery(request.capture());
     assertEquals(2, request.getValue().getQueryAttemptId());
-    assertEquals(123456L, request.getValue().getAdmissionDeadline());
+    assertEquals(token, request.getValue().getAdmissionToken());
     assertTrue(request.getValue().getFragmentInstanceIds().isEmpty());
   }
 }

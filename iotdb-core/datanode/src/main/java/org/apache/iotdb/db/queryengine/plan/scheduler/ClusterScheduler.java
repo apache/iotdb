@@ -105,7 +105,7 @@ public class ClusterScheduler implements IScheduler {
               instances,
               syncInternalServiceClientManager,
               stateTracker,
-              fragmentDispatcher::getLastAdmissionDeadline);
+              fragmentDispatcher::getIssuedAdmissionTokens);
     }
   }
 
@@ -134,7 +134,7 @@ public class ClusterScheduler implements IScheduler {
   @Override
   public void start() {
     synchronized (this) {
-      if (started || stopped || stateMachine.getState().isDone()) {
+      if (started || stopped) {
         return;
       }
       started = true;
@@ -206,8 +206,8 @@ public class ClusterScheduler implements IScheduler {
     }
     if (queryTerminator != null) {
       if (terminateImmediately) {
-        // The FragmentInstances dispatched before the failure can't finish on their own and hold
-        // operator memory until they are cancelled, so don't wait for the grace period.
+        // Dispatch failed, or stop arrived before dispatch completed. The FIs already sent may
+        // depend on unsent FIs and hold operator memory, so do not wait for the grace period.
         queryTerminator.terminateImmediately(t);
       } else {
         queryTerminator.terminate(t);

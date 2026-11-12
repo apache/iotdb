@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
-  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_OR_EXPIRED_F45E3DCF = "查询执行轮次 %s 已关闭或过期。";
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_12143E89 = "查询执行轮次 %s 已关闭。";
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_ADMISSION_EXPIRED_DEADLINE_ARG_NS_NOW_ARG_NS_16A9846C = "查询执行轮次 %s 的接收凭证已过期：截止时间=%d ns，当前时间=%d ns。";
+  public static final String EXCEPTION_INVALID_QUERY_ADMISSION_ISSUER_FOR_ATTEMPT_ARG_9D1C4E9C = "查询执行轮次 %s 的接收凭证签发节点进程不匹配。";
+
 
   public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
       "测点 %s 插入失败，原因：%s";

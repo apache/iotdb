@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.BeforeClass;
@@ -69,8 +70,8 @@ public class FragmentInstanceManagerTest {
   @Test
   public void testPartialDispatchReleasesAttemptContextAndRejectsLateFragment() {
     QueryId queryId = new QueryId("partial_attempt_dispatch");
-    long deadline = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1);
     FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
+    TQueryAdmissionToken token = manager.fetchQueryAdmissionToken(TimeUnit.MINUTES.toMillis(1));
     org.apache.iotdb.db.queryengine.common.QueryAttemptId key =
         new org.apache.iotdb.db.queryengine.common.QueryAttemptId(queryId, 0);
     try {
@@ -82,8 +83,7 @@ public class FragmentInstanceManagerTest {
         when(instance.getFragment()).thenReturn(fragment);
         when(instance.hasQueryAttempt()).thenReturn(true);
         when(instance.getQueryAttemptId()).thenReturn(0);
-        when(instance.getQueryDeadline()).thenReturn(deadline);
-        when(instance.getAdmissionDeadline()).thenReturn(deadline);
+        when(instance.getAdmissionToken()).thenReturn(token);
         when(instance.getDataNodeFINum()).thenReturn(3);
         when(instance.getTimeOut()).thenReturn(TimeUnit.MINUTES.toMillis(1));
         when(fragment.getPlanNodeTree())
@@ -93,19 +93,18 @@ public class FragmentInstanceManagerTest {
         assertTrue(result.getState().isFailed());
       }
       assertTrue(manager.getQueryAttempts().hasSharedContext(key));
-      manager.closeQueryAttempt(queryId, 0, deadline, true);
+      manager.closeQueryAttempt(queryId, 0, token, true);
       org.junit.Assert.assertFalse(manager.getQueryAttempts().hasSharedContext(key));
       FragmentInstance late = mock(FragmentInstance.class);
       when(late.getId()).thenReturn(new FragmentInstanceId(new PlanFragmentId(queryId, 2), "0"));
       when(late.hasQueryAttempt()).thenReturn(true);
       when(late.getQueryAttemptId()).thenReturn(0);
-      when(late.getQueryDeadline()).thenReturn(deadline);
-      when(late.getAdmissionDeadline()).thenReturn(deadline);
+      when(late.getAdmissionToken()).thenReturn(token);
       org.junit.Assert.assertThrows(
           org.apache.iotdb.commons.exception.IoTDBRuntimeException.class,
           () -> manager.execDataQueryFragmentInstance(late, mock(IDataRegionForQuery.class)));
     } finally {
-      manager.closeQueryAttempt(queryId, 0, deadline, true);
+      manager.closeQueryAttempt(queryId, 0, token, true);
       for (int i = 0; i < 3; i++) {
         manager.cancelTask(new FragmentInstanceId(new PlanFragmentId(queryId, i), "0"), true);
       }

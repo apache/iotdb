@@ -70,6 +70,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
@@ -94,7 +95,8 @@ public class QueryExecution implements IQueryExecution {
   private static final long RETRY_INTERVAL_IN_MS = 2000;
   private int retryCount = 0;
   private final MPPQueryContext context;
-  private volatile SchedulingAttempt schedulingAttempt = new SchedulingAttempt();
+  private final AtomicReference<SchedulingAttempt> schedulingAttempt =
+      new AtomicReference<>(new SchedulingAttempt());
   private final QueryStateMachine stateMachine;
 
   private final IPlanner planner;
@@ -267,14 +269,14 @@ public class QueryExecution implements IQueryExecution {
       LOGGER.warn(DataNodeQueryMessages.REACHMAXRETRYCOUNT);
       // Keep the same ownership order as an ordinary retry: plans and scheduler stop using the
       // analysis working state before the journal restores parser-owned objects.
-      this.stopAndCleanup(stateMachine.getFailureException());
+      this.stopAttemptAndRelease(stateMachine.getFailureException());
       planner.rollbackAnalysisAttempt();
       stateMachine.transitionToFailed();
       return getStatus();
     }
     LOGGER.warn(DataNodeQueryMessages.ERROR_WHEN_EXECUTING_QUERY, stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
-    this.stopAndCleanup(stateMachine.getFailureException());
+    this.stopAttemptAndRelease(stateMachine.getFailureException());
     // The generated plans no longer read the statement after cleanup. Restore the parser-owned
     // state before the next analysis attempt so retry observes the same SQL as the first attempt.
     planner.rollbackAnalysisAttempt();
@@ -293,7 +295,7 @@ public class QueryExecution implements IQueryExecution {
     // clear runtime variables in MPPQueryContext
     context.prepareForRetry();
     // re-stop
-    this.schedulingAttempt = new SchedulingAttempt();
+    this.schedulingAttempt.set(new SchedulingAttempt());
     this.resultHandleCleanUp.compareAndSet(true, false);
     // re-analyze the query
     planner.beginAnalysisAttempt();
@@ -336,7 +338,7 @@ public class QueryExecution implements IQueryExecution {
 
   private void schedule() {
     final long startTime = System.nanoTime();
-    SchedulingAttempt attempt = schedulingAttempt;
+    SchedulingAttempt attempt = schedulingAttempt.get();
     IScheduler scheduler =
         planner.createScheduler(analysis, distributedPlan, context, stateMachine);
     if (stateMachine.getState().isDone()) {
@@ -392,7 +394,7 @@ public class QueryExecution implements IQueryExecution {
   // Stop the workers for this query
   @Override
   public void stop(Throwable t) {
-    schedulingAttempt.stop(t);
+    schedulingAttempt.get().stop(t);
   }
 
   /** One-shot handoff between scheduler creation and concurrent stop requests. */
@@ -470,8 +472,27 @@ public class QueryExecution implements IQueryExecution {
   // Stop the query and clean up all the resources this query occupied
   @Override
   public void stopAndCleanup(Throwable t) {
-    stop(t);
-    releaseResource(t);
+    try {
+      // Terminal cleanup (including the stale-query sweep) must wake getStatus even if the
+      // dispatcher has not returned yet. Retry cleanup only stops the old execution attempt.
+      if (!stateMachine.getState().isDone()) {
+        if (t == null) {
+          stateMachine.transitionToAborted();
+        } else {
+          stateMachine.transitionToFailed(t);
+        }
+      }
+    } finally {
+      stopAttemptAndRelease(t);
+    }
+  }
+
+  private void stopAttemptAndRelease(Throwable t) {
+    try {
+      stop(t);
+    } finally {
+      releaseResource(t);
+    }
   }
 
   /** Release the resources that current QueryExecution hold with a specified exception */

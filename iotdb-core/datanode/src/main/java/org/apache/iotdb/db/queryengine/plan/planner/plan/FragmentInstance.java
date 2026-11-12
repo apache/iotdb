@@ -33,6 +33,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -74,32 +75,23 @@ public class FragmentInstance implements IConsensusRequest {
   // Admission metadata travels in the optional RPC envelope, not the binary FI body, so older
   // DataNodes can still deserialize the plan. Local dispatch sets the same fields directly.
   private int queryAttemptId = -1;
-  private long queryDeadline;
-  private long admissionDeadline;
+  private TQueryAdmissionToken admissionToken;
 
-  public void setQueryAttempt(int queryAttemptId, long queryDeadline) {
+  public void setQueryAttempt(int queryAttemptId, TQueryAdmissionToken admissionToken) {
     this.queryAttemptId = queryAttemptId;
-    this.queryDeadline = queryDeadline;
+    this.admissionToken = admissionToken;
   }
 
   public boolean hasQueryAttempt() {
-    return queryAttemptId >= 0 && queryDeadline > 0;
+    return queryAttemptId >= 0 && admissionToken != null;
   }
 
   public int getQueryAttemptId() {
     return queryAttemptId;
   }
 
-  public long getQueryDeadline() {
-    return queryDeadline;
-  }
-
-  public void setAdmissionDeadline(long admissionDeadline) {
-    this.admissionDeadline = admissionDeadline;
-  }
-
-  public long getAdmissionDeadline() {
-    return admissionDeadline;
+  public TQueryAdmissionToken getAdmissionToken() {
+    return admissionToken;
   }
 
   private boolean isHighestPriority;

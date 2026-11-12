@@ -31,11 +31,13 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +45,7 @@ import java.util.Objects;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class SimpleQueryTerminator implements IQueryTerminator {
@@ -52,8 +54,8 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   protected ScheduledExecutorService scheduledExecutor;
   private final QueryId queryId;
   private final int queryAttemptId;
-  private final LongSupplier admissionDeadlineSupplier;
-  private long admissionDeadline;
+  private final Supplier<Map<TEndPoint, TQueryAdmissionToken>> admissionTokensSupplier;
+  private Map<TEndPoint, TQueryAdmissionToken> admissionTokens = Collections.emptyMap();
   private final MPPQueryContext queryContext;
 
   private final IFragInstanceStateTracker stateTracker;
@@ -72,11 +74,11 @@ public class SimpleQueryTerminator implements IQueryTerminator {
       final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
           internalServiceClientManager,
       final IFragInstanceStateTracker stateTracker,
-      final LongSupplier admissionDeadlineSupplier) {
+      final Supplier<Map<TEndPoint, TQueryAdmissionToken>> admissionTokensSupplier) {
     this.scheduledExecutor = scheduledExecutor;
     this.queryId = queryContext.getQueryId();
     this.queryAttemptId = queryContext.getQueryAttemptId();
-    this.admissionDeadlineSupplier = admissionDeadlineSupplier;
+    this.admissionTokensSupplier = admissionTokensSupplier;
     this.queryContext = queryContext;
     this.internalServiceClientManager = internalServiceClientManager;
     this.stateTracker = stateTracker;
@@ -108,9 +110,9 @@ public class SimpleQueryTerminator implements IQueryTerminator {
             .filter(endPoint -> !queryContext.getEndPointBlackList().contains(endPoint))
             .collect(Collectors.toList());
     this.hasThrowable = Objects.nonNull(t);
-    // ClusterScheduler aborts the dispatcher before termination: no later request can obtain an
-    // admission deadline beyond this cutoff. Transport retries reuse their original deadline.
-    this.admissionDeadline = admissionDeadlineSupplier.getAsLong();
+    // Aborting dispatch first freezes the tokens used on each receiver. A token acquisition that
+    // finishes afterwards is stateless and cannot publish an FI or reopen the closed attempt.
+    this.admissionTokens = admissionTokensSupplier.get();
 
     return scheduledExecutor.schedule(this::syncTerminate, delayInMs, TimeUnit.MILLISECONDS);
   }
@@ -122,7 +124,8 @@ public class SimpleQueryTerminator implements IQueryTerminator {
       // can still keep the shared DataNode context alive. Legacy receivers only use the FI list.
       final List<FragmentInstanceId> unfinishedFIs =
           stateTracker.filterUnFinishedFIs(ownedFragmentInstance.get(endPoint));
-      if (unfinishedFIs.isEmpty() && admissionDeadline <= 0) {
+      TQueryAdmissionToken token = admissionTokens.get(endPoint);
+      if (unfinishedFIs.isEmpty() && token == null) {
         continue;
       }
 
@@ -130,9 +133,9 @@ public class SimpleQueryTerminator implements IQueryTerminator {
       final int internalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
       if (internalAddress.equalsIgnoreCase(endPoint.getIp())
           && internalPort == endPoint.getPort()) {
-        if (admissionDeadline > 0) {
+        if (token != null) {
           FragmentInstanceManager.getInstance()
-              .closeQueryAttempt(queryId, queryAttemptId, admissionDeadline, hasThrowable);
+              .closeQueryAttempt(queryId, queryAttemptId, token, hasThrowable);
         }
         for (final FragmentInstanceId insId : unfinishedFIs) {
           FragmentInstanceManager.getInstance().cancelTask(insId, hasThrowable);
@@ -149,8 +152,8 @@ public class SimpleQueryTerminator implements IQueryTerminator {
                     .map(FragmentInstanceId::toThrift)
                     .collect(Collectors.toList()),
                 hasThrowable);
-        if (admissionDeadline > 0) {
-          request.setQueryAttemptId(queryAttemptId).setAdmissionDeadline(admissionDeadline);
+        if (token != null) {
+          request.setQueryAttemptId(queryAttemptId).setAdmissionToken(token);
         }
         client.cancelQuery(request);
       } catch (final ClientManagerException e) {

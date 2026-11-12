@@ -26,9 +26,9 @@ public interface IQueryTerminator {
   Future<Boolean> terminate(Throwable t);
 
   /**
-   * Cancels the unfinished FragmentInstances of the query without a grace period. Used when the
-   * dispatch failed: the dispatched FragmentInstances can't finish on their own and hold their
-   * resources until they are cancelled.
+   * Cancels the unfinished FragmentInstances without a grace period when dispatch failed or was
+   * stopped before completing. FIs already sent may depend on unsent FIs and hold resources until
+   * they are cancelled.
    */
   Future<Boolean> terminateImmediately(Throwable t);
 }

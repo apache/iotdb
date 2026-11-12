@@ -323,6 +323,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicOwnerLeaseReq;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
@@ -511,6 +512,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TQueryAdmissionToken fetchQueryAdmissionToken(long validityMs) {
+    return FragmentInstanceManager.getInstance().fetchQueryAdmissionToken(validityMs);
+  }
+
+  @Override
   public TSendFragmentInstanceResp sendFragmentInstance(final TSendFragmentInstanceReq req) {
     LOGGER.debug(DataNodeMiscMessages.RECEIVE_FRAGMENT_INSTANCE, req.getConsensusGroupId());
 
@@ -533,9 +539,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final FragmentInstance fragmentInstance;
     try {
       fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
-      if (req.isSetQueryAttemptId() && req.isSetQueryDeadline()) {
-        fragmentInstance.setQueryAttempt(req.getQueryAttemptId(), req.getQueryDeadline());
-        fragmentInstance.setAdmissionDeadline(req.getAdmissionDeadline());
+      if (req.isSetQueryAttemptId() && req.isSetAdmissionToken()) {
+        fragmentInstance.setQueryAttempt(req.getQueryAttemptId(), req.getAdmissionToken());
       }
     } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED, e);
@@ -616,12 +621,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TCancelResp cancelQuery(TCancelQueryReq req) {
     try (SetThreadName threadName = new SetThreadName(req.getQueryId())) {
-      if (req.isSetQueryAttemptId() && req.isSetAdmissionDeadline()) {
+      if (req.isSetQueryAttemptId() && req.isSetAdmissionToken()) {
         FragmentInstanceManager.getInstance()
             .closeQueryAttempt(
                 new QueryId(req.getQueryId()),
                 req.getQueryAttemptId(),
-                req.getAdmissionDeadline(),
+                req.getAdmissionToken(),
                 req.hasThrowable);
       }
       List<FragmentInstanceId> taskIds =

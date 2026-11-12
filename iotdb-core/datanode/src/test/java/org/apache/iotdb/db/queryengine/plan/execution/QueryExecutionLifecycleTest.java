@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.execution;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -114,6 +115,41 @@ public class QueryExecutionLifecycleTest {
     } finally {
       executor.shutdownNow();
       assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void terminalCleanupPreservesAnExistingStatusOnlyFailure() throws Exception {
+    ExecutorService notifications = Executors.newSingleThreadExecutor();
+    IPlanner planner = planner();
+    org.apache.iotdb.common.rpc.thrift.TSStatus original =
+        new org.apache.iotdb.common.rpc.thrift.TSStatus(
+            org.apache.iotdb.rpc.TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode());
+    original.setMessage("original failure");
+    when(planner.createScheduler(any(), any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              QueryStateMachine state = invocation.getArgument(3);
+              IScheduler scheduler = mock(IScheduler.class);
+              doAnswer(
+                      ignored -> {
+                        state.transitionToFailed(original);
+                        return null;
+                      })
+                  .when(scheduler)
+                  .start();
+              return scheduler;
+            });
+    QueryExecution execution = new QueryExecution(planner, context(), notifications);
+    try {
+      execution.start();
+      execution.stopAndCleanup(
+          new org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException(0, 100, 1));
+      org.junit.Assert.assertEquals(original, execution.getStatus().status);
+    } finally {
+      execution.stopAndCleanup(null);
+      notifications.shutdownNow();
+      assertTrue(notifications.awaitTermination(10, TimeUnit.SECONDS));
     }
   }
 

@@ -49,6 +49,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFTypeMismatchException;
@@ -450,8 +451,12 @@ public class FragmentInstanceManager {
   }
 
   public void closeQueryAttempt(
-      QueryId queryId, int attemptId, long deadline, boolean hasThrowable) {
-    queryAttempts.close(new QueryAttemptId(queryId, attemptId), deadline, hasThrowable);
+      QueryId queryId, int attemptId, TQueryAdmissionToken token, boolean hasThrowable) {
+    queryAttempts.close(new QueryAttemptId(queryId, attemptId), token, hasThrowable);
+  }
+
+  public TQueryAdmissionToken fetchQueryAdmissionToken(long validityMs) {
+    return queryAttempts.issueAdmissionToken(validityMs);
   }
 
   QueryAttemptRegistry getQueryAttempts() {
