@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
+import org.apache.iotdb.consensus.iot.thrift.TLogCompressionType;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -95,6 +96,7 @@ import java.nio.file.FileStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
@@ -1192,6 +1194,25 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "schema_thread_count", Integer.toString(conf.getSchemaThreadCount()))));
 
+    // Sending policy is a startup setting. Decoding is always available for in-flight requests.
+    String compression = properties.getProperty("data_region_iot_log_compression", "NONE").trim();
+    String compressionMinimum =
+        properties.getProperty("data_region_iot_log_compression_min_size", "4096");
+    try {
+      TLogCompressionType type = TLogCompressionType.valueOf(compression.toUpperCase(Locale.ROOT));
+      int minimum = Integer.parseInt(compressionMinimum);
+      if (minimum < 0) throw new IllegalArgumentException();
+      conf.setIotLogCompressionType(type);
+      conf.setIotLogCompressionMinSize(minimum);
+    } catch (IllegalArgumentException e) {
+      throw new IOException(
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_INVALID_IOTCONSENSUS_LOG_COMPRESSION_CONFIGURATION_CODEC_ARG_MIN_SIZE_ARG_AB7603FF,
+              compression,
+              compressionMinimum),
+          e);
+    }
     loadIoTConsensusProps(properties);
     loadIoTConsensusV2Props(properties);
 

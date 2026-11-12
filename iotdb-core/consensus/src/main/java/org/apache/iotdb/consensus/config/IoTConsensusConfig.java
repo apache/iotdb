@@ -22,6 +22,8 @@ package org.apache.iotdb.consensus.config;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
+import org.apache.iotdb.consensus.iot.thrift.TLogCompressionType;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -310,6 +312,8 @@ public class IoTConsensusConfig {
 
     private final int maxLogEntriesNumPerBatch;
     private final int maxSizePerBatch;
+    private final TLogCompressionType logCompressionType;
+    private final int logCompressionMinSize;
     private final int maxPendingBatchesNum;
 
     private final int maxQueueLength;
@@ -330,6 +334,8 @@ public class IoTConsensusConfig {
     private Replication(
         int maxLogEntriesNumPerBatch,
         int maxSizePerBatch,
+        TLogCompressionType logCompressionType,
+        int logCompressionMinSize,
         int maxPendingBatchesNum,
         int maxQueueLength,
         long maxWaitingTimeForWaitBatchInMs,
@@ -347,6 +353,8 @@ public class IoTConsensusConfig {
         long snapshotTransmissionProgressLogIntervalMs) {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
+      this.logCompressionType = logCompressionType;
+      this.logCompressionMinSize = logCompressionMinSize;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
       this.maxQueueLength = maxQueueLength;
       this.maxWaitingTimeForWaitBatchInMs = maxWaitingTimeForWaitBatchInMs;
@@ -370,6 +378,14 @@ public class IoTConsensusConfig {
 
     public int getMaxSizePerBatch() {
       return maxSizePerBatch;
+    }
+
+    public TLogCompressionType getLogCompressionType() {
+      return logCompressionType;
+    }
+
+    public int getLogCompressionMinSize() {
+      return logCompressionMinSize;
     }
 
     public int getMaxPendingBatchesNum() {
@@ -440,6 +456,8 @@ public class IoTConsensusConfig {
 
       private int maxLogEntriesNumPerBatch = 1024;
       private int maxSizePerBatch = 16 * 1024 * 1024;
+      private TLogCompressionType logCompressionType = TLogCompressionType.NONE;
+      private int logCompressionMinSize = 4096;
       private int maxPendingBatchesNum = 5;
       private int maxQueueLength = 4096;
       private long maxWaitingTimeForWaitBatchInMs = 10 * 1000L;
@@ -470,6 +488,23 @@ public class IoTConsensusConfig {
 
       public Builder setMaxSizePerBatch(int maxSizePerBatch) {
         this.maxSizePerBatch = maxSizePerBatch;
+        return this;
+      }
+
+      public Builder setLogCompressionType(TLogCompressionType type) {
+        this.logCompressionType = type;
+        return this;
+      }
+
+      public Builder setLogCompressionMinSize(int size) {
+        if (size < 0) {
+          throw new IllegalArgumentException(
+              String.format(
+                  IoTConsensusMessages
+                      .EXCEPTION_INVALID_IOTCONSENSUS_LOG_COMPRESSION_MINIMUM_SIZE_ARG_ACEEA255,
+                  size));
+        }
+        this.logCompressionMinSize = size;
         return this;
       }
 
@@ -557,6 +592,8 @@ public class IoTConsensusConfig {
         return new Replication(
             maxLogEntriesNumPerBatch,
             maxSizePerBatch,
+            logCompressionType,
+            logCompressionMinSize,
             maxPendingBatchesNum,
             maxQueueLength,
             maxWaitingTimeForWaitBatchInMs,

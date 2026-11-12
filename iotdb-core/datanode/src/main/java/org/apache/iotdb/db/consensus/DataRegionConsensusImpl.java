@@ -197,6 +197,8 @@ public class DataRegionConsensusImpl {
                           .setConsensusMemoryBlock(memoryBlock)
                           .setMaxLogEntriesNumPerBatch(CONF.getMaxLogEntriesNumPerBatch())
                           .setMaxSizePerBatch(CONF.getMaxSizePerBatch())
+                          .setLogCompressionType(CONF.getIotLogCompressionType())
+                          .setLogCompressionMinSize(CONF.getIotLogCompressionMinSize())
                           .setMaxPendingBatchesNum(CONF.getMaxPendingBatchesNum())
                           .setMaxMemoryRatioForQueue(CONF.getMaxMemoryRatioForQueue())
                           .setRegionMigrationSpeedLimitBytesPerSecond(

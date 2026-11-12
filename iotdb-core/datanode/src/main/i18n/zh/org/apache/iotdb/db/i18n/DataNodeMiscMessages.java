@@ -21,6 +21,7 @@ package org.apache.iotdb.db.i18n;
 
 /** 编译时国际化常量 - DataNode 杂项子系统（中文）。 */
 public final class DataNodeMiscMessages {
+  public static final String EXCEPTION_INVALID_IOTCONSENSUS_LOG_COMPRESSION_CONFIGURATION_CODEC_ARG_MIN_SIZE_ARG_AB7603FF = "无效的 IoTConsensus 日志压缩配置：codec=%s, min_size=%s";
   public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
       "请求的查询不属于当前会话。";
 
