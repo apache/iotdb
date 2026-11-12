@@ -55,6 +55,8 @@ public class DataRegionStateMachineTest {
     final LoadFileException failure = new LoadFileException("injected permanent LOAD failure");
     Mockito.when(dataRegion.writeLoadTsFilePrepare(Mockito.any(), Mockito.anyMap()))
         .thenThrow(failure);
+    Mockito.when(dataRegion.writeLoadTsFileCommit(Mockito.any(), Mockito.anyMap()))
+        .thenThrow(failure);
     final IoTConsensusDataRegionStateMachine stateMachine =
         new IoTConsensusDataRegionStateMachine(dataRegion);
     final LoadTsFileConsensusNode prepare =
@@ -67,6 +69,7 @@ public class DataRegionStateMachineTest {
       final TSStatus localStatus = stateMachine.write(node);
       Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), localStatus.getCode());
       Assert.assertFalse(RetryUtils.needRetryForWrite(localStatus.getCode()));
+      Assert.assertEquals(failure.getMessage(), localStatus.getMessage());
 
       node.markAsGeneratedByRemoteConsensusLeader();
       final TSStatus remoteStatus = stateMachine.write(node);

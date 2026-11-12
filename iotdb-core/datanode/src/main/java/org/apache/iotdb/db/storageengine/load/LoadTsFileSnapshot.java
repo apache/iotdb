@@ -99,10 +99,11 @@ public final class LoadTsFileSnapshot {
    * published afterwards may describe data absent from those lists, so replay must not be fenced by
    * that decision. Records are immutable and can be copied after the data files.
    */
-  public static List<File> captureTerminalHistory(final DataRegion dataRegion) throws IOException {
+  public static Map<String, File> captureTerminalHistory(final DataRegion dataRegion)
+      throws IOException {
     Objects.requireNonNull(
         dataRegion, StorageEngineMessages.EXCEPTION_DATAREGION_CANNOT_BE_NULL_0B936879);
-    final List<File> result = new ArrayList<>();
+    final Map<String, File> result = new HashMap<>();
     if (isSupportedProtocol()) {
       // A restarted region need not have initialized its lazy LOAD manager yet.
       for (final File historyDir :
@@ -110,7 +111,40 @@ public final class LoadTsFileSnapshot {
               dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString())) {
         for (final File file : listFiles(historyDir)) {
           if (file.isFile() && isProgressLog(file) && !file.getName().contains(TEMP_FILE_SUFFIX)) {
-            result.add(file);
+            result.put(file.getName(), file);
+          }
+        }
+      }
+      final Set<String> activeLoadIds = new HashSet<>();
+      dataRegion
+          .getLoadTsFileManagerIfPresent()
+          .ifPresent(
+              manager ->
+                  manager.getActiveTaskDirs().forEach(dir -> activeLoadIds.add(dir.getName())));
+      for (final String baseDir : LoadStagingDirs.configuredBaseDirs()) {
+        final File regionDir =
+            LoadStagingDirs.regionLoadDir(
+                new File(baseDir),
+                dataRegion.getDatabaseName(),
+                dataRegion.getDataRegionIdString());
+        for (final File taskDir : listFiles(regionDir)) {
+          final String recordName = taskDir.getName() + PROGRESS_SUFFIX;
+          if (!taskDir.isDirectory()
+              || LoadTsFileManager.TERMINAL_HISTORY_DIR.equals(taskDir.getName())
+              || activeLoadIds.contains(taskDir.getName())
+              || result.containsKey(recordName)) {
+            continue;
+          }
+          // A failed migration deliberately leaves the legacy decision in staging. Snapshot that
+          // record under its task identity, even when no lazy manager has recovered the directory.
+          for (final File file : listFiles(taskDir)) {
+            if (file.isFile()
+                && isProgressLog(file)
+                && !file.getName().contains(TEMP_FILE_SUFFIX)
+                && LoadTsFileProgress.readTerminal(file) != null) {
+              result.put(recordName, file);
+              break;
+            }
           }
         }
       }
@@ -122,7 +156,7 @@ public final class LoadTsFileSnapshot {
   public static boolean snapshot(
       final DataRegion dataRegion,
       final File snapshotDir,
-      final List<File> capturedTerminalHistory) {
+      final Map<String, File> capturedTerminalHistory) {
     Objects.requireNonNull(
         dataRegion, StorageEngineMessages.EXCEPTION_DATAREGION_CANNOT_BE_NULL_0B936879);
     Objects.requireNonNull(
@@ -138,7 +172,7 @@ public final class LoadTsFileSnapshot {
 
     final File loadSnapshotDir = new File(snapshotDir, SNAPSHOT_SUBDIR_NAME);
     try {
-      final List<File> terminalHistory =
+      final Map<String, File> terminalHistory =
           capturedTerminalHistory == null
               ? captureTerminalHistory(dataRegion)
               : capturedTerminalHistory;
@@ -153,8 +187,8 @@ public final class LoadTsFileSnapshot {
       // Terminal records have no payload references and may share any restored staging root.
       final File historyTargetDir =
           new File(loadSnapshotDir, LoadTsFileManager.TERMINAL_HISTORY_DIR);
-      for (final File terminal : terminalHistory) {
-        publishAtomicCopy(terminal, new File(historyTargetDir, terminal.getName()));
+      for (final Map.Entry<String, File> terminal : terminalHistory.entrySet()) {
+        publishAtomicCopy(terminal.getValue(), new File(historyTargetDir, terminal.getKey()));
       }
 
       LOGGER.info(

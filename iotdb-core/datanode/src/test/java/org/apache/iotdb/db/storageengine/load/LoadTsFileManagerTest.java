@@ -777,10 +777,10 @@ public class LoadTsFileManagerTest {
         final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
         try {
           assertFalse(writer.getTaskDir().exists());
-          final List<File> terminalHistory = LoadTsFileSnapshot.captureTerminalHistory(dataRegion);
+          final Map<String, File> terminalHistory =
+              LoadTsFileSnapshot.captureTerminalHistory(dataRegion);
           assertEquals(1, terminalHistory.size());
-          assertEquals(
-              loadId + LoadTsFileProgress.PROGRESS_SUFFIX, terminalHistory.get(0).getName());
+          assertTrue(terminalHistory.containsKey(loadId + LoadTsFileProgress.PROGRESS_SUFFIX));
           final LoadTsFileConsensusNode commit = commitNode(loadId);
           commit.markAsGeneratedByRemoteConsensusLeader();
           assertTrue(recovered.loadAll(commit, Collections.emptyMap()));
@@ -791,6 +791,81 @@ public class LoadTsFileManagerTest {
         beforeUpgrade.stop();
       }
     } finally {
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testSnapshotPreservesLegacyTerminalsWhenMigrationCannotPersist() throws Exception {
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    LoadStagingDirs.folderManager();
+    final File regionDir =
+        LoadStagingDirs.regionLoadDir(
+            tempDir, dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+    assertTrue(regionDir.mkdirs());
+    final File historyDir = new File(regionDir, LoadTsFileManager.TERMINAL_HISTORY_DIR);
+    Files.write(historyDir.toPath(), new byte[0]);
+    final LoadTsFileConsensusOp[] outcomes = {
+      LoadTsFileConsensusOp.COMMIT, LoadTsFileConsensusOp.ABORT
+    };
+    for (final LoadTsFileConsensusOp outcome : outcomes) {
+      final File taskDir = new File(regionDir, "legacy-" + outcome);
+      new LoadTsFileProgress(new File(taskDir, "legacy.tsfile")).recordTerminal(outcome, 10L);
+    }
+
+    final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+    try {
+      assertTrue(recovered.getActiveTaskDirs().isEmpty());
+      assertTrue(historyDir.isFile());
+      final TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+      Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
+      Mockito.when(tsFileManager.getTsFileList(Mockito.anyBoolean()))
+          .thenAnswer(invocation -> new ArrayList<>());
+      File snapshot = null;
+      for (final boolean hasManager : new boolean[] {false, true}) {
+        Mockito.when(dataRegion.getLoadTsFileManagerIfPresent())
+            .thenReturn(hasManager ? Optional.of(recovered) : Optional.empty());
+        snapshot = new File(tempDir, "legacy-terminal-snapshot-" + hasManager);
+        assertTrue(
+            new SnapshotTaker(dataRegion).takeFullSnapshot(snapshot.getAbsolutePath(), true));
+        for (final LoadTsFileConsensusOp outcome : outcomes) {
+          final File snapshotHistory =
+              new File(
+                  new File(snapshot, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME),
+                  LoadTsFileManager.TERMINAL_HISTORY_DIR);
+          final LoadTsFileProgress.TerminalRecord terminal =
+              LoadTsFileProgress.readTerminal(
+                  new File(
+                      snapshotHistory, "legacy-" + outcome + LoadTsFileProgress.PROGRESS_SUFFIX));
+          assertNotNull(terminal);
+          assertEquals(outcome, terminal.op());
+          assertEquals(10L, terminal.searchIndex());
+        }
+      }
+
+      recovered.stop();
+      LoadTsFileSnapshot.clear(dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+      LoadTsFileSnapshot.restore(
+          dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString(), snapshot);
+      final LoadTsFileManager restored = new LoadTsFileManager(dataRegion);
+      try {
+        for (final LoadTsFileConsensusOp outcome : outcomes) {
+          final String loadId = "legacy-" + outcome;
+          final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+          prepare.markAsGeneratedByRemoteConsensusLeader();
+          assertTrue(restored.prepare(prepare, Collections.emptyMap()));
+          final LoadTsFileConsensusNode commit = commitNode(loadId);
+          commit.markAsGeneratedByRemoteConsensusLeader();
+          assertEquals(
+              outcome == LoadTsFileConsensusOp.COMMIT,
+              restored.loadAll(commit, Collections.emptyMap()));
+        }
+      } finally {
+        restored.stop();
+      }
+    } finally {
+      recovered.stop();
       config.setDataRegionConsensusProtocolClass(originalProtocol);
     }
   }
