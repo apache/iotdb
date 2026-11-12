@@ -19,8 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
-import org.apache.iotdb.calc.execution.operator.process.fill.identity.IdentityFill;
-import org.apache.iotdb.calc.utils.TypeServices;
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.plan.relational.planner.CastToBlobLiteralVisitor;
+import org.apache.iotdb.calc.plan.relational.planner.CastToBooleanLiteralVisitor;
+import org.apache.iotdb.calc.plan.relational.planner.CastToDateLiteralVisitor;
+import org.apache.iotdb.calc.plan.relational.planner.CastToDoubleLiteralVisitor;
+import org.apache.iotdb.calc.plan.relational.planner.CastToFloatLiteralVisitor;
+import org.apache.iotdb.calc.plan.relational.planner.CastToInt32LiteralVisitor;
+import org.apache.iotdb.calc.plan.relational.planner.CastToInt64LiteralVisitor;
+import org.apache.iotdb.calc.plan.relational.planner.CastToStringLiteralVisitor;
+import org.apache.iotdb.calc.plan.relational.planner.CastToTimestampLiteralVisitor;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -75,6 +83,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowN
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -139,6 +148,7 @@ import com.google.common.collect.ListMultimap;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -356,10 +366,9 @@ public class TableDistributedPlanGenerator
     if (childOrdering != null) {
       for (Symbol symbol : childOrdering.getOrderBy()) {
         if (!preserved.contains(symbol)
-            && TypeServices.VALUE_FILL_SERVICE
-                    .call(symbolAllocator.getTypes().getTableModelType(symbol))
-                    .create(((ValueFillNode) node).getFilledValue(), queryContext.getZoneId())
-                instanceof IdentityFill) {
+            && isIdentityValueFill(
+                symbolAllocator.getTypes().getTableModelType(symbol),
+                ((ValueFillNode) node).getFilledValue())) {
           preserved.add(symbol);
         }
       }
@@ -370,6 +379,36 @@ public class TableDistributedPlanGenerator
       nodeOrderingMap.put(node.getPlanNodeId(), ordering);
     }
     return Collections.singletonList(node);
+  }
+
+  // Mirrors TableOperatorGenerator#getValueFill: the value FILL leaves a column untouched (an
+  // IdentityFill) exactly when the filled value cannot be cast to the column's type.
+  private boolean isIdentityValueFill(Type type, Literal filledValue) {
+    switch (type.getTypeEnum()) {
+      case BOOLEAN:
+        return filledValue.accept(new CastToBooleanLiteralVisitor(), null) == null;
+      case TEXT:
+      case STRING:
+        return filledValue.accept(new CastToStringLiteralVisitor(TSFileConfig.STRING_CHARSET), null)
+            == null;
+      case BLOB:
+        return filledValue.accept(new CastToBlobLiteralVisitor(), null) == null;
+      case INT32:
+        return filledValue.accept(new CastToInt32LiteralVisitor(), null) == null;
+      case DATE:
+        return filledValue.accept(new CastToDateLiteralVisitor(), null) == null;
+      case INT64:
+        return filledValue.accept(new CastToInt64LiteralVisitor(), null) == null;
+      case TIMESTAMP:
+        return filledValue.accept(new CastToTimestampLiteralVisitor(queryContext.getZoneId()), null)
+            == null;
+      case FLOAT:
+        return filledValue.accept(new CastToFloatLiteralVisitor(), null) == null;
+      case DOUBLE:
+        return filledValue.accept(new CastToDoubleLiteralVisitor(), null) == null;
+      default:
+        throw new IllegalArgumentException(CalcMessages.UNKNOWN_DATATYPE + type.getTypeEnum());
+    }
   }
 
   private static List<Symbol> getFillGroupingKeys(FillNode node) {
