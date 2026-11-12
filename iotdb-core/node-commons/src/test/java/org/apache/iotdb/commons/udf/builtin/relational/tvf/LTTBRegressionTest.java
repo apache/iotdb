@@ -255,6 +255,26 @@ public class LTTBRegressionTest {
     }
   }
 
+  /**
+   * A window whose bucket has no finite candidate returns its earliest point without moving {@code
+   * A}, so the next window is still scored against the last finite pick.
+   */
+  @Test
+  public void testWindowModeNonFiniteBucketKeepsAnchor() {
+    Double[][] rows = {{0.0}, {1.0}, {Double.NaN}, {Double.NaN}, {0.5}, {9.0}, {3.0}, {0.0}};
+    for (String mode : new String[] {"COUNT_WINDOW", "TIME_WINDOW"}) {
+      List<ColumnBuilder> out = sample(mode, 2, 2, 0, rows);
+      int timeIndex = mode.equals("TIME_WINDOW") ? 2 : 1;
+      // W0 reports F(t0) and picks t1; W1 holds only NaN, returns t2 and keeps A = t1; W2 scores
+      // t4 (area 8.5) and t5 (area 32) against A = t1 and C = t6; W3 picks t6 and reports L(t7).
+      long[] expected = {0, 1, 2, 5, 6, 7};
+      assertEquals(expected.length, out.get(timeIndex).getPositionCount());
+      for (int i = 0; i < expected.length; i++) {
+        assertEquals(expected[i], out.get(timeIndex).build().getLong(i));
+      }
+    }
+  }
+
   @Test
   public void testTargetColumnsShareMemoryBudget() {
     TableFunctionDataProcessor processor = processor("TARGET_COUNT", 3, 3, 0, 8);

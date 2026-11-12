@@ -1753,7 +1753,7 @@ public class LTTBTableFunction implements TableFunction {
                 0,
                 exactLookahead.size());
       }
-      if (pick == NOT_SELECTED) {
+      if (pick == NOT_SELECTED || !isFiniteValue(bucket.values, bucket.integralValues, pick)) {
         // The bucket has no finite candidate; return its earliest point and keep A unchanged.
         return WindowRow.of(bucket, 0);
       }

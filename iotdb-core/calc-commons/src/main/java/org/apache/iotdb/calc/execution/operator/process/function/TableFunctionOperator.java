@@ -314,8 +314,9 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    // The buffers survive across next() calls until the partition completes, so they are retained
-    // here rather than charged to the peek of a single call.
+    // The buffers survive across next() calls until the partition completes, so they belong to the
+    // retained size as well as the peak. Parents read one or the other (FilterAndProjectOperator
+    // adds the child's retained size, sinks and LimitOperator take the child's peak), so keep both.
     return inputOperator.calculateRetainedSizeAfterCallingNext() + estimatedMaxBufferedBytes;
   }
 
