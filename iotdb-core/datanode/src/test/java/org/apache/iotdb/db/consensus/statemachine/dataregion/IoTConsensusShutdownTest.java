@@ -735,7 +735,10 @@ public class IoTConsensusShutdownTest {
     recoverManager.clear();
     final UnsealedTsFileRecoverPerformer performer =
         new UnsealedTsFileRecoverPerformer(
-            new TsFileResource(lateFile), true, recovered -> assertFalse(recovered.canWrite()));
+            new TsFileResource(lateFile),
+            true,
+            false,
+            recovered -> assertFalse(recovered.canWrite()));
     recoverManager.addRecoverPerformer(performer);
     recoverManager.setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(0));
     recoverManager.recover();
@@ -795,7 +798,10 @@ public class IoTConsensusShutdownTest {
     recoverManager.clear();
     final UnsealedTsFileRecoverPerformer performer =
         new UnsealedTsFileRecoverPerformer(
-            new TsFileResource(lateFile), true, recovered -> assertFalse(recovered.canWrite()));
+            new TsFileResource(lateFile),
+            true,
+            false,
+            recovered -> assertFalse(recovered.canWrite()));
     recoverManager.addRecoverPerformer(performer);
     recoverManager.setAllDataRegionScannedLatch(new ExceptionalCountDownLatch(0));
     recoverManager.recover();

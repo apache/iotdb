@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
@@ -99,6 +100,8 @@ public class Analysis implements IAnalysis {
   private ISchemaTree schemaTree;
 
   private List<TEndPoint> redirectNodeList;
+
+  private boolean internalRpcSession;
 
   // map from output column name (for every node) to its datatype
   private final Map<NodeRef<Expression>, TSDataType> expressionTypes = new LinkedHashMap<>();
@@ -352,6 +355,10 @@ public class Analysis implements IAnalysis {
     this.finishQueryAfterAnalyze = false;
   }
 
+  public void setInternalRpcSession(final boolean internalRpcSession) {
+    this.internalRpcSession = internalRpcSession;
+  }
+
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     return dataPartition.getDataRegionReplicaSetWithTimeFilter(
         seriesPath.getIDeviceID(), timefilter);
@@ -430,16 +437,21 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
-    this.redirectNodeList = redirectNodeList;
+  public void setRedirectNodeList(final List<TDataNodeLocation> dataNodeLocations) {
+    redirectNodeList = new ArrayList<>(dataNodeLocations.size());
+    for (final TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+      redirectNodeList.add(
+          DataNodeEndPoints.getRedirectEndPoint(dataNodeLocation, internalRpcSession));
+    }
   }
 
   @Override
-  public void addEndPointToRedirectNodeList(TEndPoint endPoint) {
+  public void addEndPointToRedirectNodeList(final TDataNodeLocation dataNodeLocation) {
     if (redirectNodeList == null) {
       redirectNodeList = new ArrayList<>();
     }
-    redirectNodeList.add(endPoint);
+    redirectNodeList.add(
+        DataNodeEndPoints.getRedirectEndPoint(dataNodeLocation, internalRpcSession));
   }
 
   public Expression getGlobalTimePredicate() {

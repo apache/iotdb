@@ -22,5 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.scheduler;
 import java.util.concurrent.Future;
 
 public interface IQueryTerminator {
+  /** Cancels the unfinished FragmentInstances of the query after a grace period. */
   Future<Boolean> terminate(Throwable t);
+
+  /**
+   * Cancels the unfinished FragmentInstances of the query without a grace period. Used when the
+   * dispatch failed: the dispatched FragmentInstances can't finish on their own and hold their
+   * resources until they are cancelled.
+   */
+  Future<Boolean> terminateImmediately(Throwable t);
 }

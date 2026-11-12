@@ -100,6 +100,9 @@ public class MPPQueryContext implements IAuditEntity {
   private SessionInfo session;
   private QueryType queryType = QueryType.READ;
 
+  // Set by analyzers for write statements that persist UDF expressions in schema WAL.
+  private boolean udfForbidden;
+
   /** the max executing time of query in ms. Unit: millisecond */
   private long timeOut;
 
@@ -381,6 +384,14 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void setQueryType(QueryType queryType) {
     this.queryType = queryType;
+  }
+
+  public boolean isUdfForbidden() {
+    return udfForbidden;
+  }
+
+  public void setUdfForbidden(boolean udfForbidden) {
+    this.udfForbidden = udfForbidden;
   }
 
   public ResultNodeContext getResultNodeContext() {
@@ -1087,8 +1098,12 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   @Override
-  public boolean isInternal() {
-    return session != null && session.isInternal();
+  public boolean isInternalDatabaseSession() {
+    return session != null && session.isInternalDatabaseSession();
+  }
+
+  public boolean isInternalRpcSession() {
+    return session != null && session.isInternalRpcSession();
   }
 
   @Override

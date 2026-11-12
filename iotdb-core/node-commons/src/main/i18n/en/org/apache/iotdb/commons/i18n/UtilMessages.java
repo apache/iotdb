@@ -268,4 +268,6 @@ public final class UtilMessages {
               + " of %s with or without an extension, or ends with '.' or ' '.";
 
   public static final String EXCEPTION_FROM_ARG_TO_ARG_D2758D41 = "from %s to %s";
+  public static final String EXCEPTION_FILE_CHANNEL_WRITE_MADE_NO_PROGRESS_B0F24ACD =
+      "File channel write made no progress";
 }

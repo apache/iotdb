@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.load;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -175,13 +177,25 @@ final class LoadStagingDirs {
             || currentContext.folderManager() == null) {
           final FolderManager newFolderManager =
               new FolderManager(
-                  Arrays.asList(currentConfiguredDirs), DirectoryStrategyType.SEQUENCE_STRATEGY);
+                  Arrays.asList(currentConfiguredDirs),
+                  DirectoryStrategyType.SEQUENCE_STRATEGY,
+                  LoadStagingDirs::reportDiskFull);
           CONTEXT_REF.set(new StagingDirectoryContext(currentConfiguredDirs, newFolderManager));
           return newFolderManager;
         }
       }
     }
     return currentContext.folderManager();
+  }
+
+  private static void reportDiskFull() {
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setReadOnlyForDiskFull(
+            LoadStagingDirs.class,
+            () ->
+                Arrays.stream(CONFIG.getLoadTsFileDirs())
+                    .anyMatch(JVMCommonUtils::hasSpaceWithoutRetry));
   }
 
   /**

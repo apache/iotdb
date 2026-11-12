@@ -404,6 +404,20 @@ public class SubscriptionReceiverAgentTest {
     Assert.assertEquals(2, receivers.size());
     Assert.assertEquals(0, receivers.get(0).releaseCount.get());
     Assert.assertTrue(receivers.get(0).invalidated);
+    Assert.assertTrue(receivers.get(0).connectionReplaced);
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED.getStatusCode(),
+        agent.handle(SubscriptionHeartbeatReq.toThriftReq(), "root").getStatus().getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED.getStatusCode(),
+        agent
+            .handle(createHandshakeRequest("group", "consumer", "instance-1"), "root")
+            .getStatus()
+            .getCode());
+    Assert.assertFalse(receivers.get(1).invalidated);
+    agent.checkReceiverTimeouts();
+    Assert.assertEquals(0, receivers.get(0).timeoutCount.get());
+    Assert.assertEquals(1, receivers.get(1).timeoutCount.get());
   }
 
   @Test
@@ -643,6 +657,7 @@ public class SubscriptionReceiverAgentTest {
     private final AtomicInteger releaseCount = new AtomicInteger();
     private volatile ConsumerConfig consumerConfig;
     private volatile boolean invalidated;
+    private volatile boolean connectionReplaced;
 
     private FakeSubscriptionReceiver(final boolean closeOnTimeout) {
       this(closeOnTimeout, false, null, null);
@@ -661,6 +676,9 @@ public class SubscriptionReceiverAgentTest {
 
     @Override
     public TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
+      if (connectionReplaced) {
+        return response(TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED);
+      }
       if (req.getType() == PipeSubscribeRequestType.HANDSHAKE.getType()) {
         consumerConfig = ConsumerConfig.deserialize(req.bufferForBody());
         if (assignDefaultIdentity) {
@@ -736,6 +754,12 @@ public class SubscriptionReceiverAgentTest {
     public void invalidateConsumer() {
       consumerConfig = null;
       invalidated = true;
+    }
+
+    @Override
+    public void invalidateConnection() {
+      invalidateConsumer();
+      connectionReplaced = true;
     }
 
     @Override

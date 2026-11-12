@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.SpaceSaving;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.SpaceSavingStateFactory;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.SpaceSavingBigArray;
 
@@ -42,15 +43,22 @@ public abstract class AbstractGroupedApproxMostFrequentAccumulator<T>
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
-    columnBuilder.writeBinary(new Binary(state.getSpaceSavings().get(groupId).serialize()));
+    SpaceSaving<T> spaceSaving = state.getSpaceSavings().get(groupId);
+    if (spaceSaving == null || spaceSaving.isEmpty()) {
+      columnBuilder.appendNull();
+      return;
+    }
+    columnBuilder.writeBinary(new Binary(spaceSaving.serialize()));
   }
 
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
-    Binary result =
-        new Binary(
-            new Gson().toJson(state.getSpaceSavings().get(groupId).getBuckets()),
-            StandardCharsets.UTF_8);
+    SpaceSaving<T> spaceSaving = state.getSpaceSavings().get(groupId);
+    if (spaceSaving == null || spaceSaving.isEmpty()) {
+      columnBuilder.appendNull();
+      return;
+    }
+    Binary result = new Binary(new Gson().toJson(spaceSaving.getBuckets()), StandardCharsets.UTF_8);
     columnBuilder.writeBinary(result);
   }
 

@@ -97,6 +97,7 @@ import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -226,6 +227,7 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaMana
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusRegionRuntimeState;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
+import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiverV1;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -528,9 +530,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     // We deserialize here instead of the underlying state machine because parallelism is possible
     // here but not at the underlying state machine
-    final FragmentInstance fragmentInstance;
+    final FragmentInstanceId fragmentInstanceId;
     try {
-      fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
+      fragmentInstanceId = FragmentInstanceId.deserialize(req.fragmentInstance.body);
     } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED, e);
       TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
@@ -538,27 +540,57 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return resp;
     }
 
-    RegionExecutionResult executionResult = null;
-    if (Objects.nonNull(groupId)) {
-      // For schema query, there may be a "write" before "read"
-      // the result is not null iff the "write" has failed
-      executionResult =
-          new TableSchemaQueryWriteVisitor().processFragment(fragmentInstance, groupId);
-    }
-    if (Objects.isNull(executionResult)) {
-      final RegionReadExecutor executor = new RegionReadExecutor();
-      executionResult =
-          groupId == null
-              ? executor.execute(fragmentInstance)
-              : executor.execute(groupId, fragmentInstance);
+    final UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    final UDFClassLoaderManager.QueryScope queryScope =
+        classLoaderManager == null
+            ? null
+            : classLoaderManager.openQueryScope(fragmentInstanceId.getFullId());
+    final FragmentInstance fragmentInstance;
+    try {
+      fragmentInstance =
+          queryScope == null
+              ? FragmentInstance.deserializeFrom(fragmentInstanceId, req.fragmentInstance.body)
+              : classLoaderManager.withQueryScope(
+                  queryScope,
+                  () ->
+                      FragmentInstance.deserializeFrom(
+                          fragmentInstanceId, req.fragmentInstance.body));
+      fragmentInstance.attachUDFQueryScope(queryScope);
+    } catch (final Exception e) {
+      if (classLoaderManager != null && queryScope != null) {
+        classLoaderManager.finalizeUDFQuery(queryScope);
+      }
+      LOGGER.warn(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED, e);
+      TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
+      resp.setMessage(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED + e.getMessage());
+      return resp;
     }
 
-    final TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
-    resp.setAccepted(executionResult.isAccepted());
-    resp.setMessage(executionResult.getMessage());
-    resp.setNeedRetry(executionResult.isReadNeedRetry());
-    resp.setStatus(executionResult.getStatus());
-    return resp;
+    try {
+      RegionExecutionResult executionResult = null;
+      if (Objects.nonNull(groupId)) {
+        // For schema query, there may be a "write" before "read"
+        // the result is not null iff the "write" has failed
+        executionResult =
+            new TableSchemaQueryWriteVisitor().processFragment(fragmentInstance, groupId);
+      }
+      if (Objects.isNull(executionResult)) {
+        final RegionReadExecutor executor = new RegionReadExecutor();
+        executionResult =
+            groupId == null
+                ? executor.execute(fragmentInstance)
+                : executor.execute(groupId, fragmentInstance);
+      }
+
+      final TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
+      resp.setAccepted(executionResult.isAccepted());
+      resp.setMessage(executionResult.getMessage());
+      resp.setNeedRetry(executionResult.isReadNeedRetry());
+      resp.setStatus(executionResult.getStatus());
+      return resp;
+    } finally {
+      fragmentInstance.closeUDFQueryScopeIfPresent();
+    }
   }
 
   @Override
@@ -2651,13 +2683,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             commonConfig.getDiskSpaceWarningThreshold());
         commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
       } else {
-        synchronized (commonConfig) {
-          // A concurrent Manual/Stopping/error transition must not be cleared by disk recovery.
-          if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
-              && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
-            commonConfig.setNodeStatus(NodeStatus.Running);
-          }
-        }
+        commonConfig.tryRecoverFromDiskFull();
       }
     }
   }
@@ -2842,6 +2868,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         commonConfig.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.MANUAL);
       } else {
         commonConfig.setNodeStatus(nodeStatus);
+      }
+      if (nodeStatus == NodeStatus.Removing) {
+        SubscriptionReceiverV1.handleNodeRetirement();
       }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
@@ -3578,7 +3607,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       AuthorityChecker.SUPER_USER,
                       IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
                   ZoneId.systemDefault())
-              .setInternal(true);
+              .setInternalDatabaseSession(true);
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =

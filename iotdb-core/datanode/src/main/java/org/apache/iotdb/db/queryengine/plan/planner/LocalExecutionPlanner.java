@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -105,6 +106,21 @@ public class LocalExecutionPlanner {
       FragmentInstanceContext instanceContext,
       DataNodeQueryContext dataNodeQueryContext)
       throws MemoryNotEnoughException {
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    UDFClassLoaderManager.QueryScope queryScope = instanceContext.getOrCreateUDFQueryScope();
+    if (classLoaderManager == null || queryScope == null) {
+      return planInternal(plan, types, instanceContext, dataNodeQueryContext);
+    }
+    return classLoaderManager.withQueryScope(
+        queryScope, () -> planInternal(plan, types, instanceContext, dataNodeQueryContext));
+  }
+
+  private List<PipelineDriverFactory> planInternal(
+      PlanNode plan,
+      TypeProvider types,
+      FragmentInstanceContext instanceContext,
+      DataNodeQueryContext dataNodeQueryContext)
+      throws MemoryNotEnoughException {
     if (Objects.isNull(plan)) {
       throw new IoTDBRuntimeException(
           DataNodeQueryMessages
@@ -140,6 +156,21 @@ public class LocalExecutionPlanner {
   }
 
   public List<PipelineDriverFactory> plan(
+      PlanNode plan,
+      TypeProvider types,
+      FragmentInstanceContext instanceContext,
+      ISchemaRegion schemaRegion)
+      throws MemoryNotEnoughException {
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    UDFClassLoaderManager.QueryScope queryScope = instanceContext.getOrCreateUDFQueryScope();
+    if (classLoaderManager == null || queryScope == null) {
+      return planInternal(plan, types, instanceContext, schemaRegion);
+    }
+    return classLoaderManager.withQueryScope(
+        queryScope, () -> planInternal(plan, types, instanceContext, schemaRegion));
+  }
+
+  private List<PipelineDriverFactory> planInternal(
       PlanNode plan,
       TypeProvider types,
       FragmentInstanceContext instanceContext,
@@ -239,23 +270,35 @@ public class LocalExecutionPlanner {
     }
     FragmentInstanceStateMachine stateMachine = instanceContext.getStateMachine();
     if (reservedBytes > 0) {
-      stateMachine.addStateChangeListener(
-          newState -> {
-            if (newState.isDone()) {
-              try (SetThreadName fragmentInstanceName =
-                  new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
-                OPERATORS_MEMORY_BLOCK.release(reservedBytes);
-                if (LOGGER.isDebugEnabled()) {
-                  LOGGER.debug(
-                      DataNodeQueryMessages.RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG,
-                      reservedBytes,
-                      OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
-                }
-              }
-            }
-          });
+      registerOperatorsMemoryRelease(reservedBytes, stateMachine);
     }
     return reservedBytes;
+  }
+
+  private void registerOperatorsMemoryRelease(
+      long reservedBytes, FragmentInstanceStateMachine stateMachine) {
+    // Regular state listeners share a bounded executor and can be delayed by driver cleanup.
+    // Return this admission reservation in the transition thread so consecutive fast failures
+    // cannot exhaust the operators memory pool.
+    stateMachine.addFinalStateChangeListener(
+        ignored -> {
+          try (SetThreadName fragmentInstanceName =
+              new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
+            OPERATORS_MEMORY_BLOCK.release(reservedBytes);
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(
+                  DataNodeQueryMessages.RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG,
+                  reservedBytes,
+                  OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
+            }
+          }
+        });
+  }
+
+  @TestOnly
+  void registerOperatorsMemoryReleaseForTest(
+      long reservedBytes, FragmentInstanceStateMachine stateMachine) {
+    registerOperatorsMemoryRelease(reservedBytes, stateMachine);
   }
 
   /**
