@@ -20,6 +20,9 @@
 package org.apache.iotdb.confignode.i18n;
 
 public final class ConfigNodeMessages {
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_IN_MILLISECONDS_F79736B2 =
+          "Failed to create or alter topic, illegal %s=%s, expected a long value in milliseconds";
 
   public static final String ACQUIRE_TRIGGERTABLELOCK = "acquire TriggerTableLock";
   public static final String ACQUIRE_UDFTABLELOCK = "acquire UDFTableLock";

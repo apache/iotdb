@@ -108,6 +108,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
           TopicConstant.COLUMN_FILTER_KEY,
           TopicConstant.RETENTION_BYTES_KEY,
           TopicConstant.RETENTION_MS_KEY,
+          TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
           TopicConstant.START_TIME_KEY,
           TopicConstant.END_TIME_KEY,
           TopicConstant.MODE_KEY,
@@ -129,6 +130,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
           TopicConstant.COLUMN_FILTER_KEY,
           TopicConstant.RETENTION_BYTES_KEY,
           TopicConstant.RETENTION_MS_KEY,
+          TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
           TopicConstant.MODE_KEY,
           TopicConstant.ORDER_MODE_KEY,
           TopicConstant.FORMAT_KEY,
@@ -397,6 +399,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     validateColumnFilter(topicConfig);
     validateIncrementalTopicRetentionConfig(topicConfig);
+    validateRecycleUncommittedEventInterval(topicConfig);
 
     final Long ownerLeaseDurationMs =
         topicConfig.getLong(TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
@@ -582,6 +585,31 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private boolean isIncrementalTopicConfig(final TopicConfig topicConfig) {
     return topicConfig.isIncrementalMode();
+  }
+
+  private void validateRecycleUncommittedEventInterval(final TopicConfig topicConfig)
+      throws SubscriptionException {
+    try {
+      topicConfig.getRecycleUncommittedEventIntervalMs();
+      return;
+    } catch (final NumberFormatException ignored) {
+      // Non-positive values disable automatic recycling; only malformed values are rejected.
+    }
+    final String exceptionMessage =
+        String.format(
+            ConfigNodeMessages
+                .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_IN_MILLISECONDS_F79736B2,
+            TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
+            topicConfig.getAttribute().entrySet().stream()
+                .filter(
+                    entry ->
+                        TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY.equalsIgnoreCase(
+                            entry.getKey()))
+                .map(entry -> String.valueOf(entry.getValue()))
+                .findFirst()
+                .orElse(""));
+    LOGGER.warn(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
   }
 
   private void validateIncrementalTopicRetentionConfig(final TopicConfig topicConfig)

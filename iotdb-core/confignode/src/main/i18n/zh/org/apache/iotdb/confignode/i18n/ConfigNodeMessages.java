@@ -20,6 +20,9 @@
 package org.apache.iotdb.confignode.i18n;
 
 public final class ConfigNodeMessages {
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_IN_MILLISECONDS_F79736B2 =
+          "创建或修改 topic 失败，%s=%s 无效，需指定以毫秒为单位的 long 值";
 
   public static final String ACQUIRE_TRIGGERTABLELOCK = "获取 TriggerTableLock";
   public static final String ACQUIRE_UDFTABLELOCK = "获取 UDFTableLock";
