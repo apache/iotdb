@@ -608,12 +608,11 @@ public class LTTBTableFunction implements TableFunction {
     return Double.isFinite(area) ? area : -1;
   }
 
-  /** Whether the participant value at {@code index} is representable as an exact decimal. */
-  private static boolean hasExactValue(double[] values, long[] integralValues, int index) {
-    return integralValues != null || Double.isFinite(values[index]);
-  }
-
-  /** Whether the participant value at {@code index} can serve as a triangle vertex. */
+  /**
+   * Whether the participant value at {@code index} is finite: integral columns always are, and a
+   * floating-point value qualifies when it is neither NaN nor infinite. Such a value can serve as a
+   * triangle vertex and is representable as an exact decimal.
+   */
   private static boolean isFiniteValue(double[] values, long[] integralValues, int index) {
     return integralValues != null || Double.isFinite(values[index]);
   }
@@ -649,7 +648,7 @@ public class LTTBTableFunction implements TableFunction {
               nextTime,
               nextValue);
       if (area < 0) {
-        if (!hasExactValue(values, integralValues, i)) {
+        if (!isFiniteValue(values, integralValues, i)) {
           // Non-finite participant: boundedArea scored it as the smallest area.
           continue;
         }
@@ -697,7 +696,7 @@ public class LTTBTableFunction implements TableFunction {
     BigDecimal sumTime = BigDecimal.ZERO;
     BigDecimal sumValue = BigDecimal.ZERO;
     for (int i = nextStart; i < nextEnd; i++) {
-      if (!hasExactValue(nextValues, nextIntegralValues, i)) {
+      if (!isFiniteValue(nextValues, nextIntegralValues, i)) {
         continue;
       }
       sumTime = sumTime.add(BigDecimal.valueOf(nextTimes[i]).subtract(timeOrigin));
@@ -706,7 +705,7 @@ public class LTTBTableFunction implements TableFunction {
     int pick = start;
     BigDecimal maxArea = null;
     for (int i = start; i < end; i++) {
-      if (!hasExactValue(values, integralValues, i)) {
+      if (!isFiniteValue(values, integralValues, i)) {
         continue;
       }
       BigDecimal time = BigDecimal.valueOf(times[i]).subtract(timeOrigin);
