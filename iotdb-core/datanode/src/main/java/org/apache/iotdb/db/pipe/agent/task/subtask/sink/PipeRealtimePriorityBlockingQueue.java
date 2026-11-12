@@ -167,7 +167,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     if (event == null) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
-      if (event == null) {
+      if (event == null && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
+        // Keep excess TsFiles in this queue so compaction can still replace them.
         event = pollTsFileEventIfPresent(pollHistoricalTsFileThreshold);
       }
       if (event != null) {
@@ -178,7 +179,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     // If no event is available, block until an event is available
     if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
       event = super.waitedPoll();
-      if (Objects.isNull(event)) {
+      if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
         event = pollTsFileEvent(pollHistoricalTsFileThreshold);
       }
       if (event != null) {
