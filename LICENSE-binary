@@ -218,14 +218,14 @@ Apache License 2.0
 at.yawk.lz4:lz4-java:1.11.4
 cglib:cglib:3.3.0
 ch.qos.reload4j:reload4j:1.2.22
-com.fasterxml.jackson.core:jackson-annotations:2.18.11
-com.fasterxml.jackson.core:jackson-core:2.18.11 (bundles FastDoubleParser, MIT License, with portions of fast_double_parser, Boost Software License 1.0, fast_float, MIT License, and bigint, BSD 2-Clause; and Schubfach, MIT License)
-com.fasterxml.jackson.core:jackson-databind:2.18.11
+com.fasterxml.jackson.core:jackson-annotations:2.18.12
+com.fasterxml.jackson.core:jackson-core:2.18.12 (bundles FastDoubleParser, MIT License, with portions of fast_double_parser, Boost Software License 1.0, fast_float, MIT License, and bigint, BSD 2-Clause; and Schubfach, MIT License)
+com.fasterxml.jackson.core:jackson-databind:2.18.12
 com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.21.1
-com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.11
-com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base:2.18.11
-com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.18.11
-com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations:2.18.11
+com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.12
+com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base:2.18.12
+com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.18.12
+com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations:2.18.12
 com.github.ben-manes.caffeine:caffeine:2.9.3
 com.github.moquette-io.moquette:moquette-broker:0.18.0
 com.google.code.findbugs:jsr305:3.0.2
@@ -289,13 +289,13 @@ org.apache.ratis:ratis-server:3.3.1
 org.apache.ratis:ratis-server-api:3.3.1
 org.apache.ratis:ratis-thirdparty-misc:1.1.0
 org.apache.thrift:libthrift:0.25.0
-org.eclipse.jetty:jetty-http:12.0.36
-org.eclipse.jetty:jetty-io:12.0.36
-org.eclipse.jetty:jetty-security:12.0.36
-org.eclipse.jetty:jetty-server:12.0.36
-org.eclipse.jetty:jetty-session:12.0.36
-org.eclipse.jetty:jetty-util:12.0.36
-org.eclipse.jetty.ee10:jetty-ee10-servlet:12.0.36
+org.eclipse.jetty:jetty-http:12.0.41
+org.eclipse.jetty:jetty-io:12.0.41
+org.eclipse.jetty:jetty-security:12.0.41
+org.eclipse.jetty:jetty-server:12.0.41
+org.eclipse.jetty:jetty-session:12.0.41
+org.eclipse.jetty:jetty-util:12.0.41
+org.eclipse.jetty.ee10:jetty-ee10-servlet:12.0.41
 org.javassist:javassist:3.30.2-GA
 org.xerial.snappy:snappy-java:1.1.10.9
 org.yaml:snakeyaml:2.6

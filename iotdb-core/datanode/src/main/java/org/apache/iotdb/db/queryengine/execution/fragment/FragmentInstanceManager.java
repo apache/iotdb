@@ -162,16 +162,19 @@ public class FragmentInstanceManager {
                           contextCreated[0] = true;
                           registrations[0] = queryAttempts.register(instance, stateMachine, true);
                           try {
-                            return createFragmentInstanceContext(
-                                fragmentInstanceId,
-                                stateMachine,
-                                instance.getSessionInfo(),
-                                dataRegion,
-                                instance.getGlobalTimePredicate(),
-                                registrations[0].getContext(),
-                                DriverTask.computeDeadlineTimeInMs(instance.getTimeOut()),
-                                instance.isDebug(),
-                                instance.isVerbose());
+                            FragmentInstanceContext createdContext =
+                                createFragmentInstanceContext(
+                                    fragmentInstanceId,
+                                    stateMachine,
+                                    instance.getSessionInfo(),
+                                    dataRegion,
+                                    instance.getGlobalTimePredicate(),
+                                    registrations[0].getContext(),
+                                    DriverTask.computeDeadlineTimeInMs(instance.getTimeOut()),
+                                    instance.isDebug(),
+                                    instance.isVerbose());
+                            createdContext.adoptUDFQueryScope(instance.claimUDFQueryScope());
+                            return createdContext;
                           } catch (Throwable t) {
                             registrations[0].close();
                             throw t;
@@ -184,7 +187,11 @@ public class FragmentInstanceManager {
                 try {
                   if (stateMachine.getState().isDone()) {
                     failedInstanceInfo.set(context.getInstanceInfo());
-                    context.releaseDataNodeQueryContext();
+                    try {
+                      context.finalizeUDFQuery();
+                    } finally {
+                      context.releaseDataNodeQueryContext();
+                    }
                     return null;
                   }
                   List<PipelineDriverFactory> driverFactories =
@@ -244,6 +251,7 @@ public class FragmentInstanceManager {
                   // returning from computeIfAbsent instead of looking it up from the map later.
                   failedInstanceInfo.set(context.getInstanceInfo());
                   try {
+                    context.finalizeUDFQuery();
                     clearFIRelatedResources(instanceId);
                   } finally {
                     // Once execution cleanup is installed, it owns the reference until driver
@@ -333,13 +341,16 @@ public class FragmentInstanceManager {
                         contextCreated[0] = true;
                         registrations[0] = queryAttempts.register(instance, stateMachine, false);
                         try {
-                          return createFragmentInstanceContext(
-                              fragmentInstanceId,
-                              stateMachine,
-                              instance.getSessionInfo(),
-                              DriverTask.computeDeadlineTimeInMs(instance.getTimeOut()),
-                              instance.isDebug(),
-                              instance.isVerbose());
+                          FragmentInstanceContext createdContext =
+                              createFragmentInstanceContext(
+                                  fragmentInstanceId,
+                                  stateMachine,
+                                  instance.getSessionInfo(),
+                                  DriverTask.computeDeadlineTimeInMs(instance.getTimeOut()),
+                                  instance.isDebug(),
+                                  instance.isVerbose());
+                          createdContext.adoptUDFQueryScope(instance.claimUDFQueryScope());
+                          return createdContext;
                         } catch (Throwable t) {
                           registrations[0].close();
                           throw t;
@@ -352,7 +363,11 @@ public class FragmentInstanceManager {
               try {
                 if (stateMachine.getState().isDone()) {
                   failedInstanceInfo.set(context.getInstanceInfo());
-                  context.releaseDataNodeQueryContext();
+                  try {
+                    context.finalizeUDFQuery();
+                  } finally {
+                    context.releaseDataNodeQueryContext();
+                  }
                   return null;
                 }
                 List<PipelineDriverFactory> driverFactories =
@@ -361,7 +376,6 @@ public class FragmentInstanceManager {
                         instance.getFragment().getTypeProvider(),
                         context,
                         schemaRegion);
-
                 List<IDriver> drivers = new ArrayList<>();
                 driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
                 context.initializeNumOfDrivers(drivers.size());
@@ -397,6 +411,7 @@ public class FragmentInstanceManager {
                 // instanceContext after computeIfAbsent returns.
                 failedInstanceInfo.set(context.getInstanceInfo());
                 try {
+                  context.finalizeUDFQuery();
                   clearFIRelatedResources(instanceId);
                 } finally {
                   if (!context.isExecutionInitialized()) {

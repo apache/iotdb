@@ -466,6 +466,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     if (!heartbeatEvent.isCompletionBarrier()
         && lastEvent instanceof PipeRealtimeEvent
         && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
+        && !((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isCompletionBarrier()
         && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isShouldPrintMessage()
             || !heartbeatEvent.isShouldPrintMessage())) {
       // If the last event in the pending queue is a heartbeat event, we should not extract any more

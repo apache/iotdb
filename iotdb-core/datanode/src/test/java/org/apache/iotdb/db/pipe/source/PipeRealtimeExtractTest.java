@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.source;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
@@ -1336,54 +1337,115 @@ public class PipeRealtimeExtractTest {
   @Test
   public void testTsFileSourceRegionLevelDowngradingSuppliesHeartbeatWhileTsFileIsInFlight()
       throws Exception {
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     try (final PipeRealtimeDataRegionTsFileSource extractor =
         createTsFileSourceForTest(
             PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY, pipeTaskMeta)) {
+      final SimpleProgressIndex firstProgressIndex = new SimpleProgressIndex(1, 1);
+      final SimpleProgressIndex secondProgressIndex = new SimpleProgressIndex(1, 2);
+      final TsFileResource firstResource = createTsFileResource(dataRegion1, "123-1-0-0.tsfile");
+      final TsFileResource secondResource = createTsFileResource(dataRegion1, "123-2-0-0.tsfile");
+      firstResource.updateProgressIndex(firstProgressIndex);
+      secondResource.updateProgressIndex(secondProgressIndex);
       final PipeRealtimeEvent firstEvent =
-          extractTsFileForTest(
-              extractor,
-              pipeTaskMeta,
-              createTsFileResource(dataRegion1, "123-1-0-0.tsfile"),
-              false);
+          extractTsFileForTest(extractor, pipeTaskMeta, firstResource, false);
       final PipeRealtimeEvent secondEvent =
-          extractTsFileForTest(
-              extractor,
-              pipeTaskMeta,
-              createTsFileResource(dataRegion1, "123-2-0-0.tsfile"),
-              false);
+          extractTsFileForTest(extractor, pipeTaskMeta, secondResource, false);
+      // Match the assigner binding so successful commits retire the source's deduplication entries.
+      ((PipeTsFileInsertionEvent) firstEvent.getEvent())
+          .bindTsFileDedupScopeID(extractor.getTsFileDedupScopeID());
+      ((PipeTsFileInsertionEvent) secondEvent.getEvent())
+          .bindTsFileDedupScopeID(extractor.getTsFileDedupScopeID());
       final PipeRealtimeEvent heartbeat =
-          PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false);
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false),
+              extractor,
+              pipeTaskMeta);
       Assert.assertTrue(heartbeat.increaseReferenceCount(TEST_REFERENCE_HOLDER));
       extractor.extract(heartbeat);
       final PipeRealtimeEvent completionBarrier =
-          PipeRealtimeEventFactory.createCompletionBarrierEvent(dataRegion1);
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createCompletionBarrierEvent(dataRegion1),
+              extractor,
+              pipeTaskMeta);
+      completionBarrier.getEvent().bindSource(extractor.getSourceId());
+      final AtomicBoolean completionBarrierCommitted = new AtomicBoolean(false);
+      completionBarrier.getEvent().addOnCommittedHook(() -> completionBarrierCommitted.set(true));
+      Assert.assertTrue(completionBarrier.getEvent().needToCommit());
       Assert.assertTrue(completionBarrier.increaseReferenceCount(TEST_REFERENCE_HOLDER));
       extractor.extract(completionBarrier);
 
-      // Drain the pending queue before adding another heartbeat so heartbeat coalescing does not
-      // discard it behind the completion barrier.
+      // Keep one retry-triggering heartbeat after the barrier; subsequent heartbeats can still be
+      // coalesced behind it to bound the pending queue.
+      final PipeRealtimeEvent coalescedHeartbeat =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(coalescedHeartbeat.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(coalescedHeartbeat);
+      Assert.assertFalse(coalescedHeartbeat.getEvent().isReleased());
+
+      // Queue a later heartbeat behind the completion barrier while the first TsFile remains in
+      // flight.
       Assert.assertSame(firstEvent.getEvent(), extractor.supply());
       final PipeRealtimeEvent heartbeatAfterCompletionBarrier =
-          PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false);
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false),
+              extractor,
+              pipeTaskMeta);
       Assert.assertTrue(
           heartbeatAfterCompletionBarrier.increaseReferenceCount(TEST_REFERENCE_HOLDER));
       extractor.extract(heartbeatAfterCompletionBarrier);
 
       Assert.assertSame(heartbeat.getEvent(), extractor.supply());
+      Assert.assertSame(coalescedHeartbeat.getEvent(), extractor.supply());
+      Assert.assertSame(heartbeatAfterCompletionBarrier.getEvent(), extractor.supply());
       Assert.assertNull(extractor.supply());
       Assert.assertFalse(secondEvent.getEvent().isReleased());
       Assert.assertFalse(completionBarrier.getEvent().isReleased());
       Assert.assertFalse(heartbeatAfterCompletionBarrier.getEvent().isReleased());
 
-      releaseSuppliedEvent(heartbeat.getEvent());
-      releaseSuppliedEvent(firstEvent.getEvent());
+      commitSuppliedEvent(heartbeat.getEvent(), commitManager);
+      commitSuppliedEvent(heartbeatAfterCompletionBarrier.getEvent(), commitManager);
+      Assert.assertNull(heartbeatAfterCompletionBarrier.getEvent().getCommitterKey());
+      Assert.assertEquals(MinimumProgressIndex.INSTANCE, pipeTaskMeta.getProgressIndex());
+      Assert.assertFalse(completionBarrierCommitted.get());
+
+      // A failed retry can retain the file across more than one heartbeat interval.
+      final PipeRealtimeEvent retryHeartbeat =
+          bindToTestPipe(
+              PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false),
+              extractor,
+              pipeTaskMeta);
+      Assert.assertTrue(retryHeartbeat.increaseReferenceCount(TEST_REFERENCE_HOLDER));
+      extractor.extract(retryHeartbeat);
+      Assert.assertSame(retryHeartbeat.getEvent(), extractor.supply());
+      commitSuppliedEvent(retryHeartbeat.getEvent(), commitManager);
+      Assert.assertNull(extractor.supply());
+      Assert.assertFalse(firstEvent.getEvent().isReleased());
+      Assert.assertEquals(MinimumProgressIndex.INSTANCE, pipeTaskMeta.getProgressIndex());
+      Assert.assertFalse(completionBarrierCommitted.get());
+
+      // Successful retry must release the ordering gate through commit, rather than discard.
+      commitSuppliedEvent(firstEvent.getEvent(), commitManager);
+      Assert.assertEquals(firstProgressIndex, pipeTaskMeta.getProgressIndex());
       Assert.assertSame(secondEvent.getEvent(), extractor.supply());
-      releaseSuppliedEvent(secondEvent.getEvent());
+      Assert.assertNull(extractor.supply());
+      Assert.assertFalse(completionBarrier.getEvent().isReleased());
+      Assert.assertFalse(completionBarrierCommitted.get());
+      commitSuppliedEvent(secondEvent.getEvent(), commitManager);
+      Assert.assertEquals(secondProgressIndex, pipeTaskMeta.getProgressIndex());
       Assert.assertSame(completionBarrier.getEvent(), extractor.supply());
-      releaseSuppliedEvent(completionBarrier.getEvent());
-      Assert.assertSame(heartbeatAfterCompletionBarrier.getEvent(), extractor.supply());
-      releaseSuppliedEvent(heartbeatAfterCompletionBarrier.getEvent());
+      Assert.assertFalse(completionBarrierCommitted.get());
+      commitSuppliedEvent(completionBarrier.getEvent(), commitManager);
+      Assert.assertTrue(completionBarrierCommitted.get());
+      Assert.assertEquals(secondProgressIndex, pipeTaskMeta.getProgressIndex());
+      Assert.assertNull(extractor.supply());
+    } finally {
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
     }
   }
 

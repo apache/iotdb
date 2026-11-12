@@ -222,6 +222,10 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
             .PIPE_LOG_SCHEMAREGIONSTATEMACHINE_EXECUTE_READ_PLAN_FRAGMENTINSTANCE_F85A001F,
         schemaRegion.getSchemaRegionId(),
         fragmentInstance.getId());
-    return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
+    try {
+      return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
+    } finally {
+      fragmentInstance.closeUDFQueryScopeIfPresent();
+    }
   }
 }

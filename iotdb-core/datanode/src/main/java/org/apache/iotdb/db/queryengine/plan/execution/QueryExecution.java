@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
@@ -112,6 +113,8 @@ public class QueryExecution implements IQueryExecution {
   // used for cleaning resultHandle up exactly once
   private final AtomicBoolean resultHandleCleanUp;
 
+  private final UDFClassLoaderManager.QueryScope udfQueryScope;
+
   // cost time in ns of finished rpc
   private long totalExecutionTime = 0;
 
@@ -131,9 +134,14 @@ public class QueryExecution implements IQueryExecution {
   public QueryExecution(IPlanner planner, MPPQueryContext context, ExecutorService executor) {
     this.context = context;
     this.planner = planner;
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    this.udfQueryScope =
+        classLoaderManager == null
+            ? null
+            : classLoaderManager.openQueryScope(context.getQueryId().getId());
     planner.beginAnalysisAttempt();
     try {
-      this.analysis = analyze(context);
+      this.analysis = analyzeWithCleanupOnFailure(context);
     } catch (RuntimeException | Error e) {
       planner.rollbackAnalysisAttempt();
       throw e;
@@ -157,7 +165,7 @@ public class QueryExecution implements IQueryExecution {
                 LOGGER.debug(DataNodeQueryMessages.RELEASE_QUERY_RESOURCE_STATE, state);
               }
               cause = stateMachine.getFailureException();
-              releaseResource(cause);
+              releaseResource(cause, false);
 
               this.cleanUpCoordinatorContextMapIfNeeded(cause);
             }
@@ -166,6 +174,9 @@ public class QueryExecution implements IQueryExecution {
             // preventing a premature close raced with late-scheduled FragmentInstances.
             context.releaseExternalTsFileQueryResources();
             this.stop(cause);
+            if (context.isQuery() || state != QueryState.FINISHED) {
+              finalizeUDFClassLoader();
+            }
           }
         });
     this.resultHandleCleanUp = new AtomicBoolean(false);
@@ -178,9 +189,21 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public void start() {
+    boolean failed = false;
     try {
-      startInternal();
+      UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+      if (classLoaderManager == null || udfQueryScope == null) {
+        startInternalWithPlanCleanup();
+      } else {
+        classLoaderManager.withQueryScope(
+            udfQueryScope,
+            () -> {
+              startInternalWithPlanCleanup();
+              return null;
+            });
+      }
     } catch (RuntimeException e) {
+      failed = true;
       finishAnalysisAttemptForCurrentState();
       if (stateMachine.getState().isDone()) {
         // The query has already reached a terminal state (e.g. killed by others), and the status
@@ -195,12 +218,17 @@ public class QueryExecution implements IQueryExecution {
       }
       throw e;
     } catch (Error e) {
+      failed = true;
       finishAnalysisAttemptForCurrentState();
       throw e;
+    } finally {
+      if (failed || (!context.isQuery() && stateMachine.getState() != QueryState.PENDING_RETRY)) {
+        finalizeUDFClassLoader();
+      }
     }
   }
 
-  private void startInternal() {
+  private void startInternalWithPlanCleanup() {
     final long startTime = System.nanoTime();
     if (skipExecute()) {
       LOGGER.debug(DataNodeQueryMessages.SKIP_EXECUTE);
@@ -269,14 +297,14 @@ public class QueryExecution implements IQueryExecution {
       LOGGER.warn(DataNodeQueryMessages.REACHMAXRETRYCOUNT);
       // Keep the same ownership order as an ordinary retry: plans and scheduler stop using the
       // analysis working state before the journal restores parser-owned objects.
-      this.stopAttemptAndRelease(stateMachine.getFailureException());
+      cleanupForRetry(stateMachine.getFailureException());
       planner.rollbackAnalysisAttempt();
       stateMachine.transitionToFailed();
       return getStatus();
     }
     LOGGER.warn(DataNodeQueryMessages.ERROR_WHEN_EXECUTING_QUERY, stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
-    this.stopAttemptAndRelease(stateMachine.getFailureException());
+    cleanupForRetry(stateMachine.getFailureException());
     // The generated plans no longer read the statement after cleanup. Restore the parser-owned
     // state before the next analysis attempt so retry observes the same SQL as the first attempt.
     planner.rollbackAnalysisAttempt();
@@ -297,13 +325,19 @@ public class QueryExecution implements IQueryExecution {
     // re-stop
     this.schedulingAttempt.set(new SchedulingAttempt());
     this.resultHandleCleanUp.compareAndSet(true, false);
+    if (stateMachine.getState().isDone()) {
+      return getStatus();
+    }
     // re-analyze the query
     planner.beginAnalysisAttempt();
     try {
-      this.analysis = analyze(context);
+      this.analysis = analyzeWithCleanupOnFailure(context);
     } catch (RuntimeException | Error e) {
       planner.rollbackAnalysisAttempt();
       throw e;
+    }
+    if (stateMachine.getState().isDone()) {
+      return getStatus();
     }
     // re-start the QueryExecution
     this.start();
@@ -332,8 +366,17 @@ public class QueryExecution implements IQueryExecution {
   }
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
-  private IAnalysis analyze(MPPQueryContext context) {
-    return planner.analyze(context);
+  private IAnalysis analyzeWithCleanupOnFailure(MPPQueryContext context) {
+    try {
+      UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+      if (classLoaderManager == null || udfQueryScope == null) {
+        return planner.analyze(context);
+      }
+      return classLoaderManager.withQueryScope(udfQueryScope, () -> planner.analyze(context));
+    } catch (RuntimeException | Error e) {
+      finalizeUDFClassLoader();
+      throw e;
+    }
   }
 
   private void schedule() {
@@ -473,8 +516,8 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public void stopAndCleanup(Throwable t) {
     try {
-      // Terminal cleanup (including the stale-query sweep) must wake getStatus even if the
-      // dispatcher has not returned yet. Retry cleanup only stops the old execution attempt.
+      // Terminal cleanup must wake status waiters, while retry cleanup keeps the query and its
+      // UDF scope alive for the next execution attempt.
       if (!stateMachine.getState().isDone()) {
         if (t == null) {
           stateMachine.transitionToAborted();
@@ -483,20 +526,28 @@ public class QueryExecution implements IQueryExecution {
         }
       }
     } finally {
-      stopAttemptAndRelease(t);
+      try {
+        stop(t);
+      } finally {
+        releaseResource(t, false);
+      }
     }
   }
 
-  private void stopAttemptAndRelease(Throwable t) {
+  private void cleanupForRetry(Throwable t) {
     try {
       stop(t);
     } finally {
-      releaseResource(t);
+      releaseResource(t, true);
     }
   }
 
-  /** Release the resources that current QueryExecution hold with a specified exception */
-  private void releaseResource(Throwable t) {
+  /**
+   * Release the resources that the current QueryExecution holds.
+   *
+   * @param isRetry whether cleanup is for retry; the UDF query scope remains reusable in this case
+   */
+  private void releaseResource(Throwable t, boolean isRetry) {
     context.recordDeviceEntryDiskIOMetricsOnRelease();
     // close ResultHandle to unblock client's getResult request
     // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
@@ -524,6 +575,16 @@ public class QueryExecution implements IQueryExecution {
                     .LOG_FAILED_TO_CLEAN_DEVICEENTRY_SPILL_DIRECTORY_FOR_QUERY_ARG_53D9C1FC,
                 context.getQueryId().getId()));
       }
+    }
+    if (!isRetry) {
+      finalizeUDFClassLoader();
+    }
+  }
+
+  private void finalizeUDFClassLoader() {
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    if (classLoaderManager != null && udfQueryScope != null) {
+      classLoaderManager.finalizeUDFQuery(udfQueryScope);
     }
   }
 

@@ -70,6 +70,104 @@ public class PipeProcessorSubtaskWorkerTest {
   }
 
   @Test(timeout = 30000)
+  public void testRequestsOnOneWorkerDoNotStrandOtherWorkersParserSlots() throws Exception {
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final PipeMemoryManager manager = PipeDataNodeResourceManager.memory();
+    final long originalParserMemory = config.getPipeTsFileParserMemory();
+    final int originalGlobalLimit = config.getPipeTsFileParserInFlightMaxNum();
+    final int originalRegionLimit = config.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
+    final List<PipeProcessorSubtaskWorker> workers = new ArrayList<>();
+    final List<TsFileParserMemoryReservation> requests = new ArrayList<>();
+    final boolean[] reservedBlockers = new boolean[4];
+    final CountDownLatch parsing = new CountDownLatch(4);
+    final CountDownLatch finishParsing = new CountDownLatch(1);
+    final ExecutorService executor = Executors.newFixedThreadPool(4);
+    try {
+      config.setPipeTsFileParserMemory(1);
+      config.setPipeTsFileParserInFlightMaxNum(4);
+      config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+      for (int i = 0; i < 4; i++) {
+        reservedBlockers[i] =
+            manager.tryReserveTsFileParserMemory(
+                "blocker" + i, 0, "0", new TsFileParserMemoryReservation());
+        Assert.assertTrue(reservedBlockers[i]);
+        workers.add(newWorker(new LinkedHashSet<>()));
+      }
+      // Queue four pipes on the same serial worker before the other workers' requests. A fair
+      // window based only on pipe order leaves all four free slots waiting for that one worker.
+      for (int i = 0; i < 7; i++) {
+        final String pipeName = "skewed" + i;
+        final TsFileParserMemoryReservation request = new TsFileParserMemoryReservation();
+        requests.add(request);
+        final PipeProcessorSubtask subtask = createRunnableSubtask(pipeName);
+        final AtomicBoolean processed = new AtomicBoolean();
+        when(subtask.isWaitingForTsFileParserMemory())
+            .thenAnswer(ignored -> request.isWaitingForSignal());
+        doAnswer(
+                invocation -> {
+                  request.setWakeUpCallback(invocation.getArgument(0));
+                  return null;
+                })
+            .when(subtask)
+            .setWorkerWakeUpCallback(any());
+        when(subtask.call())
+            .thenAnswer(
+                ignored -> {
+                  if (processed.get()) {
+                    return false;
+                  }
+                  if (!manager.tryReserveTsFileParserMemory(pipeName, 0, "0", request)) {
+                    throw PipeProcessorSubtaskYieldException.parserNotAdmitted();
+                  }
+                  try {
+                    parsing.countDown();
+                    Assert.assertTrue(finishParsing.await(10, TimeUnit.SECONDS));
+                    processed.set(true);
+                    return true;
+                  } finally {
+                    manager.releaseTsFileParserMemory(pipeName, 0, "0");
+                  }
+                });
+        workers.get(i < 4 ? 0 : i - 3).schedule(subtask);
+        Assert.assertFalse(manager.tryReserveTsFileParserMemory(pipeName, 0, "0", request));
+      }
+      for (int i = 0; i < 4; i++) {
+        manager.releaseTsFileParserMemory("blocker" + i, 0, "0");
+        reservedBlockers[i] = false;
+      }
+      final List<Future<?>> rounds = new ArrayList<>();
+      for (final PipeProcessorSubtaskWorker worker : workers) {
+        rounds.add(executor.submit(worker::runSubtasks));
+      }
+      Assert.assertTrue(
+          "Free parser slots must run on distinct available workers",
+          parsing.await(5, TimeUnit.SECONDS));
+      Assert.assertEquals(4, manager.getReservedTsFileParserCount());
+      finishParsing.countDown();
+      for (final Future<?> round : rounds) {
+        round.get(5, TimeUnit.SECONDS);
+      }
+      Assert.assertEquals(0, manager.getReservedTsFileParserCount());
+      Assert.assertEquals(0, manager.getWaitingTsFileParserCount());
+    } finally {
+      finishParsing.countDown();
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      for (int i = 0; i < requests.size(); i++) {
+        manager.cancelTsFileParserMemoryReservation("skewed" + i, 0, "0", requests.get(i));
+      }
+      for (int i = 0; i < reservedBlockers.length; i++) {
+        if (reservedBlockers[i]) {
+          manager.releaseTsFileParserMemory("blocker" + i, 0, "0");
+        }
+      }
+      config.setPipeTsFileParserMemory(originalParserMemory);
+      config.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
+      config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
+    }
+  }
+
+  @Test(timeout = 30000)
   public void testOneHundredWaitingPipesDoNotWaitForWorkerPolling() throws Exception {
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();

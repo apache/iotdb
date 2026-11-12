@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -115,6 +116,7 @@ public class FragmentInstanceContext extends QueryContext {
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
   private static final int MODS_MEMORY_ESTIMATE_READ_INTERVAL = 10_000;
   private final FragmentInstanceId id;
+  private UDFClassLoaderManager.QueryScope udfQueryScope;
 
   private final FragmentInstanceStateMachine stateMachine;
 
@@ -1340,6 +1342,7 @@ public class FragmentInstanceContext extends QueryContext {
    */
   public synchronized void releaseResource() {
     try {
+      finalizeUDFQuery();
       releaseResourceInternal();
     } finally {
       releaseDataNodeQueryContext();
@@ -1498,6 +1501,29 @@ public class FragmentInstanceContext extends QueryContext {
       queryAttemptRegistration = null;
     }
     dataNodeQueryContext = null;
+  }
+
+  synchronized void adoptUDFQueryScope(UDFClassLoaderManager.QueryScope transferredScope) {
+    if (udfQueryScope == null) {
+      udfQueryScope = transferredScope;
+    }
+  }
+
+  public synchronized UDFClassLoaderManager.QueryScope getOrCreateUDFQueryScope() {
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    if (udfQueryScope == null && classLoaderManager != null) {
+      udfQueryScope = classLoaderManager.openQueryScope(id.getFullId());
+    }
+    return udfQueryScope;
+  }
+
+  synchronized void finalizeUDFQuery() {
+    UDFClassLoaderManager.QueryScope queryScope = udfQueryScope;
+    udfQueryScope = null;
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    if (queryScope != null && classLoaderManager != null) {
+      classLoaderManager.finalizeUDFQuery(queryScope);
+    }
   }
 
   public void setMayHaveTmpFile(boolean mayHaveTmpFile) {
