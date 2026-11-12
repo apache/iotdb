@@ -48,7 +48,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -57,6 +59,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
@@ -78,6 +81,8 @@ public class LoadTsFileManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileManager.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  static final String TERMINAL_HISTORY_DIR = ".finished";
 
   public static final Cache<String, String> MEASUREMENT_ID_CACHE =
       Caffeine.newBuilder()
@@ -102,14 +107,10 @@ public class LoadTsFileManager {
   /**
    * The tasks this region finished, most recent last, to answer repeated consensus commands.
    *
-   * <p>The coordinator cannot tell a lost answer from a lost command - an RPC that timed out may
-   * have applied - so it has to be able to re-send the COMMIT that ended a task. A task this region
-   * already imported is then a no-op and not a failure, otherwise a retry that follows a lost
-   * answer would report a load that committed everywhere as failed. A task whose staged directory
-   * is still there is recognized from the terminal record of its progress files as well; the record
-   * below covers the tasks that were released right away, and it is bounded because a restart may
-   * forget it: a repeated COMMIT of a task that committed before the restart is then reported as
-   * unknown again, which is what it is.
+   * <p>This is only a bounded cache. Terminal records also live outside the staged task directories
+   * for the lifetime of the region, and are included in its LOAD snapshot. A replica must still
+   * recognize a command whose successful response was lost after staging cleanup or a restart;
+   * treating that command as missing data would otherwise retry it forever.
    */
   private static final int FINISHED_TASK_HISTORY = 256;
 
@@ -240,7 +241,7 @@ public class LoadTsFileManager {
         continue;
       }
       for (final File uuidDir : uuidDirs) {
-        if (!uuidDir.isDirectory()) {
+        if (!uuidDir.isDirectory() || TERMINAL_HISTORY_DIR.equals(uuidDir.getName())) {
           continue;
         }
         final String uuid = uuidDir.getName();
@@ -343,6 +344,9 @@ public class LoadTsFileManager {
     if (stopped) {
       throw newStoppedIOException();
     }
+    if (node.isGeneratedByRemoteConsensusLeader() && getTerminalOp(node.getLoadId()) != null) {
+      return Collections.emptyList();
+    }
     final Lock readLock = writersLock.readLock();
     readLock.lock();
     try {
@@ -386,13 +390,78 @@ public class LoadTsFileManager {
     return result;
   }
 
+  /** Terminal metadata is snapshotted separately from active tasks and their staged bytes. */
+  List<File> getTerminalHistoryDirs() {
+    final List<File> result = new ArrayList<>();
+    for (final String baseDir : LoadStagingDirs.configuredBaseDirs()) {
+      final File historyDir =
+          new File(getDataRegionLoadDir(new File(baseDir)), TERMINAL_HISTORY_DIR);
+      if (historyDir.isDirectory()) {
+        result.add(historyDir);
+      }
+    }
+    return result;
+  }
+
+  /** Region deletion ends consensus retries; ordinary shutdown must keep these records. */
+  public static void clearTerminalHistory(final String databaseName, final String dataRegionId) {
+    for (final String baseDir : LoadStagingDirs.configuredBaseDirs()) {
+      LoadStagingDirs.deleteTaskDir(
+          new File(
+              LoadStagingDirs.regionLoadDir(new File(baseDir), databaseName, dataRegionId),
+              TERMINAL_HISTORY_DIR));
+    }
+  }
+
+  private void rememberTerminal(final LoadTsFileConsensusNode node, final LoadTsFileConsensusOp op)
+      throws IOException {
+    rememberTerminal(node.getLoadId(), op, node.getSearchIndex());
+  }
+
+  private void rememberTerminal(
+      final String loadId, final LoadTsFileConsensusOp op, final long searchIndex)
+      throws IOException {
+    final File historyDir =
+        new File(
+            getDataRegionLoadDir(new File(LoadStagingDirs.configuredBaseDirs()[0])),
+            TERMINAL_HISTORY_DIR);
+    final LoadTsFileProgress terminal =
+        new LoadTsFileProgress(new File(historyDir, loadId + ".copying." + UUID.randomUUID()));
+    final File temporaryRecord = terminal.getProgressFile();
+    final File record = LoadTsFileProgress.progressFileFor(new File(historyDir, loadId));
+    try {
+      terminal.recordTerminal(op, searchIndex);
+      try {
+        Files.move(
+            temporaryRecord.toPath(),
+            record.toPath(),
+            StandardCopyOption.ATOMIC_MOVE,
+            StandardCopyOption.REPLACE_EXISTING);
+      } catch (final AtomicMoveNotSupportedException e) {
+        Files.move(temporaryRecord.toPath(), record.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      }
+    } finally {
+      Files.deleteIfExists(temporaryRecord.toPath());
+    }
+    finishedLoadIds.put(loadId, op);
+  }
+
   /** The terminal command this region already applied to the task, or null if it is unknown. */
-  private LoadTsFileConsensusOp getTerminalOp(final String loadId) {
+  private LoadTsFileConsensusOp getTerminalOp(final String loadId) throws IOException {
     final LoadTsFileConsensusOp finishedOp = finishedLoadIds.get(loadId);
     if (finishedOp != null) {
       return finishedOp;
     }
-    for (final String baseDir : LoadStagingDirs.baseDirs()) {
+    for (final File historyDir : getTerminalHistoryDirs()) {
+      final LoadTsFileProgress.TerminalRecord terminal =
+          LoadTsFileProgress.readTerminal(
+              LoadTsFileProgress.progressFileFor(new File(historyDir, loadId)));
+      if (terminal != null) {
+        finishedLoadIds.put(loadId, terminal.op());
+        return terminal.op();
+      }
+    }
+    for (final String baseDir : LoadStagingDirs.configuredBaseDirs()) {
       final File taskDir =
           new File(
               LoadStagingDirs.regionLoadDir(
@@ -405,16 +474,19 @@ public class LoadTsFileManager {
         continue;
       }
       for (final File file : files) {
+        final LoadTsFileProgress.TerminalRecord terminal;
         try {
-          final LoadTsFileProgress.TerminalRecord terminal = LoadTsFileProgress.readTerminal(file);
-          if (terminal != null) {
-            return terminal.op();
-          }
+          terminal = LoadTsFileProgress.readTerminal(file);
         } catch (final IOException e) {
           LOGGER.warn(
               StorageEngineMessages.LOG_LOAD_CONSENSUS_RECOVER_TASK_META_FAILED_C39E04BB,
               file.getPath(),
               e);
+          continue;
+        }
+        if (terminal != null) {
+          rememberTerminal(loadId, terminal.op(), terminal.searchIndex());
+          return terminal.op();
         }
       }
     }
@@ -425,12 +497,13 @@ public class LoadTsFileManager {
       final LoadTsFileConsensusNode node,
       final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
+    // A terminal decision also fences late pieces and retries from an older consensus batch.
+    if (node.isGeneratedByRemoteConsensusLeader() && getTerminalOp(node.getLoadId()) != null) {
+      return true;
+    }
     if (!uuid2WriterManager.containsKey(node.getLoadId())) {
       // A lost PREPARE acknowledgement can be retried after the follower applied COMMIT or ABORT.
       if (node.isGeneratedByRemoteConsensusLeader()) {
-        if (getTerminalOp(node.getLoadId()) != null) {
-          return true;
-        }
         throw new LoadFileNotReadyException();
       }
       return false;
@@ -467,12 +540,12 @@ public class LoadTsFileManager {
       final LoadTsFileConsensusNode node,
       final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
       throws IOException, LoadFileException {
+    final LoadTsFileConsensusOp terminalOp = getTerminalOp(node.getLoadId());
+    if (terminalOp != null) {
+      return terminalOp == LoadTsFileConsensusOp.COMMIT;
+    }
     if (!uuid2WriterManager.containsKey(node.getLoadId())) {
-      final LoadTsFileConsensusOp terminalOp = getTerminalOp(node.getLoadId());
-      if (terminalOp == LoadTsFileConsensusOp.COMMIT) {
-        return true;
-      }
-      if (terminalOp == null && node.isGeneratedByRemoteConsensusLeader()) {
+      if (node.isGeneratedByRemoteConsensusLeader()) {
         throw new LoadFileNotReadyException();
       }
       return false;
@@ -489,9 +562,13 @@ public class LoadTsFileManager {
     final boolean mustRetainStagedFiles = retention.mustRetain(node.getSearchIndex());
     uuid2WriterManager
         .get(node.getLoadId())
-        .loadAll(node.isGeneratedByPipe(), !mustRetainStagedFiles);
+        .loadAll(
+            node.isGeneratedByPipe(),
+            !mustRetainStagedFiles && !node.isGeneratedByRemoteConsensusLeader());
+    // Keep a follower's staged copy until the terminal answer is durable, even without a local WAL
+    // watermark to retain it. A restart before this record can then resume the prepared task.
+    rememberTerminal(node, LoadTsFileConsensusOp.COMMIT);
     finishConsensusTask(node, mustRetainStagedFiles, LoadTsFileConsensusOp.COMMIT);
-    finishedLoadIds.put(node.getLoadId(), LoadTsFileConsensusOp.COMMIT);
     logLoadNodeToWAL(node);
     dataRegion.insertSeparatorToWAL(node);
     return true;
@@ -499,11 +576,17 @@ public class LoadTsFileManager {
 
   public boolean deleteAll(final LoadTsFileConsensusNode node) throws IOException {
     if (!uuid2WriterManager.containsKey(node.getLoadId())) {
+      if (getTerminalOp(node.getLoadId()) == null) {
+        // ABORT may overtake every PIECE. Its success must still settle pending PREPARE retries.
+        rememberTerminal(node, LoadTsFileConsensusOp.ABORT);
+        logLoadNodeToWAL(node);
+        dataRegion.insertSeparatorToWAL(node);
+      }
       return false;
     }
+    rememberTerminal(node, LoadTsFileConsensusOp.ABORT);
     finishConsensusTask(
         node, retention.mustRetain(node.getSearchIndex()), LoadTsFileConsensusOp.ABORT);
-    finishedLoadIds.put(node.getLoadId(), LoadTsFileConsensusOp.ABORT);
     logLoadNodeToWAL(node);
     dataRegion.insertSeparatorToWAL(node);
     return true;

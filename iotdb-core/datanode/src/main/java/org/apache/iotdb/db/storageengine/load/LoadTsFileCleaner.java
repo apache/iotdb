@@ -180,7 +180,9 @@ public class LoadTsFileCleaner {
         }
 
         for (final File taskDir : taskDirs) {
-          if (!taskDir.isDirectory() || loadId2RetainedTask.containsKey(taskDir.getName())) {
+          if (!taskDir.isDirectory()
+              || LoadTsFileManager.TERMINAL_HISTORY_DIR.equals(taskDir.getName())
+              || loadId2RetainedTask.containsKey(taskDir.getName())) {
             continue;
           }
 

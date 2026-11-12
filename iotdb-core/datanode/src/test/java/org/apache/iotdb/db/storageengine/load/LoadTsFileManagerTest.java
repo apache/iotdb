@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -582,6 +583,106 @@ public class LoadTsFileManagerTest {
       prepare.markAsGeneratedByRemoteConsensusLeader();
       assertTrue(manager.prepare(prepare, Collections.emptyMap()));
       assertFalse(manager.loadAll(commitNode(loadId), Collections.emptyMap()));
+    } finally {
+      manager.stop();
+    }
+  }
+
+  @Test
+  public void testReplicatedCommitRetrySurvivesRestartAndSnapshot() throws Exception {
+    final String loadId = "replicated-committed-retry";
+    LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    emulateStagedFileImport();
+    final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+    final LoadTsFileConsensusNode commit = commitNode(loadId);
+    prepare.markAsGeneratedByRemoteConsensusLeader();
+    commit.markAsGeneratedByRemoteConsensusLeader();
+    try {
+      manager.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+      assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+      assertTrue(manager.getActiveTaskDirs().isEmpty());
+
+      // The COMMIT response was lost, and the follower restarts before it is retried.
+      manager.stop();
+      manager = new LoadTsFileManager(dataRegion);
+      assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+
+      final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+      try {
+        config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+        Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+        final File snapshot = new File(tempDir, "finished-load-snapshot");
+        assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshot));
+        manager.stop();
+        LoadTsFileSnapshot.clear(dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+        LoadTsFileSnapshot.restore(
+            dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString(), snapshot);
+        manager = new LoadTsFileManager(dataRegion);
+        assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+        assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+      } finally {
+        config.setDataRegionConsensusProtocolClass(originalProtocol);
+      }
+      Mockito.verify(dataRegion, Mockito.times(1))
+          .loadNewTsFile(
+              Mockito.any(),
+              Mockito.anyBoolean(),
+              Mockito.anyBoolean(),
+              Mockito.anyBoolean(),
+              Mockito.any());
+    } finally {
+      manager.stop();
+    }
+  }
+
+  @Test
+  public void testReplicatedAbortBeforePiecesStopsRetries() throws Exception {
+    final String loadId = "replicated-abort-before-pieces";
+    LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+    final LoadTsFileConsensusNode commit = commitNode(loadId);
+    final LoadTsFileConsensusNode abort = abortNode(loadId);
+    final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
+    prepare.markAsGeneratedByRemoteConsensusLeader();
+    commit.markAsGeneratedByRemoteConsensusLeader();
+    abort.markAsGeneratedByRemoteConsensusLeader();
+    piece.markAsGeneratedByRemoteConsensusLeader();
+    try {
+      Mockito.when(dataRegion.writeLoadTsFilePrepare(Mockito.any(), Mockito.anyMap()))
+          .thenAnswer(
+              invocation ->
+                  dataRegion
+                      .getLoadTsFileManagerIfPresent()
+                      .get()
+                      .prepare(invocation.getArgument(0), invocation.getArgument(1)));
+      Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+      final IoTConsensusDataRegionStateMachine stateMachine =
+          new IoTConsensusDataRegionStateMachine(dataRegion);
+      assertTrue(
+          RetryUtils.needRetryForWrite(stateMachine.write((IConsensusRequest) prepare).getCode()));
+
+      // ABORT can overtake the same missing PIECE as PREPARE did.
+      assertFalse(manager.deleteAll(abort));
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          stateMachine.write((IConsensusRequest) prepare).getCode());
+      manager.writePiece(piece);
+      assertTrue(manager.getActiveTaskDirs().isEmpty());
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+      assertFalse(manager.loadAll(commit, Collections.emptyMap()));
+
+      manager.stop();
+      manager = new LoadTsFileManager(dataRegion);
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+      assertFalse(manager.loadAll(commit, Collections.emptyMap()));
+      manager.writePiece(piece);
+      assertTrue(manager.getActiveTaskDirs().isEmpty());
+      manager.stop();
+      LoadTsFileManager.clearTerminalHistory(
+          dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+      assertTrue(manager.getTerminalHistoryDirs().isEmpty());
     } finally {
       manager.stop();
     }

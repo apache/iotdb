@@ -107,7 +107,8 @@ public final class LoadTsFileSnapshot {
       return true;
     }
 
-    final List<File> taskDirs = manager.getActiveTaskDirs();
+    final List<File> taskDirs = new ArrayList<>(manager.getActiveTaskDirs());
+    taskDirs.addAll(manager.getTerminalHistoryDirs());
     if (taskDirs.isEmpty()) {
       return true;
     }
@@ -146,14 +147,14 @@ public final class LoadTsFileSnapshot {
   private static void copyTask(final File taskDir, final File targetDir) throws IOException {
     // 1. Snapshot raw staged and modification files first
     for (final File file : listFiles(taskDir)) {
-      if (file.isFile() && !isProgressLog(file)) {
+      if (file.isFile() && !file.getName().contains(TEMP_FILE_SUFFIX) && !isProgressLog(file)) {
         publishAtomicCopy(file, new File(targetDir, file.getName()));
       }
     }
 
     // 2. Snapshot progress logs afterwards so they describe an existing snapshot boundary
     for (final File file : listFiles(taskDir)) {
-      if (file.isFile() && isProgressLog(file)) {
+      if (file.isFile() && !file.getName().contains(TEMP_FILE_SUFFIX) && isProgressLog(file)) {
         publishAtomicCopy(file, new File(targetDir, file.getName()));
       }
     }

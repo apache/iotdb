@@ -5664,6 +5664,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       deleted = true;
       stopLoadTsFileManager();
+      LoadTsFileManager.clearTerminalHistory(databaseName, dataRegionIdString);
       shutdownUpgradeModFileThreadPool();
       releaseDirectBufferMemory();
       MetricService.getInstance().removeMetricSet(metrics);
