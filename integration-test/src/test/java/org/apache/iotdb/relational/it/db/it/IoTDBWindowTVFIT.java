@@ -1949,6 +1949,25 @@ public class IoTDBWindowTVFIT {
   }
 
   @Test
+  public void testDerivativeFunctionWithTwoTagPartitions() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "time", "derivative(s1)"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,1970-01-01T00:00:00.005Z,1.25,",
+          "F1,device_1,1970-01-01T00:00:00.009Z,-2.5,",
+          "F1,device_2,1970-01-01T00:00:00.011Z,0.5555555555555556,"
+        };
+    // Two partition columns isolate the series of every (factory, device) pair, and unit 1ms
+    // normalizes the change to the change per millisecond.
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM DERIVATIVE(DATA => table5 PARTITION BY (factory_id, device_id) "
+            + "ORDER BY time, unit => 1ms) ORDER BY factory_id, device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testDerivativeFunctionWithAllNumericTypes() {
     String[] expectedHeader =
         new String[] {
