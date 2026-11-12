@@ -90,7 +90,7 @@
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
         <iotdb-tools-thrift.version>0.25.0.0</iotdb-tools-thrift.version>
-        <jackson.version>2.18.11</jackson.version>
+        <jackson.version>2.18.12</jackson.version>
         <jakarta.annotation-api.version>3.0.0</jakarta.annotation-api.version>
         <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
         <jakarta.validation-api.version>3.0.2</jakarta.validation-api.version>
@@ -98,7 +98,7 @@
         <java-websocket.version>1.5.4</java-websocket.version>
         <jcip-annotations.version>1.0-1</jcip-annotations.version>
         <jersey.version>3.1.11</jersey.version>
-        <jetty.version>12.0.36</jetty.version>
+        <jetty.version>12.0.41</jetty.version>
         <jline.version>3.26.2</jline.version>
         <jna.version>5.14.0</jna.version>
         <jtransforms.version>3.1</jtransforms.version>
