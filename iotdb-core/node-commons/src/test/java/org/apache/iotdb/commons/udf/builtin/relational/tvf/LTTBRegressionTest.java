@@ -162,6 +162,31 @@ public class LTTBRegressionTest {
     List<ColumnBuilder> timeWindow = sample("TIME_WINDOW", 3, 1, 0, rows);
     Column timePicks = timeWindow.get(timeWindow.size() - 2).build();
     assertEquals(8, timePicks.getPositionCount());
+    long[] expectedTimes = {0, 1, 2, 1, 2, 3, 4, 5};
+    for (int i = 0; i < expectedTimes.length; i++) {
+      assertEquals(expectedTimes[i], timePicks.getLong(i));
+    }
+  }
+
+  /**
+   * With {@code SLIDE > SIZE} the gaps between windows belong to no bucket. A row in a gap is
+   * neither collected into a bucket nor eligible as {@code F} or {@code L}, because only points
+   * that fall in a window can be reported. Here the windows are {@code [0,2)} and {@code [3,5)}; t5
+   * falls in the gap {@code [5,6)} and is therefore dropped, while the last point that does fall in
+   * a window is t4.
+   */
+  @Test
+  public void testTimeWindowGapRowsAreDropped() {
+    Double[][] rows = {{0.0}, {1.0}, {2.0}, {3.0}, {4.0}, {5.0}};
+    List<ColumnBuilder> out = sample("TIME_WINDOW", 2, 3, 0, rows);
+    Column picks = out.get(out.size() - 2).build();
+    // The first window holds t0 and t1: it reports F(t0) and picks t1. The second holds t3 and
+    // t4: it picks t3 and reports L(t4), the last point that falls in a window.
+    long[] expected = {0, 1, 3, 4};
+    assertEquals(expected.length, picks.getPositionCount());
+    for (int i = 0; i < expected.length; i++) {
+      assertEquals(expected[i], picks.getLong(i));
+    }
   }
 
   /**

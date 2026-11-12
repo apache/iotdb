@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableFunctionProcessorMemoryBudget;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -124,6 +125,14 @@ public class LTTBTableFunction implements TableFunction {
   public static final long UNSPECIFIED_N = Long.MIN_VALUE;
   public static final long UNSPECIFIED_SIZE = Long.MIN_VALUE;
   public static final long UNSPECIFIED_SLIDE = Long.MIN_VALUE;
+
+  /**
+   * Marks {@code ORIGIN} as not specified. The user-visible default of the argument is still {@code
+   * 0} (the epoch); the sentinel only lets {@link #analyze} distinguish an explicit {@code ORIGIN}
+   * from the injected default, so the function rejects the argument in modes that do not use it.
+   */
+  public static final long UNSPECIFIED_ORIGIN = Long.MIN_VALUE;
+
   public static final long MIN_TARGET_COUNT = 3L;
 
   /** Hard cap on eligible points buffered per participant column in one partition or window. */
@@ -199,7 +208,7 @@ public class LTTBTableFunction implements TableFunction {
         ScalarParameterSpecification.builder()
             .name(ORIGIN_PARAMETER_NAME)
             .type(Type.TIMESTAMP)
-            .defaultValue(0L)
+            .defaultValue(UNSPECIFIED_ORIGIN)
             .build());
   }
 
@@ -215,9 +224,11 @@ public class LTTBTableFunction implements TableFunction {
     long n = getLong(arguments, N_PARAMETER_NAME);
     long size = getLong(arguments, SIZE_PARAMETER_NAME);
     long slide = getLong(arguments, SLIDE_PARAMETER_NAME);
+    long origin = getLong(arguments, ORIGIN_PARAMETER_NAME);
     boolean nSpecified = n != UNSPECIFIED_N;
     boolean sizeSpecified = size != UNSPECIFIED_SIZE;
     boolean slideSpecified = slide != UNSPECIFIED_SLIDE;
+    boolean originSpecified = origin != UNSPECIFIED_ORIGIN;
     if (nSpecified == sizeSpecified) {
       throw new SemanticException(
           CommonMessages
@@ -226,7 +237,7 @@ public class LTTBTableFunction implements TableFunction {
 
     Mode mode;
     if (nSpecified) {
-      if (slideSpecified) {
+      if (slideSpecified || originSpecified) {
         throw new SemanticException(
             CommonMessages
                 .EXCEPTION_THE_N_ARGUMENT_OF_LTTB_CANNOT_BE_COMBINED_WITH_THE_SLIDE_OR_ORIGIN_ARGUMENTS_C2FF1FE1);
@@ -252,6 +263,11 @@ public class LTTBTableFunction implements TableFunction {
       boolean isTimeWindow =
           arguments.containsKey(WINDOW_MODE_PARAMETER_NAME)
               && (boolean) ((ScalarArgument) arguments.get(WINDOW_MODE_PARAMETER_NAME)).getValue();
+      if (!isTimeWindow && originSpecified) {
+        throw new SemanticException(
+            QueryMessages
+                .EXCEPTION_THE_ORIGIN_ARGUMENT_IS_ONLY_SUPPORTED_IN_TIME_WINDOW_MODE_B3F358B9);
+      }
       mode = isTimeWindow ? Mode.TIME_WINDOW : Mode.COUNT_WINDOW;
     }
 
@@ -296,7 +312,7 @@ public class LTTBTableFunction implements TableFunction {
     } else {
       handleBuilder.addProperty(SIZE_PARAMETER_NAME, size).addProperty(SLIDE_PARAMETER_NAME, slide);
       if (mode == Mode.TIME_WINDOW) {
-        handleBuilder.addProperty(ORIGIN_PARAMETER_NAME, getLong(arguments, ORIGIN_PARAMETER_NAME));
+        handleBuilder.addProperty(ORIGIN_PARAMETER_NAME, originSpecified ? origin : 0L);
       }
     }
 

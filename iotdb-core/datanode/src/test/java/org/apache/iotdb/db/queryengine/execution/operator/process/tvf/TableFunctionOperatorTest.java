@@ -61,6 +61,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -602,6 +603,48 @@ public class TableFunctionOperatorTest {
         return 0;
       }
     };
+  }
+
+  /**
+   * The processor buffers survive until a partition completes, so the operator must charge them to
+   * both the peak of a call and the retained size after one: parents read one or the other, and a
+   * budget charged to only one side would not be reserved in queries using the other.
+   */
+  @Test
+  public void testBufferedBytesAreChargedToPeakAndRetainedSize() throws Exception {
+    long budget = 4096L;
+    OperatorContext operatorContext = createOperatorContext("lttb_buffer_estimate");
+    Operator child = constructLongChildOperator(operatorContext, new long[] {1});
+    try (TableFunctionOperator operator =
+        new TableFunctionOperator(
+            operatorContext,
+            new TableFunctionProcessorProvider() {
+              @Override
+              public TableFunctionDataProcessor getDataProcessor() {
+                return new TableFunctionDataProcessor() {
+                  @Override
+                  public void process(
+                      Record input,
+                      List<ColumnBuilder> properColumnBuilders,
+                      ColumnBuilder passThroughIndexBuilder) {}
+                };
+              }
+            },
+            budget,
+            child,
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList(TSDataType.INT64),
+            1,
+            Collections.singletonList(0),
+            Collections.emptyList(),
+            false,
+            Collections.emptyList(),
+            false,
+            mock(IoTDBLocal.class))) {
+      assertEquals(budget, operator.calculateRetainedSizeAfterCallingNext());
+      // peek = child peak (0) + budget + max(return size, block builder retained)
+      assertTrue(operator.calculateMaxPeekMemory() >= budget + operator.calculateMaxReturnSize());
+    }
   }
 
   private Operator constructLongChildOperator(OperatorContext operatorContext, long[] values) {

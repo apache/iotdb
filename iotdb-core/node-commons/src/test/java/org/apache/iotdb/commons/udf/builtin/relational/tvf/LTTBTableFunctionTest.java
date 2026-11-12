@@ -21,7 +21,9 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
@@ -38,7 +40,6 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class LTTBTableFunctionTest {
@@ -115,6 +116,56 @@ public class LTTBTableFunctionTest {
   }
 
   @Test
+  public void testAnalyzeRejectsTargetCountWithOrigin() throws UDFException {
+    Map<String, Argument> arguments = targetCountArguments(3L);
+    arguments.put(
+        LTTBTableFunction.ORIGIN_PARAMETER_NAME, new ScalarArgument(Type.TIMESTAMP, 1000L));
+    try {
+      new LTTBTableFunction().analyze(arguments);
+      fail();
+    } catch (SemanticException e) {
+      // compare against the constant so the test also passes under -P with-zh-locale
+      assertEquals(
+          CommonMessages
+              .EXCEPTION_THE_N_ARGUMENT_OF_LTTB_CANNOT_BE_COMBINED_WITH_THE_SLIDE_OR_ORIGIN_ARGUMENTS_C2FF1FE1,
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testAnalyzeRejectsOriginInCountWindowMode() throws UDFException {
+    Map<String, Argument> arguments = windowArguments(2L, 2L, false);
+    arguments.put(
+        LTTBTableFunction.ORIGIN_PARAMETER_NAME, new ScalarArgument(Type.TIMESTAMP, 1000L));
+    try {
+      new LTTBTableFunction().analyze(arguments);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(
+          QueryMessages
+              .EXCEPTION_THE_ORIGIN_ARGUMENT_IS_ONLY_SUPPORTED_IN_TIME_WINDOW_MODE_B3F358B9,
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testAnalyzeAcceptsOriginInTimeWindowMode() throws UDFException {
+    Map<String, Argument> arguments = windowArguments(2L, 2L, true);
+    arguments.put(
+        LTTBTableFunction.ORIGIN_PARAMETER_NAME, new ScalarArgument(Type.TIMESTAMP, 1000L));
+    TableFunctionAnalysis analysis = new LTTBTableFunction().analyze(arguments);
+    MapTableFunctionHandle handle = (MapTableFunctionHandle) analysis.getTableFunctionHandle();
+    assertEquals(1000L, handle.getProperty(LTTBTableFunction.ORIGIN_PARAMETER_NAME));
+  }
+
+  @Test
+  public void testTimeWindowWithoutOriginUsesTheEpoch() throws UDFException {
+    TableFunctionAnalysis analysis = new LTTBTableFunction().analyze(windowArguments(2L, 2L, true));
+    MapTableFunctionHandle handle = (MapTableFunctionHandle) analysis.getTableFunctionHandle();
+    assertEquals(0L, handle.getProperty(LTTBTableFunction.ORIGIN_PARAMETER_NAME));
+  }
+
+  @Test
   public void testTargetCountKeepsNonFiniteValues() {
     long[] times = {0, 1, 2};
     double[] values = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY};
@@ -135,15 +186,10 @@ public class LTTBTableFunctionTest {
     long[] times = {0, 1, 2, 3, 4, 5};
     double[] values = {1.0, Double.NaN, Double.POSITIVE_INFINITY, 2.0, 3.0, 4.0};
 
-    int[] selected = LTTBTableFunction.selectTargetCount(times, values, 6, 3);
-
-    // The first and last eligible points are always preserved.
-    assertEquals(0, selected[0]);
-    assertEquals(5, selected[selected.length - 1]);
-    assertEquals(3, selected.length);
-    for (int index : selected) {
-      assertTrue("selected index out of range: " + index, index >= 0 && index < 6);
-    }
+    // The only interior bucket is t1..t4 with C = the final point; t3 (area 4) beats t4 (area 2)
+    // and the non-finite candidates can never win.
+    assertArrayEquals(
+        new int[] {0, 3, 5}, LTTBTableFunction.selectTargetCount(times, values, 6, 3));
   }
 
   /** A bucket whose candidates are all non-finite keeps its earliest point, deterministically. */
@@ -272,9 +318,36 @@ public class LTTBTableFunctionTest {
     arguments.put(
         LTTBTableFunction.SLIDE_PARAMETER_NAME,
         new ScalarArgument(Type.INT64, LTTBTableFunction.UNSPECIFIED_SLIDE));
-    arguments.put(LTTBTableFunction.ORIGIN_PARAMETER_NAME, new ScalarArgument(Type.TIMESTAMP, 0L));
+    arguments.put(
+        LTTBTableFunction.ORIGIN_PARAMETER_NAME,
+        new ScalarArgument(Type.TIMESTAMP, LTTBTableFunction.UNSPECIFIED_ORIGIN));
     arguments.put(
         LTTBTableFunction.WINDOW_MODE_PARAMETER_NAME, new ScalarArgument(Type.BOOLEAN, false));
+    return arguments;
+  }
+
+  private static Map<String, Argument> windowArguments(long size, long slide, boolean timeWindow) {
+    Map<String, Argument> arguments = new HashMap<>();
+    arguments.put(
+        LTTBTableFunction.DATA_PARAMETER_NAME,
+        new TableArgument(
+            Arrays.asList(Optional.of("time"), Optional.of("device"), Optional.of("s1")),
+            Arrays.asList(Type.TIMESTAMP, Type.STRING, Type.DOUBLE),
+            Collections.singletonList("device"),
+            Collections.singletonList("time"),
+            false));
+    arguments.put(
+        LTTBTableFunction.TIMECOL_PARAMETER_NAME, new ScalarArgument(Type.STRING, "time"));
+    arguments.put(
+        LTTBTableFunction.N_PARAMETER_NAME,
+        new ScalarArgument(Type.INT64, LTTBTableFunction.UNSPECIFIED_N));
+    arguments.put(LTTBTableFunction.SIZE_PARAMETER_NAME, new ScalarArgument(Type.INT64, size));
+    arguments.put(LTTBTableFunction.SLIDE_PARAMETER_NAME, new ScalarArgument(Type.INT64, slide));
+    arguments.put(
+        LTTBTableFunction.ORIGIN_PARAMETER_NAME,
+        new ScalarArgument(Type.TIMESTAMP, LTTBTableFunction.UNSPECIFIED_ORIGIN));
+    arguments.put(
+        LTTBTableFunction.WINDOW_MODE_PARAMETER_NAME, new ScalarArgument(Type.BOOLEAN, timeWindow));
     return arguments;
   }
 }

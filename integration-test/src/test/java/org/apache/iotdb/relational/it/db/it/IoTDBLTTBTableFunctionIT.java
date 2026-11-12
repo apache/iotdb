@@ -88,10 +88,11 @@ public class IoTDBLTTBTableFunctionIT {
           "INSERT INTO shared(time, site, device, s1) VALUES "
               + "(0, 'a', 'x1', 1.0), (1, 'a', 'x1', 2.0), (0, 'a', 'x2', 3.0), (1, 'a', 'x2', 4.0)");
       // Eight devices of one query partition, each writing t = 0..3, so every timestamp occurs
-      // eight times in the partition. The eight devices own eight distinct series slots, which the
-      // partition allocator spreads over the four DataRegionGroups, so the rows sharing t = 0 are
-      // stored in different regions and the duplicate only becomes visible once the fragments are
-      // merged.
+      // eight times in the partition. The eight devices own eight distinct series slots, and the
+      // partition allocator assigns slots to the four DataRegionGroups in order, so the duplicates
+      // are normally spread over several regions. The test does not depend on a particular
+      // distribution: it fails with 701 either way, and catches a lost partition boundary when the
+      // rows do come from more than one fragment.
       statement.execute(
           "CREATE TABLE frag_dup(part STRING TAG, device STRING TAG, s1 DOUBLE FIELD)");
       for (int device = 0; device < 8; device++) {
@@ -420,11 +421,11 @@ public class IoTDBLTTBTableFunctionIT {
 
   @Test
   public void testDuplicateTimestampsAcrossDistributedFragmentsAreRejected() {
-    // Every timestamp of the partition is written by all eight devices, whose series slots are
-    // spread over the four DataRegionGroups of the database, so the duplicate rows are read from
-    // different regions. The function runs once over the merged partition, so the check sees the
-    // duplicates regardless of how many fragments supplied them. The window-function and SESSION
-    // inputs are the ones that used to lose the partition boundary.
+    // Every timestamp of the partition is written by all eight devices, whose series slots the
+    // partition allocator assigns to the four DataRegionGroups of the database, so the duplicates
+    // normally come from several regions. The function runs once over the merged partition, so the
+    // check sees the duplicates regardless of how many fragments supplied them. The
+    // window-function and SESSION inputs are the ones that used to lose the partition boundary.
     String expected =
         "701: LTTB does not support duplicate timestamps, but timestamp 0 appears more than once"
             + " in the same partition.";
