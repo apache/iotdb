@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -704,8 +705,67 @@ public class SessionCacheLeaderTest {
       tablet.reset();
     }
 
-    assertEquals(4, session.tableModelDeviceIdToEndpoint.size());
+    assertEquals(1, session.tableModelDeviceIdToEndpoint.size());
+    assertEquals(4, session.tableModelDeviceIdToEndpoint.values().iterator().next().size());
     assertEquals(4, session.endPointToSessionConnection.size());
+    session.close();
+  }
+
+  @Test
+  public void testRelationalTabletRedirectCacheIsScopedByDatabase()
+      throws IoTDBConnectionException, StatementExecutionException {
+    final TEndPoint db1Endpoint = endpoints.get(1);
+    final TEndPoint db2Endpoint = endpoints.get(2);
+    final AtomicInteger db1AcceptedWrites = new AtomicInteger();
+    final AtomicInteger db2AcceptedWrites = new AtomicInteger();
+    session =
+        new MockSession("127.0.0.1", 55560, true, "table") {
+          @Override
+          public SessionConnection constructSessionConnection(
+              Session owner, TEndPoint endpoint, ZoneId zoneId) {
+            final TEndPoint connectionEndpoint = endpoint;
+            return new MockSessionConnection(owner, endpoint, zoneId) {
+              @Override
+              protected void insertTablet(TSInsertTabletReq request) throws RedirectException {
+                TEndPoint leader = "db1".equals(request.getDatabase()) ? db1Endpoint : db2Endpoint;
+                if (connectionEndpoint.equals(leader)) {
+                  if (leader.equals(db1Endpoint)) {
+                    db1AcceptedWrites.incrementAndGet();
+                  } else {
+                    db2AcceptedWrites.incrementAndGet();
+                  }
+                  return;
+                }
+                throw new RedirectException(leader);
+              }
+            };
+          }
+        };
+    session.open();
+
+    Tablet tablet =
+        new Tablet(
+            "table1",
+            Arrays.asList("id", "field"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            1);
+    tablet.addTimestamp(0, 1);
+    tablet.addValue("id", 0, "id0");
+    tablet.addValue("field", 0, 1L);
+
+    session.insertRelationalTablet(tablet, "db1");
+    session.insertRelationalTablet(tablet, "db2");
+    session.insertRelationalTablet(tablet, "db1");
+    session.insertRelationalTablet(tablet, "db2");
+
+    assertEquals(1, db1AcceptedWrites.get());
+    assertEquals(1, db2AcceptedWrites.get());
+    assertEquals(2, session.tableModelDeviceIdToEndpoint.size());
+    assertEquals(
+        db1Endpoint, session.tableModelDeviceIdToEndpoint.get("db1").get(tablet.getDeviceID(0)));
+    assertEquals(
+        db2Endpoint, session.tableModelDeviceIdToEndpoint.get("db2").get(tablet.getDeviceID(0)));
     session.close();
   }
 
@@ -750,7 +810,8 @@ public class SessionCacheLeaderTest {
         tablet.addValue("field", row, 1L);
       }
       session.insertRelationalTablet(tablet);
-      assertEquals(4, session.tableModelDeviceIdToEndpoint.size());
+      assertEquals(1, session.tableModelDeviceIdToEndpoint.size());
+      assertEquals(4, session.tableModelDeviceIdToEndpoint.values().iterator().next().size());
 
       failWrites.set(true);
       tablet.reset();
@@ -1217,9 +1278,11 @@ public class SessionCacheLeaderTest {
       timestamp++;
     }
 
-    assertEquals(3, session.tableModelDeviceIdToEndpoint.size());
-    for (Map.Entry<IDeviceID, TEndPoint> endPointEntry :
-        session.tableModelDeviceIdToEndpoint.entrySet()) {
+    assertEquals(1, session.tableModelDeviceIdToEndpoint.size());
+    Map<IDeviceID, TEndPoint> tableModelDeviceRoutes =
+        session.tableModelDeviceIdToEndpoint.values().iterator().next();
+    assertEquals(3, tableModelDeviceRoutes.size());
+    for (Map.Entry<IDeviceID, TEndPoint> endPointEntry : tableModelDeviceRoutes.entrySet()) {
       assertEquals(getDeviceIdBelongedEndpoint(endPointEntry.getKey()), endPointEntry.getValue());
     }
     assertEquals(3, session.endPointToSessionConnection.size());

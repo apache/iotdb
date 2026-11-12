@@ -70,7 +70,7 @@ public interface ISession extends AutoCloseable {
       boolean enableRPCCompression,
       int connectionTimeoutInMs,
       Map<String, TEndPoint> deviceIdToEndpoint,
-      Map<IDeviceID, TEndPoint> tabletModelDeviceIdToEndpoint,
+      Map<String, Map<IDeviceID, TEndPoint>> tableModelDeviceIdToEndpoint,
       INodeSupplier nodeSupplier)
       throws IoTDBConnectionException;
 
