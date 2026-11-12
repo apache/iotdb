@@ -74,6 +74,14 @@ public interface ISession extends AutoCloseable {
       INodeSupplier nodeSupplier)
       throws IoTDBConnectionException;
 
+  void openWithTableModelDatabaseCache(
+      boolean enableRPCCompression,
+      int connectionTimeoutInMs,
+      Map<String, TEndPoint> deviceIdToEndpoint,
+      Map<String, Map<IDeviceID, TEndPoint>> tableModelDeviceIdToEndpoint,
+      INodeSupplier nodeSupplier)
+      throws IoTDBConnectionException;
+
   void close() throws IoTDBConnectionException;
 
   String getTimeZone() throws IoTDBConnectionException;

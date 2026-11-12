@@ -681,6 +681,7 @@ public class Session implements ISession {
   }
 
   /** Opens this Session with a database-aware table-model route cache for internal callers. */
+  @Override
   public synchronized void openWithTableModelDatabaseCache(
       boolean enableThriftRpcCompaction,
       int connectionTimeoutInMs,
