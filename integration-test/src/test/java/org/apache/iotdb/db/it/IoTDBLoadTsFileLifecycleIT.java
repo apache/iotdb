@@ -242,6 +242,8 @@ public class IoTDBLoadTsFileLifecycleIT {
                         complete
                             || NodeDebugger.filePath(candidate.getArgumentValues().get(0))
                                 .equals(source.getAbsolutePath()));
+            // Keep this handoff paused without trapping the canary's local transferFile call.
+            debugger.disableFurtherEntryPauses();
             staging =
                 complete
                     ? new File(NodeDebugger.filePath(frame.getArgumentValues().get(0)))
@@ -255,6 +257,9 @@ public class IoTDBLoadTsFileLifecycleIT {
             Assert.assertEquals(complete, new File(staging, source.getName()).isFile());
             assertSource(source, true);
             assertScannerRunningWithoutImport(prefix, suffix + "_before");
+            Assert.assertFalse(
+                "The original handoff must remain paused while the canary is imported",
+                request.isDone());
             node().stopForcibly();
             assertUnacknowledged(request);
           }
