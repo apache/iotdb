@@ -114,4 +114,30 @@ public class ConsumerGroupDeSerTest {
             consumerGroupMeta.checkAuthorityBeforeJoinConsumerGroup(
                 new ConsumerMeta("table_consumer", 2, tableConsumerAttributes)));
   }
+
+  @Test
+  public void testConsumerGroupShouldAllowDifferentCredentials() throws SubscriptionException {
+    final Map<String, String> firstConsumerAttributes = new HashMap<>();
+    firstConsumerAttributes.put("username", "first_user");
+    firstConsumerAttributes.put("password", "first_password");
+
+    final Map<String, String> secondConsumerAttributes = new HashMap<>();
+    secondConsumerAttributes.put("username", "second_user");
+    secondConsumerAttributes.put("password", "second_password");
+
+    final ConsumerGroupMeta consumerGroupMeta =
+        new ConsumerGroupMeta(
+            "test_consumer_group",
+            1,
+            new ConsumerMeta("first_consumer", 1, firstConsumerAttributes));
+    final ConsumerMeta secondConsumer =
+        new ConsumerMeta("second_consumer", 2, secondConsumerAttributes);
+
+    consumerGroupMeta.checkAuthorityBeforeJoinConsumerGroup(secondConsumer);
+    consumerGroupMeta.addConsumer(secondConsumer);
+    consumerGroupMeta.addSubscription("first_consumer", Collections.singleton("test_topic"));
+
+    Assert.assertTrue(
+        consumerGroupMeta.allowSubscribeTopicForConsumer("test_topic", "second_consumer"));
+  }
 }
