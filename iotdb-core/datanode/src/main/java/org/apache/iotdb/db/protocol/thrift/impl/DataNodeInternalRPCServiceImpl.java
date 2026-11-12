@@ -1845,17 +1845,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     SESSION_MANAGER.registerSession(session);
 
-    SESSION_MANAGER.supplySession(
-        session,
-        // TODO: User the real userId
-        -1,
-        req.getUsername(),
-        ZoneId.of(req.getZoneId()),
-        ClientVersion.V_1_0);
-
     String executedSQL = req.queryBody;
 
     try {
+      SESSION_MANAGER.supplySession(
+          session,
+          AuthorityChecker.getUserId(req.getUsername()).orElse(-1L),
+          req.getUsername(),
+          ZoneId.of(req.getZoneId()),
+          ClientVersion.V_1_0);
+
       QueryStatement s =
           (QueryStatement) StatementGenerator.createStatement(req.queryBody, session.getZoneId());
       if (s == null) {
@@ -1896,6 +1895,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       session.getUserId(), session.getUsername(), session.getClientAddress())
                   .setSqlString(executedSQL));
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            DataNodeMiscMessages.LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F,
+            req.getCqId(),
+            req.getUsername(),
+            status);
         return status;
       }
 
