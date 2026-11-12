@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -62,11 +63,39 @@ public class AlignedSeriesScanBatchTest extends AbstractAlignedSeriesScanTest {
             scanPath, Ordering.ASC, scanOptions, EnvironmentUtils.TEST_QUERY_FI_CONTEXT);
     seriesScanUtil.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
 
+    TimeSeriesMetadataCache.getInstance().clear();
+    long cacheHitsBefore =
+        EnvironmentUtils.TEST_QUERY_FI_CONTEXT
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromCacheCount()
+            .get();
+    long diskReadsBefore =
+        EnvironmentUtils.TEST_QUERY_FI_CONTEXT
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromDiskCount()
+            .get();
+
     // the batch path must still assemble the same aligned pages: file 1 has 10 points
     SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     TsBlock tsBlock = seriesScanUtil.nextPage();
     Assert.assertEquals(10, tsBlock.getPositionCount());
+
+    // the device must have been read in one batch: no per-column cache lookups were needed
+    Assert.assertEquals(
+        "the batch path must not fall back to per-column cache loads",
+        cacheHitsBefore,
+        EnvironmentUtils.TEST_QUERY_FI_CONTEXT
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromCacheCount()
+            .get());
+    // hasNextFile unpacks the first seq file and the first unseq file, one batch read each
+    Assert.assertEquals(
+        diskReadsBefore + 2,
+        EnvironmentUtils.TEST_QUERY_FI_CONTEXT
+            .getQueryStatistics()
+            .getLoadTimeSeriesMetadataFromDiskCount()
+            .get());
   }
 }

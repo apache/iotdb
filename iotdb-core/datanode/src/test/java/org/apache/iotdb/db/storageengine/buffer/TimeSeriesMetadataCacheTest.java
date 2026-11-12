@@ -33,6 +33,7 @@ import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
@@ -44,7 +45,9 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -295,6 +298,7 @@ public class TimeSeriesMetadataCacheTest {
     try {
       String filePath = "target/batch-device.tsfile";
       IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.device");
+      Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
 
       Statistics<?> timeStatistics = Statistics.getStatsByType(TSDataType.INT64);
       timeStatistics.setCount(1);
@@ -312,7 +316,7 @@ public class TimeSeriesMetadataCacheTest {
           new TimeseriesMetadata(
               (byte) 0, 0, "s1", TSDataType.INT32, s1Statistics, new PublicBAOS());
 
-      // an empty series (count == 0) must be mapped to null and not cached
+      // an empty series (count == 0) is mapped to null and cached as the null placeholder
       TimeseriesMetadata emptyS2 =
           new TimeseriesMetadata(
               (byte) 0,
@@ -335,7 +339,7 @@ public class TimeSeriesMetadataCacheTest {
 
       Map<String, TimeseriesMetadata> result =
           cache.getDeviceTimeSeriesMetadata(
-              filePath, tsFileID, deviceID, new QueryContext(false, false), false);
+              filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false);
 
       assertNotNull(result.get(""));
       assertEquals("", result.get("").getMeasurementId());
@@ -345,7 +349,15 @@ public class TimeSeriesMetadataCacheTest {
       assertNotNull(result.get("s1").getChunkMetadataList());
       assertNull(result.get("s2"));
 
-      // the non-empty entries should now be cached for per-measurement lookups
+      // a second lookup of cached measurements must be served without touching the reader again
+      Set<String> cachedSensors = new HashSet<>(Arrays.asList("", "s1"));
+      Map<String, TimeseriesMetadata> cachedResult =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, cachedSensors, new QueryContext(false, false), false);
+      assertNotNull(cachedResult.get("s1"));
+      Mockito.verify(reader, Mockito.times(1)).getDeviceTimeseriesMetadata(deviceID);
+
+      // the batch read also populated the per-measurement cache
       TimeseriesMetadata cached =
           cache.get(
               filePath,
@@ -363,27 +375,66 @@ public class TimeSeriesMetadataCacheTest {
   }
 
   @Test
-  public void testGetDeviceTimeSeriesMetadataForAbsentDevice() throws Exception {
+  public void testAbsentDeviceSkippedWhenBloomFilterExcludesIt() throws Exception {
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     FileReaderManager fileReaderManager = FileReaderManager.getInstance();
     TsFileID tsFileID = new TsFileID();
     cache.clear();
     try {
-      String filePath = "target/batch-absent-device.tsfile";
+      String filePath = "target/batch-absent-device-bloom.tsfile";
       IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
+      Set<String> allSensors = Collections.singleton("");
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
       fileReaderManager.setReaderForTest(tsFileID, true, reader);
       Mockito.when(reader.getDeviceTimeseriesMetadata(deviceID))
           .thenReturn(Collections.emptyList());
-
-      Map<String, TimeseriesMetadata> result =
-          cache.getDeviceTimeSeriesMetadata(
-              filePath, tsFileID, deviceID, new QueryContext(false, false), false);
+      // the bloom filter proves the device is missing, so the per-column path would skip it too
+      Mockito.when(reader.readBloomFilter()).thenReturn(BloomFilter.getEmptyBloomFilter(0.05, 1));
 
       // an absent device yields an empty map, which loadAlignedTimeSeriesMetadataBatch then
       // distinguishes from "present but empty time column"
-      assertTrue(result.isEmpty());
+      assertTrue(
+          cache
+              .getDeviceTimeSeriesMetadata(
+                  filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false)
+              .isEmpty());
+    } finally {
+      cache.clear();
+      fileReaderManager.closeFileAndRemoveReader(tsFileID);
+    }
+  }
+
+  @Test
+  public void testAbsentDeviceThrowsWhenBloomFilterCannotExcludeIt() throws Exception {
+    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    TsFileID tsFileID = new TsFileID();
+    cache.clear();
+    try {
+      String filePath = "target/batch-absent-device-throw.tsfile";
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
+      Set<String> allSensors = Collections.singleton("");
+
+      TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
+      fileReaderManager.setReaderForTest(tsFileID, true, reader);
+      Mockito.when(reader.getDeviceTimeseriesMetadata(deviceID))
+          .thenReturn(Collections.emptyList());
+      BloomFilter bloomFilter = BloomFilter.getEmptyBloomFilter(0.05, 1);
+      bloomFilter.add(deviceID.toString() + ".");
+      Mockito.when(reader.readBloomFilter()).thenReturn(bloomFilter);
+
+      assertThrows(
+          IOException.class,
+          () ->
+              cache.getDeviceTimeSeriesMetadata(
+                  filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false));
+
+      assertTrue(
+          cache
+              .getDeviceTimeSeriesMetadata(
+                  filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), true)
+              .isEmpty());
     } finally {
       cache.clear();
       fileReaderManager.closeFileAndRemoveReader(tsFileID);
