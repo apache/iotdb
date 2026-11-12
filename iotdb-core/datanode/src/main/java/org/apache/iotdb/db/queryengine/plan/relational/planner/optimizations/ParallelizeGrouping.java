@@ -88,8 +88,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
  *       only says that each instance's stream is clustered by those keys: a required prefix may
  *       span several instances (several DataRegions, an unordered fan-in) and be interleaved, and a
  *       hash aggregation does not cluster its output at all. Only an exact key set makes the
- *       consumer's partitions the child's partitions ({@link
- *       Rewriter#checkPartitionKeysMatch}).
+ *       consumer's partitions the child's partitions ({@link Rewriter#checkPartitionKeysMatch}).
  * </ul>
  *
  * <p>Otherwise, the GroupNode should be transformed into a SortNode.
