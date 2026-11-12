@@ -245,10 +245,18 @@ public class LoadTsFileManager {
           continue;
         }
         final String uuid = uuidDir.getName();
-        if (retention.recoverTerminalTask(uuid, uuidDir)) {
-          continue;
-        }
         try {
+          final LoadTsFileProgress.TerminalRecord terminal = readTerminalHistory(uuid);
+          if (terminal != null) {
+            // The process may have stopped after publishing the decision but before closing or
+            // marking staging. That directory belongs to a finished task, never an active writer.
+            finishedLoadIds.put(uuid, terminal.op());
+            retention.retain(uuid, uuidDir, terminal.op(), terminal.searchIndex());
+            continue;
+          }
+          if (retention.recoverTerminalTask(uuid, uuidDir)) {
+            continue;
+          }
           final TsFileWriterManager recovered =
               new TsFileWriterManager(dataRegion, uuidDir).recoverFromDisk();
           if (recovered.hasPendingTsFiles()) {
@@ -392,10 +400,16 @@ public class LoadTsFileManager {
 
   /** Terminal metadata is snapshotted separately from active tasks and their staged bytes. */
   List<File> getTerminalHistoryDirs() {
+    return getTerminalHistoryDirs(dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+  }
+
+  static List<File> getTerminalHistoryDirs(final String databaseName, final String dataRegionId) {
     final List<File> result = new ArrayList<>();
     for (final String baseDir : LoadStagingDirs.configuredBaseDirs()) {
       final File historyDir =
-          new File(getDataRegionLoadDir(new File(baseDir)), TERMINAL_HISTORY_DIR);
+          new File(
+              LoadStagingDirs.regionLoadDir(new File(baseDir), databaseName, dataRegionId),
+              TERMINAL_HISTORY_DIR);
       if (historyDir.isDirectory()) {
         result.add(historyDir);
       }
@@ -421,29 +435,53 @@ public class LoadTsFileManager {
   private void rememberTerminal(
       final String loadId, final LoadTsFileConsensusOp op, final long searchIndex)
       throws IOException {
-    final File historyDir =
-        new File(
-            getDataRegionLoadDir(new File(LoadStagingDirs.configuredBaseDirs()[0])),
-            TERMINAL_HISTORY_DIR);
-    final LoadTsFileProgress terminal =
-        new LoadTsFileProgress(new File(historyDir, loadId + ".copying." + UUID.randomUUID()));
-    final File temporaryRecord = terminal.getProgressFile();
-    final File record = LoadTsFileProgress.progressFileFor(new File(historyDir, loadId));
+    // Region deletion clears history after stop(), so no terminal publication may outlive it.
+    final Lock readLock = writersLock.readLock();
+    readLock.lock();
     try {
-      terminal.recordTerminal(op, searchIndex);
-      try {
-        Files.move(
-            temporaryRecord.toPath(),
-            record.toPath(),
-            StandardCopyOption.ATOMIC_MOVE,
-            StandardCopyOption.REPLACE_EXISTING);
-      } catch (final AtomicMoveNotSupportedException e) {
-        Files.move(temporaryRecord.toPath(), record.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      if (stopped) {
+        throw newStoppedIOException();
       }
+      final File historyDir =
+          new File(
+              getDataRegionLoadDir(new File(LoadStagingDirs.configuredBaseDirs()[0])),
+              TERMINAL_HISTORY_DIR);
+      final LoadTsFileProgress terminal =
+          new LoadTsFileProgress(new File(historyDir, loadId + ".copying." + UUID.randomUUID()));
+      final File temporaryRecord = terminal.getProgressFile();
+      final File record = LoadTsFileProgress.progressFileFor(new File(historyDir, loadId));
+      try {
+        terminal.recordTerminal(op, searchIndex);
+        try {
+          Files.move(
+              temporaryRecord.toPath(),
+              record.toPath(),
+              StandardCopyOption.ATOMIC_MOVE,
+              StandardCopyOption.REPLACE_EXISTING);
+        } catch (final AtomicMoveNotSupportedException e) {
+          Files.move(
+              temporaryRecord.toPath(), record.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+      } finally {
+        Files.deleteIfExists(temporaryRecord.toPath());
+      }
+      finishedLoadIds.put(loadId, op);
     } finally {
-      Files.deleteIfExists(temporaryRecord.toPath());
+      readLock.unlock();
     }
-    finishedLoadIds.put(loadId, op);
+  }
+
+  private LoadTsFileProgress.TerminalRecord readTerminalHistory(final String loadId)
+      throws IOException {
+    for (final File historyDir : getTerminalHistoryDirs()) {
+      final LoadTsFileProgress.TerminalRecord terminal =
+          LoadTsFileProgress.readTerminal(
+              LoadTsFileProgress.progressFileFor(new File(historyDir, loadId)));
+      if (terminal != null) {
+        return terminal;
+      }
+    }
+    return null;
   }
 
   /** The terminal command this region already applied to the task, or null if it is unknown. */
@@ -452,14 +490,10 @@ public class LoadTsFileManager {
     if (finishedOp != null) {
       return finishedOp;
     }
-    for (final File historyDir : getTerminalHistoryDirs()) {
-      final LoadTsFileProgress.TerminalRecord terminal =
-          LoadTsFileProgress.readTerminal(
-              LoadTsFileProgress.progressFileFor(new File(historyDir, loadId)));
-      if (terminal != null) {
-        finishedLoadIds.put(loadId, terminal.op());
-        return terminal.op();
-      }
+    final LoadTsFileProgress.TerminalRecord history = readTerminalHistory(loadId);
+    if (history != null) {
+      finishedLoadIds.put(loadId, history.op());
+      return history.op();
     }
     for (final String baseDir : LoadStagingDirs.configuredBaseDirs()) {
       final File taskDir =
@@ -575,13 +609,14 @@ public class LoadTsFileManager {
   }
 
   public boolean deleteAll(final LoadTsFileConsensusNode node) throws IOException {
+    if (getTerminalOp(node.getLoadId()) != null) {
+      return false;
+    }
     if (!uuid2WriterManager.containsKey(node.getLoadId())) {
-      if (getTerminalOp(node.getLoadId()) == null) {
-        // ABORT may overtake every PIECE. Its success must still settle pending PREPARE retries.
-        rememberTerminal(node, LoadTsFileConsensusOp.ABORT);
-        logLoadNodeToWAL(node);
-        dataRegion.insertSeparatorToWAL(node);
-      }
+      // ABORT may overtake every PIECE. Its success must still settle pending PREPARE retries.
+      rememberTerminal(node, LoadTsFileConsensusOp.ABORT);
+      logLoadNodeToWAL(node);
+      dataRegion.insertSeparatorToWAL(node);
       return false;
     }
     rememberTerminal(node, LoadTsFileConsensusOp.ABORT);

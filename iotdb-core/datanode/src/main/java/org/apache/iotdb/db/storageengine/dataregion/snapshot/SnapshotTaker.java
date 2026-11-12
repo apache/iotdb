@@ -94,6 +94,7 @@ public class SnapshotTaker {
       boolean success;
       snapshotLogger.logSnapshotId(finalSnapshotId);
 
+      final List<File> loadTerminalHistory = LoadTsFileSnapshot.captureTerminalHistory(dataRegion);
       try {
         readLockTheFile();
         if (flushBeforeSnapshot) {
@@ -107,7 +108,8 @@ public class SnapshotTaker {
         success = createSnapshot(seqFiles, tempSnapshotId);
         success = success && createSnapshot(unseqFiles, tempSnapshotId);
         success = success && snapshotCompressionRatio(snapshotDirPath);
-        success = success && LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir);
+        success =
+            success && LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir, loadTerminalHistory);
       } finally {
         readUnlockTheFile();
       }

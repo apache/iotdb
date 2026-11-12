@@ -38,6 +38,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCon
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.ChunkOffsetCalculator;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.snapshot.SnapshotTaker;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
@@ -49,6 +51,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadRef;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadUnavailableException;
 import org.apache.iotdb.db.storageengine.load.splitter.NonAlignedChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -123,6 +126,8 @@ public class LoadTsFileManagerTest {
   public void setUp() throws Exception {
     tempDir = Files.createTempDirectory("load-tsfile-manager-test").toFile();
     config = IoTDBDescriptor.getInstance().getConfig();
+    // Startup resolves LOAD roots once. Do that before installing this test's isolated roots.
+    TierManager.getInstance();
     originalLoadBaseDirs = config.getLoadTsFileDirs();
     config.setLoadTsFileDirs(new String[] {tempDir.getAbsolutePath()});
 
@@ -250,12 +255,6 @@ public class LoadTsFileManagerTest {
     // bytes are flushed, the objects themselves are gone, and only the staged file with its
     // progress records stays on disk.
     dropInMemoryWriters(firstRun);
-
-    // The first lookup of a staging directory makes the tier manager reformulate the configured
-    // LOAD directories from the data directories, which in a test is not the directory the pieces
-    // were just staged in. A DataNode does that once at startup, before any load, so pinning the
-    // directory here is what keeps the restarted manager looking at the very same staged file.
-    config.setLoadTsFileDirs(new String[] {tempDir.getAbsolutePath()});
 
     // A new manager resumes the very same staged directory from those records.
     final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
@@ -612,10 +611,11 @@ public class LoadTsFileManagerTest {
       final String originalProtocol = config.getDataRegionConsensusProtocolClass();
       try {
         config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
-        Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+        // After another restart no LOAD has initialized this region's lazy manager yet.
+        manager.stop();
+        Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.empty());
         final File snapshot = new File(tempDir, "finished-load-snapshot");
         assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshot));
-        manager.stop();
         LoadTsFileSnapshot.clear(dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
         LoadTsFileSnapshot.restore(
             dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString(), snapshot);
@@ -632,6 +632,99 @@ public class LoadTsFileManagerTest {
               Mockito.anyBoolean(),
               Mockito.anyBoolean(),
               Mockito.any());
+    } finally {
+      manager.stop();
+    }
+  }
+
+  @Test
+  public void testSnapshotDoesNotFenceALoadCommittedAfterDataFileCapture() throws Exception {
+    final String loadId = "commit-during-snapshot";
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    try {
+      config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+      Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+      emulateStagedFileImport();
+      manager.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+      assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+
+      final TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+      Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
+      Mockito.when(tsFileManager.getTsFileList(Mockito.anyBoolean()))
+          .thenAnswer(invocation -> new ArrayList<>());
+      Mockito.doAnswer(
+              invocation -> {
+                // SnapshotTaker already captured its data-file lists before flushing.
+                assertTrue(manager.loadAll(commitNode(loadId), Collections.emptyMap()));
+                return null;
+              })
+          .when(dataRegion)
+          .syncCloseAllWorkingTsFileProcessors();
+
+      final File snapshot = new File(tempDir, "concurrent-commit-snapshot");
+      assertTrue(new SnapshotTaker(dataRegion).takeFullSnapshot(snapshot.getAbsolutePath(), true));
+      final File history =
+          new File(
+              new File(snapshot, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME),
+              LoadTsFileManager.TERMINAL_HISTORY_DIR);
+      assertFalse(LoadTsFileProgress.progressFileFor(new File(history, loadId)).exists());
+
+      // The data-file snapshot predates COMMIT. Its replay must still stage the missing data.
+      manager.stop();
+      LoadTsFileSnapshot.clear(dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+      LoadTsFileSnapshot.restore(
+          dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString(), snapshot);
+      final LoadTsFileManager restored = new LoadTsFileManager(dataRegion);
+      try {
+        final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
+        piece.markAsGeneratedByRemoteConsensusLeader();
+        restored.writePiece(piece);
+        assertEquals(1, restored.getActiveTaskDirs().size());
+        final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+        prepare.markAsGeneratedByRemoteConsensusLeader();
+        assertTrue(restored.prepare(prepare, Collections.emptyMap()));
+      } finally {
+        restored.stop();
+      }
+    } finally {
+      manager.stop();
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testAbortCannotReplaceACommittedDecisionBeforeStagingCleanup() throws Exception {
+    final String loadId = "commit-before-staging-cleanup";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    try {
+      emulateStagedFileImport();
+      manager.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+      assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+      final TsFileWriterManager writer = writerOf(manager, loadId);
+      writer.loadAll(false, false);
+      final File historyDir =
+          new File(writer.getTaskDir().getParentFile(), LoadTsFileManager.TERMINAL_HISTORY_DIR);
+      new LoadTsFileProgress(new File(historyDir, loadId))
+          .recordTerminal(LoadTsFileConsensusOp.COMMIT, 10L);
+      // A crash after the durable decision leaves staging without its per-file terminal tails.
+      writer.close(true);
+
+      final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+      try {
+        assertFalse(recovered.deleteAll(abortNode(loadId)));
+        assertTrue(recovered.loadAll(commitNode(loadId), Collections.emptyMap()));
+        assertTrue(recovered.getActiveTaskDirs().isEmpty());
+        Mockito.verify(dataRegion, Mockito.times(1))
+            .loadNewTsFile(
+                Mockito.any(),
+                Mockito.anyBoolean(),
+                Mockito.anyBoolean(),
+                Mockito.anyBoolean(),
+                Mockito.any());
+      } finally {
+        recovered.stop();
+      }
     } finally {
       manager.stop();
     }
@@ -1299,6 +1392,16 @@ public class LoadTsFileManagerTest {
     } catch (final IOException e) {
       assertTrue(e.getMessage().contains("has been stopped"));
     }
+    LoadTsFileManager.clearTerminalHistory(
+        dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+    try {
+      // A command that already obtained the manager must not recreate a deleted region's history.
+      manager.deleteAll(abortNode("abort-after-region-deletion"));
+      fail("A stopped LOAD manager has to refuse terminal publication");
+    } catch (final IOException e) {
+      assertTrue(e.getMessage().contains("has been stopped"));
+    }
+    assertTrue(manager.getTerminalHistoryDirs().isEmpty());
   }
 
   /** A stop waits for the piece in flight, and still closes the writer that piece created. */

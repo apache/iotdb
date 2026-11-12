@@ -89,36 +89,72 @@ public final class LoadTsFileSnapshot {
   // Snapshot Entrypoint
   // -------------------------------------------------------------------------
 
-  /** Captures an atomic snapshot of active staged tasks under the DataRegion. */
+  /** Captures the LOAD state when no data-file snapshot boundary needs to be supplied. */
   public static boolean snapshot(final DataRegion dataRegion, final File snapshotDir) {
+    return snapshot(dataRegion, snapshotDir, null);
+  }
+
+  /**
+   * Selects terminal records before the data-file snapshot captures its resource lists. A COMMIT
+   * published afterwards may describe data absent from those lists, so replay must not be fenced by
+   * that decision. Records are immutable and can be copied after the data files.
+   */
+  public static List<File> captureTerminalHistory(final DataRegion dataRegion) throws IOException {
+    Objects.requireNonNull(
+        dataRegion, StorageEngineMessages.EXCEPTION_DATAREGION_CANNOT_BE_NULL_0B936879);
+    final List<File> result = new ArrayList<>();
+    if (isSupportedProtocol()) {
+      // A restarted region need not have initialized its lazy LOAD manager yet.
+      for (final File historyDir :
+          LoadTsFileManager.getTerminalHistoryDirs(
+              dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString())) {
+        for (final File file : listFiles(historyDir)) {
+          if (file.isFile() && isProgressLog(file) && !file.getName().contains(TEMP_FILE_SUFFIX)) {
+            result.add(file);
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  /** Captures active staging and only the terminal decisions covered by the data-file snapshot. */
+  public static boolean snapshot(
+      final DataRegion dataRegion,
+      final File snapshotDir,
+      final List<File> capturedTerminalHistory) {
     Objects.requireNonNull(
         dataRegion, StorageEngineMessages.EXCEPTION_DATAREGION_CANNOT_BE_NULL_0B936879);
     Objects.requireNonNull(
         snapshotDir, StorageEngineMessages.EXCEPTION_SNAPSHOTDIR_CANNOT_BE_NULL_283211CB);
 
-    if (!SUPPORTED_PROTOCOLS.contains(
-        ConsensusFactory.normalizeConsensusProtocolClass(
-            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass()))) {
+    if (!isSupportedProtocol()) {
       return true;
     }
 
     final LoadTsFileManager manager = dataRegion.getLoadTsFileManagerIfPresent().orElse(null);
-    if (manager == null) {
-      return true;
-    }
-
-    final List<File> taskDirs = new ArrayList<>(manager.getActiveTaskDirs());
-    taskDirs.addAll(manager.getTerminalHistoryDirs());
-    if (taskDirs.isEmpty()) {
-      return true;
-    }
+    final List<File> taskDirs =
+        manager == null ? Collections.emptyList() : manager.getActiveTaskDirs();
 
     final File loadSnapshotDir = new File(snapshotDir, SNAPSHOT_SUBDIR_NAME);
     try {
+      final List<File> terminalHistory =
+          capturedTerminalHistory == null
+              ? captureTerminalHistory(dataRegion)
+              : capturedTerminalHistory;
+      if (taskDirs.isEmpty() && terminalHistory.isEmpty()) {
+        return true;
+      }
       writeRootsManifest(loadSnapshotDir, taskDirs);
       for (final File taskDir : taskDirs) {
         final File targetDir = new File(loadSnapshotDir, taskDir.getName());
         copyTask(taskDir, targetDir);
+      }
+      // Terminal records have no payload references and may share any restored staging root.
+      final File historyTargetDir =
+          new File(loadSnapshotDir, LoadTsFileManager.TERMINAL_HISTORY_DIR);
+      for (final File terminal : terminalHistory) {
+        publishAtomicCopy(terminal, new File(historyTargetDir, terminal.getName()));
       }
 
       LOGGER.info(
@@ -135,6 +171,12 @@ public final class LoadTsFileSnapshot {
       LOGGER.warn(StorageEngineMessages.CATCH_IO_EXCEPTION_CREATING_SNAPSHOT, e);
       return false;
     }
+  }
+
+  private static boolean isSupportedProtocol() {
+    return SUPPORTED_PROTOCOLS.contains(
+        ConsensusFactory.normalizeConsensusProtocolClass(
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass()));
   }
 
   // -------------------------------------------------------------------------
