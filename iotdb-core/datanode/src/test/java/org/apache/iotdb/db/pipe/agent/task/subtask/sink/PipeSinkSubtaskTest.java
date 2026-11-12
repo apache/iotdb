@@ -26,17 +26,22 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -44,9 +49,13 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -58,6 +67,175 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
 public class PipeSinkSubtaskTest {
+
+  @Test
+  public void testDiscardFailedTsFileReleasesStartupReservation() throws Exception {
+    final int initialCounter =
+        PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize() - 1;
+    final AtomicInteger counter = new AtomicInteger(initialCounter);
+    final PipeRealtimePriorityBlockingQueue queue = newStartupReservationQueue(counter);
+    final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
+    final PipeTsFileInsertionEvent event = newTsFileEvent(committerKey);
+    final PipeTsFileInsertionEvent otherEvent =
+        newTsFileEvent(new CommitterKey("otherPipe", 1L, 1, 0));
+    final IoTDBDataRegionAsyncSink sink = mock(IoTDBDataRegionAsyncSink.class);
+    doThrow(new PipeException("startup failed")).when(sink).transfer(event);
+    final CapturingPipeSinkSubtask subtask = new CapturingPipeSinkSubtask(queue, sink);
+    try {
+      Assert.assertTrue(queue.offer(event));
+      try {
+        subtask.executeOnce();
+        Assert.fail("The startup failure should be retained for retry.");
+      } catch (final PipeException expected) {
+        Assert.assertEquals("startup failed", expected.getMessage());
+      }
+      Assert.assertTrue(queue.offer(otherEvent));
+      Assert.assertEquals(initialCounter + 1, counter.get());
+      Assert.assertNull(queue.directPoll());
+
+      subtask.discardEventsOfPipe(committerKey);
+
+      Assert.assertEquals(initialCounter, counter.get());
+      Assert.assertSame(otherEvent, queue.directPoll());
+      Assert.assertTrue(queue.cancelTsFileStartupReservation(otherEvent));
+      verify(event).clearReferenceCount(any(String.class));
+    } finally {
+      subtask.close();
+    }
+  }
+
+  @Test
+  public void testDiscardExecutingTsFileKeepsReservationUntilStartupFails() throws Exception {
+    final int initialCounter =
+        PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize() - 1;
+    final AtomicInteger counter = new AtomicInteger(initialCounter);
+    final PipeRealtimePriorityBlockingQueue queue = newStartupReservationQueue(counter);
+    final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
+    final PipeTsFileInsertionEvent event = newTsFileEvent(committerKey);
+    final PipeTsFileInsertionEvent otherEvent =
+        newTsFileEvent(new CommitterKey("otherPipe", 1L, 1, 0));
+    final IoTDBDataRegionAsyncSink sink = mock(IoTDBDataRegionAsyncSink.class);
+    final CountDownLatch startupEntered = new CountDownLatch(1);
+    final CountDownLatch allowStartupFailure = new CountDownLatch(1);
+    doAnswer(
+            invocation -> {
+              startupEntered.countDown();
+              Assert.assertTrue(allowStartupFailure.await(5, TimeUnit.SECONDS));
+              throw new PipeException("startup failed");
+            })
+        .when(sink)
+        .transfer(event);
+    final CapturingPipeSinkSubtask subtask = new CapturingPipeSinkSubtask(queue, sink);
+    final FutureTask<Boolean> execution = new FutureTask<>(subtask::executeOnce);
+    final Thread executingThread = new Thread(execution);
+    try {
+      Assert.assertTrue(queue.offer(event));
+      executingThread.start();
+      Assert.assertTrue(startupEntered.await(5, TimeUnit.SECONDS));
+
+      subtask.discardEventsOfPipe(committerKey);
+
+      Assert.assertTrue(queue.offer(otherEvent));
+      Assert.assertEquals(initialCounter + 1, counter.get());
+      Assert.assertNull(queue.directPoll());
+      verify(event, never()).clearReferenceCount(any(String.class));
+
+      allowStartupFailure.countDown();
+      try {
+        execution.get(5, TimeUnit.SECONDS);
+        Assert.fail("The startup should fail before handing off the reservation.");
+      } catch (final ExecutionException expected) {
+        Assert.assertTrue(expected.getCause() instanceof PipeException);
+      }
+
+      Assert.assertEquals(initialCounter, counter.get());
+      Assert.assertSame(otherEvent, queue.directPoll());
+      Assert.assertTrue(queue.cancelTsFileStartupReservation(otherEvent));
+    } finally {
+      allowStartupFailure.countDown();
+      executingThread.interrupt();
+      executingThread.join(5_000);
+      subtask.close();
+    }
+  }
+
+  @Test
+  public void testDiscardTsFileBeforePollReturnsCancelsStartupReservation() throws Exception {
+    final AtomicInteger counter = new AtomicInteger(0);
+    final PipeRealtimePriorityBlockingQueue queue =
+        Mockito.spy(newStartupReservationQueue(counter));
+    final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
+    final PipeTsFileInsertionEvent event = newTsFileEvent(committerKey);
+    final IoTDBDataRegionAsyncSink sink = mock(IoTDBDataRegionAsyncSink.class);
+    final CountDownLatch polled = new CountDownLatch(1);
+    final CountDownLatch allowPollToReturn = new CountDownLatch(1);
+    doAnswer(
+            invocation -> {
+              final Event result = (Event) invocation.callRealMethod();
+              polled.countDown();
+              Assert.assertTrue(allowPollToReturn.await(5, TimeUnit.SECONDS));
+              return result;
+            })
+        .when(queue)
+        .waitedPoll();
+    final CapturingPipeSinkSubtask subtask = new CapturingPipeSinkSubtask(queue, sink);
+    final FutureTask<Boolean> execution = new FutureTask<>(subtask::executeOnce);
+    final Thread executingThread = new Thread(execution);
+    try {
+      Assert.assertTrue(queue.offer(event));
+      executingThread.start();
+      Assert.assertTrue(polled.await(5, TimeUnit.SECONDS));
+      Assert.assertEquals(1, counter.get());
+
+      subtask.discardEventsOfPipe(committerKey);
+      allowPollToReturn.countDown();
+
+      Assert.assertTrue(execution.get(5, TimeUnit.SECONDS));
+      Assert.assertEquals(0, counter.get());
+      verify(sink, never()).transfer(any(TsFileInsertionEvent.class));
+      verify(event).clearReferenceCount(any(String.class));
+    } finally {
+      allowPollToReturn.countDown();
+      executingThread.interrupt();
+      executingThread.join(5_000);
+      subtask.close();
+    }
+  }
+
+  private static PipeRealtimePriorityBlockingQueue newStartupReservationQueue(
+      final AtomicInteger counter) {
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue();
+    queue.setOfferTsFileCounter(counter);
+    queue.enableTsFileStartupReservation();
+    return queue;
+  }
+
+  private static PipeTsFileInsertionEvent newTsFileEvent(final CommitterKey committerKey) {
+    final PipeTsFileInsertionEvent event =
+        Mockito.spy(
+            new PipeTsFileInsertionEvent(
+                false,
+                "root.db",
+                new TsFileResource(new File("target/sequence/1/0/reservation.tsfile")),
+                null,
+                false,
+                false,
+                false,
+                null,
+                committerKey.getPipeName(),
+                committerKey.getCreationTime(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                Long.MIN_VALUE,
+                Long.MAX_VALUE));
+    event.setCommitterKeyAndCommitId(committerKey, 1L);
+    return event;
+  }
 
   @Test
   public void testDiscardEventsOfPipeDelegatesToConnector() {

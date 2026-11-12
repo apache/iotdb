@@ -81,6 +81,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT = new PipeHeartbeatEvent(-1, false);
   private final ReentrantLock outputPipeSinkOperationLock = new ReentrantLock();
   private final Queue<CommitterKey> pendingDiscardCommitterKeys = new ConcurrentLinkedQueue<>();
+  // Guarded by this, so drop can distinguish an executing event from one waiting for retry.
+  private Event executingEvent;
 
   public PipeSinkSubtask(
       final String taskID,
@@ -198,14 +200,19 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
             ? lastEvent
             : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
     // Record this event for retrying on connection failure or other exceptions
-    setLastEvent(event);
-    if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
-      cancelTsFileStartupReservation(event);
-      lastEvent = null;
-      return true;
+    synchronized (this) {
+      setLastEvent(event);
+      executingEvent = event;
     }
 
     try {
+      if (event instanceof EnrichedEvent
+          && (((EnrichedEvent) event).isReleased()
+              || inputPendingQueue.isEventFromDroppedPipe((EnrichedEvent) event))) {
+        clearReferenceCountAndReleaseLastEvent(event);
+        return true;
+      }
+
       if (Objects.isNull(event)) {
         if (shouldStopSubmittingSelf.get()) {
           return false;
@@ -247,6 +254,15 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
     } catch (final Exception e) {
       handleException(event, e);
+    } finally {
+      synchronized (this) {
+        executingEvent = null;
+        if (lastEvent != event) {
+          // The call has finished. A discarded event that was never handed to the async sink
+          // must no longer occupy startup capacity, even when transfer threw before handoff.
+          cancelTsFileStartupReservation(event);
+        }
+      }
     }
 
     return true;
@@ -502,6 +518,9 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         // will.
         if (lastEvent instanceof EnrichedEvent
             && isEventFromPipe((EnrichedEvent) lastEvent, committerKey)) {
+          if (lastEvent != executingEvent) {
+            cancelTsFileStartupReservation(lastEvent);
+          }
           // Do not clear the last event's reference counts because it may be on transferring
           lastEvent = null;
           // Submit self to avoid that the lastEvent has been retried "max times" times and has
