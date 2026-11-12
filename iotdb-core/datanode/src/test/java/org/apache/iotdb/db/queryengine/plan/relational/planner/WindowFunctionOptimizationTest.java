@@ -143,6 +143,24 @@ public class WindowFunctionOptimizationTest {
   }
 
   @Test
+  public void testSameOrderPrefixWindowPartitionKeepsSingleInstance() {
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT count(s1) OVER (PARTITION BY tag1, tag2) FROM "
+            + "(SELECT *, max(s1) OVER (PARTITION BY tag1, tag2, tag3) AS m FROM table1)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // The outer PARTITION BY is a strict prefix of the inner one. A grouping is only clustered
+    // per instance, so the outer window must not reuse it: it stays single-instance above a sort.
+    assertPlan(logicalQueryPlan, output(project(window(sort(project(group(tableScan)))))));
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(project(window(mergeSort(exchange(), exchange(), exchange())))));
+  }
+
+  @Test
   public void testTopKRankingPushDown() {
     PlanTester planTester = new PlanTester();
 
