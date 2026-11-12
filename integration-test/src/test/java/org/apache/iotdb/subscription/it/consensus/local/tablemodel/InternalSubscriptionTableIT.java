@@ -166,7 +166,9 @@ public class InternalSubscriptionTableIT extends AbstractSubscriptionIT {
         final Map<?, Map<?, TEndPoint>> deviceToEndpointByDatabase =
             InternalSessionITUtils.getSessionField(
                 underlyingSession, "tableModelDeviceIdToEndpoint");
-        deviceToEndpointByDatabase.values().forEach(leaders::addAll);
+        deviceToEndpointByDatabase
+            .values()
+            .forEach(deviceToEndpoint -> leaders.addAll(deviceToEndpoint.values()));
       }
 
       Assert.assertTrue(
