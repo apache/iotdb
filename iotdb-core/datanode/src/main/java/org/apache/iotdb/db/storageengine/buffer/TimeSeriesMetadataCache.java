@@ -348,9 +348,12 @@ public class TimeSeriesMetadataCache {
       boolean ignoreNotExists)
       throws IOException {
     long startTime = System.nanoTime();
+    long loadBloomFilterTime = 0;
     boolean externalTsFile = queryContext.isExternalTsFileScan();
     LongConsumer timeSeriesMetadataIoSizeRecorder =
         queryContext.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet;
+    LongConsumer bloomFilterIoSizeRecorder =
+        queryContext.getQueryStatistics().getLoadBloomFilterActualIOSize()::addAndGet;
     boolean cacheHit = true;
 
     try {
@@ -369,6 +372,14 @@ public class TimeSeriesMetadataCache {
             return cached;
           }
           cacheHit = false;
+          long bloomFilterStartTime = System.nanoTime();
+          boolean devicePossiblyPresent =
+              isDevicePossiblyPresent(
+                  filePath, tsFileID, device, queryContext, bloomFilterIoSizeRecorder);
+          loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
+          if (!devicePossiblyPresent) {
+            return Collections.emptyMap();
+          }
           TsFileSequenceReader reader =
               FileReaderManager.getInstance()
                   .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, false);
@@ -377,12 +388,21 @@ public class TimeSeriesMetadataCache {
         }
       }
       cacheHit = false;
+      long bloomFilterStartTime = System.nanoTime();
+      boolean devicePossiblyPresent =
+          isDevicePossiblyPresent(
+              filePath, tsFileID, device, queryContext, bloomFilterIoSizeRecorder);
+      loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
+      if (!devicePossiblyPresent) {
+        return Collections.emptyMap();
+      }
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
               .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, externalTsFile);
       return readDeviceTimeSeriesMetadata(
           reader, tsFileID, device, allSensors, false, ignoreNotExists);
     } finally {
+      queryContext.getQueryStatistics().getLoadBloomFilterTime().getAndAdd(loadBloomFilterTime);
       if (cacheHit) {
         queryContext
             .getQueryStatistics()
@@ -391,7 +411,7 @@ public class TimeSeriesMetadataCache {
         queryContext
             .getQueryStatistics()
             .getLoadTimeSeriesMetadataFromCacheTime()
-            .getAndAdd(System.nanoTime() - startTime);
+            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
       } else {
         queryContext
             .getQueryStatistics()
@@ -400,9 +420,33 @@ public class TimeSeriesMetadataCache {
         queryContext
             .getQueryStatistics()
             .getLoadTimeSeriesMetadataFromDiskTime()
-            .getAndAdd(System.nanoTime() - startTime);
+            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
       }
     }
+  }
+
+  /**
+   * The time column (keyed by "") is written for every aligned device, so its bloom filter entry is
+   * a cheap per-file presence probe. A null filter cannot rule the device out.
+   */
+  private boolean isDevicePossiblyPresent(
+      String filePath,
+      TsFileID tsFileID,
+      IDeviceID device,
+      QueryContext queryContext,
+      LongConsumer bloomFilterIoSizeRecorder)
+      throws IOException {
+    BloomFilter bloomFilter =
+        BloomFilterCache.getInstance()
+            .get(
+                new BloomFilterCache.BloomFilterCacheKey(filePath, tsFileID),
+                false,
+                bloomFilterIoSizeRecorder,
+                queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()::addAndGet,
+                queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()::addAndGet,
+                false);
+    return bloomFilter == null
+        || bloomFilter.contains(device.toString() + IoTDBConstant.PATH_SEPARATOR);
   }
 
   /**
@@ -438,14 +482,9 @@ public class TimeSeriesMetadataCache {
     // metadata list, so readDeviceMetadata (which skips chunk metadata) would NPE at query time.
     List<TimeseriesMetadata> deviceMetadataList = reader.getDeviceTimeseriesMetadata(device);
     if (deviceMetadataList.isEmpty()) {
-      // Match get(): an absent device is only an inconsistency when ignoreNotExists is false and
-      // the bloom filter does not already prove that the device is missing from this file
+      // the caller already consulted the bloom filter, so the device could not be ruled out:
+      // missing metadata is an inconsistency unless ignoreNotExists is set
       if (ignoreNotExists) {
-        return Collections.emptyMap();
-      }
-      BloomFilter bloomFilter = reader.readBloomFilter();
-      if (bloomFilter != null
-          && !bloomFilter.contains(device.toString() + IoTDBConstant.PATH_SEPARATOR)) {
         return Collections.emptyMap();
       }
       throw new IOException(
