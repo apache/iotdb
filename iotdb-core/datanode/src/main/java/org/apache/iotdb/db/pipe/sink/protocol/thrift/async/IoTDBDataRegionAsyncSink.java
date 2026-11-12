@@ -656,13 +656,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
                   logOnClientException(client, ex);
                   pipeTransferTsFileHandler.onError(ex);
                 } finally {
-                  transferTsFileCounter.decrementAndGet();
+                  decreaseTransferTsFileCounter();
                 }
                 return null;
               },
               transferTsFileClientManager.getExecutor());
     } catch (final RuntimeException e) {
-      transferTsFileCounter.decrementAndGet();
+      decreaseTransferTsFileCounter();
       markSchedulingDelayIfHandshakeFailed(null);
       logOnClientException(null, e);
       pipeTransferTsFileHandler.onError(e);
@@ -697,6 +697,13 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink implements PipeSinkWithS
             DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY,
             pipeTransferTsFileHandler.getTsFile());
       }
+    }
+  }
+
+  private void decreaseTransferTsFileCounter() {
+    synchronized (transferTsFileCounter) {
+      transferTsFileCounter.decrementAndGet();
+      transferTsFileCounter.notifyAll();
     }
   }
 

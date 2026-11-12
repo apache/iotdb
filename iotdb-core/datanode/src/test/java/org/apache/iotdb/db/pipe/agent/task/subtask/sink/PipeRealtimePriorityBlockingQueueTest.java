@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -43,9 +44,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -114,6 +117,75 @@ public class PipeRealtimePriorityBlockingQueueTest {
     Assert.assertNull(queue.waitedPoll());
     Assert.assertSame(event, queue.peek());
     Assert.assertEquals(1, queue.getTsFileInsertionEventCount());
+  }
+
+  @Test
+  public void testHeartbeatWakesBackpressuredPoll() throws Exception {
+    final long previousBlockingTimeMs =
+        PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
+    queue.setOfferTsFileCounter(
+        new AtomicInteger(PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize()));
+    final PipeTsFileInsertionEvent event =
+        createEvent(newTsFile("waiting.tsfile"), new CommitterKey("pipe", 1L, 1, 0), 1L);
+    Assert.assertTrue(queue.offer(event));
+    final FutureTask<Event> poll = new FutureTask<>(queue::waitedPoll);
+    final Thread pollingThread = new Thread(poll);
+    try {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(10_000);
+      pollingThread.start();
+      await()
+          .atMost(5, TimeUnit.SECONDS)
+          .until(() -> pollingThread.getState() == Thread.State.TIMED_WAITING);
+
+      final PipeHeartbeatEvent heartbeat = new PipeHeartbeatEvent(1, false);
+      Assert.assertTrue(queue.offer(heartbeat));
+      Assert.assertSame(heartbeat, poll.get(1, TimeUnit.SECONDS));
+      Assert.assertSame(event, queue.peek());
+    } finally {
+      pollingThread.interrupt();
+      pollingThread.join(5_000);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(previousBlockingTimeMs);
+    }
+  }
+
+  @Test
+  public void testWaitedPollRechecksCapacityAfterWaitingForAnEvent() throws Exception {
+    final long previousBlockingTimeMs =
+        PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
+    final AtomicInteger waitingTsFiles = new AtomicInteger(0);
+    queue.setOfferTsFileCounter(waitingTsFiles);
+    final PipeTsFileInsertionEvent event =
+        createEvent(newTsFile("waiting.tsfile"), new CommitterKey("pipe", 1L, 1, 0), 1L);
+    final FutureTask<Event> poll = new FutureTask<>(queue::waitedPoll);
+    final Thread pollingThread = new Thread(poll);
+    try {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(1_000);
+      pollingThread.start();
+      await()
+          .pollInterval(5, TimeUnit.MILLISECONDS)
+          .atMost(5, TimeUnit.SECONDS)
+          .until(() -> pollingThread.getState() == Thread.State.TIMED_WAITING);
+
+      waitingTsFiles.set(PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize());
+      Assert.assertTrue(queue.offer(event));
+      Assert.assertNull(poll.get(2, TimeUnit.SECONDS));
+      Assert.assertSame(event, queue.peek());
+      Assert.assertEquals(1, queue.getTsFileInsertionEventCount());
+    } finally {
+      pollingThread.interrupt();
+      pollingThread.join(5_000);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(previousBlockingTimeMs);
+    }
   }
 
   @Test

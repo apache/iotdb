@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.connection.BlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
@@ -48,6 +49,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -71,6 +73,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   // Need to ensure that NPE does not occur
   private AtomicInteger offerTsFileCounter = new AtomicInteger(0);
+
+  private final AtomicInteger waitingPollers = new AtomicInteger(0);
 
   public PipeRealtimePriorityBlockingQueue() {
     this(false);
@@ -102,7 +106,13 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
       return false;
     } else {
-      return super.offer(event);
+      final boolean offered = super.offer(event);
+      if (offered && waitingPollers.get() > 0) {
+        synchronized (offerTsFileCounter) {
+          offerTsFileCounter.notifyAll();
+        }
+      }
+      return offered;
     }
   }
 
@@ -177,8 +187,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     }
 
     // If no event is available, block until an event is available
-    if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
-      event = super.waitedPoll();
+    if (Objects.isNull(event)) {
+      event = waitedPollNonTsFileEvent(realTimeQueueMaxWaitingTsFileSize);
       if (Objects.isNull(event) && offerTsFileCounter.get() < realTimeQueueMaxWaitingTsFileSize) {
         event = pollTsFileEvent(pollHistoricalTsFileThreshold);
       }
@@ -188,6 +198,41 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     }
 
     return event;
+  }
+
+  private Event waitedPollNonTsFileEvent(final int maxWaitingTsFiles) {
+    if (offerTsFileCounter.get() < maxWaitingTsFiles) {
+      // Capacity may have become available since the initial poll. Do not delay queued files.
+      return tsfileInsertEventDeque.isEmpty() ? super.waitedPoll() : super.directPoll();
+    }
+
+    final long timeoutNanos =
+        TimeUnit.MILLISECONDS.toNanos(
+            PIPE_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs());
+    final long startTime = System.nanoTime();
+    // The async sink notifies this shared counter when a startup task finishes or is rejected.
+    // Offers notify it as well, so non-TsFile events remain available during backpressure.
+    synchronized (offerTsFileCounter) {
+      waitingPollers.incrementAndGet();
+      try {
+        Event event;
+        while ((event = super.directPoll()) == null
+            && offerTsFileCounter.get() >= maxWaitingTsFiles) {
+          final long remainingNanos = timeoutNanos - (System.nanoTime() - startTime);
+          if (remainingNanos <= 0) {
+            return null;
+          }
+          TimeUnit.NANOSECONDS.timedWait(offerTsFileCounter, remainingNanos);
+        }
+        return event;
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.info(PipeMessages.PENDING_QUEUE_POLL_INTERRUPTED, e);
+        return null;
+      } finally {
+        waitingPollers.decrementAndGet();
+      }
+    }
   }
 
   @Override
