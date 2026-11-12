@@ -28,9 +28,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -100,19 +102,19 @@ public class DeleteTimeSeriesProcedureSchedulerTest {
       scheduler.addBack(second);
       assertSame(first, scheduler.poll());
       final CountDownLatch polling = new CountDownLatch(1);
+      final AtomicReference<Thread> pollingThread = new AtomicReference<>();
       final Future<Procedure> waiting =
           executor.submit(
               () -> {
+                pollingThread.set(Thread.currentThread());
                 polling.countDown();
                 return scheduler.poll();
               });
       assertTrue(polling.await(1, TimeUnit.SECONDS));
-      try {
-        waiting.get(50, TimeUnit.MILLISECONDS);
-        throw new AssertionError("The second task should wait for the configured interval");
-      } catch (TimeoutException expected) {
-        // The worker is waiting for the current interval.
-      }
+      await()
+          .atMost(1, TimeUnit.SECONDS)
+          .until(() -> pollingThread.get().getState() == Thread.State.TIMED_WAITING);
+      assertFalse(waiting.isDone());
 
       scheduler.setExecutionIntervalMs(1);
 
