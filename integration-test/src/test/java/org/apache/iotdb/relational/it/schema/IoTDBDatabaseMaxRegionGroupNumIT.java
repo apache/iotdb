@@ -29,8 +29,9 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -55,8 +56,8 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
   private static final String TABLE_NAME = "table1";
   private static final BKDRHashExecutor PARTITION_EXECUTOR = new BKDRHashExecutor(SERIES_SLOT_NUM);
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -71,7 +72,29 @@ public class IoTDBDatabaseMaxRegionGroupNumIT {
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() throws SQLException {
+    // Keep each method's region-quota assertions independent while reusing the cluster.
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      for (final String database :
+          new String[] {
+            "test_create",
+            "test_create_schema",
+            "test_create_data",
+            "test_alter",
+            "test_deprecated",
+            "test_decrease_data",
+            "test_decrease_schema",
+            "test_partition"
+          }) {
+        TestUtils.dropDatabaseWithRetry(statement, database);
+      }
+    }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

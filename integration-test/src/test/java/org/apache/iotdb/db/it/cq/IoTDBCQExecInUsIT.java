@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -43,6 +44,9 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCQExecInUsIT {
 
+  private static final long CQ_RESULT_POLL_INTERVAL_IN_MS = 100;
+  private static final long CQ_RESULT_TIMEOUT_IN_SECONDS = 30;
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecision("us");
@@ -54,6 +58,8 @@ public class IoTDBCQExecInUsIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // With microsecond timestamps, a 2s resampling CQ must write the expected maximum for every 1s
+  // window after its future boundary.
   @Test
   public void testCQExecution1() {
     String insertTemplate =
@@ -112,12 +118,6 @@ public class IoTDBCQExecInUsIT {
         return;
       }
 
-      long targetTime = firstExecutionTime / 1_000L + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime + 1_000_000L,
         startTime + 2_000_000L,
@@ -126,7 +126,8 @@ public class IoTDBCQExecInUsIT {
       };
       long[] expectedValue = {4, 6, 8, 10};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d1")) {
+      try (ResultSet resultSet =
+          awaitCQResult(statement, "select s1_max from root.sg.d1", expectedTime.length)) {
         int cnt = 0;
         while (resultSet.next()) {
           assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
@@ -144,6 +145,8 @@ public class IoTDBCQExecInUsIT {
     }
   }
 
+  // With microsecond timestamps, a CQ without EVERY and with a 4s range must produce the five
+  // expected 1s-window maxima.
   @Test
   public void testCQExecution2() {
     String insertTemplate =
@@ -203,12 +206,6 @@ public class IoTDBCQExecInUsIT {
         return;
       }
 
-      long targetTime = firstExecutionTime / 1_000L + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime,
         startTime + 1_000_000L,
@@ -218,7 +215,8 @@ public class IoTDBCQExecInUsIT {
       };
       long[] expectedValue = {2, 4, 6, 8, 10};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d2")) {
+      try (ResultSet resultSet =
+          awaitCQResult(statement, "select s1_max from root.sg.d2", expectedTime.length)) {
         int cnt = 0;
         while (resultSet.next()) {
           assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
@@ -236,6 +234,8 @@ public class IoTDBCQExecInUsIT {
     }
   }
 
+  // With microsecond timestamps, a 4s-range CQ must fill the empty 1s window with 100 and write
+  // the expected maxima for the populated windows.
   @Test
   public void testCQExecution3() {
     String insertTemplate =
@@ -296,12 +296,6 @@ public class IoTDBCQExecInUsIT {
         return;
       }
 
-      long targetTime = firstExecutionTime / 1_000L + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime - 1_000_000L,
         startTime,
@@ -313,11 +307,13 @@ public class IoTDBCQExecInUsIT {
       long[] expectedValue = {100, 2, 4, 6, 8, 10};
 
       try (ResultSet resultSet =
-          statement.executeQuery(
+          awaitCQResult(
+              statement,
               "select s1_max from root.sg.d3 where time between "
                   + (startTime - 1_000_000L)
                   + " and "
-                  + (startTime + 4_000_000L))) {
+                  + (startTime + 4_000_000L),
+              expectedTime.length)) {
         int cnt = 0;
         while (resultSet.next()) {
           assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
@@ -335,6 +331,8 @@ public class IoTDBCQExecInUsIT {
     }
   }
 
+  // With microsecond timestamps, a CQ with RANGE 2s, 1s must write only the two expected 1s-window
+  // maxima at its 2s resampling boundaries.
   @Test
   public void testCQExecution4() {
     String insertTemplate =
@@ -394,16 +392,11 @@ public class IoTDBCQExecInUsIT {
         return;
       }
 
-      long targetTime = firstExecutionTime / 1_000L + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {startTime + 1_000_000L, startTime + 3_000_000L};
       long[] expectedValue = {4, 8};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d4")) {
+      try (ResultSet resultSet =
+          awaitCQResult(statement, "select s1_max from root.sg.d4", expectedTime.length)) {
         int cnt = 0;
         while (resultSet.next()) {
           assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
@@ -421,6 +414,8 @@ public class IoTDBCQExecInUsIT {
     }
   }
 
+  // With microsecond timestamps, an align-by-device CQ must add one to all ten input values
+  // while preserving their half-second timestamps across overlapping 4s ranges.
   @Test
   public void testCQExecution5() {
     String insertTemplate =
@@ -480,12 +475,6 @@ public class IoTDBCQExecInUsIT {
         return;
       }
 
-      long targetTime = firstExecutionTime / 1_000L + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime,
         startTime + 500_000L,
@@ -501,11 +490,13 @@ public class IoTDBCQExecInUsIT {
       double[] expectedValue = {2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0};
 
       try (ResultSet resultSet =
-          statement.executeQuery(
+          awaitCQResult(
+              statement,
               "select precalculated_s1 from root.sg.d5 where time between "
                   + startTime
                   + " and "
-                  + (startTime + 4_500_000L))) {
+                  + (startTime + 4_500_000L),
+              expectedTime.length)) {
         int cnt = 0;
         while (resultSet.next()) {
           assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
@@ -522,5 +513,26 @@ public class IoTDBCQExecInUsIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  // The row count signals that asynchronous CQ writes are ready without a fixed post-boundary
+  // delay. The caller closes the returned result set and validates every timestamp and value.
+  private static ResultSet awaitCQResult(Statement statement, String query, int expectedRowCount)
+      throws Exception {
+    Awaitility.await("continuous query output row count")
+        .atMost(CQ_RESULT_TIMEOUT_IN_SECONDS, TimeUnit.SECONDS)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(CQ_RESULT_POLL_INTERVAL_IN_MS, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              try (ResultSet resultSet = statement.executeQuery(query)) {
+                int rowCount = 0;
+                while (resultSet.next()) {
+                  rowCount++;
+                }
+                return rowCount >= expectedRowCount;
+              }
+            });
+    return statement.executeQuery(query);
   }
 }

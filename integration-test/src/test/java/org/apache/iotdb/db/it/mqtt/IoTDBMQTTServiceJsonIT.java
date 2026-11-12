@@ -43,29 +43,26 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * Integration tests for MQTT service with JSON payload formatter. JSON formatter supports tree
  * model data insertion.
+ *
+ * <p>Each test owns distinct device paths and only queries those paths. Retain data until class
+ * cleanup to avoid racing asynchronous MQTT writes with database deletion between methods.
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBMQTTServiceJsonIT {
 
   private BlockingConnection connection;
-  private static int mqttPort;
-  private static final String IP = System.getProperty("RemoteIp", "127.0.0.1");
   private static final String USER = System.getProperty("RemoteUser", SessionConfig.DEFAULT_USER);
   private static final String PASSWORD =
       System.getProperty("RemotePassword", SessionConfig.DEFAULT_PASSWORD);
@@ -77,8 +74,6 @@ public class IoTDBMQTTServiceJsonIT {
     baseEnv.getConfig().getDataNodeConfig().setEnableMQTTService(true);
     baseEnv.getConfig().getDataNodeConfig().setMqttPayloadFormatter(FORMATTER);
     baseEnv.initClusterEnvironment();
-    DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
-    mqttPort = portConflictDataNodeWrapper.getMqttPort();
   }
 
   @AfterClass
@@ -88,13 +83,17 @@ public class IoTDBMQTTServiceJsonIT {
 
   @Before
   public void setUp() throws Exception {
+    DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     MQTT mqtt = new MQTT();
-    mqtt.setHost(IP, mqttPort);
+    mqtt.setHost(
+        System.getProperty("RemoteIp", dataNodeWrapper.getIp()), dataNodeWrapper.getMqttPort());
     mqtt.setUserName(USER);
     mqtt.setPassword(PASSWORD);
     mqtt.setConnectAttemptsMax(3);
     mqtt.setReconnectDelay(1000);
-    mqtt.setClientId("jsonClientId1");
+    // A delayed disconnect must not remove the next test's broker session. Keep IDs within the
+    // 23-character MQTT 3.1 limit.
+    mqtt.setClientId("client-" + UUID.randomUUID().toString().substring(0, 16));
 
     connection = mqtt.blockingConnection();
     connection.connect();
@@ -102,36 +101,15 @@ public class IoTDBMQTTServiceJsonIT {
 
   @After
   public void tearDown() throws Exception {
-    try {
-      if (connection != null && connection.isConnected()) {
-        connection.disconnect();
-      }
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-    cleanupSgData();
-  }
-
-  private static void executeQuietly(Statement statement, String sql) {
-    try {
-      statement.execute(sql);
-    } catch (SQLException ignored) {
-      // ignore
+    if (connection != null && connection.isConnected()) {
+      connection.disconnect();
     }
   }
 
-  private static void cleanupSgData() {
-    try (Connection conn = EnvFactory.getEnv().getConnection();
-        Statement statement = conn.createStatement()) {
-      executeQuietly(statement, "DELETE DATABASE root.sg");
-      executeQuietly(statement, "DELETE DATABASE root.sg.**");
-    } catch (SQLException ignored) {
-      // ignore
-    }
-  }
-
-  /** Test single JSON message with multiple measurements */
+  /**
+   * Publish one JSON message for d1 at time 1 with s1=1.5 and s2=2.5; wait for both measurements
+   * and verify the returned row contains both values.
+   */
   @Test
   public void testSingleJsonMessage() throws Exception {
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -143,12 +121,13 @@ public class IoTDBMQTTServiceJsonIT {
               + "\"values\":[1.5,2.5]"
               + "}";
 
+      connection.publish("root.sg.d1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
       Awaitility.await()
           .atMost(3, TimeUnit.MINUTES)
-          .pollInterval(1, TimeUnit.SECONDS)
+          .pollDelay(0, TimeUnit.MILLISECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
           .until(
               () -> {
-                connection.publish("root.sg.d1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
                 try (final SessionDataSet dataSet =
                     session.executeQueryStatement("select s1, s2 from root.sg.d1 where time = 1")) {
                   if (!dataSet.hasNext()) {
@@ -183,7 +162,10 @@ public class IoTDBMQTTServiceJsonIT {
     }
   }
 
-  /** Test batch JSON message with timestamps array */
+  /**
+   * Publish one batch JSON message for d2 with timestamps 1, 2, and 3 and two measurements; verify
+   * all three s1 points become visible without republishing the batch during polling.
+   */
   @Test
   public void testBatchJsonMessage() throws Exception {
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -195,12 +177,13 @@ public class IoTDBMQTTServiceJsonIT {
               + "\"values\":[[1.0,2.0],[3.0,4.0],[5.0,6.0]]"
               + "}";
 
+      connection.publish("root.sg.d2", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
       Awaitility.await()
           .atMost(3, TimeUnit.MINUTES)
-          .pollInterval(1, TimeUnit.SECONDS)
+          .pollDelay(0, TimeUnit.MILLISECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
           .until(
               () -> {
-                connection.publish("root.sg.d2", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
                 try (final SessionDataSet dataSet =
                     session.executeQueryStatement("select count(s1) from root.sg.d2")) {
                   if (!dataSet.hasNext()) {
@@ -230,7 +213,10 @@ public class IoTDBMQTTServiceJsonIT {
     }
   }
 
-  /** Test JSON array with multiple messages */
+  /**
+   * Publish one JSON array containing d3 values 10, 20, and 30 at three timestamps; wait for all
+   * three rows and verify their sum is 60.
+   */
   @Test
   public void testJsonArray() throws Exception {
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -241,12 +227,13 @@ public class IoTDBMQTTServiceJsonIT {
               + "{\"device\":\"root.sg.d3\",\"timestamp\":3,\"measurements\":[\"s1\"],\"values\":[30.0]}"
               + "]";
 
+      connection.publish("root.sg.d3", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
       Awaitility.await()
           .atMost(3, TimeUnit.MINUTES)
-          .pollInterval(1, TimeUnit.SECONDS)
+          .pollDelay(0, TimeUnit.MILLISECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
           .until(
               () -> {
-                connection.publish("root.sg.d3", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
                 try (final SessionDataSet dataSet =
                     session.executeQueryStatement("select s1 from root.sg.d3")) {
                   int count = 0;
@@ -286,7 +273,10 @@ public class IoTDBMQTTServiceJsonIT {
     }
   }
 
-  /** Test JSON with explicit data types */
+  /**
+   * Publish one explicitly typed JSON row for d4 at time 1; verify INT32 100, FLOAT 3.14, BOOLEAN
+   * true, and TEXT hello are readable with the corresponding typed field accessors.
+   */
   @Test
   public void testJsonWithDataTypes() throws Exception {
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -299,12 +289,13 @@ public class IoTDBMQTTServiceJsonIT {
               + "\"datatypes\":[\"INT32\",\"FLOAT\",\"BOOLEAN\",\"TEXT\"]"
               + "}";
 
+      connection.publish("root.sg.d4", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
       Awaitility.await()
           .atMost(3, TimeUnit.MINUTES)
-          .pollInterval(1, TimeUnit.SECONDS)
+          .pollDelay(0, TimeUnit.MILLISECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
           .until(
               () -> {
-                connection.publish("root.sg.d4", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
                 try (final SessionDataSet dataSet =
                     session.executeQueryStatement(
                         "select intVal, floatVal, boolVal, textVal from root.sg.d4 where time = 1")) {
@@ -344,7 +335,10 @@ public class IoTDBMQTTServiceJsonIT {
     }
   }
 
-  /** Test multiple devices in single JSON array */
+  /**
+   * Publish one JSON array for device1, device2, and device3 at time 1; wait for each device and
+   * verify their respective temperatures are 25.5, 26.5, and 27.5.
+   */
   @Test
   public void testMultipleDevicesJsonArray() throws Exception {
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -355,12 +349,13 @@ public class IoTDBMQTTServiceJsonIT {
               + "{\"device\":\"root.sg.device3\",\"timestamp\":1,\"measurements\":[\"temp\"],\"values\":[27.5]}"
               + "]";
 
+      connection.publish("root.sg", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
       Awaitility.await()
           .atMost(3, TimeUnit.MINUTES)
-          .pollInterval(1, TimeUnit.SECONDS)
+          .pollDelay(0, TimeUnit.MILLISECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
           .until(
               () -> {
-                connection.publish("root.sg", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
                 try {
                   // Check device1
                   try (final SessionDataSet dataSet1 =
@@ -422,7 +417,10 @@ public class IoTDBMQTTServiceJsonIT {
     }
   }
 
-  /** Test batch JSON with different values per timestamp */
+  /**
+   * Publish one d5 batch with five timestamps from 100 to 500 and varying temperature/humidity
+   * pairs; verify five rows, two fields per row, and the original temperature and humidity ranges.
+   */
   @Test
   public void testBatchJsonWithVariousValues() throws Exception {
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -434,12 +432,13 @@ public class IoTDBMQTTServiceJsonIT {
               + "\"values\":[[20.1,60.0],[21.2,61.5],[22.3,62.0],[23.4,63.5],[24.5,64.0]]"
               + "}";
 
+      connection.publish("root.sg.d5", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
       Awaitility.await()
           .atMost(3, TimeUnit.MINUTES)
-          .pollInterval(1, TimeUnit.SECONDS)
+          .pollDelay(0, TimeUnit.MILLISECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
           .until(
               () -> {
-                connection.publish("root.sg.d5", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
                 try (final SessionDataSet dataSet =
                     session.executeQueryStatement("select temperature, humidity from root.sg.d5")) {
                   int count = 0;
@@ -483,6 +482,10 @@ public class IoTDBMQTTServiceJsonIT {
     }
   }
 
+  /**
+   * Publish one array containing illegal measurement a.b at time 1 followed by valid at time 2;
+   * after valid becomes visible, verify only one timeseries exists and the illegal path is absent.
+   */
   @Test
   public void testIllegalMeasurementIsRejected() throws Exception {
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -492,12 +495,13 @@ public class IoTDBMQTTServiceJsonIT {
               + "{\"device\":\"root.sg.invalid\",\"timestamp\":2,\"measurements\":[\"valid\"],\"values\":[2]}"
               + "]";
 
+      connection.publish("root.sg.invalid", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
       Awaitility.await()
           .atMost(3, TimeUnit.MINUTES)
-          .pollInterval(1, TimeUnit.SECONDS)
+          .pollDelay(0, TimeUnit.MILLISECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
           .until(
               () -> {
-                connection.publish("root.sg.invalid", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
                 try (final SessionDataSet dataSet =
                     session.executeQueryStatement(
                         "select valid from root.sg.invalid where time = 2")) {

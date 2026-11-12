@@ -24,7 +24,9 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -52,6 +54,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.fail;
@@ -66,6 +69,50 @@ import static org.junit.Assert.fail;
  * format matches the pattern defined by the class.
  */
 public class TableModelUtils {
+
+  // These helpers prepare data for replication assertions, rather than testing individual inserts.
+  // Keep every row and the caller's flush boundaries while reducing write RPCs to about one tenth.
+  private static final int ROWS_PER_INSERT = 10;
+
+  private static final class SqlInsertBatch {
+    private final String prefix;
+    private final int rowsPerInsert;
+    private final List<String> statements = new ArrayList<>();
+    private final List<String> values;
+
+    private SqlInsertBatch(final String tableName) {
+      this(tableName, ROWS_PER_INSERT);
+    }
+
+    private SqlInsertBatch(final String tableName, final int rowsPerInsert) {
+      this.rowsPerInsert = rowsPerInsert;
+      values = new ArrayList<>(rowsPerInsert);
+      prefix =
+          "insert into "
+              + tableName
+              + " (s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, time) values ";
+    }
+
+    private void addValues(final String row) {
+      values.add(row);
+      if (values.size() == rowsPerInsert) {
+        appendStatement();
+      }
+    }
+
+    private void appendStatement() {
+      if (!values.isEmpty()) {
+        statements.add(prefix + String.join(",", values));
+        values.clear();
+      }
+    }
+
+    private List<String> finish() {
+      // Retain the final partial batch, including ranges smaller than the requested batch size.
+      appendStatement();
+      return statements;
+    }
+  }
 
   public static void createDataBaseAndTable(
       final BaseEnv baseEnv, final String table, final String database) {
@@ -104,13 +151,14 @@ public class TableModelUtils {
       final int startInclusive,
       final int endExclusive,
       final BaseEnv baseEnv) {
-    List<String> list = new ArrayList<>(endExclusive - startInclusive + 1);
+    final SqlInsertBatch batch = new SqlInsertBatch(tableName);
     for (int i = startInclusive; i < endExclusive; ++i) {
-      list.add(
+      batch.addValues(
           String.format(
-              "insert into %s (s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
-              tableName, i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
+              "('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
+              i, i, i, i, i, i, i, i, i, i, getDateStr(i), i, i));
     }
+    final List<String> list = batch.finish();
     list.add("flush");
     TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
   }
@@ -123,13 +171,57 @@ public class TableModelUtils {
       final int startInclusive,
       final int endExclusive,
       final BaseEnv baseEnv) {
-    List<String> list = new ArrayList<>(endExclusive - startInclusive + 1);
+    TestUtils.executeNonQueries(
+        dataBaseName,
+        BaseEnv.TABLE_SQL_DIALECT,
+        baseEnv,
+        generateInsertStatements(
+            tableName,
+            deviceStartIndex,
+            deviceEndIndex,
+            startInclusive,
+            endExclusive,
+            ROWS_PER_INSERT),
+        null);
+  }
+
+  /** Reuses a caller-owned Session for SQL inserts, leaving all flush boundaries to the caller. */
+  public static void insertData(
+      final String dataBaseName,
+      final String tableName,
+      final int deviceStartIndex,
+      final int deviceEndIndex,
+      final int startInclusive,
+      final int endExclusive,
+      final ITableSession session,
+      final int rowsPerInsert)
+      throws IoTDBConnectionException, StatementExecutionException {
+    session.executeNonQueryStatement("use " + dataBaseName);
+    for (final String statement :
+        generateInsertStatements(
+            tableName,
+            deviceStartIndex,
+            deviceEndIndex,
+            startInclusive,
+            endExclusive,
+            rowsPerInsert)) {
+      session.executeNonQueryStatement(statement);
+    }
+  }
+
+  private static List<String> generateInsertStatements(
+      final String tableName,
+      final int deviceStartIndex,
+      final int deviceEndIndex,
+      final int startInclusive,
+      final int endExclusive,
+      final int rowsPerInsert) {
+    final SqlInsertBatch batch = new SqlInsertBatch(tableName, rowsPerInsert);
     for (int deviceIndex = deviceStartIndex; deviceIndex < deviceEndIndex; ++deviceIndex) {
       for (int i = startInclusive; i < endExclusive; ++i) {
-        list.add(
+        batch.addValues(
             String.format(
-                "insert into %s (s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, time) values ('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
-                tableName,
+                "('t%s','t%s','t%s','t%s','%s', %s.0, %s, %s, %d, %d.0, '%s', '%s', %s)",
                 deviceIndex,
                 deviceIndex,
                 deviceIndex,
@@ -145,7 +237,7 @@ public class TableModelUtils {
                 i));
       }
     }
-    TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+    return batch.finish();
   }
 
   public static void insertData(
@@ -155,7 +247,7 @@ public class TableModelUtils {
       final int end,
       final BaseEnv baseEnv,
       final boolean allowNullValue) {
-    List<String> list = new ArrayList<>(end - start + 1);
+    final SqlInsertBatch batch = new SqlInsertBatch(tableName);
     Object[] values = new Object[12];
     Random random = new Random();
     // s0 string, s1 string, s2 string, s3 string, s4 int64, s5 float, s6 string s7 timestamp, s8
@@ -177,10 +269,9 @@ public class TableModelUtils {
       if (allowNullValue) {
         values[random.nextInt(9)] = "null";
       }
-      list.add(
+      batch.addValues(
           String.format(
-              "insert into %s (s0, s1, s2, s3, s4, s5, s6, s7, s8,s9, s10, s11, time) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-              tableName,
+              "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
               values[0],
               values[1],
               values[2],
@@ -195,7 +286,8 @@ public class TableModelUtils {
               values[11],
               i));
     }
-    TestUtils.executeNonQueries(dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, list, null);
+    TestUtils.executeNonQueries(
+        dataBaseName, BaseEnv.TABLE_SQL_DIALECT, baseEnv, batch.finish(), null);
   }
 
   public static boolean insertDataNotThrowError(
@@ -245,12 +337,9 @@ public class TableModelUtils {
       final int end,
       final BaseEnv baseEnv,
       final boolean allowNullValue) {
-    final Tablet tablet = generateTablet(tableName, start, end, allowNullValue, true);
-    ITableSessionPool tableSessionPool = baseEnv.getTableSessionPool(1);
-    try (final ITableSession session = tableSessionPool.getSession()) {
-      session.executeNonQueryStatement("use " + dataBaseName);
-      session.insert(tablet);
-      session.executeNonQueryStatement("flush");
+    try (final ITableSessionPool tableSessionPool = baseEnv.getTableSessionPool(1);
+        final ITableSession session = tableSessionPool.getSession()) {
+      insertTablet(dataBaseName, tableName, start, end, session, allowNullValue);
       return true;
     } catch (Exception e) {
       e.printStackTrace();
@@ -258,18 +347,76 @@ public class TableModelUtils {
     }
   }
 
+  /** Reuses a caller-owned Session while retaining one flush for each Tablet. */
+  public static void insertTablet(
+      final String dataBaseName,
+      final String tableName,
+      final int start,
+      final int end,
+      final ITableSession session,
+      final boolean allowNullValue)
+      throws Exception {
+    final Tablet tablet = generateTablet(tableName, start, end, allowNullValue, true);
+    session.executeNonQueryStatement("use " + dataBaseName);
+    session.insert(tablet);
+    session.executeNonQueryStatement("flush");
+  }
+
   public static boolean insertTablet(
       final String dataBaseName, final Tablet tablet, final BaseEnv baseEnv) {
+    return insertTablet(dataBaseName, tablet, baseEnv, null);
+  }
+
+  public enum TabletInsertPhase {
+    OPEN_SESSION,
+    USE_DATABASE,
+    INSERT,
+    FLUSH,
+    CLOSE_SESSION
+  }
+
+  /**
+   * Records client-side step durations in nanoseconds without changing the per-Tablet connection or
+   * flush boundaries. If a step fails, its duration includes automatic resource cleanup.
+   */
+  public static boolean insertTablet(
+      final String dataBaseName,
+      final Tablet tablet,
+      final BaseEnv baseEnv,
+      final BiConsumer<TabletInsertPhase, Long> recordTiming) {
+    long stepStart = System.nanoTime();
+    TabletInsertPhase phase = TabletInsertPhase.OPEN_SESSION;
     try (ITableSessionPool tableSessionPool = baseEnv.getTableSessionPool(20);
         final ITableSession session = tableSessionPool.getSession()) {
+      stepStart = recordTabletInsertTime(recordTiming, phase, stepStart);
+      phase = TabletInsertPhase.USE_DATABASE;
       session.executeNonQueryStatement("use " + dataBaseName);
+      stepStart = recordTabletInsertTime(recordTiming, phase, stepStart);
+      phase = TabletInsertPhase.INSERT;
       session.insert(tablet);
+      stepStart = recordTabletInsertTime(recordTiming, phase, stepStart);
+      phase = TabletInsertPhase.FLUSH;
       session.executeNonQueryStatement("flush");
+      stepStart = recordTabletInsertTime(recordTiming, phase, stepStart);
+      phase = TabletInsertPhase.CLOSE_SESSION;
       return true;
     } catch (Exception e) {
       e.printStackTrace();
       return false;
+    } finally {
+      recordTabletInsertTime(recordTiming, phase, stepStart);
     }
+  }
+
+  private static long recordTabletInsertTime(
+      final BiConsumer<TabletInsertPhase, Long> recordTiming,
+      final TabletInsertPhase phase,
+      final long start) {
+    final long end = System.nanoTime();
+    if (recordTiming != null) {
+      recordTiming.accept(phase, end - start);
+    }
+    return end;
   }
 
   public static void deleteData(
@@ -840,7 +987,16 @@ public class TableModelUtils {
   public static int showPipesCount(final BaseEnv baseEnv, final String sqlDialect) {
     try (final Connection connection = baseEnv.getConnection(sqlDialect);
         final Statement statement = connection.createStatement()) {
-      final ResultSet resultSet = statement.executeQuery("show pipes");
+      return showPipesCount(statement);
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+    return 0;
+  }
+
+  /** Count visible pipes without closing the caller's dialect-specific Statement or connection. */
+  public static int showPipesCount(final Statement statement) throws SQLException {
+    try (final ResultSet resultSet = statement.executeQuery("show pipes")) {
       int count = 0;
       while (resultSet.next()) {
         if (resultSet.getString("ID").startsWith("__consensus")) {
@@ -849,9 +1005,6 @@ public class TableModelUtils {
         count++;
       }
       return count;
-    } catch (final SQLException e) {
-      fail(e.getMessage());
     }
-    return 0;
   }
 }

@@ -19,13 +19,16 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -50,6 +53,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -1238,26 +1242,72 @@ public class IoTDBSimpleQueryIT {
     }
   }
 
+  // Query the unwritten s0 after flushing data from 9,999 sibling series in a device with 10,000
+  // series. Loading its metadata must succeed and return an empty result.
   @Test
-  public void testTimeseriesMetadataCache() {
+  public void testTimeseriesMetadataCache() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
         statement.execute("CREATE DATABASE root.sg1");
-        for (int i = 0; i < 10000; i++) {
-          statement.execute(
-              "CREATE TIMESERIES root.sg1.d0.s" + i + " WITH DATATYPE=INT32,ENCODING=PLAIN");
+        final int timeseriesCount = 10000;
+        final int batchSize = 1000;
+        // Bulk schema creation preserves the full non-aligned schema needed by the cache
+        // regression.
+        // Reuse one Session for bounded batches with the original SQL's default compressor.
+        try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+          for (int start = 0; start < timeseriesCount; start += batchSize) {
+            List<String> paths = new ArrayList<>(batchSize);
+            for (int i = start; i < Math.min(start + batchSize, timeseriesCount); i++) {
+              paths.add("root.sg1.d0.s" + i);
+            }
+            session.createMultiTimeseries(
+                paths,
+                Collections.nCopies(paths.size(), TSDataType.INT32),
+                Collections.nCopies(paths.size(), TSEncoding.PLAIN),
+                Collections.nCopies(
+                    paths.size(),
+                    TSFileDescriptor.getInstance().getConfig().getCompressor(TSDataType.INT32)),
+                null,
+                null,
+                null,
+                null);
+          }
         }
-        for (int i = 1; i < 10000; i++) {
-          statement.execute("INSERT INTO root.sg1.d0(timestamp, s" + i + ") VALUES (1000, 1)");
+        try (ResultSet resultSet = statement.executeQuery("count timeseries root.sg1.d0.*")) {
+          assertTrue(resultSet.next());
+          assertEquals(timeseriesCount, resultSet.getLong(1));
+          assertFalse(resultSet.next());
+        }
+        // Every written series has one point at the same timestamp. Grouping these distinct
+        // measurements preserves all 9,999 points and the original flush boundary.
+        for (int start = 1; start < timeseriesCount; start += batchSize) {
+          StringBuilder insert = new StringBuilder("INSERT INTO root.sg1.d0(timestamp");
+          StringBuilder values = new StringBuilder(" VALUES (1000");
+          for (int i = start; i < Math.min(start + batchSize, timeseriesCount); i++) {
+            insert.append(",s").append(i);
+            values.append(",1");
+          }
+          statement.execute(insert.append(')').append(values).append(')').toString());
         }
         statement.execute("flush");
-        statement.executeQuery("select s0 from root.sg1.d0");
+        try (ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0")) {
+          assertFalse(resultSet.next());
+        }
+        try (ResultSet resultSet =
+            statement.executeQuery("select s1, s1000, s1001, s9999 from root.sg1.d0")) {
+          assertTrue(resultSet.next());
+          assertEquals(1000, resultSet.getLong(1));
+          for (int i = 2; i <= 5; i++) {
+            assertEquals(1, resultSet.getInt(i));
+          }
+          assertFalse(resultSet.next());
+        }
       } finally {
         executeQuietly(statement, "DELETE DATABASE root.sg1");
       }
     } catch (SQLException e) {
-      fail();
+      fail(e.getMessage());
     }
   }
 

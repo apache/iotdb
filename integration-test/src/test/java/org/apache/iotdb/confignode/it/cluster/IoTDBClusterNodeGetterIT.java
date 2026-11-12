@@ -44,6 +44,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -58,7 +59,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -208,6 +208,8 @@ public class IoTDBClusterNodeGetterIT {
     }
   }
 
+  // After removing the second ConfigNode, wait for the registry to report one node before stopping
+  // the removed process; the membership count must not be accepted while the procedure is pending.
   @Test
   public void removeAndStopConfigNodeTest() throws Exception {
     TShowClusterResp showClusterResp;
@@ -222,21 +224,18 @@ public class IoTDBClusterNodeGetterIT {
       status = client.removeConfigNode(removedConfigNodeLocation);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      // Waiting for RemoveConfigNodeProcedure
-      boolean isRemoved = false;
-      for (int retry = 0; retry < 10; retry++) {
-        showClusterResp = client.showCluster();
-        if (showClusterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            && showClusterResp.getConfigNodeListSize() == testConfigNodeNum - 1) {
-          isRemoved = true;
-          break;
-        }
-
-        TimeUnit.SECONDS.sleep(1);
-      }
-      if (!isRemoved) {
-        fail("Remove ConfigNode failed");
-      }
+      // Keep the original 10-second budget while observing procedure completion promptly.
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
+          .untilAsserted(
+              () -> {
+                TShowClusterResp currentClusterResp = client.showCluster();
+                assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                    currentClusterResp.getStatus().getCode());
+                assertEquals(testConfigNodeNum - 1, currentClusterResp.getConfigNodeListSize());
+              });
 
       // Test stop ConfigNode
       status = client.stopAndClearConfigNode(removedConfigNodeLocation);
@@ -244,6 +243,8 @@ public class IoTDBClusterNodeGetterIT {
     }
   }
 
+  // After querying both DataNode registrations and their configuration, remove one node and wait
+  // for membership to shrink before considering the procedure complete.
   @Test
   public void queryAndRemoveDataNodeTest() throws Exception {
 
@@ -305,17 +306,18 @@ public class IoTDBClusterNodeGetterIT {
       assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), dataNodeRemoveResp.getStatus().getCode());
 
-      // Waiting for RemoveDataNodeProcedure
-      for (int retry = 0; retry < 60; retry++) {
-        showDataNodesResp = client.showDataNodes();
-        if (showDataNodesResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            && showDataNodesResp.getDataNodesInfoListSize() == testDataNodeNum - 1) {
-          return;
-        }
-
-        TimeUnit.SECONDS.sleep(1);
-      }
-      fail("Remove DataNode failed, last showDataNodesResp: " + showDataNodesResp);
+      // Keep the original 60-second budget while observing procedure completion promptly.
+      Awaitility.await()
+          .atMost(60, TimeUnit.SECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
+          .untilAsserted(
+              () -> {
+                TShowDataNodesResp currentDataNodesResp = client.showDataNodes();
+                assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                    currentDataNodesResp.getStatus().getCode());
+                assertEquals(testDataNodeNum - 1, currentDataNodesResp.getDataNodesInfoListSize());
+              });
     }
   }
 }

@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.google.common.collect.ImmutableList;
 import org.junit.*;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import java.sql.BatchUpdateException;
@@ -62,16 +63,167 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAuthIT {
+  private static final List<String> ROOT_PASSWORD_CANDIDATES =
+      Arrays.asList("root", "newPassword666888", "rootHasANewPassword123");
+
+  private static boolean clusterStarted;
+
+  @Rule public final TestName testName = new TestName();
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
-    EnvFactory.getEnv().initClusterEnvironment();
+    if (clusterStarted && requiresFreshAuthState(testName.getMethodName())) {
+      EnvFactory.getEnv().cleanClusterEnvironment();
+      clusterStarted = false;
+    }
+    if (!clusterStarted) {
+      EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
+      EnvFactory.getEnv().initClusterEnvironment();
+      clusterStarted = true;
+    }
+  }
+
+  private static boolean requiresFreshAuthState(String methodName) {
+    return "allPrivilegesTest".equals(methodName)
+        || "testListUser".equals(methodName)
+        || "testListRoleUsers".equals(methodName)
+        || "testListUserPrivilege".equals(methodName);
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    if (testName.getMethodName().startsWith("testClusterManagementSql")) {
+      try {
+        EnvFactory.getEnv().cleanClusterEnvironment();
+      } finally {
+        clusterStarted = false;
+      }
+      return;
+    }
+
+    try {
+      cleanupAfterTest();
+    } catch (Exception e) {
+      try {
+        EnvFactory.getEnv().cleanClusterEnvironment();
+      } catch (Exception cleanupException) {
+        e.addSuppressed(cleanupException);
+      } finally {
+        clusterStarted = false;
+      }
+      throw e;
+    }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
+    if (clusterStarted) {
+      try {
+        EnvFactory.getEnv().cleanClusterEnvironment();
+      } finally {
+        clusterStarted = false;
+      }
+    }
+  }
+
+  private static void cleanupAfterTest() throws SQLException {
+    try (Connection connection = getRootConnection();
+        Statement statement = connection.createStatement()) {
+      // Restore credentials before the next test; testChangeBackPassword intentionally changes
+      // root.
+      statement.execute("ALTER USER root SET PASSWORD 'root'");
+
+      List<String> users = new ArrayList<>();
+      try (ResultSet resultSet = statement.executeQuery("LIST USER")) {
+        while (resultSet.next()) {
+          String user = resultSet.getString(2);
+          if (!"root".equals(user)) {
+            users.add(user);
+          }
+        }
+      }
+      for (String user : users) {
+        statement.execute("DROP USER " + user);
+      }
+
+      List<String> roles = new ArrayList<>();
+      try (ResultSet resultSet = statement.executeQuery("LIST ROLE")) {
+        while (resultSet.next()) {
+          roles.add(resultSet.getString(1));
+        }
+      }
+      for (String role : roles) {
+        statement.execute("DROP ROLE " + role);
+      }
+
+      List<String> databases = new ArrayList<>();
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+        while (resultSet.next()) {
+          String database = resultSet.getString(1);
+          if (database != null
+              && !database.startsWith("root.__")
+              && !database.startsWith("information_schema")) {
+            databases.add(database);
+          }
+        }
+      }
+      for (String database : databases) {
+        statement.execute("DELETE DATABASE " + database);
+      }
+
+      List<String> timeseries = new ArrayList<>();
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.**")) {
+        while (resultSet.next()) {
+          String path = resultSet.getString(1);
+          if (path != null && !path.startsWith("root.__")) {
+            timeseries.add(path);
+          }
+        }
+      }
+      for (String path : timeseries) {
+        statement.execute("DELETE TIMESERIES " + path);
+      }
+
+      unsetDeviceTemplatePaths(statement, "t1");
+      executeQuietly(statement, "DROP DEVICE TEMPLATE t1");
+      executeQuietly(statement, "DROP SCHEMA TEMPLATE t1");
+    }
+  }
+
+  private static Connection getRootConnection() throws SQLException {
+    SQLException lastException = null;
+    for (String password : ROOT_PASSWORD_CANDIDATES) {
+      try {
+        return EnvFactory.getEnv().getConnection("root", password);
+      } catch (SQLException e) {
+        lastException = e;
+      }
+    }
+    throw lastException;
+  }
+
+  private static void unsetDeviceTemplatePaths(Statement statement, String template)
+      throws SQLException {
+    List<String> paths = new ArrayList<>();
+    try (ResultSet resultSet =
+        statement.executeQuery("SHOW PATHS SET DEVICE TEMPLATE " + template)) {
+      while (resultSet.next()) {
+        paths.add(resultSet.getString(1));
+      }
+    } catch (SQLException ignored) {
+      return;
+    }
+    for (String path : paths) {
+      statement.execute("UNSET DEVICE TEMPLATE " + template + " FROM " + path);
+    }
+  }
+
+  private static void executeQuietly(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignored) {
+      // The template may not have been created by this test.
+    }
   }
 
   @Test
@@ -1517,12 +1669,15 @@ public class IoTDBAuthIT {
     }
   }
 
+  // With password policy disabled, changing the administrator password twice permits restoring
+  // root.
   @Test
   public void testChangeBackPassword() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("ALTER USER root SET PASSWORD 'newPassword666888'");
       statement.execute("ALTER USER root SET PASSWORD 'rootHasANewPassword123'");
+      statement.execute("ALTER USER root SET PASSWORD 'root'");
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());

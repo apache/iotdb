@@ -68,6 +68,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -1453,50 +1454,41 @@ public class IoTDBSessionRelationalIT {
   }
 
   private void testOneCastWithTablet(
-      TSDataType from, TSDataType to, int testNum, boolean partialInsert)
+      ITableSession session,
+      TSDataType from,
+      TSDataType to,
+      String tableName,
+      boolean partialInsert)
       throws IoTDBConnectionException, StatementExecutionException {
-    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      session.executeNonQueryStatement("USE \"db1\"");
-      // create a column with type of "to"
-      session.executeNonQueryStatement(
-          "CREATE TABLE table"
-              + testNum
-              + " (tag1 string tag,"
-              + "m1 "
-              + to.toString()
-              + " field)");
-      if (partialInsert) {
-        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='true'");
-      } else {
-        session.executeNonQueryStatement("SET CONFIGURATION enable_partial_insert='false'");
-      }
+    // create a column with type of "to"
+    session.executeNonQueryStatement(
+        "CREATE TABLE " + tableName + " (tag1 string tag," + "m1 " + to.toString() + " field)");
+    // insert a tablet with type of "from"
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("m1", from));
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+    Tablet tablet =
+        new Tablet(
+            tableName,
+            IMeasurementSchema.getMeasurementNameList(schemaList),
+            IMeasurementSchema.getDataTypeList(schemaList),
+            columnTypes,
+            15);
 
-      // insert a tablet with type of "from"
-      List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
-      schemaList.add(new MeasurementSchema("m1", from));
-      final List<ColumnCategory> columnTypes =
-          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
-      Tablet tablet =
-          new Tablet(
-              "table" + testNum,
-              IMeasurementSchema.getMeasurementNameList(schemaList),
-              IMeasurementSchema.getDataTypeList(schemaList),
-              columnTypes,
-              15);
-
-      tablet.addTimestamp(0, 0);
-      tablet.addTimestamp(1, 1);
-      tablet.addValue(0, 0, "d1");
-      tablet.addValue(1, 0, "d1");
-      // the field in the first row is null
-      tablet.addValue("m1", 1, genValue(from, 1));
-      if (to.isCompatible(from)) {
-        // can cast, insert and check the result
-        session.insert(tablet);
-        // time, tag1, m1
-        SessionDataSet dataSet =
-            session.executeQueryStatement("select * from table" + testNum + " order by time");
+    tablet.addTimestamp(0, 0);
+    tablet.addTimestamp(1, 1);
+    tablet.addValue(0, 0, "d1");
+    tablet.addValue(1, 0, "d1");
+    // the field in the first row is null
+    tablet.addValue("m1", 1, genValue(from, 1));
+    if (to.isCompatible(from)) {
+      // can cast, insert and check the result
+      session.insert(tablet);
+      // time, tag1, m1
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select * from " + tableName + " order by time")) {
         RowRecord rec = dataSet.next();
         assertEquals(0, rec.getFields().get(0).getLongV());
         assertEquals("d1", rec.getFields().get(1).toString());
@@ -1506,62 +1498,46 @@ public class IoTDBSessionRelationalIT {
         assertEquals("d1", rec.getFields().get(1).toString());
 
         switch (to) {
-          case BLOB:
-            assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
-            break;
-          case DATE:
-            assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
-            break;
-          case FLOAT:
-            assertEquals(genValue(to, 1), rec.getFields().get(2).getFloatV());
-            break;
-          case DOUBLE:
-            assertEquals(genValue(to, 1), rec.getFields().get(2).getDoubleV());
-            break;
-          case STRING:
-          case TEXT:
-            if (from == TSDataType.DATE) {
+          case BLOB -> assertEquals(genValue(to, 1), rec.getFields().get(2).getBinaryV());
+          case DATE -> assertEquals(genValue(to, 1), rec.getFields().get(2).getDateV());
+          case FLOAT -> assertEquals(genValue(to, 1), rec.getFields().get(2).getFloatV());
+          case DOUBLE -> assertEquals(genValue(to, 1), rec.getFields().get(2).getDoubleV());
+          case STRING, TEXT ->
               assertEquals(
                   new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
                   rec.getFields().get(2).getBinaryV());
-            } else {
-              assertEquals(
-                  new Binary(genValue(from, 1).toString(), StandardCharsets.UTF_8),
-                  rec.getFields().get(2).getBinaryV());
-            }
-            break;
-          default:
-            assertEquals(String.valueOf(genValue(from, 1)), rec.getFields().get(2).toString());
+          case BOOLEAN, INT32, INT64, TIMESTAMP ->
+              assertEquals(String.valueOf(genValue(from, 1)), rec.getFields().get(2).toString());
+          case VECTOR, UNKNOWN, OBJECT ->
+              throw new IllegalArgumentException("Unsupported data type: " + to);
         }
         assertFalse(dataSet.hasNext());
+      }
+    } else {
+      if (partialInsert) {
+        // cannot cast, but partial insert
+        try {
+          session.insert(tablet);
+          fail("Exception expected: from=" + from + ", to=" + to);
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "507: No column other than Time present, please check the request", e.getMessage());
+        }
+        // time, tag1, m1
+        try (SessionDataSet dataSet =
+            session.executeQueryStatement("select * from " + tableName + " order by time")) {
+          assertFalse(dataSet.hasNext());
+        }
       } else {
-        if (partialInsert) {
-          // cannot cast, but partial insert
-          try {
-            session.insert(tablet);
-            fail("Exception expected: from=" + from + ", to=" + to);
-          } catch (StatementExecutionException e) {
-            assertEquals(
-                "507: No column other than Time present, please check the request", e.getMessage());
-          }
-          // time, tag1, m1
-          try (SessionDataSet dataSet =
-              session.executeQueryStatement("select * from table" + testNum + " order by time")) {
-            assertFalse(dataSet.hasNext());
-          }
-        } else {
-          // cannot cast, expect an exception
-          try {
-            session.insert(tablet);
-            fail("Exception expected");
-          } catch (StatementExecutionException e) {
-            assertEquals(
-                "614: Incompatible data type of column m1: " + from + "/" + to, e.getMessage());
-          }
+        // cannot cast, expect an exception
+        try {
+          session.insert(tablet);
+          fail("Exception expected");
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "614: Incompatible data type of column m1: " + from + "/" + to, e.getMessage());
         }
       }
-
-      session.executeNonQueryStatement("DROP TABLE table" + testNum);
     }
   }
 
@@ -1682,25 +1658,40 @@ public class IoTDBSessionRelationalIT {
     }
   }
 
-  @Test
-  public void insertRelationalTabletWithAutoCastTest()
+  private void testAllCastsWithTablet(int testNum)
       throws IoTDBConnectionException, StatementExecutionException {
-    int testNum = 14;
     Set<TSDataType> dataTypes = TSDataTypeTestUtils.getSupportedTypes();
-    try {
-      for (TSDataType from : dataTypes) {
-        for (TSDataType to : dataTypes) {
-          System.out.println("from: " + from + ", to: " + to);
-          testOneCastWithTablet(from, to, testNum, false);
-          System.out.println("partial insert");
-          testOneCastWithTablet(from, to, testNum, true);
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE db1");
+      // Keep the complete matrix, but change cluster-wide configuration only once per mode.
+      for (boolean partialInsert : new boolean[] {false, true}) {
+        session.executeNonQueryStatement(
+            "SET CONFIGURATION enable_partial_insert='" + partialInsert + "'");
+        for (TSDataType from : dataTypes) {
+          for (TSDataType to : dataTypes) {
+            // Avoid waiting for asynchronous deletion before reusing a table name.
+            String tableName =
+                ("table" + testNum + "_" + partialInsert + "_" + from + "_" + to)
+                    .toLowerCase(Locale.ROOT);
+            testOneCastWithTablet(session, from, to, tableName, partialInsert);
+          }
         }
       }
     } finally {
+      // Configuration is global to this shared cluster, including when an assertion fails.
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        // Tree SQL requires quoted configuration keys and values, unlike Table SQL above.
         session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
       }
     }
+    // Per-method teardown removes the databases and every matrix table in one operation.
+  }
+
+  // Check every supported type pair, null rows and both partial-insert modes through tablets.
+  @Test
+  public void insertRelationalTabletWithAutoCastTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    testAllCastsWithTablet(14);
   }
 
   @Test
@@ -1776,24 +1767,11 @@ public class IoTDBSessionRelationalIT {
     }
   }
 
+  // Preserve this regression matrix of tablet casts, null rows and both partial-insert modes.
   @Test
   public void insertRelationalRowWithAutoCastTest()
       throws IoTDBConnectionException, StatementExecutionException {
-    int testNum = 17;
-    Set<TSDataType> dataTypes = TSDataTypeTestUtils.getSupportedTypes();
-
-    for (TSDataType from : dataTypes) {
-      for (TSDataType to : dataTypes) {
-        System.out.println("from: " + from + ", to: " + to);
-        testOneCastWithTablet(from, to, testNum, false);
-        System.out.println("partial insert");
-        testOneCastWithTablet(from, to, testNum, true);
-      }
-    }
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
-    }
+    testAllCastsWithTablet(17);
   }
 
   @Test

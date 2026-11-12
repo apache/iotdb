@@ -33,12 +33,10 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Locale;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.count;
 import static org.apache.iotdb.db.utils.constant.TestConstant.maxValue;
@@ -94,8 +92,12 @@ public class IoTDBRecoverUnclosedIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  /**
+   * Write overlapping ranges with synchronous WAL and no flush, restart all nodes, and verify the
+   * recovered 7500 timestamps and filtered extrema from single-row and batched writes.
+   */
   @Test
-  public void test() throws SQLException, IOException {
+  public void test() throws SQLException {
     String[] retArray = new String[] {"2", "4", "3"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -147,13 +149,14 @@ public class IoTDBRecoverUnclosedIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String selectSql = "select count(*) from root.vehicle.d0";
-      ResultSet tempResultSet = statement.executeQuery(selectSql);
-      assertNotNull(tempResultSet);
-      tempResultSet.next();
       String d0s0 = "root.vehicle.d0.s0";
       String d0s1 = "root.vehicle.d0.s1";
       String d0s2 = "root.vehicle.d0.s2";
-      assertEquals(7500, tempResultSet.getInt("count(" + d0s0 + ")"));
+      try (ResultSet tempResultSet = statement.executeQuery(selectSql)) {
+        assertNotNull(tempResultSet);
+        tempResultSet.next();
+        assertEquals(7500, tempResultSet.getInt("count(" + d0s0 + ")"));
+      }
 
       // test max, min value
       retArray = new String[] {"8499,500.0", "2499,500.0"};
@@ -182,7 +185,7 @@ public class IoTDBRecoverUnclosedIT {
     }
   }
 
-  private void prepareData() {
+  private void prepareData() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (String sql : creationSqls) {
@@ -192,59 +195,51 @@ public class IoTDBRecoverUnclosedIT {
       for (String sql : dataSet2) {
         statement.execute(sql);
       }
-
-    } catch (Exception e) {
-      e.printStackTrace();
     }
   }
 
-  private void insertMoreData() {
+  private void insertMoreData() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      // Keep every point and the original range order, without flushing before recovery.
+      insertRange(statement, 5000, 7000, true);
+      insertRange(statement, 7500, 8500, false);
+      insertRange(statement, 500, 1500, true);
+      insertRange(statement, 3000, 6500, false);
+      insertRange(statement, 9000, 10000, true);
+      insertRange(statement, 2000, 2500, false);
+    }
+  }
 
-      // prepare BufferWrite file
-      String insertTemplate =
-          "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
-      for (int i = 5000; i < 7000; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
+  private static void insertRange(
+      Statement statement, int startTime, int endTime, boolean booleanValue) throws SQLException {
+    // Retain each range's first single-row INSERT to exercise the original WAL replay path.
+    // Batch the remaining rows to reduce SQL execution and synchronous WAL flush overhead.
+    final int rowsPerInsert = 500;
+    for (int batchStart = startTime; batchStart < endTime; ) {
+      int batchEnd = Math.min(batchStart + (batchStart == startTime ? 1 : rowsPerInsert), endTime);
+      StringBuilder sql =
+          new StringBuilder("INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4) VALUES");
+      for (int time = batchStart; time < batchEnd; time++) {
+        if (time > batchStart) {
+          sql.append(',');
+        }
+        sql.append('(')
+            .append(time)
+            .append(',')
+            .append(time)
+            .append(',')
+            .append(time)
+            .append(',')
+            .append((double) time)
+            .append(",'")
+            .append(time)
+            .append("',")
+            .append(booleanValue)
+            .append(')');
       }
-      statement.executeBatch();
-      for (int i = 7500; i < 8500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
-      }
-      statement.executeBatch();
-      // prepare Unseq-File
-      for (int i = 500; i < 1500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
-      }
-      for (int i = 3000; i < 6500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
-      }
-      statement.executeBatch();
-      // prepare BufferWrite cache
-      for (int i = 9000; i < 10000; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
-      }
-      statement.executeBatch();
-      // prepare Overflow cache
-      for (int i = 2000; i < 2500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
-      }
-      statement.executeBatch();
-    } catch (Exception e) {
-      e.printStackTrace();
+      statement.execute(sql.toString());
+      batchStart = batchEnd;
     }
   }
 }

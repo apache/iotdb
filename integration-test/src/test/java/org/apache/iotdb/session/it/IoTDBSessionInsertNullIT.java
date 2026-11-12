@@ -35,19 +35,24 @@ import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.junit.After;
+import org.awaitility.Awaitility;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -57,63 +62,81 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSessionInsertNullIT {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionInsertNullIT.class);
-  private final int retry = 30;
+  private static final AtomicInteger NEXT_DATABASE_ID = new AtomicInteger();
 
-  @Before
-  public void setUp() throws Exception {
+  private String database;
+
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @Before
+  public void setUp() {
+    // Keep each method's schema and data independent while sharing the same cluster.
+    database = "root.insert_null_" + NEXT_DATABASE_ID.incrementAndGet();
+  }
+
+  @AfterClass
+  public static void tearDownClass() {
+    // All method-specific databases are bounded by this class and removed with the cluster.
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private void prepareData(ISession session)
       throws IoTDBConnectionException, StatementExecutionException {
-    session.setStorageGroup("root.sg1");
+    session.setStorageGroup(database);
     session.createTimeseries(
-        "root.sg1.clsu.d1.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        database + ".clsu.d1.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d1.s2", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        database + ".clsu.d1.s2", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d1.s3", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        database + ".clsu.d1.s3", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d1.s4", TSDataType.FLOAT, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        database + ".clsu.d1.s4", TSDataType.FLOAT, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d1.s5", TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        database + ".clsu.d1.s5", TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d1.s6", TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        database + ".clsu.d1.s6", TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.clsu.d2.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
+        database + ".clsu.d2.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
   }
 
   private long queryCountRecords(ISession session, String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSetWrapper = session.executeQueryStatement(sql, 60_000);
-    long count = 0;
-    while (dataSetWrapper.hasNext()) {
-      RowRecord record = dataSetWrapper.next();
-      Field field = record.getFields().get(0);
-      switch (field.getDataType()) {
-        case INT32:
-          count = field.getIntV();
-          break;
-        case INT64:
-          count = field.getLongV();
-          break;
+    try (SessionDataSet dataSetWrapper = session.executeQueryStatement(sql, 60_000)) {
+      long count = 0;
+      while (dataSetWrapper.hasNext()) {
+        RowRecord record = dataSetWrapper.next();
+        Field field = record.getFields().get(0);
+        switch (field.getDataType()) {
+          case INT32 -> count = field.getIntV();
+          case INT64 -> count = field.getLongV();
+          case BOOLEAN,
+              FLOAT,
+              DOUBLE,
+              TEXT,
+              VECTOR,
+              UNKNOWN,
+              TIMESTAMP,
+              DATE,
+              BLOB,
+              STRING,
+              OBJECT ->
+              throw new AssertionError("Unexpected count type: " + field.getDataType());
+        }
       }
+      return count;
     }
-    return count;
   }
 
+  // Mix non-null and null typed/string records; only three non-null s1 values should remain.
   @Test
   public void insertRecordNullTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
 
-      String deviceId = "root.sg1.clsu.d1";
+      String deviceId = database + ".clsu.d1";
       session.insertRecord(deviceId, 100, Arrays.asList("s1"), Arrays.asList("true"));
       List<String> t = new ArrayList<>();
       t.add(null);
@@ -144,12 +167,13 @@ public class IoTDBSessionInsertNullIT {
     }
   }
 
+  // Mix aligned typed/string records with nulls; eventually count exactly three s1 values.
   @Test
   public void insertAlignedRecordNullTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
 
-      String deviceId = "root.sg1.clsu.aligned_d1";
+      String deviceId = database + ".clsu.aligned_d1";
       session.insertAlignedRecord(deviceId, 100, Arrays.asList("s1"), Arrays.asList("true"));
       List<String> t = new ArrayList<>();
       t.add(null);
@@ -172,29 +196,31 @@ public class IoTDBSessionInsertNullIT {
           Arrays.asList("s1", "s2"),
           Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32),
           Arrays.asList(null, null));
-      for (int i = 0; i < retry; i++) {
-        try {
-          long nums = queryCountRecords(session, "select count(s1) from " + deviceId);
-          assertEquals(3, nums);
-          return;
-        } catch (Exception e) {
-          LOGGER.info("query records failed, retry: " + i);
-          Thread.sleep(1000);
-        }
-      }
+      Awaitility.await()
+          .pollInSameThread()
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(100))
+          .atMost(Duration.ofSeconds(30))
+          .ignoreExceptionsMatching(e -> e instanceof IoTDBConnectionException)
+          .untilAsserted(
+              () -> {
+                long nums = queryCountRecords(session, "select count(s1) from " + deviceId);
+                assertEquals(3, nums);
+              });
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
+  // Batch typed/string records with nulls and verify each device retains three values.
   @Test
   public void insertRecordsNullTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
 
-      String deviceId1 = "root.sg1.clsu.d2";
-      String deviceId2 = "root.sg1.clsu.d3";
+      String deviceId1 = database + ".clsu.d2";
+      String deviceId2 = database + ".clsu.d3";
       session.insertRecords(
           Arrays.asList(deviceId1, deviceId2),
           Arrays.asList(300L, 300L),
@@ -222,31 +248,32 @@ public class IoTDBSessionInsertNullIT {
               Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32)),
           Arrays.asList(Arrays.asList(true, null), Arrays.asList(null, null)));
 
-      for (int i = 0; i < retry; i++) {
-        try {
-          long nums = queryCountRecords(session, "select count(s1) from " + deviceId1);
-          assertEquals(3, nums);
-          nums = queryCountRecords(session, "select count(s2) from " + deviceId2);
-          assertEquals(3, nums);
-          return;
-        } catch (Exception e) {
-          LOGGER.info("read records failed, retry: " + i);
-          Thread.sleep(1000);
-        }
-      }
-
+      Awaitility.await()
+          .pollInSameThread()
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(100))
+          .atMost(Duration.ofSeconds(30))
+          .ignoreExceptionsMatching(e -> e instanceof IoTDBConnectionException)
+          .untilAsserted(
+              () -> {
+                long nums = queryCountRecords(session, "select count(s1) from " + deviceId1);
+                assertEquals(3, nums);
+                nums = queryCountRecords(session, "select count(s2) from " + deviceId2);
+                assertEquals(3, nums);
+              });
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
+  // Batch aligned records with nulls and verify the expected per-device column counts.
   @Test
   public void insertAlignedRecordsNullTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
-      String deviceId1 = "root.sg1.clsu.aligned_d2";
-      String deviceId2 = "root.sg1.clsu.aligned_d3";
+      String deviceId1 = database + ".clsu.aligned_d2";
+      String deviceId2 = database + ".clsu.aligned_d3";
       session.insertAlignedRecords(
           Arrays.asList(deviceId1, deviceId2),
           Arrays.asList(300L, 300L),
@@ -284,11 +311,12 @@ public class IoTDBSessionInsertNullIT {
     }
   }
 
+  // Mix typed/string batches for one device; nulls must leave exactly six s1 values.
   @Test
   public void insertRecordsOfOneDeviceNullTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
-      String deviceId1 = "root.sg1.clsu.InsertRecordsOfOneDevice";
+      String deviceId1 = database + ".clsu.InsertRecordsOfOneDevice";
       session.insertRecordsOfOneDevice(
           deviceId1,
           Arrays.asList(300L, 301L),
@@ -323,11 +351,12 @@ public class IoTDBSessionInsertNullIT {
     }
   }
 
+  // Mix aligned batches for one device; nulls must leave exactly six s1 values.
   @Test
   public void insertAlignedRecordsOfOneDeviceNullTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
-      String deviceId1 = "root.sg1.clsu.InsertAlignedRecordsOfOneDevice";
+      String deviceId1 = database + ".clsu.InsertAlignedRecordsOfOneDevice";
       session.insertAlignedRecordsOfOneDevice(
           deviceId1,
           Arrays.asList(300L, 301L),
@@ -362,12 +391,13 @@ public class IoTDBSessionInsertNullIT {
     }
   }
 
+  // Insert an all-null tablet; s1 must stay empty before and after flush.
   @Test
   public void insertTabletNullTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
 
-      String deviceId = "root.sg1.clsu.d1";
+      String deviceId = database + ".clsu.d1";
       Tablet tablet =
           new Tablet(
               deviceId,
@@ -396,12 +426,13 @@ public class IoTDBSessionInsertNullIT {
     }
   }
 
+  // Flush an all-null aligned tablet; counts stay zero and no broken TsFile is produced.
   @Test
   public void insertAlignedTabletNullTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       prepareData(session);
 
-      String deviceId = "root.sg1.clsu.aligned_d1";
+      String deviceId = database + ".clsu.aligned_d1";
       Tablet tablet =
           new Tablet(
               deviceId,
@@ -425,27 +456,11 @@ public class IoTDBSessionInsertNullIT {
       nums = queryCountRecords(session, "select count(s1) from " + deviceId);
       assertEquals(0, nums);
       for (DataNodeWrapper dn : EnvFactory.getEnv().getDataNodeWrapperList()) {
-        File dir =
-            new File(
-                dn.getDataDir()
-                    + File.separator
-                    + "datanode"
-                    + File.separator
-                    + "data"
-                    + File.separator
-                    + "sequence"
-                    + File.separator
-                    + "root.sg1"
-                    + File.separator
-                    + "1"
-                    + File.separator
-                    + "0");
-        if (dir.exists() && dir.isDirectory()) {
-          File[] files = dir.listFiles();
-          if (files != null) {
-            for (File file : files) {
-              assertFalse(file.getName().endsWith("broken"));
-            }
+        Path databaseDir = Paths.get(dn.getDataDir(), "datanode", "data", "sequence", database);
+        if (Files.isDirectory(databaseDir)) {
+          // A shared cluster assigns different region IDs; inspect every region of this database.
+          try (Stream<Path> files = Files.walk(databaseDir)) {
+            assertFalse(files.anyMatch(file -> file.getFileName().toString().endsWith("broken")));
           }
         }
       }
@@ -455,10 +470,11 @@ public class IoTDBSessionInsertNullIT {
     }
   }
 
+  // Reject aligned tablets containing a null measurement name for both value setters.
   @Test
   public void insertTabletNullMeasurementTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.clsu.aligned_d1";
+      String deviceId = database + ".clsu.aligned_d1";
       Tablet tablet =
           new Tablet(
               deviceId,
@@ -476,7 +492,7 @@ public class IoTDBSessionInsertNullIT {
     }
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.clsu.aligned_d1";
+      String deviceId = database + ".clsu.aligned_d1";
       Tablet tablet =
           new Tablet(
               deviceId,
@@ -494,7 +510,7 @@ public class IoTDBSessionInsertNullIT {
     }
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.clsu.aligned_d1";
+      String deviceId = database + ".clsu.aligned_d1";
       Tablet tablet =
           new Tablet(
               deviceId,

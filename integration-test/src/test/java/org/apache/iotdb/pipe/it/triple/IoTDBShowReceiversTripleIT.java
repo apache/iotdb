@@ -53,6 +53,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
@@ -76,9 +77,13 @@ public class IoTDBShowReceiversTripleIT {
     setupConfig(senderEnv2);
     setupConfig(receiverEnv);
 
-    senderEnv1.initClusterEnvironment(1, 1);
-    senderEnv2.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 3);
+    // Independent clusters can start together. Await all three starts even if one fails so no
+    // startup task can outlive setup and race with teardown.
+    CompletableFuture.allOf(
+            CompletableFuture.runAsync(() -> senderEnv1.initClusterEnvironment(1, 1)),
+            CompletableFuture.runAsync(() -> senderEnv2.initClusterEnvironment(1, 1)),
+            CompletableFuture.runAsync(() -> receiverEnv.initClusterEnvironment(1, 3)))
+        .join();
   }
 
   private static void setupConfig(final BaseEnv env) {
@@ -101,6 +106,8 @@ public class IoTDBShowReceiversTripleIT {
     receiverEnv.cleanClusterEnvironment();
   }
 
+  // Route two senders to different DataNodes in one 1C3D receiver cluster; both SHOW RECEIVERS
+  // and the table information schema must aggregate the two active pipes and their node IDs.
   @Test
   public void testShowReceiversAggregatesMultipleSendersOnMultipleDataNodes() throws Exception {
     Assert.assertTrue(receiverEnv.getDataNodeWrapperList().size() >= 2);
@@ -191,37 +198,40 @@ public class IoTDBShowReceiversTripleIT {
       final String firstPipeName,
       final int firstReceiverDataNodeId,
       final String secondPipeName,
-      final int secondReceiverDataNodeId) {
-    Awaitility.await()
-        .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
-        .atMost(60L, TimeUnit.SECONDS)
-        .untilAsserted(
-            () ->
-                Assert.assertTrue(
-                    hasReceiversOnDifferentDataNodes(
-                        sql,
-                        sqlDialect,
-                        firstPipeName,
-                        firstReceiverDataNodeId,
-                        secondPipeName,
-                        secondReceiverDataNodeId)));
+      final int secondReceiverDataNodeId)
+      throws SQLException {
+    // Reuse the connection across polls; the running clusters do not change during this check.
+    try (final Connection connection =
+            receiverEnv.getConnection(
+                SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+        final Statement statement = connection.createStatement()) {
+      Awaitility.await()
+          .pollInSameThread()
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
+          .atMost(60L, TimeUnit.SECONDS)
+          .untilAsserted(
+              () ->
+                  Assert.assertTrue(
+                      hasReceiversOnDifferentDataNodes(
+                          statement,
+                          sql,
+                          firstPipeName,
+                          firstReceiverDataNodeId,
+                          secondPipeName,
+                          secondReceiverDataNodeId)));
+    }
   }
 
   private boolean hasReceiversOnDifferentDataNodes(
+      final Statement statement,
       final String sql,
-      final String sqlDialect,
       final String firstPipeName,
       final int firstReceiverDataNodeId,
       final String secondPipeName,
       final int secondReceiverDataNodeId)
       throws SQLException {
-    try (final Connection connection =
-            receiverEnv.getConnection(
-                SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
-        final Statement statement = connection.createStatement();
-        final ResultSet clusterResult = statement.executeQuery(sql)) {
+    try (final ResultSet clusterResult = statement.executeQuery(sql)) {
       for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
         boolean hasFirstPipe = false;
         boolean hasSecondPipe = false;

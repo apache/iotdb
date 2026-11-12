@@ -26,8 +26,10 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -36,8 +38,8 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Locale;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.count;
 import static org.apache.iotdb.db.utils.constant.TestConstant.maxValue;
@@ -85,17 +87,34 @@ public class IoTDBRecoverIT {
   private final String d0s2 = "root.vehicle.d0.s2";
   private final String d0s3 = "root.vehicle.d0.s3";
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @AfterClass
+  public static void tearDownCluster() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Before
+  public void setUp() throws SQLException {
+    // Recreate the same file layout before each recovery on the shared cluster.
     prepareData();
   }
 
   @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+  public void tearDown() throws SQLException {
+    // Remove this class's databases so neither recovered data nor schemas reach the next test.
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("DELETE DATABASE root.vehicle.d0, root.vehicle.d1, root.ln.wf01.wt01");
+    }
   }
 
+  /**
+   * Restart all nodes and verify filtered aggregates over recovered sequence and unsequence data.
+   */
   @Test
   public void recoverTest1() {
     // stop cluster
@@ -172,6 +191,7 @@ public class IoTDBRecoverIT {
     }
   }
 
+  /** Restart all nodes and verify recovered counts for overlapping writes and a time range. */
   @Test
   public void recoverTest2() {
     // stop cluster
@@ -227,7 +247,7 @@ public class IoTDBRecoverIT {
     }
   }
 
-  private void prepareData() {
+  private void prepareData() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -240,55 +260,52 @@ public class IoTDBRecoverIT {
       }
 
       // prepare BufferWrite file
-      String insertTemplate =
-          "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
-      for (int i = 5000; i < 7000; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
-      }
-      statement.executeBatch();
+      insertRange(statement, 5000, 7000, true);
       statement.execute("flush");
-      for (int i = 7500; i < 8500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
-      }
-      statement.executeBatch();
+      insertRange(statement, 7500, 8500, false);
       statement.execute("flush");
       // prepare Unseq-File
-      for (int i = 500; i < 1500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
-      }
-      statement.executeBatch();
+      insertRange(statement, 500, 1500, true);
       statement.execute("flush");
-      for (int i = 3000; i < 6500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
-      }
-      statement.executeBatch();
+      insertRange(statement, 3000, 6500, false);
       statement.execute("flush");
 
       // prepare BufferWrite cache
-      for (int i = 9000; i < 10000; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
-      }
-      statement.executeBatch();
+      insertRange(statement, 9000, 10000, true);
       // prepare Overflow cache
-      for (int i = 2000; i < 2500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
-      }
-      statement.executeBatch();
+      insertRange(statement, 2000, 2500, false);
       statement.execute("flush");
-    } catch (Exception e) {
-      e.printStackTrace();
+    }
+  }
+
+  private static void insertRange(
+      Statement statement, int startTime, int endTime, boolean booleanValue) throws SQLException {
+    // Reduce SQL parsing and execution overhead without changing rows, write order or flush
+    // boundaries.
+    final int rowsPerInsert = 500;
+    for (int batchStart = startTime; batchStart < endTime; batchStart += rowsPerInsert) {
+      StringBuilder sql =
+          new StringBuilder("INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4) VALUES");
+      int batchEnd = Math.min(batchStart + rowsPerInsert, endTime);
+      for (int time = batchStart; time < batchEnd; time++) {
+        if (time > batchStart) {
+          sql.append(',');
+        }
+        sql.append('(')
+            .append(time)
+            .append(',')
+            .append(time)
+            .append(',')
+            .append(time)
+            .append(',')
+            .append((double) time)
+            .append(",'")
+            .append(time)
+            .append("',")
+            .append(booleanValue)
+            .append(')');
+      }
+      statement.execute(sql.toString());
     }
   }
 }

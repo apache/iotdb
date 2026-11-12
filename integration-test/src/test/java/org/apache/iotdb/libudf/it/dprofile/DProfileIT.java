@@ -44,6 +44,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class})
 public class DProfileIT {
   protected static final int ITERATION_TIMES = 10_000;
+  private static final int INSERT_BATCH_SIZE = 100;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -88,20 +89,35 @@ public class DProfileIT {
     double x = -100d, y = 100d; // borders of random value
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (int i = 1; i <= ITERATION_TIMES; ++i) {
-        statement.execute(
-            String.format(
-                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",
-                i * 1000,
-                (int) Math.floor(x + Math.random() * y % (y - x + 1)),
-                (int) Math.floor(x + Math.random() * y % (y - x + 1))));
-        statement.execute(
-            (String.format(
-                Locale.ENGLISH,
-                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%f,%f)",
-                i * 1000,
-                x + Math.random() * y % (y - x + 1),
-                x + Math.random() * y % (y - x + 1))));
+      // Queries run after setup, so batch each device's rows to reduce SQL requests.
+      // Generate both rows together to retain random-call order and floating-point rounding.
+      for (int start = 1; start <= ITERATION_TIMES; start += INSERT_BATCH_SIZE) {
+        StringBuilder d1InsertSql =
+            new StringBuilder("insert into root.vehicle.d1(timestamp,s1,s2) values");
+        StringBuilder d2InsertSql =
+            new StringBuilder("insert into root.vehicle.d2(timestamp,s1,s2) values");
+        int end = Math.min(start + INSERT_BATCH_SIZE - 1, ITERATION_TIMES);
+        for (int i = start; i <= end; i++) {
+          if (i > start) {
+            d1InsertSql.append(',');
+            d2InsertSql.append(',');
+          }
+          d1InsertSql.append(
+              String.format(
+                  "(%d,%d,%d)",
+                  i * 1000,
+                  (int) Math.floor(x + Math.random() * y % (y - x + 1)),
+                  (int) Math.floor(x + Math.random() * y % (y - x + 1))));
+          d2InsertSql.append(
+              String.format(
+                  Locale.ENGLISH,
+                  "(%d,%f,%f)",
+                  i * 1000,
+                  x + Math.random() * y % (y - x + 1),
+                  x + Math.random() * y % (y - x + 1)));
+        }
+        statement.execute(d1InsertSql.toString());
+        statement.execute(d2InsertSql.toString());
       }
 
       statement.execute("insert into root.test.db(time,s1) values (1,1)");

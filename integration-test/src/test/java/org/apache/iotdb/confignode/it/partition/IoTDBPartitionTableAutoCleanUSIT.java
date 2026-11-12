@@ -29,9 +29,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
+import org.awaitility.Awaitility;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,7 +50,11 @@ public class IoTDBPartitionTableAutoCleanUSIT {
 
   private static final int TEST_REPLICATION_FACTOR = 1;
   private static final long TEST_TIME_PARTITION_INTERVAL_IN_MS = 604800_000;
-  private static final long TEST_TTL_CHECK_INTERVAL = 5_000;
+  private static final long TEST_TIME_PARTITION_INTERVAL_IN_US =
+      TimeUnit.MILLISECONDS.toMicros(TEST_TIME_PARTITION_INTERVAL_IN_MS);
+  // Exercise TTL cleanup promptly without changing the microsecond timestamps or TTL rules.
+  private static final long TEST_TTL_CHECK_INTERVAL = 500;
+  private static final long AUTO_CLEAN_POLL_INTERVAL_IN_MS = 100;
 
   private static final TTimePartitionSlot TEST_CURRENT_TIME_SLOT =
       new TTimePartitionSlot()
@@ -61,8 +65,17 @@ public class IoTDBPartitionTableAutoCleanUSIT {
                   * TEST_TIME_PARTITION_INTERVAL_IN_MS);
   private static final long TEST_TTL_IN_MS = 7 * TEST_TIME_PARTITION_INTERVAL_IN_MS;
 
-  @Before
-  public void setUp() throws Exception {
+  // Inserts use microseconds, while the configured partition interval is converted from
+  // milliseconds.
+  private static final TTimePartitionSlot EXPECTED_CURRENT_TIME_SLOT =
+      new TTimePartitionSlot(
+          TEST_CURRENT_TIME_SLOT.getStartTime()
+              / TEST_TIME_PARTITION_INTERVAL_IN_US
+              * TEST_TIME_PARTITION_INTERVAL_IN_US);
+
+  // Tree and table scenarios use distinct database names and can share the same 1C1D cluster.
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -77,11 +90,13 @@ public class IoTDBPartitionTableAutoCleanUSIT {
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // With microsecond timestamps, database/device TTL precedence must retain only current
+  // partitions.
   @Test
   public void testAutoCleanPartitionTableForTreeModel() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
@@ -120,24 +135,12 @@ public class IoTDBPartitionTableAutoCleanUSIT {
     }
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      for (int retry = 0; retry < 120; retry++) {
-        boolean partitionTableAutoCleaned = true;
-        TDataPartitionTableResp resp = client.getDataPartitionTable(req);
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
-          partitionTableAutoCleaned =
-              resp.getDataPartitionTable().entrySet().stream()
-                  .flatMap(e1 -> e1.getValue().entrySet().stream())
-                  .allMatch(e2 -> e2.getValue().size() == 1);
-        }
-        if (partitionTableAutoCleaned) {
-          return;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
+      awaitPartitionTableAutoCleaned(client, req);
     }
-    Assert.fail("The PartitionTable in the ConfigNode is not auto cleaned!");
   }
 
+  // With microsecond timestamps, table TTL must remove expired partitions and retain the current
+  // one.
   @Test
   public void testAutoCleanPartitionTableForTableModel() throws Exception {
     try (final Connection connection =
@@ -165,21 +168,34 @@ public class IoTDBPartitionTableAutoCleanUSIT {
     req.putToPartitionSlotsMap(TABLE_DATABASE_PREFIX, new TreeMap<>());
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      for (int retry = 0; retry < 120; retry++) {
-        boolean partitionTableAutoCleaned = true;
-        TDataPartitionTableResp resp = client.getDataPartitionTable(req);
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
-          partitionTableAutoCleaned =
-              resp.getDataPartitionTable().entrySet().stream()
-                  .flatMap(e1 -> e1.getValue().entrySet().stream())
-                  .allMatch(e2 -> e2.getValue().size() == 1);
-        }
-        if (partitionTableAutoCleaned) {
-          return;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
+      awaitPartitionTableAutoCleaned(client, req);
     }
-    Assert.fail("The PartitionTable in the ConfigNode is not auto cleaned!");
+  }
+
+  private static void awaitPartitionTableAutoCleaned(
+      SyncConfigNodeIServiceClient client, TDataPartitionReq req) {
+    // Keep the two-minute deadline and require real, successful results rather than an empty match.
+    Awaitility.await("microsecond partition table auto cleanup")
+        .atMost(120, TimeUnit.SECONDS)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(AUTO_CLEAN_POLL_INTERVAL_IN_MS, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              TDataPartitionTableResp resp = client.getDataPartitionTable(req);
+              return TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()
+                  && resp.getDataPartitionTable()
+                      .keySet()
+                      .equals(req.getPartitionSlotsMap().keySet())
+                  && resp.getDataPartitionTable().values().stream()
+                      .allMatch(
+                          seriesPartitions ->
+                              !seriesPartitions.isEmpty()
+                                  && seriesPartitions.values().stream()
+                                      .allMatch(
+                                          timePartitions ->
+                                              timePartitions.size() == 1
+                                                  && timePartitions.containsKey(
+                                                      EXPECTED_CURRENT_TIME_SLOT)));
+            });
   }
 }

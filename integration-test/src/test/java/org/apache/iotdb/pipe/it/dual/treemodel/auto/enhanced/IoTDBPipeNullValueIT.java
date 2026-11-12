@@ -27,9 +27,7 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
-import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -38,22 +36,24 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.function.Consumer;
-
-import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
-public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
+public class IoTDBPipeNullValueIT extends AbstractPipeTreeModelSharedClusterIT {
+
+  @Rule public final TestName testName = new TestName();
 
   // Test dimensions:
   // 1. is or not aligned
@@ -69,8 +69,6 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
     SQL_INSERT,
   }
 
-  private static final Map<InsertType, Consumer<Boolean>> INSERT_NULL_VALUE_MAP = new HashMap<>();
-
   private static final List<String> CREATE_TIMESERIES_SQL =
       Arrays.asList(
           "create timeseries root.sg.d1.s0 with datatype=float",
@@ -79,7 +77,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
   private static final List<String> CREATE_ALIGNED_TIMESERIES_SQL =
       Collections.singletonList("create aligned timeseries root.sg.d1(s0 float, s1 float)");
 
-  private final String deviceId = "root.sg.d1";
+  private String deviceId;
   private final List<String> measurements = Arrays.asList("s0", "s1");
   private final List<TSDataType> types = Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT);
 
@@ -90,6 +88,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
   private Tablet allNullTablet;
 
   private void constructTablet() {
+    deviceId = databasePath() + ".d1";
     final MeasurementSchema[] schemas = new MeasurementSchema[2];
     for (int i = 0; i < schemas.length; i++) {
       schemas[i] = new MeasurementSchema(measurements.get(i), types.get(i));
@@ -137,72 +136,46 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
   @Before
   public void setUp() {
     super.setUp();
-
     constructTablet();
+  }
 
-    // Initialize INSERT_NULL_VALUE_MAP
-    INSERT_NULL_VALUE_MAP.put(
-        InsertType.SESSION_INSERT_RECORD,
-        (isAligned) -> {
-          try {
-            try (final ISession session = senderEnv.getSessionConnection()) {
-              if (isAligned) {
-                session.insertAlignedRecord(deviceId, 3, measurements, types, partialNullValues);
-                session.insertAlignedRecord(deviceId, 4, measurements, types, allNullValues);
-              } else {
-                session.insertRecord(deviceId, 3, measurements, types, partialNullValues);
-                session.insertRecord(deviceId, 4, measurements, types, allNullValues);
-              }
-            } catch (StatementExecutionException e) {
-              fail(e.getMessage());
+  private void insertNullValues(final InsertType insertType, final boolean isAligned)
+      throws Exception {
+    switch (insertType) {
+      case SQL_INSERT -> {
+        final String alignment = isAligned ? " aligned" : "";
+        // Both original rows and the final flush use one JDBC connection, preserving the SQL API.
+        TestUtils.executeNonQueries(
+            senderEnv,
+            isolateDatabasePaths(
+                Arrays.asList(
+                    "insert into root.sg.d1(time, s0, s1)" + alignment + " values (3, null, 25.34)",
+                    "insert into root.sg.d1(time, s0, s1)" + alignment + " values (4, null, null)",
+                    "flush")),
+            null);
+      }
+      case SESSION_INSERT_RECORD, SESSION_INSERT_TABLET -> {
+        // Reuse the write Session for flush instead of opening an additional JDBC connection.
+        try (final ISession session = senderEnv.getSessionConnection()) {
+          if (insertType == InsertType.SESSION_INSERT_RECORD) {
+            if (isAligned) {
+              session.insertAlignedRecord(deviceId, 3, measurements, types, partialNullValues);
+              session.insertAlignedRecord(deviceId, 4, measurements, types, allNullValues);
+            } else {
+              session.insertRecord(deviceId, 3, measurements, types, partialNullValues);
+              session.insertRecord(deviceId, 4, measurements, types, allNullValues);
             }
-          } catch (IoTDBConnectionException e) {
-            fail(e.getMessage());
+          } else if (isAligned) {
+            session.insertAlignedTablet(partialNullTablet);
+            session.insertAlignedTablet(allNullTablet);
+          } else {
+            session.insertTablet(partialNullTablet);
+            session.insertTablet(allNullTablet);
           }
-        });
-
-    INSERT_NULL_VALUE_MAP.put(
-        InsertType.SESSION_INSERT_TABLET,
-        (isAligned) -> {
-          try {
-            try (final ISession session = senderEnv.getSessionConnection()) {
-              if (isAligned) {
-                session.insertAlignedTablet(partialNullTablet);
-                session.insertAlignedTablet(allNullTablet);
-              } else {
-                session.insertTablet(partialNullTablet);
-                session.insertTablet(allNullTablet);
-              }
-            } catch (StatementExecutionException e) {
-              fail(e.getMessage());
-            }
-          } catch (IoTDBConnectionException e) {
-            fail(e.getMessage());
-          }
-        });
-
-    INSERT_NULL_VALUE_MAP.put(
-        InsertType.SQL_INSERT,
-        (isAligned) -> {
-          // Partial null
-          TestUtils.executeNonQueries(
-              senderEnv,
-              isAligned
-                  ? Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) aligned values (3, null, 25.34)")
-                  : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"),
-              null);
-          // All null
-          TestUtils.executeNonQueries(
-              senderEnv,
-              isAligned
-                  ? Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) aligned values (4, null, null)")
-                  : Collections.singletonList(
-                      "insert into root.sg.d1(time, s0, s1) values (4, null, null)"),
-              null);
-        });
+          session.executeNonQueryStatement("flush");
+        }
+      }
+    }
   }
 
   private void testInsertNullValueTemplate(
@@ -228,7 +201,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
       if (withParsing) {
         sourceAttributes.put("start-time", "1970-01-01T08:00:00.000+08:00");
         sourceAttributes.put("end-time", "1970-01-01T09:00:00.000+08:00");
-        sourceAttributes.put("source.pattern", "root.sg.d1");
+        sourceAttributes.put("source.pattern", databasePath() + ".d1");
       }
 
       final TSStatus status =
@@ -240,39 +213,58 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
     }
 
     TestUtils.executeNonQueries(
-        receiverEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL, null);
+        receiverEnv,
+        isolateDatabasePaths(isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL),
+        null);
 
     TestUtils.executeNonQueries(
-        senderEnv, isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL, null);
+        senderEnv,
+        isolateDatabasePaths(isAligned ? CREATE_ALIGNED_TIMESERIES_SQL : CREATE_TIMESERIES_SQL),
+        null);
 
-    INSERT_NULL_VALUE_MAP.get(insertType).accept(isAligned);
-    TestUtils.executeNonQuery(senderEnv, "flush", null);
+    insertNullValues(insertType, isAligned);
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.sg.**",
-        "count(root.sg.d1.s0),count(root.sg.d1.s1),",
+        isolateDatabasePaths("select count(*) from root.sg.**"),
+        isolateDatabasePaths("count(root.sg.d1.s0),count(root.sg.d1.s1),"),
         Collections.singleton("0,1,"));
+  }
+
+  private String databasePath() {
+    return "root.sg_" + testName.getMethodName().toLowerCase(Locale.ROOT);
+  }
+
+  private String isolateDatabasePaths(final String value) {
+    return value.replace("root.sg", databasePath());
+  }
+
+  private List<String> isolateDatabasePaths(final List<String> values) {
+    return values.stream().map(this::isolateDatabasePaths).toList();
   }
 
   // ---------------------- //
   // Scenario 1: SQL Insert //
   // ---------------------- //
+  // Filtered non-aligned SQL rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSQLInsertWithParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SQL_INSERT, false, true);
   }
 
+  // Unfiltered non-aligned SQL rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSQLInsertWithoutParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SQL_INSERT, false, false);
   }
 
+  // Filtered aligned SQL rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSQLInsertAlignedWithParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SQL_INSERT, true, true);
   }
 
+  // Unfiltered aligned SQL rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSQLInsertAlignedWithoutParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SQL_INSERT, true, false);
@@ -281,21 +273,25 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
   // --------------------------------- //
   // Scenario 2: Session Insert Record //
   // --------------------------------- //
+  // Filtered non-aligned insertRecord rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSessionInsertRecordWithParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, false, true);
   }
 
+  // Unfiltered non-aligned insertRecord rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSessionInsertRecordWithoutParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, false, false);
   }
 
+  // Filtered aligned insertRecord rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSessionInsertRecordAlignedWithParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, true, true);
   }
 
+  // Unfiltered aligned insertRecord rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSessionInsertRecordAlignedWithoutParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_RECORD, true, false);
@@ -304,21 +300,25 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
   // --------------------------------- //
   // Scenario 3: Session Insert Tablet //
   // --------------------------------- //
+  // Filtered non-aligned Tablet rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSessionInsertTabletWithParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, true);
   }
 
+  // Unfiltered non-aligned Tablet rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSessionInsertTabletWithoutParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, false);
   }
 
+  // Filtered aligned Tablet rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSessionInsertTabletAlignedWithParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, true);
   }
 
+  // Unfiltered aligned Tablet rows with partial/all nulls must yield s0=0, s1=1.
   @Test
   public void testSessionInsertTabletAlignedWithoutParsing() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, false);

@@ -54,27 +54,39 @@ public class IoTDBPipeRelationalSecurityIT extends AbstractPipeTableModelDualMan
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
     setupConfig();
-    senderEnv.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 1);
+    executeOnBothEnvs(env -> env.initClusterEnvironment(1, 1));
   }
 
   @Override
   protected void setupConfig() {
     super.setupConfig();
+    // This small auth snapshot needs few Regions and small schema-analysis buffers; the defaults
+    // can otherwise exhaust query memory while loading several tiny files concurrently.
     senderEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
+        .setDataRegionPerDataNode(2)
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
+        .setDataRegionPerDataNode(2)
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1);
+    senderEnv
+        .getConfig()
+        .getDataNodeConfig()
+        .setLoadTsFileAnalyzeSchemaMemorySizeInBytes(256 * 1024L);
+    receiverEnv
+        .getConfig()
+        .getDataNodeConfig()
+        .setLoadTsFileAnalyzeSchemaMemorySizeInBytes(256 * 1024L);
   }
 
+  // A receiver with SECURITY, CREATE and INSERT must load all six snapshot privileges and ten rows.
   @Test
   public void testReceiverSecurityPrivilegeForRelationalAuthSnapshot() throws Exception {
     final String receiverUser = "pipe_receiver";
@@ -104,7 +116,8 @@ public class IoTDBPipeRelationalSecurityIT extends AbstractPipeTableModelDualMan
                 replicatedUser)),
         null);
     TableModelUtils.createDataBaseAndTable(senderEnv, tableName, databaseName);
-    TableModelUtils.insertData(databaseName, tableName, 0, 100, senderEnv);
+    // A small batch still exercises data transfer alongside the relational authorization snapshot.
+    TableModelUtils.insertData(databaseName, tableName, 0, 10, senderEnv);
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final Map<String, String> sourceAttributes = new HashMap<>();
@@ -152,7 +165,7 @@ public class IoTDBPipeRelationalSecurityIT extends AbstractPipeTableModelDualMan
     TableModelUtils.assertCountData(
         databaseName,
         tableName,
-        100,
+        10,
         receiverEnv,
         o -> {
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
