@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -161,8 +162,8 @@ public class PipeTestUtils {
 
   /**
    * Wait for committed full-flush barriers, then let the caller verify the receiver's exact result.
-   * The caller must stop writing and use a running, completion-capable pipe capturing every
-   * existing DataRegion. Enable the sender's JMX reporter before cluster startup. This proves data
+   * The caller must stop writing and use a running, completion-capable pipe with at least one
+   * captured DataRegion. Enable the sender's JMX reporter before cluster startup. This proves data
    * completion only; it cannot replace observation of paused pipes, rejected events, or schema/auth
    * synchronization.
    */
@@ -250,8 +251,10 @@ public class PipeTestUtils {
           "Pipe node errors: " + pipe.getRuntimeMeta().getNodeId2PipeRuntimeExceptionMap(),
           pipe.getRuntimeMeta().getNodeId2PipeRuntimeExceptionMap().isEmpty());
 
-      // Region -> pipe task leader, and leader node id -> endpoint. Derive the expected nodes from
-      // metadata rather than present gauges, so a missing/failed source cannot count as completed.
+      // Captured region -> pipe task leader, and leader node id -> endpoint. Derive the expected
+      // nodes from metadata rather than gauges, so a missing/failed source cannot count as
+      // completed.
+      final PipeStaticMeta staticMeta = pipe.getStaticMeta();
       final Map<Integer, Integer> regionLeaders = new HashMap<>();
       final Map<Integer, DataNodeWrapper> taskOwners = new HashMap<>();
       for (final boolean tableModel : new boolean[] {false, true}) {
@@ -265,6 +268,21 @@ public class PipeTestUtils {
             TSStatusCode.SUCCESS_STATUS.getStatusCode(),
             regions.getStatus().getCode());
         for (final TRegionInfo region : regions.getRegionInfoList()) {
+          // An excluded database creates no local source or completion metric. Match both models
+          // as the DataNode task builder does, so an excluded-only node is not mistaken for a
+          // missing source. Selected regions still require their task and completion metric.
+          if (!DataRegionListeningFilter.shouldDatabaseBeListened(
+                  staticMeta.getSourceParameters(),
+                  false,
+                  region.getDatabase(),
+                  staticMeta.getPipeType())
+              && !DataRegionListeningFilter.shouldDatabaseBeListened(
+                  staticMeta.getSourceParameters(),
+                  true,
+                  region.getDatabase(),
+                  staticMeta.getPipeType())) {
+            continue;
+          }
           final int regionId = region.getConsensusGroupId().getId();
           final PipeTaskMeta task =
               pipe.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().get(regionId);
@@ -287,11 +305,12 @@ public class PipeTestUtils {
           }
         }
       }
-      Assert.assertFalse("No DataRegions to await for " + pipeName, regionLeaders.isEmpty());
+      Assert.assertFalse(
+          "No captured DataRegions to await for " + pipeName, regionLeaders.isEmpty());
       Assert.assertTrue(
           "Missing task owner endpoints: " + regionLeaders,
           taskOwners.keySet().containsAll(regionLeaders.values()));
-      return new CompletionSnapshot(pipe.getStaticMeta(), regionLeaders, taskOwners);
+      return new CompletionSnapshot(staticMeta, regionLeaders, taskOwners);
     }
   }
 

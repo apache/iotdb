@@ -63,6 +63,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelSharedClusterIT {
 
   @Override
   protected void setupConfig() {
+    // Retain the shared fixture's single-Region database budget. Extra matching Regions can
+    // otherwise mask excluded-only owners when completion is checked across multiple DataNodes.
+    super.setupConfig();
     senderEnv
         .getConfig()
         .getDataNodeConfig()
@@ -97,7 +100,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeTableModelSharedClusterIT {
   }
 
   // Database-name filters and SQL model isolation must capture matching table data and reject
-  // operations from the wrong dialect.
+  // operations from the wrong dialect. Completion checks must ignore Region owners whose
+  // databases are excluded by both model filters.
   @Test
   public void testMatchingMultipleDatabases() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);

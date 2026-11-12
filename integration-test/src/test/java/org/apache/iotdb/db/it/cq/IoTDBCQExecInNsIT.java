@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
 
 import org.awaitility.Awaitility;
 import org.junit.AfterClass;
@@ -519,6 +520,9 @@ public class IoTDBCQExecInNsIT {
   // delay. The caller closes the returned result set and validates every timestamp and value.
   private static ResultSet awaitCQResult(Statement statement, String query, int expectedRowCount)
       throws Exception {
+    // CQ writes can fall between DataNode query snapshots. Count each snapshot independently
+    // while waiting; the caller then compares all timestamps and values through the cluster
+    // wrapper. Query and transport errors still propagate immediately.
     Awaitility.await("continuous query output row count")
         .atMost(CQ_RESULT_TIMEOUT_IN_SECONDS, TimeUnit.SECONDS)
         .pollDelay(0, TimeUnit.MILLISECONDS)
@@ -526,11 +530,16 @@ public class IoTDBCQExecInNsIT {
         .until(
             () -> {
               try (ResultSet resultSet = statement.executeQuery(query)) {
-                int rowCount = 0;
-                while (resultSet.next()) {
-                  rowCount++;
+                for (ResultSet nodeResultSet : ClusterTestResultSet.getNodeResultSets(resultSet)) {
+                  int rowCount = 0;
+                  while (nodeResultSet.next()) {
+                    rowCount++;
+                  }
+                  if (rowCount < expectedRowCount) {
+                    return false;
+                  }
                 }
-                return rowCount >= expectedRowCount;
+                return true;
               }
             });
     return statement.executeQuery(query);
