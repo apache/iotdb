@@ -18,10 +18,18 @@
  */
 package org.apache.iotdb.db.it.cq;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -34,6 +42,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -50,6 +59,105 @@ public class IoTDBCQExecIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testCQExecutionWithReadDataPermission() throws Exception {
+    testCQExecutionWithReadDataPermission(false);
+  }
+
+  @Test
+  public void testCQExecutionWithReadDataPermissionAlignByDevice() throws Exception {
+    testCQExecutionWithReadDataPermission(true);
+  }
+
+  private void testCQExecutionWithReadDataPermission(boolean alignByDevice) throws Exception {
+    String cqId = alignByDevice ? "cq_read_auth_aligned" : "cq_read_auth";
+    String database = "root." + cqId;
+    String username = cqId + "_user";
+    String password = "CQRead!Test2026";
+    String queryBody =
+        "SELECT * INTO "
+            + database
+            + ".target(::) FROM "
+            + database
+            + ".source"
+            + (alignByDevice ? " ALIGN BY DEVICE" : "");
+    String resultQuery = "SELECT s1, s2 FROM " + database + ".target";
+    String resultHeader = "Time," + database + ".target.s1," + database + ".target.s2,";
+
+    IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients =
+        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE USER " + username + " '" + password + "'");
+      statement.execute("CREATE DATABASE " + database);
+      try {
+        statement.execute("CREATE TIMESERIES " + database + ".source.s1 WITH DATATYPE=INT64");
+        statement.execute("CREATE TIMESERIES " + database + ".source.s2 WITH DATATYPE=INT64");
+        statement.execute("CREATE TIMESERIES " + database + ".target.s1 WITH DATATYPE=INT64");
+        statement.execute("CREATE TIMESERIES " + database + ".target.s2 WITH DATATYPE=INT64");
+        statement.execute(
+            "INSERT INTO "
+                + database
+                + ".source(time, s1, s2) VALUES (1, 11, 21), (1001, 12, 22), (2001, 13, 23)");
+        statement.execute("GRANT SYSTEM ON root.** TO USER " + username);
+        statement.execute("GRANT WRITE_DATA ON " + database + ".target.** TO USER " + username);
+        statement.execute("GRANT READ_DATA ON " + database + ".source.s1 TO USER " + username);
+
+        try (Connection userConnection = EnvFactory.getEnv().getConnection(username, password);
+            Statement userStatement = userConnection.createStatement()) {
+          // Keep the scheduler idle and execute deterministic windows through its DataNode RPC.
+          userStatement.execute(
+              "CREATE CQ "
+                  + cqId
+                  + " RESAMPLE EVERY 1s BOUNDARY "
+                  + (System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1))
+                  + " BEGIN "
+                  + queryBody
+                  + " END");
+        }
+        try {
+          TExecuteCQ request = new TExecuteCQ(queryBody, 0, 1000, 10000, "UTC", cqId, username);
+          executeCQOnAllDataNodes(clients, request);
+          // The wildcard must not copy s2, for which the CQ owner has no READ_DATA privilege.
+          resultSetEqualTest(resultQuery, resultHeader, new String[] {"1,11,null,"});
+
+          statement.execute("REVOKE READ_DATA ON " + database + ".source.s1 FROM USER " + username);
+          request.setStartTime(1000).setEndTime(2000);
+          executeCQOnAllDataNodes(clients, request);
+          resultSetEqualTest(resultQuery, resultHeader, new String[] {"1,11,null,"});
+
+          statement.execute("GRANT READ_DATA ON " + database + ".source.** TO USER " + username);
+          request.setStartTime(2000).setEndTime(3000);
+          executeCQOnAllDataNodes(clients, request);
+          resultSetEqualTest(resultQuery, resultHeader, new String[] {"1,11,null,", "2001,13,23,"});
+        } finally {
+          statement.execute("DROP CQ " + cqId);
+        }
+      } finally {
+        statement.execute("DELETE DATABASE " + database);
+        statement.execute("DROP USER " + username);
+      }
+    } finally {
+      clients.close();
+    }
+  }
+
+  private void executeCQOnAllDataNodes(
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients, TExecuteCQ request)
+      throws Exception {
+    for (DataNodeWrapper dataNode : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      try (SyncDataNodeInternalServiceClient client =
+          clients.borrowClient(
+              new TEndPoint(dataNode.getInternalAddress(), dataNode.getInternalPort()))) {
+        TSStatus status = client.executeCQ(request);
+        assertEquals(
+            status.toString(), TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      }
+    }
   }
 
   @Test
