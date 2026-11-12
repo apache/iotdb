@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +75,9 @@ public class PipeMemoryManager {
   private final Map<PipeIdentity, Integer> reservedTsFileParserCountByPipe = new HashMap<>();
   private final Map<PipeRegionIdentity, Integer> reservedTsFileParserCountByPipeRegion =
       new HashMap<>();
+  private final Map<PipeRegionIdentity, Map<TsFileParserMemoryReservation, Runnable>>
+      reservedTsFileParserWorkersByPipeRegion = new HashMap<>();
+  private final Map<Runnable, Integer> reservedTsFileParserCountByWorker = new HashMap<>();
   private final Map<PipeRegionIdentity, LinkedHashSet<TsFileParserMemoryReservation>>
       waitingTsFileParserRequestsByPipeRegion = new HashMap<>();
   private final Map<PipeIdentity, ArrayDeque<PipeRegionIdentity>>
@@ -242,8 +246,10 @@ public class PipeMemoryManager {
             1, Math.min(globalLimit, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion()));
     final int reservedCountOfPipeRegion =
         reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0);
+    final Runnable worker = reservationKey.wakeUpCallback;
     if (reservedTsFileParserCount >= globalLimit
-        || reservedCountOfPipeRegion >= perPipeRegionLimit) {
+        || reservedCountOfPipeRegion >= perPipeRegionLimit
+        || (worker != null && reservedTsFileParserCountByWorker.containsKey(worker))) {
       PipeResourceMetrics.getInstance()
           .recordTsFileParserAdmissionReject(TsFileParserAdmissionRejectReason.CAP);
       notifyNextTsFileParserMemoryReservationInternal();
@@ -291,6 +297,12 @@ public class PipeMemoryManager {
     reservedTsFileParserCount++;
     reservedTsFileParserCountByPipe.merge(pipeIdentity, 1, Integer::sum);
     reservedTsFileParserCountByPipeRegion.put(pipeRegionIdentity, reservedCountOfPipeRegion + 1);
+    reservedTsFileParserWorkersByPipeRegion
+        .computeIfAbsent(pipeRegionIdentity, key -> new LinkedHashMap<>())
+        .put(reservationKey, worker);
+    if (worker != null) {
+      reservedTsFileParserCountByWorker.merge(worker, 1, Integer::sum);
+    }
     notifyNextTsFileParserMemoryReservationInternal();
     return true;
   }
@@ -312,18 +324,42 @@ public class PipeMemoryManager {
 
   public synchronized void releaseTsFileParserMemory(
       final String pipeName, final long creationTime, final String dataRegionId) {
+    releaseTsFileParserMemory(pipeName, creationTime, dataRegionId, null);
+  }
+
+  public synchronized void releaseTsFileParserMemory(
+      final String pipeName,
+      final long creationTime,
+      final String dataRegionId,
+      final TsFileParserMemoryReservation reservationKey) {
     final PipeIdentity pipeIdentity = new PipeIdentity(pipeName, creationTime);
     final PipeRegionIdentity pipeRegionIdentity =
         new PipeRegionIdentity(pipeIdentity, dataRegionId);
     final int reservedCountOfPipeRegion =
         reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0);
-    if (reservedCountOfPipeRegion <= 0) {
+    final Map<TsFileParserMemoryReservation, Runnable> workersOfPipeRegion =
+        reservedTsFileParserWorkersByPipeRegion.get(pipeRegionIdentity);
+    if (reservedCountOfPipeRegion <= 0
+        || (reservationKey != null && !workersOfPipeRegion.containsKey(reservationKey))) {
       LOGGER.warn(
           "Failed to release TsFile parser memory for pipe {} (creation time {}) in DataRegion {} because no reservation exists.",
           pipeName,
           creationTime,
           dataRegionId);
       return;
+    }
+
+    final Runnable worker =
+        workersOfPipeRegion.remove(
+            reservationKey != null
+                ? reservationKey
+                : workersOfPipeRegion.keySet().iterator().next());
+    if (workersOfPipeRegion.isEmpty()) {
+      reservedTsFileParserWorkersByPipeRegion.remove(pipeRegionIdentity);
+    }
+    if (worker != null) {
+      reservedTsFileParserCountByWorker.computeIfPresent(
+          worker, (key, count) -> count == 1 ? null : count - 1);
     }
 
     if (reservedCountOfPipeRegion == 1) {
@@ -406,6 +442,7 @@ public class PipeMemoryManager {
     final List<TsFileParserMemoryReservation> eligibleRequests = new ArrayList<>();
     final Map<PipeRegionIdentity, Integer> selectedRequestsByPipeRegion = new HashMap<>();
     final Set<PipeIdentity> selectedPipes = new HashSet<>();
+    final Set<Runnable> selectedWorkers = new HashSet<>();
     PipeIdentity lastSelectedPipe = lastAdmittedWaitingTsFileParserPipe;
     // Expose one fair turn per available slot, instead of serializing all free slots behind a
     // single worker. Account for every earlier turn's memory even if its worker has not run yet.
@@ -429,6 +466,7 @@ public class PipeMemoryManager {
               lastSelectedPipe,
               selectedRequestsByPipeRegion,
               selectedPipes,
+              selectedWorkers,
               true);
       final PipeRegionIdentity nextRegionWhenNoOtherPipeIsEligible =
           nextPipeRegion == null
@@ -438,6 +476,7 @@ public class PipeMemoryManager {
                   lastSelectedPipe,
                   selectedRequestsByPipeRegion,
                   selectedPipes,
+                  selectedWorkers,
                   false)
               : nextPipeRegion;
       if (nextRegionWhenNoOtherPipeIsEligible == null) {
@@ -453,7 +492,11 @@ public class PipeMemoryManager {
           i--) {
         requests.next();
       }
-      eligibleRequests.add(requests.next());
+      final TsFileParserMemoryReservation request = requests.next();
+      eligibleRequests.add(request);
+      if (request.wakeUpCallback != null) {
+        selectedWorkers.add(request.wakeUpCallback);
+      }
       selectedRequestsByPipeRegion.merge(nextRegionWhenNoOtherPipeIsEligible, 1, Integer::sum);
       selectedPipes.add(nextRegionWhenNoOtherPipeIsEligible.pipeIdentity);
       lastSelectedPipe = nextRegionWhenNoOtherPipeIsEligible.pipeIdentity;
@@ -467,6 +510,7 @@ public class PipeMemoryManager {
       final PipeIdentity lastSelectedPipe,
       final Map<PipeRegionIdentity, Integer> selectedRequestsByPipeRegion,
       final Set<PipeIdentity> selectedPipes,
+      final Set<Runnable> selectedWorkers,
       final boolean requireUnselectedPipe) {
     PipeRegionIdentity firstEligiblePipeRegion = null;
     boolean hasVisitedLastAdmittedPipe = lastSelectedPipe == null;
@@ -499,6 +543,20 @@ public class PipeMemoryManager {
             && reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0)
                     + selectedCount
                 < perPipeRegionLimit) {
+          final java.util.Iterator<TsFileParserMemoryReservation> requests =
+              waitingTsFileParserRequestsByPipeRegion.get(pipeRegionIdentity).iterator();
+          for (int i = 0; i < selectedCount; i++) {
+            requests.next();
+          }
+          final Runnable worker = requests.next().wakeUpCallback;
+          // A processor worker executes its subtasks serially. Leaving multiple fair turns for
+          // that worker strands free parser slots while other workers have runnable requests.
+          // Requests without a processor worker (for example subscriptions) remain independent.
+          if (worker != null
+              && (reservedTsFileParserCountByWorker.containsKey(worker)
+                  || selectedWorkers.contains(worker))) {
+            continue;
+          }
           if (eligiblePipeRegion == null) {
             eligiblePipeRegion = pipeRegionIdentity;
           }
@@ -579,7 +637,10 @@ public class PipeMemoryManager {
     // Accessed only under the PipeMemoryManager monitor while this request is queued.
     private long waitingStartTimeInNanos;
 
-    /** The callback must only wake the worker; it runs while the memory manager monitor is held. */
+    /**
+     * The callback must only wake the worker; it runs while the memory manager monitor is held.
+     * Requests on the same serial processor worker must share the same callback instance.
+     */
     public void setWakeUpCallback(final Runnable wakeUpCallback) {
       this.wakeUpCallback = wakeUpCallback;
     }
