@@ -200,6 +200,55 @@ public class SchemaTagsFidelityTest {
   }
 
   @Test
+  public void csvIsWrittenAsUtf8RegardlessOfThePlatformDefault() throws IOException {
+    Map<String, String> tags = new LinkedHashMap<>();
+    tags.put("cn", "中文😀");
+    File csv =
+        writeV2File(
+            "utf8-written.csv",
+            Arrays.asList(
+                "root.t.d1.s1",
+                "",
+                "INT64",
+                "TS_2DIFF",
+                "SNAPPY",
+                AbstractSchemaTool.toJsonCell(tags),
+                ""));
+
+    // RFC4180: the cell holds a JSON object, so it is quoted and its inner quotes are doubled.
+    String expected =
+        String.join(",", Constants.HEAD_COLUMNS_V2)
+            + "\n"
+            + "root.t.d1.s1,,INT64,TS_2DIFF,SNAPPY,\""
+            + AbstractSchemaTool.toJsonCell(tags).replace("\"", "\"\"")
+            + "\",\n";
+    assertEquals(
+        "the schema CSV must be written as UTF-8",
+        expected,
+        new String(Files.readAllBytes(csv.toPath()), StandardCharsets.UTF_8));
+  }
+
+  @Test
+  public void csvIsParsedAsUtf8RegardlessOfThePlatformDefault() throws IOException {
+    Map<String, String> tags = new LinkedHashMap<>();
+    tags.put("cn", "中文😀");
+    String content =
+        String.join(",", Constants.HEAD_COLUMNS_V2)
+            + "\n"
+            + "root.t.d1.s1,,INT64,TS_2DIFF,SNAPPY,\""
+            + AbstractSchemaTool.toJsonCell(tags).replace("\"", "\"\"")
+            + "\",\n";
+    // Written as UTF-8 bytes directly, so only the reader's charset can change the outcome.
+    File csv = temporaryFolder.newFile("utf8-read.csv");
+    Files.write(csv.toPath(), content.getBytes(StandardCharsets.UTF_8));
+
+    assertEquals(
+        Constants.HEAD_COLUMNS_V2, ImportSchemaTree.readHeaderNames(csv.getAbsolutePath()));
+    CSVRecord record = ImportSchemaTree.readCsvFile(csv.getAbsolutePath()).getRecords().get(0);
+    assertEquals(tags, AbstractSchemaTool.parseJsonCell(record.get(Constants.HEADER_TAGS)));
+  }
+
+  @Test
   public void legacyFiveColumnHeaderSelectsTheLegacyPath() {
     assertFalse(ImportSchemaTree.isV2Format(Constants.HEAD_COLUMNS));
     assertTrue(ImportSchemaTree.isV2Format(Constants.HEAD_COLUMNS_V2));

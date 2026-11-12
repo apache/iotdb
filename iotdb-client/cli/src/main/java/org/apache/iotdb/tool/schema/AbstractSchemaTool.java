@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -284,14 +285,14 @@ public abstract class AbstractSchemaTool {
 
     public void printRecord(final Iterable<?> values) throws IOException {
       if (csvPrinter == null) {
-        csvPrinter = csvFormat.print(new PrintWriter(filePath));
+        csvPrinter = csvFormat.print(new PrintWriter(filePath, StandardCharsets.UTF_8));
       }
       csvPrinter.printRecord(values);
     }
 
     public void printRecordLn(final Iterable<?> values) throws IOException {
       if (csvPrinter == null) {
-        csvPrinter = csvFormat.print(new PrintWriter(filePath));
+        csvPrinter = csvFormat.print(new PrintWriter(filePath, StandardCharsets.UTF_8));
       }
       Iterator var2 = values.iterator();
 
@@ -305,7 +306,7 @@ public abstract class AbstractSchemaTool {
     public void print(Object value) {
       if (csvPrinter == null) {
         try {
-          csvPrinter = csvFormat.print(new PrintWriter(filePath));
+          csvPrinter = csvFormat.print(new PrintWriter(filePath, StandardCharsets.UTF_8));
         } catch (IOException e) {
           ioTPrinter.printException(e);
           return;

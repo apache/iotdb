@@ -43,6 +43,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -144,7 +145,9 @@ public class ImportSchemaTree extends AbstractImportSchema {
     } else {
       builder.setQuote('`').setEscape('\\');
     }
-    return builder.build().parse(new InputStreamReader(new FileInputStream(path)));
+    return builder
+        .build()
+        .parse(new InputStreamReader(new FileInputStream(path), StandardCharsets.UTF_8));
   }
 
   /**
@@ -153,7 +156,8 @@ public class ImportSchemaTree extends AbstractImportSchema {
    */
   static List<String> readHeaderNames(String path) throws IOException {
     try (BufferedReader reader =
-        new BufferedReader(new InputStreamReader(new FileInputStream(path)))) {
+        new BufferedReader(
+            new InputStreamReader(new FileInputStream(path), StandardCharsets.UTF_8))) {
       String headerLine = reader.readLine();
       if (headerLine == null) {
         return Collections.emptyList();
