@@ -551,7 +551,7 @@ public class ClusterSchemaManagerTest {
   }
 
   @Test
-  public void testResetTableTtlWithInfiniteDefaultIsNoOp() throws Exception {
+  public void testResetTableTtlWithInfiniteDefault() throws Exception {
     final String database = "ttl_default_no_op_test";
     for (final boolean explicitInfinite : new boolean[] {false, true}) {
       for (final String initialTtl : new String[] {null, "INF", String.valueOf(Long.MAX_VALUE)}) {
@@ -578,9 +578,17 @@ public class ClusterSchemaManagerTest {
                 database, TABLE, originalProperties, updatedProperties, false);
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getLeft().getCode());
-        Assert.assertNull(result.getRight());
-        Assert.assertTrue(updatedProperties.isEmpty());
-        Assert.assertTrue(originalProperties.isEmpty());
+        if (String.valueOf(Long.MAX_VALUE).equals(initialTtl)) {
+          Assert.assertNotNull(result.getRight());
+          Assert.assertEquals("INF", updatedProperties.get(TsTable.TTL_PROPERTY));
+          Assert.assertEquals(initialTtl, originalProperties.get(TsTable.TTL_PROPERTY));
+          Assert.assertEquals(
+              "INF", result.getRight().getPropValue(TsTable.TTL_PROPERTY).orElse(null));
+        } else {
+          Assert.assertNull(result.getRight());
+          Assert.assertTrue(updatedProperties.isEmpty());
+          Assert.assertTrue(originalProperties.isEmpty());
+        }
         Assert.assertEquals(
             initialTtl,
             manager

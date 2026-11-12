@@ -20,12 +20,17 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
+import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogWriter;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
@@ -33,6 +38,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafil
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.WrappedSegment;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.IPageManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.PageIOChannel;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.PageManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -46,6 +54,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -60,6 +73,13 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer.getCachedMNodeContainer;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 public class SchemaFileTest {
 
@@ -88,6 +108,247 @@ public class SchemaFileTest {
     ICachedMNodeContainer container = getCachedMNodeContainer(node);
     container.transferAllBufferReceivingToFlushing();
     st.writeMNode(node);
+  }
+
+  @Test
+  public void testInitialHeaderHandlesShortWrites() throws Exception {
+    SchemaFile sf = SchemaFile.initSchemaFile("root.shortHeader", TEST_SCHEMA_REGION_ID);
+    sf.close();
+    FileChannel channel = mock(FileChannel.class, withSettings().useConstructor());
+    setField(SchemaFile.class, sf, "channel", channel);
+    ByteBuffer persistedHeader = ByteBuffer.allocate(29);
+    when(channel.write(any(ByteBuffer.class), anyLong()))
+        .thenAnswer(
+            invocation -> {
+              ByteBuffer source = invocation.getArgument(0);
+              long position = invocation.getArgument(1);
+              if (position >= SchemaFileConfig.FILE_HEADER_SIZE) {
+                int size = source.remaining();
+                source.position(source.limit());
+                return size;
+              }
+              int size = Math.min(3, source.remaining());
+              persistedHeader.position((int) position);
+              for (int i = 0; i < size; i++) {
+                persistedHeader.put(source.get());
+              }
+              return size;
+            });
+    try {
+      initializeHeader(sf);
+      persistedHeader.flip();
+      Assert.assertEquals(29, persistedHeader.remaining());
+      Assert.assertEquals(0, persistedHeader.getInt());
+      Assert.assertEquals(Long.MAX_VALUE, persistedHeader.getLong());
+      Assert.assertEquals(0, persistedHeader.get());
+      Assert.assertEquals(-1, persistedHeader.getInt());
+      Assert.assertEquals(0L, persistedHeader.getLong());
+      Assert.assertEquals(SchemaFileConfig.SCHEMA_FILE_VERSION, persistedHeader.getInt());
+    } finally {
+      sf.close();
+    }
+  }
+
+  @Test
+  public void testInitialHeaderWriteWithNoProgressFails() throws Exception {
+    SchemaFile sf = SchemaFile.initSchemaFile("root.zeroHeaderWrite", TEST_SCHEMA_REGION_ID);
+    sf.close();
+    FileChannel channel = mock(FileChannel.class, withSettings().useConstructor());
+    setField(SchemaFile.class, sf, "channel", channel);
+    IOException fallbackFailure = new IOException("Header write was retried");
+    int[] headerWriteCalls = {0};
+    when(channel.write(any(ByteBuffer.class), anyLong()))
+        .thenAnswer(
+            invocation -> {
+              ByteBuffer source = invocation.getArgument(0);
+              long position = invocation.getArgument(1);
+              if (position >= SchemaFileConfig.FILE_HEADER_SIZE) {
+                int size = source.remaining();
+                source.position(source.limit());
+                return size;
+              }
+              headerWriteCalls[0]++;
+              if (headerWriteCalls[0] > 1) {
+                throw fallbackFailure;
+              }
+              return 0;
+            });
+
+    try {
+      initializeHeader(sf);
+      Assert.fail("Header write with no progress must abort initialization");
+    } catch (InvocationTargetException e) {
+      Assert.assertEquals(1, headerWriteCalls[0]);
+      Assert.assertEquals(
+          UtilMessages.EXCEPTION_FILE_CHANNEL_WRITE_MADE_NO_PROGRESS_B0F24ACD,
+          e.getCause().getMessage());
+    }
+  }
+
+  @Test
+  public void testClearPersistsHeaderForReopen() throws Exception {
+    SchemaFile sf = SchemaFile.initSchemaFile("root.clearedHeader", TEST_SCHEMA_REGION_ID);
+    sf.clear();
+
+    FileChannel channel = (FileChannel) getField(SchemaFile.class, sf, "channel");
+    ByteBuffer persistedHeader = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
+    long position = 0;
+    while (persistedHeader.hasRemaining()) {
+      int read = channel.read(persistedHeader, position);
+      Assert.assertTrue("Header must be present after clear", read > 0);
+      position += read;
+    }
+    persistedHeader.flip();
+    Assert.assertEquals(0, persistedHeader.getInt());
+    Assert.assertEquals(Long.MAX_VALUE, persistedHeader.getLong());
+    Assert.assertEquals(0, persistedHeader.get());
+    Assert.assertEquals(-1, persistedHeader.getInt());
+    Assert.assertEquals(0L, persistedHeader.getLong());
+    Assert.assertEquals(SchemaFileConfig.SCHEMA_FILE_VERSION, persistedHeader.getInt());
+
+    sf.close();
+
+    SchemaFile reopened = SchemaFile.loadSchemaFile("root.clearedHeader", TEST_SCHEMA_REGION_ID);
+    try {
+      Assert.assertNotNull(reopened.init());
+    } finally {
+      reopened.close();
+    }
+  }
+
+  @Test
+  public void testInitialHeaderWriteFailureClosesResources() throws Exception {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    String originalProtocol = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.SIMPLE_CONSENSUS);
+    try {
+      assertInitialHeaderWriteFailureClosesResources();
+    } finally {
+      config.setSchemaRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testInitialPageWriteFailureTruncatesFileAndClosesChannel() throws Exception {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    String originalProtocol = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.SIMPLE_CONSENSUS);
+    try {
+      SchemaFile sf = SchemaFile.initSchemaFile("root.failedPage", TEST_SCHEMA_REGION_ID);
+      sf.close();
+      FileChannel channel = mock(FileChannel.class, withSettings().useConstructor());
+      setField(SchemaFile.class, sf, "channel", channel);
+      IOException failure = new IOException("Injected initial page write failure");
+      when(channel.write(any(ByteBuffer.class), anyLong()))
+          .thenAnswer(
+              invocation -> {
+                long position = invocation.getArgument(1);
+                if (position >= SchemaFileConfig.FILE_HEADER_SIZE) {
+                  throw failure;
+                }
+                ByteBuffer source = invocation.getArgument(0);
+                int size = source.remaining();
+                source.position(source.limit());
+                return size;
+              });
+
+      try {
+        initializeHeader(sf);
+        Assert.fail("Initial page write failure must abort initialization");
+      } catch (InvocationTargetException e) {
+        Assert.assertSame(failure, e.getCause());
+      }
+      verify(channel).truncate(0);
+      Assert.assertFalse(channel.isOpen());
+      Assert.assertNull(getField(SchemaFile.class, sf, "pageManager"));
+    } finally {
+      config.setSchemaRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  private void assertInitialHeaderWriteFailureClosesResources() throws Exception {
+    SchemaFile sf = SchemaFile.initSchemaFile("root.failedHeader", TEST_SCHEMA_REGION_ID);
+    sf.close();
+    FileChannel channel = mock(FileChannel.class, withSettings().useConstructor());
+    setField(SchemaFile.class, sf, "channel", channel);
+    IOException failure = new IOException("Injected header write failure");
+    when(channel.write(any(ByteBuffer.class), anyLong()))
+        .thenAnswer(
+            invocation -> {
+              ByteBuffer source = invocation.getArgument(0);
+              long position = invocation.getArgument(1);
+              if (position == 0) {
+                throw failure;
+              }
+              int size = source.remaining();
+              source.position(source.limit());
+              return size;
+            });
+    try {
+      initializeHeader(sf);
+      Assert.fail("Header write failure must abort initialization");
+    } catch (InvocationTargetException e) {
+      Assert.assertSame(failure, e.getCause());
+    }
+    Object manager = getField(SchemaFile.class, sf, "pageManager");
+    Object pageIO = getField(PageManager.class, manager, "pageIOChannel");
+    FileChannel readChannel = (FileChannel) getField(PageIOChannel.class, pageIO, "readChannel");
+    Object logWriter = getField(PageIOChannel.class, pageIO, "logWriter");
+    FileChannel logChannel =
+        (FileChannel) getField(SchemaLogWriter.class, logWriter, "fileChannel");
+    verify(channel).truncate(0);
+    Assert.assertFalse(channel.isOpen());
+    Assert.assertFalse(readChannel.isOpen());
+    Assert.assertFalse(logChannel.isOpen());
+  }
+
+  @Test
+  public void testCloseClosesChannelWhenPageManagerCloseFails() throws Exception {
+    SchemaFile sf = SchemaFile.initSchemaFile("root.closeFailure", TEST_SCHEMA_REGION_ID);
+    sf.close();
+    FileChannel channel = mock(FileChannel.class, withSettings().useConstructor());
+    IPageManager manager = mock(IPageManager.class);
+    setField(SchemaFile.class, sf, "channel", channel);
+    setField(SchemaFile.class, sf, "pageManager", manager);
+    when(manager.getLastPageIndex()).thenReturn(0);
+    when(channel.write(any(ByteBuffer.class), anyLong()))
+        .thenAnswer(
+            invocation -> {
+              ByteBuffer source = invocation.getArgument(0);
+              int size = source.remaining();
+              source.position(source.limit());
+              return size;
+            });
+    IOException failure = new IOException("Injected page manager close failure");
+    doThrow(failure).when(manager).close();
+
+    try {
+      sf.close();
+      Assert.fail("Page manager close failure must be reported");
+    } catch (IOException e) {
+      Assert.assertSame(failure, e);
+    }
+    verify(channel).force(true);
+    Assert.assertFalse(channel.isOpen());
+  }
+
+  private static void initializeHeader(SchemaFile sf) throws Exception {
+    Method initialize = SchemaFile.class.getDeclaredMethod("initFileHeader");
+    initialize.setAccessible(true);
+    initialize.invoke(sf);
+  }
+
+  private static Object getField(Class<?> type, Object target, String name) throws Exception {
+    Field field = type.getDeclaredField(name);
+    field.setAccessible(true);
+    return field.get(target);
+  }
+
+  private static void setField(Class<?> type, Object target, String name, Object value)
+      throws Exception {
+    Field field = type.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(target, value);
   }
 
   @Test

@@ -322,6 +322,7 @@ public class FragmentInstanceManager {
                             fragmentInstanceId,
                             stateMachine,
                             instance.getSessionInfo(),
+                            DriverTask.computeDeadlineTimeInMs(instance.getTimeOut()),
                             instance.isDebug(),
                             instance.isVerbose());
                       });

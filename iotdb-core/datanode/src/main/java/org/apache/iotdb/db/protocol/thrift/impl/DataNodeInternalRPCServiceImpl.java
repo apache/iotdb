@@ -226,6 +226,7 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaMana
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusRegionRuntimeState;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
+import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiverV1;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -2837,6 +2838,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       } else {
         commonConfig.setNodeStatus(nodeStatus);
       }
+      if (nodeStatus == NodeStatus.Removing) {
+        SubscriptionReceiverV1.handleNodeRetirement();
+      }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
@@ -3572,7 +3576,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       AuthorityChecker.SUPER_USER,
                       IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
                   ZoneId.systemDefault())
-              .setInternal(true);
+              .setInternalDatabaseSession(true);
 
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =

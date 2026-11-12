@@ -84,6 +84,43 @@ public class IoTDBTableIT {
   }
 
   @Test
+  public void testSetInfiniteTtlAfterMaximumNumericTtl() throws Exception {
+    final String database = "ttl_infinite_reset";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("CREATE DATABASE " + database);
+        statement.execute("USE " + database);
+        statement.execute(
+            "CREATE TABLE table_1(device_id STRING TAG, text TEXT FIELD, float FLOAT FIELD)");
+        statement.execute("ALTER TABLE IF EXISTS table_1 SET PROPERTIES ttl=3600000");
+        TestUtils.tableResultSetEqualTestUnordered(
+            "SHOW TABLES",
+            new String[] {"TableName", "TTL(ms)"},
+            new String[] {"table_1,3600000,"},
+            database);
+        for (final String ttl : new String[] {"'INF'", "DEFAULT"}) {
+          statement.execute("ALTER TABLE table_1 SET PROPERTIES ttl=" + Long.MAX_VALUE);
+          TestUtils.tableResultSetEqualTestUnordered(
+              "SHOW TABLES",
+              new String[] {"TableName", "TTL(ms)"},
+              new String[] {"table_1," + Long.MAX_VALUE + ","},
+              database);
+          statement.execute("ALTER TABLE table_1 SET PROPERTIES ttl=" + ttl);
+          TestUtils.tableResultSetEqualTestUnordered(
+              "SHOW TABLES",
+              new String[] {"TableName", "TTL(ms)"},
+              new String[] {"table_1,INF,"},
+              database);
+        }
+      } finally {
+        statement.execute("DROP DATABASE IF EXISTS " + database);
+      }
+    }
+  }
+
+  @Test
   public void testResetTableTtlUsesDatabaseDefault() throws Exception {
     final String database = "ttl_default_reset";
     final long day = TimeUnit.DAYS.toMillis(1);
@@ -414,7 +451,9 @@ public class IoTDBTableIT {
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
       } catch (final SQLException e) {
-        assertEquals("552: Column 'speed' already exist", e.getMessage());
+        assertEquals(
+            "552: Column 'speed' already exists or its source measurement is already mapped",
+            e.getMessage());
       }
 
       statement.execute("alter table table2 add column if not exists speed DOUBLE FIELD");

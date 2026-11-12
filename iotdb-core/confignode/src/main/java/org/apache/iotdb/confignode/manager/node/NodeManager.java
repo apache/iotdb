@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -757,6 +758,11 @@ public class NodeManager {
                 registeredDataNode.getLocation().getClientRpcEndPoint().getIp());
             dataNodeInfo.setRpcPort(
                 registeredDataNode.getLocation().getClientRpcEndPoint().getPort());
+            final TEndPoint internalRpcEndPoint =
+                registeredDataNode.getLocation().getInternalEndPoint();
+            if (internalRpcEndPoint != null) {
+              dataNodeInfo.setInternalRpcEndPoint(internalRpcEndPoint);
+            }
             dataNodeInfo.setDataRegionNum(0);
             dataNodeInfo.setSchemaRegionNum(0);
             dataNodeInfo.setCpuCoreNum(registeredDataNode.getResource().getCpuCoreNum());
@@ -877,6 +883,37 @@ public class NodeManager {
 
   public Map<Integer, TNodeVersionInfo> getNodeVersionInfo() {
     return nodeInfo.getNodeVersionInfo();
+  }
+
+  /** Checks the version and build of every registered ConfigNode. */
+  public boolean isConfigNodeVersionConsistentWith(TNodeVersionInfo expectedVersion) {
+    if (expectedVersion == null
+        || !isKnownVersionValue(expectedVersion.getVersion())
+        || !isKnownVersionValue(expectedVersion.getBuildInfo())) {
+      return false;
+    }
+    List<TConfigNodeLocation> configNodes = getRegisteredConfigNodes();
+    if (configNodes.isEmpty()) {
+      return false;
+    }
+    Map<Integer, TNodeVersionInfo> versions = getNodeVersionInfo();
+    for (TConfigNodeLocation configNode : configNodes) {
+      if (!hasMatchingVersion(expectedVersion, versions.get(configNode.getConfigNodeId()))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean hasMatchingVersion(
+      TNodeVersionInfo expectedVersion, TNodeVersionInfo actualVersion) {
+    return actualVersion != null
+        && expectedVersion.getVersion().equals(actualVersion.getVersion())
+        && expectedVersion.getBuildInfo().equals(actualVersion.getBuildInfo());
+  }
+
+  private static boolean isKnownVersionValue(String value) {
+    return value != null && !value.trim().isEmpty() && !"UNKNOWN".equalsIgnoreCase(value.trim());
   }
 
   public List<TConfigNodeInfo> getRegisteredConfigNodeInfoList() {

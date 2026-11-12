@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
+      "Fail to insert measurements %s caused by %s";
 
   public static final String EXCEPTION_UNSUPPORTED_JOIN_CRETERIA_ARG_AFTER_PREDICATE_PUSH_DOWN_92BDB23B =
       "Unsupported Join creteria [%s] after predicate push down";
@@ -523,6 +525,9 @@ public final class DataNodeQueryMessages {
       "Auto create or verify schema error.";
   public static final String LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
       "Device %s does not exist in IoTDB and can not be created. Please check whether auto-create-schema is enabled.";
+  public static final String
+      EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A =
+          "The database %s does not exist and auto-create-schema is disabled.";
   public static final String LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
       "Measurement %s does not exist in IoTDB and can not be created. Please check whether auto-create-schema is enabled.";
   public static final String PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA =
@@ -896,6 +901,9 @@ public final class DataNodeQueryMessages {
   public static final String
       EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
           "Cannot reference %s column '%s' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.";
+  public static final String
+      EXCEPTION_EXTERNAL_USER_DEFINED_FUNCTION_ARG_IS_NOT_SUPPORTED_IN_THIS_WRITE_STATEMENT_8329DC8E =
+          "External user-defined function %s is not supported in this write statement";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "Drop Function statement is not supported yet.";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
@@ -4136,6 +4144,39 @@ public final class DataNodeQueryMessages {
   public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TagColumns: %s";
   public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "MemoryThreshold: %s";
 
+
+  public static final String EXCEPTION_DATABASENAME_IS_NULL_A811DE1B =
+      "databaseName is null";
+
+  public static final String EXCEPTION_VALUES_IS_NULL_A580EDAA =
+      "values is null";
+
+  public static final String EXCEPTION_ZONEID_IS_NULL_7DAA5E2C =
+      "zoneId is null";
+
+  public static final String EXCEPTION_INSERT_TARGET_TABLE_DOES_NOT_EXIST_ARG_ARG_78F05787 =
+      "Insert target table does not exist: %s.%s";
+
+  public static final String EXCEPTION_EXPRESSIONS_AND_COLUMNS_DO_NOT_MATCH_EXPRESSIONS_SIZE_ARG_COLUMNS_SIZE_ARG_F933A8C1 =
+      "expressions and columns do not match, expressions size: %s, columns size: %s";
+
+  public static final String EXCEPTION_INSERT_EXPRESSION_MUST_BE_CONSTANT_AFTER_CONSTANT_FOLDING_ARG_FOLDED_TO_ARG_D9EE1433 =
+      "Insert expression must be constant after constant folding: %s (folded to %s)";
+
+  public static final String EXCEPTION_CANNOT_EVALUATE_INSERT_EXPRESSION_AS_A_CONSTANT_ARG_ARG_F478C134 =
+      "Cannot evaluate insert expression as a constant: %s. %s";
+
+  public static final String EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_INT_F8E58471 =
+      "The %s is out of range of int.";
+
+  public static final String EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_LONG_9B1C872A =
+      "The %s is out of range of long.";
+
+  public static final String EXCEPTION_INT_OVERFLOW_ARG_ARG_BB287017 =
+      "int overflow: %s / %s";
+
+  public static final String EXCEPTION_LONG_OVERFLOW_ARG_ARG_46CC95E2 =
+      "long overflow: %s / %s";
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData contains no physical chunk";
   public static final String EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6 = "device cannot be null";

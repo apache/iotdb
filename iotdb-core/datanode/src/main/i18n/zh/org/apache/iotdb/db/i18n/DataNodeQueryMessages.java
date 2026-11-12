@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
+      "测点 %s 插入失败，原因：%s";
 
   public static final String EXCEPTION_UNSUPPORTED_JOIN_CRETERIA_ARG_AFTER_PREDICATE_PUSH_DOWN_92BDB23B =
       "谓词下推后存在不支持的 Join 条件 [%s]";
@@ -503,6 +505,9 @@ public final class DataNodeQueryMessages {
       "自动创建或验证 schema 出错。";
   public static final String LOAD_TSFILE_DEVICE_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
       "设备 %s 在 IoTDB 中不存在且无法被创建。请检查是否启用了 auto-create-schema。";
+  public static final String
+      EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A =
+          "数据库 %s 不存在，且 auto-create-schema 已禁用。";
   public static final String LOAD_TSFILE_MEASUREMENT_SCHEMA_MISSING_AUTO_CREATE_DISABLED =
       "时间序列 %s 在 IoTDB 中不存在且无法被创建。请检查是否启用了 auto-create-schema。";
   public static final String PIPE_GENERATED_LOAD_TSFILE_WAITING_FOR_SCHEMA_METADATA =
@@ -876,6 +881,9 @@ public final class DataNodeQueryMessages {
   public static final String
       EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
           "无法在 UPDATE 值中引用 %s 列 '%s'。UPDATE 值只能引用 ATTRIBUTE 或 TAG 列。";
+  public static final String
+      EXCEPTION_EXTERNAL_USER_DEFINED_FUNCTION_ARG_IS_NOT_SUPPORTED_IN_THIS_WRITE_STATEMENT_8329DC8E =
+          "外部用户自定义函数 %s 不支持在当前写语句中使用";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "暂不支持 Drop Function 语句。";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
@@ -4888,6 +4896,39 @@ public final class DataNodeQueryMessages {
   public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TAG 列：%s";
   public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "内存阈值：%s";
 
+
+  public static final String EXCEPTION_DATABASENAME_IS_NULL_A811DE1B =
+      "databaseName 为空";
+
+  public static final String EXCEPTION_VALUES_IS_NULL_A580EDAA =
+      "values 为空";
+
+  public static final String EXCEPTION_ZONEID_IS_NULL_7DAA5E2C =
+      "zoneId 为空";
+
+  public static final String EXCEPTION_INSERT_TARGET_TABLE_DOES_NOT_EXIST_ARG_ARG_78F05787 =
+      "写入目标表不存在：%s.%s";
+
+  public static final String EXCEPTION_EXPRESSIONS_AND_COLUMNS_DO_NOT_MATCH_EXPRESSIONS_SIZE_ARG_COLUMNS_SIZE_ARG_F933A8C1 =
+      "表达式与列不匹配，表达式数量：%s，列数量：%s";
+
+  public static final String EXCEPTION_INSERT_EXPRESSION_MUST_BE_CONSTANT_AFTER_CONSTANT_FOLDING_ARG_FOLDED_TO_ARG_D9EE1433 =
+      "写入表达式在常量折叠后必须为常量：%s（折叠结果为 %s）";
+
+  public static final String EXCEPTION_CANNOT_EVALUATE_INSERT_EXPRESSION_AS_A_CONSTANT_ARG_ARG_F478C134 =
+      "无法将写入表达式计算为常量：%s。%s";
+
+  public static final String EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_INT_F8E58471 =
+      "%s 超出 int 的范围。";
+
+  public static final String EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_LONG_9B1C872A =
+      "%s 超出 long 的范围。";
+
+  public static final String EXCEPTION_INT_OVERFLOW_ARG_ARG_BB287017 =
+      "int 溢出：%s / %s";
+
+  public static final String EXCEPTION_LONG_OVERFLOW_ARG_ARG_46CC95E2 =
+      "long 溢出：%s / %s";
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData 中不包含任何物理 chunk";
   public static final String EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6 = "device 不能为 null";

@@ -443,12 +443,14 @@ public class WALBuffer extends AbstractWALBuffer {
                 identifier,
                 walEntries.size());
           }
-          boolean dataExists = totalSize > 0;
-          if (dataExists) {
+          // end this batch now. Returning false without data made serialize() wait out
+          // the async fsync delay (1 s by default) for entries that can no longer come, on every
+          // close. Pending data or checkpoints are synced here instead of after that wait.
+          if (totalSize > 0 || !info.checkpoints.isEmpty()) {
             fsyncWorkingBuffer(currentSearchIndex, currentFileStatus, info);
           }
           isClosed = true;
-          return dataExists;
+          return true;
         default:
           return false;
       }

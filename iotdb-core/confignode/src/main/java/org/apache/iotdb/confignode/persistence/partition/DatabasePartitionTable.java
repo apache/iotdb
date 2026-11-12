@@ -141,6 +141,22 @@ public class DatabasePartitionTable {
   }
 
   /**
+   * @param type The specified TConsensusGroupType
+   * @return Sum of N * (N - 1) over the Regions of the specified type, i.e. their ordered replica
+   *     pairs, without copying any replica set
+   */
+  public long getReplicaPairCount(TConsensusGroupType type) {
+    long count = 0;
+    for (RegionGroup regionGroup : regionGroupMap.values()) {
+      if (type.equals(regionGroup.getId().getType())) {
+        final long replicaNum = regionGroup.getReplicaNum();
+        count += replicaNum * (replicaNum - 1);
+      }
+    }
+    return count;
+  }
+
+  /**
    * Get all RegionGroups currently owned by the specified Database.
    *
    * @param dataNodeId The specified dataNodeId
