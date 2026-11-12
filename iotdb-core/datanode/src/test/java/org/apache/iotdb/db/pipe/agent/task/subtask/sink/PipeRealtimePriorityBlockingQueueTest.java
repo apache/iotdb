@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeCompactedTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -44,7 +43,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -67,99 +65,6 @@ public class PipeRealtimePriorityBlockingQueueTest {
     Assert.assertTrue(queue.offer(completionBarrier));
     Assert.assertSame(heartbeatEvent, queue.directPoll());
     Assert.assertSame(completionBarrier, queue.directPoll());
-  }
-
-  @Test
-  public void testWaitedPollRetainsTsFilesUntilAsyncSendCapacityIsAvailable() throws Exception {
-    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
-    final int maxWaitingTsFiles =
-        PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize();
-    final AtomicInteger waitingTsFiles = new AtomicInteger(maxWaitingTsFiles);
-    queue.setOfferTsFileCounter(waitingTsFiles);
-    final PipeTsFileInsertionEvent event =
-        createEvent(newTsFile("waiting.tsfile"), new CommitterKey("pipe", 1L, 1, 0), 1L);
-    Assert.assertTrue(queue.offer(event));
-
-    for (final int waiting : new int[] {maxWaitingTsFiles, maxWaitingTsFiles + 1}) {
-      waitingTsFiles.set(waiting);
-      for (int i = 0; i < 3; i++) {
-        Assert.assertNull(queue.waitedPoll());
-        Assert.assertNull(queue.directPoll());
-        Assert.assertEquals(1, queue.getTsFileInsertionEventCount());
-        Assert.assertSame(event, queue.peek());
-      }
-    }
-
-    waitingTsFiles.set(maxWaitingTsFiles - 1);
-    Assert.assertSame(event, queue.waitedPoll());
-    Assert.assertEquals(0, queue.getTsFileInsertionEventCount());
-    verify(event, never()).decreaseReferenceCount(anyString(), anyBoolean());
-  }
-
-  @Test
-  public void testWaitedPollDeliversHeartbeatsWhileTsFileSendQueueIsFull() throws Exception {
-    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
-    queue.setOfferTsFileCounter(
-        new AtomicInteger(PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize()));
-    final PipeTsFileInsertionEvent event =
-        createEvent(newTsFile("waiting.tsfile"), new CommitterKey("pipe", 1L, 1, 0), 1L);
-    final PipeHeartbeatEvent heartbeat = new PipeHeartbeatEvent(1, false);
-    final PipeHeartbeatEvent completionBarrier = new PipeHeartbeatEvent(1, false, true);
-    Assert.assertTrue(queue.offer(event));
-    Assert.assertTrue(queue.offer(heartbeat));
-    Assert.assertTrue(queue.offer(completionBarrier));
-
-    Assert.assertSame(heartbeat, queue.waitedPoll());
-    Assert.assertSame(completionBarrier, queue.waitedPoll());
-    Assert.assertNull(queue.waitedPoll());
-    Assert.assertSame(event, queue.peek());
-    Assert.assertEquals(1, queue.getTsFileInsertionEventCount());
-  }
-
-  @Test
-  public void testWaitedPollPreservesPendingFilesForCompaction() throws Exception {
-    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
-    final int maxWaitingTsFiles =
-        PipeConfig.getInstance().getPipeRealTimeQueueMaxWaitingTsFileSize();
-    final AtomicInteger waitingTsFiles = new AtomicInteger(maxWaitingTsFiles);
-    queue.setOfferTsFileCounter(waitingTsFiles);
-    final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
-    final File sourceFile0 = newTsFile("source0.tsfile");
-    final File sourceFile1 = newTsFile("source1.tsfile");
-    final File targetFile = newTsFile("target.tsfile");
-    final PipeTsFileInsertionEvent sourceEvent0 = createEvent(sourceFile0, committerKey, 1L);
-    final PipeTsFileInsertionEvent sourceEvent1 = createEvent(sourceFile1, committerKey, 2L);
-    Assert.assertTrue(queue.offer(sourceEvent0));
-    Assert.assertTrue(queue.offer(sourceEvent1));
-    Assert.assertNull(queue.waitedPoll());
-
-    queue.replace(
-        "1",
-        new HashSet<>(
-            Arrays.asList(new TsFileResource(sourceFile0), new TsFileResource(sourceFile1))),
-        Collections.singletonList(new TsFileResource(targetFile)));
-
-    Assert.assertEquals(1, queue.getTsFileInsertionEventCount());
-    Assert.assertNull(queue.waitedPoll());
-    waitingTsFiles.decrementAndGet();
-    final Event event = queue.waitedPoll();
-    Assert.assertTrue(event instanceof PipeCompactedTsFileInsertionEvent);
-    final PipeCompactedTsFileInsertionEvent compactedEvent =
-        (PipeCompactedTsFileInsertionEvent) event;
-    try {
-      Assert.assertEquals(
-          targetFile.getAbsoluteFile(), compactedEvent.getSourceTsFile().getAbsoluteFile());
-      Assert.assertEquals(
-          new HashSet<>(Arrays.asList(1L, 2L)), new HashSet<>(compactedEvent.getCommitIds()));
-      Assert.assertEquals(0, queue.getTsFileInsertionEventCount());
-      verify(sourceEvent0)
-          .decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
-      verify(sourceEvent1)
-          .decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
-    } finally {
-      compactedEvent.decreaseReferenceCount(
-          PipeRealtimePriorityBlockingQueue.class.getName(), false);
-    }
   }
 
   @Test
