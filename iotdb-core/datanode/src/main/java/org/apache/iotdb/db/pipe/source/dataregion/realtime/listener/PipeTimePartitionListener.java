@@ -40,25 +40,29 @@ public class PipeTimePartitionListener {
 
   //////////////////////////// start & stop ////////////////////////////
 
-  public synchronized void startListen(int dataRegionId, PipeRealtimeDataRegionSource extractor) {
+  public synchronized void startListen(
+      final int dataRegionId, final PipeRealtimeDataRegionSource source) {
     dataRegionId2Sources
         .computeIfAbsent(dataRegionId, o -> new HashMap<>())
-        .put(extractor.getTaskID(), extractor);
-    // Assign the previously recorded upper and lower bounds of time partition to the extractor that
+        .put(source.getTaskID(), source);
+    // Assign the previously recorded upper and lower bounds of time partition to the source that
     // has just started listening to the growth of time partition.
-    Pair<Long, Long> timePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
+    final Pair<Long, Long> timePartitionIdBound =
+        dataRegionId2TimePartitionIdBound.get(dataRegionId);
     if (Objects.nonNull(timePartitionIdBound)) {
-      extractor.setDataRegionTimePartitionIdBound(timePartitionIdBound);
+      source.setDataRegionTimePartitionIdBound(timePartitionIdBound);
     }
   }
 
-  public synchronized void stopListen(int dataRegionId, PipeRealtimeDataRegionSource extractor) {
-    Map<String, PipeRealtimeDataRegionSource> extractors = dataRegionId2Sources.get(dataRegionId);
-    if (Objects.isNull(extractors)) {
+  public synchronized void stopListen(
+      final int dataRegionId, final PipeRealtimeDataRegionSource source) {
+    final Map<String, PipeRealtimeDataRegionSource> sources =
+        dataRegionId2Sources.get(dataRegionId);
+    if (Objects.isNull(sources)) {
       return;
     }
-    extractors.remove(extractor.getTaskID());
-    if (extractors.isEmpty()) {
+    sources.remove(source.getTaskID());
+    if (sources.isEmpty()) {
       dataRegionId2Sources.remove(dataRegionId);
     }
   }
@@ -66,9 +70,10 @@ public class PipeTimePartitionListener {
   //////////////////////////// listen to changes ////////////////////////////
 
   public synchronized void listenToTimePartitionGrow(
-      int dataRegionId, Pair<Long, Long> newTimePartitionIdBound) {
+      final int dataRegionId, final Pair<Long, Long> newTimePartitionIdBound) {
     boolean shouldBroadcastTimePartitionChange = false;
-    Pair<Long, Long> oldTimePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
+    final Pair<Long, Long> oldTimePartitionIdBound =
+        dataRegionId2TimePartitionIdBound.get(dataRegionId);
 
     if (Objects.isNull(oldTimePartitionIdBound)) {
       dataRegionId2TimePartitionIdBound.put(dataRegionId, newTimePartitionIdBound);
@@ -84,13 +89,15 @@ public class PipeTimePartitionListener {
     }
 
     if (shouldBroadcastTimePartitionChange) {
-      Map<String, PipeRealtimeDataRegionSource> extractors = dataRegionId2Sources.get(dataRegionId);
-      if (Objects.isNull(extractors)) {
+      final Map<String, PipeRealtimeDataRegionSource> sources =
+          dataRegionId2Sources.get(dataRegionId);
+      if (Objects.isNull(sources)) {
         return;
       }
-      Pair<Long, Long> timePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
-      extractors.forEach(
-          (id, extractor) -> extractor.setDataRegionTimePartitionIdBound(timePartitionIdBound));
+      final Pair<Long, Long> timePartitionIdBound =
+          dataRegionId2TimePartitionIdBound.get(dataRegionId);
+      sources.forEach(
+          (id, source) -> source.setDataRegionTimePartitionIdBound(timePartitionIdBound));
     }
   }
 

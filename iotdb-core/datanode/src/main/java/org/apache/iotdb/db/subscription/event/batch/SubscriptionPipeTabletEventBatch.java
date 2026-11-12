@@ -31,13 +31,13 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.columnfilter.TabletColumnPruner;
+import org.apache.iotdb.db.subscription.columnfilter.TreeViewTabletProjector;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.tagfilter.TabletTagFilter;
 import org.apache.iotdb.db.subscription.tagfilter.TagFilterEvaluationException;
 import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.Meter;
@@ -69,8 +69,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   private final Meter insertNodeTabletInsertionEventSizeEstimator;
   private final Meter rawTabletInsertionEventSizeEstimator;
+  private final TableViewTabletProjectorProvider tableViewTabletProjectorProvider;
   private volatile SubscriptionFilterSnapshot filterSnapshot;
-  private volatile SubscriptionTreeViewProjector treeViewProjector;
 
   private volatile SubscriptionPipeTabletIterationSnapshot iterationSnapshot;
   private final AtomicInteger referenceCount = new AtomicInteger();
@@ -84,12 +84,28 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       final SubscriptionPrefetchingTabletQueue prefetchingQueue,
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
+    this(
+        regionId,
+        prefetchingQueue,
+        new TableViewTabletProjectorProvider(prefetchingQueue),
+        maxDelayInMs,
+        maxBatchSizeInBytes);
+  }
+
+  public SubscriptionPipeTabletEventBatch(
+      final int regionId,
+      final SubscriptionPrefetchingTabletQueue prefetchingQueue,
+      final TableViewTabletProjectorProvider tableViewTabletProjectorProvider,
+      final int maxDelayInMs,
+      final long maxBatchSizeInBytes) {
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
 
     this.insertNodeTabletInsertionEventSizeEstimator =
         new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
     this.rawTabletInsertionEventSizeEstimator =
         new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
+
+    this.tableViewTabletProjectorProvider = tableViewTabletProjectorProvider;
 
     resetForIteration();
   }
@@ -163,8 +179,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected List<SubscriptionEvent> generateSubscriptionEvents() {
-    ensureFilterSnapshot();
-    if (!prepareTreeViewTabletProjectorForEmission()) {
+    if (!tableViewTabletProjectorProvider.prepareForEmission(
+        ensureFilterSnapshot().getTopicConfig())) {
       return null;
     }
     resetForIteration();
@@ -218,16 +234,20 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       return null;
     }
 
-    return pruneTablets(projectTreeViewTabletsIfNecessary(result));
+    return pruneTablets(projectTableViewTabletsIfNecessary(result));
   }
 
-  private Pair<String, List<Tablet>> projectTreeViewTabletsIfNecessary(
+  private Pair<String, List<Tablet>> projectTableViewTabletsIfNecessary(
       final Pair<String, List<Tablet>> tablets) {
     if (Objects.isNull(tablets) || Objects.nonNull(tablets.left) || Objects.isNull(tablets.right)) {
       return tablets;
     }
 
-    if (!prepareTreeViewTabletProjectorForEmission() || !treeViewProjector.isAvailable()) {
+    final TreeViewTabletProjector treeViewTabletProjector =
+        tableViewTabletProjectorProvider.prepareForEmission(ensureFilterSnapshot().getTopicConfig())
+            ? tableViewTabletProjectorProvider.getTreeViewTabletProjector()
+            : null;
+    if (Objects.isNull(treeViewTabletProjector)) {
       if (!ensureFilterSnapshot().hasNonTrivialFilter()) {
         return tablets;
       }
@@ -238,35 +258,14 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
     final List<Tablet> projectedTablets = new ArrayList<>(tablets.right.size());
     for (final Tablet tablet : tablets.right) {
-      final Tablet projectedTablet = treeViewProjector.project(tablet);
+      final Tablet projectedTablet = treeViewTabletProjector.project(tablet);
       if (Objects.nonNull(projectedTablet)) {
         projectedTablets.add(projectedTablet);
       }
     }
     return projectedTablets.isEmpty()
         ? null
-        : new Pair<>(treeViewProjector.getDatabaseName(), projectedTablets);
-  }
-
-  private boolean prepareTreeViewTabletProjectorForEmission() {
-    final SubscriptionFilterSnapshot snapshot = ensureFilterSnapshot();
-    if (Objects.isNull(treeViewProjector)) {
-      treeViewProjector = new SubscriptionTreeViewProjector(snapshot.getTopicConfig());
-    }
-    final boolean prepared = treeViewProjector.prepare();
-    if (!prepared) {
-      LOGGER.debug(
-          DataNodePipeMessages
-              .PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_POSTPONE_EMITTING_SUBSCRIPTION_TABLET_BATCH_FOR_TOPIC_ARG_BECAUSE_TABLE_SCHEMA_ARG_ARG_IS_NOT_AVAILABLE_LOCALLY_996C618D,
-          prefetchingQueue.getTopicName(),
-          snapshot
-              .getTopicConfig()
-              .getStringOrDefault(TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE),
-          snapshot
-              .getTopicConfig()
-              .getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE));
-    }
-    return prepared;
+        : new Pair<>(treeViewTabletProjector.getDatabaseName(), projectedTablets);
   }
 
   private Pair<String, List<Tablet>> pruneTablets(final Pair<String, List<Tablet>> tablets) {
