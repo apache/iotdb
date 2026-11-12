@@ -207,12 +207,11 @@ public class ParallelizeGrouping implements PlanOptimizer {
       Context newContext = new Context(node.getOrderingScheme(), node.getPartitionKeyCount());
       PlanNode child = node.getChild().accept(this, newContext);
       if (newContext.canOptimized == ENABLE_PARALLEL) {
-        // The group survives and its output is only per-instance partitioned.
+        // The group survives and its output is only per-instance partitioned. When the ancestor's
+        // claim cannot reuse it, TO_SORT is recorded on its context and the ancestor sorts this
+        // group's output itself.
         checkPartitionKeysMatch(
             context, node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount()));
-        if (!context.canSkip() && context.canOptimized != ENABLE_PARALLEL) {
-          return new SortNode(node.getPlanNodeId(), child, node.getOrderingScheme(), false, false);
-        }
         GroupNode newNode = (GroupNode) node.clone();
         newNode.addChild(child);
         return newNode;
