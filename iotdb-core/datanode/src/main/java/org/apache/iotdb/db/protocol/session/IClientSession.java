@@ -61,6 +61,9 @@ public abstract class IClientSession {
 
   private boolean enableAutoCreateSchema = true;
 
+  // set by clients that can assemble fragmented query results, see TSFetchResultsReq#offset
+  private boolean enableResultChunking = false;
+
   private long lastActiveTime = CommonDateTimeUtils.currentTime();
 
   public abstract String getClientAddress();
@@ -209,6 +212,14 @@ public abstract class IClientSession {
 
   public void setEnableAutoCreateSchema(boolean enableAutoCreateSchema) {
     this.enableAutoCreateSchema = enableAutoCreateSchema;
+  }
+
+  public boolean isEnableResultChunking() {
+    return enableResultChunking;
+  }
+
+  public void setEnableResultChunking(boolean enableResultChunking) {
+    this.enableResultChunking = enableResultChunking;
   }
 
   /**

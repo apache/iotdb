@@ -601,6 +601,8 @@ public class IoTDBConnection implements Connection {
     openReq.setZoneId(getTimeZone());
     openReq.putToConfiguration(Config.VERSION, params.getVersion().toString());
     openReq.putToConfiguration(Config.SQL_DIALECT, params.getSqlDialect());
+    // this client can assemble fragmented query results, see TSFetchResultsReq#offset
+    openReq.putToConfiguration(Config.ENABLE_RESULT_CHUNKING, Boolean.TRUE.toString());
     params.getDb().ifPresent(db -> openReq.putToConfiguration(Config.DATABASE, db));
 
     TSOpenSessionResp openResp = null;

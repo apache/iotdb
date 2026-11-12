@@ -45,6 +45,12 @@ public interface IQueryExecution {
 
   Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException;
 
+  /**
+   * Returns the holder of the serialized TsBlock that is partially sent to the client. It is used
+   * to continue the fragmented transfer of one oversized TsBlock in the following RPC response.
+   */
+  PendingResultFragment getPendingResultFragment();
+
   boolean hasNextResult();
 
   int getOutputValueColumnCount();

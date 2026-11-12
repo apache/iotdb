@@ -34,6 +34,7 @@ import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.PublicBAOS;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -84,6 +85,8 @@ public class IoTDBRpcDataSet {
   private int queryResultIndex; // the index of bytebuffer in queryResult
   private int tsBlockSize; // the size of current tsBlock
   private int tsBlockIndex; // the row index in current tsBlock
+  // the fragment of a TsBlock that is partially received; null if there is no pending fragment
+  private ResultFragmentBuffer fragmentBuffer;
   private final ZoneId zoneId;
   private final String timeFormat;
 
@@ -111,6 +114,53 @@ public class IoTDBRpcDataSet {
       int timeFactor,
       boolean tableModel,
       List<Integer> columnIndex2TsBlockColumnIndexList) {
+    this(
+        sql,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        ignoreTimeStamp,
+        moreData,
+        queryId,
+        statementId,
+        client,
+        sessionId,
+        queryResult,
+        fetchSize,
+        timeout,
+        zoneId,
+        timeFormat,
+        timeFactor,
+        tableModel,
+        columnIndex2TsBlockColumnIndexList,
+        false,
+        0,
+        0);
+  }
+
+  @SuppressWarnings({"squid:S3776", "squid:S107"}) // Suppress high Cognitive Complexity warning
+  public IoTDBRpcDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      boolean moreData,
+      long queryId,
+      long statementId,
+      IClientRPCService.Iface client,
+      long sessionId,
+      List<ByteBuffer> queryResult,
+      int fetchSize,
+      long timeout,
+      ZoneId zoneId,
+      String timeFormat,
+      int timeFactor,
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList,
+      boolean offsetSet,
+      int offset,
+      int totalLength) {
     this.sessionId = sessionId;
     this.statementId = statementId;
     // only used for tree model, table model this field will always be true
@@ -184,12 +234,13 @@ public class IoTDBRpcDataSet {
       }
     }
 
-    this.queryResult = queryResult;
+    this.queryResult = new ArrayList<>();
+    this.queryResultIndex = 0;
     this.queryResultSize = 0;
     if (queryResult != null) {
-      queryResultSize = queryResult.size();
+      addResponse(queryResult, offsetSet, offset, totalLength);
+      this.queryResultSize = this.queryResult.size();
     }
-    this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
     this.zoneId = zoneId;
@@ -227,6 +278,7 @@ public class IoTDBRpcDataSet {
     }
     client = null;
     isClosed = true;
+    fragmentBuffer = null;
   }
 
   public boolean next() throws StatementExecutionException, IoTDBConnectionException {
@@ -241,7 +293,13 @@ public class IoTDBRpcDataSet {
       return true;
     }
 
-    if (moreData && fetchResults() && hasCachedByteBuffer()) {
+    // one oversized TsBlock may need several fetch RPCs before it is fully assembled
+    while (moreData && !hasCachedByteBuffer()) {
+      if (!fetchResults()) {
+        break;
+      }
+    }
+    if (hasCachedByteBuffer()) {
       constructOneTsBlock();
       constructOneRow();
       return true;
@@ -262,6 +320,9 @@ public class IoTDBRpcDataSet {
     TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
     req.setStatementId(statementId);
     req.setTimeout(timeout);
+    // a new client always sets offset (0 if nothing pending), which enables bounded-payload
+    // responses on the server
+    req.setOffset(fragmentBuffer == null ? 0 : fragmentBuffer.getNextOffset());
     try {
       TSFetchResultsResp resp = client.fetchResultsV2(req);
       RpcUtils.verifySuccess(resp.getStatus());
@@ -269,12 +330,11 @@ public class IoTDBRpcDataSet {
       if (!resp.hasResultSet) {
         close();
       } else {
-        queryResult = resp.getQueryResult();
+        queryResult = new ArrayList<>();
         queryResultIndex = 0;
         queryResultSize = 0;
-        if (queryResult != null) {
-          queryResultSize = queryResult.size();
-        }
+        addResponse(resp.getQueryResult(), resp.isSetOffset(), resp.offset, resp.totalLength);
+        queryResultSize = queryResult.size();
         this.tsBlockSize = 0;
         this.tsBlockIndex = -1;
       }
@@ -283,6 +343,102 @@ public class IoTDBRpcDataSet {
       throw new IoTDBConnectionException(
           RpcMessages.EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326,
           e);
+    }
+  }
+
+  /**
+   * Adds the blocks of one response to {@link #queryResult}. If the response ends with a fragment,
+   * the fragment is either appended to the pending {@link ResultFragmentBuffer} or starts a new
+   * one; the corresponding TsBlock is only added to {@link #queryResult} once all of its bytes have
+   * been received.
+   *
+   * @param blocks the serialized TsBlocks in the response
+   * @param offsetSet whether the last element of {@code blocks} is a fragment
+   * @param nextOffset the start offset of the next fragment
+   * @param totalLength the total serialized length of the block the first fragment belongs to
+   */
+  private void addResponse(
+      List<ByteBuffer> blocks, boolean offsetSet, int nextOffset, int totalLength) {
+    if (blocks == null || blocks.isEmpty()) {
+      return;
+    }
+    int blockIndex = 0;
+
+    if (fragmentBuffer != null) {
+      // the first element completes the pending fragment, if it is not the only element
+      fragmentBuffer.append(blocks.get(blockIndex++));
+      if (offsetSet && blockIndex == blocks.size()) {
+        fragmentBuffer.updateOffset(nextOffset);
+        return;
+      }
+      queryResult.add(fragmentBuffer.toByteBuffer());
+      fragmentBuffer = null;
+    }
+
+    int lastCompleteBlockIndex = offsetSet ? blocks.size() - 1 : blocks.size();
+    while (blockIndex < lastCompleteBlockIndex) {
+      queryResult.add(blocks.get(blockIndex++));
+    }
+
+    if (offsetSet) {
+      if (totalLength <= 0) {
+        throw new IllegalArgumentException(
+            RpcMessages.EXCEPTION_CHUNKED_RESULT_MISSING_TOTAL_LENGTH_FOR_FIRST_FRAGMENT_1D11374F);
+      }
+      fragmentBuffer = new ResultFragmentBuffer(totalLength);
+      fragmentBuffer.append(blocks.get(blockIndex));
+      fragmentBuffer.updateOffset(nextOffset);
+    }
+  }
+
+  /** Accumulates the fragments of one oversized serialized TsBlock until it is complete. */
+  private static class ResultFragmentBuffer {
+
+    private final PublicBAOS buffer;
+    private final int totalLength;
+    private int nextOffset;
+
+    private ResultFragmentBuffer(int totalLength) {
+      this.buffer = new PublicBAOS(totalLength);
+      this.totalLength = totalLength;
+    }
+
+    private int getNextOffset() {
+      return nextOffset;
+    }
+
+    private void append(ByteBuffer fragment) {
+      if (!fragment.hasRemaining()) {
+        throw new IllegalArgumentException(
+            RpcMessages.EXCEPTION_CHUNKED_RESULT_EMPTY_FRAGMENT_03A0EF39);
+      }
+      // a fragment may be a slice of a larger buffer, so honor arrayOffset and position
+      buffer.write(
+          fragment.array(), fragment.arrayOffset() + fragment.position(), fragment.remaining());
+    }
+
+    private void updateOffset(int nextOffset) {
+      if (nextOffset <= this.nextOffset || nextOffset != buffer.size()) {
+        throw new IllegalArgumentException(
+            String.format(
+                RpcMessages
+                    .EXCEPTION_CHUNKED_RESULT_FRAGMENT_OFFSET_ARG_NOT_GREATER_THAN_ACCUMULATED_LENGTH_ARG_A0F032E3,
+                nextOffset,
+                buffer.size()));
+      }
+      this.nextOffset = nextOffset;
+    }
+
+    private ByteBuffer toByteBuffer() {
+      if (buffer.size() != totalLength) {
+        throw new IllegalArgumentException(
+            String.format(
+                RpcMessages
+                    .EXCEPTION_CHUNKED_RESULT_ASSEMBLED_LENGTH_ARG_DOES_NOT_MATCH_TOTAL_LENGTH_ARG_925DCB15,
+                buffer.size(),
+                totalLength));
+      }
+      return ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size());
     }
   }
 

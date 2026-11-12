@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.PendingResultFragment;
 import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 import org.apache.iotdb.rest.protocol.v1.model.QueryDataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -88,6 +89,7 @@ public class QueryDataSetHandlerTest {
 
     private final Queue<Optional<TsBlock>> batches = new ArrayDeque<>();
     private final DatasetHeader datasetHeader;
+    private final PendingResultFragment pendingResultFragment = new PendingResultFragment();
 
     private TestQueryExecution(TsBlock... tsBlocks) {
       for (TsBlock tsBlock : tsBlocks) {
@@ -126,6 +128,11 @@ public class QueryDataSetHandlerTest {
     @Override
     public Optional<ByteBuffer> getByteBufferBatchResult() {
       return Optional.empty();
+    }
+
+    @Override
+    public PendingResultFragment getPendingResultFragment() {
+      return pendingResultFragment;
     }
 
     @Override

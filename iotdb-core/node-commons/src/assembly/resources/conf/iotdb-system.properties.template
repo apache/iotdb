@@ -1241,6 +1241,9 @@ mpp_data_exchange_max_pool_size=10
 mpp_data_exchange_keep_alive_time_in_ms=1000
 
 # The maximum payload size of one MPP data exchange RPC response.
+# It also bounds the payload of one query-result RPC response between client and DataNode: a
+# serialized TsBlock larger than this value is transferred in fragments, so that one oversized
+# row (e.g. an OBJECT/BLOB column) cannot inflate the RPC buffer of server and client connections.
 # <=0 use default value
 # The effective value is between 131072(128KB) and dn_thrift_max_frame_size minus 1024 bytes reserved for the RPC response envelope.
 # effectiveMode: hot_reload

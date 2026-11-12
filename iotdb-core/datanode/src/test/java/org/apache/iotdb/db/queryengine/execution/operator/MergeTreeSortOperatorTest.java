@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.PendingResultFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -1808,6 +1809,7 @@ public class MergeTreeSortOperatorTest {
     private final long startTime;
     private final String queryId;
     private final String sql;
+    private final PendingResultFragment pendingResultFragment = new PendingResultFragment();
 
     FakeQueryExecution(long startTime, String queryId, String sql) {
       this.startTime = startTime;
@@ -1891,6 +1893,11 @@ public class MergeTreeSortOperatorTest {
     @Override
     public Optional<ByteBuffer> getByteBufferBatchResult() {
       return Optional.empty();
+    }
+
+    @Override
+    public PendingResultFragment getPendingResultFragment() {
+      return pendingResultFragment;
     }
 
     @Override

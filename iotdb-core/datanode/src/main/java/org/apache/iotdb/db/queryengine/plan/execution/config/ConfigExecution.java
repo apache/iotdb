@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.PendingResultFragment;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -114,6 +115,9 @@ public class ConfigExecution implements IQueryExecution {
   private boolean resultSetConsumed;
   private final IConfigTask task;
   private final IConfigTaskExecutor configTaskExecutor;
+
+  // the serialized TsBlock that is partially sent to the client and waits for the next RPC
+  private final PendingResultFragment pendingResultFragment = new PendingResultFragment();
 
   private final StatementType statementType;
   private long totalExecutionTime;
@@ -287,6 +291,11 @@ public class ConfigExecution implements IQueryExecution {
       }
     }
     return Optional.empty();
+  }
+
+  @Override
+  public PendingResultFragment getPendingResultFragment() {
+    return pendingResultFragment;
   }
 
   // According to the execution process of ConfigExecution, there is only one TsBlock for

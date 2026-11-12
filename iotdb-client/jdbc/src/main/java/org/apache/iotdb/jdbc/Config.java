@@ -93,4 +93,6 @@ public class Config {
   public static final String SQL_DIALECT = "sql_dialect";
 
   public static final String DATABASE = "db";
+
+  public static final String ENABLE_RESULT_CHUNKING = "enable_result_chunking";
 }

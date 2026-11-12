@@ -147,6 +147,8 @@ public class ThriftConnection {
     openReq.setPassword(password);
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", version);
+    // this client can assemble fragmented query results, see TSFetchResultsReq#offset
+    openReq.putToConfiguration("enable_result_chunking", Boolean.TRUE.toString());
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
@@ -210,7 +212,10 @@ public class ThriftConnection {
         zoneId,
         timeFactor,
         execResp.isSetTableModel() && execResp.isTableModel(),
-        execResp.getColumnIndex2TsBlockColumnIndexList());
+        execResp.getColumnIndex2TsBlockColumnIndexList(),
+        execResp.isSetOffset(),
+        execResp.offset,
+        execResp.totalLength);
   }
 
   /** Create outside the publication lock: TLS setup itself can perform network I/O. */

@@ -246,6 +246,8 @@ public class SessionConnection {
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", session.version.toString());
     openReq.putToConfiguration("sql_dialect", sqlDialect);
+    // this client can assemble fragmented query results, see TSFetchResultsReq#offset
+    openReq.putToConfiguration("enable_result_chunking", Boolean.TRUE.toString());
     if (session.useEncryptedPassword) {
       openReq.putToConfiguration(USE_ENCRYPTED_PASSWORD_KEY, Boolean.TRUE.toString());
     }
@@ -492,7 +494,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         execResp.isSetTableModel() && execResp.isTableModel(),
-        execResp.getColumnIndex2TsBlockColumnIndexList());
+        execResp.getColumnIndex2TsBlockColumnIndexList(),
+        execResp.isSetOffset(),
+        execResp.offset,
+        execResp.totalLength);
   }
 
   protected void executeNonQueryStatement(String sql)
@@ -561,7 +566,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         execResp.isSetTableModel() && execResp.isTableModel(),
-        execResp.getColumnIndex2TsBlockColumnIndexList());
+        execResp.getColumnIndex2TsBlockColumnIndexList(),
+        execResp.isSetOffset(),
+        execResp.offset,
+        execResp.totalLength);
   }
 
   protected SessionDataSet executeLastDataQueryForOnePrefixPath(final List<String> prefixes)
@@ -601,7 +609,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         false,
-        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+        tsExecuteStatementResp.isSetOffset(),
+        tsExecuteStatementResp.offset,
+        tsExecuteStatementResp.totalLength);
   }
 
   protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
@@ -651,7 +662,10 @@ public class SessionConnection {
             zoneId,
             timeFactor,
             tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
-            tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList()),
+            tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+            tsExecuteStatementResp.isSetOffset(),
+            tsExecuteStatementResp.offset,
+            tsExecuteStatementResp.totalLength),
         redirectedEndPoint);
   }
 
@@ -694,7 +708,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
-        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+        tsExecuteStatementResp.isSetOffset(),
+        tsExecuteStatementResp.offset,
+        tsExecuteStatementResp.totalLength);
   }
 
   protected SessionDataSet executeAggregationQuery(
@@ -776,7 +793,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
-        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+        tsExecuteStatementResp.isSetOffset(),
+        tsExecuteStatementResp.offset,
+        tsExecuteStatementResp.totalLength);
   }
 
   private TSAggregationQueryReq createAggregationQueryReq(

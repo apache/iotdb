@@ -108,6 +108,9 @@ public class QueryExecution implements IQueryExecution {
   // used for cleaning resultHandle up exactly once
   private final AtomicBoolean resultHandleCleanUp;
 
+  // the serialized TsBlock that is partially sent to the client and waits for the next RPC
+  private final PendingResultFragment pendingResultFragment = new PendingResultFragment();
+
   private final AtomicBoolean stopped;
 
   // cost time in ns of finished rpc
@@ -597,6 +600,11 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
     return getResult(this::getSerializedTsBlock);
+  }
+
+  @Override
+  public PendingResultFragment getPendingResultFragment() {
+    return pendingResultFragment;
   }
 
   private ByteBuffer getSerializedTsBlock() throws IoTDBException {
