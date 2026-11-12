@@ -129,7 +129,7 @@ public class LoadTsFileManager {
   /** Pieces read, stop() and closing a writer write. Fair, so a stop is not starved. */
   private final ReentrantReadWriteLock writersLock = new ReentrantReadWriteLock(true);
 
-  /** Fences COMMIT/ABORT publication against the data and LOAD-state snapshot boundary. */
+  /** Fences COMMIT/ABORT against selection and copying of a data and LOAD-state snapshot. */
   private final ReentrantReadWriteLock snapshotBoundaryLock = new ReentrantReadWriteLock(true);
 
   /** Set under the write side, read as the fast path of a piece. */
@@ -257,14 +257,13 @@ public class LoadTsFileManager {
             retention.retain(uuid, uuidDir, terminal.op(), terminal.searchIndex());
             continue;
           }
-          if (retention.recoverTerminalTask(uuid, uuidDir)) {
+          final LoadTsFileProgress.TerminalRecord retainedTerminal =
+              LoadTsFileProgress.readTerminalOfTaskDir(uuidDir);
+          if (retainedTerminal != null) {
             // Older versions kept the decision only in each staged file's progress tail.
-            final LoadTsFileProgress.TerminalRecord retainedTerminal =
-                LoadTsFileProgress.readTerminalOfTaskDir(uuidDir);
-            if (retainedTerminal != null) {
-              rememberTerminal(uuid, retainedTerminal.op(), retainedTerminal.searchIndex());
-              finishedLoadIds.put(uuid, retainedTerminal.op());
-            }
+            // Migrate it before registering a listener that may release the only staged copy.
+            rememberTerminal(uuid, retainedTerminal.op(), retainedTerminal.searchIndex());
+            retention.retain(uuid, uuidDir, retainedTerminal.op(), retainedTerminal.searchIndex());
             continue;
           }
           final TsFileWriterManager recovered =

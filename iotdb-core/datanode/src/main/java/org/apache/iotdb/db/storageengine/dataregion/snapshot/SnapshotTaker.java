@@ -115,17 +115,18 @@ public class SnapshotTaker {
                 dataRegion.writeUnlock();
               }
             }
+            // A COMMIT after data-file selection must not remove staging before it is copied.
+            // Its pieces may predate the new replica's sync channel and never be replayed there.
+            success = LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir, loadTerminalHistory);
           } finally {
             if (loadManager != null) {
               loadManager.unlockSnapshotBoundary();
             }
           }
         }
-        success = createSnapshot(seqFiles, tempSnapshotId);
+        success = success && createSnapshot(seqFiles, tempSnapshotId);
         success = success && createSnapshot(unseqFiles, tempSnapshotId);
         success = success && snapshotCompressionRatio(snapshotDirPath);
-        success =
-            success && LoadTsFileSnapshot.snapshot(dataRegion, snapshotDir, loadTerminalHistory);
       } finally {
         readUnlockTheFile();
       }

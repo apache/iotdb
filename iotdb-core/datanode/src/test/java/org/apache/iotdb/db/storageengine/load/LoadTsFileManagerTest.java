@@ -95,6 +95,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.LongConsumer;
+import java.util.function.Predicate;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -639,7 +640,7 @@ public class LoadTsFileManagerTest {
   }
 
   @Test
-  public void testSnapshotDoesNotFenceALoadCommittedAfterDataFileCapture() throws Exception {
+  public void testSnapshotRetainsStagingForLoadCommittedAfterDataFileCapture() throws Exception {
     final String loadId = "commit-during-snapshot";
     final String originalProtocol = config.getDataRegionConsensusProtocolClass();
     final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
@@ -652,39 +653,55 @@ public class LoadTsFileManagerTest {
 
       final TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
       Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
+      final AtomicBoolean committed = new AtomicBoolean();
       Mockito.when(tsFileManager.getTsFileList(Mockito.anyBoolean()))
-          .thenAnswer(invocation -> new ArrayList<>());
-      Mockito.doAnswer(
-              invocation -> {
-                // SnapshotTaker already captured its data-file lists before flushing.
-                assertTrue(manager.loadAll(commitNode(loadId), Collections.emptyMap()));
-                return null;
-              })
-          .when(dataRegion)
-          .syncCloseAllWorkingTsFileProcessors();
+          .thenAnswer(
+              invocation ->
+                  new ArrayList<TsFileResource>() {
+                    @Override
+                    public boolean removeIf(final Predicate<? super TsFileResource> filter) {
+                      // Data-file copying starts after the snapshot boundary lock is released.
+                      if (committed.compareAndSet(false, true)) {
+                        try {
+                          assertTrue(manager.loadAll(commitNode(loadId), Collections.emptyMap()));
+                        } catch (final Exception e) {
+                          throw new AssertionError(e);
+                        }
+                      }
+                      return super.removeIf(filter);
+                    }
+                  });
 
       final File snapshot = new File(tempDir, "concurrent-commit-snapshot");
       assertTrue(new SnapshotTaker(dataRegion).takeFullSnapshot(snapshot.getAbsolutePath(), true));
+      assertTrue(committed.get());
       final File history =
           new File(
               new File(snapshot, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME),
               LoadTsFileManager.TERMINAL_HISTORY_DIR);
       assertFalse(LoadTsFileProgress.progressFileFor(new File(history, loadId)).exists());
 
-      // The data-file snapshot predates COMMIT. Its replay must still stage the missing data.
+      // PIECE may predate the new replica's sync channel, so it cannot be replayed after restore.
+      // The snapshot itself must retain the staging that its later COMMIT still needs.
       manager.stop();
       LoadTsFileSnapshot.clear(dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
       LoadTsFileSnapshot.restore(
           dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString(), snapshot);
       final LoadTsFileManager restored = new LoadTsFileManager(dataRegion);
       try {
-        final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
-        piece.markAsGeneratedByRemoteConsensusLeader();
-        restored.writePiece(piece);
         assertEquals(1, restored.getActiveTaskDirs().size());
         final LoadTsFileConsensusNode prepare = prepareNode(loadId);
         prepare.markAsGeneratedByRemoteConsensusLeader();
         assertTrue(restored.prepare(prepare, Collections.emptyMap()));
+        final File[] stagedFiles =
+            restored.getActiveTaskDirs().get(0).listFiles((dir, name) -> name.endsWith(".tsfile"));
+        assertNotNull(stagedFiles);
+        assertEquals(1, stagedFiles.length);
+        assertAllSeriesReadable(
+            stagedFiles[0],
+            Collections.singletonList(
+                new SeriesExpectation(
+                    new StringArrayDeviceID("root", "load_manager_test", "d0"), "s0", 10, 0, 9)));
       } finally {
         restored.stop();
       }
@@ -737,6 +754,7 @@ public class LoadTsFileManagerTest {
     config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
     final String loadId = "legacy-terminal-load";
     try {
+      useWatermarkWALNode(5L);
       final LoadTsFileManager beforeUpgrade = new LoadTsFileManager(dataRegion);
       try {
         beforeUpgrade.writePiece(loadId, Collections.singletonList(laidOutChunk()));
@@ -745,12 +763,27 @@ public class LoadTsFileManagerTest {
         writer.recordTerminal(LoadTsFileConsensusOp.COMMIT, 10L, Collections.emptyMap());
         writer.close(true);
 
+        final IWALNode walNode = dataRegion.getWALNode().get();
+        Mockito.doAnswer(
+                invocation -> {
+                  // A watermark can advance as soon as recovery registers its release listener.
+                  final LongConsumer listener = invocation.getArgument(0);
+                  walWatermark.set(10L);
+                  listener.accept(10L);
+                  return null;
+                })
+            .when(walNode)
+            .setSafeDeletedSearchIndexListener(Mockito.any());
         final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
         try {
+          assertFalse(writer.getTaskDir().exists());
           final List<File> terminalHistory = LoadTsFileSnapshot.captureTerminalHistory(dataRegion);
           assertEquals(1, terminalHistory.size());
           assertEquals(
               loadId + LoadTsFileProgress.PROGRESS_SUFFIX, terminalHistory.get(0).getName());
+          final LoadTsFileConsensusNode commit = commitNode(loadId);
+          commit.markAsGeneratedByRemoteConsensusLeader();
+          assertTrue(recovered.loadAll(commit, Collections.emptyMap()));
         } finally {
           recovered.stop();
         }
