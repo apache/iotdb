@@ -1877,15 +1877,10 @@ enable_wal_compression=true
 # Enable only after every peer has the same supporting version and configuration.
 # This controls sending; receivers can decode every supported codec even when set to NONE.
 # Independent of WAL/TsFile compression and dn_rpc_thrift_compression_enable.
+# Buffers smaller than 4 KiB or without a net size benefit are sent uncompressed.
 # effectiveMode: restart
 # Datatype: String
 data_region_iot_log_compression = NONE
-
-# Minimum individual log buffer size in bytes to try compression.
-# Buffers and entries that do not save space including descriptors are sent uncompressed.
-# effectiveMode: restart
-# Datatype: int
-data_region_iot_log_compression_min_size = 4096
 
 # The maximum log entries num in IoTConsensus Batch
 # effectiveMode: hot_reload

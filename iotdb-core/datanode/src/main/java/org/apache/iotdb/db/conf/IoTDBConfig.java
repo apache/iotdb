@@ -1132,7 +1132,6 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   private int maxLogEntriesNumPerBatch = 1024;
   private int maxSizePerBatch = 16 * 1024 * 1024;
   private TLogCompressionType iotLogCompressionType = TLogCompressionType.NONE;
-  private int iotLogCompressionMinSize = 4096;
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
@@ -1318,14 +1317,6 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setIotLogCompressionType(TLogCompressionType type) {
     iotLogCompressionType = type;
-  }
-
-  public int getIotLogCompressionMinSize() {
-    return iotLogCompressionMinSize;
-  }
-
-  public void setIotLogCompressionMinSize(int size) {
-    iotLogCompressionMinSize = size;
   }
 
   public int getMaxSizePerBatch() {

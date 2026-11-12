@@ -137,7 +137,7 @@ public class LogCompressionTest {
     TSyncLogEntriesReq raw = request();
     TSyncLogEntriesReq snapshot = raw.deepCopy();
     for (int attempt = 0; attempt < 2; attempt++) {
-      LogCompression.EncodedRequest encoded = LogCompression.compress(raw, codec, 4096, LIMIT);
+      LogCompression.EncodedRequest encoded = LogCompression.compress(raw, codec, LIMIT);
       try {
         assertNotSame(raw, encoded.getRequest());
         assertEquals(
@@ -170,9 +170,39 @@ public class LogCompressionTest {
   }
 
   @Test
+  public void testFixedMinimumSizeBoundary() throws Exception {
+    for (int size : new int[] {4095, 4096, 4097}) {
+      TSyncLogEntriesReq raw =
+          new TSyncLogEntriesReq(
+              1,
+              new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+              Collections.singletonList(
+                  new TLogEntry(
+                      Collections.singletonList(ByteBuffer.allocate(size)), 1, false, size)));
+      try (LogCompression.EncodedRequest encoded = LogCompression.compress(raw, codec, LIMIT)) {
+        if (size < 4096) {
+          assertSame(raw, encoded.getRequest());
+          assertFalse(encoded.getRequest().getLogEntries().get(0).isSetCompressionInfo());
+        } else {
+          assertNotSame(raw, encoded.getRequest());
+          assertEquals(
+              codec,
+              encoded.getRequest().getLogEntries().get(0).getCompressionInfo().get(0).getCodec());
+        }
+        TSyncLogEntriesReq received = encoded.getRequest().deepCopy();
+        LogCompression.decompress(received, LIMIT);
+        assertEquals(
+            raw.getLogEntries().get(0).getData(), received.getLogEntries().get(0).getData());
+        assertEquals(0, raw.getLogEntries().get(0).getData().get(0).position());
+      }
+    }
+  }
+
+  @Test
   public void testAdaptiveAndMemoryFallback() throws Exception {
     TSyncLogEntriesReq raw = request();
-    try (LogCompression.EncodedRequest result = LogCompression.compress(raw, codec, LIMIT, LIMIT)) {
+    try (LogCompression.EncodedRequest result =
+        LogCompression.compress(raw, TLogCompressionType.NONE, LIMIT)) {
       assertSame(raw, result.getRequest());
     }
     byte[] random = new byte[16384];
@@ -182,12 +212,12 @@ public class LogCompressionTest {
         Collections.singletonList(
             new TLogEntry(
                 Collections.singletonList(ByteBuffer.wrap(random)), 1, false, random.length)));
-    try (LogCompression.EncodedRequest result = LogCompression.compress(noise, codec, 0, LIMIT)) {
+    try (LogCompression.EncodedRequest result = LogCompression.compress(noise, codec, LIMIT)) {
       assertSame(noise, result.getRequest());
     }
     long capacity = memory.getMemoryBlock().getTotalMemorySizeInBytes();
     assertTrue(memory.reserveLogCompression(capacity));
-    try (LogCompression.EncodedRequest result = LogCompression.compress(raw, codec, 0, LIMIT)) {
+    try (LogCompression.EncodedRequest result = LogCompression.compress(raw, codec, LIMIT)) {
       assertSame(raw, result.getRequest());
       assertTrue(result.isMemoryLimited());
       assertEquals(result.getRawBytes(), result.getEncodedBytes());
@@ -199,8 +229,7 @@ public class LogCompressionTest {
 
   @Test
   public void testRejectsEntireRequestBeforePublishingAnyDecodedEntry() throws Exception {
-    try (LogCompression.EncodedRequest encoded =
-        LogCompression.compress(request(), codec, 4096, LIMIT)) {
+    try (LogCompression.EncodedRequest encoded = LogCompression.compress(request(), codec, LIMIT)) {
       TSyncLogEntriesReq bad = encoded.getRequest().deepCopy();
       bad.getLogEntries().get(1).getCompressionInfo().get(0).setChecksum(0);
       TSyncLogEntriesReq snapshot = bad.deepCopy();
@@ -216,8 +245,7 @@ public class LogCompressionTest {
 
   @Test
   public void testMalformedMetadataAndCorruptedCodecInput() throws Exception {
-    try (LogCompression.EncodedRequest encoded =
-        LogCompression.compress(request(), codec, 4096, LIMIT)) {
+    try (LogCompression.EncodedRequest encoded = LogCompression.compress(request(), codec, LIMIT)) {
       TSyncLogEntriesReq count = encoded.getRequest().deepCopy();
       count.getLogEntries().get(0).getCompressionInfo().remove(0);
       assertThrows(IOException.class, () -> LogCompression.decompress(count, LIMIT));
@@ -256,7 +284,7 @@ public class LogCompressionTest {
                 1,
                 false,
                 2 * 1024 * 1024)));
-    try (LogCompression.EncodedRequest encoded = LogCompression.compress(raw, codec, 4096, LIMIT)) {
+    try (LogCompression.EncodedRequest encoded = LogCompression.compress(raw, codec, LIMIT)) {
       TSyncLogEntriesReq received = encoded.getRequest().deepCopy();
       LogCompression.decompress(received, LIMIT);
       assertEquals(raw, received);
@@ -276,8 +304,7 @@ public class LogCompressionTest {
     when(impl.getIoTConsensusServerMetrics()).thenReturn(mock(IoTConsensusServerMetrics.class));
     when(impl.getStateMachine()).thenReturn(stateMachine);
     IoTConsensusRPCServiceProcessor processor = new IoTConsensusRPCServiceProcessor(consensus);
-    try (LogCompression.EncodedRequest encoded =
-        LogCompression.compress(request(), codec, 4096, LIMIT)) {
+    try (LogCompression.EncodedRequest encoded = LogCompression.compress(request(), codec, LIMIT)) {
       TSyncLogEntriesReq corrupt = encoded.getRequest().deepCopy();
       corrupt.getLogEntries().get(1).getCompressionInfo().get(0).setChecksum(0);
       assertTrue(processor.syncLogEntries(corrupt).isSetLogCompressionError());
@@ -318,7 +345,7 @@ public class LogCompressionTest {
           new TLogEntry(
               Collections.singletonList(ByteBuffer.allocate(16384)), i + 1, false, 16384));
     raw.setLogEntries(entries);
-    try (LogCompression.EncodedRequest encoded = LogCompression.compress(raw, codec, 4096, LIMIT)) {
+    try (LogCompression.EncodedRequest encoded = LogCompression.compress(raw, codec, LIMIT)) {
       assertNotSame(raw, encoded.getRequest());
       assertEquals(16 * 16384, encoded.getRawBytes());
       assertFalse(encoded.isMemoryLimited());
@@ -343,7 +370,7 @@ public class LogCompressionTest {
                 1,
                 true,
                 40960)));
-    try (LogCompression.EncodedRequest encoded = LogCompression.compress(raw, codec, 4096, LIMIT)) {
+    try (LogCompression.EncodedRequest encoded = LogCompression.compress(raw, codec, LIMIT)) {
       assertNotSame(raw, encoded.getRequest());
       assertTrue(encoded.isMemoryLimited());
       assertEquals(

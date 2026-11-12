@@ -609,7 +609,6 @@ public class LogDispatcher {
             LogCompression.compress(
                 req,
                 config.getReplication().getLogCompressionType(),
-                config.getReplication().getLogCompressionMinSize(),
                 config.getRpc().getThriftMaxFrameSize());
         logDispatcherThreadMetrics.recordCompressTime(System.nanoTime() - compressionStart);
         logDispatcherThreadMetrics.recordCompressionBytes(

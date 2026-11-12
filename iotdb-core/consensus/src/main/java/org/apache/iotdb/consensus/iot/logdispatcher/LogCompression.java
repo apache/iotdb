@@ -41,6 +41,9 @@ import java.util.zip.CRC32C;
 
 /** Wire-only encoding: the original batch and its buffer positions remain available for retries. */
 public final class LogCompression {
+  // Avoid codec and descriptor overhead on tiny blocks; larger blocks still need a net size
+  // benefit.
+  private static final int MIN_COMPRESSION_SIZE = 4096;
   // Conservative allowance for the additional Thrift descriptor and list field on the wire.
   private static final int DESCRIPTOR_BYTES = 32;
   private static final ICompressor LZ4 = ICompressor.getCompressor(CompressionType.LZ4);
@@ -100,7 +103,7 @@ public final class LogCompression {
   }
 
   public static EncodedRequest compress(
-      TSyncLogEntriesReq original, TLogCompressionType codec, int minSize, int maxDecodedBytes)
+      TSyncLogEntriesReq original, TLogCompressionType codec, int maxDecodedBytes)
       throws IOException {
     long buffers = 0, rawSize = 0;
     boolean hasEligibleBuffer = false;
@@ -108,7 +111,7 @@ public final class LogCompression {
       for (ByteBuffer buffer : entry.getData()) {
         int size = buffer.remaining();
         rawSize += size;
-        if (size >= minSize && size > 0) {
+        if (size >= MIN_COMPRESSION_SIZE) {
           hasEligibleBuffer = true;
         }
         buffers++;
@@ -138,7 +141,7 @@ public final class LogCompression {
           raw += size;
           ByteBuffer encoded = buffer;
           TLogCompressionType actualCodec = TLogCompressionType.NONE;
-          if (size >= minSize && size > 0) {
+          if (size >= MIN_COMPRESSION_SIZE) {
             // Includes an optional input copy, codec-bound output and compact output, with
             // allowance for array headers and codec bounds on very small buffers.
             long workspace = 4L * size + 256;
