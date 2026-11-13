@@ -31,7 +31,6 @@ enum TLogCompressionType {
 struct TLogBufferCompression {
   1: required TLogCompressionType codec
   2: required i32 uncompressedSize
-  3: required i32 checksum
 }
 
 // If this TLogEntry comes from the queue in memory, the list size of the data will only be 1.

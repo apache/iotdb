@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.zip.CRC32C;
 
 /** Wire-only encoding: the original batch and its buffer positions remain available for retries. */
 public final class LogCompression {
@@ -175,13 +174,11 @@ public final class LogCompression {
             }
           }
           data.add(encoded);
-          info.add(new TLogBufferCompression(actualCodec, size, 0));
+          info.add(new TLogBufferCompression(actualCodec, size));
           wire += encoded.remaining();
         }
         // Raw descriptors in a mixed WAL entry cost space too.
         if (compressed && wire + DESCRIPTOR_BYTES * (long) data.size() + 8 < raw) {
-          for (int i = 0; i < info.size(); i++)
-            info.get(i).setChecksum(checksum(entry.getData().get(i)));
           entries.add(copy(entry, data).setCompressionInfo(info));
           retained += arrays + data.size() * 256L + 128;
           result.encodedBytes += wire - raw;
@@ -202,7 +199,7 @@ public final class LogCompression {
     }
   }
 
-  /** Validate every declared size before allocating; apply nothing until all buffers pass CRC. */
+  /** Validate declared sizes before allocating; publish nothing until every buffer is decoded. */
   public static void decompress(TSyncLogEntriesReq request, int maxDecodedBytes)
       throws IOException {
     boolean encoded = false;
@@ -255,12 +252,6 @@ public final class LogCompression {
           if (actual != output.length) throw invalid(Failure.LENGTH, output.length, actual);
           buffer = ByteBuffer.wrap(output);
         }
-        int crc = checksum(buffer);
-        if (crc != info.getChecksum())
-          throw invalid(
-              Failure.CHECKSUM,
-              Integer.toUnsignedLong(info.getChecksum()),
-              Integer.toUnsignedLong(crc));
         data.add(buffer);
       }
       decoded.add(copy(entry, data));
@@ -283,12 +274,6 @@ public final class LogCompression {
     byte[] bytes = new byte[copy.remaining()];
     copy.get(bytes);
     return bytes;
-  }
-
-  private static int checksum(ByteBuffer buffer) {
-    CRC32C crc = new CRC32C();
-    crc.update(buffer.duplicate());
-    return (int) crc.getValue();
   }
 
   private static ICompressor compressor(TLogCompressionType codec) throws IOException {
@@ -319,8 +304,7 @@ public final class LogCompression {
     CODEC,
     LENGTH,
     LIMIT,
-    DESCRIPTORS,
-    CHECKSUM
+    DESCRIPTORS
   }
 
   private static IOException invalid(Failure failure, long expected, long actual) {

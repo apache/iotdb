@@ -231,15 +231,30 @@ public class LogCompressionTest {
   public void testRejectsEntireRequestBeforePublishingAnyDecodedEntry() throws Exception {
     try (LogCompression.EncodedRequest encoded = LogCompression.compress(request(), codec, LIMIT)) {
       TSyncLogEntriesReq bad = encoded.getRequest().deepCopy();
-      bad.getLogEntries().get(1).getCompressionInfo().get(0).setChecksum(0);
+      // The first entry decodes successfully before the later entry fails in the codec.
+      bad.getLogEntries().get(1).getData().set(0, ByteBuffer.wrap(new byte[] {0, 1, 2}));
       TSyncLogEntriesReq snapshot = bad.deepCopy();
       assertThrows(IOException.class, () -> LogCompression.decompress(bad, LIMIT));
       assertEquals(snapshot, bad);
-      // Also cover corruption of an uncompressed block in a mixed WAL entry.
+      // Raw blocks in mixed entries still have to match their declared lengths.
       TSyncLogEntriesReq secondBad = encoded.getRequest().deepCopy();
-      secondBad.getLogEntries().get(0).getCompressionInfo().get(2).setChecksum(0);
+      secondBad.getLogEntries().get(0).getCompressionInfo().get(2).setUncompressedSize(4);
       final TSyncLogEntriesReq mixed = secondBad;
       assertThrows(IOException.class, () -> LogCompression.decompress(mixed, LIMIT));
+    }
+  }
+
+  @Test
+  public void testMixedRawBufferContentIsForwardedWithoutChecksum() throws Exception {
+    try (LogCompression.EncodedRequest encoded = LogCompression.compress(request(), codec, LIMIT)) {
+      TSyncLogEntriesReq received = encoded.getRequest().deepCopy();
+      byte[] changed = {4, 5, 6};
+      received.getLogEntries().get(0).getData().set(2, ByteBuffer.wrap(changed));
+      TSyncLogEntriesReq expected = request();
+      expected.getLogEntries().get(0).getData().set(2, ByteBuffer.wrap(changed));
+      LogCompression.decompress(received, LIMIT);
+      // Same-length raw content is preserved verbatim; there is no payload integrity checksum.
+      assertEquals(expected, received);
     }
   }
 
@@ -306,7 +321,7 @@ public class LogCompressionTest {
     IoTConsensusRPCServiceProcessor processor = new IoTConsensusRPCServiceProcessor(consensus);
     try (LogCompression.EncodedRequest encoded = LogCompression.compress(request(), codec, LIMIT)) {
       TSyncLogEntriesReq corrupt = encoded.getRequest().deepCopy();
-      corrupt.getLogEntries().get(1).getCompressionInfo().get(0).setChecksum(0);
+      corrupt.getLogEntries().get(1).getData().set(0, ByteBuffer.wrap(new byte[] {0, 1, 2}));
       assertTrue(processor.syncLogEntries(corrupt).isSetLogCompressionError());
       // Snappy reports a short output buffer as IllegalArgumentException; the RPC boundary must
       // reject it in the same explicit, pre-application error path as codec I/O failures.
