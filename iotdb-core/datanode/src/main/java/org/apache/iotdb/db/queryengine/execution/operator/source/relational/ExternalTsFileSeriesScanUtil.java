@@ -83,7 +83,8 @@ public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
         globalTimeFilter,
         resource.isSeq(),
         context.isIgnoreAllNullRows(),
-        new long[] {currentDeviceOffset.getStartOffset(), currentDeviceOffset.getEndOffset()});
+        new long[] {currentDeviceOffset.getStartOffset(), currentDeviceOffset.getEndOffset()},
+        0);
   }
 
   @FunctionalInterface

@@ -1710,6 +1710,9 @@ public final class StorageEngineMessages {
   public static final String COMPACTION_CROSS_SPACE = "cross";
   public static final String DEVICE_DOES_NOT_EXIST_IN_RESOURCE_FILE_FMT =
       "%s does not exist in the resource file";
+  public static final String
+      EXCEPTION_DEVICE_ARG_IS_RECORDED_IN_THE_RESOURCE_BUT_MISSING_FROM_THE_METADATA_OF_TSFILE_ARG_DE00C374 =
+          "Device %s is recorded in the resource but missing from the metadata of TsFile %s";
   public static final String TARGET_FILE_SMALLER_THAN_MAGIC_STRING_AND_VERSION_NUMBER_SIZE_FMT =
       "target file %s is smaller than magic string and version number size";
   public static final String CURRENT_POINT_TIMESTAMP_SHOULD_BE_LATER_FMT =
