@@ -70,6 +70,7 @@ import org.apache.iotdb.library.frequency.UDTFHighPass;
 import org.apache.iotdb.library.frequency.UDTFIDWT;
 import org.apache.iotdb.library.frequency.UDTFIFFT;
 import org.apache.iotdb.library.frequency.UDTFLowPass;
+import org.apache.iotdb.library.frequency.util.DWTUtil;
 import org.apache.iotdb.library.series.UDTFConsecutiveSequences;
 import org.apache.iotdb.library.series.UDTFConsecutiveWindows;
 import org.apache.iotdb.library.string.UDTFRegexMatch;
@@ -99,6 +100,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1314,6 +1317,98 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testIsometricSampleWithReusableRows() throws Exception {
+    for (int k : new int[] {2, 4, 6}) {
+      Map<String, String> attributes = new HashMap<>();
+      attributes.put("method", "isometric");
+      attributes.put("k", Integer.toString(k));
+      UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+      UDTFSample sample = new UDTFSample();
+      RecordingPointCollector collector = new RecordingPointCollector();
+      sample.validate(new UDFParameterValidator(parameters));
+      sample.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+      sample.transform(
+          new SimpleRowWindow(
+              nullDoubleRow(1),
+              new DoubleRow(2, 2.0),
+              new DoubleRow(3, 3.0),
+              nullDoubleRow(4),
+              new DoubleRow(5, 5.0),
+              new DoubleRow(7, 7.0),
+              nullDoubleRow(8)),
+          collector);
+
+      Assert.assertEquals(
+          k == 2 ? Arrays.asList(2L, 5L) : Arrays.asList(2L, 3L, 5L, 7L), collector.timestamps);
+      Assert.assertEquals(
+          k == 2 ? Arrays.asList(2.0, 5.0) : Arrays.asList(2.0, 3.0, 5.0, 7.0), collector.values);
+    }
+  }
+
+  @Test
+  public void testTriangleSamplePreservesLongValues() throws Exception {
+    long first = 9007199254740993L;
+    long second = 9007199254740995L;
+    long last = Long.MAX_VALUE - 1;
+    for (int k : new int[] {1, 2, 4}) {
+      Map<String, String> attributes = new HashMap<>();
+      attributes.put("method", "triangle");
+      attributes.put("k", Integer.toString(k));
+      UDFParameters parameters =
+          new UDFParameters(
+              Collections.singletonList("s1"), Collections.singletonList(Type.INT64), attributes);
+      UDTFSample sample = new UDTFSample();
+      List<Long> values = new ArrayList<>();
+      RecordingPointCollector collector =
+          new RecordingPointCollector() {
+            @Override
+            public void putLong(long timestamp, long value) {
+              super.putLong(timestamp, value);
+              values.add(value);
+            }
+          };
+      sample.validate(new UDFParameterValidator(parameters));
+      sample.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+      sample.transform(
+          new SimpleRowWindow(new LongRow(1, first), new LongRow(2, second), new LongRow(3, last)),
+          collector);
+
+      Assert.assertEquals(
+          k == 1
+              ? Collections.singletonList(first)
+              : k == 2 ? Arrays.asList(first, last) : Arrays.asList(first, second, last),
+          values);
+      Assert.assertEquals(
+          k == 1
+              ? Collections.singletonList(1L)
+              : k == 2 ? Arrays.asList(1L, 3L) : Arrays.asList(1L, 2L, 3L),
+          collector.timestamps);
+    }
+  }
+
+  @Test
+  public void testDWTRoundTripWithExcessLayers() {
+    List<Double> values = Arrays.asList(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+    for (String method : new String[] {"Haar", "DB4", "DB6", "DB8"}) {
+      for (int layer : new int[] {1, 2, 3, 4, 31, 32, 33, Integer.MAX_VALUE}) {
+        DWTUtil forward = new DWTUtil(method, "", layer, values);
+        forward.waveletTransform();
+        List<Double> coefficients = new ArrayList<>();
+        for (double value : forward.getData()) {
+          coefficients.add(value);
+        }
+        DWTUtil inverse = new DWTUtil(method, "", layer, coefficients);
+        inverse.inverse();
+        Assert.assertArrayEquals(
+            method + " layer=" + layer,
+            values.stream().mapToDouble(Double::doubleValue).toArray(),
+            inverse.getData(),
+            1e-9);
+      }
+    }
+  }
+
+  @Test
   public void testPatternSymmetrySkipsInvalidWindows() throws Exception {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("window", "2");
@@ -2009,6 +2104,25 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testSplinePreservesSmallIntervalsAtLargeTimestamps() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("points", "3");
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    UDTFSpline spline = new UDTFSpline();
+    RecordingPointCollector collector = new RecordingPointCollector();
+    long start = 1_700_000_000_000_000_000L;
+    spline.validate(new UDFParameterValidator(parameters));
+    spline.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    for (int i = 0; i < 5; i++) {
+      spline.transform(new DoubleRow(start + i, i), collector);
+    }
+    spline.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(start, start + 2, start + 4), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(0.0, 2.0, 4.0), collector.values);
+  }
+
+  @Test
   public void testOutlierValidatesRuntimeSensitiveParameters() {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("s", "0");
@@ -2571,6 +2685,25 @@ public class UDFWindowAndQueueTest {
     }
   }
 
+  private static class LongRow extends DoubleRow {
+    private final long value;
+
+    private LongRow(long time, long value) {
+      super(time, value);
+      this.value = value;
+    }
+
+    @Override
+    public long getLong(int columnIndex) {
+      return value;
+    }
+
+    @Override
+    public Type getDataType(int columnIndex) {
+      return Type.INT64;
+    }
+  }
+
   private static class TextRow implements Row {
 
     private final long time;
@@ -2685,10 +2818,23 @@ public class UDFWindowAndQueueTest {
 
     private final Row[] rows;
     private int index;
+    private final Row row;
 
     private SimpleRowIterator(Row[] rows) {
       this.rows = rows;
       this.index = 0;
+      this.row =
+          (Row)
+              Proxy.newProxyInstance(
+                  Row.class.getClassLoader(),
+                  new Class<?>[] {Row.class},
+                  (proxy, method, args) -> {
+                    try {
+                      return method.invoke(this.rows[index - 1], args);
+                    } catch (InvocationTargetException e) {
+                      throw e.getCause();
+                    }
+                  });
     }
 
     @Override
@@ -2698,7 +2844,8 @@ public class UDFWindowAndQueueTest {
 
     @Override
     public Row next() {
-      return rows[index++];
+      index++;
+      return row;
     }
 
     @Override

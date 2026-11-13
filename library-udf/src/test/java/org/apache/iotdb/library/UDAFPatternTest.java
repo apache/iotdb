@@ -39,11 +39,9 @@ import org.apache.iotdb.udf.api.utils.ResultValue;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.block.column.ColumnBuilderStatus;
 import org.apache.tsfile.block.column.ColumnEncoding;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -280,9 +278,10 @@ public class UDAFPatternTest {
     State state = patternMatch.createState();
     state.reset();
 
-    RecordingColumnBuilder resultBuilder = new RecordingColumnBuilder(TSDataType.TEXT);
+    BinaryColumnBuilder resultBuilder = new BinaryColumnBuilder(null, 1);
     patternMatch.outputFinal(state, new ResultValue(resultBuilder));
 
+    Assert.assertEquals(1, resultBuilder.getPositionCount());
     Assert.assertTrue(resultBuilder.build().isNull(0));
   }
 
@@ -297,9 +296,10 @@ public class UDAFPatternTest {
     state.updateBuffer(1L, 5.0);
     state.updateBuffer(2L, 5.0);
 
-    RecordingColumnBuilder resultBuilder = new RecordingColumnBuilder(TSDataType.TEXT);
+    BinaryColumnBuilder resultBuilder = new BinaryColumnBuilder(null, 1);
     patternMatch.outputFinal(state, new ResultValue(resultBuilder));
 
+    Assert.assertEquals(1, resultBuilder.getPositionCount());
     Assert.assertFalse(resultBuilder.build().isNull(0));
   }
 
@@ -315,9 +315,10 @@ public class UDAFPatternTest {
     state.updateBuffer(3L, 2.0);
     state.updateBuffer(2L, 3.0);
 
-    RecordingColumnBuilder resultBuilder = new RecordingColumnBuilder(TSDataType.TEXT);
+    BinaryColumnBuilder resultBuilder = new BinaryColumnBuilder(null, 1);
     patternMatch.outputFinal(state, new ResultValue(resultBuilder));
 
+    Assert.assertEquals(1, resultBuilder.getPositionCount());
     Assert.assertFalse(resultBuilder.build().isNull(0));
   }
 
@@ -542,58 +543,6 @@ public class UDAFPatternTest {
     @Override
     public void setPositionCount(int count) {
       throw new UnsupportedOperationException();
-    }
-  }
-
-  private static class RecordingColumnBuilder implements ColumnBuilder {
-
-    private final TSDataType dataType;
-    private boolean nullWritten;
-
-    private RecordingColumnBuilder(TSDataType dataType) {
-      this.dataType = dataType;
-    }
-
-    @Override
-    public int getPositionCount() {
-      return nullWritten ? 1 : 0;
-    }
-
-    @Override
-    public ColumnBuilder write(Column column, int index) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public ColumnBuilder writeBinary(Binary value) {
-      nullWritten = false;
-      return this;
-    }
-
-    @Override
-    public ColumnBuilder appendNull() {
-      nullWritten = true;
-      return this;
-    }
-
-    @Override
-    public Column build() {
-      return new TestColumn(dataType, new long[0], new double[] {0.0}, new boolean[] {nullWritten});
-    }
-
-    @Override
-    public TSDataType getDataType() {
-      return dataType;
-    }
-
-    @Override
-    public long getRetainedSizeInBytes() {
-      return 0;
-    }
-
-    @Override
-    public ColumnBuilder newColumnBuilderLike(ColumnBuilderStatus status) {
-      return new RecordingColumnBuilder(dataType);
     }
   }
 }

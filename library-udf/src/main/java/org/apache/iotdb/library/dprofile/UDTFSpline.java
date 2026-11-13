@@ -83,7 +83,7 @@ public class UDTFSpline implements UDTF {
         return;
       }
       timestamp.add(t);
-      xDouble.add((double) t - minimumTimestamp);
+      xDouble.add((double) (t - minimumTimestamp));
       yDouble.add(v);
     }
   }

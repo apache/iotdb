@@ -24,7 +24,6 @@ import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
-import org.apache.iotdb.udf.api.access.RowIterator;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -142,6 +141,7 @@ public class UDTFSample implements UDTF {
     // equal-distance sampling
     if (this.method == Method.TRIANGLE) {
       List<Pair<Long, Double>> input = new LinkedList<>();
+      List<Integer> validIndexes = new ArrayList<>();
       for (int i = 0; i < rowWindow.windowSize(); i++) {
         Row row = rowWindow.getRow(i);
         if (row.isNull(0)) {
@@ -150,6 +150,7 @@ public class UDTFSample implements UDTF {
         double data = numericRowReader.read(row);
         if (Double.isFinite(data)) {
           input.add(Pair.of(row.getTime(), data));
+          validIndexes.add(i);
         }
       }
       int n = input.size();
@@ -164,39 +165,40 @@ public class UDTFSample implements UDTF {
             numericValueWriter.write(p.getLeft(), p.getRight(), collector);
           }
         } else { // For corner case of k == 1 and k == 2
-          Pair<Long, Double> row = input.get(0); // Put first element
-          numericValueWriter.write(row.getLeft(), row.getRight(), collector);
+          Row row = rowWindow.getRow(validIndexes.get(0)); // Put first element
+          valueWriter.write(collector, row.getTime(), valueReader.read(row));
           if (k == 2) {
-            row = input.get(n - 1); // Put last element
-            numericValueWriter.write(row.getLeft(), row.getRight(), collector);
+            row = rowWindow.getRow(validIndexes.get(n - 1)); // Put last element
+            valueWriter.write(collector, row.getTime(), valueReader.read(row));
           }
         }
       } else { // when k is larger than series length, output all points
-        for (Pair<Long, Double> row : input) {
-          numericValueWriter.write(row.getLeft(), row.getRight(), collector);
+        for (int index : validIndexes) {
+          Row row = rowWindow.getRow(index);
+          valueWriter.write(collector, row.getTime(), valueReader.read(row));
         }
       }
     } else {
-      List<Row> validRows = new ArrayList<>();
-      RowIterator iterator = rowWindow.getRowIterator();
-      while (iterator.hasNextRow()) {
-        Row row = iterator.next();
-        if (!row.isNull(0)) {
-          validRows.add(row);
+      // Row instances are reused by the window and iterator, so retain only their indexes.
+      List<Integer> validIndexes = new ArrayList<>();
+      for (int i = 0; i < rowWindow.windowSize(); i++) {
+        if (!rowWindow.getRow(i).isNull(0)) {
+          validIndexes.add(i);
         }
       }
-      int n = validRows.size();
+      int n = validIndexes.size();
       if (n == 0) {
         return;
       }
       if (this.k < n) {
         for (long i = 0; i < this.k; i++) {
           long j = Math.floorDiv(i * n, (long) k); // avoid intermediate result overflows
-          Row row = validRows.get((int) j);
+          Row row = rowWindow.getRow(validIndexes.get((int) j));
           valueWriter.write(collector, row.getTime(), valueReader.read(row));
         }
       } else { // when k is larger than series length, output all points
-        for (Row row : validRows) {
+        for (int index : validIndexes) {
+          Row row = rowWindow.getRow(index);
           valueWriter.write(collector, row.getTime(), valueReader.read(row));
         }
       }

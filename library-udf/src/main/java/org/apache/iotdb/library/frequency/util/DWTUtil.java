@@ -244,14 +244,13 @@ public class DWTUtil {
           LibraryUdfMessages
               .EXCEPTION_THE_DATA_VECTOR_SIZE_IS_LESS_THAN_WAVELET_COEFFICIENT_SIZE_AC6652FF);
     }
-    int nn = n >> Math.max(layer - 1, 0);
-    if (nn == 0) {
-      nn = 1;
+    int nn = n;
+    int levels = 0;
+    for (int size = n; levels < layer && size >= ncof; size >>= 1) {
+      nn = size;
+      levels++;
     }
-    for (int i = 0; i < layer; i++) {
-      if (nn > n) {
-        break;
-      }
+    for (int i = 0; i < levels; i++) {
       backward(nn);
       nn <<= 1;
     }
