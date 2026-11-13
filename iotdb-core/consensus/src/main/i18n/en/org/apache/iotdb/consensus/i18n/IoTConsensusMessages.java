@@ -25,6 +25,9 @@ package org.apache.iotdb.consensus.i18n;
  */
 public final class IoTConsensusMessages {
 
+
+  public static final String EXCEPTION_INVALID_IOTCONSENSUS_COMPRESSED_LOG_ARG_EXPECTED_ARG_ACTUAL_ARG_4986175E = "Invalid IoTConsensus compressed log (%s, expected %d, actual %d)";
+
   private IoTConsensusMessages() {}
 
   // ===================== IoTConsensus lifecycle =====================

@@ -37,6 +37,7 @@ public class IoTConsensusServerMetrics implements IMetricSet {
   private Timer offerRequestToQueueTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer consensusWriteTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private static final String IOT_RECEIVE_LOG = Metric.IOT_RECEIVE_LOG.toString();
+  private Timer decompressTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer deserializeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer sortTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer applyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -49,6 +50,10 @@ public class IoTConsensusServerMetrics implements IMetricSet {
   }
 
   private static final String IMPL = "ioTConsensusServerImpl";
+
+  public void recordDecompressCost(long nanos) {
+    decompressTimer.updateNanos(nanos);
+  }
 
   public void recordDeserializeCost(long costTimeInNanos) {
     deserializeTimer.updateNanos(costTimeInNanos);
@@ -190,6 +195,14 @@ public class IoTConsensusServerMetrics implements IMetricSet {
 
   private void bindSyncLogTimer(AbstractMetricService metricService) {
     // bind sync log timers
+    decompressTimer =
+        metricService.getOrCreateTimer(
+            IOT_RECEIVE_LOG,
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            "decompress",
+            Tag.REGION.toString(),
+            impl.getConsensusGroupId());
     deserializeTimer =
         metricService.getOrCreateTimer(
             IOT_RECEIVE_LOG,
@@ -319,6 +332,13 @@ public class IoTConsensusServerMetrics implements IMetricSet {
 
   private void unbindSyncLogTimer(AbstractMetricService metricService) {
     // unbind sync log timers
+    metricService.remove(
+        MetricType.TIMER,
+        IOT_RECEIVE_LOG,
+        Tag.STAGE.toString(),
+        "decompress",
+        Tag.REGION.toString(),
+        impl.getConsensusGroupId());
     metricService.remove(
         MetricType.TIMER,
         IOT_RECEIVE_LOG,

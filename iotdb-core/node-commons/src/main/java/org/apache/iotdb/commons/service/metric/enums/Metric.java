@@ -61,6 +61,8 @@ public enum Metric {
   STAGE("stage"),
   IOT_CONSENSUS("iot_consensus"),
   IOT_SEND_LOG("iot_send_log"),
+  IOT_LOG_COMPRESSION_BYTES("iot_log_compression_bytes"),
+  IOT_LOG_COMPRESSION_MEMORY_FALLBACKS("iot_log_compression_memory_fallbacks"),
   IOT_RECEIVE_LOG("iot_receive_log"),
   IOT_CONSENSUS_V2("iot_consensus_v2"),
   IOT_CONSENSUS_V2_MODE("iot_consensus_v2_mode"),

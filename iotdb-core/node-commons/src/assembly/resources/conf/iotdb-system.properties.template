@@ -1873,6 +1873,15 @@ enable_wal_compression=true
 ### IoTConsensus Configuration
 ####################
 
+# IoTConsensus V1 log payload codec: NONE, LZ4, SNAPPY, ZSTD (level 1).
+# Enable only after every peer has the same supporting version and configuration.
+# This controls sending; receivers can decode every supported codec even when set to NONE.
+# Independent of WAL/TsFile compression and dn_rpc_thrift_compression_enable.
+# Buffers smaller than 4 KiB or without a net size benefit are sent uncompressed.
+# effectiveMode: restart
+# Datatype: String
+data_region_iot_log_compression = NONE
+
 # The maximum log entries num in IoTConsensus Batch
 # effectiveMode: hot_reload
 # Datatype: int

@@ -24,6 +24,9 @@ package org.apache.iotdb.consensus.i18n;
  */
 public final class IoTConsensusMessages {
 
+
+  public static final String EXCEPTION_INVALID_IOTCONSENSUS_COMPRESSED_LOG_ARG_EXPECTED_ARG_ACTUAL_ARG_4986175E = "无效的 IoTConsensus 压缩日志（%s，预期 %d，实际 %d）";
+
   private IoTConsensusMessages() {}
 
   // ===================== IoTConsensus 生命周期 =====================

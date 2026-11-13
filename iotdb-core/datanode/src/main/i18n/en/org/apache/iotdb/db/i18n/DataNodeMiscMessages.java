@@ -21,6 +21,7 @@ package org.apache.iotdb.db.i18n;
 
 /** Compile-time i18n constants for DataNode misc subsystems (English). */
 public final class DataNodeMiscMessages {
+  public static final String EXCEPTION_INVALID_IOTCONSENSUS_LOG_COMPRESSION_CODEC_ARG_2B9C27F7 = "Invalid IoTConsensus log compression codec: %s";
   public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
       "The requested query does not belong to the current session.";
 

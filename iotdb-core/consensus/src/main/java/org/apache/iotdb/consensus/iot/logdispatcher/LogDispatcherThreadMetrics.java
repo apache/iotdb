@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -45,12 +46,26 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
   private final LogDispatcher.LogDispatcherThread logDispatcherThread;
   private final String peerGroupId;
 
+  private Counter rawBytes = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter encodedBytes = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter memoryFallbacks = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Timer compressTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer constructBatchTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer syncLogTimePerRequestTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   public LogDispatcherThreadMetrics(LogDispatcher.LogDispatcherThread logDispatcherThread) {
     this.logDispatcherThread = logDispatcherThread;
     this.peerGroupId = logDispatcherThread.getPeer().getGroupId().toString();
+  }
+
+  public void recordCompressionBytes(long raw, long encoded, boolean memoryLimited) {
+    rawBytes.inc(raw);
+    encodedBytes.inc(encoded);
+    if (memoryLimited) memoryFallbacks.inc();
+  }
+
+  public void recordCompressTime(long nanos) {
+    compressTimer.updateNanos(nanos);
   }
 
   public void recordConstructBatchTime(long costTimeInNanos) {
@@ -108,6 +123,38 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
       REGION_TO_STAGE_TIMER_OWNERS
           .computeIfAbsent(peerGroupId, region -> new HashSet<>())
           .add(this);
+      rawBytes =
+          metricService.getOrCreateCounter(
+              Metric.IOT_LOG_COMPRESSION_BYTES.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.REGION.toString(),
+              peerGroupId,
+              Tag.TYPE.toString(),
+              "raw");
+      encodedBytes =
+          metricService.getOrCreateCounter(
+              Metric.IOT_LOG_COMPRESSION_BYTES.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.REGION.toString(),
+              peerGroupId,
+              Tag.TYPE.toString(),
+              "encoded");
+      memoryFallbacks =
+          metricService.getOrCreateCounter(
+              Metric.IOT_LOG_COMPRESSION_MEMORY_FALLBACKS.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.REGION.toString(),
+              peerGroupId);
+      compressTimer =
+          metricService.getOrCreateTimer(
+              Metric.IOT_SEND_LOG.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              Metric.IOT_CONSENSUS.toString(),
+              Tag.STAGE.toString(),
+              "compress",
+              Tag.REGION.toString(),
+              peerGroupId);
       constructBatchTimer =
           metricService.getOrCreateTimer(
               Metric.IOT_SEND_LOG.toString(),
@@ -140,6 +187,34 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
           return;
         }
         REGION_TO_STAGE_TIMER_OWNERS.remove(peerGroupId);
+        metricService.remove(
+            MetricType.COUNTER,
+            Metric.IOT_LOG_COMPRESSION_BYTES.toString(),
+            Tag.REGION.toString(),
+            peerGroupId,
+            Tag.TYPE.toString(),
+            "raw");
+        metricService.remove(
+            MetricType.COUNTER,
+            Metric.IOT_LOG_COMPRESSION_BYTES.toString(),
+            Tag.REGION.toString(),
+            peerGroupId,
+            Tag.TYPE.toString(),
+            "encoded");
+        metricService.remove(
+            MetricType.COUNTER,
+            Metric.IOT_LOG_COMPRESSION_MEMORY_FALLBACKS.toString(),
+            Tag.REGION.toString(),
+            peerGroupId);
+        metricService.remove(
+            MetricType.TIMER,
+            Metric.IOT_SEND_LOG.toString(),
+            Tag.NAME.toString(),
+            Metric.IOT_CONSENSUS.toString(),
+            Tag.STAGE.toString(),
+            "compress",
+            Tag.REGION.toString(),
+            peerGroupId);
       }
       metricService.remove(
           MetricType.TIMER,
