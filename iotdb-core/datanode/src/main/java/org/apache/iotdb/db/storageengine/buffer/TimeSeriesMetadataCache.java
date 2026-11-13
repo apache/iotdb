@@ -432,6 +432,12 @@ public class TimeSeriesMetadataCache {
             return result;
           }
 
+          // TsFileSequenceReader has no selective batch-read API that accepts a measurement set,
+          // so this call loads every measurement of the device and filters afterwards. A truly
+          // selective read requires an upstream apache/tsfile change; the bloom filter and the
+          // per-column fallback above keep this branch to measurements that are plausibly present.
+          // The measurement-level readTimeseriesMetadata API is group-selective already and is what
+          // the per-column path and the fallback use.
           TsFileSequenceReader reader =
               FileReaderManager.getInstance()
                   .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, false);
