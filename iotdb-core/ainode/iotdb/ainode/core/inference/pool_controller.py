@@ -201,6 +201,15 @@ class PoolController:
                 self._task_queue.task_done()
 
     def _load_one_model_task(self, model_id: str, device_id_list: list[torch.device]):
+        model_info = self._model_manager.get_model_info(model_id)
+        if not model_info.download_on_start:
+            # Built-in models that are not downloaded at start are downloaded when loaded
+            if not self._model_manager.download_builtin_model(model_id):
+                logger.error(
+                    f"[Inference] Cannot load model {model_id}: downloading it failed."
+                )
+                return
+
         def _load_one_model_on_device_task(device_id: torch.device):
             if not self.has_pool_on_device(device_id):
                 self._expand_pools_on_device(model_id, device_id, 1)
