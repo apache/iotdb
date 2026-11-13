@@ -56,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
@@ -100,8 +101,14 @@ public class SessionPool implements ISessionPool {
   private static final int FINAL_RETRY = RETRY - 1;
 
   private final ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
-  // for session whose resultSet is not released.
-  private final ConcurrentMap<ISession, ISession> occupied = new ConcurrentHashMap<>();
+  // Every session taken by getSession() and not yet returned (put back or cleaned), whatever it
+  // is used for.
+  private final Set<ISession> occupied = ConcurrentHashMap.newKeySet();
+  // The occupied sessions whose result set is not released yet, each with that result set. A
+  // session can be released, taken again and hold a new result set while the old one is still
+  // referenced, so a release must match the result set, not only the session.
+  private final ConcurrentMap<ISession, SessionDataSetWrapper> occupiedByResultSet =
+      new ConcurrentHashMap<>();
   private int size = 0;
   private int maxSize = 0;
   private final long waitToGetSessionTimeoutInMs;
@@ -712,6 +719,7 @@ public class SessionPool implements ISessionPool {
       throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
     }
     if (session != null) {
+      occupied.add(session);
       return session;
     }
 
@@ -800,6 +808,7 @@ public class SessionPool implements ISessionPool {
       }
     }
 
+    occupied.add(session);
     return session;
   }
 
@@ -812,6 +821,10 @@ public class SessionPool implements ISessionPool {
     return queue.size();
   }
 
+  /**
+   * The number of sessions currently taken from the pool: those executing a request (insert,
+   * non-query, query, ...) and those held by a query result set that has not been closed yet.
+   */
   @Override
   public int currentOccupiedSize() {
     return occupied.size();
@@ -819,6 +832,7 @@ public class SessionPool implements ISessionPool {
 
   @SuppressWarnings({"squid:S2446"})
   protected void putBack(ISession session) {
+    occupied.remove(session);
     queue.push(session);
     synchronized (this) {
       // we do not need to notifyAll as any waited thread can continue to work after waked up.
@@ -831,8 +845,8 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  private void occupy(ISession session) {
-    occupied.put(session, session);
+  private void occupy(ISession session, SessionDataSetWrapper wrapper) {
+    occupiedByResultSet.put(session, wrapper);
   }
 
   /** close all connections in the pool */
@@ -846,7 +860,8 @@ public class SessionPool implements ISessionPool {
         LOGGER.warn(CLOSE_THE_SESSION_FAILED, e);
       }
     }
-    for (ISession session : occupied.keySet()) {
+    // sessions executing a request are closed as well; that request then fails
+    for (ISession session : occupied) {
       try {
         session.close();
       } catch (IoTDBConnectionException e) {
@@ -867,23 +882,26 @@ public class SessionPool implements ISessionPool {
     LOGGER.info(SessionMessages.CLOSING_SESSION_POOL);
     this.closed = true;
     queue.clear();
+    occupiedByResultSet.clear();
     occupied.clear();
   }
 
   @Override
   public void closeResultSet(SessionDataSetWrapper wrapper) {
-    boolean putback = true;
+    ISession session = wrapper.getSession();
+    // SessionDataSetWrapper.hasNext() already releases an exhausted result set, so this is often
+    // called twice for the same one. Only the first call may hand its session back; a later one
+    // must not release the session again, which may already hold another result set by then.
+    if (session == null || !occupiedByResultSet.remove(session, wrapper)) {
+      return;
+    }
     try {
       wrapper.getSessionDataSet().closeOperationHandle();
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      tryConstructNewSession();
-      putback = false;
-    } finally {
-      ISession session = occupied.remove(wrapper.getSession());
-      if (putback && session != null) {
-        putBack(wrapper.getSession());
-      }
+      cleanSessionAndMayThrowConnectionException(session);
+      return;
     }
+    putBack(session);
   }
 
   @SuppressWarnings({"squid:S2446"})
@@ -917,6 +935,7 @@ public class SessionPool implements ISessionPool {
 
   private void closeSession(ISession session) {
     if (session != null) {
+      occupied.remove(session);
       try {
         session.close();
       } catch (Exception e2) {
@@ -3089,7 +3108,7 @@ public class SessionPool implements ISessionPool {
       try {
         SessionDataSet resp = session.executeQueryStatement(sql);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3127,7 +3146,7 @@ public class SessionPool implements ISessionPool {
       try {
         SessionDataSet resp = session.executeQueryStatement(sql, timeoutInMs);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3191,7 +3210,7 @@ public class SessionPool implements ISessionPool {
       try {
         SessionDataSet resp = session.executeRawDataQuery(paths, startTime, endTime, timeOut);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3218,7 +3237,7 @@ public class SessionPool implements ISessionPool {
       try {
         SessionDataSet resp = session.executeLastDataQuery(paths, lastTime);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3245,7 +3264,7 @@ public class SessionPool implements ISessionPool {
       try {
         SessionDataSet resp = session.executeLastDataQuery(paths, lastTime, timeOut);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3272,7 +3291,7 @@ public class SessionPool implements ISessionPool {
       try {
         SessionDataSet resp = session.executeLastDataQuery(paths);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3299,7 +3318,7 @@ public class SessionPool implements ISessionPool {
       try {
         SessionDataSet resp = session.executeFastLastDataQueryForOnePrefixPath(prefixes);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3328,7 +3347,7 @@ public class SessionPool implements ISessionPool {
         SessionDataSet resp =
             session.executeLastDataQueryForOneDevice(db, device, sensors, isLegalPathNodes);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3356,7 +3375,7 @@ public class SessionPool implements ISessionPool {
       try {
         SessionDataSet resp = session.executeAggregationQuery(paths, aggregations);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3385,7 +3404,7 @@ public class SessionPool implements ISessionPool {
         SessionDataSet resp =
             session.executeAggregationQuery(paths, aggregations, startTime, endTime);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3418,7 +3437,7 @@ public class SessionPool implements ISessionPool {
         SessionDataSet resp =
             session.executeAggregationQuery(paths, aggregations, startTime, endTime, interval);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3453,7 +3472,7 @@ public class SessionPool implements ISessionPool {
             session.executeAggregationQuery(
                 paths, aggregations, startTime, endTime, interval, slidingStep);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
-        occupy(session);
+        occupy(session, wrapper);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
@@ -3503,7 +3522,7 @@ public class SessionPool implements ISessionPool {
     for (ISession session : queue) {
       session.setFetchSize(fetchSize);
     }
-    for (ISession session : occupied.keySet()) {
+    for (ISession session : occupied) {
       session.setFetchSize(fetchSize);
     }
   }
@@ -3534,7 +3553,7 @@ public class SessionPool implements ISessionPool {
     for (ISession session : queue) {
       session.setTimeZoneOfSession(zoneId);
     }
-    for (ISession session : occupied.keySet()) {
+    for (ISession session : occupied) {
       session.setTimeZoneOfSession(zoneId);
     }
   }
@@ -3564,7 +3583,7 @@ public class SessionPool implements ISessionPool {
     for (ISession session : queue) {
       session.setEnableRedirection(enableRedirection);
     }
-    for (ISession session : occupied.keySet()) {
+    for (ISession session : occupied) {
       session.setEnableRedirection(enableRedirection);
     }
   }
@@ -3580,7 +3599,7 @@ public class SessionPool implements ISessionPool {
     for (ISession session : queue) {
       session.setEnableQueryRedirection(enableQueryRedirection);
     }
-    for (ISession session : occupied.keySet()) {
+    for (ISession session : occupied) {
       session.setEnableQueryRedirection(enableQueryRedirection);
     }
   }
@@ -3642,7 +3661,7 @@ public class SessionPool implements ISessionPool {
     for (ISession session : queue) {
       session.setVersion(version);
     }
-    for (ISession session : occupied.keySet()) {
+    for (ISession session : occupied) {
       session.setVersion(version);
     }
   }
@@ -3658,7 +3677,7 @@ public class SessionPool implements ISessionPool {
     for (ISession session : queue) {
       session.setQueryTimeout(timeoutInMs);
     }
-    for (ISession session : occupied.keySet()) {
+    for (ISession session : occupied) {
       session.setQueryTimeout(timeoutInMs);
     }
   }
