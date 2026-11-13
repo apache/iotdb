@@ -354,4 +354,15 @@ public final class IoTConsensusMessages {
   public static final String
       EXCEPTION_FAILED_TO_LOAD_SNAPSHOT_ARG_FOR_CONSENSUS_GROUP_ARG_F876AE5C =
           "Failed to load snapshot %s for consensus group %s";
+
+  public static final String EXCEPTION_NO_REPLICATION_CHANNEL_TO_ARG_F99CF90B =
+      "No replication channel to %s";
+  public static final String EXCEPTION_REPLICATION_CHANNEL_TO_ARG_FAILED_402B2EC5 =
+      "Replication channel to %s failed";
+  public static final String EXCEPTION_TIMED_OUT_WAITING_FOR_ARG_TO_APPLY_INDEX_ARG_ECAC0A5A =
+      "Timed out waiting for %s to apply index %d";
+  public static final String EXCEPTION_INTERRUPTED_WAITING_FOR_REPLICATION_TO_ARG_64450D09 =
+      "Interrupted waiting for replication to %s";
+  public static final String EXCEPTION_MISSING_WAL_ENTRIES_FOR_ARG_EXPECTED_ARG_FOUND_ARG_A9D194A5 =
+      "Missing WAL entries for %s: expected %d, found %d";
 }
