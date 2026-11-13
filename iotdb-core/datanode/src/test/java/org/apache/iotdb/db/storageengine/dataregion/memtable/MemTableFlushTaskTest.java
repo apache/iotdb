@@ -20,15 +20,20 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.TsFileReader;
@@ -38,6 +43,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -49,9 +55,14 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -671,5 +682,202 @@ public class MemTableFlushTaskTest {
     private boolean isColumnMappingBuilt() {
       return columnMappingBuilt;
     }
+  }
+
+  /**
+   * With the IO consumer stalled the encoder fills the IO queue; the temporary reservation must
+   * cover the capacity of the queued chunk buffers, which grow by doubling and can exceed the raw
+   * data counted by memSize (up to 2x), and whose encoded data can itself exceed the raw values
+   * (variable-length integers: up to 1.25x).
+   */
+  @Test(timeout = 60000)
+  public void testReservationCoversQueuedChunkBuffersWithStalledIo() throws Exception {
+    String oldTimeEncoder = TSFileDescriptor.getInstance().getConfig().getTimeEncoder();
+    TSFileDescriptor.getInstance().getConfig().setTimeEncoder("PLAIN");
+    try {
+      // fewer series than queue slots
+      assertReservationCoversQueuedBuffers(9, 60_000, TSDataType.DOUBLE, TSEncoding.PLAIN);
+      assertReservationCoversQueuedBuffers(1, 60_000, TSDataType.DOUBLE, TSEncoding.PLAIN);
+      // more series than queue slots
+      assertReservationCoversQueuedBuffers(300, 6_000, TSDataType.DOUBLE, TSEncoding.PLAIN);
+      // the encoded values are larger than the raw ones (5 bytes per PLAIN INT32), and the buffer
+      // has just grown past 512 KiB to 1 MiB: 1,048,912 B for a memSize of 492,000 B
+      assertReservationCoversQueuedBuffers(1, 41_000, TSDataType.INT32, TSEncoding.PLAIN);
+    } finally {
+      TSFileDescriptor.getInstance().getConfig().setTimeEncoder(oldTimeEncoder);
+    }
+  }
+
+  private void assertReservationCoversQueuedBuffers(
+      int seriesNumber, int rowCount, TSDataType dataType, TSEncoding encoding) throws Exception {
+    IMemTable table = new PrimitiveMemTable(storageGroup, dataRegionId);
+    String[] measurements = new String[seriesNumber];
+    TSDataType[] dataTypes = new TSDataType[seriesNumber];
+    MeasurementSchema[] schemas = new MeasurementSchema[seriesNumber];
+    Object[] columns = new Object[seriesNumber];
+    long[] times = new long[rowCount];
+    for (int row = 0; row < rowCount; row++) {
+      times[row] = row;
+    }
+    for (int i = 0; i < seriesNumber; i++) {
+      measurements[i] = String.format("s%03d", i);
+      dataTypes[i] = dataType;
+      schemas[i] =
+          new MeasurementSchema(measurements[i], dataType, encoding, CompressionType.UNCOMPRESSED);
+      columns[i] = largeValues(dataType, rowCount, i);
+    }
+    table.insertTablet(
+        new InsertTabletNode(
+            new PlanNodeId("stalled-io"),
+            new PartialPath("root.sg.d1"),
+            false,
+            measurements,
+            dataTypes,
+            schemas,
+            times,
+            null,
+            columns,
+            rowCount),
+        0,
+        rowCount);
+
+    SystemInfo system = SystemInfo.getInstance();
+    boolean old = system.isEncodingFasterThanIo();
+    long before = system.getFlushMemoryManager().getMemoryUsageInBytes();
+    CountDownLatch stalled = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    RestorableTsFileIOWriter stalledWriter = mock(RestorableTsFileIOWriter.class);
+    when(stalledWriter.getFile()).thenReturn(new File(filePath));
+    doAnswer(
+            invocation -> {
+              stalled.countDown();
+              release.await();
+              throw new IOException("stalled IO released");
+            })
+        .when(stalledWriter)
+        .startChunkGroup(any(IDeviceID.class));
+    system.setEncodingFasterThanIo(true);
+    MemTableFlushTask task =
+        new MemTableFlushTask(table, stalledWriter, storageGroup, dataRegionId, false);
+    Field queueField = MemTableFlushTask.class.getDeclaredField("ioTaskQueue");
+    queueField.setAccessible(true);
+    BlockingQueue<?> ioQueue = (BlockingQueue<?>) queueField.get(task);
+    Thread flusher =
+        new Thread(
+            () -> {
+              try {
+                task.syncFlushMemTable();
+              } catch (ExecutionException expected) {
+                // the stalled writer fails once released
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            });
+    try {
+      flusher.start();
+      assertTrue(stalled.await(10, TimeUnit.SECONDS));
+      // the encoder either blocks on the full queue or has queued every series, the end of the
+      // chunk group and the end of the task
+      int expectedQueued = Math.min(config().getIoTaskQueueSizeForFlushing(), seriesNumber + 2);
+      long deadline = System.currentTimeMillis() + 20_000;
+      while (ioQueue.size() < expectedQueued && System.currentTimeMillis() < deadline) {
+        Thread.sleep(10);
+      }
+      assertEquals(expectedQueued, ioQueue.size());
+      long reserved = system.getFlushMemoryManager().getMemoryUsageInBytes() - before;
+      long buffers = 0;
+      for (Object queued : new ArrayList<>(ioQueue)) {
+        if (queued instanceof IChunkWriter) {
+          buffers += retainedArrayBytes(queued);
+        }
+      }
+      assertTrue(buffers > table.memSize() / seriesNumber); // the probe found the buffers
+      assertTrue(
+          String.format(
+              "%d series: queued chunk buffers %d B exceed the reservation %d B (memSize %d B)",
+              seriesNumber, buffers, reserved, table.memSize()),
+          buffers <= reserved);
+    } finally {
+      release.countDown();
+      flusher.join(10_000);
+      system.setEncodingFasterThanIo(old);
+    }
+    assertEquals(before, system.getFlushMemoryManager().getMemoryUsageInBytes());
+  }
+
+  /** Values of large magnitude, which take the most bytes in variable-length encodings. */
+  private static Object largeValues(TSDataType dataType, int rowCount, int series) {
+    switch (dataType) {
+      case INT32:
+        int[] ints = new int[rowCount];
+        for (int row = 0; row < rowCount; row++) {
+          ints[row] = Integer.MAX_VALUE - row - series;
+        }
+        return ints;
+      case DOUBLE:
+        double[] doubles = new double[rowCount];
+        for (int row = 0; row < rowCount; row++) {
+          doubles[row] = row * 1.5 + series;
+        }
+        return doubles;
+      default:
+        throw new IllegalArgumentException(dataType.toString());
+    }
+  }
+
+  private static org.apache.iotdb.db.conf.IoTDBConfig config() {
+    return org.apache.iotdb.db.conf.IoTDBDescriptor.getInstance().getConfig();
+  }
+
+  /** Capacity of the byte buffers and primitive arrays a queued chunk writer keeps alive. */
+  private static long retainedArrayBytes(Object root) throws IllegalAccessException {
+    IdentityHashMap<Object, Boolean> seen = new IdentityHashMap<>();
+    ArrayDeque<Object> todo = new ArrayDeque<>();
+    todo.add(root);
+    long bytes = 0;
+    while (!todo.isEmpty()) {
+      Object o = todo.poll();
+      if (seen.put(o, Boolean.TRUE) != null) {
+        continue;
+      }
+      Class<?> c = o.getClass();
+      if (o instanceof PublicBAOS) {
+        bytes += ((PublicBAOS) o).getBuf().length;
+      } else if (c.isArray()) {
+        if (c.getComponentType().isPrimitive()) {
+          bytes += (long) Array.getLength(o) * primitiveBytes(c.getComponentType());
+        } else {
+          for (int i = 0; i < Array.getLength(o); i++) {
+            Object element = Array.get(o, i);
+            if (element != null) {
+              todo.add(element);
+            }
+          }
+        }
+      } else if (!c.getName().startsWith("java.")) {
+        for (Class<?> k = c; k != null && !k.getName().startsWith("java."); k = k.getSuperclass()) {
+          for (Field f : k.getDeclaredFields()) {
+            if (!Modifier.isStatic(f.getModifiers()) && !f.getType().isPrimitive()) {
+              f.setAccessible(true);
+              Object value = f.get(o);
+              if (value != null) {
+                todo.add(value);
+              }
+            }
+          }
+        }
+      }
+    }
+    return bytes;
+  }
+
+  private static int primitiveBytes(Class<?> type) {
+    if (type == long.class || type == double.class) {
+      return 8;
+    }
+    if (type == int.class || type == float.class) {
+      return 4;
+    }
+    return type == short.class || type == char.class ? 2 : 1;
   }
 }
