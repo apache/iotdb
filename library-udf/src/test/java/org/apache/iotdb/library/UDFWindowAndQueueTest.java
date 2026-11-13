@@ -703,6 +703,23 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testMinMaxNormalizesFiniteValuesAcrossDoubleRange() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
+    UDTFMinMax minMax = new UDTFMinMax();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    minMax.validate(new UDFParameterValidator(parameters));
+    minMax.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    minMax.transform(new DoubleRow(1, -Double.MAX_VALUE), collector);
+    minMax.transform(new DoubleRow(2, 0.0), collector);
+    minMax.transform(new DoubleRow(3, Double.MAX_VALUE), collector);
+    minMax.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(1L, 2L, 3L), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(0.0, 0.5, 1.0), collector.values);
+  }
+
+  @Test
   public void testZScoreBatchSkipsZeroVariance() throws Exception {
     UDTFZScore zScore = new UDTFZScore();
     UDFParameters parameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
@@ -1235,6 +1252,67 @@ public class UDFWindowAndQueueTest {
             new UDTFHistogram()
                 .validate(
                     new UDFParameterValidator(createSingleDoubleSeriesParameters(attributes))));
+  }
+
+  @Test
+  public void testHistogramKeepsPrecisionForLargeCloseBounds() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("min", "10000000000000000");
+    attributes.put("max", "10000000000000004");
+    attributes.put("count", "3");
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    UDTFHistogram histogram = new UDTFHistogram();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    histogram.validate(new UDFParameterValidator(parameters));
+    histogram.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    histogram.transform(new DoubleRow(1, 10000000000000000.0), collector);
+    histogram.transform(new DoubleRow(2, 10000000000000002.0), collector);
+    histogram.transform(new DoubleRow(3, 10000000000000004.0), collector);
+    histogram.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(0L, 1L, 2L), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(1.0, 1.0, 1.0), collector.values);
+  }
+
+  @Test
+  public void testHistogramKeepsBucketPositionAcrossExtremeRanges() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("min", "-1e308");
+    attributes.put("max", "1e308");
+    attributes.put("count", "10");
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    UDTFHistogram histogram = new UDTFHistogram();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    histogram.validate(new UDFParameterValidator(parameters));
+    histogram.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    histogram.transform(new DoubleRow(1, 7.98e307), collector);
+    histogram.terminate(collector);
+
+    Assert.assertEquals(
+        Arrays.asList(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L), collector.timestamps);
+    Assert.assertEquals(
+        Arrays.asList(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0), collector.values);
+  }
+
+  @Test
+  public void testHistogramHandlesSubnormalBucketWidth() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("min", "0");
+    attributes.put("max", "1.0E-323");
+    attributes.put("count", "4");
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    UDTFHistogram histogram = new UDTFHistogram();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    histogram.validate(new UDFParameterValidator(parameters));
+    histogram.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    histogram.transform(new DoubleRow(1, Double.MIN_VALUE), collector);
+    histogram.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(0.0, 0.0, 1.0, 0.0), collector.values);
   }
 
   @Test
@@ -2153,6 +2231,27 @@ public class UDFWindowAndQueueTest {
 
     Assert.assertEquals(Arrays.asList(Long.MIN_VALUE, 0L, Long.MAX_VALUE), collector.timestamps);
     Assert.assertEquals(Arrays.asList(0.0, 2.0, 4.0), collector.values);
+  }
+
+  @Test
+  public void testSplinePreservesCloseTimestampsInsideWideTimestampRange() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("points", "3");
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    UDTFSpline spline = new UDTFSpline();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    spline.validate(new UDFParameterValidator(parameters));
+    spline.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    spline.transform(new DoubleRow(Long.MIN_VALUE, -0.5), collector);
+    spline.transform(new DoubleRow(-1, -5.421010862427522e-20), collector);
+    spline.transform(new DoubleRow(0, 0.0), collector);
+    spline.transform(new DoubleRow(1, 5.421010862427522e-20), collector);
+    spline.transform(new DoubleRow(Long.MAX_VALUE, 0.5), collector);
+    spline.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(Long.MIN_VALUE, 0L, Long.MAX_VALUE), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(-0.5, 0.0, 0.5), collector.values);
   }
 
   @Test

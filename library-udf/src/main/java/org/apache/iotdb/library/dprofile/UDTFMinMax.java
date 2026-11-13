@@ -96,7 +96,7 @@ public class UDTFMinMax implements UDTF {
     if (compute.equalsIgnoreCase(STREAM_COMPUTE) && max > min) {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
-        collector.putDouble(row.getTime(), (v - min) / (max - min));
+        collector.putDouble(row.getTime(), normalize(v, min, max));
       }
     } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
@@ -122,8 +122,17 @@ public class UDTFMinMax implements UDTF {
   public void terminate(PointCollector collector) throws Exception {
     if (compute.equalsIgnoreCase(BATCH_COMPUTE) && max > min) {
       for (int i = 0; i < value.size(); i++) {
-        collector.putDouble(timestamp.get(i), (value.get(i) - min) / (max - min));
+        collector.putDouble(timestamp.get(i), normalize(value.get(i), min, max));
       }
     }
+  }
+
+  private static double normalize(double value, double min, double max) {
+    double range = max - min;
+    double offset = value - min;
+    if (Double.isFinite(range) && Double.isFinite(offset)) {
+      return offset / range;
+    }
+    return (value * 0.5 - min * 0.5) / (max * 0.5 - min * 0.5);
   }
 }

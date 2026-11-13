@@ -37,9 +37,9 @@ import org.apache.iotdb.udf.api.type.Type;
 public class UDTFHistogram implements UDTF {
 
   private int[] bucket;
-  private double gap;
   private int count;
   private double start;
+  private double end;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -67,10 +67,9 @@ public class UDTFHistogram implements UDTF {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.INT32);
     // input param min is var start, param max is var end
     start = parameters.getDoubleOrDefault("min", -Double.MAX_VALUE);
-    double end = parameters.getDoubleOrDefault("max", Double.MAX_VALUE);
+    end = parameters.getDoubleOrDefault("max", Double.MAX_VALUE);
     count = parameters.getIntOrDefault("count", 1);
     bucket = new int[count];
-    gap = end / count - start / count;
   }
 
   @Override
@@ -80,7 +79,15 @@ public class UDTFHistogram implements UDTF {
     }
     double value = Util.getValueAsDouble(row);
     if (Double.isFinite(value)) {
-      int id = Math.min(Math.max((int) Math.floor((value - start) / gap), 0), count - 1);
+      double span = end - start;
+      double offset = value - start;
+      double bucketPosition;
+      if (Double.isFinite(span) && Double.isFinite(offset)) {
+        bucketPosition = (offset / span) * count;
+      } else {
+        bucketPosition = ((value * 0.5 - start * 0.5) / (end * 0.5 - start * 0.5)) * count;
+      }
+      int id = Math.min(Math.max((int) Math.floor(bucketPosition), 0), count - 1);
       bucket[id]++;
     }
   }

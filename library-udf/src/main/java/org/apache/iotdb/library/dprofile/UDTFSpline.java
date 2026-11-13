@@ -84,8 +84,6 @@ public class UDTFSpline implements UDTF {
         return;
       }
       timestamp.add(t);
-      xDouble.add(
-          BigInteger.valueOf(t).subtract(BigInteger.valueOf(minimumTimestamp)).doubleValue());
       yDouble.add(v);
     }
   }
@@ -93,17 +91,42 @@ public class UDTFSpline implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (yDouble.size() >= 5 && samplePoints >= 2) {
+      BigInteger start = BigInteger.valueOf(timestamp.get(0));
+      BigInteger end = BigInteger.valueOf(timestamp.get(timestamp.size() - 1));
+      BigInteger span = end.subtract(start);
+      BigInteger coordinateOrigin = start.add(end).divide(BigInteger.TWO);
+      double coordinateScale = span.doubleValue();
+      ArrayList<Double> interpolationValues = new ArrayList<>();
+      for (int i = 0; i < timestamp.size(); i++) {
+        double coordinate =
+            BigInteger.valueOf(timestamp.get(i)).subtract(coordinateOrigin).doubleValue()
+                / coordinateScale;
+        if (xDouble.isEmpty() || coordinate > xDouble.get(xDouble.size() - 1)) {
+          xDouble.add(coordinate);
+          interpolationValues.add(yDouble.get(i));
+        }
+      }
+      if (xDouble.size() < 5) {
+        return;
+      }
       asi = new AkimaSplineInterpolator();
       double[] x = ArrayUtils.toPrimitive(xDouble.toArray(new Double[0]));
-      double[] y = ArrayUtils.toPrimitive(yDouble.toArray(new Double[0]));
+      double[] y = ArrayUtils.toPrimitive(interpolationValues.toArray(new Double[0]));
       psf = asi.interpolate(x, y);
       for (int i = 0; i < samplePoints; i++) {
         double approximation =
-            Math.floor(
-                (x[0] * (samplePoints - 1 - i) + x[yDouble.size() - 1] * (i)) / (samplePoints - 1)
-                    + 0.5);
-        double yhead = psf.value(approximation);
-        collector.putDouble(getOutputTimestamp(i), yhead);
+            (x[0] * (samplePoints - 1 - i) + x[x.length - 1] * i) / (samplePoints - 1);
+        double yhead;
+        if (i == 0) {
+          yhead = y[0];
+        } else if (i == samplePoints - 1) {
+          yhead = y[y.length - 1];
+        } else {
+          yhead = psf.value(approximation);
+        }
+        if (Double.isFinite(yhead)) {
+          collector.putDouble(getOutputTimestamp(i), yhead);
+        }
       }
     }
   }
