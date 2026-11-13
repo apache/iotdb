@@ -109,6 +109,8 @@ public class MPPQueryContext implements IAuditEntity {
   // time unit is ms
   private long startTime;
 
+  private int queryAttemptId;
+
   private TEndPoint localDataBlockEndpoint;
   private TEndPoint localInternalEndpoint;
   private ResultNodeContext resultNodeContext;
@@ -280,6 +282,7 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void prepareForRetry() {
+    queryAttemptId++;
     if (!isInnerTriggeredQuery()) {
       cleanUpCte();
     }
@@ -301,6 +304,10 @@ public class MPPQueryContext implements IAuditEntity {
 
   public QueryId getQueryId() {
     return queryId;
+  }
+
+  public int getQueryAttemptId() {
+    return queryAttemptId;
   }
 
   public ExternalTsFileQueryResource createExternalTsFileQueryResource(

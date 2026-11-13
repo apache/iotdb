@@ -133,6 +133,7 @@ import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
@@ -324,6 +325,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicOwnerLeaseReq;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
@@ -512,6 +514,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TQueryAdmissionToken fetchQueryAdmissionToken(long validityMs) {
+    return FragmentInstanceManager.getInstance().fetchQueryAdmissionToken(validityMs);
+  }
+
+  @Override
   public TSendFragmentInstanceResp sendFragmentInstance(final TSendFragmentInstanceReq req) {
     LOGGER.debug(DataNodeMiscMessages.RECEIVE_FRAGMENT_INSTANCE, req.getConsensusGroupId());
 
@@ -557,6 +564,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       FragmentInstance.deserializeFrom(
                           fragmentInstanceId, req.fragmentInstance.body));
       fragmentInstance.attachUDFQueryScope(queryScope);
+      if (req.isSetQueryAttemptId() && req.isSetAdmissionToken()) {
+        fragmentInstance.setQueryAttempt(req.getQueryAttemptId(), req.getAdmissionToken());
+      }
     } catch (final Exception e) {
       if (classLoaderManager != null && queryScope != null) {
         classLoaderManager.finalizeUDFQuery(queryScope);
@@ -643,6 +653,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TCancelResp cancelQuery(TCancelQueryReq req) {
     try (SetThreadName threadName = new SetThreadName(req.getQueryId())) {
+      if (req.isSetQueryAttemptId() && req.isSetAdmissionToken()) {
+        FragmentInstanceManager.getInstance()
+            .closeQueryAttempt(
+                new QueryId(req.getQueryId()),
+                req.getQueryAttemptId(),
+                req.getAdmissionToken(),
+                req.hasThrowable);
+      }
       List<FragmentInstanceId> taskIds =
           req.getFragmentInstanceIds().stream()
               .map(FragmentInstanceId::fromThrift)

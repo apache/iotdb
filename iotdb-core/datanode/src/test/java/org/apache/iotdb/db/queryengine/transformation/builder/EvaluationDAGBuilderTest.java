@@ -113,7 +113,7 @@ public class EvaluationDAGBuilderTest {
               instance.getFragment().getPlanNodeTree(),
               instance.getFragment().getTypeProvider(),
               mockFIContext(queryId),
-              new DataNodeQueryContext(1));
+              new DataNodeQueryContext());
       return driverFactories.get(0).getOperation();
     } catch (Exception e) {
       e.printStackTrace();

@@ -59,7 +59,6 @@ import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
@@ -181,9 +180,7 @@ public class LastQueryCacheTest {
     QueryId queryId = new QueryId("last_query_cache_test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "instance");
-    DataNodeQueryContext queryContext = new DataNodeQueryContext(1);
-    HashMap<QueryId, DataNodeQueryContext> queryContexts = new HashMap<>();
-    queryContexts.put(queryId, queryContext);
+    DataNodeQueryContext queryContext = new DataNodeQueryContext();
     FragmentInstanceContext instanceContext =
         spy(
             createFragmentInstanceContext(
@@ -193,7 +190,7 @@ public class LastQueryCacheTest {
                     1, new UserEntity(666, "test", "127.0.0.1"), ZoneId.systemDefault()),
                 dataRegion,
                 (TimePredicate) null,
-                queryContexts,
+                queryContext,
                 Long.MAX_VALUE,
                 false,
                 false));

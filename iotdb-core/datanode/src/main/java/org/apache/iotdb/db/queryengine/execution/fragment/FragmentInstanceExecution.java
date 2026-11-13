@@ -98,6 +98,7 @@ public class FragmentInstanceExecution {
         new FragmentInstanceExecution(
             instanceId, context, drivers, sinkHandle, stateMachine, timeOut, exchangeManager);
     execution.initialize(scheduler, isExplainAnalyze);
+    context.setExecutionInitialized();
     scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
     return execution;
   }
@@ -379,6 +380,10 @@ public class FragmentInstanceExecution {
           } catch (Throwable t) {
             try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
               LOGGER.error(DataNodeQueryMessages.ERRORS_FINISHING_FI_PROCESS, t);
+            }
+          } finally {
+            if (newState.isDone()) {
+              context.releaseDataNodeQueryContext();
             }
           }
         });
