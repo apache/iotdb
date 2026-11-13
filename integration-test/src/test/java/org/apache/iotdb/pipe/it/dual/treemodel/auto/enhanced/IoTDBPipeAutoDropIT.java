@@ -94,11 +94,14 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTreeModelSharedClusterIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
       for (final TShowPipeInfo pipe : response.getPipeInfoList()) {
         if (!pipe.getId().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
-          Assert.assertEquals(
-              TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          final int statusCode =
               client
                   .dropPipeExtended(new TDropPipeReq(pipe.getId()).setIsTableModel(true))
-                  .getCode());
+                  .getCode();
+          // Automatic drop can remove a pipe after the SHOW PIPE snapshot.
+          if (statusCode != TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()) {
+            Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), statusCode);
+          }
         }
       }
     }

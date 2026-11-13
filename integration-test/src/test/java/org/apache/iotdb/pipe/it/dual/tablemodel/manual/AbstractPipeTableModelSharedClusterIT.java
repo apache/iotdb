@@ -145,11 +145,14 @@ public abstract class AbstractPipeTableModelSharedClusterIT
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
         for (final TShowPipeInfo pipe : response.getPipeInfoList()) {
           if (!pipe.getId().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
-            assertEquals(
-                TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            final int statusCode =
                 client
                     .dropPipeExtended(new TDropPipeReq(pipe.getId()).setIsTableModel(tableModel))
-                    .getCode());
+                    .getCode();
+            // Automatic drop can remove a pipe after the SHOW PIPE snapshot.
+            if (statusCode != TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()) {
+              assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), statusCode);
+            }
           }
         }
       }
