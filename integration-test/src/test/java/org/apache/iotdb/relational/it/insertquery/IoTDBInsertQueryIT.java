@@ -67,8 +67,7 @@ public class IoTDBInsertQueryIT {
         "CREATE TABLE IF NOT EXISTS vehicle0(deviceId STRING TAG, manufacturer STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
         "CREATE TABLE IF NOT EXISTS tb_0(s0 INT32 FIELD, s1 TEXT FIELD, deviceId STRING TAG)",
       };
-  private static final String insertTemplate =
-      "INSERT INTO vehicle0(time,deviceId,manufacturer,s0,s1,s2,s3,s4) VALUES(%d,'d%d','%s',%d,%d,%f,'%d',%b)";
+  private static final String insertValuesTemplate = "(%d,'d%d','%s',%d,%d,%f,'%d',%b)";
 
   private static final String insertIntoQuery = "INSERT INTO vehicle%d SELECT * FROM vehicle0";
 
@@ -124,6 +123,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Copy all prepared rows with SELECT, TABLE and descending source order, preserving values. */
   @Test
   public void testSimple() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -168,22 +168,15 @@ public class IoTDBInsertQueryIT {
   }
 
   /**
-   * End-to-end check for an {@code INSERT INTO ... SELECT} whose source tablet is not in ascending
-   * time order. The destination device is flushed at time 39, then the query feeds it another
-   * tablet: on the unfixed code the row at time 15 is classified as sequence data, a sequence
-   * TsFile overlapping [10,39] is created, and the query returns 15 after 39 (or twice).
+   * End-to-end check for a table-model {@code INSERT INTO ... SELECT} whose source tablet is not in
+   * ascending time order. The destination device is flushed at time 39, then the query feeds it
+   * another tablet: on the unfixed code the row at time 15 is classified as sequence data, a
+   * sequence TsFile overlapping [10,39] is created, and the query returns 15 after 39 (or twice).
    *
    * <p>The out-of-order input depends on the nested-loop cross join emitting the rows in probe
    * order, i.e. {@code [100, 15]}. If the optimizer ever emits those rows in time order this test
-   * no longer reproduces the situation and would pass trivially; the guards that do not depend on
-   * the plan shape are {@code InsertTabletStatementGeneratorTest} (the tablet is sorted before it
-   * leaves the engine) and {@code
-   * DataRegionTest#testOutOfOrderTabletKeepsSequenceSpaceNonOverlapped} (the storage-layer
-   * classification of an unsorted tablet).
-   *
-   * <p>The first sequence file also has to hold several pages (see {@code
-   * max_number_of_points_in_page} in {@link #setUpClass()}): with a single page the overlapping
-   * page is merged before the earlier pages are emitted, which hides the wrong order as well.
+   * no longer reproduces the situation and would pass trivially; {@code
+   * InsertTabletStatementGeneratorTest} guards the sort itself independently of the plan shape.
    */
   @Test
   public void testInsertIntoQueryWithOutOfOrderTabletDoesNotOverlapSequenceFiles()
@@ -244,6 +237,8 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Insert a table's own rows at shifted timestamps and verify that its row count doubles. */
+
   @Test
   public void testInsertIntoSourceTable() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -273,6 +268,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Copy rows whose source schema declares the tag last, preserving column categories and data. */
   @Test
   public void testTagCategory() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -294,6 +290,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Copy rows using fully qualified source and target names without selecting a database. */
   @Test
   public void testQualifiedName() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -318,6 +315,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Reject copies without time or field columns, and fill omitted tags and fields with null. */
   @Test
   public void testPartialColumn() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -382,13 +380,14 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Require both source SELECT and target INSERT privileges before allowing a copy. */
   @Test
   public void testPrivileges() throws SQLException {
     Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
     Statement adminStmt = adminCon.createStatement();
     try {
       // create user
-      adminStmt.execute("CREATE USER tmpuser 'tmppw123456789'");
+      adminStmt.execute("CREATE USER tmpuser 'IoTDB!Test2024'");
       // create table vehicle1
       adminStmt.execute("USE test");
       adminStmt.execute(String.format(createTableTemplate, 1));
@@ -396,7 +395,7 @@ public class IoTDBInsertQueryIT {
 
       try (Connection connection =
               EnvFactory.getEnv()
-                  .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
+                  .getConnection("tmpuser", "IoTDB!Test2024", BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         statement.execute("USE test");
         // insert into vehicle1 select * from vehicle0
@@ -416,7 +415,7 @@ public class IoTDBInsertQueryIT {
 
       try (Connection connection =
               EnvFactory.getEnv()
-                  .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
+                  .getConnection("tmpuser", "IoTDB!Test2024", BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         statement.execute("USE test");
         // insert into vehicle1 select * from vehicle0
@@ -435,7 +434,7 @@ public class IoTDBInsertQueryIT {
       // adminStmt.execute("GRANT WRITE_DATA ON test.vehicle1 TO USER tmpuser");
       try (Connection connection =
               EnvFactory.getEnv()
-                  .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
+                  .getConnection("tmpuser", "IoTDB!Test2024", BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         statement.execute("USE test");
         // insert into vehicle1 select * from vehicle0
@@ -448,6 +447,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Insert 50 ms tumbling-window aggregates and compare their values with the source query. */
   @Test
   public void testAggregate() throws SQLException {
     String querySql =
@@ -477,6 +477,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Reject INSERT SELECT when its target table has not been created. */
   @Test
   public void testTableNotExists() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -492,6 +493,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Reject a copy when the target field type is incompatible with the source column type. */
   @Test
   public void testColumnTypeMismatch1() throws SQLException {
     String errMsg =
@@ -513,6 +515,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Reject a copy when the target schema has fewer columns than the source query. */
   @Test
   public void testColumnTypeMismatch2() throws SQLException {
     String errMsg =
@@ -534,6 +537,9 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /**
+   * Reject INSERT statements passed to EXPLAIN or EXPLAIN ANALYZE with the expected parse errors.
+   */
   @Test
   public void testExplain() throws SQLException {
     Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -563,6 +569,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Copy through the table Session non-query API and verify all 1200 rows and numeric values. */
   @Test
   public void testNonQueryStatement() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -591,6 +598,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Passing INSERT SELECT to the query API must fail with the expected missing-column metadata. */
   @Test
   public void testQueryStatement() throws IoTDBConnectionException, StatementExecutionException {
     ITableSession session = EnvFactory.getEnv().getTableSessionConnection();
@@ -613,6 +621,7 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** Copy a boolean field from a schema with its tag last into a schema with its tag first. */
   @Test
   public void testDeviceTagLast() {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -689,50 +698,52 @@ public class IoTDBInsertQueryIT {
       statement.execute("use test");
       // prepare seq file
       for (int d = 0; d < deviceNum; d++) {
-        for (int i = 201; i <= 300; i++) {
-          String sql =
-              String.format(
-                  insertTemplate, i, d, manufacturers[i % 2], i, i, (double) i, i, i % 2 == 0);
-          statement.execute(sql);
-          statement.execute(
-              String.format("insert into tb_0 values(%d, %d, '%d', 'd%d')", i, i, i, d));
-        }
+        insertRange(statement, d, 201, 300);
       }
       statement.execute("flush");
 
       // prepare unseq File
       for (int d = 0; d < deviceNum; d++) {
-        for (int i = 1; i <= 100; i++) {
-          String sql =
-              String.format(
-                  insertTemplate, i, d, manufacturers[i % 2], i, i, (double) i, i, i % 2 == 0);
-          statement.execute(sql);
-          statement.execute(
-              String.format("insert into tb_0 values(%d, %d, '%d', 'd%d')", i, i, i, d));
-        }
+        insertRange(statement, d, 1, 100);
       }
       statement.execute("flush");
 
       for (int d = 0; d < deviceNum; d++) {
         // prepare BufferWrite cache
-        for (int i = 301; i <= 400; i++) {
-          String sql =
-              String.format(
-                  insertTemplate, i, d, manufacturers[i % 2], i, i, (double) i, i, i % 2 == 0);
-          statement.execute(sql);
-          statement.execute(
-              String.format("insert into tb_0 values(%d, %d, '%d', 'd%d')", i, i, i, d));
-        }
+        insertRange(statement, d, 301, 400);
         // prepare Overflow cache
-        for (int i = 101; i <= 200; i++) {
-          String sql =
-              String.format(
-                  insertTemplate, i, d, manufacturers[i % 2], i, i, (double) i, i, i % 2 == 0);
-          statement.execute(sql);
-          statement.execute(
-              String.format("insert into tb_0 values(%d, %d, '%d', 'd%d')", i, i, i, d));
-        }
+        insertRange(statement, d, 101, 200);
       }
     }
+  }
+
+  private static void insertRange(Statement statement, int deviceId, int startTime, int endTime)
+      throws SQLException {
+    // These writes only prepare the source tables. Batch each 100-row device/time range while
+    // preserving every value, each table's write order and the explicit flush boundaries above.
+    StringBuilder vehicleInsert =
+        new StringBuilder(
+            "INSERT INTO vehicle0(time,deviceId,manufacturer,s0,s1,s2,s3,s4) VALUES ");
+    StringBuilder tagLastInsert = new StringBuilder("INSERT INTO tb_0 VALUES ");
+    for (int time = startTime; time <= endTime; time++) {
+      if (time > startTime) {
+        vehicleInsert.append(',');
+        tagLastInsert.append(',');
+      }
+      vehicleInsert.append(
+          String.format(
+              insertValuesTemplate,
+              time,
+              deviceId,
+              manufacturers[time % 2],
+              time,
+              time,
+              (double) time,
+              time,
+              time % 2 == 0));
+      tagLastInsert.append(String.format("(%d,%d,'%d','d%d')", time, time, time, deviceId));
+    }
+    statement.execute(vehicleInsert.toString());
+    statement.execute(tagLastInsert.toString());
   }
 }

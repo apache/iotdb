@@ -25,6 +25,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -35,6 +36,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.*;
 
@@ -52,8 +54,10 @@ public class IoTDBTtlIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // TTL rejects expired inserts and filters old rows; after UNSET, the same old timestamps become
+  // writable on both database paths.
   @Test
-  public void testTTL() throws SQLException, InterruptedException {
+  public void testTTL() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
@@ -138,14 +142,11 @@ public class IoTDBTtlIT {
         }
       }
 
-      Thread.sleep(1000);
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        assertEquals(100, cnt);
-      }
+      Awaitility.await()
+          .atMost(10, TimeUnit.SECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
+          .untilAsserted(
+              () -> assertEquals(100, countRows(statement, "SELECT s1 FROM root.TTL_SG1")));
 
       statement.execute("UNSET TTL TO root.TTL_SG1");
       // UNSET TTL waits for the procedure to update all DataNode TTL caches.
@@ -269,6 +270,16 @@ public class IoTDBTtlIT {
         }
         assertTrue(cnt >= 400);
       }
+    }
+  }
+
+  private static int countRows(Statement statement, String sql) throws SQLException {
+    try (ResultSet resultSet = statement.executeQuery(sql)) {
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      return count;
     }
   }
 }

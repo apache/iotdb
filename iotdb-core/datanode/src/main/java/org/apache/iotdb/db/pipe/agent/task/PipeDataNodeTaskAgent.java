@@ -147,6 +147,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
+  protected boolean isPipeDataInsertionEnabled(final PipeStaticMeta pipeStaticMeta) {
+    return PipeDataNodeAgent.isPipeDataInsertionEnabled(pipeStaticMeta.getSourceParameters());
+  }
+
+  @Override
   protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
       throws IllegalPathException {
     return pipeMetaFromConfigNode.getStaticMeta().isSourceExternal()
@@ -307,6 +312,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
     if (isShutdown()
         || !SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        || !PipeDataNodeAgent.isSubscriptionFeatureEnabled()
         || pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.RUNNING
         || !PipeStaticMeta.isSubscriptionPipe(staticMeta.getPipeName())
         || !staticMeta

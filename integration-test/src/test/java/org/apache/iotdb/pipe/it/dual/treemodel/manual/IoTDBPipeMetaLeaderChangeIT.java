@@ -24,14 +24,16 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.awaitility.Awaitility;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -39,17 +41,21 @@ import org.junit.runner.RunWith;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
-public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManualIT {
-  @Override
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeTreeModelManualSharedClusterIT {
 
+  private static final String CONFIG_DATABASE_PREFIX = "root.meta_leader_config";
+  private static final String SCHEMA_DATABASE = "root.meta_leader_schema";
+
+  private int stoppedConfigNodeIndex = -1;
+  private int stoppedDataNodeIndex = -1;
+
+  @Override
+  protected void setupConfig() {
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -70,11 +76,38 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setDnConnectionTimeoutMs(600000);
-
-    senderEnv.initClusterEnvironment(3, 3, 180);
-    receiverEnv.initClusterEnvironment();
   }
 
+  @Override
+  protected CompletableFuture<Void> initializeClusters() {
+    // The scenarios need three sender replicas for leader failover, with the original receiver
+    // topology. Only their initial startup is independent; restore stopped nodes between methods.
+    return CompletableFuture.allOf(
+        CompletableFuture.runAsync(() -> senderEnv.initClusterEnvironment(3, 3, 180)),
+        CompletableFuture.runAsync(receiverEnv::initClusterEnvironment));
+  }
+
+  @Override
+  protected void cleanEnvironment() {
+    // Restore the failed node before resetting pipe/data state: cleanup must reach every replica,
+    // and the next scenario must start with the full topology even if this test's assertions fail.
+    if (stoppedConfigNodeIndex >= 0) {
+      if (!senderEnv.getConfigNodeWrapper(stoppedConfigNodeIndex).isAlive()) {
+        senderEnv.startConfigNode(stoppedConfigNodeIndex);
+      }
+      ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
+    }
+    if (stoppedDataNodeIndex >= 0) {
+      if (!senderEnv.getDataNodeWrapper(stoppedDataNodeIndex).isAlive()) {
+        senderEnv.startDataNode(stoppedDataNodeIndex);
+      }
+      ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
+    }
+    super.cleanEnvironment();
+  }
+
+  // Create ten databases, stop the ConfigNode leader, then create ten more through the new leader;
+  // the receiver must contain all twenty under this scenario's database prefix.
   @Test
   public void testConfigNodeLeaderChange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -91,7 +124,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
       sourceAttributes.put("source.inclusion", "all");
       sourceAttributes.put("source.inclusion.exclusion", "");
       sourceAttributes.put("source.forwarding-pipe-requests", "false");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.ip", receiverIp);
@@ -111,25 +144,24 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    for (int i = 0; i < 10; ++i) {
-      TestUtils.executeNonQuery(senderEnv, String.format("create database root.ln%s", i), null);
-    }
+    createDatabases(0, 10);
 
-    try {
-      senderEnv.shutdownConfigNode(senderEnv.getLeaderConfigNodeIndex());
-    } catch (final Exception e) {
-      e.printStackTrace();
-      return;
-    }
+    stoppedConfigNodeIndex = senderEnv.getLeaderConfigNodeIndex();
+    senderEnv.shutdownConfigNode(stoppedConfigNodeIndex);
+    Assert.assertFalse(senderEnv.getConfigNodeWrapper(stoppedConfigNodeIndex).isAlive());
+    Assert.assertNotEquals(stoppedConfigNodeIndex, senderEnv.getLeaderConfigNodeIndex());
 
-    for (int i = 10; i < 20; ++i) {
-      TestUtils.executeNonQuery(senderEnv, String.format("create database root.ln%s", i), null);
-    }
+    createDatabases(10, 20);
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count databases root.ln*", "count,", Collections.singleton("20,"));
+        receiverEnv,
+        "count databases " + CONFIG_DATABASE_PREFIX + "*",
+        "count,",
+        Collections.singleton("20,"));
   }
 
+  // Stop the SchemaRegion leader after ten timeseries, then alter the first and create ten more.
+  // Failover must preserve all twenty timeseries and merge the alias, tags and attributes remotely.
   @Test
   public void testSchemaRegionLeaderChange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -146,7 +178,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
       sourceAttributes.put("source.inclusion", "all");
       sourceAttributes.put("source.inclusion.exclusion", "");
       sourceAttributes.put("source.forwarding-pipe-requests", "false");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.ip", receiverIp);
@@ -166,51 +198,76 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    for (int i = 0; i < 10; ++i) {
-      TestUtils.executeNonQuery(
-          senderEnv,
-          String.format(
-              "create timeSeries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
-              i),
-          null);
+    // Close this phase's session before stopping a node; client reconnection is not under test.
+    try (final ISession session = senderEnv.getSessionConnection()) {
+      for (int i = 0; i < 10; ++i) {
+        session.executeNonQueryStatement(createTimeseriesStatement(i));
+      }
     }
 
-    final int index;
-    try {
-      index = senderEnv.getFirstLeaderSchemaRegionDataNodeIndex();
-      senderEnv.shutdownDataNode(index);
-    } catch (final Throwable e) {
-      e.printStackTrace();
-      return;
-    }
+    stoppedDataNodeIndex = senderEnv.getFirstLeaderSchemaRegionDataNodeIndex();
+    Assert.assertTrue(stoppedDataNodeIndex >= 0);
+    senderEnv.shutdownDataNode(stoppedDataNodeIndex);
+    Assert.assertFalse(senderEnv.getDataNodeWrapper(stoppedDataNodeIndex).isAlive());
+    // Observe a replacement leader before sending mutations, avoiding a fixed election sleep.
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(180, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              final int leaderIndex = senderEnv.getFirstLeaderSchemaRegionDataNodeIndex();
+              return leaderIndex >= 0 && leaderIndex != stoppedDataNodeIndex;
+            });
 
     // Include "alter" in historical transfer for new leader as possible
     // in order to test the "withMerge" creation in receiver side
-    TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
-        senderEnv,
-        senderEnv.getDataNodeWrapper(index == 0 ? 1 : 0),
-        "ALTER timeSeries root.ln.wf01.GPS.status0 UPSERT ALIAS=newAlias TAGS(tag3=v3) ATTRIBUTES(attr4=v4)");
-
-    for (int i = 10; i < 20; ++i) {
-      TestUtils.tryExecuteNonQueryOnSpecifiedDataNodeWithRetry(
-          senderEnv,
-          senderEnv.getDataNodeWrapper(index == 0 ? 1 : 0),
-          String.format(
-              "create timeSeries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
-              i));
+    // Use one session on a surviving node after election. The session's RPC retries apply only to
+    // the current statement, so an error cannot replay earlier successful CREATE statements.
+    final DataNodeWrapper survivingDataNode =
+        senderEnv.getDataNodeWrapper(stoppedDataNodeIndex == 0 ? 1 : 0);
+    try (final ISession session =
+        senderEnv.getSessionConnection(
+            Collections.singletonList(survivingDataNode.getIpAndPortString()))) {
+      session.executeNonQueryStatement(
+          "ALTER timeSeries "
+              + SCHEMA_DATABASE
+              + ".wf01.GPS.status0 UPSERT ALIAS=newAlias TAGS(tag3=v3) ATTRIBUTES(attr4=v4)");
+      for (int i = 10; i < 20; ++i) {
+        session.executeNonQueryStatement(createTimeseriesStatement(i));
+      }
     }
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "show timeSeries root.ln.wf01.GPS.status0",
+        "show timeSeries " + SCHEMA_DATABASE + ".wf01.GPS.status0",
         "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
         Collections.singleton(
-            "root.ln.wf01.GPS.status0,newAlias,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
+            SCHEMA_DATABASE
+                + ".wf01.GPS.status0,newAlias,"
+                + SCHEMA_DATABASE
+                + ",BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "count timeSeries root.ln.**",
+        "count timeSeries " + SCHEMA_DATABASE + ".**",
         "count(timeseries),",
         Collections.singleton("20,"));
+  }
+
+  private void createDatabases(final int startInclusive, final int endExclusive) throws Exception {
+    // Reuse one session per phase, closing it before ConfigNode failover.
+    try (final ISession session = senderEnv.getSessionConnection()) {
+      for (int i = startInclusive; i < endExclusive; ++i) {
+        session.executeNonQueryStatement("create database " + CONFIG_DATABASE_PREFIX + i);
+      }
+    }
+  }
+
+  private static String createTimeseriesStatement(final int index) {
+    return String.format(
+        "create timeSeries %s.wf01.GPS.status%d with datatype=BOOLEAN,encoding=PLAIN",
+        SCHEMA_DATABASE, index);
   }
 }

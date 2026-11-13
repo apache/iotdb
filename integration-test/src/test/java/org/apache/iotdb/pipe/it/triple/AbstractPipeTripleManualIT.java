@@ -26,6 +26,8 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.junit.After;
 import org.junit.Before;
 
+import java.util.concurrent.CompletableFuture;
+
 abstract class AbstractPipeTripleManualIT {
 
   protected BaseEnv env1;
@@ -39,9 +41,14 @@ abstract class AbstractPipeTripleManualIT {
     env2 = MultiEnvFactory.getEnv(1);
     env3 = MultiEnvFactory.getEnv(2);
     setupConfig();
-    env1.initClusterEnvironment(1, getEnv1DataNodeCount());
-    env2.initClusterEnvironment(1, 1);
-    env3.initClusterEnvironment(1, 1);
+    // The environments have independent ports/directories. Await every start, including failures,
+    // so teardown cannot race with a cluster that is still being initialized.
+    CompletableFuture.allOf(
+            CompletableFuture.runAsync(
+                () -> env1.initClusterEnvironment(1, getEnv1DataNodeCount())),
+            CompletableFuture.runAsync(() -> env2.initClusterEnvironment(1, 1)),
+            CompletableFuture.runAsync(() -> env3.initClusterEnvironment(1, 1)))
+        .join();
   }
 
   protected int getEnv1DataNodeCount() {

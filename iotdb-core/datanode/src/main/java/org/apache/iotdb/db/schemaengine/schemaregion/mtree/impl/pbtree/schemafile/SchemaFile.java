@@ -273,10 +273,42 @@ public class SchemaFile implements ISchemaFile {
 
   @Override
   public void close() throws IOException {
-    updateHeaderBuffer();
-    pageManager.close();
-    forceChannel();
-    channel.close();
+    IOException failure = null;
+    try {
+      updateHeaderBuffer();
+    } catch (IOException e) {
+      failure = e;
+    }
+    try {
+      pageManager.close();
+    } catch (IOException e) {
+      if (failure == null) {
+        failure = e;
+      } else {
+        failure.addSuppressed(e);
+      }
+    }
+    try {
+      forceChannel();
+    } catch (IOException e) {
+      if (failure == null) {
+        failure = e;
+      } else {
+        failure.addSuppressed(e);
+      }
+    }
+    try {
+      channel.close();
+    } catch (IOException e) {
+      if (failure == null) {
+        failure = e;
+      } else {
+        failure.addSuppressed(e);
+      }
+    }
+    if (failure != null) {
+      throw failure;
+    }
   }
 
   @Override
@@ -359,28 +391,34 @@ public class SchemaFile implements ISchemaFile {
     if (channel.size() == 0) {
       // new pbtree file
       lastPageIndex = 0;
-      ReadWriteIOUtils.write(lastPageIndex, headerContent);
-      ReadWriteIOUtils.write(dataTTL, headerContent);
-      ReadWriteIOUtils.write(isEntity, headerContent);
-      ReadWriteIOUtils.write(sgNodeTemplateIdWithState, headerContent);
-      ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
       lastSGAddr = 0L;
-      pageManager = new BTreePageManager(channel, pmtFile, -1, logPath);
-    } else {
-      IOUtils.readFully(channel, headerContent);
-      headerContent.clear();
-      lastPageIndex = ReadWriteIOUtils.readInt(headerContent);
-      dataTTL = ReadWriteIOUtils.readLong(headerContent);
-      isEntity = ReadWriteIOUtils.readBool(headerContent);
-      sgNodeTemplateIdWithState = ReadWriteIOUtils.readInt(headerContent);
-      lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
-
-      if (ReadWriteIOUtils.readInt(headerContent) != SchemaFileConfig.SCHEMA_FILE_VERSION) {
-        channel.close();
-        throw new MetadataException(DataNodeSchemaMessages.SCHEMA_FILE_WRONG_VERSION);
+      pageManager = null;
+      try {
+        pageManager = new BTreePageManager(channel, pmtFile, -1, logPath);
+        updateHeaderBuffer();
+      } catch (IOException | MetadataException e) {
+        closeAfterInitializationFailure(e);
+        throw e;
       }
+    } else {
+      try {
+        IOUtils.readFully(channel, headerContent);
+        headerContent.clear();
+        lastPageIndex = ReadWriteIOUtils.readInt(headerContent);
+        dataTTL = ReadWriteIOUtils.readLong(headerContent);
+        isEntity = ReadWriteIOUtils.readBool(headerContent);
+        sgNodeTemplateIdWithState = ReadWriteIOUtils.readInt(headerContent);
+        lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
 
-      pageManager = new BTreePageManager(channel, pmtFile, lastPageIndex, logPath);
+        if (ReadWriteIOUtils.readInt(headerContent) != SchemaFileConfig.SCHEMA_FILE_VERSION) {
+          throw new MetadataException(DataNodeSchemaMessages.SCHEMA_FILE_WRONG_VERSION);
+        }
+
+        pageManager = new BTreePageManager(channel, pmtFile, lastPageIndex, logPath);
+      } catch (IOException | MetadataException e) {
+        closeChannelAfterInitializationFailure(e);
+        throw e;
+      }
     }
   }
 
@@ -395,7 +433,36 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(SchemaFileConfig.SCHEMA_FILE_VERSION, headerContent);
 
     headerContent.flip();
-    channel.write(headerContent, 0);
+    IOUtils.writeFully(channel, headerContent, 0);
+  }
+
+  private void closeAfterInitializationFailure(Exception failure) {
+    if (pageManager != null) {
+      try {
+        pageManager.close();
+      } catch (IOException closeException) {
+        failure.addSuppressed(closeException);
+      }
+    }
+    try {
+      channel.truncate(0);
+    } catch (IOException cleanupException) {
+      failure.addSuppressed(cleanupException);
+    }
+    try {
+      channel.force(true);
+    } catch (IOException cleanupException) {
+      failure.addSuppressed(cleanupException);
+    }
+    closeChannelAfterInitializationFailure(failure);
+  }
+
+  private void closeChannelAfterInitializationFailure(Exception failure) {
+    try {
+      channel.close();
+    } catch (IOException closeException) {
+      failure.addSuppressed(closeException);
+    }
   }
 
   private void forceChannel() throws IOException {

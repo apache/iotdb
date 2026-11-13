@@ -19,11 +19,18 @@
 
 package org.apache.iotdb.db.it.aggregation;
 
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -35,7 +42,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Locale;
+import java.time.LocalDate;
+import java.util.HexFormat;
+import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
@@ -115,9 +124,6 @@ public class IoTDBAggregationIT {
   private final String d0s6 = "root.vehicle.d0.s6";
   private final String d0s7 = "root.vehicle.d0.s7";
   private final String d0s8 = "root.vehicle.d0.s8";
-  private static final String insertTemplate =
-      "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4,s5,s6,s7,s8)"
-          + " VALUES(%d,%d,%d,%f,%s,%s,%s,%s,%s,%d)";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -991,158 +997,85 @@ public class IoTDBAggregationIT {
   }
 
   private static void prepareData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    // Reuse one session for schema creation, typed batch writes and flushes. These tests exercise
+    // aggregation queries, so preparing every row through the SQL parser adds no query coverage.
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
 
       for (String sql : creationSqls) {
-        statement.execute(sql);
+        session.executeNonQueryStatement(sql);
       }
+
+      Tablet tablet =
+          new Tablet(
+              "root.vehicle.d0",
+              List.of(
+                  new MeasurementSchema("s0", TSDataType.INT32),
+                  new MeasurementSchema("s1", TSDataType.INT64),
+                  new MeasurementSchema("s2", TSDataType.FLOAT),
+                  new MeasurementSchema("s3", TSDataType.TEXT),
+                  new MeasurementSchema("s4", TSDataType.BOOLEAN),
+                  new MeasurementSchema("s5", TSDataType.STRING),
+                  new MeasurementSchema("s6", TSDataType.BLOB),
+                  new MeasurementSchema("s7", TSDataType.DATE),
+                  new MeasurementSchema("s8", TSDataType.TIMESTAMP)),
+              500);
 
       // prepare BufferWrite file
-      for (int i = 5000; i < 7000; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH,
-                insertTemplate,
-                i,
-                i,
-                i,
-                (double) i,
-                "'" + i + "'",
-                "true",
-                "'" + i + "'",
-                "X'" + i + "'",
-                "'" + i + "-01-01'",
-                i));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
-      statement.execute("flush");
+      insertRange(session, tablet, 5000, 7000, true);
+      session.executeNonQueryStatement("flush");
 
-      for (int i = 7500; i < 8500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH,
-                insertTemplate,
-                i,
-                i,
-                i,
-                (double) i,
-                "'" + i + "'",
-                "false",
-                "'" + i + "'",
-                "X'" + i + "'",
-                "'" + i + "-01-01'",
-                i));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
-      statement.execute("flush");
+      insertRange(session, tablet, 7500, 8500, false);
+      session.executeNonQueryStatement("flush");
       // prepare Unseq-File
-      for (int i = 500; i < 1500; i++) {
-        if (i < 1000) {
-          statement.addBatch(
-              String.format(
-                  Locale.ENGLISH,
-                  insertTemplate,
-                  i,
-                  i,
-                  i,
-                  (double) i,
-                  "'" + i + "'",
-                  "true",
-                  "'" + i + "'",
-                  "X'0" + i + "'",
-                  "'1" + i + "-01-01'",
-                  i));
-        } else {
-          statement.addBatch(
-              String.format(
-                  Locale.ENGLISH,
-                  insertTemplate,
-                  i,
-                  i,
-                  i,
-                  (double) i,
-                  "'" + i + "'",
-                  "true",
-                  "'" + i + "'",
-                  "X'" + i + "'",
-                  "'" + i + "-01-01'",
-                  i));
-        }
-      }
-      statement.executeBatch();
-      statement.clearBatch();
-      statement.execute("flush");
-      for (int i = 3000; i < 6500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH,
-                insertTemplate,
-                i,
-                i,
-                i,
-                (double) i,
-                "'" + i + "'",
-                "false",
-                "'" + i + "'",
-                "X'" + i + "'",
-                "'" + i + "-01-01'",
-                i));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
+      insertRange(session, tablet, 500, 1500, true);
+      session.executeNonQueryStatement("flush");
+      insertRange(session, tablet, 3000, 6500, false);
 
       // prepare BufferWrite cache
-      for (int i = 9000; i < 10000; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH,
-                insertTemplate,
-                i,
-                i,
-                i,
-                (double) i,
-                "'" + i + "'",
-                "true",
-                "'" + i + "'",
-                "X'" + i + "'",
-                "'" + i + "-01-01'",
-                i));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
+      insertRange(session, tablet, 9000, 10000, true);
       // prepare Overflow cache
-      for (int i = 2000; i < 2500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH,
-                insertTemplate,
-                i,
-                i,
-                i,
-                (double) i,
-                "'" + i + "'",
-                "false",
-                "'" + i + "'",
-                "X'" + i + "'",
-                "'" + i + "-01-01'",
-                i));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
+      insertRange(session, tablet, 2000, 2500, false);
 
       for (String sql : dataSet3) {
-        statement.execute(sql);
+        session.executeNonQueryStatement(sql);
       }
 
       for (String sql : dataSet2) {
-        statement.execute(sql);
+        session.executeNonQueryStatement(sql);
       }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  private static void insertRange(
+      ISession session, Tablet tablet, int startTime, int endTime, boolean booleanValue)
+      throws IoTDBConnectionException, StatementExecutionException {
+    // Reuse the bounded tablet while retaining row order and the callers' flush boundaries.
+    for (int time = startTime; time < endTime; time++) {
+      int row = tablet.getRowSize();
+      tablet.addTimestamp(row, time);
+      tablet.addValue("s0", row, time);
+      tablet.addValue("s1", row, (long) time);
+      tablet.addValue("s2", row, (float) time);
+      String text = Integer.toString(time);
+      tablet.addValue("s3", row, text);
+      tablet.addValue("s4", row, booleanValue);
+      tablet.addValue("s5", row, text);
+      // SQL used decimal digits as hex, e.g. X'0500', and DATE years 1500-1999 for times 500-999.
+      tablet.addValue(
+          "s6", row, new Binary(HexFormat.of().parseHex((time < 1000 ? "0" : "") + text)));
+      tablet.addValue("s7", row, LocalDate.of(time < 1000 ? time + 1000 : time, 1, 1));
+      tablet.addValue("s8", row, (long) time);
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+    if (tablet.getRowSize() > 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
     }
   }
 

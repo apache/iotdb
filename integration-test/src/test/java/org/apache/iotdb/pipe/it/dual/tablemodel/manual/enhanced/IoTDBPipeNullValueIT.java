@@ -23,26 +23,32 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
-import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
-public class IoTDBPipeNullValueIT extends AbstractPipeTableModelDualManualIT {
+public class IoTDBPipeNullValueIT extends AbstractPipeTableModelSharedClusterIT {
+
+  @Rule public final TestName testName = new TestName();
 
   @Override
   @Before
@@ -63,90 +69,110 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelDualManualIT {
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
+    final String database = database("test");
     final Consumer<String> handleFailure =
         o -> {
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
 
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+    // Retain the history/realtime boundary and both flushes while sharing one Tablet Session.
+    // SQL scenarios keep using JDBC and do not open an unused Session.
+    try (final ITableSession session =
+        insertType == InsertType.SESSION_INSERT_TABLET
+            ? senderEnv.getTableSessionConnection()
+            : null) {
+      try (final SyncConfigNodeIServiceClient client =
+          (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+        final Map<String, String> extractorAttributes = new HashMap<>();
+        final Map<String, String> processorAttributes = new HashMap<>();
+        final Map<String, String> connectorAttributes = new HashMap<>();
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+        TableModelUtils.createDataBaseAndTable(senderEnv, "test", database);
+
+        if (insertType == InsertType.SESSION_INSERT_TABLET) {
+          TableModelUtils.insertTablet(database, "test", 0, 200, session, true);
+        } else if (insertType == InsertType.SQL_INSERT) {
+          TableModelUtils.insertData(database, "test", 0, 200, senderEnv, true);
+        }
+
+        connectorAttributes.put("connector", "iotdb-thrift-connector");
+        connectorAttributes.put("connector.ip", receiverIp);
+        connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+        extractorAttributes.put("capture.table", "true");
+        extractorAttributes.put("__system.sql-dialect", "table");
+        extractorAttributes.put("realtime-mode", realtime);
+        extractorAttributes.put("user", "root");
+        if (withParsing) {
+          extractorAttributes.put("start-time", "150");
+          extractorAttributes.put("end-time", "249");
+          extractorAttributes.put("database-name", database);
+          extractorAttributes.put("table-name", "test");
+        }
+
+        final TSStatus status =
+            client.createPipe(
+                new TCreatePipeReq("test", connectorAttributes)
+                    .setExtractorAttributes(extractorAttributes)
+                    .setProcessorAttributes(processorAttributes));
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      }
 
       if (insertType == InsertType.SESSION_INSERT_TABLET) {
-        TableModelUtils.insertTablet("test", "test", 0, 200, senderEnv, true);
+        TableModelUtils.insertTablet(database, "test", 200, 400, session, true);
       } else if (insertType == InsertType.SQL_INSERT) {
-        TableModelUtils.insertData("test", "test", 0, 200, senderEnv, true);
+        TableModelUtils.insertData(database, "test", 200, 400, senderEnv, true);
       }
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-
-      extractorAttributes.put("capture.table", "true");
-      extractorAttributes.put("__system.sql-dialect", "table");
-      extractorAttributes.put("realtime-mode", realtime);
-      extractorAttributes.put("user", "root");
       if (withParsing) {
-        extractorAttributes.put("start-time", "150");
-        extractorAttributes.put("end-time", "249");
-        extractorAttributes.put("database-name", "test");
-        extractorAttributes.put("table-name", "test");
+        TableModelUtils.assertCountData(database, "test", 100, receiverEnv, handleFailure);
+        return;
       }
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("test", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      TableModelUtils.assertCountData(database, "test", 400, receiverEnv, handleFailure);
     }
+  }
 
-    if (insertType == InsertType.SESSION_INSERT_TABLET) {
-      TableModelUtils.insertTablet("test", "test", 200, 400, senderEnv, true);
-    } else if (insertType == InsertType.SQL_INSERT) {
-      TableModelUtils.insertData("test", "test", 200, 400, senderEnv, true);
-    }
-
-    if (withParsing) {
-      TableModelUtils.assertCountData("test", "test", 100, receiverEnv, handleFailure);
-      return;
-    }
-    TableModelUtils.assertCountData("test", "test", 400, receiverEnv, handleFailure);
+  private String database(final String name) {
+    return (name + "_" + testName.getMethodName()).toLowerCase(Locale.ROOT);
   }
 
   // ---------------------- //
   // Scenario 1: SQL Insert //
   // ---------------------- //
+  // SQL inserts containing null values in forced-log mode must replicate 100 rows in [150, 249].
   @Test
   public void testSQLInsertWithParsingForcedLog() throws Exception {
     testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "forced-log");
   }
 
+  // SQL inserts containing null values in forced-log mode must replicate all 400 history/realtime
+  // rows.
   @Test
   public void testSQLInsertWithoutParsingForcedLog() throws Exception {
     testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "forced-log");
   }
 
+  // SQL inserts containing null values in file mode must replicate 100 rows in [150, 249].
   @Test
   public void testSQLInsertWithParsingFile() throws Exception {
     testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "file");
   }
 
+  // SQL inserts containing null values in file mode must replicate all 400 history/realtime rows.
   @Test
   public void testSQLInsertWithoutParsingFile() throws Exception {
     testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "file");
   }
 
+  // SQL inserts containing null values in stream mode must replicate 100 rows in [150, 249].
   @Test
   public void testSQLInsertWithParsingStream() throws Exception {
     testInsertNullValueTemplate(InsertType.SQL_INSERT, true, "stream");
   }
 
+  // SQL inserts containing null values in stream mode must replicate all 400 history/realtime
+  // rows.
   @Test
   public void testSQLInsertWithoutParsingStream() throws Exception {
     testInsertNullValueTemplate(InsertType.SQL_INSERT, false, "stream");
@@ -155,31 +181,41 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelDualManualIT {
   // --------------------------------- //
   // Scenario 2: Session Insert Tablet //
   // --------------------------------- //
+  // Session Tablets containing null values in forced-log mode must replicate 100 rows in [150,
+  // 249].
   @Test
   public void testSessionInsertTabletWithParsingForcedLog() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "forced-log");
   }
 
+  // Session Tablets containing null values in forced-log mode must replicate all 400
+  // history/realtime rows.
   @Test
   public void testSessionInsertTabletWithoutParsingForcedLog() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "forced-log");
   }
 
+  // Session Tablets containing null values in file mode must replicate 100 rows in [150, 249].
   @Test
   public void testSessionInsertTabletWithParsingFile() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "file");
   }
 
+  // Session Tablets containing null values in file mode must replicate all 400 history/realtime
+  // rows.
   @Test
   public void testSessionInsertTabletWithoutParsingFile() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "file");
   }
 
+  // Session Tablets containing null values in stream mode must replicate 100 rows in [150, 249].
   @Test
   public void testSessionInsertTabletWithParsingStream() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, true, "stream");
   }
 
+  // Session Tablets containing null values in stream mode must replicate all 400 history/realtime
+  // rows.
   @Test
   public void testSessionInsertTabletWithoutParsingStream() throws Exception {
     testInsertNullValueTemplate(InsertType.SESSION_INSERT_TABLET, false, "stream");

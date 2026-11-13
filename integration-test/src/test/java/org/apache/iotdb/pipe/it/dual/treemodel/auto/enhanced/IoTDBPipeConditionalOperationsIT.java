@@ -26,10 +26,9 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
-import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,14 +42,10 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
-public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelAutoIT {
+public class IoTDBPipeConditionalOperationsIT extends AbstractPipeTreeModelSharedClusterIT {
 
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
-
+  // Repeating CREATE PIPE IF NOT EXISTS with different source attributes must preserve the
+  // running pipe's original configuration and creation time.
   @Test
   public void testBasicCreatePipeIfNotExists() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -60,54 +55,42 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
         String.format(
             "create pipe If Not Exists a2b with source ('source'='iotdb-source', 'source.pattern'='root.test1', 'source.realtime.mode'='stream') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
+    // Keep both clients across the repeated command and its metadata checks.
     try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement();
+        final SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       statement.execute(sql);
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // show pipe
-    long creationTime;
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult =
+      // show pipe
+      final List<TShowPipeInfo> createdPipes =
           client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
-      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(1, showPipeResult.size());
+      createdPipes.removeIf(i -> i.getId().startsWith("__consensus"));
+      Assert.assertEquals(1, createdPipes.size());
       // Check status
-      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+      Assert.assertEquals("RUNNING", createdPipes.get(0).state);
       // Check configurations
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test1"));
+      Assert.assertTrue(createdPipes.get(0).pipeExtractor.contains("source=iotdb-source"));
+      Assert.assertTrue(createdPipes.get(0).pipeExtractor.contains("source.pattern=root.test1"));
+      Assert.assertTrue(createdPipes.get(0).pipeExtractor.contains("source.realtime.mode=stream"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeExtractor.contains("source.realtime.mode=stream"));
+          createdPipes.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
-          showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
-      Assert.assertTrue(
-          showPipeResult
+          createdPipes
               .get(0)
               .pipeConnector
               .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
       // Record last creation time
-      creationTime = showPipeResult.get(0).creationTime;
-    }
+      final long creationTime = createdPipes.get(0).creationTime;
 
-    // Create pipe If Not Exists
-    sql =
-        String.format(
-            "create pipe If Not Exists a2b with source ('source'='iotdb-source', 'source.path'='root.test2.**') with sink ('node-urls'='%s')",
-            receiverDataNode.getIpAndPortString());
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Create pipe If Not Exists
+      sql =
+          String.format(
+              "create pipe If Not Exists a2b with source ('source'='iotdb-source', 'source.path'='root.test2.**') with sink ('node-urls'='%s')",
+              receiverDataNode.getIpAndPortString());
       statement.execute(sql);
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // show pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      // show pipe
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
@@ -131,6 +114,7 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
     }
   }
 
+  // DROP PIPE IF EXISTS must remove a running pipe and succeed again after the pipe is absent.
   @Test
   public void testBasicDropPipeIfExists() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -140,36 +124,24 @@ public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelA
         String.format(
             "create pipe If Not Exists a2b with source ('source'='iotdb-source', 'source.path'='root.test1.**') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
+    // Reuse the SQL connection through both DROP calls and keep the intervening absence check.
     try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement();
+        final SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       statement.execute(sql);
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Drop pipe If Exists
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Drop pipe If Exists
       statement.execute("Drop pipe If Exists a2b");
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // show pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      // show pipe
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(0, showPipeResult.size());
-    }
 
-    // Drop pipe If Exists
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Drop pipe If Exists
       statement.execute("Drop pipe If Exists a2b");
-    } catch (SQLException e) {
-      fail(e.getMessage());
     }
   }
 

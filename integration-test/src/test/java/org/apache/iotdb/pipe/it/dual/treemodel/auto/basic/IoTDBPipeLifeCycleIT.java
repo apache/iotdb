@@ -24,12 +24,15 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
-import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,12 +41,14 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
@@ -55,12 +60,22 @@ import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
-public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
+public class IoTDBPipeLifeCycleIT extends AbstractPipeTreeModelSharedClusterIT {
+
+  private boolean permissionUserCreated;
 
   @Override
   @Before
   public void setUp() {
     super.setUp();
+  }
+
+  @Override
+  protected void cleanEnvironment() {
+    super.cleanEnvironment();
+    if (permissionUserCreated) {
+      executeNonQueryWithRetry(senderEnv, "drop user test");
+    }
   }
 
   @Test
@@ -134,6 +149,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
+  // With history disabled, old data must stay excluded, new data/schema/database changes must be
+  // replicated, and changes made while stopped must arrive only after restarting the pipe.
   @Test
   public void testLifeCycleWithHistoryDisabled() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -219,25 +236,41 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
               "flush"),
           null);
 
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv,
-          "select s1 from root.db.d1",
-          "Time,root.db.d1.s1,",
-          Collections.singleton("2,2.0,"));
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv,
-          "count timeseries root.ln0.**",
-          "count(timeseries),",
-          Collections.singleton("0,"));
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv,
-          "count timeseries root.db.**",
-          "count(timeseries),",
-          Collections.singleton("2,"));
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "count databases root.ln0", "count,", Collections.singleton("0,"));
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "count databases root.db", "count,", Collections.singleton("1,"));
+      // Observe all stopped-pipe invariants in the same ten-second window, using one connection.
+      // failFast preserves continuous checking: a transient leak must fail the test immediately.
+      try (final Connection connection = receiverEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
+        Awaitility.await()
+            .pollInSameThread()
+            .pollDelay(0, TimeUnit.SECONDS)
+            .pollInterval(1, TimeUnit.SECONDS)
+            .during(10, TimeUnit.SECONDS)
+            .atMost(15, TimeUnit.SECONDS)
+            .failFast(
+                () -> {
+                  TestUtils.assertResultSetEqual(
+                      statement.executeQuery("select s1 from root.db.d1"),
+                      "Time,root.db.d1.s1,",
+                      Collections.singleton("2,2.0,"));
+                  TestUtils.assertResultSetEqual(
+                      statement.executeQuery("count timeseries root.ln0.**"),
+                      "count(timeseries),",
+                      Collections.singleton("0,"));
+                  TestUtils.assertResultSetEqual(
+                      statement.executeQuery("count timeseries root.db.**"),
+                      "count(timeseries),",
+                      Collections.singleton("2,"));
+                  TestUtils.assertResultSetEqual(
+                      statement.executeQuery("count databases root.ln0"),
+                      "count,",
+                      Collections.singleton("0,"));
+                  TestUtils.assertResultSetEqual(
+                      statement.executeQuery("count databases root.db"),
+                      "count,",
+                      Collections.singleton("1,"));
+                })
+            .until(() -> true);
+      }
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
@@ -460,6 +493,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
+  // A running pipe must recover after both clusters restart and replicate a third row in addition
+  // to the history and realtime rows that were already received before the restart.
   @Test
   public void testLifeCycleWithClusterRestart() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -512,13 +547,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
           receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
     }
 
-    try {
-      TestUtils.restartCluster(receiverEnv);
-      TestUtils.restartCluster(senderEnv);
-    } catch (final Throwable e) {
-      e.printStackTrace();
-      return;
-    }
+    executeOnBothEnvs(TestUtils::restartCluster);
 
     try (final SyncConfigNodeIServiceClient ignored =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -534,6 +563,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
+  // Once realtime transfer is established, stop the receiver and enqueue the remaining rows during
+  // its outage; restarting all receiver nodes must recover the pipe and deliver all 100 rows.
   @Test
   public void testReceiverRestartWhenTransferring() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -565,42 +596,21 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      final Thread t =
-          new Thread(
-              () -> {
-                Connection connection = null;
-                try {
-                  connection = senderEnv.getConnection();
-                } catch (SQLException e) {
-                  // ignore
-                }
-                try {
-                  for (int i = 0; i < 100; ++i) {
-                    TestUtils.executeNonQuery(
-                        senderEnv,
-                        String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-                        connection);
-                    Thread.sleep(100);
-                  }
-                } catch (InterruptedException ignored) {
-                }
-              });
-      t.start();
+      insertData(senderEnv, 0, 1);
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(*) from root.db.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("1,"));
 
-      try {
-        TestUtils.restartCluster(receiverEnv);
-      } catch (final Throwable e) {
-        e.printStackTrace();
-        try {
-          t.interrupt();
-          t.join();
-        } catch (Throwable ignored) {
-        }
-        return;
-      }
-
-      t.join();
-      TestUtils.executeNonQuery(senderEnv, "flush", null);
+      // Explicitly enqueue events while the receiver is offline instead of relying on a writer's
+      // sleep interval to overlap the restart. Failures propagate on the test thread.
+      receiverEnv.shutdownAllDataNodes();
+      receiverEnv.shutdownAllConfigNodes();
+      insertData(senderEnv, 1, 100);
+      receiverEnv.startAllConfigNodes();
+      receiverEnv.startAllDataNodes();
+      ((AbstractEnv) receiverEnv).checkClusterStatusWithoutUnknown();
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -671,6 +681,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
+  // Bidirectional pipes with forwarding disabled must converge on all 400 history/realtime rows,
+  // survive a restart of both clusters, then converge on 600 rows without a forwarding cycle.
   @Test
   public void testDoubleLiving() throws Exception {
     // Double living is two clusters with pipes connecting each other.
@@ -682,11 +694,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    for (int i = 0; i < 100; ++i) {
-      TestUtils.executeNonQuery(
-          senderEnv, String.format("insert into root.db.d1(time, s1) values (%s, 1)", i), null);
-    }
-    TestUtils.executeNonQuery(senderEnv, "flush", null);
+    insertData(senderEnv, 0, 100);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -713,25 +721,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
-    try (Connection connection = senderEnv.getConnection()) {
-      for (int i = 100; i < 200; ++i) {
-        TestUtils.executeNonQuery(
-            senderEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            connection);
-      }
-      TestUtils.executeNonQuery(senderEnv, "flush", connection);
-    }
-
-    try (Connection connection = receiverEnv.getConnection()) {
-      for (int i = 200; i < 300; ++i) {
-        TestUtils.executeNonQuery(
-            receiverEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            connection);
-      }
-      TestUtils.executeNonQuery(receiverEnv, "flush", connection);
-    }
+    insertData(senderEnv, 100, 200);
+    insertData(receiverEnv, 200, 300);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
@@ -758,15 +749,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
-    try (Connection connection = receiverEnv.getConnection()) {
-      for (int i = 300; i < 400; ++i) {
-        TestUtils.executeNonQuery(
-            receiverEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            connection);
-      }
-      TestUtils.executeNonQuery(receiverEnv, "flush", connection);
-    }
+    insertData(receiverEnv, 300, 400);
 
     final Set<String> expectedResSet = new HashSet<>();
     for (int i = 0; i < 400; ++i) {
@@ -778,33 +761,16 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (final Throwable e) {
-      e.printStackTrace();
-      return;
-    }
+    // Flush remotely received realtime rows before restart so recovery starts from persisted files.
+    TestUtils.executeNonQuery(senderEnv, "flush", null);
+    TestUtils.executeNonQuery(receiverEnv, "flush", null);
 
-    try (Connection connection = senderEnv.getConnection()) {
-      for (int i = 400; i < 500; ++i) {
-        TestUtils.executeNonQuery(
-            senderEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            connection);
-      }
-      TestUtils.executeNonQuery(senderEnv, "flush", connection);
-    }
+    // Keep one side of the bidirectional pipes online while the other cluster recovers.
+    TestUtils.restartCluster(senderEnv);
+    TestUtils.restartCluster(receiverEnv);
 
-    try (Connection connection = receiverEnv.getConnection()) {
-      for (int i = 500; i < 600; ++i) {
-        TestUtils.executeNonQuery(
-            receiverEnv,
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i),
-            connection);
-      }
-      TestUtils.executeNonQuery(receiverEnv, "flush", connection);
-    }
+    insertData(senderEnv, 400, 500);
+    insertData(receiverEnv, 500, 600);
 
     for (int i = 400; i < 600; ++i) {
       expectedResSet.add(i + ",1.0,");
@@ -815,9 +781,24 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
         receiverEnv, "select * from root.db.**", "Time,root.db.d1.s1,", expectedResSet);
   }
 
+  private static void insertData(final BaseEnv env, final int start, final int end)
+      throws SQLException {
+    // Preserve per-statement realtime events while avoiding a new JDBC session for every insert.
+    try (final Connection connection = env.getConnection();
+        final Statement statement = connection.createStatement()) {
+      for (int i = start; i < end; ++i) {
+        statement.execute(String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+      }
+      statement.execute("flush");
+    }
+  }
+
+  // A user without SYSTEM may list pipes but cannot manage pipes/plugins; granting SYSTEM allows
+  // pipe lifecycle operations while an untrusted plugin URI must still be rejected.
   @Test
   public void testPermission() {
-    createUser(senderEnv, "test", "test123123456");
+    createUser(senderEnv, "test", "IoTDB!Test2024");
+    permissionUserCreated = true;
 
     assertNonQueryTestFail(
         senderEnv,
@@ -829,46 +810,46 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
             + ")",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456");
+        "IoTDB!Test2024");
     assertNonQueryTestFail(
         senderEnv,
         "drop pipe testPipe",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456");
+        "IoTDB!Test2024");
     // Will not throw exception
-    executeQueryWithRetry(senderEnv, "show pipes", "test", "test123123456");
+    executeQueryWithRetry(senderEnv, "show pipes", "test", "IoTDB!Test2024");
     assertNonQueryTestFail(
         senderEnv,
         "start pipe testPipe",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456");
+        "IoTDB!Test2024");
     assertNonQueryTestFail(
         senderEnv,
         "stop pipe testPipe",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456");
+        "IoTDB!Test2024");
 
     assertNonQueryTestFail(
         senderEnv,
         "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456");
+        "IoTDB!Test2024");
     assertNonQueryTestFail(
         senderEnv,
         "drop pipePlugin TestProcessor",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456");
+        "IoTDB!Test2024");
     assertTestFail(
         senderEnv,
         "show pipePlugins",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456");
+        "IoTDB!Test2024");
 
     grantUserSystemPrivileges(senderEnv, "test", PrivilegeType.SYSTEM);
 
@@ -876,20 +857,20 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
         senderEnv,
         "create pipe testPipe\n" + "with sink (\n" + "  'sink'='write-back-sink'\n" + ")",
         "test",
-        "test123123456");
-    executeQueryWithRetry(senderEnv, "show pipes", "test", "test123123456");
+        "IoTDB!Test2024");
+    executeQueryWithRetry(senderEnv, "show pipes", "test", "IoTDB!Test2024");
     executeNonQueriesWithRetry(
         senderEnv,
         Arrays.asList("start pipe testPipe", "stop pipe testPipe", "drop pipe testPipe"),
         "test",
-        "test123123456");
+        "IoTDB!Test2024");
 
     assertNonQueryTestFail(
         senderEnv,
         "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
         "701: Untrusted uri xxx",
         "test",
-        "test123123456");
-    executeQueryWithRetry(senderEnv, "show pipe plugins", "test", "test123123456");
+        "IoTDB!Test2024");
+    executeQueryWithRetry(senderEnv, "show pipe plugins", "test", "IoTDB!Test2024");
   }
 }

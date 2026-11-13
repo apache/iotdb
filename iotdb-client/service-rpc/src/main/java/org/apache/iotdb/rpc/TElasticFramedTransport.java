@@ -87,14 +87,26 @@ public class TElasticFramedTransport extends TTransport {
       int thriftMaxFrameSize,
       boolean copyBinary)
       throws TTransportException {
+    this(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, Integer.MAX_VALUE);
+  }
+
+  protected TElasticFramedTransport(
+      TTransport underlying,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean copyBinary,
+      int maxReusableBufferSize)
+      throws TTransportException {
     this.underlying = underlying;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.copyBinary = copyBinary;
     alignUnderlyingConfiguration();
     try {
-      readBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
-      writeBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
+      readBuffer =
+          new AutoScalingBufferReadTransport(thriftDefaultBufferSize, maxReusableBufferSize);
+      writeBuffer =
+          new AutoScalingBufferWriteTransport(thriftDefaultBufferSize, maxReusableBufferSize);
     } catch (IOException e) {
       closeAllocatedBuffers();
       throw new TTransportException(e);
@@ -316,9 +328,8 @@ public class TElasticFramedTransport extends TTransport {
     TFramedTransport.encodeFrameSize(length, i32buf);
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuffer(), 0, length);
-    writeBuffer.reset();
     try {
-      writeBuffer.resizeIfNecessary(length);
+      writeBuffer.resetAndResize();
     } catch (IOException e) {
       throw new TTransportException(e);
     }

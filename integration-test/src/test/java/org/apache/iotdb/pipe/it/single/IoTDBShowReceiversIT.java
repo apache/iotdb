@@ -23,10 +23,14 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
-import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
@@ -39,8 +43,11 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.awaitility.Awaitility;
 import org.junit.Assert;
+import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.ExternalResource;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
@@ -49,12 +56,117 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT1.class})
 public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
 
+  private static final int SETUP_DATA_NODE_INDEX = 0;
+  private static BaseEnv sharedEnv;
+
+  @ClassRule
+  public static final ExternalResource CLUSTER =
+      new ExternalResource() {
+        @Override
+        protected void after() {
+          try {
+            if (sharedEnv != null) {
+              sharedEnv.cleanClusterEnvironment();
+            }
+          } finally {
+            sharedEnv = null;
+          }
+        }
+      };
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    if (sharedEnv == null) {
+      try {
+        super.setUp();
+        sharedEnv = env;
+      } catch (Exception | Error e) {
+        // The class rule owns successful startup; release a partially started cluster here.
+        if (env != null) {
+          env.cleanClusterEnvironment();
+        }
+        throw e;
+      }
+    }
+    env = sharedEnv;
+  }
+
+  @Override
+  protected void cleanEnvironment() {
+    if (sharedEnv == null) {
+      return;
+    }
+    try {
+      // A stop/restart assertion can fail with a node still down. Restore it before querying or
+      // dropping pipes so the following method always sees the same healthy cluster.
+      for (int i = 0; i < env.getDataNodeWrapperList().size(); i++) {
+        if (!env.getDataNodeWrapper(i).isAlive()) {
+          env.startDataNode(i);
+          env.ensureNodeStatus(
+              Collections.singletonList(env.getDataNodeWrapper(i)),
+              Collections.singletonList(NodeStatus.Running));
+        }
+      }
+
+      try (final SyncConfigNodeIServiceClient client =
+          (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
+        for (final boolean tableModel : new boolean[] {false, true}) {
+          final TShowPipeResp response =
+              client.showPipe(
+                  new TShowPipeReq()
+                      .setIsTableModel(tableModel)
+                      .setUserName(SessionConfig.DEFAULT_USER));
+          Assert.assertEquals(
+              TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+          for (final TShowPipeInfo pipe : response.getPipeInfoList()) {
+            if (!pipe.getId().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+              Assert.assertEquals(
+                  TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                  client
+                      .dropPipeExtended(new TDropPipeReq(pipe.getId()).setIsTableModel(tableModel))
+                      .getCode());
+            }
+          }
+        }
+      }
+
+      // Each method owns distinct database, pipe and user names. Keep its catalog until class
+      // teardown, but await asynchronous receiver removal so permission/aggregation assertions
+      // cannot observe a previous method's writeback or thrift sessions.
+      Awaitility.await()
+          .pollInSameThread()
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
+          .atMost(60L, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                Assert.assertFalse(
+                    hasAnyReceiver(
+                        "show receivers",
+                        BaseEnv.TREE_SQL_DIALECT,
+                        SessionConfig.DEFAULT_USER,
+                        SessionConfig.DEFAULT_PASSWORD));
+                Assert.assertFalse(
+                    hasAnyReceiver(
+                        "select * from information_schema.receivers",
+                        BaseEnv.TABLE_SQL_DIALECT,
+                        SessionConfig.DEFAULT_USER,
+                        SessionConfig.DEFAULT_PASSWORD));
+              });
+    } catch (Exception e) {
+      throw new AssertionError("Failed to reset shared receiver test cluster", e);
+    }
+  }
+
+  // One writeback pipe must expose its runtime in both SHOW RECEIVERS and information_schema.
   @Test
   public void testShowReceiversInTreeAndTableModel() {
     createWriteBackPipe("root.show_receivers", "show_receivers_pipe");
@@ -63,6 +175,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
     assertShowReceivers("select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT);
   }
 
+  // Filtering receiver metadata by protocol must retain this method's writeback pipe.
   @Test
   public void testInformationSchemaReceiversWithProtocolFilter() {
     createWriteBackPipe("root.show_receivers_filter", "show_receivers_filter_pipe");
@@ -76,6 +189,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         "show_receivers_filter_pipe");
   }
 
+  // Projecting selected information_schema columns must retain the expected pipe and sender.
   @Test
   public void testInformationSchemaReceiversProjectedColumns() {
     final String pipeName = "show_receivers_project_pipe";
@@ -84,6 +198,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
     assertProjectedShowReceivers(pipeName);
   }
 
+  // Two pipes from one sender must appear together with at least two pipes in the aggregated row.
   @Test
   public void testShowReceiversAggregatesMultiplePipesFromSameSender() {
     final String pipeName1 = "show_receivers_aggregate_pipe_1";
@@ -98,6 +213,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         pipeName2);
   }
 
+  // After stopping one of three DataNodes, both SQL dialects must omit that node's runtime.
   @Test
   public void testShowReceiversWithStoppedDataNode() throws Exception {
     ensureDataNodeCount(3);
@@ -109,7 +225,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         BaseEnv.TABLE_SQL_DIALECT,
         "show_receivers_ha_pipe");
 
-    final int stoppedDataNodeIndex = 0;
+    final int stoppedDataNodeIndex = SETUP_DATA_NODE_INDEX;
     final DataNodeWrapper stoppedDataNode = env.getDataNodeWrapper(stoppedDataNodeIndex);
     final int stoppedDataNodeId = getDataNodeId(stoppedDataNode);
     final DataNodeWrapper queryDataNode = env.getDataNodeWrapper(1);
@@ -128,6 +244,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         stoppedDataNodeId);
   }
 
+  // A normal user must see no receivers, while a SYSTEM user can see the administrator's pipe.
   @Test
   public void testShowReceiversPermissionInTreeAndTableModel() {
     final String password = "Passwd123456@";
@@ -135,13 +252,11 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
     final String systemUser = "show_receiver_system";
     final String pipeName = "show_receivers_auth_pipe";
 
-    TestUtils.executeNonQueries(
-        env,
+    executeSetupSql(
         Arrays.asList(
             "create user " + normalUser + " '" + password + "'",
             "create user " + systemUser + " '" + password + "'",
-            "grant system on root.** to user " + systemUser),
-        null);
+            "grant system on root.** to user " + systemUser));
     createWriteBackPipe("root.show_receivers_auth", pipeName);
 
     assertShowReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
@@ -165,6 +280,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         password);
   }
 
+  // A sink user must see its own writeback receiver in both dialects; an unrelated user must not.
   @Test
   public void testNormalUserCanSeeOwnReceiverInTreeAndTableModel() {
     final String password = "Passwd123456@";
@@ -172,13 +288,11 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
     final String otherUser = "show_receiver_other_user";
     final String pipeName = "show_receivers_own_user_pipe";
 
-    TestUtils.executeNonQueries(
-        env,
+    executeSetupSql(
         Arrays.asList(
             "create user " + sinkUser + " '" + password + "'",
             "create user " + otherUser + " '" + password + "'",
-            "grant write on root.** to user " + sinkUser),
-        null);
+            "grant write on root.** to user " + sinkUser));
     createWriteBackPipeWithSinkUser("root.show_receivers_own_user", pipeName, sinkUser, password);
 
     assertShowReceiversAsUser(
@@ -199,6 +313,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         password);
   }
 
+  // A legacy handshake exposes Unknown pipe IDs, and closing its client removes that runtime.
   @Test
   public void testOldSenderRuntimeShowsUnknownPipeIdsAndDisappearsAfterClientClose()
       throws Exception {
@@ -227,10 +342,11 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         receiverDataNodeId);
   }
 
+  // Restarting a DataNode must remove its legacy runtime and permit a fresh handshake afterward.
   @Test
   public void testReceiverRuntimeClearedAfterDataNodeRestartAndCanReconnect() throws Exception {
     ensureDataNodeCount(2);
-    final int restartedDataNodeIndex = 0;
+    final int restartedDataNodeIndex = SETUP_DATA_NODE_INDEX;
     final DataNodeWrapper restartedDataNode = env.getDataNodeWrapper(restartedDataNodeIndex);
     final int restartedDataNodeId = getDataNodeId(restartedDataNode);
 
@@ -269,8 +385,9 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
   }
 
   private void createWriteBackPipe(final String database, final String pipeName) {
-    TestUtils.executeNonQueries(
-        env,
+    // The default pattern matches string prefixes. The dot excludes sibling method databases
+    // such as root.show_receivers_filter while preserving every series inside this database.
+    executeSetupSql(
         Arrays.asList(
             "create database " + database,
             "create timeseries " + database + ".d1.s1 with datatype=INT32, encoding=PLAIN",
@@ -278,10 +395,9 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
                 + pipeName
                 + " with source ('pattern'='"
                 + database
-                + "') with sink ('sink'='write-back-sink')",
+                + ".') with sink ('sink'='write-back-sink')",
             "insert into " + database + ".d1(time, s1) values (1, 1)",
-            "flush"),
-        null);
+            "flush"));
   }
 
   private void createWriteBackPipeWithSinkUser(
@@ -289,8 +405,7 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final String pipeName,
       final String sinkUser,
       final String sinkPassword) {
-    TestUtils.executeNonQueries(
-        env,
+    executeSetupSql(
         Arrays.asList(
             "create database " + database,
             "create timeseries " + database + ".d1.s1 with datatype=INT32, encoding=PLAIN",
@@ -298,20 +413,18 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
                 + pipeName
                 + " with source ('pattern'='"
                 + database
-                + "') with sink ('sink'='write-back-sink', 'user'='"
+                + ".') with sink ('sink'='write-back-sink', 'user'='"
                 + sinkUser
                 + "', 'password'='"
                 + sinkPassword
                 + "')",
             "insert into " + database + ".d1(time, s1) values (1, 1)",
-            "flush"),
-        null);
+            "flush"));
   }
 
   private void createTwoWriteBackPipes(
       final String database, final String firstPipeName, final String secondPipeName) {
-    TestUtils.executeNonQueries(
-        env,
+    executeSetupSql(
         Arrays.asList(
             "create database " + database,
             "create timeseries " + database + ".d1.s1 with datatype=INT32, encoding=PLAIN",
@@ -319,15 +432,31 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
                 + firstPipeName
                 + " with source ('pattern'='"
                 + database
-                + "') with sink ('sink'='write-back-sink')",
+                + ".') with sink ('sink'='write-back-sink')",
             "create pipe "
                 + secondPipeName
                 + " with source ('pattern'='"
                 + database
-                + "') with sink ('sink'='write-back-sink')",
+                + ".') with sink ('sink'='write-back-sink')",
             "insert into " + database + ".d1(time, s1) values (1, 1)",
-            "flush"),
-        null);
+            "flush"));
+  }
+
+  private void executeSetupSql(final List<String> sqlList) {
+    // The failure scenarios restart this same target DataNode. Its scheduler clients are recreated
+    // with the process, so later setup cannot borrow another node's stale connection to it.
+    // Receiver queries still use all nodes; only fixture writes are pinned and share a connection.
+    String currentSql = null;
+    try (final Connection connection =
+            env.getConnection(env.getDataNodeWrapper(SETUP_DATA_NODE_INDEX));
+        final Statement statement = connection.createStatement()) {
+      for (final String sql : sqlList) {
+        currentSql = sql;
+        statement.execute(sql);
+      }
+    } catch (SQLException e) {
+      throw new AssertionError("Failed to prepare receiver test with SQL: " + currentSql, e);
+    }
   }
 
   private void assertShowReceivers(final String sql, final String sqlDialect) {
@@ -338,8 +467,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final String sql, final String sqlDialect, final String pipeName) {
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .untilAsserted(() -> Assert.assertTrue(hasExpectedReceiver(sql, sqlDialect, pipeName)));
   }
@@ -362,8 +491,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final String expectedReceiverUserName) {
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .untilAsserted(
             () ->
@@ -379,8 +508,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final String secondPipeName) {
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .untilAsserted(
             () ->
@@ -391,8 +520,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
   private void assertProjectedShowReceivers(final String pipeName) {
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .untilAsserted(() -> Assert.assertTrue(hasProjectedReceiver(pipeName)));
   }
@@ -401,8 +530,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final String sql, final String sqlDialect, final String userName, final String password) {
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .untilAsserted(
             () -> Assert.assertFalse(hasAnyReceiver(sql, sqlDialect, userName, password)));
@@ -431,8 +560,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final String sql, final String sqlDialect, final int receiverDataNodeId) {
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .untilAsserted(
             () ->
@@ -473,8 +602,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final String sql, final String sqlDialect, final int receiverDataNodeId) {
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .untilAsserted(
             () ->
@@ -687,8 +816,8 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
       final int excludedDataNodeId) {
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .untilAsserted(
             () ->

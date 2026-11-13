@@ -25,9 +25,14 @@ import org.apache.iotdb.db.pipe.agent.task.execution.PipeProcessorSubtaskExecuto
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.concurrent.TimeUnit;
+
+import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.mock;
 
 public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
@@ -46,5 +51,33 @@ public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
                 mock(EventSupplier.class),
                 mock(PipeProcessor.class),
                 mock(PipeEventCollector.class)));
+  }
+
+  @Test(timeout = 60000)
+  public void testWorkerThreadIsReleasedAfterAllSubtasksAreDeregistered() {
+    // Use a short keep-alive time so that the test does not have to wait for the default 60
+    // seconds of the production thread pool.
+    final PipeProcessorSubtaskExecutor shortKeepAliveExecutor =
+        new PipeProcessorSubtaskExecutor(
+            2, 1L, "Pipe-Processor-Executor-Pool-Test-" + System.nanoTime());
+    try {
+      Assert.assertEquals(0, shortKeepAliveExecutor.getWorkerThreadPoolSize());
+
+      shortKeepAliveExecutor.register(subtask);
+      shortKeepAliveExecutor.start(subtask.getTaskID());
+      await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(() -> shortKeepAliveExecutor.getWorkerThreadPoolSize() == 1);
+
+      // Deregistering the last subtask releases the worker, so its thread can time out instead of
+      // being kept alive by the worker loop forever.
+      shortKeepAliveExecutor.deregister(subtask.getTaskID());
+      Assert.assertEquals(0, shortKeepAliveExecutor.getRegisteredSubtaskNumber());
+      await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(() -> shortKeepAliveExecutor.getWorkerThreadPoolSize() == 0);
+    } finally {
+      shortKeepAliveExecutor.shutdown();
+    }
   }
 }

@@ -127,6 +127,13 @@ public class WALBuffer extends AbstractWALBuffer {
   private final Map<Long, Set<Long>> memTableIdsOfWal = new ConcurrentHashMap<>();
   private final BiConsumer<File, File> walFileRolledListener;
 
+  // Published by the single sync thread only after a batch containing replicated entries succeeds.
+  private volatile long replicatedWalVersion;
+
+  public long getReplicatedWalVersion() {
+    return replicatedWalVersion;
+  }
+
   // An entry may span several sync tasks. Never acknowledge its final chunk after an earlier
   // chunk failed. Failures before writing a pending successor can be cleared at the batch boundary;
   // failures while writing the active WAL require recovery because its record boundary is unknown.
@@ -282,6 +289,7 @@ public class WALBuffer extends AbstractWALBuffer {
     final Map<Long, Long> memTableId2WalDiskUsage = new HashMap<>();
     final List<Checkpoint> checkpoints = new ArrayList<>();
     final List<WALFlushListener> fsyncListeners = new ArrayList<>();
+    boolean containsReplicatedEntries;
     WALFlushListener rollWALFileWriterListener = null;
   }
 
@@ -403,6 +411,9 @@ public class WALBuffer extends AbstractWALBuffer {
         syncIndex = searchNode.getSyncIndex();
         physicalTime = searchNode.getPhysicalTime();
         nodeId = searchNode.getNodeId();
+        if (searchIndex == DEFAULT_SEARCH_INDEX && syncIndex >= 0) {
+          info.containsReplicatedEntries = true;
+        }
         if (searchIndex != DEFAULT_SEARCH_INDEX) {
           currentSearchIndex = searchIndex;
           currentFileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
@@ -443,12 +454,14 @@ public class WALBuffer extends AbstractWALBuffer {
                 identifier,
                 walEntries.size());
           }
-          boolean dataExists = totalSize > 0;
-          if (dataExists) {
+          // end this batch now. Returning false without data made serialize() wait out
+          // the async fsync delay (1 s by default) for entries that can no longer come, on every
+          // close. Pending data or checkpoints are synced here instead of after that wait.
+          if (totalSize > 0 || !info.checkpoints.isEmpty()) {
             fsyncWorkingBuffer(currentSearchIndex, currentFileStatus, info);
           }
           isClosed = true;
-          return dataExists;
+          return true;
         default:
           return false;
       }
@@ -733,6 +746,9 @@ public class WALBuffer extends AbstractWALBuffer {
 
       // notify all waiting listeners
       if (forceSuccess) {
+        if (info.containsReplicatedEntries) {
+          replicatedWalVersion++;
+        }
         if (info.rollWALFileWriterListener != null) {
           info.rollWALFileWriterListener.succeed();
         }

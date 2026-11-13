@@ -85,7 +85,7 @@ public class SinkOperatorDownStreamNodeIdTest {
     fragmentInstanceContext.setDataRegion(dataRegion);
 
     return new LocalExecutionPlanContext(
-        typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
+        typeProvider, fragmentInstanceContext, new DataNodeQueryContext());
   }
 
   // for table model

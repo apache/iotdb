@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 /** Compile-time i18n constants for DataNode misc subsystems (English). */
 public final class DataNodeMiscMessages {
+  public static final String LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F =
+      "Failed to authorize CQ {} for user {}: {}";
+
   public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
       "The requested query does not belong to the current session.";
 
@@ -1642,15 +1645,6 @@ public final class DataNodeMiscMessages {
           "Request name: TSFastLastDataQueryForOneDeviceReq, db: %s, deviceId: %s, sensorSize: %s,"
               + " sensors: %s";
 
-  public static final String LOG_NODE_TOOL_ARG_076E307A = "node-tool: %s";
-
-  public static final String LOG_SEE_NODE_TOOL_HELP_OR_NODE_TOOL_HELP_COMMAND_BB9F5146 =
-      "See 'node-tool help' or 'node-tool help <command>'.";
-
-  public static final String LOG_ERROR_ARG_76028BAA = "error: %s";
-
-  public static final String LOG_STACKTRACE_131CBB85 = "-- StackTrace --";
-
   public static final String
       EXCEPTION_FAILED_TO_REGISTERED_TRIGGER_ARG_BECAUSE_EXISTED_MD5_OF_JAR_FILE_FOR_TRIGGER_ARG_IS_DIFFERENT_FROM_THE_NEW_JAR_FILE_4069F2F9 =
           "Failed to registered trigger %s, because existed md5 of jar file for trigger %s is"
@@ -2011,4 +2005,8 @@ public final class DataNodeMiscMessages {
 
   public static final String LOG_TIMESERIES_ARG_OVERLAP_WITHIN_ONE_PAGE_A712F779 =
       "-------- Timeseries %s overlap within one page";
+
+  public static final String
+      LOG_FAILED_TO_CLEAN_UP_INTERNAL_CLIENT_SESSION_AFTER_CONNECTION_CLOSED_9BD1700E =
+          "Failed to clean up internal client session after connection closed";
 }

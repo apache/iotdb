@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskManager;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
@@ -33,20 +34,29 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -56,6 +66,94 @@ public class PipeDataNodeTaskAgentTest {
 
   private static final int LOCAL_NODE_ID = 1;
   private static final int REGION_ID = 7;
+
+  @Test
+  public void testRatisDetectsPipeDataInsertionOption() throws Exception {
+    final String originalConsensus =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+
+      Assert.assertTrue(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "schema")));
+      Assert.assertTrue(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.delete")));
+      Assert.assertFalse(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.insert")));
+      Assert.assertFalse(
+          PipeDataNodeAgent.isPipeDataInsertionEnabled(
+              Map.of(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.insert,data.delete")));
+      for (final Map<String, String> attributes :
+          List.of(
+              Map.<String, String>of(),
+              Map.of("inclusion", "schema"),
+              Map.of("inclusion", "data.delete"),
+              Map.of("source.inclusion", "data.insert.extra"),
+              Map.of("inclusion", "all", "inclusion.exclusion", "data.insert.extra"))) {
+        Assert.assertEquals(
+            attributes.toString(),
+            !DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
+                    new PipeParameters(attributes))
+                .getLeft(),
+            PipeDataNodeAgent.isPipeDataInsertionEnabled(attributes));
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalConsensus);
+    }
+  }
+
+  @Test
+  public void testRatisDoesNotRestoreCompletedSubscriptionBroker() {
+    final String originalConsensus =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    final String group = "ratis-completed-snapshot";
+    final PipeDataNodeTaskAgent taskAgent =
+        new PipeDataNodeTaskAgent() {
+          @Override
+          protected boolean isShutdown() {
+            return false;
+          }
+        };
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(group));
+      final PipeMeta meta =
+          new PipeMeta(
+              new PipeStaticMeta(
+                  PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX + "topic." + group,
+                  1L,
+                  new HashMap<>(
+                      Map.of(SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY, "true")),
+                  new HashMap<>(),
+                  new HashMap<>(
+                      Map.of(
+                          PipeSinkConstant.SINK_CONSUMER_GROUP_KEY,
+                          group,
+                          PipeSinkConstant.SINK_TOPIC_KEY,
+                          "topic"))),
+              new PipeRuntimeMeta());
+      meta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+
+      Assert.assertNull(taskAgent.handleSinglePipeMetaChanges(meta));
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(group));
+      Assert.assertTrue(taskAgent.handlePipeMetaChanges(Collections.singletonList(meta)).isEmpty());
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(group));
+    } finally {
+      SubscriptionAgent.broker().dropBroker(group);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalConsensus);
+    }
+  }
 
   @Test
   public void testEmptyPartialMetadataKeepsExistingPipe() throws Exception {
@@ -574,6 +672,43 @@ public class PipeDataNodeTaskAgentTest {
             .getConsensusGroupId2TaskMetaMap()
             .get(REGION_ID)
             .getProgressIndex());
+  }
+
+  /**
+   * A task that fails to start is dropped and unregistered, so the following meta sync creates it
+   * again.
+   */
+  @Test
+  public void testFailedTaskStartIsRolledBackForRetry() throws Exception {
+    final PipeDataNodeTaskAgent agent = newActiveTaskAgent();
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    final PipeTaskManager manager = getField(agent, "pipeTaskManager");
+
+    final int localNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    final PipeTaskMeta taskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, localNodeId);
+    final ConcurrentMap<Integer, PipeTaskMeta> taskMetaMap = new ConcurrentHashMap<>();
+    taskMetaMap.put(REGION_ID, taskMeta);
+    final PipeMeta pipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta(
+                "failedStartPipe", 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta(taskMetaMap));
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    keeper.addPipeMeta(pipeMeta);
+
+    final PipeTask failedTask = Mockito.mock(PipeTask.class);
+    Mockito.doThrow(new PipeException("failed to start the sink")).when(failedTask).start();
+    manager.addPipeTask(pipeMeta.getStaticMeta(), REGION_ID, failedTask);
+
+    final Method startPipeTask =
+        PipeTaskAgent.class.getDeclaredMethod("startPipeTask", int.class, PipeStaticMeta.class);
+    startPipeTask.setAccessible(true);
+    startPipeTask.invoke(agent, REGION_ID, pipeMeta.getStaticMeta());
+
+    Mockito.verify(failedTask).drop();
+    Assert.assertNull(manager.getPipeTask(pipeMeta.getStaticMeta(), REGION_ID));
+    Assert.assertNull(pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().get(REGION_ID));
+    Assert.assertEquals(PipeStatus.RUNNING, pipeMeta.getRuntimeMeta().getStatus().get());
   }
 
   private PipeStaticMeta createStaticMeta(final long creationTime, final boolean historyEnabled) {

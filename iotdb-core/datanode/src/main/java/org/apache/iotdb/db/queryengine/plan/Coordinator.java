@@ -347,7 +347,14 @@ public class Coordinator {
       queryContext.setDebug(debug);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (readOnlyInternalQuery) {
-        InternalQueryExecutor.validateReadOnlyQuery(execution);
+        try {
+          InternalQueryExecutor.validateReadOnlyQuery(execution);
+        } catch (RuntimeException e) {
+          // The execution is neither registered nor started, so nothing else would release what
+          // its analysis acquired, such as the UDF class loaders pinned in its query scope.
+          execution.stopAndCleanup(e);
+          throw e;
+        }
       }
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -437,14 +444,9 @@ public class Coordinator {
       // Reuse the information_schema scan and access checks.
       // The fragment planner selects its operators using the query's session dialect.
       final SessionInfo session = queryContext.getSession();
-      queryContext.setSession(
-          new SessionInfo(
-              session.getSessionId(),
-              session.getUserEntity(),
-              session.getZoneId(),
-              session.getVersion(),
-              session.getDatabaseName().orElse(null),
-              SqlDialect.TABLE));
+      final SessionInfo tableSessionInfo =
+          new SessionInfo(session, session.getZoneId(), SqlDialect.TABLE);
+      queryContext.setSession(tableSessionInfo);
       return createQueryExecutionForTableModel(
           statement,
           new SqlParser(),

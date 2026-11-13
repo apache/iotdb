@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.relational.it.query.recent;
 
-import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -31,10 +30,8 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
-import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -94,26 +91,14 @@ public class IoTDBCteIT {
         .setPartitionInterval(1000)
         .setMemtableSizeThreshold(10000);
     EnvFactory.getEnv().initClusterEnvironment();
+    // CTE queries only read the same three rows. The privilege test removes its own user and
+    // extra table, so prepare the shared input once instead of recreating it for every method.
+    prepareData();
   }
 
   @AfterClass
   public static void tearDownClass() {
     EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
-  @Before
-  public void setUp() throws SQLException {
-    prepareData();
-  }
-
-  @After
-  public void tearDown() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      TestUtils.dropDatabaseWithRetry(statement, "testdb");
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
   }
 
   @Test
@@ -458,12 +443,13 @@ public class IoTDBCteIT {
     }
   }
 
+  // Every CTE materialization mode requires SELECT on referenced tables, including unused CTEs.
   @Test
   public void testPrivileges() throws SQLException {
     Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
     Statement adminStmt = adminCon.createStatement();
     try {
-      adminStmt.execute("CREATE USER tmpuser 'tmppw123456789'");
+      adminStmt.execute("CREATE USER tmpuser 'IoTDB!Test2024'");
       adminStmt.execute("USE testdb");
       adminStmt.execute(
           "CREATE TABLE IF NOT EXISTS testtb1(deviceid STRING TAG, voltage FLOAT FIELD)");
@@ -471,7 +457,7 @@ public class IoTDBCteIT {
 
       try (Connection connection =
               EnvFactory.getEnv()
-                  .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
+                  .getConnection("tmpuser", "IoTDB!Test2024", BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         statement.execute("USE testdb");
         for (String keyword : cteKeywords) {
@@ -482,7 +468,7 @@ public class IoTDBCteIT {
 
       try (Connection connection =
               EnvFactory.getEnv()
-                  .getConnection("tmpuser", "tmppw123456789", BaseEnv.TABLE_SQL_DIALECT);
+                  .getConnection("tmpuser", "IoTDB!Test2024", BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         statement.execute("USE testdb");
         for (String keyword : cteKeywords) {

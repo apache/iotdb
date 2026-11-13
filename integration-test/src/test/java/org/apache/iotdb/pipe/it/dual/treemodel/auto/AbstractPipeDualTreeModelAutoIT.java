@@ -32,7 +32,9 @@ import org.junit.Before;
 
 import java.io.File;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public abstract class AbstractPipeDualTreeModelAutoIT {
 
@@ -45,8 +47,16 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
     setupConfig();
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+    executeOnBothEnvs(BaseEnv::initClusterEnvironment);
+  }
+
+  protected void executeOnBothEnvs(final Consumer<BaseEnv> action) {
+    // The clusters own separate node directories and ports. Wait for both tasks, including when one
+    // fails, so teardown cannot race with a cluster that is still starting or restarting.
+    CompletableFuture.allOf(
+            CompletableFuture.runAsync(() -> action.accept(senderEnv)),
+            CompletableFuture.runAsync(() -> action.accept(receiverEnv)))
+        .join();
   }
 
   protected void setupConfig() {
@@ -81,15 +91,20 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
 
   @After
   public final void tearDown() {
+    cleanEnvironment();
+  }
+
+  protected void cleanEnvironment() {
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
   }
 
   protected static void awaitUntilFlush(BaseEnv env) {
+    // Flush and check for persisted files immediately; an already-ready snapshot needs no delay.
     Awaitility.await()
         .atMost(1, TimeUnit.MINUTES)
-        .pollDelay(2, TimeUnit.SECONDS)
-        .pollInterval(2, TimeUnit.SECONDS)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
         .until(
             () -> {
               TestUtils.executeNonQuery(env, "flush", null);

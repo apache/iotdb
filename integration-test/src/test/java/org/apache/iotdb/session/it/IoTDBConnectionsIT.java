@@ -67,7 +67,7 @@ public class IoTDBConnectionsIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig();
     EnvFactory.getEnv().initClusterEnvironment(1, 2);
-    createUser("test", "test123123456");
+    createUser("test", "IoTDB!Test2024");
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       // Get all data nodes
@@ -239,7 +239,8 @@ public class IoTDBConnectionsIT {
     }
   }
 
-  // Validate normal test case when close one datanode.
+  // Stopping one of two DataNodes removes its connection rows, and restarting it restores its
+  // Running status and RPC connectivity.
   @Test
   public void testClosedDataNodeGetConnections() throws Exception {
     if (allDataNodeId.size() <= 1) {
@@ -277,25 +278,9 @@ public class IoTDBConnectionsIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      // Wait for shutdown check
-      boolean isShutdownDetected = false;
-      for (int retry = 0; retry < 60; retry++) {
-        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
-          // A gracefully stopped DataNode is reported as Stopped by its shutdown hook; if
-          // the report fails it becomes Unknown instead
-          if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())
-              || NodeStatus.Stopped.getStatus().equals(dataNodeInfo.getStatus())) {
-            isShutdownDetected = true;
-            break;
-          }
-        }
-        if (isShutdownDetected) {
-          break;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-      Assert.assertTrue(isShutdownDetected);
+      // A graceful shutdown reports Stopped; if its shutdown report fails, ConfigNode reports
+      // Unknown.
+      awaitDataNodeStatus(client, closedDataNodeId, NodeStatus.Stopped, NodeStatus.Unknown);
     }
 
     int activeDataNodeId = (int) allDataNodeId.toArray()[1];
@@ -327,26 +312,7 @@ public class IoTDBConnectionsIT {
     closedDataNode.start();
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      // Wait for restart check
-      boolean isRestartDetected = false;
-      for (int retry = 0; retry < 60; retry++) {
-        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-        boolean containDown = false;
-        for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
-          // The restarted DataNode keeps Stopped until its first heartbeat revives it
-          if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())
-              || NodeStatus.Stopped.getStatus().equals(dataNodeInfo.getStatus())) {
-            containDown = true;
-            break;
-          }
-        }
-        if (!containDown) {
-          isRestartDetected = true;
-          break;
-        }
-        TimeUnit.SECONDS.sleep(1);
-      }
-      Assert.assertTrue(isRestartDetected);
+      awaitDataNodeStatus(client, closedDataNodeId, NodeStatus.Running);
     }
 
     // The ConfigNode may report the restarted DataNode as Running before its client RPC service is
@@ -370,10 +336,34 @@ public class IoTDBConnectionsIT {
             });
   }
 
+  // Frequent bounded polling avoids a full one-second delay after quick heartbeat transitions.
+  private static void awaitDataNodeStatus(
+      SyncConfigNodeIServiceClient client, int dataNodeId, NodeStatus... expectedStatuses) {
+    Awaitility.await()
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(60, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+              for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+                if (dataNodeInfo.getDataNodeId() == dataNodeId) {
+                  for (NodeStatus expectedStatus : expectedStatuses) {
+                    if (expectedStatus.getStatus().equals(dataNodeInfo.getStatus())) {
+                      return true;
+                    }
+                  }
+                }
+              }
+              return false;
+            });
+  }
+
+  // A valid ordinary user without SYSTEM privilege must be denied the connections catalog.
   @Test
   public void testNoAuthUserGetConnections() {
     try (Connection connection =
-            EnvFactory.getEnv().getConnection("test", "test123123456", TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "IoTDB!Test2024", TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("USE information_schema");
       ResultSet resultSet = statement.executeQuery("SELECT * FROM connections");

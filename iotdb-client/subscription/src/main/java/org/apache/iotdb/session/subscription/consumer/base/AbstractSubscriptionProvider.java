@@ -179,13 +179,33 @@ public abstract class AbstractSubscriptionProvider {
     return session.getSessionConnection();
   }
 
+  void setRpcServiceName(final String rpcServiceName) {
+    session.setRpcServiceName(rpcServiceName);
+  }
+
+  void setSslConfig(
+      final boolean useSSL,
+      final String trustStore,
+      final String trustStorePwd,
+      final String keyStore,
+      final String keyStorePwd,
+      final String sslProtocol) {
+    session.setSslConfig(useSSL, trustStore, trustStorePwd, keyStore, keyStorePwd, sslProtocol);
+  }
+
   private TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req)
       throws TException, IoTDBConnectionException {
     rpcLock.lock();
     SubscriptionSessionConnection connection = null;
     try {
       connection = getSessionConnection();
-      return pipeSubscribeWithOptionalSlicing(req, requestBodySizeLimit, connection::pipeSubscribe);
+      final TPipeSubscribeResp resp =
+          pipeSubscribeWithOptionalSlicing(req, requestBodySizeLimit, connection::pipeSubscribe);
+      if (resp.getStatus().getCode()
+          == TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED.getStatusCode()) {
+        setUnavailable();
+      }
+      return resp;
     } catch (final TException | IoTDBConnectionException e) {
       setUnavailable();
       if (connection != null) {
@@ -1001,6 +1021,8 @@ public abstract class AbstractSubscriptionProvider {
       case 1919: // SUBSCRIPTION_CONSUMER_FENCED
         LOGGER.warn(status.message);
         throw new SubscriptionConsumerFencedException(status.message);
+      case 1920: // SUBSCRIPTION_CONNECTION_REPLACED
+        throw new SubscriptionConnectionException(status.message);
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
       case 1909: // SUBSCRIPTION_MISSING_CONSUMER

@@ -140,6 +140,12 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMqttHandlerPoolSize(int mqttHandlerPoolSize) {
+    setProperty("mqtt_handler_pool_size", String.valueOf(mqttHandlerPoolSize));
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
     setProperty("last_cache_operation_on_load", strategyName);
     return this;

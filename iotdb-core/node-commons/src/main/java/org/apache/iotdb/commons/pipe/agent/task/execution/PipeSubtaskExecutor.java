@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.utils.TestOnly;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -38,6 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -77,6 +79,21 @@ public abstract class PipeSubtaskExecutor {
       final String workingThreadName,
       final @Nullable String callbackThreadName,
       final boolean disableLogInThreadPool) {
+    this(
+        corePoolSize,
+        workingThreadName,
+        callbackThreadName,
+        disableLogInThreadPool,
+        WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS);
+  }
+
+  @VisibleForTesting
+  protected PipeSubtaskExecutor(
+      final int corePoolSize,
+      final String workingThreadName,
+      final @Nullable String callbackThreadName,
+      final boolean disableLogInThreadPool,
+      final long workerThreadKeepAliveTimeInSeconds) {
     this.workingThreadName = workingThreadName;
     this.callbackThreadName =
         Objects.nonNull(callbackThreadName)
@@ -86,7 +103,7 @@ public abstract class PipeSubtaskExecutor {
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPoolWithIdleThreadTimeout(
                 corePoolSize,
-                WORKER_THREAD_KEEP_ALIVE_TIME_IN_SECONDS,
+                workerThreadKeepAliveTimeInSeconds,
                 TimeUnit.SECONDS,
                 workingThreadName);
     if (disableLogInThreadPool) {
@@ -139,13 +156,37 @@ public abstract class PipeSubtaskExecutor {
     }
 
     final PipeSubtask subtask = registeredIdSubtaskMapper.get(subTaskID);
+    if (isShutdown()) {
+      // Fail fast before touching the "submitting self" state, otherwise start() may report a
+      // false success and the subtask will never be executed.
+      LOGGER.error(
+          PipeMessages.LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA, subtask.getDisplayTaskID());
+      throw new RejectedExecutionException(
+          PipeMessages
+              .EXCEPTION_THE_SUBTASK_CAN_NOT_BE_STARTED_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_9989B212);
+    }
+
     if (subtask.isSubmittingSelf()) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(PipeMessages.SUBTASK_ALREADY_RUNNING, subtask.getDisplayTaskID());
       }
     } else {
-      subtask.allowSubmittingSelf();
-      subtask.submitSelf();
+      try {
+        subtask.allowSubmittingSelf();
+        subtask.submitSelf();
+      } catch (final RuntimeException e) {
+        // The submission may be rejected, e.g., because the underlying thread pool has been shut
+        // down. The "submitting self" state must be reverted, otherwise this and all the following
+        // start() calls would take the "already running" branch above and report a false success,
+        // leaving the subtask never executed until the node restarts.
+        subtask.disallowSubmittingSelf();
+        LOGGER.error(
+            PipeMessages.LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA, subtask.getDisplayTaskID(), e);
+        throw e;
+      } catch (final Error e) {
+        subtask.disallowSubmittingSelf();
+        throw e;
+      }
       ++runningSubtaskNumber;
       LOGGER.info(PipeMessages.SUBTASK_STARTED, subtask.getDisplayTaskID());
     }
@@ -185,6 +226,11 @@ public abstract class PipeSubtaskExecutor {
   @TestOnly
   public final int getRegisteredSubtaskNumber() {
     return registeredIdSubtaskMapper.size();
+  }
+
+  @TestOnly
+  public final int getWorkerThreadPoolSize() {
+    return underlyingThreadPool.getPoolSize();
   }
 
   /////////////////////// executor management  ///////////////////////

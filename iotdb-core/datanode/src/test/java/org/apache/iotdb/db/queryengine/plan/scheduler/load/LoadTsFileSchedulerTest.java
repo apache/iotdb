@@ -72,7 +72,7 @@ public class LoadTsFileSchedulerTest {
             new LoadTsFileScheduler(
                 distributedQueryPlan,
                 mock(MPPQueryContext.class),
-                mock(QueryStateMachine.class),
+                newStateMachine("load_start"),
                 mock(IClientManager.class),
                 mock(IPartitionFetcher.class),
                 false));
@@ -112,6 +112,25 @@ public class LoadTsFileSchedulerTest {
 
     Assert.assertEquals(QueryState.FAILED, stateMachine.getState());
     Assert.assertEquals("the staging file is gone", stateMachine.getFailureMessage());
+  }
+
+  @Test
+  public void testStopBeforeStartReleasesConstructorMemoryOnce() throws Exception {
+    QueryStateMachine state = newStateMachine("load_stop_before_start");
+    LoadTsFileScheduler scheduler = newScheduler(state);
+    java.lang.reflect.Field field = LoadTsFileScheduler.class.getDeclaredField("memoryBlock");
+    field.setAccessible(true);
+    LoadTsFileDataCacheMemoryBlock block = (LoadTsFileDataCacheMemoryBlock) field.get(scheduler);
+    Method referenceCount =
+        LoadTsFileDataCacheMemoryBlock.class.getDeclaredMethod("getReferenceCount");
+    referenceCount.setAccessible(true);
+    int before = (int) referenceCount.invoke(block);
+    scheduler.stop(null);
+    Assert.assertEquals(before - 1, referenceCount.invoke(block));
+    scheduler.start();
+    scheduler.stop(null);
+    Assert.assertEquals(before - 1, referenceCount.invoke(block));
+    Assert.assertEquals(QueryState.QUEUED, state.getState());
   }
 
   private LoadTsFileScheduler newScheduler(final QueryStateMachine stateMachine) {

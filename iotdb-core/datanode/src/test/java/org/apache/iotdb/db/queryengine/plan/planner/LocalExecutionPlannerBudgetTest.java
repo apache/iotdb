@@ -118,7 +118,7 @@ public class LocalExecutionPlannerBudgetTest {
     long freeBefore = planner.getFreeMemoryForOperators();
     try {
       List<PipelineDriverFactory> factories =
-          planner.plan(plan, new TypeProvider(), instance, new DataNodeQueryContext(1));
+          planner.plan(plan, new TypeProvider(), instance, new DataNodeQueryContext());
       assertEquals(1, factories.size());
       CollectOperator collect = (CollectOperator) factories.get(0).getOperation();
       // Check the actual reservation, not only the formula after planning has completed.
@@ -182,7 +182,7 @@ public class LocalExecutionPlannerBudgetTest {
     long freeBefore = planner.getFreeMemoryForOperators();
     try {
       List<PipelineDriverFactory> factories =
-          planner.plan(plan, new TypeProvider(), instance, new DataNodeQueryContext(1));
+          planner.plan(plan, new TypeProvider(), instance, new DataNodeQueryContext());
       assertEquals(1, factories.size());
       CollectOperator collect = (CollectOperator) factories.get(0).getOperation();
       assertEquals(150 + collect.ramBytesUsed(), freeBefore - planner.getFreeMemoryForOperators());

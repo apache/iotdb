@@ -20,14 +20,12 @@
 package org.apache.iotdb.pipe.it.dual.treemodel.auto.enhanced;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.TypeConversionSemanticCase;
-import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -35,10 +33,11 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
-public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeDualTreeModelAutoIT {
+public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeTreeModelSharedClusterIT {
 
   private static final String DEVICE = "root.pipe_type_conversion.d";
   private static final String ALIGNED_DEVICE = "root.pipe_type_conversion.aligned_d";
@@ -56,17 +55,6 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeDualTreeModel
           "int32_to_date");
 
   @Override
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-    setupConfig();
-    senderEnv.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 1);
-  }
-
-  @Override
   protected void setupConfig() {
     super.setupConfig();
     senderEnv
@@ -79,6 +67,13 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeDualTreeModel
         .getCommonConfig()
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1);
+  }
+
+  @Override
+  protected CompletableFuture<Void> initializeClusters() {
+    return CompletableFuture.allOf(
+        CompletableFuture.runAsync(() -> senderEnv.initClusterEnvironment(1, 1)),
+        CompletableFuture.runAsync(() -> receiverEnv.initClusterEnvironment(1, 1)));
   }
 
   @Test

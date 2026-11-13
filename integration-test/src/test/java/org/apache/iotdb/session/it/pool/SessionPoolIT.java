@@ -19,7 +19,9 @@
 package org.apache.iotdb.session.it.pool;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -33,7 +35,9 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -47,6 +51,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -60,19 +65,46 @@ public class SessionPoolIT {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionPoolIT.class);
   private static final long DEFAULT_QUERY_TIMEOUT = -1;
+  private static final AtomicInteger NEXT_DATABASE_ID = new AtomicInteger();
 
-  @Before
-  public void setUp() throws Exception {
+  private String database;
+
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
     // As this IT is only testing SessionPool itself, there's no need to launch a large cluster
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
+  @Before
+  public void setUp() {
+    database = "root.session_pool_" + NEXT_DATABASE_ID.incrementAndGet();
+  }
+
   @After
   public void tearDown() throws Exception {
+    dropDatabaseIfExists(database);
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  private void dropDatabaseIfExists(String databasePath) throws Exception {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      boolean exists;
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW DATABASES " + databasePath)) {
+        exists = dataSet.hasNext();
+      }
+      if (exists) {
+        session.deleteDatabase(databasePath);
+      }
+    }
+  }
+
+  // Concurrent inserts return all borrowed sessions to the pool after completing.
   @Test
   public void insert() {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
@@ -83,7 +115,7 @@ public class SessionPoolIT {
           () -> {
             try {
               pool.insertRecord(
-                  "root.sg1.d1",
+                  database + ".d1",
                   1,
                   Collections.singletonList("s" + no),
                   Collections.singletonList(TSDataType.INT64),
@@ -106,13 +138,14 @@ public class SessionPoolIT {
     }
   }
 
+  // An invalid device path is rejected without leaving the pool unusable.
   @Test
   public void incorrectSQL() {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
     assertEquals(0, pool.currentAvailableSize());
     try {
       pool.insertRecord(
-          ".root.sg1.d1",
+          "." + database + ".d1",
           1,
           Collections.singletonList("s"),
           Collections.singletonList(TSDataType.INT64),
@@ -125,6 +158,7 @@ public class SessionPoolIT {
     }
   }
 
+  // Unclosed query results occupy the pool and prevent queued requests from completing.
   @Test
   public void incorrectExecuteQueryStatement() {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
@@ -137,7 +171,8 @@ public class SessionPoolIT {
           () -> {
             try {
               SessionDataSetWrapper wrapper =
-                  pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+                  pool.executeQueryStatement(
+                      "select * from " + database + ".d1 where time = " + no);
               // this is incorrect because wrapper is not closed.
               // so all other 7 queries will be blocked
             } catch (IoTDBConnectionException | StatementExecutionException e) {
@@ -158,6 +193,7 @@ public class SessionPoolIT {
     }
   }
 
+  // Concurrent point queries complete and release every result set to the pool.
   @Test
   public void executeQueryStatement() {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
@@ -165,6 +201,7 @@ public class SessionPoolIT {
     pool.close();
   }
 
+  // Point queries with an explicit timeout complete and release their sessions.
   @Test
   public void executeQueryStatementWithTimeout() {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
@@ -184,11 +221,12 @@ public class SessionPoolIT {
               SessionDataSetWrapper wrapper;
               if (timeoutInMs == DEFAULT_QUERY_TIMEOUT) {
                 wrapper =
-                    pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+                    pool.executeQueryStatement(
+                        "select * from " + database + ".d1 where time = " + no);
               } else {
                 wrapper =
                     pool.executeQueryStatement(
-                        "select * from root.sg1.d1 where time = " + no, timeoutInMs);
+                        "select * from " + database + ".d1 where time = " + no, timeoutInMs);
               }
               pool.closeResultSet(wrapper);
             } catch (Exception e) {
@@ -208,13 +246,14 @@ public class SessionPoolIT {
     }
   }
 
+  // Concurrent raw-data queries return the timestamp selected by each worker.
   @Test
   public void executeRawDataQuery() {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
     ExecutorService service = Executors.newFixedThreadPool(10);
     write10Data(pool, true);
     List<String> pathList = new ArrayList<>();
-    pathList.add("root.sg1.d1.s1");
+    pathList.add(database + ".d1.s1");
     for (int i = 0; i < 10; i++) {
       final int no = i;
       service.submit(
@@ -243,13 +282,14 @@ public class SessionPoolIT {
     }
   }
 
+  // A query interrupted by a DataNode stop can be retried after the node recovers.
   @Test
   public void tryIfTheServerIsRestart() throws InterruptedException {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
     SessionDataSetWrapper wrapper = null;
     BaseNodeWrapper node = EnvFactory.getEnv().getDataNodeWrapper(0);
     try {
-      wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
+      wrapper = pool.executeQueryStatement("select * from " + database + ".d1 where time > 1");
       node.stop();
       EnvFactory.getEnv()
           .ensureNodeStatus(
@@ -320,6 +360,7 @@ public class SessionPoolIT {
     fail("should throw exception but not");
   }
 
+  // A query whose result is already available releases its pool slot after consumption.
   @Test
   public void tryIfTheServerIsRestartButDataIsGotten() {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
@@ -327,7 +368,7 @@ public class SessionPoolIT {
     assertEquals(1, pool.currentAvailableSize());
     SessionDataSetWrapper wrapper;
     try {
-      wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
+      wrapper = pool.executeQueryStatement("select * from " + database + ".d1 where time > 1");
       // user does not know what happens.
       assertEquals(0, pool.currentAvailableSize());
       assertEquals(1, pool.currentOccupiedSize());
@@ -345,6 +386,7 @@ public class SessionPoolIT {
     }
   }
 
+  // Writes fail while the DataNode is stopped and succeed after it restarts.
   @Test
   public void restart() throws InterruptedException {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(1);
@@ -375,7 +417,7 @@ public class SessionPoolIT {
     for (int i = 0; i < 10; i++) {
       try {
         pool.insertRecord(
-            "root.sg1.d1",
+            database + ".d1",
             i,
             Collections.singletonList("s" + i),
             Collections.singletonList(TSDataType.INT64),
@@ -389,13 +431,14 @@ public class SessionPoolIT {
     }
   }
 
+  // Closing a pool rejects later writes with the closed-pool error.
   @Test
   public void testClose() {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
     pool.close();
     try {
       pool.insertRecord(
-          "root.sg1.d1",
+          database + ".d1",
           1,
           Collections.singletonList("s1"),
           Collections.singletonList(TSDataType.INT64),
@@ -410,6 +453,7 @@ public class SessionPoolIT {
     // session.
   }
 
+  // Pool setters update their corresponding observable configuration values.
   @Test
   public void testSetters() {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);

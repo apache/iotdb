@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -37,11 +38,11 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.awaitility.Awaitility;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.ExternalResource;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
@@ -63,24 +64,28 @@ public class IoTDBPipeOperationDiagnosticsIT {
   private static final String PIPE_NAME = "pipe_operation_diagnostics";
   private static final String RECOVER_PIPE_NAME = "pipe_drop_recover";
 
-  @Before
-  public void setUp() {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setDnConnectionTimeoutMs(2000)
-        .setPipeMetaSyncerSyncIntervalMinutes(1)
-        .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false)
-        .setPipeAutoSplitFullEnabled(false);
-    EnvFactory.getEnv().initClusterEnvironment(1, 2);
-  }
+  @ClassRule
+  public static final ExternalResource CLUSTER =
+      new ExternalResource() {
+        @Override
+        protected void before() {
+          EnvFactory.getEnv()
+              .getConfig()
+              .getCommonConfig()
+              .setAutoCreateSchemaEnabled(true)
+              .setDnConnectionTimeoutMs(2000)
+              .setPipeMetaSyncerSyncIntervalMinutes(1)
+              .setPipeMemoryManagementEnabled(false)
+              .setIsPipeEnableMemoryCheck(false)
+              .setPipeAutoSplitFullEnabled(false);
+          EnvFactory.getEnv().initClusterEnvironment(1, 2);
+        }
 
-  @After
-  public void tearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
+        @Override
+        protected void after() {
+          EnvFactory.getEnv().cleanClusterEnvironment();
+        }
+      };
 
   @Test
   public void testDropPipeExposesPreDeleteAndRejectsConcurrentOperations() throws Exception {
@@ -98,12 +103,15 @@ public class IoTDBPipeOperationDiagnosticsIT {
         new BlackholeServer(
             unavailableDataNode.getInternalAddress(), unavailableDataNode.getInternalPort())) {
       configNode.stopForcibly();
+      configNode.clearLogContent();
       configNode.start();
       awaitLeader();
+      awaitPipeLeaderChange(configNode, PIPE_NAME);
       try (final SyncConfigNodeIServiceClient client = getLeaderClient()) {
+        final int acceptedConnectionCountBeforeDrop = ignored.getAcceptedConnectionCount();
         final TSStatus dropStatus = client.dropPipe(PIPE_NAME);
         assertDropTimeout(dropStatus, unavailableDataNodeId);
-        Assert.assertTrue(ignored.getAcceptedConnectionCount() > 0);
+        Assert.assertTrue(ignored.getAcceptedConnectionCount() > acceptedConnectionCountBeforeDrop);
         assertPipeState(client, PIPE_NAME, "PRE_DELETE");
 
         assertPipeBeingDropped(
@@ -152,8 +160,10 @@ public class IoTDBPipeOperationDiagnosticsIT {
           new BlackholeServer(
               unavailableDataNode.getInternalAddress(), unavailableDataNode.getInternalPort())) {
         configNode.stopForcibly();
+        configNode.clearLogContent();
         configNode.start();
         awaitLeader();
+        awaitPipeLeaderChange(configNode, RECOVER_PIPE_NAME);
         try (final SyncConfigNodeIServiceClient client = getLeaderClient()) {
           final TSStatus dropStatus = client.dropPipe(RECOVER_PIPE_NAME);
           assertDropTimeout(dropStatus, unavailableDataNodeId);
@@ -311,6 +321,35 @@ public class IoTDBPipeOperationDiagnosticsIT {
         .ensureNodeStatus(
             Collections.singletonList(dataNodeWrapper),
             Collections.singletonList(NodeStatus.Running));
+  }
+
+  private static void awaitPipeLeaderChange(
+      final ConfigNodeWrapper configNode, final String pipeName) {
+    // Leader readiness does not mean its asynchronous Pipe leader-change procedure has finished.
+    // Wait until that procedure starts pushing metadata, then use START on the already RUNNING
+    // pipe as an idempotent lock barrier. Otherwise DROP may time out waiting for the coordinator
+    // lock instead of reaching the DataNode operation that this test intends to block.
+    Awaitility.await()
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(45, TimeUnit.SECONDS)
+        .until(
+            () ->
+                configNode.logContains(
+                    ProcedureMessages
+                        .PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMHANDLEONDATANODES));
+    Awaitility.await()
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(45, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              try (final SyncConfigNodeIServiceClient client = getLeaderClientStatic()) {
+                final TSStatus status = client.startPipe(pipeName);
+                Assert.assertEquals(
+                    status.getMessage(),
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                    status.getCode());
+              }
+            });
   }
 
   private static final class BlackholeServer implements AutoCloseable {
