@@ -34,6 +34,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.analysis.interpolation.AkimaSplineInterpolator;
 import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 
 public class UDTFSpline implements UDTF {
@@ -83,7 +84,8 @@ public class UDTFSpline implements UDTF {
         return;
       }
       timestamp.add(t);
-      xDouble.add((double) (t - minimumTimestamp));
+      xDouble.add(
+          BigInteger.valueOf(t).subtract(BigInteger.valueOf(minimumTimestamp)).doubleValue());
       yDouble.add(v);
     }
   }
@@ -101,8 +103,17 @@ public class UDTFSpline implements UDTF {
                 (x[0] * (samplePoints - 1 - i) + x[yDouble.size() - 1] * (i)) / (samplePoints - 1)
                     + 0.5);
         double yhead = psf.value(approximation);
-        collector.putDouble(minimumTimestamp + Math.round(approximation), yhead);
+        collector.putDouble(getOutputTimestamp(i), yhead);
       }
     }
+  }
+
+  private long getOutputTimestamp(int index) {
+    BigInteger start = BigInteger.valueOf(minimumTimestamp);
+    BigInteger span = BigInteger.valueOf(timestamp.get(timestamp.size() - 1)).subtract(start);
+    BigInteger denominator = BigInteger.valueOf(samplePoints - 1L);
+    BigInteger offset =
+        span.multiply(BigInteger.valueOf(index)).add(denominator.shiftRight(1)).divide(denominator);
+    return start.add(offset).longValueExact();
   }
 }

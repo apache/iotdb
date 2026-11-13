@@ -37,8 +37,10 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 /** This function samples data by pool sampling. */
@@ -58,7 +60,6 @@ public class UDTFSample implements UDTF {
   private int num = 0; // number of points already sampled
   private Random random;
   private Type dataType;
-  private TypeServices.NumericValueWriter numericValueWriter;
   private TypeServices.NumericRowReader numericRowReader;
   private TypeServices.RowValueReader valueReader;
   private TypeServices.RowValueWriter valueWriter;
@@ -86,8 +87,6 @@ public class UDTFSample implements UDTF {
     this.k = parameters.getIntOrDefault("k", 1);
     this.num = 0;
     this.dataType = parameters.getDataType(0);
-    numericValueWriter =
-        TypeServices.NUMERIC_VALUE_WRITER_SERVICE.call(TypeServices.toReadType(dataType));
     numericRowReader =
         TypeServices.NUMERIC_ROW_READER_SERVICE.call(TypeServices.toReadType(dataType));
     valueReader = TypeServices.rowValueReader(dataType);
@@ -142,6 +141,7 @@ public class UDTFSample implements UDTF {
     if (this.method == Method.TRIANGLE) {
       List<Pair<Long, Double>> input = new LinkedList<>();
       List<Integer> validIndexes = new ArrayList<>();
+      Map<Long, Object> originalValues = new HashMap<>();
       for (int i = 0; i < rowWindow.windowSize(); i++) {
         Row row = rowWindow.getRow(i);
         if (row.isNull(0)) {
@@ -149,8 +149,10 @@ public class UDTFSample implements UDTF {
         }
         double data = numericRowReader.read(row);
         if (Double.isFinite(data)) {
-          input.add(Pair.of(row.getTime(), data));
+          long time = row.getTime();
+          input.add(Pair.of(time, data));
           validIndexes.add(i);
+          originalValues.put(time, valueReader.read(row));
         }
       }
       int n = input.size();
@@ -162,7 +164,7 @@ public class UDTFSample implements UDTF {
           // The first and last element will always be sampled so the buckets is k - 2
           List<Pair<Long, Double>> output = LTThreeBuckets.sorted(input, k - 2);
           for (Pair<Long, Double> p : output) {
-            numericValueWriter.write(p.getLeft(), p.getRight(), collector);
+            valueWriter.write(collector, p.getLeft(), originalValues.get(p.getLeft()));
           }
         } else { // For corner case of k == 1 and k == 2
           Row row = rowWindow.getRow(validIndexes.get(0)); // Put first element

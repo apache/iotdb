@@ -1349,8 +1349,10 @@ public class UDFWindowAndQueueTest {
   public void testTriangleSamplePreservesLongValues() throws Exception {
     long first = 9007199254740993L;
     long second = 9007199254740995L;
+    long third = 9007199254740997L;
     long last = Long.MAX_VALUE - 1;
-    for (int k : new int[] {1, 2, 4}) {
+    Map<Long, Long> valuesByTimestamp = Map.of(1L, first, 2L, second, 3L, third, 4L, last);
+    for (int k : new int[] {1, 2, 3, 4, 5}) {
       Map<String, String> attributes = new HashMap<>();
       attributes.put("method", "triangle");
       attributes.put("k", Integer.toString(k));
@@ -1370,19 +1372,29 @@ public class UDFWindowAndQueueTest {
       sample.validate(new UDFParameterValidator(parameters));
       sample.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
       sample.transform(
-          new SimpleRowWindow(new LongRow(1, first), new LongRow(2, second), new LongRow(3, last)),
+          new SimpleRowWindow(
+              new LongRow(1, first),
+              new LongRow(2, second),
+              new LongRow(3, third),
+              new LongRow(4, last)),
           collector);
 
-      Assert.assertEquals(
-          k == 1
-              ? Collections.singletonList(first)
-              : k == 2 ? Arrays.asList(first, last) : Arrays.asList(first, second, last),
-          values);
-      Assert.assertEquals(
-          k == 1
-              ? Collections.singletonList(1L)
-              : k == 2 ? Arrays.asList(1L, 3L) : Arrays.asList(1L, 2L, 3L),
-          collector.timestamps);
+      if (k == 1) {
+        Assert.assertEquals(Collections.singletonList(1L), collector.timestamps);
+      } else if (k == 2) {
+        Assert.assertEquals(Arrays.asList(1L, 4L), collector.timestamps);
+      } else if (k >= 4) {
+        Assert.assertEquals(Arrays.asList(1L, 2L, 3L, 4L), collector.timestamps);
+      } else {
+        Assert.assertEquals(3, collector.timestamps.size());
+        Assert.assertEquals(Long.valueOf(1L), collector.timestamps.get(0));
+        Assert.assertEquals(Long.valueOf(4L), collector.timestamps.get(2));
+      }
+      List<Long> expectedValues = new ArrayList<>();
+      for (long timestamp : collector.timestamps) {
+        expectedValues.add(valuesByTimestamp.get(timestamp));
+      }
+      Assert.assertEquals(expectedValues, values);
     }
   }
 
@@ -2119,6 +2131,27 @@ public class UDFWindowAndQueueTest {
     spline.terminate(collector);
 
     Assert.assertEquals(Arrays.asList(start, start + 2, start + 4), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(0.0, 2.0, 4.0), collector.values);
+  }
+
+  @Test
+  public void testSplineHandlesTimestampRangeAcrossLongBounds() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("points", "3");
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    UDTFSpline spline = new UDTFSpline();
+    RecordingPointCollector collector = new RecordingPointCollector();
+    long[] timestamps = {
+      Long.MIN_VALUE, Long.MIN_VALUE / 2, 0L, Long.MAX_VALUE / 2, Long.MAX_VALUE
+    };
+    spline.validate(new UDFParameterValidator(parameters));
+    spline.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    for (int i = 0; i < timestamps.length; i++) {
+      spline.transform(new DoubleRow(timestamps[i], i), collector);
+    }
+    spline.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(Long.MIN_VALUE, 0L, Long.MAX_VALUE), collector.timestamps);
     Assert.assertEquals(Arrays.asList(0.0, 2.0, 4.0), collector.values);
   }
 
