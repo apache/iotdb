@@ -1328,7 +1328,12 @@ public class SessionPoolTest {
     ITableSession tableSession = concreteSessionPool.getPooledTableSession();
     ExecutorService executor = Executors.newSingleThreadExecutor();
     try {
-      Future<?> closeFuture = executor.submit(tableSession::close);
+      Future<Void> closeFuture =
+          executor.submit(
+              () -> {
+                tableSession.close();
+                return null;
+              });
       assertTrue(aboutToRelease.await(5, TimeUnit.SECONDS));
 
       // The wrapper has observed an open pool and is paused immediately before releaseSession().
