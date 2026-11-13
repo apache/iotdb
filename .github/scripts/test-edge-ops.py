@@ -24,8 +24,11 @@ import fnmatch
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
+import sys
 import tempfile
+import time
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -409,6 +412,234 @@ class EdgeOpsTest(unittest.TestCase):
         result = self.run_script(self.stop, ("-f",))
         self.assert_success(result)
         self.assertNotIn("Press any key", result.stdout)
+
+
+@unittest.skipIf(WINDOWS, "Unix stop-edge.sh")
+class EdgeStopTest(unittest.TestCase):
+    """Run the real stop-edge.sh against stand-in Edge processes that only sleep.
+
+    start-edge.sh needs a JVM, so each stand-in carries the -DIOTDB_HOME that
+    start-edge.sh would pass to it: the value initEdgeHome derives for it.
+    """
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="iotdb-edge-stop-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        # Identifies this test's stand-ins, so that cleanup never touches others.
+        self.marker = "-Dedge.stop.test=" + self.root.as_posix()
+        self.env = os.environ.copy()
+        self.env.pop("IOTDB_HOME", None)
+        self.env.pop("CDPATH", None)
+
+    def install(self, relative):
+        home = self.root / relative
+        for script in (
+            "sbin/start-edge.sh",
+            "sbin/stop-edge.sh",
+            "conf/iotdb-common.sh",
+        ):
+            (home / script).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(REPOSITORY / "scripts" / script, home / script)
+        return home
+
+    def link(self, relative, target):
+        path = self.root / relative
+        if path.is_symlink():
+            path.unlink()
+        path.symlink_to(target, target_is_directory=True)
+
+    def symlink_layout(self):
+        # x/link/../edge is y/edge physically, while x/edge is another installation.
+        (self.root / "y/sub").mkdir(parents=True)
+        self.install("y/edge")
+        self.install("x/edge")
+        self.link("x/link", "../y/sub")
+
+    def bash(self, arguments, iotdb_home=None, cwd=None, **variables):
+        env = dict(self.env, **variables)
+        if iotdb_home is not None:
+            env["IOTDB_HOME"] = iotdb_home
+        return subprocess.run(
+            ["bash", *arguments],
+            env=env,
+            cwd=cwd or self.root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            errors="replace",
+            timeout=60,
+        )
+
+    def started_home(self, script, iotdb_home=None, **variables):
+        """The -DIOTDB_HOME that start-edge.sh at this path passes to the JVM."""
+        result = self.bash(
+            (
+                "-c",
+                'source "$(dirname "$1")/../conf/iotdb-common.sh"'
+                ' && initEdgeHome "$1" && printf "%s" "$IOTDB_HOME"',
+                "bash",
+                script,
+            ),
+            iotdb_home,
+            **variables,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout
+
+    def stop(self, script, iotdb_home=None, cwd=None, **variables):
+        result = self.bash((script,), iotdb_home, cwd, **variables)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return result
+
+    def spawn(self, command, cwd=None):
+        # Detached through a short-lived parent, like the nohup'ed JVM, so that
+        # the process is reaped once it exits: a zombie child of this test would
+        # still look alive to stop-edge.sh.
+        launcher = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import subprocess, sys; print(subprocess.Popen(sys.argv[1:],"
+                " stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,"
+                " stderr=subprocess.DEVNULL).pid)",
+                *command,
+            ],
+            cwd=cwd or self.root,
+            stdout=subprocess.PIPE,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        pid = int(launcher.stdout)
+        self.addCleanup(self.kill, pid)
+        return pid
+
+    def start(self, home, cwd=None):
+        """Start a stand-in for the JVM and write edge.pid where start-edge.sh does."""
+        cwd = cwd or self.root
+        pid = self.spawn(
+            [
+                sys.executable,
+                "-c",
+                "import time; time.sleep(600)",
+                self.marker,
+                "-DIOTDB_HOME=" + home,
+                "-DCONFIGNODE_HOME=" + home,
+                "org.apache.iotdb.edge.EdgeNode",
+                "-s",
+            ],
+            cwd,
+        )
+        (Path(cwd) / home / "edge.pid").write_text("{}\n".format(pid))
+        return pid
+
+    def command(self, pid):
+        return subprocess.run(
+            ["ps", "-ww", "-p", str(pid), "-o", "command="],
+            stdout=subprocess.PIPE,
+            text=True,
+            errors="replace",
+        ).stdout
+
+    def running(self, pid):
+        return self.marker in self.command(pid)
+
+    def kill(self, pid):
+        if self.running(pid):
+            os.kill(pid, signal.SIGKILL)
+
+    def test_symlinked_home_is_stopped_through_the_real_path(self):
+        # apache/iotdb#18545
+        self.install("edge")
+        self.link("link", "edge")
+        home = self.started_home("edge/sbin/start-edge.sh", str(self.root / "link"))
+        pid = self.start(home)
+        self.stop("edge/sbin/stop-edge.sh")
+        self.assertFalse(self.running(pid))
+
+    def test_stop_after_the_symlink_is_re_pointed(self):
+        self.install("edge-v1")
+        self.install("edge-v2")
+        for iotdb_home in (None, str(self.root / "iotdb")):
+            with self.subTest(IOTDB_HOME=iotdb_home):
+                self.link("iotdb", "edge-v1")
+                pid = self.start(
+                    self.started_home("iotdb/sbin/start-edge.sh", iotdb_home)
+                )
+                self.link("iotdb", "edge-v2")
+                self.stop("iotdb/sbin/stop-edge.sh", iotdb_home)
+                self.assertFalse(self.running(pid))
+
+    def test_relative_home_of_another_installation_is_left_alone(self):
+        # Recorded as-is by the start-edge.sh of earlier releases.
+        pid = self.start(".", cwd=self.install("edge-a"))
+        self.install("edge-b")
+        for iotdb_home in (None, "."):
+            with self.subTest(IOTDB_HOME=iotdb_home):
+                self.stop("sbin/stop-edge.sh", iotdb_home, cwd=self.root / "edge-b")
+                self.assertTrue(self.running(pid))
+
+    def test_symlink_followed_by_dot_dot_in_the_home(self):
+        self.symlink_layout()
+        given = str(self.root / "x/link/../edge")
+        home = self.started_home("y/edge/sbin/start-edge.sh", given)
+        self.assertEqual(home, given)
+        pid = self.start(home)
+        self.stop("x/edge/sbin/stop-edge.sh")
+        self.assertTrue(self.running(pid))
+        self.stop("y/edge/sbin/stop-edge.sh")
+        self.assertFalse(self.running(pid))
+
+    def test_symlink_followed_by_dot_dot_in_the_script_path(self):
+        self.symlink_layout()
+        pid = self.start(self.started_home("x/link/../edge/sbin/start-edge.sh"))
+        self.stop("x/link/../edge/sbin/stop-edge.sh")
+        self.assertFalse(self.running(pid))
+
+    def test_process_without_iotdb_home_is_not_matched(self):
+        home = self.install("edge")
+        # Everything before the first " -D" names the installation, and edge.pid
+        # points at the process.
+        pid = self.spawn(
+            [
+                "perl",
+                "-e",
+                "$0 = shift; sleep 600",
+                "{} -Dfoo=1 {} org.apache.iotdb.edge.EdgeNode -s".format(
+                    home, self.marker
+                ),
+            ]
+        )
+        for _ in range(100):
+            if self.command(pid).startswith(str(home)):
+                break
+            time.sleep(0.05)
+        (home / "edge.pid").write_text("{}\n".format(pid))
+        self.stop("edge/sbin/stop-edge.sh")
+        self.assertTrue(self.running(pid))
+
+    def test_cdpath_is_not_used(self):
+        self.install("edge")
+        (self.root / "elsewhere/edge/sbin").mkdir(parents=True)
+        cdpath = {"CDPATH": str(self.root / "elsewhere")}
+        home = self.started_home("edge/sbin/start-edge.sh", **cdpath)
+        self.assertEqual(home, str(self.root / "edge"))
+        pid = self.start(home)
+        self.stop("edge/sbin/stop-edge.sh", **cdpath)
+        self.assertFalse(self.running(pid))
+
+    def test_home_of_another_installation_is_reported(self):
+        self.install("edge-a")
+        own = self.install("edge-b")
+        result = self.stop("edge-b/sbin/stop-edge.sh", str(self.root / "edge-a"))
+        self.assertIn("belongs to {}".format(own), result.stderr)
+
+    def test_missing_home_is_an_error(self):
+        self.install("edge")
+        result = self.bash(("edge/sbin/stop-edge.sh",), str(self.root / "missing"))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("not an accessible directory", result.stderr)
 
 
 class AssemblyTest(unittest.TestCase):

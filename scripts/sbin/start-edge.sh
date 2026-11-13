@@ -20,9 +20,9 @@
 
 # Start IoTDB Edge: ConfigNode + DataNode in one JVM process.
 
-if [ -z "${IOTDB_HOME}" ]; then
-    export IOTDB_HOME="$(cd "$(dirname "$0")"/.. && pwd)"
-fi
+source "$(dirname "$0")/../conf/iotdb-common.sh"
+# stop-edge.sh derives IOTDB_HOME with the same function and matches on it.
+initEdgeHome "$0" || exit 1
 if [ -z "${IOTDB_CONF}" ]; then
     export IOTDB_CONF=${IOTDB_HOME}/conf
 fi
@@ -30,7 +30,6 @@ export IOTDB_DATA_HOME=${IOTDB_DATA_HOME:-${IOTDB_HOME}}
 export IOTDB_LOG_DIR=${IOTDB_LOG_DIR:-${IOTDB_HOME}/logs}
 mkdir -p "${IOTDB_LOG_DIR}"
 
-source "$(dirname "$0")/../conf/iotdb-common.sh"
 export CONFIGNODE_HOME=${IOTDB_HOME}
 export CONFIGNODE_DATA_HOME=${IOTDB_DATA_HOME}
 export CONFIGNODE_CONF=${IOTDB_CONF}

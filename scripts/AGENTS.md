@@ -46,9 +46,12 @@ These instructions apply to `scripts/` and supplement the
 - Edge startup must use the configuration-aware ConfigNode and DataNode port checks in the
   shared helpers. Preserve custom configuration paths and fail before launching when required
   validation fails; do not substitute hardcoded default-port checks.
-- Edge stop logic must match both the `org.apache.iotdb.edge.EdgeNode` main class and the exact
-  installation `IOTDB_HOME`, including when recovering from a missing/stale PID file. Validate
-  ownership again before forced termination; never fall back to a global process-name kill.
+- Edge start and stop scripts must derive `IOTDB_HOME` with the same shared function
+  (`initEdgeHome`). Stop logic must match both the `org.apache.iotdb.edge.EdgeNode` main class
+  and the installation `IOTDB_HOME` recorded at start, either exactly or, for an absolute
+  recorded path, after resolving symlinks on both sides, including when recovering from a
+  missing/stale PID file. Validate ownership again before forced termination; never fall back to
+  a global process-name kill.
 - Preserve Edge daemon tracking of the forked JVM through `edge.pid`. During cleanup, stop only
   the matching installation's systemd service before stopping the process so it cannot restart
   while its data is being removed. Propagate stop/service failures instead of continuing.
