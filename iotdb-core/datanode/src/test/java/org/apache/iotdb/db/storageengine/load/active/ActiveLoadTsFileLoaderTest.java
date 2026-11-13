@@ -41,8 +41,10 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -123,12 +125,68 @@ public class ActiveLoadTsFileLoaderTest {
 
     final File failDir = new File(config.getLoadActiveListeningFailDir());
     Assert.assertFalse(tsFile.exists());
-    Assert.assertTrue(new File(failDir, tsFile.getName()).exists());
+    final File[] failedGroups = failDir.listFiles(File::isDirectory);
+    Assert.assertNotNull(failedGroups);
+    Assert.assertEquals(1, failedGroups.length);
+    final File failedGroup = failedGroups[0];
+    Assert.assertTrue(new File(failedGroup, tsFile.getName()).exists());
     Assert.assertTrue(
-        new File(failDir, tsFile.getName() + TsFileResource.RESOURCE_SUFFIX).exists());
+        new File(failedGroup, tsFile.getName() + TsFileResource.RESOURCE_SUFFIX).exists());
     Assert.assertTrue(
-        new File(failDir, tsFile.getName() + ModificationFileV1.FILE_SUFFIX).exists());
-    Assert.assertTrue(new File(failDir, tsFile.getName() + ModificationFile.FILE_SUFFIX).exists());
+        new File(failedGroup, tsFile.getName() + ModificationFileV1.FILE_SUFFIX).exists());
+    Assert.assertTrue(
+        new File(failedGroup, tsFile.getName() + ModificationFile.FILE_SUFFIX).exists());
+    Assert.assertTrue(new File(failedGroup, tsFile.getName() + ".load-failure").exists());
+    final Properties failureInfo = new Properties();
+    try (java.io.InputStream inputStream =
+        Files.newInputStream(new File(failedGroup, tsFile.getName() + ".load-failure").toPath())) {
+      failureInfo.load(inputStream);
+    }
+    Assert.assertEquals(tsFile.getAbsolutePath(), failureInfo.getProperty("activeLoadFile"));
+    Assert.assertEquals(tempDir.getAbsolutePath(), failureInfo.getProperty("pendingDir"));
+    Assert.assertEquals("false", failureInfo.getProperty("generatedByPipe"));
+    Assert.assertEquals("false", failureInfo.getProperty("tableModel"));
+  }
+
+  @Test
+  public void testFailurePublicationPreservesSourcesWhenFailDirectoryIsUnavailable()
+      throws Exception {
+    final ActiveLoadTsFileLoader loader = new ActiveLoadTsFileLoader();
+    final File tsFile = createTsFileWithCompanionFiles("unpublished.tsfile");
+    final ActiveLoadPendingQueue.ActiveLoadEntry entry =
+        new ActiveLoadPendingQueue.ActiveLoadEntry(
+            tsFile.getAbsolutePath(), tempDir.getAbsolutePath(), false, false);
+    invokeInitFailDirIfNecessary(loader);
+    final File failDir = new File(config.getLoadActiveListeningFailDir());
+    Files.delete(failDir.toPath());
+    Assert.assertTrue(failDir.createNewFile());
+
+    invokeHandleLoadFailure(
+        loader,
+        entry,
+        new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage("permanent error"));
+    for (final String suffix :
+        new String[] {
+          "",
+          TsFileResource.RESOURCE_SUFFIX,
+          ModificationFileV1.FILE_SUFFIX,
+          ModificationFile.FILE_SUFFIX
+        }) {
+      Assert.assertTrue(
+          "An unpublished group must retain every source",
+          new File(tsFile.getAbsolutePath() + suffix).exists());
+    }
+    Assert.assertFalse(
+        "Publication failure must remain retryable", loader.isFilePendingOrLoading(tsFile));
+
+    Files.delete(failDir.toPath());
+    Assert.assertTrue(failDir.mkdir());
+    invokeHandleLoadFailure(
+        loader,
+        entry,
+        new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage("permanent error"));
+    Assert.assertFalse(tsFile.exists());
+    Assert.assertEquals(1, failDir.listFiles(File::isDirectory).length);
   }
 
   @Test
@@ -148,6 +206,87 @@ public class ActiveLoadTsFileLoaderTest {
 
     Assert.assertFalse(loader.isFilePendingOrLoading(new File(tsFilePath)));
     Assert.assertTrue(pendingQueue.isEmpty());
+  }
+
+  @Test
+  public void testFailedFileIsNotRequeuedUntilPendingStateIsCleared() {
+    final ActiveLoadPendingQueue pendingQueue = new ActiveLoadPendingQueue();
+    final String tsFilePath = new File(tempDir, "failed-pending.tsfile").getAbsolutePath();
+    Assert.assertTrue(pendingQueue.enqueue(tsFilePath, tempDir.getAbsolutePath(), false, false));
+    Assert.assertNotNull(pendingQueue.dequeueFromPending());
+
+    pendingQueue.markFileFailed(tsFilePath);
+    pendingQueue.removeFromLoading(tsFilePath);
+
+    Assert.assertTrue(pendingQueue.isFilePendingOrLoading(tsFilePath));
+    Assert.assertFalse(pendingQueue.enqueue(tsFilePath, tempDir.getAbsolutePath(), false, false));
+    pendingQueue.clearPending();
+    Assert.assertFalse(pendingQueue.isFilePendingOrLoading(tsFilePath));
+  }
+
+  @Test
+  public void testPublishedFailureGroupSuppressesUnchangedSourceAfterLoaderRestart()
+      throws Exception {
+    final File tsFile = createTsFileWithCompanionFiles("restart-failed.tsfile");
+    final File resourceFile = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    Files.writeString(resourceFile.toPath(), "original resource");
+    final File failedGroup = writePublishedFailureGroup(tsFile, "active-load-recovered");
+
+    final ActiveLoadTsFileLoader restartedLoader = new ActiveLoadTsFileLoader();
+    Assert.assertTrue(
+        "A published failure group must prevent an unchanged active source from being loaded again",
+        restartedLoader.isFilePendingOrLoading(tsFile));
+
+    final FileTime originalModifiedTime = Files.getLastModifiedTime(resourceFile.toPath());
+    Files.writeString(resourceFile.toPath(), "replaced resource");
+    Files.setLastModifiedTime(resourceFile.toPath(), originalModifiedTime);
+    final File publishedResource = new File(failedGroup, resourceFile.getName());
+    Assert.assertNotEquals(-1L, Files.mismatch(resourceFile.toPath(), publishedResource.toPath()));
+    Assert.assertEquals(publishedResource.length(), resourceFile.length());
+    Assert.assertEquals(originalModifiedTime, Files.getLastModifiedTime(resourceFile.toPath()));
+    Assert.assertFalse(
+        "A same-sized replacement preserving mtime must be eligible for loading",
+        restartedLoader.isFilePendingOrLoading(tsFile));
+  }
+
+  @Test
+  public void testFailureIndexRetriesWhenFailDirectoryBecomesAvailable() throws Exception {
+    final File tsFile = createTsFileWithCompanionFiles("late-fail-dir.tsfile");
+    final File failDir = new File(config.getLoadActiveListeningFailDir());
+    final ActiveLoadTsFileLoader restartedLoader = new ActiveLoadTsFileLoader();
+
+    Assert.assertFalse("The fail directory is absent at the first scan", failDir.exists());
+    Assert.assertFalse(restartedLoader.isFilePendingOrLoading(tsFile));
+
+    Assert.assertTrue(failDir.mkdirs());
+    writePublishedFailureGroup(tsFile, "active-load-late");
+
+    Assert.assertTrue(
+        "A failed index scan must retry after the fail directory becomes available",
+        restartedLoader.isFilePendingOrLoading(tsFile));
+  }
+
+  private File writePublishedFailureGroup(final File tsFile, final String groupName)
+      throws Exception {
+    final File failedGroup = new File(config.getLoadActiveListeningFailDir(), groupName);
+    Assert.assertTrue(failedGroup.mkdirs());
+    for (final String suffix :
+        new String[] {
+          "",
+          TsFileResource.RESOURCE_SUFFIX,
+          ModificationFileV1.FILE_SUFFIX,
+          ModificationFile.FILE_SUFFIX
+        }) {
+      final File sourceFile = new File(tsFile.getAbsolutePath() + suffix);
+      Files.copy(sourceFile.toPath(), new File(failedGroup, sourceFile.getName()).toPath());
+    }
+    final Properties failureInfo = new Properties();
+    failureInfo.setProperty("activeLoadFile", tsFile.getAbsolutePath());
+    try (java.io.OutputStream outputStream =
+        Files.newOutputStream(new File(failedGroup, tsFile.getName() + ".load-failure").toPath())) {
+      failureInfo.store(outputStream, "test failure metadata");
+    }
+    return failedGroup;
   }
 
   @Test
