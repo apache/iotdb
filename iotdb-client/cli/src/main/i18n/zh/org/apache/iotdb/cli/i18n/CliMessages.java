@@ -143,8 +143,8 @@ public final class CliMessages {
       MESSAGE_THE_DATABASE_PARAM_IS_REQUIRED_WHEN_SQL_DIALECT_IS_TABLE_1EFE6DAF =
           "sql_dialect 为 table 时必须提供 database 参数 ";
   public static final String
-      MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIBABA_DATATYPE_ENCODING_COMPRESSION_C429E7C6 =
-          "待导入的 CSV 文件表头不合法，正确格式为 \"Timeseries, Alibaba, DataType, Encoding, Compression\"！";
+      MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIAS_DATATYPE_ENCODING_COMPRESSION_FB573E37 =
+          "待导入的 CSV 文件表头不合法，正确格式为 \"Timeseries, Alias, DataType, Encoding, Compression\"！";
 
   private CliMessages() {}
 

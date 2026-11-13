@@ -28,6 +28,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.HashMap;
 import java.util.List;
@@ -64,11 +65,14 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<AlignedDevic
   @Override
   public Boolean visitAttributeFilter(
       final AttributeFilter filter, final AlignedDeviceEntry deviceEntry) {
+    final Binary attributeValue =
+        deviceEntry.getAttributeColumnValues()[attributeIndexMap.get(filter.getKey())];
     return filter
         .getChild()
         .accept(
             StringValueFilterVisitor.getInstance(),
-            deviceEntry.getAttributeColumnValues()[attributeIndexMap.get(filter.getKey())]
-                .getStringValue(TSFileConfig.STRING_CHARSET));
+            attributeValue == null
+                ? null
+                : attributeValue.getStringValue(TSFileConfig.STRING_CHARSET));
   }
 }

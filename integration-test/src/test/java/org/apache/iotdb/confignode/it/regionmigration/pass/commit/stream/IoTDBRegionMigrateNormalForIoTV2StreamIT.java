@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.awaitility.Awaitility;
@@ -115,8 +116,10 @@ public class IoTDBRegionMigrateNormalForIoTV2StreamIT
       Set<Integer> expectedDataNodes = new HashSet<>(regionMap.get(selectedRegion));
       expectedDataNodes.remove(source);
       expectedDataNodes.add(destination);
+      // Parallel SHOW REGIONS queries can observe different stages of the migration.
       Awaitility.await()
           .atMost(1, TimeUnit.MINUTES)
+          .ignoreException(InconsistentDataException.class)
           .untilAsserted(
               () ->
                   Assert.assertEquals(

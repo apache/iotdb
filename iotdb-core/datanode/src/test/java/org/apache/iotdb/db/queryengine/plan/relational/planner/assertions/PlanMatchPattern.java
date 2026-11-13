@@ -868,6 +868,10 @@ public final class PlanMatchPattern {
     return node(MergeSortNode.class, sources);
   }
 
+  public static PlanMatchPattern mergeSort(List<Ordering> orderBy, PlanMatchPattern... sources) {
+    return node(MergeSortNode.class, sources).with(new MergeSortMatcher(orderBy));
+  }
+
   public static PlanMatchPattern collect(PlanMatchPattern... sources) {
     return node(CollectNode.class, sources);
   }

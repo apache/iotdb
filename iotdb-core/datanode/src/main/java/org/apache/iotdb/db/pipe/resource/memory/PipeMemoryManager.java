@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics.TsFileParserAdmissionRejectReason;
 import org.apache.iotdb.db.pipe.resource.memory.strategy.ThresholdAllocationStrategy;
 
 import org.slf4j.Logger;
@@ -38,6 +39,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +80,9 @@ public class PipeMemoryManager {
   private final Map<PipeIdentity, Integer> reservedTsFileParserCountByPipe = new HashMap<>();
   private final Map<PipeRegionIdentity, Integer> reservedTsFileParserCountByPipeRegion =
       new HashMap<>();
+  private final Map<PipeRegionIdentity, Map<TsFileParserMemoryReservation, Runnable>>
+      reservedTsFileParserWorkersByPipeRegion = new HashMap<>();
+  private final Map<Runnable, Integer> reservedTsFileParserCountByWorker = new HashMap<>();
   private final Map<PipeRegionIdentity, LinkedHashSet<TsFileParserMemoryReservation>>
       waitingTsFileParserRequestsByPipeRegion = new HashMap<>();
   private final Map<PipeIdentity, ArrayDeque<PipeRegionIdentity>>
@@ -109,6 +114,11 @@ public class PipeMemoryManager {
             "PipeMemoryManager#tryExpandAll()",
             this::tryExpandAllAndCheckConsistency,
             PipeConfig.getInstance().getPipeMemoryExpanderIntervalSeconds());
+    PipeDataNodeAgent.runtime()
+        .registerPeriodicalJob(
+            "PipeMemoryManager#notifyTsFileParserMemoryReservation()",
+            this::notifyNextTsFileParserMemoryReservation,
+            PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
   }
 
   PipeMemoryManager(final IMemoryBlock memoryBlock) {
@@ -255,9 +265,12 @@ public class PipeMemoryManager {
             1, Math.min(globalLimit, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion()));
     final int reservedCountOfPipeRegion =
         reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0);
+    final Runnable worker = reservationKey.wakeUpCallback;
     if (reservedTsFileParserCount >= globalLimit
-        || reservedCountOfPipeRegion >= perPipeRegionLimit) {
-      PipeResourceMetrics.getInstance().recordTsFileParserAdmissionReject();
+        || reservedCountOfPipeRegion >= perPipeRegionLimit
+        || (worker != null && reservedTsFileParserCountByWorker.containsKey(worker))) {
+      PipeResourceMetrics.getInstance()
+          .recordTsFileParserAdmissionReject(TsFileParserAdmissionRejectReason.CAP);
       notifyNextTsFileParserMemoryReservationInternal();
       return false;
     }
@@ -274,25 +287,28 @@ public class PipeMemoryManager {
     if (!isSoftMemoryEnough
         && !isHardEnough4TabletParsingWithReservedParserMemory(
             parserMemorySizeInBytes, totalNonFloatingMemorySizeInBytes)) {
-      PipeResourceMetrics.getInstance().recordTsFileParserAdmissionReject();
+      PipeResourceMetrics.getInstance()
+          .recordTsFileParserAdmissionReject(TsFileParserAdmissionRejectReason.MEMORY);
       return false;
     }
 
-    final PipeRegionIdentity nextPipeRegion =
-        getNextEligibleTsFileParserPipeRegion(perPipeRegionLimit, !isSoftMemoryEnough);
-    final LinkedHashSet<TsFileParserMemoryReservation> requestsOfPipeRegion =
-        waitingTsFileParserRequestsByPipeRegion.get(pipeRegionIdentity);
-    if (!pipeRegionIdentity.equals(nextPipeRegion)
-        || requestsOfPipeRegion == null
-        || !reservationKey.equals(requestsOfPipeRegion.iterator().next())) {
-      PipeResourceMetrics.getInstance().recordTsFileParserAdmissionReject();
-      signalTsFileParserMemoryReservation(nextPipeRegion);
+    final List<TsFileParserMemoryReservation> eligibleRequests =
+        getEligibleTsFileParserMemoryReservations(
+            globalLimit, perPipeRegionLimit, totalNonFloatingMemorySizeInBytes);
+    if (!eligibleRequests.contains(reservationKey)) {
+      PipeResourceMetrics.getInstance()
+          .recordTsFileParserAdmissionReject(TsFileParserAdmissionRejectReason.FAIRNESS);
+      eligibleRequests.forEach(TsFileParserMemoryReservation::signal);
       return false;
     }
 
     removeTsFileParserReservationRequest(pipeRegionIdentity, reservationKey, true);
-    if (wasRequestAlreadyWaiting) {
+    // First-attempt admissions also spend a fair turn when other requests are queued. Otherwise
+    // continuously arriving pipes can bypass the same waiting pipe without advancing the cursor.
+    if (wasRequestAlreadyWaiting || waitingTsFileParserCount > 0) {
       lastAdmittedWaitingTsFileParserPipe = pipeIdentity;
+    }
+    if (wasRequestAlreadyWaiting) {
       PipeResourceMetrics.getInstance()
           .recordTsFileParserAdmissionWait(
               System.nanoTime() - reservationKey.waitingStartTimeInNanos);
@@ -300,6 +316,12 @@ public class PipeMemoryManager {
     reservedTsFileParserCount++;
     reservedTsFileParserCountByPipe.merge(pipeIdentity, 1, Integer::sum);
     reservedTsFileParserCountByPipeRegion.put(pipeRegionIdentity, reservedCountOfPipeRegion + 1);
+    reservedTsFileParserWorkersByPipeRegion
+        .computeIfAbsent(pipeRegionIdentity, key -> new LinkedHashMap<>())
+        .put(reservationKey, worker);
+    if (worker != null) {
+      reservedTsFileParserCountByWorker.merge(worker, 1, Integer::sum);
+    }
     notifyNextTsFileParserMemoryReservationInternal();
     return true;
   }
@@ -321,12 +343,23 @@ public class PipeMemoryManager {
 
   public synchronized void releaseTsFileParserMemory(
       final String pipeName, final long creationTime, final String dataRegionId) {
+    releaseTsFileParserMemory(pipeName, creationTime, dataRegionId, null);
+  }
+
+  public synchronized void releaseTsFileParserMemory(
+      final String pipeName,
+      final long creationTime,
+      final String dataRegionId,
+      final TsFileParserMemoryReservation reservationKey) {
     final PipeIdentity pipeIdentity = new PipeIdentity(pipeName, creationTime);
     final PipeRegionIdentity pipeRegionIdentity =
         new PipeRegionIdentity(pipeIdentity, dataRegionId);
     final int reservedCountOfPipeRegion =
         reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0);
-    if (reservedCountOfPipeRegion <= 0) {
+    final Map<TsFileParserMemoryReservation, Runnable> workersOfPipeRegion =
+        reservedTsFileParserWorkersByPipeRegion.get(pipeRegionIdentity);
+    if (reservedCountOfPipeRegion <= 0
+        || (reservationKey != null && !workersOfPipeRegion.containsKey(reservationKey))) {
       LOGGER.warn(
           DataNodePipeMessages
               .LOG_FAILED_TO_RELEASE_TSFILE_PARSER_MEMORY_FOR_PIPE_ARG_CREATION_TIME_ARG_IN_DATAREGION_ARG_BECAUSE_NO_RESERVATION_EXISTS_BB8321C0,
@@ -334,6 +367,19 @@ public class PipeMemoryManager {
           creationTime,
           dataRegionId);
       return;
+    }
+
+    final Runnable worker =
+        workersOfPipeRegion.remove(
+            reservationKey != null
+                ? reservationKey
+                : workersOfPipeRegion.keySet().iterator().next());
+    if (workersOfPipeRegion.isEmpty()) {
+      reservedTsFileParserWorkersByPipeRegion.remove(pipeRegionIdentity);
+    }
+    if (worker != null) {
+      reservedTsFileParserCountByWorker.computeIfPresent(
+          worker, (key, count) -> count == 1 ? null : count - 1);
     }
 
     if (reservedCountOfPipeRegion == 1) {
@@ -363,7 +409,17 @@ public class PipeMemoryManager {
                   waitingTsFileParserRegionOrderByPipe.computeIfAbsent(
                       key.pipeIdentity,
                       pipe -> {
-                        waitingTsFileParserPipeOrder.addLast(pipe);
+                        // Keep the remembered cursor at the tail. A newly arriving pipe must not
+                        // jump ahead of older, already notified requests by landing after it.
+                        if (lastAdmittedWaitingTsFileParserPipe != null
+                            && lastAdmittedWaitingTsFileParserPipe.equals(
+                                waitingTsFileParserPipeOrder.peekLast())) {
+                          final PipeIdentity cursor = waitingTsFileParserPipeOrder.removeLast();
+                          waitingTsFileParserPipeOrder.addLast(pipe);
+                          waitingTsFileParserPipeOrder.addLast(cursor);
+                        } else {
+                          waitingTsFileParserPipeOrder.addLast(pipe);
+                        }
                         return new ArrayDeque<>();
                       });
               regionOrder.addLast(key);
@@ -372,8 +428,10 @@ public class PipeMemoryManager {
     if (requestsOfPipeRegion.add(reservationKey)) {
       waitingTsFileParserCount++;
       reservationKey.waitingStartTimeInNanos = System.nanoTime();
+      reservationKey.markWaiting();
       return false;
     }
+    reservationKey.markWaiting();
     return true;
   }
 
@@ -387,45 +445,97 @@ public class PipeMemoryManager {
       return;
     }
 
-    final long parserMemorySizeInBytes = getTsFileParserMemorySizeInBytes();
     final long totalNonFloatingMemorySizeInBytes =
         PIPE_MEMORY_MANAGEMENT_ENABLED ? getTotalNonFloatingMemorySizeInBytes() : 0;
-    final boolean isSoftMemoryEnough =
-        !PIPE_MEMORY_MANAGEMENT_ENABLED
-            || isEnough4TabletParsingWithReservedParserMemory(
-                parserMemorySizeInBytes, totalNonFloatingMemorySizeInBytes);
-    if (!isSoftMemoryEnough
-        && !isHardEnough4TabletParsingWithReservedParserMemory(
-            parserMemorySizeInBytes, totalNonFloatingMemorySizeInBytes)) {
-      return;
-    }
-
     final int perPipeRegionLimit =
         Math.max(
             1, Math.min(globalLimit, PIPE_CONFIG.getPipeTsFileParserInFlightMaxNumPerPipeRegion()));
-    final PipeRegionIdentity nextPipeRegion =
-        getNextEligibleTsFileParserPipeRegion(perPipeRegionLimit, !isSoftMemoryEnough);
-    signalTsFileParserMemoryReservation(nextPipeRegion);
+    getEligibleTsFileParserMemoryReservations(
+            globalLimit, perPipeRegionLimit, totalNonFloatingMemorySizeInBytes)
+        .forEach(TsFileParserMemoryReservation::signal);
   }
 
-  private void signalTsFileParserMemoryReservation(final PipeRegionIdentity nextPipeRegion) {
-    if (nextPipeRegion == null) {
-      return;
+  private List<TsFileParserMemoryReservation> getEligibleTsFileParserMemoryReservations(
+      final int globalLimit,
+      final int perPipeRegionLimit,
+      final long totalNonFloatingMemorySizeInBytes) {
+    final List<TsFileParserMemoryReservation> eligibleRequests = new ArrayList<>();
+    final Map<PipeRegionIdentity, Integer> selectedRequestsByPipeRegion = new HashMap<>();
+    final Set<PipeIdentity> selectedPipes = new HashSet<>();
+    final Set<Runnable> selectedWorkers = new HashSet<>();
+    PipeIdentity lastSelectedPipe = lastAdmittedWaitingTsFileParserPipe;
+    // Expose one fair turn per available slot, instead of serializing all free slots behind a
+    // single worker. Account for every earlier turn's memory even if its worker has not run yet.
+    // Thus later requests cannot take the capacity needed by an earlier waiting request.
+    while (eligibleRequests.size() < globalLimit - reservedTsFileParserCount) {
+      final long extraMemoryInBytes =
+          (eligibleRequests.size() + 1L) * getTsFileParserMemorySizeInBytes();
+      final boolean isSoftMemoryEnough =
+          !PIPE_MEMORY_MANAGEMENT_ENABLED
+              || isEnough4TabletParsingWithReservedParserMemory(
+                  extraMemoryInBytes, totalNonFloatingMemorySizeInBytes);
+      if (!isSoftMemoryEnough
+          && !isHardEnough4TabletParsingWithReservedParserMemory(
+              extraMemoryInBytes, totalNonFloatingMemorySizeInBytes)) {
+        break;
+      }
+      final PipeRegionIdentity nextPipeRegion =
+          getNextEligibleTsFileParserPipeRegion(
+              perPipeRegionLimit,
+              !isSoftMemoryEnough,
+              lastSelectedPipe,
+              selectedRequestsByPipeRegion,
+              selectedPipes,
+              selectedWorkers,
+              true);
+      final PipeRegionIdentity nextRegionWhenNoOtherPipeIsEligible =
+          nextPipeRegion == null
+              ? getNextEligibleTsFileParserPipeRegion(
+                  perPipeRegionLimit,
+                  !isSoftMemoryEnough,
+                  lastSelectedPipe,
+                  selectedRequestsByPipeRegion,
+                  selectedPipes,
+                  selectedWorkers,
+                  false)
+              : nextPipeRegion;
+      if (nextRegionWhenNoOtherPipeIsEligible == null) {
+        break;
+      }
+      final java.util.Iterator<TsFileParserMemoryReservation> requests =
+          waitingTsFileParserRequestsByPipeRegion
+              .get(nextRegionWhenNoOtherPipeIsEligible)
+              .iterator();
+      for (int i =
+              selectedRequestsByPipeRegion.getOrDefault(nextRegionWhenNoOtherPipeIsEligible, 0);
+          i > 0;
+          i--) {
+        requests.next();
+      }
+      final TsFileParserMemoryReservation request = requests.next();
+      eligibleRequests.add(request);
+      if (request.wakeUpCallback != null) {
+        selectedWorkers.add(request.wakeUpCallback);
+      }
+      selectedRequestsByPipeRegion.merge(nextRegionWhenNoOtherPipeIsEligible, 1, Integer::sum);
+      selectedPipes.add(nextRegionWhenNoOtherPipeIsEligible.pipeIdentity);
+      lastSelectedPipe = nextRegionWhenNoOtherPipeIsEligible.pipeIdentity;
     }
-
-    final LinkedHashSet<TsFileParserMemoryReservation> requestsOfPipeRegion =
-        waitingTsFileParserRequestsByPipeRegion.get(nextPipeRegion);
-    if (requestsOfPipeRegion != null && !requestsOfPipeRegion.isEmpty()) {
-      requestsOfPipeRegion.iterator().next().signal();
-    }
+    return eligibleRequests;
   }
 
   private PipeRegionIdentity getNextEligibleTsFileParserPipeRegion(
-      final int perPipeRegionLimit, final boolean requirePipeWithoutReservedParser) {
+      final int perPipeRegionLimit,
+      final boolean requirePipeWithoutReservedParser,
+      final PipeIdentity lastSelectedPipe,
+      final Map<PipeRegionIdentity, Integer> selectedRequestsByPipeRegion,
+      final Set<PipeIdentity> selectedPipes,
+      final Set<Runnable> selectedWorkers,
+      final boolean requireUnselectedPipe) {
     PipeRegionIdentity firstEligiblePipeRegion = null;
-    boolean hasVisitedLastAdmittedPipe = lastAdmittedWaitingTsFileParserPipe == null;
+    boolean hasVisitedLastAdmittedPipe = lastSelectedPipe == null;
     for (final PipeIdentity pipeIdentity : waitingTsFileParserPipeOrder) {
-      final boolean isLastAdmittedPipe = pipeIdentity.equals(lastAdmittedWaitingTsFileParserPipe);
+      final boolean isLastAdmittedPipe = pipeIdentity.equals(lastSelectedPipe);
       if (isLastAdmittedPipe) {
         hasVisitedLastAdmittedPipe = true;
       }
@@ -433,7 +543,11 @@ public class PipeMemoryManager {
       // Under soft memory pressure, reserve the hard-threshold headroom for a pipe that has no
       // parser yet. Otherwise a busy pipe at the queue head can block every pipe behind it.
       if (requirePipeWithoutReservedParser
-          && reservedTsFileParserCountByPipe.getOrDefault(pipeIdentity, 0) > 0) {
+          && (reservedTsFileParserCountByPipe.getOrDefault(pipeIdentity, 0) > 0
+              || selectedPipes.contains(pipeIdentity))) {
+        continue;
+      }
+      if (requireUnselectedPipe && selectedPipes.contains(pipeIdentity)) {
         continue;
       }
 
@@ -444,10 +558,34 @@ public class PipeMemoryManager {
       }
       PipeRegionIdentity eligiblePipeRegion = null;
       for (final PipeRegionIdentity pipeRegionIdentity : regionOrder) {
-        if (reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0)
-            < perPipeRegionLimit) {
-          eligiblePipeRegion = pipeRegionIdentity;
-          break;
+        final int selectedCount = selectedRequestsByPipeRegion.getOrDefault(pipeRegionIdentity, 0);
+        if (selectedCount < waitingTsFileParserRequestsByPipeRegion.get(pipeRegionIdentity).size()
+            && reservedTsFileParserCountByPipeRegion.getOrDefault(pipeRegionIdentity, 0)
+                    + selectedCount
+                < perPipeRegionLimit) {
+          final java.util.Iterator<TsFileParserMemoryReservation> requests =
+              waitingTsFileParserRequestsByPipeRegion.get(pipeRegionIdentity).iterator();
+          for (int i = 0; i < selectedCount; i++) {
+            requests.next();
+          }
+          final Runnable worker = requests.next().wakeUpCallback;
+          // A processor worker executes its subtasks serially. Leaving multiple fair turns for
+          // that worker strands free parser slots while other workers have runnable requests.
+          // Requests without a processor worker (for example subscriptions) remain independent.
+          if (worker != null
+              && (reservedTsFileParserCountByWorker.containsKey(worker)
+                  || selectedWorkers.contains(worker))) {
+            continue;
+          }
+          if (eligiblePipeRegion == null) {
+            eligiblePipeRegion = pipeRegionIdentity;
+          }
+          // Give every eligible region of the pipe one turn before reusing a region's remaining
+          // per-pipe-region capacity in this admission window.
+          if (selectedCount == 0) {
+            eligiblePipeRegion = pipeRegionIdentity;
+            break;
+          }
         }
       }
       if (eligiblePipeRegion == null) {
@@ -480,6 +618,7 @@ public class PipeMemoryManager {
       return;
     }
     waitingTsFileParserCount--;
+    reservationKey.clearWaiting();
 
     final PipeIdentity pipeIdentity = pipeRegionIdentity.pipeIdentity;
     final ArrayDeque<PipeRegionIdentity> regionOrder =
@@ -513,13 +652,31 @@ public class PipeMemoryManager {
   public static final class TsFileParserMemoryReservation {
 
     private boolean isSignaled;
+    private boolean isWaiting;
     private volatile Runnable wakeUpCallback;
     // Accessed only under the PipeMemoryManager monitor while this request is queued.
     private long waitingStartTimeInNanos;
 
-    /** The callback must only wake the worker; it runs while the memory manager monitor is held. */
+    /**
+     * The callback must only wake the worker; it runs while the memory manager monitor is held.
+     * Requests on the same serial processor worker must share the same callback instance.
+     */
     public void setWakeUpCallback(final Runnable wakeUpCallback) {
       this.wakeUpCallback = wakeUpCallback;
+    }
+
+    public synchronized boolean isWaitingForSignal() {
+      return isWaiting && !isSignaled;
+    }
+
+    private synchronized void markWaiting() {
+      isWaiting = true;
+      isSignaled = false;
+    }
+
+    private synchronized void clearWaiting() {
+      isWaiting = false;
+      isSignaled = false;
     }
 
     public synchronized void await(final long timeoutInMs) throws InterruptedException {
@@ -530,6 +687,9 @@ public class PipeMemoryManager {
     }
 
     private synchronized void signal() {
+      if (isSignaled) {
+        return;
+      }
       isSignaled = true;
       notify();
       final Runnable callback = wakeUpCallback;
@@ -1507,6 +1667,9 @@ public class PipeMemoryManager {
 
   public synchronized void tryExpandAllAndCheckConsistency() {
     expandableBlocks.forEach(PipeMemoryBlock::expand);
+    // Floating-memory usage and the parent pool capacity can change without releasing a pipe
+    // memory block. Re-evaluate blocked admissions even when no release notification was sent.
+    notifyNextTsFileParserMemoryReservationInternal();
 
     if (LOGGER.isDebugEnabled()) {
       final long blockSum =

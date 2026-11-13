@@ -20,9 +20,15 @@
 package org.apache.iotdb.db.pipe.agent.task.execution;
 
 import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
+import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.IoTConsensusV2SubtaskExecutor;
 import org.apache.iotdb.db.subscription.task.execution.SubscriptionSubtaskExecutor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.function.Supplier;
 
@@ -31,6 +37,9 @@ import java.util.function.Supplier;
  * PipeTaskScheduler. It is a singleton class.
  */
 public class PipeSubtaskExecutorManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutorManager.class);
+
   private final PipeProcessorSubtaskExecutor processorExecutor;
   private final Supplier<PipeSinkSubtaskExecutor> connectorExecutorSupplier;
   private volatile SubscriptionSubtaskExecutor subscriptionExecutor;
@@ -43,9 +52,22 @@ public class PipeSubtaskExecutorManager {
     return connectorExecutorSupplier;
   }
 
-  public IoTConsensusV2SubtaskExecutor getConsensusExecutor() {
-    return (IoTConsensusV2SubtaskExecutor)
-        IoTV2GlobalComponentContainer.getInstance().getConsensusExecutor();
+  public synchronized IoTConsensusV2SubtaskExecutor getConsensusExecutor() {
+    final IoTV2GlobalComponentContainer container = IoTV2GlobalComponentContainer.getInstance();
+    final PipeSubtaskExecutor consensusExecutor = container.getConsensusExecutor();
+    if (consensusExecutor instanceof IoTConsensusV2SubtaskExecutor
+        && !consensusExecutor.isShutdown()) {
+      return (IoTConsensusV2SubtaskExecutor) consensusExecutor;
+    }
+
+    // The consensus executor is shared by all consensus pipes. Recreate it if it has been shut
+    // down, otherwise the following consensus pipes can never start their sink subtasks.
+    LOGGER.warn(
+        DataNodePipeMessages
+            .LOG_THE_SHARED_CONSENSUS_EXECUTOR_HAS_BEEN_SHUT_DOWN_RECREATING_IT_C14080E3);
+    final IoTConsensusV2SubtaskExecutor newConsensusExecutor = new IoTConsensusV2SubtaskExecutor();
+    container.setConsensusExecutor(newConsensusExecutor);
+    return newConsensusExecutor;
   }
 
   public SubscriptionSubtaskExecutor getSubscriptionExecutor() {
@@ -65,7 +87,8 @@ public class PipeSubtaskExecutorManager {
   }
 
   public synchronized void ensureSubscriptionExecutors() {
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        || !PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
       return;
     }
     if (subscriptionExecutor == null || subscriptionExecutor.isShutdown()) {

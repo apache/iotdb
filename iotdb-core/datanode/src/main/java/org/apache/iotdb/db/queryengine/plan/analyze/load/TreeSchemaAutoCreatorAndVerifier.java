@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -37,6 +39,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidPathException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingDatabaseException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
@@ -305,6 +308,23 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   private void handleException(Exception e, String statementString) throws SemanticException {
+    // Preserve region unavailability so LOAD can retain the file for retry. The status alone
+    // cannot distinguish a recovering region from a persistently missing one.
+    Throwable current = e;
+    while (current != null) {
+      if (current instanceof IoTDBRuntimeException
+          && ((IoTDBRuntimeException) current).getErrorCode()
+              == TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()) {
+        throw (IoTDBRuntimeException) current;
+      }
+      if (current instanceof IoTDBException
+          && ((IoTDBException) current).getErrorCode()
+              == TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()) {
+        throw new IoTDBRuntimeException(
+            current.getMessage(), current, TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());
+      }
+      current = current.getCause();
+    }
     LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
     throw new SemanticException(
         String.format(
@@ -401,6 +421,14 @@ public class TreeSchemaAutoCreatorAndVerifier {
       }
     }
     databasesNeededToBeSet.removeAll(schemaCache.getAlreadySetDatabases());
+
+    if (!databasesNeededToBeSet.isEmpty() && !loadTsFileAnalyzer.isAutoCreateSchemaEnabled()) {
+      throw new LoadAnalyzeMissingDatabaseException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A,
+              databasesNeededToBeSet.iterator().next()));
+    }
 
     // 2. create the databases that do not exist
     for (final PartialPath databasePath : databasesNeededToBeSet) {
@@ -521,7 +549,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
         encodingsList,
         compressionTypesList,
         isAlignedList,
-        loadTsFileAnalyzer.isAutoCreateSchemaRequested(),
+        loadTsFileAnalyzer.isAutoCreateSchemaEnabled(),
         loadTsFileAnalyzer.context);
   }
 

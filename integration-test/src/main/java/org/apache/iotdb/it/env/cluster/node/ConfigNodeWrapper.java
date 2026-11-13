@@ -40,6 +40,8 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_MAX_DI
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_MAX_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_PER_DATANODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_PER_DATA_NODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_COMMON_PROPERTIES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_PROPERTIES;
@@ -55,6 +57,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   private final boolean isSeed;
   private final String defaultNodePropertiesFile;
   private final String defaultCommonPropertiesFile;
+  private final int regionPerDataNode;
 
   public ConfigNodeWrapper(
       final boolean isSeed,
@@ -72,6 +75,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
         EnvUtils.getFilePathFromSysVar(DEFAULT_CONFIG_NODE_PROPERTIES, clusterIndex);
     this.defaultCommonPropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_CONFIG_NODE_COMMON_PROPERTIES, clusterIndex);
+    this.regionPerDataNode = EnvUtils.getIntFromSysVar(DATA_REGION_PER_DATANODE, 0, clusterIndex);
 
     // initialize mutable properties
     reloadMutableFields();
@@ -152,6 +156,10 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
     mutableCommonProperties.setProperty(SCHEMA_REPLICATION_FACTOR, "1");
     mutableCommonProperties.setProperty(DATA_REPLICATION_FACTOR, "1");
+    // Only ConfigNode reads this. Keep it a common property so that a value set by a test through
+    // CommonConfig still takes precedence: node properties are written after common ones.
+    mutableCommonProperties.setProperty(
+        DATA_REGION_PER_DATA_NODE, String.valueOf(regionPerDataNode));
 
     mutableNodeProperties.put(CN_CONNECTION_TIMEOUT_MS, "30000");
 

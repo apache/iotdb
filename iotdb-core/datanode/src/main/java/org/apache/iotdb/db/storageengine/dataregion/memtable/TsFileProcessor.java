@@ -68,6 +68,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.UnclosedF
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
@@ -159,6 +160,14 @@ public class TsFileProcessor {
 
   private final Map<String, Long> registeredTableSchemaVersions = new ConcurrentHashMap<>();
 
+  /**
+   * Whether this processor writes a table-model TsFile. Such a file is marked with a single {@link
+   * TsFileTableSchemaRegistrationUtils#TABLE_MODEL_PROPERTY} property at {@link #endFile()}, so the
+   * closed file stays recognizable as a table-model TsFile without any per-table schema lookup on
+   * the write path.
+   */
+  private final boolean tableModelTsFile;
+
   /** Tsfile resource for index this tsfile. */
   private final TsFileResource tsFileResource;
 
@@ -247,6 +256,7 @@ public class TsFileProcessor {
     this.writer =
         EncryptDBUtils.createRestorableWriterForNewFile(
             tsfile, dataRegionInfo.getDataRegion().getDatabaseName());
+    this.tableModelTsFile = dataRegionInfo.getDataRegion().isTableModel();
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.walNode =
         WALManager.getInstance()
@@ -270,6 +280,7 @@ public class TsFileProcessor {
     this.tsFileResource = tsFileResource;
     this.dataRegionInfo = dataRegionInfo;
     this.writer = writer;
+    this.tableModelTsFile = dataRegionInfo.getDataRegion().isTableModel();
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     this.walNode =
@@ -2233,6 +2244,12 @@ public class TsFileProcessor {
   private void endFile() throws IOException, TsFileProcessorException {
     if (logger.isDebugEnabled()) {
       logger.debug(StorageEngineMessages.START_TO_END_FILE, tsFileResource);
+    }
+    // Mark the file as a table-model TsFile. Written once here, when the file is sealed: it is a
+    // single entry of the in-memory file property map serialized by endFile(), never a per-device
+    // or per-chunk operation.
+    if (tableModelTsFile) {
+      TsFileTableSchemaRegistrationUtils.markTableModel(writer);
     }
     writer.endFile();
 
