@@ -52,6 +52,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_LTSM_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.ON_REQUEST_BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelNotOnSpecifiedDevice;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelOnSpecifiedDevice;
@@ -236,13 +237,20 @@ public class AINodeSharedClusterIT {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
       while (resultSet.next()) {
-        built_in_model_count++;
         FakeModelInfo modelInfo =
             new FakeModelInfo(
                 resultSet.getString(1),
                 resultSet.getString(2),
                 resultSet.getString(3),
                 resultSet.getString(4));
+        FakeModelInfo onRequestModelInfo = ON_REQUEST_BUILTIN_MODEL_MAP.get(modelInfo.getModelId());
+        if (onRequestModelInfo != null) {
+          // Inactive until another test loads it
+          assertEquals(onRequestModelInfo.getModelType(), modelInfo.getModelType());
+          assertEquals(onRequestModelInfo.getCategory(), modelInfo.getCategory());
+          continue;
+        }
+        built_in_model_count++;
         assertTrue(BUILTIN_MODEL_MAP.containsKey(modelInfo.getModelId()));
         assertEquals(BUILTIN_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
       }
@@ -455,6 +463,21 @@ public class AINodeSharedClusterIT {
           loadRunAndUnloadModelOnDevices(
               treeStatement, tableStatement, modelInfo.getModelId(), devices);
         }
+      }
+    }
+  }
+
+  @Test
+  public void onRequestBuiltInModelLoadInferenceAndForecastTest()
+      throws SQLException, InterruptedException {
+    try (Connection treeConnection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement treeStatement = treeConnection.createStatement();
+        Connection tableConnection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement tableStatement = tableConnection.createStatement()) {
+      for (FakeModelInfo modelInfo : ON_REQUEST_BUILTIN_MODEL_MAP.values()) {
+        // LOAD MODEL downloads the weights before loading the model
+        loadRunAndUnloadModelOnDevices(
+            treeStatement, tableStatement, modelInfo.getModelId(), "cpu");
       }
     }
   }

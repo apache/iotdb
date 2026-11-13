@@ -426,3 +426,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
+
+The following files include code modified from Timestral project.
+
+./iotdb-core/ainode/iotdb/ainode/core/model/timestral/*
+
+The Timestral is open source software licensed under the Apache License 2.0
+Project page: https://github.com/mistralai/timestral
+License: https://github.com/mistralai/timestral/blob/main/LICENSE
+Copyright 2026 Mistral AI
+
+--------------------------------------------------------------------------------

@@ -22,6 +22,7 @@ from iotdb.ainode.core.manager.cluster_manager import ClusterManager
 from iotdb.ainode.core.manager.device_manager import DeviceManager
 from iotdb.ainode.core.manager.inference_manager import InferenceManager
 from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.model.model_constants import ModelStates
 from iotdb.ainode.core.rpc.status import get_status
 from iotdb.thrift.ainode import IAINodeRPCService
 from iotdb.thrift.ainode.ttypes import (
@@ -139,16 +140,29 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
             )
         return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)
 
+    def _ensure_model_is_downloaded(self, model_id: str) -> TSStatus:
+        model_info = self._model_manager.get_model_info(model_id)
+        if not model_info.download_on_start and model_info.state != ModelStates.ACTIVE:
+            return TSStatus(
+                code=TSStatusCode.MODEL_NOT_EXIST_ERROR.value,
+                message=f"Model [{model_id}] is not downloaded at start. Use 'LOAD MODEL {model_id} TO DEVICES ...' to download and load it; 'SHOW MODELS' shows it as active once it is downloaded.",
+            )
+        return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)
+
     # ==================== Inference ====================
 
     def inference(self, req: TInferenceReq) -> TInferenceResp:
         status = self._ensure_model_is_registered(req.modelId)
+        if status.code == TSStatusCode.SUCCESS_STATUS.value:
+            status = self._ensure_model_is_downloaded(req.modelId)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return TInferenceResp(status, [])
         return self._inference_manager.inference(req)
 
     def forecast(self, req: TForecastReq) -> TForecastResp:
         status = self._ensure_model_is_registered(req.modelId)
+        if status.code == TSStatusCode.SUCCESS_STATUS.value:
+            status = self._ensure_model_is_downloaded(req.modelId)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return TForecastResp(status, [])
         return self._inference_manager.forecast(req)
