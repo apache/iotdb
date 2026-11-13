@@ -40,8 +40,10 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -52,6 +54,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -60,20 +63,48 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class SessionIT {
 
-  @Before
-  public void setUp() throws Exception {
+  private static final AtomicInteger NEXT_DATABASE_ID = new AtomicInteger();
+
+  private String database;
+
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Before
+  public void setUp() {
+    database = "root.session_" + NEXT_DATABASE_ID.incrementAndGet();
   }
 
   @After
   public void tearDown() throws Exception {
+    dropDatabaseIfExists(database);
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  private void dropDatabaseIfExists(String databasePath) throws Exception {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      boolean exists;
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW DATABASES " + databasePath)) {
+        exists = dataSet.hasNext();
+      }
+      if (exists) {
+        session.deleteDatabase(databasePath);
+      }
+    }
+  }
+
+  // A tablet with incompatible value types fails without returning partial rows.
   @Test
   public void testInsertByStrAndSelectFailedData() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = database + ".d1";
 
       session.createTimeseries(
           deviceId + ".s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
@@ -90,7 +121,7 @@ public class SessionIT {
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
       schemaList.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.PLAIN));
 
-      Tablet tablet = new Tablet("root.sg1.d1", schemaList, 10);
+      Tablet tablet = new Tablet(database + ".d1", schemaList, 10);
 
       for (long time = 0; time < 10; time++) {
         int row = tablet.getRowSize();
@@ -109,7 +140,7 @@ public class SessionIT {
       }
 
       SessionDataSet dataSet =
-          session.executeQueryStatement("select s1, s2, s3, s4 from root.sg1.d1");
+          session.executeQueryStatement("select s1, s2, s3, s4 from " + database + ".d1");
       int i = 0;
       while (dataSet.hasNext()) {
         RowRecord record = dataSet.next();
@@ -126,13 +157,14 @@ public class SessionIT {
     }
   }
 
+  // DATE, TIMESTAMP, BLOB, and STRING values round-trip through typed record insertion.
   @Test
   public void testInsertRecord() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<TSDataType> dataTypeList =
           Arrays.asList(TSDataType.DATE, TSDataType.TIMESTAMP, TSDataType.BLOB, TSDataType.STRING);
       List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4");
-      String deviceId = "root.db.d1";
+      String deviceId = database + ".d1";
       for (int i = 0; i < dataTypeList.size(); i++) {
         String tsPath = deviceId + "." + measurements.get(i);
         if (!session.checkTimeseriesExists(tsPath)) {
@@ -151,7 +183,8 @@ public class SessionIT {
         values.add("" + time);
         session.insertRecord(deviceId, time, measurements, dataTypeList, values);
       }
-      try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.db.d1")) {
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select * from " + database + ".d1")) {
         HashSet<String> columnNames = new HashSet<>(dataSet.getColumnNames());
         assertEquals(5, columnNames.size());
         for (int i = 0; i < 4; i++) {
@@ -194,13 +227,14 @@ public class SessionIT {
     }
   }
 
+  // Text-form records are parsed into DATE, TIMESTAMP, BLOB, and STRING values.
   @Test
   public void testInsertStrRecord() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<TSDataType> dataTypeList =
           Arrays.asList(TSDataType.DATE, TSDataType.TIMESTAMP, TSDataType.BLOB, TSDataType.STRING);
       List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4");
-      String deviceId = "root.db.d1";
+      String deviceId = database + ".d1";
       for (int i = 0; i < dataTypeList.size(); i++) {
         String tsPath = deviceId + "." + measurements.get(i);
         if (!session.checkTimeseriesExists(tsPath)) {
@@ -219,7 +253,8 @@ public class SessionIT {
         values.add("" + time);
         session.insertRecord(deviceId, time, measurements, values);
       }
-      try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.db.d1")) {
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select * from " + database + ".d1")) {
         HashSet<String> columnNames = new HashSet<>(dataSet.getColumnNames());
         assertEquals(5, columnNames.size());
         for (int i = 0; i < 4; i++) {
@@ -263,11 +298,12 @@ public class SessionIT {
     }
   }
 
+  // Tablet insertion preserves typed values across both populated batches.
   @Test
   public void testInsertTablet() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<IMeasurementSchema> schemaList = new ArrayList<>();
-      String deviceId = "root.db.d1";
+      String deviceId = database + ".d1";
       schemaList.add(new MeasurementSchema("s1", TSDataType.DATE));
       schemaList.add(new MeasurementSchema("s2", TSDataType.TIMESTAMP));
       schemaList.add(new MeasurementSchema("s3", TSDataType.BLOB));
@@ -299,7 +335,8 @@ public class SessionIT {
       }
       session.insertTablet(tablet);
       tablet.reset();
-      try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.db.d1")) {
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select * from " + database + ".d1")) {
         HashSet<String> columnNames = new HashSet<>(dataSet.getColumnNames());
         assertEquals(5, columnNames.size());
         for (int i = 0; i < 4; i++) {
@@ -342,13 +379,14 @@ public class SessionIT {
     }
   }
 
+  // Session operations before open and after close consistently report a closed session.
   @Test
   public void testSessionMisuse() throws StatementExecutionException, IoTDBConnectionException {
     final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapperList().get(0);
     final Session session = new Builder().host(dataNode.getIp()).port(dataNode.getPort()).build();
     // operate before open
     try {
-      session.executeNonQueryStatement("INSERT INTO root.db1.d1 (time, s1) VALUES (1,1)");
+      session.executeNonQueryStatement("INSERT INTO " + database + ".d1 (time, s1) VALUES (1,1)");
     } catch (IoTDBConnectionException e) {
       assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
     }
@@ -365,13 +403,13 @@ public class SessionIT {
     }
 
     try {
-      session.insertTablet(new Tablet("root.db1.d1", Collections.emptyList()));
+      session.insertTablet(new Tablet(database + ".d1", Collections.emptyList()));
     } catch (IoTDBConnectionException e) {
       assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
     }
 
     try {
-      session.deleteDatabase("root.db");
+      session.deleteDatabase(database);
     } catch (IoTDBConnectionException e) {
       assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
     }
@@ -388,7 +426,7 @@ public class SessionIT {
     session.close();
 
     try {
-      session.executeNonQueryStatement("INSERT INTO root.db1.d1 (time, s1) VALUES (1,1)");
+      session.executeNonQueryStatement("INSERT INTO " + database + ".d1 (time, s1) VALUES (1,1)");
     } catch (IoTDBConnectionException e) {
       assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
     }
@@ -407,14 +445,14 @@ public class SessionIT {
     try {
       session.insertTablet(
           new Tablet(
-              "root.db1.d1",
+              database + ".d1",
               Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64))));
     } catch (IoTDBConnectionException e) {
       assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
     }
 
     try {
-      session.deleteDatabase("root.db");
+      session.deleteDatabase(database);
     } catch (IoTDBConnectionException e) {
       assertEquals("Session is not open, please invoke Session.open() first", e.getMessage());
     }

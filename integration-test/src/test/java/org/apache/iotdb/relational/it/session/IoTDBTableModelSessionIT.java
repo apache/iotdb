@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.session;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -30,12 +31,18 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.read.common.RowRecord;
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesColumnHeaders;
+import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -43,13 +50,23 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBTableModelSessionIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() throws SQLException {
+    // Each new session must still open before its configured database is created.
+    try (final Connection connection = EnvFactory.getEnv().getConnection(TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      TestUtils.dropDatabaseWithRetry(statement, "test1");
+      TestUtils.dropDatabaseWithRetry(statement, "test2");
+    }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

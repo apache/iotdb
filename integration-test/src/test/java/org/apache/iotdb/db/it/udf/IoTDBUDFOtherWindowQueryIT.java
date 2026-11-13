@@ -36,6 +36,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.function.IntFunction;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -46,6 +47,7 @@ import static org.junit.Assert.fail;
 public class IoTDBUDFOtherWindowQueryIT {
 
   protected static final int ITERATION_TIMES = 1000;
+  private static final int INSERT_BATCH_SIZE = 100;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -82,64 +84,86 @@ public class IoTDBUDFOtherWindowQueryIT {
   }
 
   private static void generateData() {
-    // SessionWindow
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (int i = 0; i < ITERATION_TIMES; ++i) {
-        if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 996
-            || i == 997 || i == 998) {
-          continue;
-        }
-        statement.execute(
-            (String.format("insert into root.vehicle.d1(timestamp,s3) values(%d,%d)", i, i)));
-      }
+      // SessionWindow: retain the missing points that separate sessions.
+      insertMeasurementInBatches(
+          statement,
+          "s3",
+          i -> {
+            if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 996
+                || i == 997 || i == 998) {
+              return null;
+            }
+            return Integer.toString(i);
+          });
 
       // StateWindow INT32
-      for (int i = 0; i < ITERATION_TIMES; ++i) {
-        if (i == 1 || i == 2 || i == 3 || i == 15 || i == 17 || i == 53 || i == 54 || i == 996
-            || i == 997 || i == 998) {
-          statement.execute(
-              (String.format(
-                  "insert into root.vehicle.d1(timestamp,s4) values(%d,%d)", i, i + 100)));
-        } else if (i == 500 || i == 501) {
-          statement.execute(
-              (String.format("insert into root.vehicle.d1(timestamp,s4) values(%d,%d)", i, 12)));
-        } else if (i % 2 == 0) {
-          statement.execute(
-              (String.format("insert into root.vehicle.d1(timestamp,s4) values(%d,%d)", i, 0)));
-        } else {
-          statement.execute(
-              (String.format("insert into root.vehicle.d1(timestamp,s4) values(%d,%d)", i, 3)));
-        }
-      }
+      insertMeasurementInBatches(
+          statement,
+          "s4",
+          i -> {
+            if (i == 1 || i == 2 || i == 3 || i == 15 || i == 17 || i == 53 || i == 54 || i == 996
+                || i == 997 || i == 998) {
+              return Integer.toString(i + 100);
+            } else if (i == 500 || i == 501) {
+              return "12";
+            }
+            return i % 2 == 0 ? "0" : "3";
+          });
 
       // StateWindow BOOLEAN
-      for (int i = 0; i < ITERATION_TIMES; ++i) {
-        if (i == 1 || i == 2 || i == 3 || i == 15 || i == 17 || i == 53 || i == 54 || i == 996
-            || i == 997 || i == 998) {
-          statement.execute(
-              (String.format("insert into root.vehicle.d1(timestamp,s5) values(%d, true)", i)));
-        } else {
-          statement.execute(
-              (String.format("insert into root.vehicle.d1(timestamp,s5) values(%d, false)", i)));
-        }
-      }
+      insertMeasurementInBatches(
+          statement,
+          "s5",
+          i ->
+              i == 1 || i == 2 || i == 3 || i == 15 || i == 17 || i == 53 || i == 54 || i == 996
+                      || i == 997 || i == 998
+                  ? "true"
+                  : "false");
 
       // StateWindow TEXT
-      for (int i = 0; i < ITERATION_TIMES; ++i) {
-        if (i < 500) {
-          statement.execute(
-              (String.format("insert into root.vehicle.d1(timestamp,s6) values(%d, '<500')", i)));
-        } else if (i < 993) {
-          statement.execute(
-              (String.format("insert into root.vehicle.d1(timestamp,s6) values(%d, '<993')", i)));
-        } else {
-          statement.execute(
-              (String.format("insert into root.vehicle.d1(timestamp,s6) values(%d, '>=994')", i)));
-        }
-      }
+      insertMeasurementInBatches(
+          statement,
+          "s6",
+          i -> {
+            if (i < 500) {
+              return "'<500'";
+            } else if (i < 993) {
+              return "'<993'";
+            }
+            return "'>=994'";
+          });
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
+    }
+  }
+
+  private static void insertMeasurementInBatches(
+      Statement statement, String measurement, IntFunction<String> valueSupplier)
+      throws SQLException {
+    // Batch each measurement separately to preserve the original point order and sparse inputs.
+    String prefix = "insert into root.vehicle.d1(timestamp," + measurement + ") values";
+    StringBuilder insertSql = new StringBuilder(prefix);
+    int rows = 0;
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      String value = valueSupplier.apply(i);
+      // Returning null omits the point entirely, retaining the session-window gaps.
+      if (value == null) {
+        continue;
+      }
+      if (rows > 0) {
+        insertSql.append(',');
+      }
+      insertSql.append('(').append(i).append(',').append(value).append(')');
+      if (++rows == INSERT_BATCH_SIZE) {
+        statement.execute(insertSql.toString());
+        insertSql.setLength(prefix.length());
+        rows = 0;
+      }
+    }
+    if (rows > 0) {
+      statement.execute(insertSql.toString());
     }
   }
 

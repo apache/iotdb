@@ -36,8 +36,9 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -46,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -56,25 +58,37 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSessionSyntaxConventionIT {
 
-  @Before
-  public void setUp() throws Exception {
+  private static final AtomicInteger NEXT_DATABASE_ID = new AtomicInteger();
+
+  private String database;
+
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @Before
+  public void setUp() {
+    // Keep each method's schema and data independent while sharing the same cluster.
+    database = "root.syntax_" + NEXT_DATABASE_ID.incrementAndGet();
+  }
+
+  @AfterClass
+  public static void tearDownClass() {
+    // All method-specific databases are bounded by this class and removed with the cluster.
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // Reject mismatched backticks in timeseries names without creating any schema.
   @Test
   public void createTimeSeriesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String database = "root.sg";
+      String database = this.database;
       session.setStorageGroup(database);
 
       try {
         session.createTimeseries(
-            "root.sg.d1.`a.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+            database + ".d1.`a.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
         fail();
       } catch (Exception e) {
         assertTrue(e.getMessage().contains("is not a legal path"));
@@ -82,14 +96,16 @@ public class IoTDBSessionSyntaxConventionIT {
 
       try {
         session.createTimeseries(
-            "root.sg.d1.a`.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+            database + ".d1.a`.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
         fail();
       } catch (Exception e) {
         assertTrue(e.getMessage().contains("is not a legal path"));
       }
 
-      final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES root.sg.**");
-      assertFalse(dataSet.hasNext());
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES " + database + ".**")) {
+        assertFalse(dataSet.hasNext());
+      }
 
       session.deleteDatabase(database);
     } catch (Exception e) {
@@ -98,10 +114,11 @@ public class IoTDBSessionSyntaxConventionIT {
     }
   }
 
+  // Accept quoted special-character measurement names and verify their schema exists.
   @Test
   public void insertTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = database + ".d1";
       List<String> measurements = new ArrayList<>();
 
       measurements.add("`\"a“（Φ）”b\"`");
@@ -121,25 +138,26 @@ public class IoTDBSessionSyntaxConventionIT {
 
       session.insertRecord(deviceId, 1L, measurements, values);
 
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\"a“（Φ）”b\"`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\"a>b\"`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.```a.b```"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`'a“（Φ）”b'`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`'a>b'`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a“（Φ）”b`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`a>b`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.`\\\"a`"));
-      assertTrue(session.checkTimeseriesExists("root.sg1.d1.aaa"));
+      assertTrue(session.checkTimeseriesExists(database + ".d1.`\"a“（Φ）”b\"`"));
+      assertTrue(session.checkTimeseriesExists(database + ".d1.`\"a>b\"`"));
+      assertTrue(session.checkTimeseriesExists(database + ".d1.```a.b```"));
+      assertTrue(session.checkTimeseriesExists(database + ".d1.`'a“（Φ）”b'`"));
+      assertTrue(session.checkTimeseriesExists(database + ".d1.`'a>b'`"));
+      assertTrue(session.checkTimeseriesExists(database + ".d1.`a“（Φ）”b`"));
+      assertTrue(session.checkTimeseriesExists(database + ".d1.`a>b`"));
+      assertTrue(session.checkTimeseriesExists(database + ".d1.`\\\"a`"));
+      assertTrue(session.checkTimeseriesExists(database + ".d1.aaa"));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
+  // Reject illegal measurement names in single-record insertion without creating schema.
   @Test
   public void inserRecordWithIllegalMeasurementTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = database + ".d1";
       List<String> measurements = new ArrayList<>();
       List<String> values = new ArrayList<>();
       measurements.add("a.b");
@@ -210,18 +228,21 @@ public class IoTDBSessionSyntaxConventionIT {
         e.printStackTrace();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
-      assertFalse(dataSet.hasNext());
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("show timeseries " + database + ".**")) {
+        assertFalse(dataSet.hasNext());
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
+  // Reject batched records with illegal measurement names without creating schema.
   @Test
   public void insertRecordsWithIllegalMeasurementTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = database + ".d1";
       List<String> measurements = new ArrayList<>();
       measurements.add("a.b");
       measurements.add("111");
@@ -246,17 +267,20 @@ public class IoTDBSessionSyntaxConventionIT {
         e.printStackTrace();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
-      assertFalse(dataSet.hasNext());
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("show timeseries " + database + ".**")) {
+        assertFalse(dataSet.hasNext());
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
+  // Reject tablet schemas with illegal measurement names without creating schema.
   @Test
   public void insertTabletWithIllegalMeasurementTest() {
-    String deviceId = "root.sg1.d1";
+    String deviceId = database + ".d1";
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("wrong`", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
@@ -281,18 +305,21 @@ public class IoTDBSessionSyntaxConventionIT {
         e.printStackTrace();
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
-      assertFalse(dataSet.hasNext());
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("show timeseries " + database + ".**")) {
+        assertFalse(dataSet.hasNext());
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
+  // Reject illegal aligned measurement names and leave the database schema empty.
   @Test
   public void createAlignedTimeseriesWithIllegalMeasurementTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = database + ".d1";
       List<String> measurements = new ArrayList<>();
       measurements.add("111");
       measurements.add("a.b");
@@ -311,18 +338,21 @@ public class IoTDBSessionSyntaxConventionIT {
       } catch (Exception e) {
         e.printStackTrace();
       }
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
-      assertFalse(dataSet.hasNext());
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("show timeseries " + database + ".**")) {
+        assertFalse(dataSet.hasNext());
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
+  // Reject an illegal aligned measurement alias without creating timeseries.
   @Test
   public void createAlignedTimeseriesWithIllegalMeasurementAliasTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.d1";
+      String deviceId = database + ".d1";
       List<String> measurements = new ArrayList<>();
       measurements.add("s1");
       measurements.add("s2");
@@ -351,20 +381,23 @@ public class IoTDBSessionSyntaxConventionIT {
       } catch (Exception e) {
         e.printStackTrace();
       }
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
-      assertFalse(dataSet.hasNext());
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("show timeseries " + database + ".**")) {
+        assertFalse(dataSet.hasNext());
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
+  // Reject an illegal alias in multi-timeseries creation without creating schema.
   @Test
   public void createMultiTimeseriesWithIllegalMeasurementAliasTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<String> paths = new ArrayList<>();
-      paths.add("root.sg1.d1.s1");
-      paths.add("root.sg1.d1.s2");
+      paths.add(database + ".d1.s1");
+      paths.add(database + ".d1.s2");
       List<TSDataType> tsDataTypes = new ArrayList<>();
       tsDataTypes.add(TSDataType.DOUBLE);
       tsDataTypes.add(TSDataType.DOUBLE);
@@ -391,14 +424,17 @@ public class IoTDBSessionSyntaxConventionIT {
       } catch (StatementExecutionException e) {
         e.printStackTrace();
       }
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
-      assertFalse(dataSet.hasNext());
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("show timeseries " + database + ".**")) {
+        assertFalse(dataSet.hasNext());
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
+  // Reject template measurements containing illegal names without creating timeseries.
   @Test
   public void createSchemaTemplateWithIllegalMeasurementTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -417,14 +453,17 @@ public class IoTDBSessionSyntaxConventionIT {
       } catch (Exception e) {
         e.printStackTrace();
       }
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
-      assertFalse(dataSet.hasNext());
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("show timeseries " + database + ".**")) {
+        assertFalse(dataSet.hasNext());
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
+  // Reject a null template measurement name with the expected metadata error.
   @Test
   public void createSchemaTemplateWithIllegalMeasurementNameTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {

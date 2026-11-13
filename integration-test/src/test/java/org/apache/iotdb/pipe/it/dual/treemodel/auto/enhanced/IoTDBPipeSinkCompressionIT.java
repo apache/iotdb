@@ -27,18 +27,19 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
-import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
-import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
@@ -48,6 +49,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -55,15 +57,16 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
-public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT {
+public class IoTDBPipeSinkCompressionIT extends AbstractPipeTreeModelSharedClusterIT {
+
+  @Rule public final TestName testName = new TestName();
 
   @Override
-  @Before
-  public void setUp() {
-    // Override to enable air-gap
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+  protected void setupConfig() {
+    // One LZMA2 encoder needs about 100 MB in addition to the node and in-flight callbacks.
+    // Give the sender headroom above the default 256 MB while bounding sink concurrency below.
+    senderEnv.getConfig().getDataNodeJVMConfig().setMaxHeapSize(512);
+    // Retain the compression scenarios' memory settings and receiver air-gap support.
 
     senderEnv
         .getConfig()
@@ -91,36 +94,39 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
   }
 
+  // Async Thrift with Snappy and batching must transfer both historical and realtime data.
   @Test
   public void testCompression1() throws Exception {
     doTest("iotdb-thrift-sink", "stream", true, "snappy");
   }
 
+  // Async Thrift batch mode must transfer data compressed by Snappy followed by LZMA2.
   @Test
   public void testCompression2() throws Exception {
     doTest("iotdb-thrift-sink", "batch", true, "snappy, lzma2");
   }
 
+  // Sync Thrift stream mode without batching must decode two successive Snappy layers.
   @Test
   public void testCompression3() throws Exception {
     doTest("iotdb-thrift-sync-sink", "stream", false, "snappy, snappy");
   }
 
+  // Sync Thrift batch mode must decode Gzip followed by Zstd for both write phases.
   @Test
   public void testCompression4() throws Exception {
     doTest("iotdb-thrift-sync-sink", "batch", true, "gzip, zstd");
   }
 
+  // Air-gap stream mode must decode LZMA2 followed by LZ4 without batching.
   @Test
   public void testCompression5() throws Exception {
     doTest("iotdb-air-gap-sink", "stream", false, "lzma2, lz4");
   }
 
+  // Air-gap batch mode must transfer historical and realtime data compressed by LZMA2.
   @Test
   public void testCompression6() throws Exception {
     doTest("iotdb-air-gap-sink", "batch", true, "lzma2");
@@ -137,22 +143,16 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
             ? receiverDataNode.getPipeAirGapReceiverPort()
             : receiverDataNode.getPort();
 
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-    final Consumer<String> senderOnlyFailure =
-        o -> TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+    try (final RetryFlushHandler handleFailure = new RetryFlushHandler();
+        final SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList(
-              "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
-              "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"),
+          isolateDatabasePaths(
+              Arrays.asList(
+                  "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
+                  "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
+                  "flush")),
           null);
       final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -160,16 +160,21 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
 
       sourceAttributes.put("source", "iotdb-source");
       sourceAttributes.put("source.realtime.mode", realtimeMode);
-      sourceAttributes.put("user", "root");
+      // The default pattern format matches literal prefixes; a wildcard would exclude the data.
+      sourceAttributes.put("source.pattern", databasePath() + ".");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       processorAttributes.put("processor", "do-nothing-processor");
 
       sinkAttributes.put("sink", sinkType);
       sinkAttributes.put("sink.batch.enable", useBatchMode ? "true" : "false");
+      // LZMA2 allocates a large dictionary per task. Bound its peak memory for these functional
+      // round trips while retaining every codec and batching combination.
+      sinkAttributes.put("sink.parallel.tasks", "1");
       sinkAttributes.put("sink.ip", receiverIp);
       sinkAttributes.put("sink.port", Integer.toString(receiverPort));
-      sinkAttributes.put("sink.user", "root");
-      sinkAttributes.put("sink.password", "root");
+      sinkAttributes.put("sink.user", SessionConfig.DEFAULT_USER);
+      sinkAttributes.put("sink.password", SessionConfig.DEFAULT_PASSWORD);
       sinkAttributes.put("sink.compressor", compressionTypes);
 
       final TSStatus status =
@@ -184,32 +189,35 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.db.**",
-          "count(root.db.d1.s1),",
+          isolateDatabasePaths("select count(*) from root.db.**"),
+          isolateDatabasePaths("count(root.db.d1.s1),"),
           Collections.singleton("2,"),
           handleFailure);
 
       TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList(
-              "insert into root.db.d1(time, s1) values (3, 3)",
-              "insert into root.db.d1(time, s1) values (4, 4)",
-              "insert into root.db.d1(time, s1) values (5, 5)",
-              "insert into root.db.d1(time, s1) values (6, 6)",
-              "insert into root.db.d1(time, s1) values (7, 7)",
-              "insert into root.db.d1(time, s1) values (8, 8)",
-              "flush"),
+          isolateDatabasePaths(
+              Arrays.asList(
+                  "insert into root.db.d1(time, s1) values (3, 3)",
+                  "insert into root.db.d1(time, s1) values (4, 4)",
+                  "insert into root.db.d1(time, s1) values (5, 5)",
+                  "insert into root.db.d1(time, s1) values (6, 6)",
+                  "insert into root.db.d1(time, s1) values (7, 7)",
+                  "insert into root.db.d1(time, s1) values (8, 8)",
+                  "flush")),
           null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.db.**",
-          "count(root.db.d1.s1),",
+          isolateDatabasePaths("select count(*) from root.db.**"),
+          isolateDatabasePaths("count(root.db.d1.s1),"),
           Collections.singleton("8,"),
-          senderOnlyFailure);
+          handleFailure::flushSender);
     }
   }
 
+  // Zstd levels 3, 22 and -131072 must each sync; -131073 and 23 must fail validation while the
+  // shared SQL connection remains usable and only the three valid pipes remain registered.
   @Test
   public void testZstdCompressorLevel() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -217,25 +225,46 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement();
+        final RetryFlushHandler handleFailure = new RetryFlushHandler();
+        final SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // Create legal zstd level pipes one by one, so the assertion identifies the exact level
       // that fails and avoids concurrent historical TsFile splitting for this level test.
+      // Retain the writer for inserts, flushes and all CREATEs, including rejected levels.
       createZstdPipeAndAssertData(
-          "p1", "root.db.d1.s1", "3", receiverIp, receiverPort, "s1", handleFailure);
+          statement,
+          "p1",
+          databasePath() + ".d1.s1",
+          "3",
+          receiverIp,
+          receiverPort,
+          "s1",
+          handleFailure);
       createZstdPipeAndAssertData(
-          "p2", "root.db.d1.s2", "22", receiverIp, receiverPort, "s2", handleFailure);
+          statement,
+          "p2",
+          databasePath() + ".d1.s2",
+          "22",
+          receiverIp,
+          receiverPort,
+          "s2",
+          handleFailure);
       createZstdPipeAndAssertData(
-          "p3", "root.db.d1.s3", "-131072", receiverIp, receiverPort, "s3", handleFailure);
+          statement,
+          "p3",
+          databasePath() + ".d1.s3",
+          "-131072",
+          receiverIp,
+          receiverPort,
+          "s3",
+          handleFailure);
 
-      assertCreateZstdPipeFailed("p4", "root.db.d1.s4", "-131073", receiverIp, receiverPort);
-      assertCreateZstdPipeFailed("p5", "root.db.d1.s5", "23", receiverIp, receiverPort);
+      assertCreateZstdPipeFailed(
+          statement, "p4", databasePath() + ".d1.s4", "-131073", receiverIp, receiverPort);
+      assertCreateZstdPipeFailed(
+          statement, "p5", databasePath() + ".d1.s5", "23", receiverIp, receiverPort);
 
       final List<TShowPipeInfo> showPipeResult =
           client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
@@ -248,43 +277,81 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
     }
   }
 
+  private final class RetryFlushHandler implements Consumer<String>, AutoCloseable {
+    // Index 0 owns the sender Session and index 1 owns the receiver Session. Open lazily so a
+    // successful first assertion poll needs no retry clients.
+    private final ISession[] sessions = new ISession[2];
+
+    @Override
+    public void accept(final String ignored) {
+      flush(0);
+      flush(1);
+    }
+
+    private void flushSender(final String ignored) {
+      flush(0);
+    }
+
+    private void flush(final int index) {
+      // Assertions poll every 100 ms; keep connections across retries instead of opening JDBC
+      // connections to every DataNode on each failed poll.
+      try {
+        if (sessions[index] == null) {
+          sessions[index] = (index == 0 ? senderEnv : receiverEnv).getSessionConnection();
+        }
+        sessions[index].executeNonQueryStatement("flush");
+      } catch (Exception e) {
+        throw new AssertionError(e);
+      }
+    }
+
+    @Override
+    public void close() throws Exception {
+      try {
+        if (sessions[0] != null) {
+          sessions[0].close();
+        }
+      } finally {
+        if (sessions[1] != null) {
+          sessions[1].close();
+        }
+      }
+    }
+  }
+
   private void createZstdPipeAndAssertData(
+      final Statement statement,
       final String pipeName,
       final String sourcePattern,
       final String zstdLevel,
       final String receiverIp,
       final int receiverPort,
       final String measurement,
-      final Consumer<String> handleFailure) {
-    TestUtils.executeNonQueries(
-        senderEnv,
-        Arrays.asList(
-            String.format("insert into root.db.d1(time, %s) values (1, 1)", measurement), "flush"),
-        null);
-
-    try {
-      createZstdPipe(pipeName, sourcePattern, zstdLevel, receiverIp, receiverPort);
-    } catch (final SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
+      final Consumer<String> handleFailure)
+      throws SQLException {
+    statement.execute(
+        isolateDatabasePaths(
+            String.format("insert into root.db.d1(time, %s) values (1, 1)", measurement)));
+    statement.execute("flush");
+    createZstdPipe(statement, pipeName, sourcePattern, zstdLevel, receiverIp, receiverPort);
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        String.format("select count(%s) from root.db.d1", measurement),
-        String.format("count(root.db.d1.%s),", measurement),
+        isolateDatabasePaths(String.format("select count(%s) from root.db.d1", measurement)),
+        isolateDatabasePaths(String.format("count(root.db.d1.%s),", measurement)),
         Collections.singleton("1,"),
         handleFailure);
   }
 
   private void assertCreateZstdPipeFailed(
+      final Statement statement,
       final String pipeName,
       final String sourcePattern,
       final String zstdLevel,
       final String receiverIp,
       final int receiverPort) {
     try {
-      createZstdPipe(pipeName, sourcePattern, zstdLevel, receiverIp, receiverPort);
+      createZstdPipe(statement, pipeName, sourcePattern, zstdLevel, receiverIp, receiverPort);
       fail();
     } catch (final SQLException e) {
       Assert.assertTrue(e.getMessage().contains("Zstd compression level should be in the range"));
@@ -292,24 +359,34 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeDualTreeModelAutoIT 
   }
 
   private void createZstdPipe(
+      final Statement statement,
       final String pipeName,
       final String sourcePattern,
       final String zstdLevel,
       final String receiverIp,
       final int receiverPort)
       throws SQLException {
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
-      statement.execute(
-          String.format(
-              "create pipe %s"
-                  + " with source ('source.pattern'='%s')"
-                  + " with sink ("
-                  + "'sink.ip'='%s',"
-                  + "'sink.port'='%s',"
-                  + "'sink.compressor'='zstd, zstd',"
-                  + "'sink.compressor.zstd.level'='%s')",
-              pipeName, sourcePattern, receiverIp, receiverPort, zstdLevel));
-    }
+    statement.execute(
+        String.format(
+            "create pipe %s"
+                + " with source ('source.pattern'='%s')"
+                + " with sink ("
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.compressor'='zstd, zstd',"
+                + "'sink.compressor.zstd.level'='%s')",
+            pipeName, sourcePattern, receiverIp, receiverPort, zstdLevel));
+  }
+
+  private String databasePath() {
+    return "root.db_" + testName.getMethodName().toLowerCase(Locale.ROOT);
+  }
+
+  private String isolateDatabasePaths(final String value) {
+    return value.replace("root.db", databasePath());
+  }
+
+  private List<String> isolateDatabasePaths(final List<String> values) {
+    return values.stream().map(this::isolateDatabasePaths).toList();
   }
 }

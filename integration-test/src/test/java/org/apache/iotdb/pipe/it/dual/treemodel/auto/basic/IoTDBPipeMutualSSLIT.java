@@ -46,6 +46,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
@@ -76,6 +77,7 @@ public class IoTDBPipeMutualSSLIT extends AbstractPipeDualTreeModelAutoIT {
         .setSslProtocol(SessionConfig.DEFAULT_SSL_PROTOCOL);
   }
 
+  // Mutual TLS must deliver two historical rows and one realtime row using the configured stores.
   @Test
   public void testPipeCanTransferWithMutualSSL() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -116,35 +118,25 @@ public class IoTDBPipeMutualSSLIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList("insert into root.pipe_mtls.d1(time, s1) values (3, 33)", "flush"),
           null);
 
+      // Keep store paths in JDBC properties: Windows drive-letter colons in URL parameters would
+      // otherwise be parsed as the host/port separator.
+      final Properties connectionProperties = new Properties();
+      connectionProperties.setProperty("user", SessionConfig.DEFAULT_USER);
+      connectionProperties.setProperty("password", SessionConfig.DEFAULT_PASSWORD);
+      connectionProperties.setProperty(Config.USE_SSL, "true");
+      connectionProperties.setProperty(Config.TRUST_STORE, trustStorePath());
+      connectionProperties.setProperty(Config.TRUST_STORE_PWD, STORE_PASSWORD);
+      connectionProperties.setProperty(Config.KEY_STORE, keyStorePath());
+      connectionProperties.setProperty(Config.KEY_STORE_PWD, STORE_PASSWORD);
       try (final Connection connection =
               DriverManager.getConnection(
-                  Config.IOTDB_URL_PREFIX
-                      + receiverDataNode.getIpAndPortString()
-                      + "?"
-                      + Config.USE_SSL
-                      + "=true&"
-                      + Config.TRUST_STORE
-                      + "="
-                      + trustStorePath()
-                      + "&"
-                      + Config.TRUST_STORE_PWD
-                      + "="
-                      + STORE_PASSWORD
-                      + "&"
-                      + Config.KEY_STORE
-                      + "="
-                      + keyStorePath()
-                      + "&"
-                      + Config.KEY_STORE_PWD
-                      + "="
-                      + STORE_PASSWORD,
-                  SessionConfig.DEFAULT_USER,
-                  SessionConfig.DEFAULT_PASSWORD);
+                  Config.IOTDB_URL_PREFIX + receiverDataNode.getIpAndPortString() + "/",
+                  connectionProperties);
           final Statement statement = connection.createStatement()) {
         Awaitility.await()
             .pollInSameThread()
-            .pollDelay(1L, TimeUnit.SECONDS)
-            .pollInterval(1L, TimeUnit.SECONDS)
+            .pollDelay(0L, TimeUnit.MILLISECONDS)
+            .pollInterval(100L, TimeUnit.MILLISECONDS)
             .atMost(600, TimeUnit.SECONDS)
             .untilAsserted(
                 () ->

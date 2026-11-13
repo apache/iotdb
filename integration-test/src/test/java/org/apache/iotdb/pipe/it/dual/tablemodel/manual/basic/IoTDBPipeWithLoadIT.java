@@ -20,45 +20,52 @@
 package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
-import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
-public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
+public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelSharedClusterIT {
 
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-
+  @Override
+  protected void setupConfig() {
+    // Retain this suite's original load/compaction settings for the shared clusters.
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -85,11 +92,9 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setEnforceStrongPassword(false);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
   }
 
+  // Verify historical loading applies deletions; disabled until table mods transfer is supported.
   @Ignore // not support
   @Test
   public void testReceiverNotLoadDeletedTimeseries() throws Exception {
@@ -110,7 +115,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     extractorAttributes.put("mods", "true");
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("__system.sql-dialect", "table");
-    extractorAttributes.put("user", "root");
+    extractorAttributes.put("user", SessionConfig.DEFAULT_USER);
 
     connectorAttributes.put("connector.batch.enable", "false");
     connectorAttributes.put("connector.ip", receiverIp);
@@ -137,9 +142,11 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     }
   }
 
-  // Test that receiver will not load data when table exists but TAG columns mismatch
+  // Historical files whose TAG columns disagree with the receiver must fail schema validation
+  // without changing the receiver's existing rows. Observe that failure before checking the rows.
   @Test
   public void testReceiverNotLoadWhenIdColumnMismatch() throws Exception {
+    final String database = "load_tag_mismatch";
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -156,7 +163,9 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
-    extractorAttributes.put("user", "root");
+    // Restrict capture to this method, including any historical files left in the shared cluster.
+    extractorAttributes.put("extractor.database-name", database);
+    extractorAttributes.put("user", SessionConfig.DEFAULT_USER);
 
     connectorAttributes.put("connector.batch.enable", "false");
     connectorAttributes.put("connector.ip", receiverIp);
@@ -166,8 +175,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       try (Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
-        statement.execute("create database if not exists db");
-        statement.execute("use db");
+        statement.execute("create database if not exists " + database);
+        statement.execute("use " + database);
         statement.execute(
             "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
         statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
@@ -179,8 +188,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
       try (Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
-        statement.execute("create database if not exists db");
-        statement.execute("use db");
+        statement.execute("create database if not exists " + database);
+        statement.execute("use " + database);
         statement.execute(
             "create table if not exists t1(tag3 STRING TAG, tag4 STRING TAG, s3 TEXT FIELD, s4 INT32 FIELD)");
         statement.execute("INSERT INTO t1(time,tag3,tag4,s3,s4) values(1, 'd3', 'd4', 'red2', 10)");
@@ -200,14 +209,16 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      try {
-        // wait some time
-        Thread.sleep(10_000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+      awaitReceiverLoadFailure(
+          database,
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_CAN_NOT_CREATE_TABLE_BECAUSE_INCOMING_TABLE_HAS_NO_LESS_D3D33555,
+              "tag3",
+              0,
+              -1));
 
-      Set<String> expectedResSet = new java.util.HashSet<>();
+      Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1970-01-01T00:00:00.002Z,d3,d4,blue2,20,");
       expectedResSet.add("1970-01-01T00:00:00.001Z,d3,d4,red2,10,");
       // make sure data are not transferred
@@ -216,7 +227,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           "select * from t1",
           "time,tag3,tag4,s3,s4,",
           expectedResSet,
-          "db",
+          database,
           handleFailure);
     }
   }
@@ -225,6 +236,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
   // incoming TAG columns
   @Test
   public void testReceiverAutoExtendIdColumn() throws Exception {
+    final String database = "load_extend_tag";
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -241,7 +253,9 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
-    extractorAttributes.put("user", "root");
+    // Restrict capture to this method, including any historical files left in the shared cluster.
+    extractorAttributes.put("extractor.database-name", database);
+    extractorAttributes.put("user", SessionConfig.DEFAULT_USER);
 
     connectorAttributes.put("connector.batch.enable", "false");
     connectorAttributes.put("connector.ip", receiverIp);
@@ -251,8 +265,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       try (Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
-        statement.execute("create database if not exists db");
-        statement.execute("use db");
+        statement.execute("create database if not exists " + database);
+        statement.execute("use " + database);
         statement.execute(
             "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, tag3 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
         statement.execute(
@@ -266,8 +280,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
       try (Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
-        statement.execute("create database if not exists db");
-        statement.execute("use db");
+        statement.execute("create database if not exists " + database);
+        statement.execute("use " + database);
         statement.execute(
             "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s3 TEXT FIELD, s4 INT32 FIELD)");
         statement.execute("INSERT INTO t1(time,tag1,tag2,s3,s4) values(1, 'd1', 'd2', 'red2', 10)");
@@ -287,7 +301,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      Set<String> expectedResSet = new java.util.HashSet<>();
+      Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1970-01-01T00:00:00.001Z,d1,d2,null,null,d3,red,1,");
       expectedResSet.add("1970-01-01T00:00:00.002Z,d1,d2,null,null,d3,blue,2,");
       expectedResSet.add("1970-01-01T00:00:00.001Z,d1,d2,red2,10,null,null,null,");
@@ -298,7 +312,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           "select * from t1",
           "time,tag1,tag2,s3,s4,tag3,s1,s2,",
           expectedResSet,
-          "db",
+          database,
           handleFailure);
     }
   }
@@ -307,6 +321,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
   // existing TAG columns
   @Test
   public void testLoadWhenIncomingIdColumnsArePrefixOfExisting() throws Exception {
+    final String database = "load_prefix_tag";
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -323,7 +338,9 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
-    extractorAttributes.put("user", "root");
+    // Restrict capture to this method, including any historical files left in the shared cluster.
+    extractorAttributes.put("extractor.database-name", database);
+    extractorAttributes.put("user", SessionConfig.DEFAULT_USER);
 
     connectorAttributes.put("connector.batch.enable", "false");
     connectorAttributes.put("connector.ip", receiverIp);
@@ -333,8 +350,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       try (Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
-        statement.execute("create database if not exists db");
-        statement.execute("use db");
+        statement.execute("create database if not exists " + database);
+        statement.execute("use " + database);
         statement.execute(
             "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
         statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
@@ -346,8 +363,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
       try (Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
-        statement.execute("create database if not exists db");
-        statement.execute("use db");
+        statement.execute("create database if not exists " + database);
+        statement.execute("use " + database);
         statement.execute(
             "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, tag3 STRING TAG,s3 TEXT FIELD, s4 INT32 FIELD)");
         statement.execute(
@@ -368,7 +385,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      Set<String> expectedResSet = new java.util.HashSet<>();
+      Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1970-01-01T00:00:00.001Z,d1,d2,d3,red2,10,null,null,");
       expectedResSet.add("1970-01-01T00:00:00.002Z,d1,d2,d3,blue2,20,null,null,");
       expectedResSet.add("1970-01-01T00:00:00.001Z,d1,d2,null,null,null,red,1,");
@@ -379,13 +396,15 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           "select * from t1",
           "time,tag1,tag2,tag3,s3,s4,s1,s2,",
           expectedResSet,
-          "db",
+          database,
           handleFailure);
     }
   }
 
+  // Verify a table deleted before historical capture is not recreated on the receiver.
   @Test
   public void testLoadAutoCreateWithTableDeletion() throws Exception {
+    final String database = "load_deleted_table";
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -397,7 +416,9 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
-    extractorAttributes.put("user", "root");
+    // Restrict capture to this method, including any historical files left in the shared cluster.
+    extractorAttributes.put("extractor.database-name", database);
+    extractorAttributes.put("user", SessionConfig.DEFAULT_USER);
 
     connectorAttributes.put("connector.batch.enable", "false");
     connectorAttributes.put("connector.ip", receiverIp);
@@ -407,15 +428,15 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
-        statement.execute("create database if not exists db");
-        statement.execute("use db");
+        statement.execute("create database if not exists " + database);
+        statement.execute("use " + database);
         statement.execute(
             "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
         statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
         statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(2, 'd1', 'd2', 'blue', 2)");
         statement.execute("flush");
         // Start historical transfer only after the table and its data have been deleted.
-        TestUtils.dropTable(connection, "db", "t1");
+        TestUtils.dropTable(connection, database, "t1");
       } catch (Exception e) {
         fail(e.getMessage());
       }
@@ -431,12 +452,15 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
       // Ensure the deleted table won't be created
       // Now the database will also be created at receiver
-      TestUtils.assertAlwaysFail(receiverEnv, "describe db.t1");
+      TestUtils.assertAlwaysFail(receiverEnv, "describe " + database + ".t1");
     }
   }
 
+  // A receiver user with CREATE but no INSERT privilege must reject the historical file and leave
+  // its table absent. Wait for that specific denial before checking the catalog.
   @Test
   public void testLoadAutoCreateWithoutInsertPermission() throws Exception {
+    final String database = "load_no_insert";
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
@@ -448,19 +472,21 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     extractorAttributes.put("capture.table", "true");
     extractorAttributes.put("__system.sql-dialect", "table");
     extractorAttributes.put("extractor.realtime.mode", "file");
-    extractorAttributes.put("user", "root");
+    // Restrict capture to this method, including any historical files left in the shared cluster.
+    extractorAttributes.put("extractor.database-name", database);
+    extractorAttributes.put("user", SessionConfig.DEFAULT_USER);
 
     connectorAttributes.put("connector.batch.enable", "false");
     connectorAttributes.put("connector.ip", receiverIp);
     connectorAttributes.put("connector.port", Integer.toString(receiverPort));
     connectorAttributes.put("connector.user", "user01");
-    connectorAttributes.put("connector.password", "1234123456789");
+    connectorAttributes.put("connector.password", "IoTDB!Test2024");
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
-        statement.execute("create user user01 '1234123456789'");
+        statement.execute("create user user01 'IoTDB!Test2024'");
         statement.execute("grant create on any to user user01");
       } catch (final Exception e) {
         fail(e.getMessage());
@@ -468,8 +494,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
 
       try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
-        statement.execute("create database if not exists db");
-        statement.execute("use db");
+        statement.execute("create database if not exists " + database);
+        statement.execute("use " + database);
         statement.execute(
             "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
         statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
@@ -488,9 +514,49 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      // Ensure the table without insert privilege won't be created
-      // Now the database will also be created at receiver
-      TestUtils.assertAlwaysFail(receiverEnv, "describe db.t1");
+      awaitReceiverLoadFailure(
+          database,
+          AccessDeniedException.PREFIX
+              + AuthorityChecker.getTSStatus(false, PrivilegeType.INSERT, database, "t1")
+                  .getMessage());
+      try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement();
+          final ResultSet tables =
+              statement.executeQuery(
+                  "select table_name from information_schema.tables where database = '"
+                      + database
+                      + "' and table_name = 't1'")) {
+        // The load may be rejected before even creating the database. The system catalog checks
+        // table absence in either case without treating an unrelated query failure as success.
+        Assert.assertFalse("The rejected load must not create the receiver table", tables.next());
+      }
     }
+  }
+
+  private void awaitReceiverLoadFailure(final String database, final String expectedMessage) {
+    // Rejected loads keep retrying and suppress runtime error reporting, so neither a successful
+    // completion barrier nor an empty SHOW PIPES error proves that the receiver tried the file.
+    // Each scenario has a distinct database in these fresh class-scoped clusters, so a preceding
+    // scenario's log cannot satisfy the wait. Match the database and failure on the same line.
+    await()
+        .alias("Receiver load failure: " + expectedMessage)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(120, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              for (final DataNodeWrapper node : receiverEnv.getDataNodeWrapperList()) {
+                final Path log = Path.of(node.getLogDirPath(), node.getId() + ".log");
+                if (Files.exists(log)) {
+                  try (final Stream<String> lines = Files.lines(log)) {
+                    if (lines.anyMatch(
+                        line -> line.contains(database) && line.contains(expectedMessage))) {
+                      return true;
+                    }
+                  }
+                }
+              }
+              return false;
+            });
   }
 }

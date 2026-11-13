@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
@@ -33,7 +33,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.awaitility.Awaitility;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,20 +47,17 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
-public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
+public class IoTDBPipePermissionIT extends AbstractPipeTreeModelManualSharedClusterIT {
   @Override
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-
+  protected void setupConfig() {
+    super.setupConfig();
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -91,17 +87,22 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment(3, 3);
   }
 
+  @Override
+  protected CompletableFuture<Void> initializeClusters() {
+    return CompletableFuture.allOf(
+        CompletableFuture.runAsync(senderEnv::initClusterEnvironment),
+        CompletableFuture.runAsync(() -> receiverEnv.initClusterEnvironment(3, 3)));
+  }
+
+  // Both thrift sinks must authenticate as the receiver user and replicate schema, rows and users.
   @Test
   public void testWithSyncAndAsyncSink() throws Exception {
     TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
-            "create user `thulab` 'passwd123456'",
+            "create user `thulab` 'IoTDB!Test2024'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
             "grant WRITE, READ, SYSTEM, SECURITY on root.** to role `admin`"),
@@ -125,7 +126,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "create user " + sourceUser + " 'passwd123456'",
+              "create user " + sourceUser + " 'IoTDB!Test2024'",
               "create timeseries " + device + ".temperature with datatype=INT64,encoding=PLAIN",
               "create timeseries " + device + ".status with datatype=BOOLEAN,encoding=PLAIN",
               "insert into "
@@ -139,13 +140,13 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("source.inclusion", "all");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       sinkAttributes.put("sink", sink);
       sinkAttributes.put("sink.ip", receiverIp);
       sinkAttributes.put("sink.port", Integer.toString(receiverPort));
       sinkAttributes.put("sink.username", "thulab");
-      sinkAttributes.put("sink.password", "passwd123456");
+      sinkAttributes.put("sink.password", "IoTDB!Test2024");
 
       final TSStatus status =
           client.createPipe(
@@ -202,16 +203,33 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
             });
   }
 
+  // A receiver user with read-only privileges must receive neither source users nor timeseries.
   @Test
   public void testNoPermission() throws Exception {
     TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
-            "create user `thulab` 'passwd123456'",
+            "create user `thulab` 'IoTDB!Test2024'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
             "grant READ on root.ln.** to role `admin`"),
         null);
+
+    // User IDs keep increasing after users are dropped in a reused cluster. Verify the initial
+    // names, then retain their actual IDs to detect any unauthorized user replication.
+    final Set<String> expectedUserRows = new HashSet<>();
+    final Set<String> expectedUserNames = new HashSet<>();
+    try (final Connection connection = receiverEnv.getConnection();
+        final Statement statement = connection.createStatement();
+        final ResultSet result = statement.executeQuery("list user")) {
+      while (result.next()) {
+        final String username = result.getString("User");
+        expectedUserNames.add(username);
+        expectedUserRows.add(result.getString("UserId") + "," + username + ",");
+      }
+    }
+    Assert.assertEquals(
+        new HashSet<>(Arrays.asList(SessionConfig.DEFAULT_USER, "thulab")), expectedUserNames);
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
@@ -222,7 +240,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "create user someUser 'passwd'",
+              "create user someUser 'IoTDB!Test2024'",
               "create timeseries root.noPermission.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"),
           null);
 
@@ -231,13 +249,13 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("source.inclusion", "all");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       sinkAttributes.put("sink", "iotdb-thrift-async-sink");
       sinkAttributes.put("sink.ip", receiverIp);
       sinkAttributes.put("sink.port", Integer.toString(receiverPort));
       sinkAttributes.put("sink.username", "thulab");
-      sinkAttributes.put("sink.password", "passwd123456");
+      sinkAttributes.put("sink.password", "IoTDB!Test2024");
 
       final TSStatus status =
           client.createPipe(
@@ -258,10 +276,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
           receiverEnv,
           "list user",
           ColumnHeaderConstant.USER_ID + "," + ColumnHeaderConstant.USER + ",",
-          new HashSet<>(Arrays.asList("0,root,", "10000,thulab,")));
+          expectedUserRows);
     }
   }
 
+  // Granting source READ must unblock aligned rows; the two-stage processor uses that source user.
   @Test
   public void testSourcePermissionForDataAndTwoStageProcessor() throws Exception {
     try (final Connection connection = senderEnv.getConnection();
@@ -344,8 +363,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     sinkAttributes.put("sink.batch.enable", "false");
     sinkAttributes.put("sink.ip", receiverDataNode.getIp());
     sinkAttributes.put("sink.port", Integer.toString(receiverDataNode.getPort()));
-    sinkAttributes.put("sink.user", "root");
-    sinkAttributes.put("sink.password", "root");
+    sinkAttributes.put("sink.user", SessionConfig.DEFAULT_USER);
+    sinkAttributes.put("sink.password", SessionConfig.DEFAULT_PASSWORD);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -373,6 +392,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         Collections.singleton("3,"));
   }
 
+  // Missing/wrong source credentials fail; schema and rows stay filtered until grants permit them.
   @Test
   public void testSourcePermission() {
     TestUtils.executeNonQuery(senderEnv, "create user `thulab` 'passwD@123456'", null);
@@ -604,6 +624,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     }
   }
 
+  // Wrong passwords fail creation. After each sender restart, correcting the source password
+  // or restoring the user's password must resume replication of all three rows.
   @Test
   public void testIllegalPassword() throws Exception {
     TestUtils.executeNonQueries(
@@ -622,116 +644,108 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         receiverEnv,
         "create aligned timeSeries root.vehicle.plane(temperature DOUBLE, pressure INT32)");
 
-    Connection connection = senderEnv.getConnection();
-    Statement statement = connection.createStatement();
-    try {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            String.format(
+                "create pipe a2b"
+                    + " with source ("
+                    + "'user'='thulab'"
+                    + ", 'password'='passwd')"
+                    + " with sink ("
+                    + "'node-urls'='%s')",
+                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+        fail();
+      } catch (final Exception e) {
+        Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "create pipe a2b ('sink'='write-back-sink', 'user'='thulab', 'password'='passwd')");
+        fail();
+      } catch (final Exception e) {
+        Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
+      }
+
       statement.execute(
           String.format(
               "create pipe a2b"
                   + " with source ("
                   + "'user'='thulab'"
-                  + ", 'password'='passwd')"
+                  + ", 'password'='ST@ongpasswd123456')"
                   + " with sink ("
                   + "'node-urls'='%s')",
               receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
-      fail();
-    } catch (final Exception e) {
-      Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
+
+      TestUtils.executeNonQuery(
+          senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(pressure) from root.vehicle.plane",
+          "count(root.vehicle.plane.pressure),",
+          Collections.singleton("1,"));
+
+      statement.execute("alter user thulab set password 'newST@ongPassword1'");
     }
 
-    try {
-      statement.execute(
-          "create pipe a2b ('sink'='write-back-sink', 'user'='thulab', 'password'='passwd')");
-      fail();
-    } catch (final Exception e) {
-      Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
+    // Close clients before restarting so the shared cluster does not retain stale connections.
+    // Restart failures must fail the test, otherwise recovery coverage would silently be skipped.
+    TestUtils.restartCluster(senderEnv);
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      TestUtils.executeNonQuery(
+          senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
+
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "select count(pressure) from root.vehicle.plane",
+          "count(root.vehicle.plane.pressure),",
+          Collections.singleton("1,"));
+
+      // After restart, the pipe keeps retrying with the stale password and may trigger login lock.
+      statement.execute("alter user thulab account unlock");
+
+      try {
+        statement.execute("alter pipe a2b modify source ('password'='fake')");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
+      }
+
+      statement.execute("alter user thulab account unlock");
+      statement.execute("alter pipe a2b modify source ('password'='newST@ongPassword1')");
+
+      // Test empty alter
+      statement.execute("alter pipe a2b");
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(pressure) from root.vehicle.plane",
+          "count(root.vehicle.plane.pressure),",
+          Collections.singleton("2,"));
+
+      statement.execute("alter user thulab set password 'anotherST@ongPassword1'");
     }
 
-    statement.execute(
-        String.format(
-            "create pipe a2b"
-                + " with source ("
-                + "'user'='thulab'"
-                + ", 'password'='ST@ongpasswd123456')"
-                + " with sink ("
-                + "'node-urls'='%s')",
-            receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+    TestUtils.restartCluster(senderEnv);
 
-    TestUtils.executeNonQuery(
-        senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      TestUtils.executeNonQuery(
+          senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
+      statement.execute("alter user thulab account unlock");
+      statement.execute("alter user thulab set password 'newST@ongPassword1'");
+      statement.execute("alter pipe a2b");
 
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "select count(pressure) from root.vehicle.plane",
-        "count(root.vehicle.plane.pressure),",
-        Collections.singleton("1,"));
-
-    statement.execute("alter user thulab set password 'newST@ongPassword'");
-
-    try {
-      TestUtils.restartCluster(senderEnv);
-    } catch (final Throwable e) {
-      e.printStackTrace();
-      return;
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(pressure) from root.vehicle.plane",
+          "count(root.vehicle.plane.pressure),",
+          Collections.singleton("3,"));
     }
-
-    connection = senderEnv.getConnection();
-    statement = connection.createStatement();
-    TestUtils.executeNonQuery(
-        senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
-
-    TestUtils.assertDataAlwaysOnEnv(
-        receiverEnv,
-        "select count(pressure) from root.vehicle.plane",
-        "count(root.vehicle.plane.pressure),",
-        Collections.singleton("1,"));
-
-    // After restart, the pipe keeps retrying with the stale password and may trigger login lock.
-    statement.execute("alter user thulab account unlock");
-
-    try {
-      statement.execute("alter pipe a2b modify source ('password'='fake')");
-      fail();
-    } catch (final SQLException e) {
-      Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
-    }
-
-    statement.execute("alter user thulab account unlock");
-    statement.execute("alter pipe a2b modify source ('password'='newST@ongPassword')");
-
-    // Test empty alter
-    statement.execute("alter pipe a2b");
-
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "select count(pressure) from root.vehicle.plane",
-        "count(root.vehicle.plane.pressure),",
-        Collections.singleton("2,"));
-
-    statement.execute("alter user thulab set password 'anotherST@ongPassword'");
-
-    try {
-      TestUtils.restartCluster(senderEnv);
-    } catch (final Throwable e) {
-      e.printStackTrace();
-      return;
-    }
-
-    connection = senderEnv.getConnection();
-    statement = connection.createStatement();
-    TestUtils.executeNonQuery(
-        senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
-    statement.execute("alter user thulab account unlock");
-    statement.execute("alter user thulab set password 'newST@ongPassword'");
-    statement.execute("alter pipe a2b");
-
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "select count(pressure) from root.vehicle.plane",
-        "count(root.vehicle.plane.pressure),",
-        Collections.singleton("3,"));
-
-    statement.close();
-    connection.close();
   }
 }

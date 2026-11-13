@@ -27,9 +27,10 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,6 +49,8 @@ public class IoTDBTableViewQueryWithNotMatchedDataTypeIT {
   protected static final String DATABASE_NAME = "test";
 
   private final boolean aligned;
+  private final String databaseName;
+  private final String treeDatabaseName;
 
   protected static final String[] createTreeAlignedDataSqls =
       new String[] {
@@ -61,14 +64,18 @@ public class IoTDBTableViewQueryWithNotMatchedDataTypeIT {
         "INSERT INTO root.db.battery.b1(time, current) values (1, 1)",
       };
 
-  protected static String[] createTableSqls = {
-    "create database " + DATABASE_NAME,
-    "use " + DATABASE_NAME,
-    "CREATE VIEW view1 (battery TAG, current BLOB FIELD) as root.db.battery.**",
-  };
+  protected static String[] createTableSqls(String databaseName, String treeDatabaseName) {
+    return new String[] {
+      "create database " + databaseName,
+      "use " + databaseName,
+      "CREATE VIEW view1 (battery TAG, current BLOB FIELD) as " + treeDatabaseName + ".battery.**",
+    };
+  }
 
   public IoTDBTableViewQueryWithNotMatchedDataTypeIT(boolean aligned) {
     this.aligned = aligned;
+    databaseName = DATABASE_NAME + (aligned ? "_aligned" : "_non_aligned");
+    treeDatabaseName = "root." + databaseName;
   }
 
   @Parameterized.Parameters(name = "aligned={0}")
@@ -76,24 +83,35 @@ public class IoTDBTableViewQueryWithNotMatchedDataTypeIT {
     return Arrays.asList(new Object[][] {{true}, {false}});
   }
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareData(aligned ? createTreeAlignedDataSqls : createTreeNonAlignedDataSqls);
-    prepareTableData(createTableSqls);
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @Before
+  public void prepareDataForCase() {
+    String[] dataSqls = aligned ? createTreeAlignedDataSqls : createTreeNonAlignedDataSqls;
+    String[] caseDataSqls = new String[dataSqls.length + 1];
+    caseDataSqls[0] = "CREATE DATABASE " + treeDatabaseName;
+    for (int i = 0; i < dataSqls.length; i++) {
+      caseDataSqls[i + 1] = dataSqls[i].replace("root.db.", treeDatabaseName + ".");
+    }
+    prepareData(caseDataSqls);
+    prepareTableData(createTableSqls(databaseName, treeDatabaseName));
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // A BLOB view must exclude the FLOAT tree measurement for both aligned and non-aligned sources.
   @Test
   public void test() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      session.executeNonQueryStatement("USE " + DATABASE_NAME);
+      session.executeNonQueryStatement("USE " + databaseName);
       SessionDataSet sessionDataSet =
           session.executeQueryStatement("select * from view1 where current is not null");
       Assert.assertFalse(sessionDataSet.hasNext());

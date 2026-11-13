@@ -25,7 +25,8 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,17 +51,27 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBInsertWithQueryIT {
 
-  @Before
-  public void setUp() throws Exception {
+  // All scenarios use the same startup configuration, so only their root.fans schema needs cleanup.
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecisionCheckEnabled(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("DELETE TIMESERIES root.fans.**");
+    }
+  }
+
+  @AfterClass
+  public static void cleanCluster() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // Insert [0,1000) and [1000,2000) in order; each query must return the cumulative row count.
   @Test
   public void insertWithQueryTest() {
     // insert
@@ -76,6 +87,8 @@ public class IoTDBInsertWithQueryIT {
     selectAndCount(2000);
   }
 
+  // Insert consecutive ranges while five readers run; every read must return the expected row
+  // count.
   @Test
   public void insertWithQueryMultiThreadTest() throws InterruptedException {
     // insert
@@ -90,6 +103,7 @@ public class IoTDBInsertWithQueryIT {
     selectWithMultiThread(2000);
   }
 
+  // Overlap [0,1000) with [500,1500), then add [2000,3000); counts must deduplicate timestamps.
   @Test
   public void insertWithQueryUnsequenceTest() {
     // insert
@@ -111,6 +125,7 @@ public class IoTDBInsertWithQueryIT {
     selectAndCount(2500);
   }
 
+  // Repeat overlapping writes with five readers; each query must return unique timestamp counts.
   @Test
   public void insertWithQueryMultiThreadUnsequenceTest() throws InterruptedException {
     // insert
@@ -131,6 +146,7 @@ public class IoTDBInsertWithQueryIT {
     selectWithMultiThread(2500);
   }
 
+  // Flush between ordered ranges and verify later writes remain visible with the expected total.
   @Test
   public void insertWithQueryFlushTest() {
     // insert
@@ -148,6 +164,8 @@ public class IoTDBInsertWithQueryIT {
     selectAndCount(2000);
   }
 
+  // Check negative-time ordering and aggregation boundaries, including
+  // the Long.MIN_VALUE + 1 timestamp value.
   @Test
   public void insertNegativeTimestampWithQueryTest() {
     // insert
@@ -169,6 +187,8 @@ public class IoTDBInsertWithQueryIT {
     queryNegativeTimestampTypeDataTest();
   }
 
+  // Run five readers alongside flushes between ordered writes; each reader must see the expected
+  // row count.
   @Test
   public void flushWithQueryTest() throws InterruptedException {
     // insert
@@ -184,6 +204,8 @@ public class IoTDBInsertWithQueryIT {
     selectWithMultiThreadAndFlush(1500);
   }
 
+  // Flush while querying out-of-order writes, then add a missing interval and verify the merged
+  // count.
   @Test
   public void flushWithQueryUnorderTest() throws InterruptedException {
     // insert
@@ -202,6 +224,8 @@ public class IoTDBInsertWithQueryIT {
     selectWithMultiThread(1000);
   }
 
+  // Merge out-of-order ranges across concurrent flushes; checked snapshots must have expected
+  // counts.
   @Test
   public void flushWithQueryUnorderLargerTest() throws InterruptedException {
     // insert
@@ -228,6 +252,7 @@ public class IoTDBInsertWithQueryIT {
     selectWithMultiThreadAndFlush(1500);
   }
 
+  // Interleave writers, readers, and a flush; each reader must see strictly increasing timestamps.
   @Test
   public void insertWithQueryTogetherTest() throws InterruptedException {
     // insert

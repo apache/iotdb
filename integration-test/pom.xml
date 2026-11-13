@@ -267,6 +267,11 @@
     </dependencies>
     <build>
         <plugins>
+            <!-- Compile readiness diagnostics in the selected locale, using the parent source mapping. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+            </plugin>
             <!-- skip default-test -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
