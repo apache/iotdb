@@ -35,7 +35,14 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class PipeTaskAgentTest {
 
@@ -87,6 +94,62 @@ public class PipeTaskAgentTest {
     Assert.assertTrue(getMapField(agent, "pipeName2CreationTimeSetMap").isEmpty());
   }
 
+  @Test
+  public void testFloatingMemoryIncrementIsNotLostDuringDropCleanup() throws Exception {
+    final DummyPipeTaskAgent agent = new DummyPipeTaskAgent();
+    final PipeMeta pipeMeta = generatePipeMeta("concurrent-pipe", 1L);
+    agent.createPipeForTest(pipeMeta);
+    agent.addFloatingMemoryUsageInByte("concurrent-pipe", 1L, 100L);
+    agent.decreaseFloatingMemoryUsageInByte("concurrent-pipe", 1L, 100L);
+
+    final Field counterMapField =
+        PipeTaskAgent.class.getDeclaredField(
+            "pipeNameWithCreationTime2FloatingMemoryUsageInByteMap");
+    counterMapField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    final Map<String, AtomicLong> originalCounterMap =
+        (Map<String, AtomicLong>) counterMapField.get(agent);
+    final BlockingFloatingMemoryMap blockingCounterMap =
+        new BlockingFloatingMemoryMap(originalCounterMap, "concurrent-pipe_1");
+    counterMapField.set(agent, blockingCounterMap);
+
+    final AtomicReference<Throwable> backgroundFailure = new AtomicReference<>();
+    final Thread increaseThread =
+        new Thread(
+            () ->
+                runAndRecordFailure(
+                    () -> agent.addFloatingMemoryUsageInByte("concurrent-pipe", 1L, 100L),
+                    backgroundFailure));
+    final Thread dropThread =
+        new Thread(
+            () ->
+                runAndRecordFailure(
+                    () -> agent.dropPipeForTest("concurrent-pipe", 1L), backgroundFailure));
+
+    try {
+      blockingCounterMap.pauseNextUpdate();
+      increaseThread.start();
+      Assert.assertTrue(blockingCounterMap.updatePaused.await(10, TimeUnit.SECONDS));
+      dropThread.start();
+      Assert.assertTrue(waitForDrop(agent, "concurrent-pipe", 1L));
+    } finally {
+      blockingCounterMap.resumeUpdate.countDown();
+      increaseThread.join(TimeUnit.SECONDS.toMillis(10));
+      dropThread.join(TimeUnit.SECONDS.toMillis(10));
+      counterMapField.set(agent, originalCounterMap);
+    }
+
+    Assert.assertFalse(increaseThread.isAlive());
+    Assert.assertFalse(dropThread.isAlive());
+    Assert.assertNull(backgroundFailure.get());
+    Assert.assertEquals(100L, agent.getAllFloatingMemoryUsageInByte());
+    Assert.assertEquals(100L, agent.getFloatingMemoryUsageInByte("concurrent-pipe"));
+
+    agent.decreaseFloatingMemoryUsageInByte("concurrent-pipe", 1L, 100L);
+    Assert.assertEquals(0L, agent.getAllFloatingMemoryUsageInByte());
+    Assert.assertEquals(0L, agent.getFloatingMemoryUsageInByte("concurrent-pipe"));
+  }
+
   @SuppressWarnings("unchecked")
   private static Map<?, ?> getMapField(final PipeTaskAgent agent, final String fieldName)
       throws NoSuchFieldException, IllegalAccessException {
@@ -102,6 +165,28 @@ public class PipeTaskAgentTest {
         new PipeRuntimeMeta(new ConcurrentHashMap<>()));
   }
 
+  private static void runAndRecordFailure(
+      final Runnable operation, final AtomicReference<Throwable> failure) {
+    try {
+      operation.run();
+    } catch (final Throwable e) {
+      failure.compareAndSet(null, e);
+    }
+  }
+
+  private static boolean waitForDrop(
+      final DummyPipeTaskAgent agent, final String pipeName, final long creationTime)
+      throws InterruptedException {
+    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (System.nanoTime() < deadline) {
+      if (agent.getPipeMetaForTest(pipeName, creationTime) == null) {
+        return true;
+      }
+      Thread.sleep(1);
+    }
+    return false;
+  }
+
   private static class DummyPipeTaskAgent extends PipeTaskAgent {
 
     private boolean createPipeForTest(final PipeMeta pipeMeta) throws IllegalPathException {
@@ -110,6 +195,10 @@ public class PipeTaskAgentTest {
 
     private boolean dropPipeForTest(final String pipeName, final long creationTime) {
       return dropPipe(pipeName, creationTime);
+    }
+
+    private PipeMeta getPipeMetaForTest(final String pipeName, final long creationTime) {
+      return pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
     }
 
     @Override
@@ -150,6 +239,63 @@ public class PipeTaskAgentTest {
     public void runPipeTasks(
         final Collection<PipeTask> pipeTasks, final Consumer<PipeTask> runSingle) {
       pipeTasks.forEach(runSingle);
+    }
+  }
+
+  private static class BlockingFloatingMemoryMap extends ConcurrentHashMap<String, AtomicLong> {
+
+    private static final long serialVersionUID = 1L;
+
+    private final String pipeID;
+    private final AtomicBoolean shouldPause = new AtomicBoolean();
+    private final CountDownLatch updatePaused = new CountDownLatch(1);
+    private final CountDownLatch resumeUpdate = new CountDownLatch(1);
+
+    private BlockingFloatingMemoryMap(
+        final Map<String, AtomicLong> originalMap, final String pipeID) {
+      putAll(originalMap);
+      this.pipeID = pipeID;
+    }
+
+    private void pauseNextUpdate() {
+      shouldPause.set(true);
+    }
+
+    @Override
+    public AtomicLong compute(
+        final String key,
+        final BiFunction<? super String, ? super AtomicLong, ? extends AtomicLong>
+            remappingFunction) {
+      return super.compute(
+          key,
+          (currentKey, currentValue) -> {
+            final AtomicLong updatedValue = remappingFunction.apply(currentKey, currentValue);
+            pauseIfNecessary(currentKey);
+            return updatedValue;
+          });
+    }
+
+    @Override
+    public AtomicLong computeIfAbsent(
+        final String key, final Function<? super String, ? extends AtomicLong> mappingFunction) {
+      final AtomicLong value = super.computeIfAbsent(key, mappingFunction);
+      pauseIfNecessary(key);
+      return value;
+    }
+
+    private void pauseIfNecessary(final String key) {
+      if (!pipeID.equals(key) || !shouldPause.compareAndSet(true, false)) {
+        return;
+      }
+      updatePaused.countDown();
+      try {
+        if (!resumeUpdate.await(10, TimeUnit.SECONDS)) {
+          throw new IllegalStateException("Timed out waiting to resume floating memory update");
+        }
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException(e);
+      }
     }
   }
 }

@@ -128,6 +128,17 @@ public class PipeEventCommitManagerTest {
   }
 
   @Test
+  public void testLateEventEnrichmentAfterClearDoesNotRestoreState() throws Exception {
+    final EnrichedEvent event = createEvent(mock(Runnable.class));
+    manager.clear(PIPE_NAME, CREATION_TIME);
+
+    manager.enrichWithCommitterKeyAndCommitId(event, CREATION_TIME, REGION_ID);
+
+    assertTrue(getManagerMap("eventCommitterMap").isEmpty());
+    assertTrue(getManagerMap("eventCommitterRestartTimesMap").isEmpty());
+  }
+
+  @Test
   public void testRestartRejectsStaleCommitAndAcceptsCurrentCommit() throws Exception {
     final CommitterKey oldKey = manager.getCommitterKey(PIPE_NAME, CREATION_TIME, REGION_ID);
     final Runnable oldOnCommitted = mock(Runnable.class);

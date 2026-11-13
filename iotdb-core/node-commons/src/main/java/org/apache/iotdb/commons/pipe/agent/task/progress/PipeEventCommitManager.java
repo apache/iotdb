@@ -94,8 +94,15 @@ public class PipeEventCommitManager {
       return;
     }
 
+    final String pipeName = event.getPipeName();
+    final CommitterKey restartTimesKey =
+        generateCommitterRestartTimesKey(pipeName, creationTime, regionId);
     final CommitterKey committerKey =
-        generateCommitterKey(event.getPipeName(), creationTime, regionId);
+        taskAgent.getCommitterKey(
+            pipeName,
+            creationTime,
+            regionId,
+            eventCommitterRestartTimesMap.getOrDefault(restartTimesKey, 0));
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
     if (committer == null) {
       return;
