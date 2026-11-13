@@ -67,8 +67,11 @@ import org.mockito.MockitoAnnotations;
 import org.powermock.reflect.Whitebox;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.function.Supplier;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -449,5 +452,18 @@ public class SessionConnectionTest {
     sessionConnection.setEndPoint(new TEndPoint("localhost", 1234));
     Assert.assertEquals("localhost", sessionConnection.getEndPoint().getIp());
     sessionConnection.toString();
+  }
+
+  @Test(expected = IoTDBConnectionException.class)
+  public void testExecuteQueryStatementNullResponse()
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException, TException {
+    List<TEndPoint> mockNodes = Collections.singletonList(new TEndPoint("127.0.0.1", 6667));
+    Whitebox.setInternalState(sessionConnection, "endPointList", new ArrayList<>(mockNodes));
+    Whitebox.setInternalState(
+        sessionConnection, "availableNodes", (Supplier<List<TEndPoint>>) () -> mockNodes);
+
+    Mockito.when(client.executeQueryStatementV2(any())).thenReturn(null);
+
+    sessionConnection.executeQueryStatement("show version", 500l);
   }
 }
