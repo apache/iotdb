@@ -105,6 +105,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntr
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntrySortedMaterializer;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.SpilledDeviceEntryDataSet;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TagColumnUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
@@ -2079,10 +2080,7 @@ public class TableDistributedPlanGenerator
       node.setChild(childrenNodes.get(0));
       AggregationNode physicalAggregation =
           withRateFunctionInputOrdering(
-              node,
-              childOrdering,
-              isChildTimeOrderedPerGroup(node, childrenNodes.get(0)),
-              childrenNodes.get(0));
+              node, childOrdering, findTimeOrderedDeviceScan(node, childrenNodes.get(0)));
 
       if (childrenNodes.get(0) instanceof UnionNode
           && physicalAggregation.getAggregations().values().stream()
@@ -2251,15 +2249,16 @@ public class TableDistributedPlanGenerator
 
   private static AggregationNode withRateFunctionInputOrdering(
       AggregationNode node, OrderingScheme childOrdering) {
-    return withRateFunctionInputOrdering(node, childOrdering, false, null);
+    return withRateFunctionInputOrdering(node, childOrdering, null);
   }
 
+  /**
+   * @param timeOrderedScan the child's scan when the scan input is already time ordered per group,
+   *     or {@code null} when no such guarantee was established
+   */
   private static AggregationNode withRateFunctionInputOrdering(
-      AggregationNode node,
-      OrderingScheme childOrdering,
-      boolean childTimeOrderedPerGroup,
-      PlanNode child) {
-    DeviceTableScanNode scan = childTimeOrderedPerGroup ? findOrderedDeviceScan(child) : null;
+      AggregationNode node, OrderingScheme childOrdering, DeviceTableScanNode timeOrderedScan) {
+    PlanNode child = node.getChild();
     Map<Symbol, AggregationNode.Aggregation> aggregations = new LinkedHashMap<>();
     node.getAggregations()
         .forEach(
@@ -2273,10 +2272,8 @@ public class TableDistributedPlanGenerator
                         aggregation.getFilter(),
                         aggregation.getOrderingScheme(),
                         aggregation.getMask(),
-                        (childTimeOrderedPerGroup
-                                && isOrderedInputFunction(
-                                    aggregation.getResolvedFunction().getSignature().getName())
-                                && isTimeArgumentNativeTime(aggregation, child, scan))
+                        (timeOrderedScan != null
+                                && isTimeArgumentNativeTime(aggregation, child, timeOrderedScan))
                             || isInputOrderedByTimeAscending(
                                 aggregation,
                                 node.getStep(),
@@ -2290,15 +2287,17 @@ public class TableDistributedPlanGenerator
       AggregationNode.Step step,
       List<Symbol> groupingKeys,
       OrderingScheme childOrdering) {
-    String functionName = aggregation.getResolvedFunction().getSignature().getName();
-    if (step != SINGLE
-        || childOrdering == null
-        || aggregation.getArguments().size() < 2
-        || !isOrderedInputFunction(functionName)) {
+    if (step != SINGLE || childOrdering == null) {
+      return false;
+    }
+    int timeArgumentIndex =
+        getOrderedInputTimeArgumentIndex(
+            aggregation.getResolvedFunction().getSignature().getName());
+    if (timeArgumentIndex < 0 || aggregation.getArguments().size() <= timeArgumentIndex) {
       return false;
     }
 
-    Symbol timeSymbol = Symbol.from(aggregation.getArguments().get(1));
+    Symbol timeSymbol = Symbol.from(aggregation.getArguments().get(timeArgumentIndex));
     List<Symbol> orderBy = childOrdering.getOrderBy();
     int timeIndex = orderBy.indexOf(timeSymbol);
     if (timeIndex < 0 || !childOrdering.getOrdering(timeSymbol).isAscending()) {
@@ -2314,17 +2313,31 @@ public class TableDistributedPlanGenerator
     return true;
   }
 
-  private boolean isChildTimeOrderedPerGroup(AggregationNode node, PlanNode child) {
+  /**
+   * Returns the child's scan when its input is time ordered per output group, or {@code null}. Only
+   * ordered-input families benefit from the guarantee, so the table schema is not loaded for plain
+   * aggregations such as {@code count} or {@code sum}.
+   */
+  private DeviceTableScanNode findTimeOrderedDeviceScan(AggregationNode node, PlanNode child) {
+    if (node.getAggregations().values().stream()
+        .noneMatch(
+            aggregation ->
+                isOrderedInputFunction(
+                    aggregation.getResolvedFunction().getSignature().getName()))) {
+      return null;
+    }
     DeviceTableScanNode scan = findOrderedDeviceScan(child);
     if (scan == null) {
-      return false;
+      return null;
     }
     return isDeviceScanTimeOrderedPerGroup(
-        node.getStep(),
-        node.getGroupingKeys(),
-        child,
-        scan,
-        analysis.getTableColumnSchema(scan.getQualifiedObjectName()));
+            node.getStep(),
+            node.getGroupingKeys(),
+            child,
+            scan,
+            analysis.getTableColumnSchema(scan.getQualifiedObjectName()))
+        ? scan
+        : null;
   }
 
   static boolean isDeviceScanTimeOrderedPerGroup(
@@ -2346,29 +2359,21 @@ public class TableDistributedPlanGenerator
     if (tableColumnSchema == null) {
       return false;
     }
-    Set<String> tagColumnNames = new HashSet<>();
-    for (ColumnSchema columnSchema : tableColumnSchema.values()) {
-      if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
-        tagColumnNames.add(columnSchema.getName());
-      }
-    }
-    Map<Symbol, ColumnSchema> scanColumnSchema = scan.getAssignments();
-    Set<String> groupedColumnNames = new HashSet<>();
-    for (Symbol symbol : resolveSymbolsToScanLevel(child, groupingKeys)) {
-      ColumnSchema columnSchema = scanColumnSchema.get(symbol);
-      if (columnSchema != null) {
-        groupedColumnNames.add(columnSchema.getName());
-      }
-    }
-    return groupedColumnNames.containsAll(tagColumnNames);
+    Set<String> groupedColumnNames =
+        TagColumnUtils.tagColumnNames(
+            resolveSymbolsToScanLevel(child, groupingKeys), scan.getAssignments());
+    return TagColumnUtils.coversAllTagColumns(tableColumnSchema, groupedColumnNames);
   }
 
-  private static boolean isTimeArgumentNativeTime(
+  static boolean isTimeArgumentNativeTime(
       AggregationNode.Aggregation aggregation, PlanNode child, DeviceTableScanNode scan) {
-    if (scan == null || aggregation.getArguments().size() < 2) {
+    int timeArgumentIndex =
+        getOrderedInputTimeArgumentIndex(
+            aggregation.getResolvedFunction().getSignature().getName());
+    if (timeArgumentIndex < 0 || aggregation.getArguments().size() <= timeArgumentIndex) {
       return false;
     }
-    Expression timeArgument = aggregation.getArguments().get(1);
+    Expression timeArgument = aggregation.getArguments().get(timeArgumentIndex);
     if (!(timeArgument instanceof SymbolReference)) {
       return false;
     }
@@ -2420,13 +2425,26 @@ public class TableDistributedPlanGenerator
     }
   }
 
-  private static boolean isOrderedInputFunction(String functionName) {
-    // Aggregation families whose accumulators require strictly ascending time input. New families
-    // (for example the integral family) must be added here as well.
-    return RATE.equalsIgnoreCase(functionName)
+  /**
+   * Returns the position of the time argument in an aggregation's argument list, or {@code -1} when
+   * the function's accumulators do not require time-ordered input. Both ordering checks must use
+   * this helper: a new family (for example the integral family, whose time argument is {@code
+   * integral(value, time_unit, time)}) only needs to be registered here, and its time argument
+   * index then applies to the ordering-based and the scan-based check alike.
+   */
+  private static int getOrderedInputTimeArgumentIndex(String functionName) {
+    // RATE, INCREASE, IRATE and DELTA take (value, time, ...).
+    if (RATE.equalsIgnoreCase(functionName)
         || INCREASE.equalsIgnoreCase(functionName)
         || IRATE.equalsIgnoreCase(functionName)
-        || DELTA.equalsIgnoreCase(functionName);
+        || DELTA.equalsIgnoreCase(functionName)) {
+      return 1;
+    }
+    return -1;
+  }
+
+  private static boolean isOrderedInputFunction(String functionName) {
+    return getOrderedInputTimeArgumentIndex(functionName) >= 0;
   }
 
   private boolean prefixMatched(OrderingScheme childOrdering, List<Symbol> preGroupedSymbols) {

@@ -26,49 +26,93 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 
 import org.junit.Test;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class RateOrderedPlannerTest {
 
+  private static final String SINGLE_DEVICE_WHERE =
+      " WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY'";
+  // DEVICE_3 and DEVICE_4 are both in DATA_REGION_GROUP_2, so this filter still produces a SINGLE
+  // aggregation over a two-device scan.
+  private static final String TWO_DEVICE_WHERE = " WHERE tag1='shanghai'";
+
   @Test
   public void testSingleDeviceQueryEnablesOrderedInput() {
-    AggregationNode aggregation =
-        planAggregation(
-            "SELECT irate(s1, time) AS ir FROM table1 "
-                + "WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY'");
-    assertNotNull(aggregation);
-    assertTrue(hasOrderedInput(aggregation));
+    assertOrdered("SELECT irate(s1, time) AS ir FROM table1" + SINGLE_DEVICE_WHERE);
   }
 
   @Test
-  public void testMultiDeviceQueryKeepsNaiveInput() {
-    AggregationNode aggregation = planAggregation("SELECT irate(s1, time) AS ir FROM table1");
-    assertNotNull(aggregation);
-    assertFalse(hasOrderedInput(aggregation));
+  public void testTwoDevicesGroupedByAllTagsEnableOrderedInput() {
+    assertOrdered(
+        "SELECT irate(s1, time) AS ir FROM table1"
+            + TWO_DEVICE_WHERE
+            + " GROUP BY tag1, tag2, tag3");
+  }
+
+  @Test
+  public void testTwoDevicesGroupedBySubsetOfTagsKeepNaiveInput() {
+    assertNotOrdered(
+        "SELECT irate(s1, time) AS ir FROM table1" + TWO_DEVICE_WHERE + " GROUP BY tag1");
+  }
+
+  @Test
+  public void testGlobalAggregationOverTwoDevicesKeepsNaiveInput() {
+    assertNotOrdered("SELECT irate(s1, time) AS ir FROM table1" + TWO_DEVICE_WHERE);
+  }
+
+  @Test
+  public void testDescendingSubqueryKeepsNaiveInput() {
+    assertNotOrdered(
+        "SELECT irate(s1, time) AS ir FROM (SELECT s1, time FROM table1"
+            + TWO_DEVICE_WHERE
+            + " ORDER BY time DESC LIMIT 10)");
   }
 
   @Test
   public void testNonTimeArgumentKeepsNaiveInput() {
-    AggregationNode aggregation =
-        planAggregation(
-            "SELECT irate(s1, s2) AS ir FROM table1 "
-                + "WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY'");
+    assertNotOrdered("SELECT irate(s1, s2) AS ir FROM table1" + SINGLE_DEVICE_WHERE);
+  }
+
+  @Test
+  public void testFourArgumentRateFunctionsEnableOrderedInput() {
+    assertOrdered("SELECT rate(s1, time, s2, s2) AS r FROM table1" + SINGLE_DEVICE_WHERE);
+    assertOrdered("SELECT increase(s1, time, s2, s2) AS r FROM table1" + SINGLE_DEVICE_WHERE);
+    assertOrdered("SELECT delta(s1, time, s2, s2) AS r FROM table1" + SINGLE_DEVICE_WHERE);
+  }
+
+  @Test
+  public void testTimeArgumentThroughAliasEnablesOrderedInput() {
+    assertOrdered(
+        "SELECT irate(v, t) AS ir FROM (SELECT s1 AS v, time AS t FROM table1"
+            + SINGLE_DEVICE_WHERE
+            + ")");
+  }
+
+  private static void assertOrdered(String sql) {
+    AggregationNode aggregation = planSingleAggregation(sql);
     assertNotNull(aggregation);
+    assertEquals(SINGLE, aggregation.getStep());
+    assertTrue(hasOrderedInput(aggregation));
+  }
+
+  private static void assertNotOrdered(String sql) {
+    AggregationNode aggregation = planSingleAggregation(sql);
+    assertNotNull(aggregation);
+    assertEquals(SINGLE, aggregation.getStep());
     assertFalse(hasOrderedInput(aggregation));
   }
 
-  private static AggregationNode planAggregation(String sql) {
+  private static AggregationNode planSingleAggregation(String sql) {
     PlanTester planTester = new PlanTester(new TestMetadata());
     planTester.createPlan(sql);
-    for (int fragment = 0; fragment < 3; fragment++) {
-      AggregationNode aggregation;
-      try {
-        aggregation = findAggregation(planTester.getFragmentPlan(fragment));
-      } catch (RuntimeException e) {
-        break;
-      }
+    for (int fragment = 0;
+        fragment < planTester.getDistributedPlan().getFragments().size();
+        fragment++) {
+      AggregationNode aggregation = findSingleAggregation(planTester.getFragmentPlan(fragment));
       if (aggregation != null) {
         return aggregation;
       }
@@ -76,12 +120,12 @@ public class RateOrderedPlannerTest {
     return null;
   }
 
-  private static AggregationNode findAggregation(PlanNode node) {
-    if (node instanceof AggregationNode) {
+  private static AggregationNode findSingleAggregation(PlanNode node) {
+    if (node instanceof AggregationNode && ((AggregationNode) node).getStep() == SINGLE) {
       return (AggregationNode) node;
     }
     for (PlanNode child : node.getChildren()) {
-      AggregationNode aggregation = findAggregation(child);
+      AggregationNode aggregation = findSingleAggregation(child);
       if (aggregation != null) {
         return aggregation;
       }

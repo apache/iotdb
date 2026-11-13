@@ -21,17 +21,28 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.read.common.type.StringType;
@@ -45,13 +56,17 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class RateOrderedInputTest {
@@ -59,6 +74,8 @@ public class RateOrderedInputTest {
   private static final Symbol TAG1 = new Symbol("tag1");
   private static final Symbol TAG2 = new Symbol("tag2");
   private static final Symbol S1 = new Symbol("s1");
+  private static final Symbol S2 = new Symbol("s2");
+  private static final Symbol TIME_SYMBOL = new Symbol("time");
 
   @Test
   public void testSingleDeviceIsOrderedPerGroup() {
@@ -104,8 +121,115 @@ public class RateOrderedInputTest {
   }
 
   @Test
-  public void testOrderChangingChildIsRejected() {
-    assertNull(TableDistributedPlanGenerator.findOrderedDeviceScan(Mockito.mock(PlanNode.class)));
+  public void testProjectAndFilterPreserveScan() {
+    DeviceTableScanNode scan = scan(1);
+    ProjectNode project =
+        new ProjectNode(
+            new PlanNodeId("project"),
+            scan,
+            Assignments.builder().put(S1, new SymbolReference("s1")).build());
+    assertSame(scan, TableDistributedPlanGenerator.findOrderedDeviceScan(project));
+
+    FilterNode filter =
+        new FilterNode(new PlanNodeId("filter"), scan, Mockito.mock(Expression.class));
+    assertSame(scan, TableDistributedPlanGenerator.findOrderedDeviceScan(filter));
+  }
+
+  @Test
+  public void testSortChildIsRejected() {
+    DeviceTableScanNode scan = scan(1);
+    SortNode sort =
+        new SortNode(
+            new PlanNodeId("sort"),
+            scan,
+            new OrderingScheme(
+                Collections.singletonList(TIME_SYMBOL),
+                Collections.singletonMap(TIME_SYMBOL, ASC_NULLS_LAST)),
+            false,
+            false);
+    assertNull(TableDistributedPlanGenerator.findOrderedDeviceScan(sort));
+    assertFalse(isOrderedPerGroup(SINGLE, Collections.emptyList(), sort));
+  }
+
+  @Test
+  public void testLimitChildIsRejected() {
+    DeviceTableScanNode scan = scan(1);
+    LimitNode limit = new LimitNode(new PlanNodeId("limit"), scan, 10, Optional.empty());
+    assertNull(TableDistributedPlanGenerator.findOrderedDeviceScan(limit));
+  }
+
+  @Test
+  public void testSingleChildCollectIsRejected() {
+    DeviceTableScanNode scan = scan(1);
+    CollectNode collect =
+        new CollectNode(
+            new PlanNodeId("collect"),
+            Collections.singletonList(scan),
+            Collections.singletonList(S1));
+    assertNull(TableDistributedPlanGenerator.findOrderedDeviceScan(collect));
+    assertFalse(isOrderedPerGroup(SINGLE, Collections.emptyList(), collect));
+  }
+
+  @Test
+  public void testUnsupportedScanTypesAreRejected() {
+    assertNull(
+        TableDistributedPlanGenerator.findOrderedDeviceScan(
+            Mockito.mock(AggregationTableScanNode.class)));
+    assertNull(
+        TableDistributedPlanGenerator.findOrderedDeviceScan(
+            Mockito.mock(TreeDeviceViewScanNode.class)));
+    assertNull(
+        TableDistributedPlanGenerator.findOrderedDeviceScan(
+            Mockito.mock(ExternalTsFileScanNode.class)));
+  }
+
+  @Test
+  public void testTimeArgumentResolvesToNativeTime() {
+    DeviceTableScanNode scan = scan(1);
+    assertTrue(
+        TableDistributedPlanGenerator.isTimeArgumentNativeTime(
+            aggregation("irate", S1, TIME_SYMBOL), scan, scan));
+  }
+
+  @Test
+  public void testTimeArgumentResolvesThroughAliasToNativeTime() {
+    DeviceTableScanNode scan = scan(1);
+    Symbol value = new Symbol("v");
+    Symbol time = new Symbol("t");
+    ProjectNode project =
+        new ProjectNode(
+            new PlanNodeId("project"),
+            scan,
+            Assignments.builder()
+                .put(value, new SymbolReference("s1"))
+                .put(time, new SymbolReference("time"))
+                .build());
+    assertTrue(
+        TableDistributedPlanGenerator.isTimeArgumentNativeTime(
+            aggregation("irate", value, time), project, scan));
+  }
+
+  @Test
+  public void testNonTimeColumnTimeArgumentIsRejected() {
+    DeviceTableScanNode scan = scan(1);
+    assertFalse(
+        TableDistributedPlanGenerator.isTimeArgumentNativeTime(
+            aggregation("irate", S1, S2), scan, scan));
+  }
+
+  private static AggregationNode.Aggregation aggregation(
+      String functionName, Symbol value, Symbol time) {
+    ResolvedFunction function = Mockito.mock(ResolvedFunction.class);
+    BoundSignature signature = Mockito.mock(BoundSignature.class);
+    Mockito.when(function.getSignature()).thenReturn(signature);
+    Mockito.when(signature.getName()).thenReturn(functionName);
+    return new AggregationNode.Aggregation(
+        function,
+        Arrays.asList(value.toSymbolReference(), time.toSymbolReference()),
+        false,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   private static boolean isOrderedPerGroup(
@@ -123,6 +247,8 @@ public class RateOrderedInputTest {
     assignments.put(TAG1, columnSchema("tag1", TAG));
     assignments.put(TAG2, columnSchema("tag2", TAG));
     assignments.put(S1, columnSchema("s1", FIELD));
+    assignments.put(S2, columnSchema("s2", FIELD));
+    assignments.put(TIME_SYMBOL, columnSchema("time", TIME));
     Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
     tagAndAttributeIndexMap.put(TAG1, 0);
     tagAndAttributeIndexMap.put(TAG2, 1);
@@ -146,6 +272,7 @@ public class RateOrderedInputTest {
     tableColumnSchema.put(TAG1, columnSchema("tag1", TAG));
     tableColumnSchema.put(TAG2, columnSchema("tag2", TAG));
     tableColumnSchema.put(S1, columnSchema("s1", FIELD));
+    tableColumnSchema.put(S2, columnSchema("s2", FIELD));
     return tableColumnSchema;
   }
 

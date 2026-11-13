@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNod
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TagColumnUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
@@ -276,11 +277,6 @@ public class ParallelizeGrouping implements PlanOptimizer {
           tableColumnSchema = analysis.getTableColumnSchema(node.getQualifiedObjectName());
         }
         //  check there are no field in sortKey and all tags in sortKey
-        Set<Symbol> tagSymbols =
-            tableColumnSchema.entrySet().stream()
-                .filter(entry -> entry.getValue().getColumnCategory() == TAG)
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toSet());
         for (int i = 0; i < context.partitionKeyCount; i++) {
           Symbol symbol = sortKey.getOrderBy().get(i);
           if (!tableColumnSchema.containsKey(symbol)) {
@@ -289,7 +285,6 @@ public class ParallelizeGrouping implements PlanOptimizer {
           }
           switch (tableColumnSchema.get(symbol).getColumnCategory()) {
             case TAG:
-              tagSymbols.remove(symbol);
               break;
             case ATTRIBUTE:
               // If all tags in partition key, attributes must be the same in one partition.
@@ -299,11 +294,13 @@ public class ParallelizeGrouping implements PlanOptimizer {
               return node;
           }
         }
-        if (!tagSymbols.isEmpty()) {
-          context.canOptimized = TO_SORT;
-        } else {
-          context.canOptimized = ENABLE_PARALLEL;
-        }
+        Set<String> tagColumnNames =
+            TagColumnUtils.tagColumnNames(
+                sortKey.getOrderBy().subList(0, context.partitionKeyCount), tableColumnSchema);
+        context.canOptimized =
+            TagColumnUtils.coversAllTagColumns(tableColumnSchema, tagColumnNames)
+                ? ENABLE_PARALLEL
+                : TO_SORT;
       }
       return node;
     }
