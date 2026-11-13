@@ -65,9 +65,11 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
@@ -262,26 +264,29 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
   }
 
   @Override
-  protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
-      final PipeWritePlanEvent event) {
+  protected List<PipeWritePlanEvent> trimRealtimeEventByPrivilege(final PipeWritePlanEvent event) {
     final ConfigPhysicalPlan plan =
         ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan();
     final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
-    Optional<ConfigPhysicalPlan> result = Optional.of(plan);
-    if (!Boolean.TRUE.equals(isTableDatabasePlan)) {
-      result = treePrivilegeParseVisitor.process(plan, userEntity);
+    List<ConfigPhysicalPlan> result =
+        Boolean.TRUE.equals(isTableDatabasePlan)
+            ? Collections.singletonList(plan)
+            : treePrivilegeParseVisitor.process(plan, userEntity);
+    if (!Boolean.FALSE.equals(isTableDatabasePlan)) {
+      result =
+          result.stream()
+              .map(parsedPlan -> TABLE_PRIVILEGE_PARSE_VISITOR.process(parsedPlan, userEntity))
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .collect(Collectors.toList());
     }
-    if (result.isPresent() && !Boolean.FALSE.equals(isTableDatabasePlan)) {
-      result = TABLE_PRIVILEGE_PARSE_VISITOR.process(result.get(), userEntity);
+    if (result.isEmpty() && !skipIfNoPrivileges) {
+      throw new AccessDeniedException(ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + plan);
     }
-    if (result.isPresent()) {
-      return Optional.of(
-          new PipeConfigRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
-    }
-    if (skipIfNoPrivileges) {
-      return Optional.empty();
-    }
-    throw new AccessDeniedException(ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + plan);
+    return result.stream()
+        .map(
+            parsedPlan -> new PipeConfigRegionWritePlanEvent(parsedPlan, event.isGeneratedByPipe()))
+        .collect(Collectors.toList());
   }
 
   @Override

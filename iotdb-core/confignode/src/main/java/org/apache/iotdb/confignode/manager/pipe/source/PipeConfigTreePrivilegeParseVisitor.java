@@ -66,12 +66,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 
 public class PipeConfigTreePrivilegeParseVisitor
-    extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, IAuditEntity> {
+    extends ConfigPhysicalPlanVisitor<List<ConfigPhysicalPlan>, IAuditEntity> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConfigTreePrivilegeParseVisitor.class);
   private final boolean skip;
@@ -81,68 +82,68 @@ public class PipeConfigTreePrivilegeParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitPlan(
+  public List<ConfigPhysicalPlan> visitPlan(
       final ConfigPhysicalPlan plan, final IAuditEntity context) {
-    return Optional.of(plan);
+    return Collections.singletonList(plan);
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitCreateDatabase(
+  public List<ConfigPhysicalPlan> visitCreateDatabase(
       final DatabaseSchemaPlan createDatabasePlan, final IAuditEntity userEntity) {
     return canReadSysSchema(createDatabasePlan.getSchema().getName(), userEntity, true)
-        ? Optional.of(createDatabasePlan)
-        : Optional.empty();
+        ? Collections.singletonList(createDatabasePlan)
+        : Collections.emptyList();
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitAlterDatabase(
+  public List<ConfigPhysicalPlan> visitAlterDatabase(
       final DatabaseSchemaPlan alterDatabasePlan, final IAuditEntity userEntity) {
     return canReadSysSchema(alterDatabasePlan.getSchema().getName(), userEntity, true)
-        ? Optional.of(alterDatabasePlan)
-        : Optional.empty();
+        ? Collections.singletonList(alterDatabasePlan)
+        : Collections.emptyList();
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitDeleteDatabase(
+  public List<ConfigPhysicalPlan> visitDeleteDatabase(
       final DeleteDatabasePlan deleteDatabasePlan, final IAuditEntity userEntity) {
     return canReadSysSchema(deleteDatabasePlan.getName(), userEntity, true)
-        ? Optional.of(deleteDatabasePlan)
-        : Optional.empty();
+        ? Collections.singletonList(deleteDatabasePlan)
+        : Collections.emptyList();
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitCreateSchemaTemplate(
+  public List<ConfigPhysicalPlan> visitCreateSchemaTemplate(
       final CreateSchemaTemplatePlan createSchemaTemplatePlan, final IAuditEntity userEntity) {
     return canShowSchemaTemplate(createSchemaTemplatePlan.getTemplate().getName(), userEntity)
-        ? Optional.of(createSchemaTemplatePlan)
-        : Optional.empty();
+        ? Collections.singletonList(createSchemaTemplatePlan)
+        : Collections.emptyList();
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitCommitSetSchemaTemplate(
+  public List<ConfigPhysicalPlan> visitCommitSetSchemaTemplate(
       final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan,
       final IAuditEntity userEntity) {
     return canReadSysSchema(commitSetSchemaTemplatePlan.getPath(), userEntity, false)
-        ? Optional.of(commitSetSchemaTemplatePlan)
-        : Optional.empty();
+        ? Collections.singletonList(commitSetSchemaTemplatePlan)
+        : Collections.emptyList();
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitPipeUnsetSchemaTemplate(
+  public List<ConfigPhysicalPlan> visitPipeUnsetSchemaTemplate(
       final PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan,
       final IAuditEntity userEntity) {
     return canReadSysSchema(pipeUnsetSchemaTemplatePlan.getPath(), userEntity, false)
-        ? Optional.of(pipeUnsetSchemaTemplatePlan)
-        : Optional.empty();
+        ? Collections.singletonList(pipeUnsetSchemaTemplatePlan)
+        : Collections.emptyList();
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitExtendSchemaTemplate(
+  public List<ConfigPhysicalPlan> visitExtendSchemaTemplate(
       final ExtendSchemaTemplatePlan extendSchemaTemplatePlan, final IAuditEntity userEntity) {
     return canShowSchemaTemplate(
             extendSchemaTemplatePlan.getTemplateExtendInfo().getTemplateName(), userEntity)
-        ? Optional.of(extendSchemaTemplatePlan)
-        : Optional.empty();
+        ? Collections.singletonList(extendSchemaTemplatePlan)
+        : Collections.emptyList();
   }
 
   public boolean canShowSchemaTemplate(final String templateName, final IAuditEntity userEntity) {
@@ -171,39 +172,51 @@ public class PipeConfigTreePrivilegeParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitGrantUser(
+  public List<ConfigPhysicalPlan> visitGrantUser(
       final AuthorTreePlan grantUserPlan, final IAuditEntity userEntity) {
-    return visitUserPlan(grantUserPlan, userEntity);
+    return visitUserPlan(grantUserPlan, userEntity)
+        .map(Collections::singletonList)
+        .orElseGet(Collections::emptyList);
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitRevokeUser(
+  public List<ConfigPhysicalPlan> visitRevokeUser(
       final AuthorTreePlan revokeUserPlan, final IAuditEntity userEntity) {
-    return visitUserPlan(revokeUserPlan, userEntity);
+    return visitUserPlan(revokeUserPlan, userEntity)
+        .map(Collections::singletonList)
+        .orElseGet(Collections::emptyList);
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitGrantRole(
+  public List<ConfigPhysicalPlan> visitGrantRole(
       final AuthorTreePlan grantRolePlan, final IAuditEntity userEntity) {
-    return visitRolePlan(grantRolePlan, userEntity);
+    return visitRolePlan(grantRolePlan, userEntity)
+        .map(Collections::singletonList)
+        .orElseGet(Collections::emptyList);
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitRevokeRole(
+  public List<ConfigPhysicalPlan> visitRevokeRole(
       final AuthorTreePlan revokeRolePlan, final IAuditEntity userEntity) {
-    return visitRolePlan(revokeRolePlan, userEntity);
+    return visitRolePlan(revokeRolePlan, userEntity)
+        .map(Collections::singletonList)
+        .orElseGet(Collections::emptyList);
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitGrantRoleToUser(
+  public List<ConfigPhysicalPlan> visitGrantRoleToUser(
       final AuthorTreePlan grantRoleToUserPlan, final IAuditEntity userEntity) {
-    return visitUserRolePlan(grantRoleToUserPlan, userEntity);
+    return visitUserRolePlan(grantRoleToUserPlan, userEntity)
+        .map(Collections::singletonList)
+        .orElseGet(Collections::emptyList);
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitRevokeRoleFromUser(
+  public List<ConfigPhysicalPlan> visitRevokeRoleFromUser(
       final AuthorTreePlan revokeRoleFromUserPlan, final IAuditEntity userEntity) {
-    return visitUserRolePlan(revokeRoleFromUserPlan, userEntity);
+    return visitUserRolePlan(revokeRoleFromUserPlan, userEntity)
+        .map(Collections::singletonList)
+        .orElseGet(Collections::emptyList);
   }
 
   public static Optional<ConfigPhysicalPlan> visitUserRolePlan(
@@ -260,7 +273,7 @@ public class PipeConfigTreePrivilegeParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitPipeDeleteTimeSeries(
+  public List<ConfigPhysicalPlan> visitPipeDeleteTimeSeries(
       final PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan, final IAuditEntity userEntity) {
     final CNAuditLogger logger = ConfigNode.getInstance().getConfigManager().getAuditLogger();
     final PathPatternTree originalTree =
@@ -278,16 +291,16 @@ public class PipeConfigTreePrivilegeParseVisitor
       final boolean result = !intersectedTree.isEmpty();
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
       return result
-          ? Optional.of(new PipeDeleteTimeSeriesPlan(intersectedTree.serialize()))
-          : Optional.empty();
+          ? Collections.singletonList(new PipeDeleteTimeSeriesPlan(intersectedTree.serialize()))
+          : Collections.emptyList();
     } catch (final IOException e) {
       LOGGER.warn(ManagerMessages.SERIALIZATION_FAILED_FOR_THE_DELETE_TIME_SERIES_PLAN_IN_PIPE, e);
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
-      return Optional.empty();
+      return Collections.emptyList();
     } catch (final AuthException e) {
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
-        return Optional.empty();
+        return Collections.emptyList();
       } else {
         throw new AccessDeniedException(
             ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeDeleteTimeSeriesPlan);
@@ -296,7 +309,7 @@ public class PipeConfigTreePrivilegeParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitPipeDeleteLogicalView(
+  public List<ConfigPhysicalPlan> visitPipeDeleteLogicalView(
       final PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan, final IAuditEntity userEntity) {
     final CNAuditLogger logger = ConfigNode.getInstance().getConfigManager().getAuditLogger();
     final PathPatternTree originalTree =
@@ -314,16 +327,16 @@ public class PipeConfigTreePrivilegeParseVisitor
       final boolean result = !intersectedTree.isEmpty();
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
       return result
-          ? Optional.of(new PipeDeleteLogicalViewPlan(intersectedTree.serialize()))
-          : Optional.empty();
+          ? Collections.singletonList(new PipeDeleteLogicalViewPlan(intersectedTree.serialize()))
+          : Collections.emptyList();
     } catch (final IOException e) {
       LOGGER.warn(ManagerMessages.SERIALIZATION_FAILED_FOR_THE_DELETE_TIME_SERIES_PLAN_IN_PIPE, e);
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
-      return Optional.empty();
+      return Collections.emptyList();
     } catch (final AuthException e) {
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
-        return Optional.empty();
+        return Collections.emptyList();
       } else {
         throw new AccessDeniedException(
             ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeDeleteLogicalViewPlan);
@@ -332,7 +345,7 @@ public class PipeConfigTreePrivilegeParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitPipeAlterEncodingCompressor(
+  public List<ConfigPhysicalPlan> visitPipeAlterEncodingCompressor(
       final PipeAlterEncodingCompressorPlan pipeAlterEncodingCompressor,
       final IAuditEntity userEntity) {
     final CNAuditLogger logger = ConfigNode.getInstance().getConfigManager().getAuditLogger();
@@ -351,21 +364,21 @@ public class PipeConfigTreePrivilegeParseVisitor
       final boolean result = !intersectedTree.isEmpty();
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
       return result
-          ? Optional.of(
+          ? Collections.singletonList(
               new PipeAlterEncodingCompressorPlan(
                   intersectedTree.serialize(),
                   pipeAlterEncodingCompressor.getEncoding(),
                   pipeAlterEncodingCompressor.getCompressor(),
                   pipeAlterEncodingCompressor.isMayAlterAudit()))
-          : Optional.empty();
+          : Collections.emptyList();
     } catch (final IOException e) {
       LOGGER.warn(ManagerMessages.SERIALIZATION_FAILED_FOR_THE_DELETE_TIME_SERIES_PLAN_IN_PIPE, e);
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
-      return Optional.empty();
+      return Collections.emptyList();
     } catch (final AuthException e) {
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
-        return Optional.empty();
+        return Collections.emptyList();
       } else {
         throw new AccessDeniedException(
             ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeAlterEncodingCompressor);
@@ -374,7 +387,7 @@ public class PipeConfigTreePrivilegeParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitPipeDeactivateTemplate(
+  public List<ConfigPhysicalPlan> visitPipeDeactivateTemplate(
       final PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan, final IAuditEntity userEntity) {
     final CNAuditLogger logger = ConfigNode.getInstance().getConfigManager().getAuditLogger();
     userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA);
@@ -396,12 +409,12 @@ public class PipeConfigTreePrivilegeParseVisitor
       final boolean result = !newTemplateSetInfo.isEmpty();
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
       return !newTemplateSetInfo.isEmpty()
-          ? Optional.of(new PipeDeactivateTemplatePlan(newTemplateSetInfo))
-          : Optional.empty();
+          ? Collections.singletonList(new PipeDeactivateTemplatePlan(newTemplateSetInfo))
+          : Collections.emptyList();
     } catch (final AuthException e) {
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
-        return Optional.empty();
+        return Collections.emptyList();
       } else {
         throw new AccessDeniedException(
             ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeDeactivateTemplatePlan);
@@ -410,27 +423,41 @@ public class PipeConfigTreePrivilegeParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitTTL(
+  public List<ConfigPhysicalPlan> visitTTL(
       final SetTTLPlan setTTLPlan, final IAuditEntity userEntity) {
     final CNAuditLogger logger = ConfigNode.getInstance().getConfigManager().getAuditLogger();
     userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA);
     final String auditObject = Arrays.toString(setTTLPlan.getPathPattern());
     try {
+      // Database TTL also applies to descendants for compatibility with device TTL.
+      final PartialPath originalPath = new PartialPath(setTTLPlan.getPathPattern());
+      final PartialPath effectivePath =
+          setTTLPlan.isDataBase()
+              ? originalPath.concatNode(MULTI_LEVEL_PATH_WILDCARD)
+              : originalPath;
       final List<PartialPath> paths =
-          getAllIntersectedPatterns(
-              new PartialPath(setTTLPlan.getPathPattern()), userEntity, setTTLPlan);
-      // The intersectionList is either a singleton list or an empty list, because the pipe
-      // pattern and TTL path are each either a prefix path or a full path
-      final boolean result =
-          !paths.isEmpty() && paths.get(0).getNodeLength() == setTTLPlan.getPathPattern().length;
-      logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
-      return result
-          ? Optional.of(new SetTTLPlan(paths.get(0).getNodes(), setTTLPlan.getTTL()))
-          : Optional.empty();
+          getAllIntersectedPatterns(effectivePath, userEntity, setTTLPlan).stream()
+              .filter(effectivePath::include)
+              .collect(Collectors.toList());
+      logger.recordObjectAuthenticationAuditLog(
+          userEntity.setResult(!paths.isEmpty()), () -> auditObject);
+      return paths.stream()
+          .map(
+              path -> {
+                final boolean retainDatabase =
+                    setTTLPlan.isDataBase() && path.equals(effectivePath);
+                final SetTTLPlan result =
+                    new SetTTLPlan(
+                        retainDatabase ? originalPath.getNodes() : path.getNodes(),
+                        setTTLPlan.getTTL());
+                result.setDataBase(retainDatabase);
+                return result;
+              })
+          .collect(Collectors.toList());
     } catch (final AuthException e) {
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(false), () -> auditObject);
       if (skip) {
-        return Optional.empty();
+        return Collections.emptyList();
       } else {
         throw new AccessDeniedException(
             ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + setTTLPlan);
@@ -439,7 +466,7 @@ public class PipeConfigTreePrivilegeParseVisitor
   }
 
   @Override
-  public Optional<ConfigPhysicalPlan> visitPipeAlterTimeSeries(
+  public List<ConfigPhysicalPlan> visitPipeAlterTimeSeries(
       final PipeAlterTimeSeriesPlan pipeAlterTimeSeriesPlan, final IAuditEntity userEntity) {
     final CNAuditLogger logger = ConfigNode.getInstance().getConfigManager().getAuditLogger();
     userEntity.setPrivilegeType(PrivilegeType.READ_SCHEMA);
@@ -457,15 +484,15 @@ public class PipeConfigTreePrivilegeParseVisitor
                   == pipeAlterTimeSeriesPlan.getMeasurementPath().getNodeLength();
       logger.recordObjectAuthenticationAuditLog(userEntity.setResult(result), () -> auditObject);
       return result
-          ? Optional.of(
+          ? Collections.singletonList(
               new PipeAlterTimeSeriesPlan(
                   new MeasurementPath(paths.get(0).getNodes()),
                   pipeAlterTimeSeriesPlan.getOperationType(),
                   pipeAlterTimeSeriesPlan.getDataType()))
-          : Optional.empty();
+          : Collections.emptyList();
     } catch (final AuthException e) {
       if (skip) {
-        return Optional.empty();
+        return Collections.emptyList();
       } else {
         throw new AccessDeniedException(
             ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + pipeAlterTimeSeriesPlan);
@@ -479,8 +506,19 @@ public class PipeConfigTreePrivilegeParseVisitor
     final PathPatternTree thisPatternTree = new PathPatternTree();
     thisPatternTree.appendPathPattern(partialPath);
     thisPatternTree.constructTree();
-    final PathPatternTree intersectedTree =
-        thisPatternTree.intersectWithFullPathPrefixTree(getAuthorizedPTree(userEntity));
+    final PathPatternTree intersectedTree = new PathPatternTree();
+    // Intersect each authorization separately so an unmatched prefix cannot leave an ancestor
+    // path in the result tree.
+    for (final PartialPath authorizedPath : getAuthorizedPTree(userEntity).getAllPathPatterns()) {
+      if (authorizedPath.endWithMultiLevelWildcard()) {
+        partialPath
+            .intersectWithPrefixPattern(authorizedPath)
+            .forEach(intersectedTree::appendPathPattern);
+      } else if (partialPath.matchFullPath(authorizedPath)) {
+        intersectedTree.appendPathPattern(authorizedPath);
+      }
+    }
+    intersectedTree.constructTree();
     if (!skip && !thisPatternTree.equals(intersectedTree)) {
       throw new AccessDeniedException(ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + plan);
     }

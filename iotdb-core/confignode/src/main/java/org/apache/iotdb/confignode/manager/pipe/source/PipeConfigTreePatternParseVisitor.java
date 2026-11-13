@@ -61,6 +61,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+
 /**
  * The {@link PipeConfigTreePatternParseVisitor} will transform the schema {@link
  * ConfigPhysicalPlan}s using {@link IoTDBTreePatternOperations}. Rule:
@@ -303,16 +305,25 @@ public class PipeConfigTreePatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitTTL(
       final SetTTLPlan setTTLPlan, final IoTDBTreePatternOperations pattern) {
-    final PartialPath partialPath = new PartialPath(setTTLPlan.getPathPattern());
+    final PartialPath originalPath = new PartialPath(setTTLPlan.getPathPattern());
+    final PartialPath partialPath =
+        setTTLPlan.isDataBase() ? originalPath.concatNode(MULTI_LEVEL_PATH_WILDCARD) : originalPath;
     final List<PartialPath> intersectionList =
         pattern.matchPrefixPath(partialPath.getFullPath())
             ? Collections.singletonList(partialPath)
             : pattern.getIntersection(partialPath);
-    // The intersectionList is either a singleton list or an empty list, because the pipe
-    // pattern and TTL path are each either a prefix path or a full path
-    return !intersectionList.isEmpty()
-        ? Optional.of(new SetTTLPlan(intersectionList.get(0).getNodes(), setTTLPlan.getTTL()))
-        : Optional.empty();
+    // Both the pipe pattern and the TTL path are prefix paths or full paths.
+    if (intersectionList.isEmpty()) {
+      return Optional.empty();
+    }
+    final PartialPath intersection = intersectionList.get(0);
+    final boolean retainDatabase = setTTLPlan.isDataBase() && intersection.equals(partialPath);
+    final SetTTLPlan result =
+        new SetTTLPlan(
+            retainDatabase ? originalPath.getNodes() : intersection.getNodes(),
+            setTTLPlan.getTTL());
+    result.setDataBase(retainDatabase);
+    return Optional.of(result);
   }
 
   @Override
