@@ -507,6 +507,39 @@ public class UDAFPatternTest {
   }
 
   @Test
+  public void testDTWMatchOrdersRawInputAcrossBatches() throws Exception {
+    UDAFDTWMatch match = new UDAFDTWMatch();
+    match.beforeStart(createDtwParameters("1,2,3", "0"), new UDAFConfigurations());
+    DTWState target = dtwState(match, new long[] {6, 5, 4}, new double[] {3, 2, 1});
+    addDtwInput(match, target, new long[] {3, 2, 1}, new double[] {3, 2, 1});
+
+    DTWState restored = (DTWState) match.createState();
+    restored.deserialize(target.serialize());
+    assertDtwMatches(match, target, new long[][] {{1, 3}, {4, 6}});
+    assertDtwMatches(match, restored, new long[][] {{1, 3}, {4, 6}});
+    assertDtwMatches(match, target, new long[][] {{1, 3}, {4, 6}});
+  }
+
+  @Test
+  public void testDTWMatchRebuildsAfterLateContinuationAndReplacement() throws Exception {
+    UDAFDTWMatch match = new UDAFDTWMatch();
+    match.beforeStart(createDtwParameters("1,2,3", "0"), new UDAFConfigurations());
+    DTWState target = dtwState(match, new long[] {1, 3}, new double[] {1, 3});
+    match.combineState(target, dtwState(match, new long[] {4}, new double[] {9}));
+    assertDtwMatches(match, target, new long[0][]);
+
+    addDtwInput(match, target, new long[] {2}, new double[] {2});
+    assertDtwMatches(match, target, new long[][] {{1, 3}});
+
+    // Replacing a historical value must also remove a match that is no longer valid.
+    addDtwInput(match, target, new long[] {2}, new double[] {9});
+    DTWState restored = (DTWState) match.createState();
+    restored.deserialize(target.serialize());
+    assertDtwMatches(match, target, new long[0][]);
+    assertDtwMatches(match, restored, new long[0][]);
+  }
+
+  @Test
   public void testDTWMatchRetainsNonzeroDistanceAcrossMerge() throws Exception {
     for (String threshold : new String[] {"1.99", "2"}) {
       UDAFDTWMatch match = new UDAFDTWMatch();

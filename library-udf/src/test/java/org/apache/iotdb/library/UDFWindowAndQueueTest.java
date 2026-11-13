@@ -238,6 +238,33 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testMvAvgRecoversAfterCompensationLosesSmallValues() throws Exception {
+    for (double sign : new double[] {1, -1}) {
+      UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("window", "3"));
+      UDTFMvAvg mvAvg = new UDTFMvAvg();
+      RecordingPointCollector collector = new RecordingPointCollector();
+      mvAvg.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+      double[] values = {sign * 1e300, sign * 1e150, 1, 1, 1, 3};
+      for (int i = 0; i < values.length; i++) {
+        mvAvg.transform(new DoubleRow(i + 1, values[i]), collector);
+      }
+
+      Assert.assertEquals(Arrays.asList(3L, 4L, 5L, 6L), collector.timestamps);
+      Assert.assertEquals(1.0, collector.values.get(2), 0);
+      Assert.assertEquals(5.0 / 3, collector.values.get(3), 0);
+
+      collector.timestamps.clear();
+      collector.values.clear();
+      mvAvg.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+      for (int i = 1; i <= 3; i++) {
+        mvAvg.transform(new DoubleRow(i, i), collector);
+      }
+      Assert.assertEquals(Collections.singletonList(3L), collector.timestamps);
+      Assert.assertEquals(Collections.singletonList(2.0), collector.values);
+    }
+  }
+
+  @Test
   public void testLOFSkipsNullRowsWithoutReadingCompressedIndex() throws Exception {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("k", "1");

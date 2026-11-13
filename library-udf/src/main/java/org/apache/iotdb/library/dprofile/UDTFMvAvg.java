@@ -31,6 +31,8 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.math.BigDecimal;
+
 /** This function calculates moving average of given window length of input series. */
 public class UDTFMvAvg implements UDTF {
   int windowSize;
@@ -38,6 +40,7 @@ public class UDTFMvAvg implements UDTF {
   DoubleCircularQueue v;
   double windowSum;
   double windowCompensation;
+  private BigDecimal exactWindowSum;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -59,6 +62,7 @@ public class UDTFMvAvg implements UDTF {
     v = new DoubleCircularQueue(windowSize);
     windowSum = 0d;
     windowCompensation = 0d;
+    exactWindowSum = null;
   }
 
   @Override
@@ -68,21 +72,33 @@ public class UDTFMvAvg implements UDTF {
     }
     double value = Util.getValueAsDouble(row);
     if (Double.isFinite(value)) {
+      boolean rebuild = false;
       if (v.isFull()) {
-        addToSum(-v.pop());
+        double removed = v.pop();
+        if (exactWindowSum == null) {
+          rebuild = addToSum(-removed);
+        } else {
+          exactWindowSum = exactWindowSum.subtract(new BigDecimal(removed));
+        }
       }
       v.push(value);
-      addToSum(value);
-      if (v.isFull()) {
-        if (!Double.isFinite(windowSum + windowCompensation)) {
-          // An overflow in an earlier window must not poison all subsequent windows.
-          windowSum = 0d;
-          windowCompensation = 0d;
+      if (exactWindowSum == null) {
+        rebuild |= addToSum(value);
+        if (rebuild) {
+          // A single compensation term cannot retain every scale of a finite input window.
+          // Rebuild once, then keep an exact sum so later removals recover the small values.
+          exactWindowSum = BigDecimal.ZERO;
           for (int i = 0; i < v.getSize(); i++) {
-            addToSum(v.get(i));
+            exactWindowSum = exactWindowSum.add(new BigDecimal(v.get(i)));
           }
         }
-        double average = (windowSum + windowCompensation) / windowSize;
+      } else {
+        exactWindowSum = exactWindowSum.add(new BigDecimal(value));
+      }
+      if (v.isFull()) {
+        double sum =
+            exactWindowSum == null ? windowSum + windowCompensation : exactWindowSum.doubleValue();
+        double average = sum / windowSize;
         if (Double.isFinite(average)) {
           collector.putDouble(row.getTime(), average);
         }
@@ -90,18 +106,24 @@ public class UDTFMvAvg implements UDTF {
     }
   }
 
-  private void addToSum(double value) {
+  private boolean addToSum(double value) {
     double sum = windowSum + value;
-    if (Double.isFinite(sum)) {
-      // Retain small values until larger values leave the window (Neumaier summation).
-      windowCompensation +=
-          Math.abs(windowSum) >= Math.abs(value)
-              ? (windowSum - sum) + value
-              : (value - sum) + windowSum;
-    } else {
-      windowCompensation = 0d;
+    if (!Double.isFinite(sum)) {
+      return true;
     }
+    // Retain small values until larger values leave the window (Neumaier summation).
+    double correction =
+        Math.abs(windowSum) >= Math.abs(value)
+            ? (windowSum - sum) + value
+            : (value - sum) + windowSum;
+    double compensation = windowCompensation + correction;
+    double lost =
+        Math.abs(windowCompensation) >= Math.abs(correction)
+            ? (windowCompensation - compensation) + correction
+            : (correction - compensation) + windowCompensation;
     windowSum = sum;
+    windowCompensation = compensation;
+    return !Double.isFinite(compensation) || lost != 0d;
   }
 
   @Override

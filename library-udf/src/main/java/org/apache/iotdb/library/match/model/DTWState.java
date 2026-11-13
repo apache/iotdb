@@ -106,6 +106,10 @@ public class DTWState implements State {
   }
 
   public void updateBuffer(long time, double dataPoint) {
+    if (!timeBuffer.isEmpty() && time <= timeBuffer.getLast()) {
+      // Late or replaced points invalidate previously calculated windows, just like a merge.
+      needsRebuild = true;
+    }
     input.put(time, dataPoint);
     updateWindow(time, dataPoint);
   }
