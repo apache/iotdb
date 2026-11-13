@@ -24,13 +24,18 @@ import org.apache.iotdb.udf.api.State;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class DTWState implements State {
   private List<DTWMatchResult> matchResults;
   private Deque<Double> valueBuffer;
   private Deque<Long> timeBuffer;
+  // Keep effective input because partial states may arrive in any temporal order or interleave.
+  private Map<Long, Double> input;
   private Integer size;
 
   public DTWState() {}
@@ -44,22 +49,21 @@ public class DTWState implements State {
     matchResults = new ArrayList<>();
     valueBuffer = new ArrayDeque<>(size);
     timeBuffer = new ArrayDeque<>(size);
+    input = new TreeMap<>();
   }
 
   @Override
   public byte[] serialize() {
     int capacity =
         Integer.BYTES * 2
-            + valueBuffer.size() * (Double.BYTES + Long.BYTES)
+            + input.size() * (Double.BYTES + Long.BYTES)
             + matchResults.size() * DTWMatchResult.BYTES;
     ByteBuffer byteBuffer = ByteBuffer.allocate(capacity);
 
-    byteBuffer.putInt(valueBuffer.size());
-    Object[] times = timeBuffer.toArray();
-    Object[] values = valueBuffer.toArray();
-    for (int i = 0; i < timeBuffer.size(); i++) {
-      byteBuffer.putLong((long) times[i]);
-      byteBuffer.putDouble((double) values[i]);
+    byteBuffer.putInt(input.size());
+    for (Map.Entry<Long, Double> point : input.entrySet()) {
+      byteBuffer.putLong(point.getKey());
+      byteBuffer.putDouble(point.getValue());
     }
 
     byteBuffer.putInt(matchResults.size());
@@ -72,6 +76,7 @@ public class DTWState implements State {
 
   @Override
   public void deserialize(byte[] bytes) {
+    reset();
     ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
 
     int size = byteBuffer.getInt();
@@ -96,6 +101,7 @@ public class DTWState implements State {
   }
 
   public void updateBuffer(long time, double dataPoint) {
+    input.put(time, dataPoint);
     if (valueBuffer.size() == size) {
       valueBuffer.poll();
       timeBuffer.poll();
@@ -112,6 +118,10 @@ public class DTWState implements State {
     return timeBuffer.toArray(new Long[0]);
   }
 
+  public Map<Long, Double> getInput() {
+    return Collections.unmodifiableMap(input);
+  }
+
   public long getFirstTime() {
     return timeBuffer.getFirst();
   }
@@ -123,6 +133,9 @@ public class DTWState implements State {
   @Override
   public void destroyState() {
     valueBuffer.clear();
+    timeBuffer.clear();
+    input.clear();
+    matchResults.clear();
     State.super.destroyState();
   }
 

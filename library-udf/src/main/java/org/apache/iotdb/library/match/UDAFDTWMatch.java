@@ -39,6 +39,7 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class UDAFDTWMatch implements UDAF {
   //    private static final Logger LOGGER = Logger.getLogger(DTWMatch.class);
@@ -135,21 +136,21 @@ public class UDAFDTWMatch implements UDAF {
     DTWState dtwState = (DTWState) state;
     DTWState newDTWState = (DTWState) state1;
 
-    Long[] times = newDTWState.getTimeBuffer();
-    Double[] values = newDTWState.getValueBuffer();
-    if (times.length == 0 || values.length == 0) {
+    if (newDTWState.getInput().isEmpty()) {
       return;
     }
 
-    for (int i = 0; i < times.length; i++) {
-      if (dtwState.getValueBuffer().length == 0 || times[i] > dtwState.getFirstTime()) {
-        dtwState.updateBuffer(times[i], values[i]);
-        if (dtwState.getValueBuffer().length == pattern.length) {
-          float dtw = calculateDTW(dtwState.getValueBuffer(), pattern);
-          if (dtw <= threshold) {
-            dtwState.addMatchResult(
-                new DTWMatchResult(dtw, dtwState.getFirstTime(), dtwState.getLastTime()));
-          }
+    Map<Long, Double> input = new TreeMap<>(dtwState.getInput());
+    input.putAll(newDTWState.getInput());
+    // Rebuild all windows, including boundaries, without duplicating partial-state matches.
+    dtwState.reset();
+    for (Map.Entry<Long, Double> point : input.entrySet()) {
+      dtwState.updateBuffer(point.getKey(), point.getValue());
+      if (dtwState.getValueBuffer().length == pattern.length) {
+        float dtw = calculateDTW(dtwState.getValueBuffer(), pattern);
+        if (dtw <= threshold) {
+          dtwState.addMatchResult(
+              new DTWMatchResult(dtw, dtwState.getFirstTime(), dtwState.getLastTime()));
         }
       }
     }

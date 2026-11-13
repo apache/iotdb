@@ -22,6 +22,7 @@ package org.apache.iotdb.library;
 import org.apache.iotdb.library.match.PatternExecutor;
 import org.apache.iotdb.library.match.UDAFDTWMatch;
 import org.apache.iotdb.library.match.UDAFPatternMatch;
+import org.apache.iotdb.library.match.model.DTWMatchResult;
 import org.apache.iotdb.library.match.model.DTWState;
 import org.apache.iotdb.library.match.model.PatternContext;
 import org.apache.iotdb.library.match.model.PatternResult;
@@ -380,6 +381,132 @@ public class UDAFPatternTest {
 
     Assert.assertArrayEquals(new Long[] {1L, 2L}, dtwTarget.getTimeBuffer());
     Assert.assertArrayEquals(new Double[] {1.0, 3.0}, dtwTarget.getValueBuffer());
+  }
+
+  @Test
+  public void testDTWMatchCombineRetainsHistoricalMatches() throws Exception {
+    UDAFDTWMatch match = new UDAFDTWMatch();
+    match.beforeStart(createDtwParameters("1", "0"), new UDAFConfigurations());
+    DTWState target = dtwState(match, new long[] {1}, new double[] {1});
+    DTWState source = dtwState(match, new long[] {2, 3, 4}, new double[] {1, 1, 1});
+    byte[] sourceBefore = source.serialize();
+
+    match.combineState(target, source);
+
+    assertDtwMatches(target, new long[][] {{1, 1}, {2, 2}, {3, 3}, {4, 4}});
+    Assert.assertArrayEquals(sourceBefore, source.serialize());
+  }
+
+  @Test
+  public void testDTWMatchCombineIncludesBoundaryAndSourceMatches() throws Exception {
+    UDAFDTWMatch match = new UDAFDTWMatch();
+    match.beforeStart(createDtwParameters("1,2,3", "0"), new UDAFConfigurations());
+    DTWState target = dtwState(match, new long[] {1}, new double[] {1});
+    DTWState source = dtwState(match, new long[] {2, 3, 4, 5, 6}, new double[] {2, 3, 1, 2, 3});
+
+    match.combineState(target, source);
+
+    assertDtwMatches(target, new long[][] {{1, 3}, {4, 6}});
+    Assert.assertArrayEquals(new Long[] {4L, 5L, 6L}, target.getTimeBuffer());
+  }
+
+  @Test
+  public void testDTWMatchCombineDoesNotBridgeDiscardedSourcePrefix() throws Exception {
+    UDAFDTWMatch match = new UDAFDTWMatch();
+    match.beforeStart(createDtwParameters("1,2", "0"), new UDAFConfigurations());
+    DTWState target = dtwState(match, new long[] {1}, new double[] {1});
+    DTWState source = dtwState(match, new long[] {2, 3, 4, 5}, new double[] {9, 9, 2, 9});
+
+    match.combineState(target, source);
+
+    assertDtwMatches(target, new long[0][]);
+  }
+
+  @Test
+  public void testDTWMatchCombineInterleavedStatesInEitherOrder() throws Exception {
+    for (boolean reverse : new boolean[] {false, true}) {
+      UDAFDTWMatch match = new UDAFDTWMatch();
+      match.beforeStart(createDtwParameters("1,2,3", "0"), new UDAFConfigurations());
+      DTWState odd = dtwState(match, new long[] {1, 3, 5}, new double[] {1, 3, 2});
+      DTWState even = dtwState(match, new long[] {2, 4, 6}, new double[] {2, 1, 3});
+      DTWState target = reverse ? even : odd;
+      DTWState source = reverse ? odd : even;
+
+      match.combineState(target, source);
+
+      assertDtwMatches(target, new long[][] {{1, 3}, {4, 6}});
+    }
+  }
+
+  @Test
+  public void testDTWMatchCombineGroupingAndContinuation() throws Exception {
+    for (boolean combineRightFirst : new boolean[] {false, true}) {
+      UDAFDTWMatch match = new UDAFDTWMatch();
+      match.beforeStart(createDtwParameters("1,2,3", "0"), new UDAFConfigurations());
+      DTWState first = dtwState(match, new long[] {1, 2}, new double[] {1, 2});
+      DTWState second = dtwState(match, new long[] {3, 4}, new double[] {3, 1});
+      DTWState third = dtwState(match, new long[] {5, 6}, new double[] {2, 3});
+      if (combineRightFirst) {
+        match.combineState(second, third);
+        match.combineState(first, second);
+      } else {
+        match.combineState(first, second);
+        match.combineState(first, third);
+      }
+      assertDtwMatches(first, new long[][] {{1, 3}, {4, 6}});
+
+      addDtwInput(match, first, new long[] {7, 8, 9}, new double[] {1, 2, 3});
+
+      assertDtwMatches(first, new long[][] {{1, 3}, {4, 6}, {7, 9}});
+    }
+  }
+
+  @Test
+  public void testDTWStateRoundTripRetainsInputForMergeAndReplacesOldState() throws Exception {
+    UDAFDTWMatch match = new UDAFDTWMatch();
+    match.beforeStart(createDtwParameters("1,2,3", "0"), new UDAFConfigurations());
+    DTWState source = dtwState(match, new long[] {2, 3, 4, 5, 6}, new double[] {2, 3, 1, 2, 3});
+    DTWState restored = (DTWState) match.createState();
+    restored.deserialize(source.serialize());
+    Assert.assertArrayEquals(source.serialize(), restored.serialize());
+    restored.deserialize(source.serialize());
+    Assert.assertArrayEquals(source.serialize(), restored.serialize());
+
+    DTWState target = dtwState(match, new long[] {1}, new double[] {1});
+    match.combineState(target, restored);
+    assertDtwMatches(target, new long[][] {{1, 3}, {4, 6}});
+
+    DTWState empty = dtwState(match, new long[0], new double[0]);
+    restored.deserialize(empty.serialize());
+    Assert.assertArrayEquals(empty.serialize(), restored.serialize());
+    assertDtwMatches(restored, new long[0][]);
+  }
+
+  private static DTWState dtwState(UDAFDTWMatch match, long[] times, double[] values) {
+    DTWState state = (DTWState) match.createState();
+    state.reset();
+    addDtwInput(match, state, times, values);
+    return state;
+  }
+
+  private static void addDtwInput(
+      UDAFDTWMatch match, DTWState state, long[] times, double[] values) {
+    match.addInput(
+        state,
+        new Column[] {
+          new TestColumn(TSDataType.DOUBLE, new long[0], values, new boolean[times.length]),
+          new TestColumn(TSDataType.INT64, times, new double[0], new boolean[times.length])
+        },
+        null);
+  }
+
+  private static void assertDtwMatches(DTWState state, long[][] expectedBounds) {
+    Assert.assertEquals(expectedBounds.length, state.getMatchResults().size());
+    for (int i = 0; i < expectedBounds.length; i++) {
+      Assert.assertArrayEquals(
+          new DTWMatchResult(0, expectedBounds[i][0], expectedBounds[i][1]).toByteArray(),
+          state.getMatchResults().get(i).toByteArray());
+    }
   }
 
   private static UDFParameters createPatternParameters() {

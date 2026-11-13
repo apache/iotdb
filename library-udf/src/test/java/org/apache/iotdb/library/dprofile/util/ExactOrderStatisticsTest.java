@@ -70,4 +70,110 @@ public class ExactOrderStatisticsTest {
     }
     Assert.assertEquals(6.0, ExactOrderStatistics.getMad(nums), 0);
   }
+
+  @Test
+  public void testIntMedianAndMadAtExtremes() {
+    Assert.assertEquals(
+        Integer.MAX_VALUE,
+        ExactOrderStatistics.getMedian(
+            IntArrayList.newListWith(Integer.MAX_VALUE, Integer.MAX_VALUE)),
+        0);
+    Assert.assertEquals(
+        Integer.MIN_VALUE,
+        ExactOrderStatistics.getMedian(
+            IntArrayList.newListWith(Integer.MIN_VALUE, Integer.MIN_VALUE)),
+        0);
+    Assert.assertEquals(
+        -0.5,
+        ExactOrderStatistics.getMedian(
+            IntArrayList.newListWith(Integer.MIN_VALUE, Integer.MAX_VALUE)),
+        0);
+    Assert.assertEquals(
+        0.5,
+        ExactOrderStatistics.getMad(
+            IntArrayList.newListWith(Integer.MAX_VALUE - 1, Integer.MAX_VALUE)),
+        0);
+  }
+
+  @Test
+  public void testLongMedianAndMadAtExtremes() {
+    Assert.assertEquals(
+        (double) Long.MAX_VALUE,
+        ExactOrderStatistics.getMedian(LongArrayList.newListWith(Long.MAX_VALUE, Long.MAX_VALUE)),
+        0);
+    Assert.assertEquals(
+        (double) Long.MIN_VALUE,
+        ExactOrderStatistics.getMedian(LongArrayList.newListWith(Long.MIN_VALUE, Long.MIN_VALUE)),
+        0);
+    Assert.assertEquals(
+        -0.5,
+        ExactOrderStatistics.getMedian(LongArrayList.newListWith(Long.MIN_VALUE, Long.MAX_VALUE)),
+        0);
+    Assert.assertEquals(
+        -1.0,
+        ExactOrderStatistics.getMedian(
+            LongArrayList.newListWith(Long.MIN_VALUE, Long.MAX_VALUE - 1)),
+        0);
+    Assert.assertEquals(
+        9007199254740994.0,
+        ExactOrderStatistics.getMedian(
+            LongArrayList.newListWith(9007199254740993L, 9007199254740994L)),
+        0);
+    Assert.assertEquals(
+        0.0,
+        ExactOrderStatistics.getMad(LongArrayList.newListWith(Long.MAX_VALUE, Long.MAX_VALUE)),
+        0);
+  }
+
+  @Test
+  public void testFloatMedianAndMadAtExtremes() {
+    Assert.assertEquals(
+        (double) Float.MAX_VALUE,
+        ExactOrderStatistics.getMedian(
+            FloatArrayList.newListWith(Float.MAX_VALUE, Float.MAX_VALUE)),
+        0);
+    Assert.assertEquals(
+        (double) -Float.MAX_VALUE,
+        ExactOrderStatistics.getMedian(
+            FloatArrayList.newListWith(-Float.MAX_VALUE, -Float.MAX_VALUE)),
+        0);
+    Assert.assertEquals(
+        (double) Float.MIN_VALUE,
+        ExactOrderStatistics.getMedian(
+            FloatArrayList.newListWith(Float.MIN_VALUE, Float.MIN_VALUE)),
+        0);
+    Assert.assertEquals(
+        (double) Float.MAX_VALUE,
+        ExactOrderStatistics.getMad(FloatArrayList.newListWith(-Float.MAX_VALUE, Float.MAX_VALUE)),
+        0);
+  }
+
+  @Test
+  public void testDoubleMedianAndMadAtExtremes() {
+    Assert.assertEquals(
+        Double.MAX_VALUE,
+        ExactOrderStatistics.getMedian(
+            DoubleArrayList.newListWith(Double.MAX_VALUE, Double.MAX_VALUE)),
+        0);
+    Assert.assertEquals(
+        -Double.MAX_VALUE,
+        ExactOrderStatistics.getMedian(
+            DoubleArrayList.newListWith(-Double.MAX_VALUE, -Double.MAX_VALUE)),
+        0);
+    Assert.assertEquals(
+        Double.MIN_VALUE,
+        ExactOrderStatistics.getMedian(
+            DoubleArrayList.newListWith(Double.MIN_VALUE, Double.MIN_VALUE)),
+        0);
+    Assert.assertEquals(
+        Double.MIN_VALUE * 2,
+        ExactOrderStatistics.getMedian(
+            DoubleArrayList.newListWith(Double.MIN_VALUE, Double.MIN_VALUE * 2)),
+        0);
+    Assert.assertEquals(
+        Double.MAX_VALUE,
+        ExactOrderStatistics.getMad(
+            DoubleArrayList.newListWith(-Double.MAX_VALUE, Double.MAX_VALUE)),
+        0);
+  }
 }
