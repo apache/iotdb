@@ -40,8 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /** Wire-only encoding: the original batch and its buffer positions remain available for retries. */
 public final class LogCompression {
-  // Avoid codec and descriptor overhead on tiny blocks; larger blocks still need a net size
-  // benefit.
+  // Skip tiny blocks to avoid codec and descriptor overhead.
   private static final int MIN_COMPRESSION_SIZE = 4096;
   // Conservative allowance for the additional Thrift descriptor and list field on the wire.
   private static final int DESCRIPTOR_BYTES = 32;
@@ -91,34 +90,40 @@ public final class LogCompression {
 
     private void retain(long bytes) {
       long released = reserved.getAndSet(bytes) - bytes;
-      if (released > 0) IoTConsensusMemoryManager.getInstance().freeLogCompression(released);
+      if (released > 0) {
+        IoTConsensusMemoryManager.getInstance().freeLogCompression(released);
+      }
     }
 
     @Override
     public void close() {
       long bytes = reserved.getAndSet(0);
-      if (bytes > 0) IoTConsensusMemoryManager.getInstance().freeLogCompression(bytes);
+      if (bytes > 0) {
+        IoTConsensusMemoryManager.getInstance().freeLogCompression(bytes);
+      }
     }
   }
 
   public static EncodedRequest compress(
       TSyncLogEntriesReq original, TLogCompressionType codec, int maxDecodedBytes)
       throws IOException {
-    long buffers = 0, rawSize = 0;
+    long buffers = 0;
+    long rawSize = 0;
     boolean hasEligibleBuffer = false;
     for (TLogEntry entry : original.getLogEntries()) {
       for (ByteBuffer buffer : entry.getData()) {
-        int size = buffer.remaining();
-        rawSize += size;
-        if (size >= MIN_COMPRESSION_SIZE) {
+        int uncompressedLength = buffer.remaining();
+        rawSize += uncompressedLength;
+        if (uncompressedLength >= MIN_COMPRESSION_SIZE) {
           hasEligibleBuffer = true;
         }
         buffers++;
       }
     }
     // Preserve the original path for oversized legal entries and when scratch memory is scarce.
-    if (codec == TLogCompressionType.NONE || !hasEligibleBuffer || rawSize > maxDecodedBytes)
+    if (codec == TLogCompressionType.NONE || !hasEligibleBuffer || rawSize > maxDecodedBytes) {
       return new EncodedRequest(original, 0, rawSize, false);
+    }
     // Charge descriptor/list/entry overhead first, then one block's working arrays at a time.
     // Retain only actual compact outputs between blocks, not a whole-batch worst-case estimate.
     long budget = buffers * 256 + original.getLogEntriesSize() * 128L;
@@ -133,37 +138,42 @@ public final class LogCompression {
       for (TLogEntry entry : original.getLogEntries()) {
         List<ByteBuffer> data = new ArrayList<>(entry.getDataSize());
         List<TLogBufferCompression> info = new ArrayList<>(entry.getDataSize());
-        long raw = 0, wire = 0, arrays = 0;
+        long raw = 0;
+        long wire = 0;
+        long arrays = 0;
         boolean compressed = false;
         for (ByteBuffer buffer : entry.getData()) {
-          int size = buffer.remaining();
-          raw += size;
+          int uncompressedLength = buffer.remaining();
+          raw += uncompressedLength;
           ByteBuffer encoded = buffer;
           TLogCompressionType actualCodec = TLogCompressionType.NONE;
-          if (size >= MIN_COMPRESSION_SIZE) {
+          if (uncompressedLength >= MIN_COMPRESSION_SIZE) {
             // Includes an optional input copy, codec-bound output and compact output, with
             // allowance for array headers and codec bounds on very small buffers.
-            long workspace = 4L * size + 256;
+            long workspace = 4L * uncompressedLength + 256;
             long before = result.reserved.get();
             if (IoTConsensusMemoryManager.getInstance().reserveLogCompression(workspace)) {
               result.reserved.addAndGet(workspace);
               byte[] input = buffer.hasArray() ? buffer.array() : bytes(buffer);
               int offset = buffer.hasArray() ? buffer.arrayOffset() + buffer.position() : 0;
-              int bound =
+              int maxCompressedLength =
                   codec == TLogCompressionType.ZSTD
-                      ? (int) Zstd.compressBound(size)
-                      : compressor(codec).getMaxBytesForCompression(size);
-              byte[] output = new byte[bound];
-              int length =
+                      ? (int) Zstd.compressBound(uncompressedLength)
+                      : compressor(codec).getMaxBytesForCompression(uncompressedLength);
+              byte[] output = new byte[maxCompressedLength];
+              int compressedLength =
                   codec == TLogCompressionType.ZSTD
                       ? (int)
-                          Zstd.compressByteArray(output, 0, output.length, input, offset, size, 1)
-                      : compressor(codec).compress(input, offset, size, output);
-              if (length < 0) throw invalid(Failure.CODEC, size, length);
-              if ((long) length + DESCRIPTOR_BYTES < size) {
-                encoded = ByteBuffer.wrap(Arrays.copyOf(output, length));
+                          Zstd.compressByteArray(
+                              output, 0, output.length, input, offset, uncompressedLength, 1)
+                      : compressor(codec).compress(input, offset, uncompressedLength, output);
+              if (compressedLength < 0) {
+                throw invalid(Failure.CODEC, uncompressedLength, compressedLength);
+              }
+              if ((long) compressedLength + DESCRIPTOR_BYTES < uncompressedLength) {
+                encoded = ByteBuffer.wrap(Arrays.copyOf(output, compressedLength));
                 actualCodec = codec;
-                arrays += length;
+                arrays += compressedLength;
                 compressed = true;
               }
               result.retain(
@@ -174,7 +184,7 @@ public final class LogCompression {
             }
           }
           data.add(encoded);
-          info.add(new TLogBufferCompression(actualCodec, size));
+          info.add(new TLogBufferCompression(actualCodec, uncompressedLength));
           wire += encoded.remaining();
         }
         // Raw descriptors in a mixed WAL entry cost space too.
@@ -188,9 +198,10 @@ public final class LogCompression {
           result.retain(result.reserved.get() - arrays);
         }
       }
-      if (changed)
+      if (changed) {
         result.request =
             new TSyncLogEntriesReq(original.getPeerId(), original.getConsensusGroupId(), entries);
+      }
       result.retain(retained);
       return result;
     } catch (IOException | RuntimeException e) {
@@ -207,25 +218,39 @@ public final class LogCompression {
     for (TLogEntry entry : request.getLogEntries()) {
       if (entry.isSetCompressionInfo()) {
         encoded = true;
-        if (entry.getCompressionInfoSize() != entry.getDataSize())
+        if (entry.getCompressionInfoSize() != entry.getDataSize()) {
           throw invalid(Failure.DESCRIPTORS, entry.getDataSize(), entry.getCompressionInfoSize());
+        }
         for (int i = 0; i < entry.getDataSize(); i++) {
           TLogBufferCompression info = entry.getCompressionInfo().get(i);
           int size = info.getUncompressedSize();
-          if (size < 0) throw invalid(Failure.LENGTH, 0, size);
-          if (info.getCodec() == null) throw invalid(Failure.CODEC, 0, -1);
+          if (size < 0) {
+            throw invalid(Failure.LENGTH, 0, size);
+          }
+          if (info.getCodec() == null) {
+            throw invalid(Failure.CODEC, 0, -1);
+          }
           if (info.getCodec() == TLogCompressionType.NONE
-              && size != entry.getData().get(i).remaining())
+              && size != entry.getData().get(i).remaining()) {
             throw invalid(Failure.LENGTH, size, entry.getData().get(i).remaining());
+          }
           total += size;
-          if (total > maxDecodedBytes) throw invalid(Failure.LIMIT, maxDecodedBytes, total);
+          if (total > maxDecodedBytes) {
+            throw invalid(Failure.LIMIT, maxDecodedBytes, total);
+          }
         }
       } else {
-        for (ByteBuffer buffer : entry.getData()) total += buffer.remaining();
+        for (ByteBuffer buffer : entry.getData()) {
+          total += buffer.remaining();
+        }
       }
     }
-    if (!encoded) return;
-    if (total > maxDecodedBytes) throw invalid(Failure.LIMIT, maxDecodedBytes, total);
+    if (!encoded) {
+      return;
+    }
+    if (total > maxDecodedBytes) {
+      throw invalid(Failure.LIMIT, maxDecodedBytes, total);
+    }
     List<TLogEntry> decoded = new ArrayList<>(request.getLogEntriesSize());
     for (TLogEntry entry : request.getLogEntries()) {
       if (!entry.isSetCompressionInfo()) {
@@ -249,7 +274,9 @@ public final class LogCompression {
             failure.initCause(e);
             throw failure;
           }
-          if (actual != output.length) throw invalid(Failure.LENGTH, output.length, actual);
+          if (actual != output.length) {
+            throw invalid(Failure.LENGTH, output.length, actual);
+          }
           buffer = ByteBuffer.wrap(output);
         }
         data.add(buffer);
@@ -264,8 +291,12 @@ public final class LogCompression {
   private static TLogEntry copy(TLogEntry source, List<ByteBuffer> data) {
     TLogEntry entry =
         new TLogEntry(data, source.getSearchIndex(), source.isFromWAL(), source.getMemorySize());
-    if (source.isSetRoutingEpoch()) entry.setRoutingEpoch(source.getRoutingEpoch());
-    if (source.isSetPhysicalTime()) entry.setPhysicalTime(source.getPhysicalTime());
+    if (source.isSetRoutingEpoch()) {
+      entry.setRoutingEpoch(source.getRoutingEpoch());
+    }
+    if (source.isSetPhysicalTime()) {
+      entry.setPhysicalTime(source.getPhysicalTime());
+    }
     return entry;
   }
 
