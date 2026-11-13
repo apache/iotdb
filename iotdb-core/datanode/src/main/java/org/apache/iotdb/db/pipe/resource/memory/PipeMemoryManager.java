@@ -138,6 +138,34 @@ public class PipeMemoryManager {
         * totalNonFloatingMemorySizeInBytes;
   }
 
+  private boolean isEnoughForTsFileParserMemory(
+      final long extraMemoryInBytes, final long totalNonFloatingMemorySizeInBytes) {
+    return (double) usedMemorySizeInBytesOfTablets
+            + (double) usedMemorySizeInBytesOfTsFiles
+            + (double) extraMemoryInBytes
+        < EXCEED_PROTECT_THRESHOLD
+            * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes);
+  }
+
+  public synchronized String getResizeFailureMessage(final int retries, final long requestedSize) {
+    final long totalNonFloatingMemorySizeInBytes = getTotalNonFloatingMemorySizeInBytes();
+    final double combinedLimit =
+        allowedMaxMemorySizeInBytesOfTabletsAndTsFiles(totalNonFloatingMemorySizeInBytes);
+    return String.format(
+        DataNodePipeMessages
+            .EXCEPTION_FORCERESIZE_FAILED_AFTER_ARG_RETRIES_TOTAL_ARG_BYTES_USED_ARG_BYTES_USEDTABLETS_ARG_BYTES_USEDTSFILES_ARG_BYTES_TABLETLIMIT_ARG_BYTES_TSFILELIMIT_ARG_BYTES_TABLETANDTSFILELIMIT_ARG_BYTES_PROTECTEDPARSERLIMIT_ARG_BYTES_REQUESTED_ARG_BYTES_311C8C7E,
+        retries,
+        totalNonFloatingMemorySizeInBytes,
+        memoryBlock.getUsedMemoryInBytes(),
+        usedMemorySizeInBytesOfTablets,
+        usedMemorySizeInBytesOfTsFiles,
+        Math.round(allowedMaxMemorySizeInBytesOfTablets(totalNonFloatingMemorySizeInBytes)),
+        Math.round(allowedMaxMemorySizeInBytesOfTsTiles(totalNonFloatingMemorySizeInBytes)),
+        Math.round(combinedLimit),
+        Math.round(EXCEED_PROTECT_THRESHOLD * combinedLimit),
+        requestedSize);
+  }
+
   private static long getTsFileParserMemorySizeInBytes() {
     return Math.max(
         PIPE_CONFIG.getTsFileParserMemory(), PIPE_CONFIG.getPipeMemoryAllocateMinSizeInBytes());
@@ -542,6 +570,10 @@ public class PipeMemoryManager {
 
   private boolean isHardEnoughForResizing(
       final PipeMemoryBlock block, final long extraMemoryInBytes) {
+    if (block instanceof PipeTsFileParserMemoryBlock) {
+      return isEnoughForTsFileParserMemory(
+          extraMemoryInBytes, getTotalNonFloatingMemorySizeInBytes());
+    }
     if (!(block instanceof PipeTabletMemoryBlock) && !(block instanceof PipeTsFileMemoryBlock)) {
       return true;
     }
@@ -622,6 +654,27 @@ public class PipeMemoryManager {
               forceAllocateWithRetry(tabletSizeInBytes, PipeMemoryBlockType.TABLET);
       usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
       return block;
+    }
+  }
+
+  public synchronized PipeTsFileParserMemoryBlock forceAllocateForTsFileParserWithRetry(
+      final long parserMemorySizeInBytes) {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return new PipeTsFileParserMemoryBlock(0);
+    }
+
+    final PipeTsFileParserMemoryBlock block =
+        (PipeTsFileParserMemoryBlock) registerMemoryBlock(0, PipeMemoryBlockType.TS_FILE_PARSER);
+    if (parserMemorySizeInBytes == 0) {
+      return block;
+    }
+
+    try {
+      forceResize(block, parserMemorySizeInBytes);
+      return block;
+    } catch (final RuntimeException e) {
+      release(block);
+      throw e;
     }
   }
 
@@ -712,6 +765,8 @@ public class PipeMemoryManager {
       switch (type) {
         case TABLET:
           return new PipeTabletMemoryBlock(sizeInBytes);
+        case TS_FILE_PARSER:
+          return new PipeTsFileParserMemoryBlock(sizeInBytes);
         case TS_FILE:
           return new PipeTsFileMemoryBlock(sizeInBytes);
         case BATCH:
@@ -811,6 +866,9 @@ public class PipeMemoryManager {
   }
 
   private boolean tryResizeInternal(final PipeMemoryBlock block, final long targetSize) {
+    if (block.isReleased()) {
+      return false;
+    }
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       block.setMemoryUsageInBytes(targetSize);
       return true;
@@ -982,6 +1040,9 @@ public class PipeMemoryManager {
     switch (type) {
       case TABLET:
         returnedMemoryBlock = new PipeTabletMemoryBlock(sizeInBytes);
+        break;
+      case TS_FILE_PARSER:
+        returnedMemoryBlock = new PipeTsFileParserMemoryBlock(sizeInBytes);
         break;
       case TS_FILE:
         returnedMemoryBlock = new PipeTsFileMemoryBlock(sizeInBytes);
