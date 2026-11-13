@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import struct
 from enum import Enum
 
 import numpy as np
@@ -72,7 +71,7 @@ def convert_tsblock_to_tensor(tsblock_data: bytes):
     return tensor_data.to("cpu")
 
 
-# Convert DataFrame to TsBlock in binary, input shouldn't contain time column.
+# Convert a tensor to TsBlock in binary, input shouldn't contain time column.
 # Maybe contain multiple value columns.
 def convert_tensor_to_tsblock(data_tensor: torch.Tensor):
     # Ensure the tensor is 2D with size [target_count, sequence_length]
@@ -81,45 +80,36 @@ def convert_tensor_to_tsblock(data_tensor: torch.Tensor):
     elif data_tensor.dim() == 1:
         data_tensor = data_tensor.unsqueeze(0)
 
-    # Transpose the tensor to [sequence_length, target_count]
-    data_frame = pd.DataFrame(data_tensor.cpu()).T
-    # sequence_length, target_count
-    position_count, value_column_size = data_frame.shape[0], data_frame.shape[1]
+    # one value column per target, each of sequence_length values
+    columns = data_tensor.detach().cpu().numpy()
+    value_column_size, position_count = columns.shape
+    data_type = str(columns.dtype)
 
-    keys = data_frame.keys()
-
-    binary = value_column_size.to_bytes(4, byteorder="big")
-
-    for data_type in data_frame.dtypes:
-        binary += _get_type_in_byte(data_type)
+    parts = [value_column_size.to_bytes(4, byteorder="big")]
+    parts.extend([_get_type_in_byte(data_type)] * value_column_size)
 
     # position count
-    binary += position_count.to_bytes(4, byteorder="big")
+    parts.append(position_count.to_bytes(4, byteorder="big"))
 
     # column encoding
-    binary += b"\x02"
-    for data_type in data_frame.dtypes:
-        binary += _get_encoder(data_type)
+    parts.append(b"\x02")
+    parts.extend([_get_encoder(data_type)] * value_column_size)
 
-    # write columns, the column in index 0 must be timeColumn
-    binary += bool.to_bytes(False, 1, byteorder="big")
-    for i in range(position_count):
-        value = 0
-        v = struct.pack(">i", value)
-        binary += v
-        binary += v
+    # write columns, the column in index 0 must be timeColumn: no nulls, then two big-endian
+    # int32 zeros per position
+    parts.append(bool.to_bytes(False, 1, byteorder="big"))
+    parts.append(bytes(8 * position_count))
 
-    for i in range(value_column_size):
+    # the value columns: no nulls, then the values in big-endian order. The parts are joined once
+    # at the end: appending to a bytes object copies it, which made the conversion quadratic in the
+    # number of values.
+    big_endian = columns.dtype.newbyteorder(">")
+    for column in columns:
         # the value can't be null
-        binary += bool.to_bytes(False, 1, byteorder="big")
-        col = data_frame[keys[i]]
-        for j in range(position_count):
-            value = col[j]
-            if value.dtype.byteorder != ">":
-                value = value.byteswap()
-            binary += value.tobytes()
+        parts.append(bool.to_bytes(False, 1, byteorder="big"))
+        parts.append(np.ascontiguousarray(column, dtype=big_endian).tobytes())
 
-    return binary
+    return b"".join(parts)
 
 
 def _get_encoder(data_type: pd.Series):
