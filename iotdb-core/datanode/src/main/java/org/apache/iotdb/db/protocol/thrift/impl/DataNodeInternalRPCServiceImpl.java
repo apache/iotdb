@@ -187,6 +187,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Delet
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -1875,17 +1876,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     SESSION_MANAGER.registerSession(session);
 
-    SESSION_MANAGER.supplySession(
-        session,
-        // TODO: User the real userId
-        -1,
-        req.getUsername(),
-        ZoneId.of(req.getZoneId()),
-        ClientVersion.V_1_0);
-
     String executedSQL = req.queryBody;
 
     try {
+      SESSION_MANAGER.supplySession(
+          session,
+          AuthorityChecker.getUserId(req.getUsername()).orElse(-1L),
+          req.getUsername(),
+          ZoneId.of(req.getZoneId()),
+          ClientVersion.V_1_0);
+
       QueryStatement s =
           (QueryStatement) StatementGenerator.createStatement(req.queryBody, session.getZoneId());
       if (s == null) {
@@ -1917,6 +1917,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         s.getGroupByTimeComponent().setLeftCRightO(true);
       }
       executedSQL = String.join(" ", s.constructFormattedSQL().split("\n")).replaceAll(" +", " ");
+
+      // Refresh the owner's READ_DATA scope for each CQ execution.
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                      session.getUserId(), session.getUsername(), session.getClientAddress())
+                  .setSqlString(executedSQL));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            DataNodeMiscMessages.LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F,
+            req.getCqId(),
+            req.getUsername(),
+            status);
+        return status;
+      }
 
       long queryId =
           SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));
