@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryStatistics;
 import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -49,8 +50,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -294,38 +298,34 @@ public class TimeSeriesMetadataCache {
         return new TimeseriesMetadata(timeseriesMetadata);
       }
     } finally {
-      queryContext.getQueryStatistics().getLoadBloomFilterTime().getAndAdd(loadBloomFilterTime);
-      if (cacheHit) {
-        queryContext
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromCacheCount()
-            .incrementAndGet();
-        queryContext
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromCacheTime()
-            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
-      } else {
-        queryContext
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromDiskCount()
-            .incrementAndGet();
-        queryContext
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromDiskTime()
-            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
-      }
+      long lookupTime = System.nanoTime() - startTime - loadBloomFilterTime;
+      recordLoadStatistics(
+          queryContext,
+          cacheHit ? 1 : 0,
+          cacheHit ? lookupTime : 0,
+          cacheHit ? 0 : 1,
+          cacheHit ? 0 : lookupTime,
+          loadBloomFilterTime);
     }
   }
 
   /**
-   * Load the TimeseriesMetadata of {@code allSensors} of a device, reading the device in a single
-   * batch when the per-measurement cache does not already hold all of them. This is used by
-   * wide-table scans (a device with many columns) to avoid walking the device metadata index once
-   * per column / leaf node.
+   * Load the TimeseriesMetadata of {@code allSensors} of a device, reusing the per-measurement
+   * cache and reading the device in a single batch only for the measurements that are still
+   * missing. This is used by wide-table scans (a device with many columns) to avoid walking the
+   * device metadata index once per column / leaf group.
+   *
+   * <p>Measurements already cached are returned without touching the file. The remaining ones are
+   * first checked against the file's cached bloom filter, so columns absent from this file do not
+   * force a device read; only measurements that cannot be ruled out are loaded by the batch read.
    *
    * <p>The returned map always holds copies of the cached (or freshly read) metadata, so the caller
    * may apply {@code setModified} and {@code setChunkMetadataLoader} without corrupting cached
    * entries — matching {@link #get}.
+   *
+   * <p>Load statistics are counted per series (not per device read) so that they stay comparable
+   * with {@link #get}; the bytes read by the batch read cannot be reported because {@link
+   * TsFileSequenceReader#getDeviceTimeseriesMetadata(IDeviceID)} has no IO-size recorder.
    *
    * @param filePath path of the tsfile
    * @param tsFileID id of the tsfile
@@ -348,129 +348,180 @@ public class TimeSeriesMetadataCache {
       boolean ignoreNotExists)
       throws IOException {
     long startTime = System.nanoTime();
+    long cachePhaseEndTime = 0;
     long loadBloomFilterTime = 0;
+    long cacheHitCount = 0;
+    long diskLookupCount = 0;
     boolean externalTsFile = queryContext.isExternalTsFileScan();
     LongConsumer timeSeriesMetadataIoSizeRecorder =
         queryContext.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet;
     LongConsumer bloomFilterIoSizeRecorder =
         queryContext.getQueryStatistics().getLoadBloomFilterActualIOSize()::addAndGet;
-    boolean cacheHit = true;
+
+    Map<String, TimeseriesMetadata> result = new HashMap<>(allSensors.size());
+    List<String> missing = new ArrayList<>(allSensors.size());
 
     try {
       if (CACHE_ENABLE && !externalTsFile) {
-        Map<String, TimeseriesMetadata> cached =
-            getCachedDeviceTimeSeriesMetadata(tsFileID, device, allSensors);
-        if (cached != null) {
-          return cached;
+        // fast path without locking: reuse everything the per-measurement cache already has
+        collectCachedMetadata(tsFileID, device, allSensors, result, missing);
+        cacheHitCount = result.size();
+        if (missing.isEmpty()) {
+          cachePhaseEndTime = System.nanoTime();
+          return result;
         }
-        // serialize concurrent reads of the same device+file (same lock key as get) so threads
-        // don't each deserialize the whole device and race on the shared reader
+        // serialize reads of the same device+file (same lock key as get) so threads don't each
+        // deserialize the whole device and race on the shared reader
         synchronized (
             devices.computeIfAbsent(device.toString() + SEPARATOR + filePath, WeakReference::new)) {
-          cached = getCachedDeviceTimeSeriesMetadata(tsFileID, device, allSensors);
-          if (cached != null) {
-            return cached;
+          List<String> stillMissing = new ArrayList<>(missing.size());
+          collectCachedMetadata(tsFileID, device, missing, result, stillMissing);
+          missing = stillMissing;
+          cacheHitCount = result.size();
+          cachePhaseEndTime = System.nanoTime();
+          if (missing.isEmpty()) {
+            return result;
           }
-          cacheHit = false;
+
+          // measurements the cached bloom filter already rejects are known absent in this file, so
+          // they must not trigger a device read
           long bloomFilterStartTime = System.nanoTime();
-          boolean devicePossiblyPresent =
-              isDevicePossiblyPresent(
-                  filePath, tsFileID, device, queryContext, bloomFilterIoSizeRecorder);
-          loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
-          if (!devicePossiblyPresent) {
-            return Collections.emptyMap();
+          BloomFilter bloomFilter =
+              loadBloomFilter(filePath, tsFileID, queryContext, bloomFilterIoSizeRecorder, false);
+          List<String> possiblyPresent = new ArrayList<>(missing.size());
+          for (String measurement : missing) {
+            if (bloomFilterMayContain(bloomFilter, device, measurement)) {
+              possiblyPresent.add(measurement);
+            } else {
+              result.put(measurement, null);
+            }
           }
+          loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
+          diskLookupCount = missing.size();
+          if (possiblyPresent.isEmpty()) {
+            return result;
+          }
+
           TsFileSequenceReader reader =
               FileReaderManager.getInstance()
                   .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, false);
-          return readDeviceTimeSeriesMetadata(
-              reader, tsFileID, device, allSensors, true, ignoreNotExists);
+          result.putAll(
+              readDeviceTimeSeriesMetadata(
+                  reader,
+                  filePath,
+                  tsFileID,
+                  device,
+                  new HashSet<>(possiblyPresent),
+                  true,
+                  ignoreNotExists));
+          return result;
         }
       }
-      cacheHit = false;
+
+      // cache disabled / external tsfiles: probe the time column first so an absent device does
+      // not pay for the whole-device read
       long bloomFilterStartTime = System.nanoTime();
-      boolean devicePossiblyPresent =
-          isDevicePossiblyPresent(
-              filePath, tsFileID, device, queryContext, bloomFilterIoSizeRecorder);
+      BloomFilter bloomFilter =
+          loadBloomFilter(
+              filePath, tsFileID, queryContext, bloomFilterIoSizeRecorder, externalTsFile);
       loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
-      if (!devicePossiblyPresent) {
-        return Collections.emptyMap();
+      diskLookupCount = allSensors.size();
+      if (!bloomFilterMayContain(bloomFilter, device, "")) {
+        for (String measurement : allSensors) {
+          result.put(measurement, null);
+        }
+        return result;
       }
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
               .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, externalTsFile);
       return readDeviceTimeSeriesMetadata(
-          reader, tsFileID, device, allSensors, false, ignoreNotExists);
+          reader, filePath, tsFileID, device, allSensors, false, ignoreNotExists);
     } finally {
-      queryContext.getQueryStatistics().getLoadBloomFilterTime().getAndAdd(loadBloomFilterTime);
-      if (cacheHit) {
-        queryContext
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromCacheCount()
-            .incrementAndGet();
-        queryContext
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromCacheTime()
-            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
-      } else {
-        queryContext
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromDiskCount()
-            .incrementAndGet();
-        queryContext
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromDiskTime()
-            .getAndAdd(System.nanoTime() - startTime - loadBloomFilterTime);
-      }
+      long endTime = System.nanoTime();
+      long cacheLookupTime = cachePhaseEndTime == 0 ? 0 : cachePhaseEndTime - startTime;
+      long diskLookupTime =
+          cachePhaseEndTime == 0
+              ? endTime - startTime - loadBloomFilterTime
+              : endTime - cachePhaseEndTime - loadBloomFilterTime;
+      recordLoadStatistics(
+          queryContext,
+          cacheHitCount,
+          cacheLookupTime,
+          diskLookupCount,
+          diskLookupTime,
+          loadBloomFilterTime);
+    }
+  }
+
+  private BloomFilter loadBloomFilter(
+      String filePath,
+      TsFileID tsFileID,
+      QueryContext queryContext,
+      LongConsumer bloomFilterIoSizeRecorder,
+      boolean externalTsFile)
+      throws IOException {
+    return BloomFilterCache.getInstance()
+        .get(
+            new BloomFilterCache.BloomFilterCacheKey(filePath, tsFileID),
+            false,
+            bloomFilterIoSizeRecorder,
+            queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()::addAndGet,
+            queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()::addAndGet,
+            externalTsFile);
+  }
+
+  /** A null filter cannot rule the measurement out. */
+  private static boolean bloomFilterMayContain(
+      BloomFilter bloomFilter, IDeviceID device, String measurement) {
+    return bloomFilter == null
+        || bloomFilter.contains(device.toString() + IoTDBConstant.PATH_SEPARATOR + measurement);
+  }
+
+  private static void recordLoadStatistics(
+      QueryContext queryContext,
+      long cacheHitCount,
+      long cacheLookupTime,
+      long diskLookupCount,
+      long diskLookupTime,
+      long bloomFilterTime) {
+    QueryStatistics statistics = queryContext.getQueryStatistics();
+    statistics.getLoadBloomFilterTime().getAndAdd(bloomFilterTime);
+    if (cacheHitCount > 0) {
+      statistics.getLoadTimeSeriesMetadataFromCacheCount().getAndAdd(cacheHitCount);
+      statistics.getLoadTimeSeriesMetadataFromCacheTime().getAndAdd(cacheLookupTime);
+    }
+    if (diskLookupCount > 0) {
+      statistics.getLoadTimeSeriesMetadataFromDiskCount().getAndAdd(diskLookupCount);
+      statistics.getLoadTimeSeriesMetadataFromDiskTime().getAndAdd(diskLookupTime);
     }
   }
 
   /**
-   * The time column (keyed by "") is written for every aligned device, so its bloom filter entry is
-   * a cheap per-file presence probe. A null filter cannot rule the device out.
+   * Resolve cached measurements into {@code resolved} and collect the rest into {@code missing}.
    */
-  private boolean isDevicePossiblyPresent(
-      String filePath,
+  private void collectCachedMetadata(
       TsFileID tsFileID,
       IDeviceID device,
-      QueryContext queryContext,
-      LongConsumer bloomFilterIoSizeRecorder)
-      throws IOException {
-    BloomFilter bloomFilter =
-        BloomFilterCache.getInstance()
-            .get(
-                new BloomFilterCache.BloomFilterCacheKey(filePath, tsFileID),
-                false,
-                bloomFilterIoSizeRecorder,
-                queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()::addAndGet,
-                queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()::addAndGet,
-                false);
-    return bloomFilter == null
-        || bloomFilter.contains(device.toString() + IoTDBConstant.PATH_SEPARATOR);
-  }
-
-  /**
-   * @return copies of the cached metadata for every measurement in {@code allSensors}, or null as
-   *     soon as one of them is not cached and the device therefore has to be read from disk
-   */
-  private Map<String, TimeseriesMetadata> getCachedDeviceTimeSeriesMetadata(
-      TsFileID tsFileID, IDeviceID device, Set<String> allSensors) {
-    Map<String, TimeseriesMetadata> result = new HashMap<>(allSensors.size());
-    for (String measurement : allSensors) {
+      Collection<String> measurements,
+      Map<String, TimeseriesMetadata> resolved,
+      List<String> missing) {
+    for (String measurement : measurements) {
       TimeseriesMetadata metadata =
           lruCache.getIfPresent(new TimeSeriesMetadataCacheKey(tsFileID, device, measurement));
       if (metadata == null) {
-        return null;
+        missing.add(measurement);
+      } else {
+        resolved.put(
+            measurement,
+            metadata == NULL_EXISTS_CACHE_PLACE_HOLDER ? null : new TimeseriesMetadata(metadata));
       }
-      result.put(
-          measurement,
-          metadata == NULL_EXISTS_CACHE_PLACE_HOLDER ? null : new TimeseriesMetadata(metadata));
     }
-    return result;
   }
 
   private Map<String, TimeseriesMetadata> readDeviceTimeSeriesMetadata(
       TsFileSequenceReader reader,
+      String filePath,
       TsFileID tsFileID,
       IDeviceID device,
       Set<String> allSensors,
@@ -488,7 +539,11 @@ public class TimeSeriesMetadataCache {
         return Collections.emptyMap();
       }
       throw new IOException(
-          String.format(StorageEngineMessages.DEVICE_DOES_NOT_EXIST_IN_RESOURCE_FILE_FMT, device));
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_DEVICE_ARG_IS_RECORDED_IN_THE_RESOURCE_BUT_MISSING_FROM_THE_METADATA_OF_TSFILE_ARG_DE00C374,
+              device,
+              filePath));
     }
 
     Map<String, TimeseriesMetadata> result = new HashMap<>(allSensors.size());

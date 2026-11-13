@@ -1620,6 +1620,9 @@ public final class StorageEngineMessages {
   public static final String COMPACTION_CROSS_SPACE = "跨空间";
   public static final String DEVICE_DOES_NOT_EXIST_IN_RESOURCE_FILE_FMT =
       "%s 在资源文件中不存在";
+  public static final String
+      EXCEPTION_DEVICE_ARG_IS_RECORDED_IN_THE_RESOURCE_BUT_MISSING_FROM_THE_METADATA_OF_TSFILE_ARG_DE00C374 =
+          "设备 %s 记录在资源文件中，但在 TsFile %s 的元数据中不存在";
   public static final String TARGET_FILE_SMALLER_THAN_MAGIC_STRING_AND_VERSION_NUMBER_SIZE_FMT =
       "目标文件 %s 小于 magic string 和版本号大小";
   public static final String CURRENT_POINT_TIMESTAMP_SHOULD_BE_LATER_FMT =

@@ -21,81 +21,151 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.series;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.tsfile.write.chunk.IChunkWriter;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 
-/** Verifies the wide-table batch metadata scan (see FileLoaderUtils) reads data correctly. */
-public class AlignedSeriesScanBatchTest extends AbstractAlignedSeriesScanTest {
+import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createChunkWriter;
+import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeAlignedChunk;
+
+/**
+ * Verifies that a real multi-leaf-group device (more field columns than the measurement index
+ * fan-out) is read correctly through the batch metadata path.
+ */
+public class AlignedSeriesScanBatchTest {
+
+  private static final String DATABASE = "root.wide_pd";
+  private static final IDeviceID DEVICE =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(DATABASE + ".d1");
 
   @Test
-  public void testBatchScanReadsAlignedData() throws IOException, IllegalPathException {
-    AlignedFullPath scanPath =
-        new AlignedFullPath(
-            TEST_DEVICE,
-            Arrays.asList("s1", "s2", "s3"),
-            Arrays.asList(
-                new MeasurementSchema("s1", TSDataType.INT32),
-                new MeasurementSchema("s2", TSDataType.INT32),
-                new MeasurementSchema("s3", TSDataType.INT32)));
+  public void testBatchScanReadsWideAlignedDevice() throws IOException, IllegalPathException {
+    int columnCount = 300;
+    File file = new File(TestConstant.getTestTsFilePath(DATABASE, 0, 0, 1));
+    if (!file.getParentFile().exists()) {
+      Assert.assertTrue(file.getParentFile().mkdirs());
+    }
+    TsFileResource resource = new TsFileResource(file);
+    List<PartialPath> writtenPaths = new ArrayList<>(columnCount);
+    List<TSDataType> dataTypes = new ArrayList<>(columnCount);
+    List<TSEncoding> encodings = new ArrayList<>(columnCount);
+    List<CompressionType> compressionTypes = new ArrayList<>(columnCount);
+    List<String> measurementNames = new ArrayList<>(columnCount);
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>(columnCount);
 
-    SeriesScanOptions.Builder builder = new SeriesScanOptions.Builder();
-    builder.withAllSensors(new HashSet<>(scanPath.getMeasurementList()));
-    SeriesScanOptions scanOptions = builder.build();
-    // all 3 value columns are selected, so selected/total = 1.0 >= 0.6 and the batch path is taken
-    scanOptions.setTotalFieldColumnCount(3);
+    for (int i = 0; i < columnCount; i++) {
+      String measurement = "s" + i;
+      measurementNames.add(measurement);
+      measurementSchemas.add(new MeasurementSchema(measurement, TSDataType.INT32));
+      writtenPaths.add(new AlignedPath(DEVICE.toString(), measurement));
+      dataTypes.add(TSDataType.INT32);
+      encodings.add(TSEncoding.PLAIN);
+      compressionTypes.add(CompressionType.UNCOMPRESSED);
+    }
 
-    AlignedSeriesScanUtil seriesScanUtil =
-        new AlignedSeriesScanUtil(
-            scanPath, Ordering.ASC, scanOptions, EnvironmentUtils.TEST_QUERY_FI_CONTEXT);
-    seriesScanUtil.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+    try (TsFileIOWriter writer = new TsFileIOWriter(file)) {
+      writer.startChunkGroup(DEVICE);
+      for (IChunkWriter chunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, true)) {
+        writeAlignedChunk(
+            (AlignedChunkWriterImpl) chunkWriter,
+            writer,
+            Collections.singletonList(new TimeRange(0L, 9L)),
+            true);
+      }
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource.updateStartTime(DEVICE, 0);
+    resource.updateEndTime(DEVICE, 9);
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
 
-    TimeSeriesMetadataCache.getInstance().clear();
-    long cacheHitsBefore =
-        EnvironmentUtils.TEST_QUERY_FI_CONTEXT
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromCacheCount()
-            .get();
-    long diskReadsBefore =
-        EnvironmentUtils.TEST_QUERY_FI_CONTEXT
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromDiskCount()
-            .get();
+    TimeSeriesMetadataCache metadataCache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
+    metadataCache.clear();
+    bloomFilterCache.clear();
+    try {
+      long cacheHitsBefore =
+          EnvironmentUtils.TEST_QUERY_FI_CONTEXT
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataFromCacheCount()
+              .get();
+      long diskReadsBefore =
+          EnvironmentUtils.TEST_QUERY_FI_CONTEXT
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataFromDiskCount()
+              .get();
 
-    // the batch path must still assemble the same aligned pages: file 1 has 10 points
-    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
-    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
-    Assert.assertTrue(seriesScanUtil.hasNextPage());
-    TsBlock tsBlock = seriesScanUtil.nextPage();
-    Assert.assertEquals(10, tsBlock.getPositionCount());
+      AlignedFullPath scanPath = new AlignedFullPath(DEVICE, measurementNames, measurementSchemas);
+      SeriesScanOptions.Builder builder = new SeriesScanOptions.Builder();
+      builder.withAllSensors(new HashSet<>(scanPath.getMeasurementList()));
+      SeriesScanOptions scanOptions = builder.build();
+      // all columns are selected and the table is wider than the index fan-out, so batching applies
+      scanOptions.setTotalFieldColumnCount(columnCount);
 
-    // the device must have been read in one batch: no per-column cache lookups were needed
-    Assert.assertEquals(
-        "the batch path must not fall back to per-column cache loads",
-        cacheHitsBefore,
-        EnvironmentUtils.TEST_QUERY_FI_CONTEXT
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromCacheCount()
-            .get());
-    // hasNextFile unpacks the first seq file and the first unseq file, one batch read each
-    Assert.assertEquals(
-        diskReadsBefore + 2,
-        EnvironmentUtils.TEST_QUERY_FI_CONTEXT
-            .getQueryStatistics()
-            .getLoadTimeSeriesMetadataFromDiskCount()
-            .get());
+      AlignedSeriesScanUtil seriesScanUtil =
+          new AlignedSeriesScanUtil(
+              scanPath, Ordering.ASC, scanOptions, EnvironmentUtils.TEST_QUERY_FI_CONTEXT);
+      seriesScanUtil.initQueryDataSource(
+          new QueryDataSource(Collections.singletonList(resource), Collections.emptyList()));
+
+      SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
+      SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
+      Assert.assertTrue(seriesScanUtil.hasNextPage());
+      TsBlock tsBlock = seriesScanUtil.nextPage();
+      Assert.assertEquals(10, tsBlock.getPositionCount());
+
+      // one batch read per device and file: no per-column cache lookups happened
+      Assert.assertEquals(
+          "the batch path must not fall back to per-column cache loads",
+          cacheHitsBefore,
+          EnvironmentUtils.TEST_QUERY_FI_CONTEXT
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataFromCacheCount()
+              .get());
+      // statistics are counted per series, like the per-column path (time column + all fields)
+      Assert.assertEquals(
+          diskReadsBefore + columnCount + 1,
+          EnvironmentUtils.TEST_QUERY_FI_CONTEXT
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataFromDiskCount()
+              .get());
+    } finally {
+      metadataCache.clear();
+      bloomFilterCache.clear();
+      FileReaderManager.getInstance().closeFileAndRemoveReader(resource.getTsFileID());
+      Assert.assertTrue(file.delete());
+    }
   }
 }

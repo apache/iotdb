@@ -37,6 +37,7 @@ import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -47,6 +48,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -396,13 +398,12 @@ public class TimeSeriesMetadataCacheTest {
       Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class)))
           .thenReturn(BloomFilter.getEmptyBloomFilter(0.05, 1));
 
-      // an absent device yields an empty map, which loadAlignedTimeSeriesMetadataBatch then
-      // distinguishes from "present but empty time column"
-      assertTrue(
-          cache
-              .getDeviceTimeSeriesMetadata(
-                  filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false)
-              .isEmpty());
+      // an absent device must not be read: the filtered-out measurements are returned as null,
+      // which the caller distinguishes from "present but empty time column"
+      Map<String, TimeseriesMetadata> result =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false);
+      assertNull(result.get(""));
       Mockito.verify(reader, Mockito.never()).getDeviceTimeseriesMetadata(deviceID);
     } finally {
       cache.clear();
@@ -445,7 +446,94 @@ public class TimeSeriesMetadataCacheTest {
               .isEmpty());
     } finally {
       cache.clear();
+      bloomFilterCache.clear();
       fileReaderManager.closeFileAndRemoveReader(tsFileID);
+    }
+  }
+
+  @Test
+  public void testBatchMetadataMatchesPerColumn() throws Exception {
+    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
+    FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    TsFileID tsFileID = new TsFileID();
+    int columnCount = 700;
+    File file = new File("target/batch-compare.tsfile");
+    file.delete();
+    IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.compare.d1");
+    List<IMeasurementSchema> schemas = new ArrayList<>(columnCount);
+    for (int i = 0; i < columnCount; i++) {
+      schemas.add(new MeasurementSchema("s" + i, TSDataType.INT32));
+    }
+    try (TsFileWriter writer = new TsFileWriter(file)) {
+      writer.registerAlignedTimeseries(deviceID, schemas);
+      for (long time = 0; time < 3; time++) {
+        TSRecord record = new TSRecord(deviceID, time);
+        for (int i = 0; i < columnCount; i++) {
+          record.addPoint("s" + i, (int) time);
+        }
+        writer.writeRecord(record);
+      }
+    }
+    cache.clear();
+    bloomFilterCache.clear();
+    try {
+      String filePath = file.getAbsolutePath();
+      Set<String> allSensors = new HashSet<>();
+      for (int i = 0; i < columnCount; i++) {
+        allSensors.add("s" + i);
+      }
+      allSensors.add("");
+      allSensors.add("absent");
+
+      Map<String, TimeseriesMetadata> perColumn = new HashMap<>();
+      for (String measurement : allSensors) {
+        perColumn.put(
+            measurement,
+            cache.get(
+                filePath,
+                new TimeSeriesMetadataCacheKey(tsFileID, deviceID, measurement),
+                allSensors,
+                false,
+                false,
+                new QueryContext(false, false)));
+      }
+      cache.clear();
+
+      Map<String, TimeseriesMetadata> batch =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false);
+
+      assertEquals(allSensors.size(), batch.size());
+      for (String measurement : allSensors) {
+        TimeseriesMetadata expected = perColumn.get(measurement);
+        TimeseriesMetadata actual = batch.get(measurement);
+        if (expected == null) {
+          assertNull(measurement, actual);
+          continue;
+        }
+        assertNotNull(measurement, actual);
+        assertEquals(measurement, actual.getMeasurementId());
+        assertEquals(
+            measurement, expected.getStatistics().getCount(), actual.getStatistics().getCount());
+        assertEquals(
+            measurement,
+            expected.getStatistics().getStartTime(),
+            actual.getStatistics().getStartTime());
+        assertEquals(
+            measurement,
+            expected.getStatistics().getEndTime(),
+            actual.getStatistics().getEndTime());
+        assertEquals(
+            measurement,
+            expected.getChunkMetadataList().size(),
+            actual.getChunkMetadataList().size());
+      }
+    } finally {
+      cache.clear();
+      bloomFilterCache.clear();
+      fileReaderManager.closeFileAndRemoveReader(tsFileID);
+      assertTrue(file.delete());
     }
   }
 }
