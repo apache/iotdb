@@ -178,10 +178,15 @@ public class ExactOrderStatistics {
     if (nums.isEmpty()) {
       throw new NoSuchElementException();
     } else {
-      double median = getMedian(nums);
+      nums.sortThis();
+      BigInteger twiceMedian = BigInteger.valueOf(nums.get(nums.size() / 2));
+      twiceMedian = twiceMedian.add(BigInteger.valueOf(nums.get((nums.size() - 1) / 2)));
       DoubleArrayList dal = new DoubleArrayList(nums.size());
       for (int i = 0; i < nums.size(); ++i) {
-        dal.add(Math.abs(nums.get(i) - median));
+        // Subtract before conversion so adjacent INT64 values retain their small deviations.
+        dal.add(
+            BigInteger.valueOf(nums.get(i)).shiftLeft(1).subtract(twiceMedian).abs().doubleValue()
+                / 2.0);
       }
       return getMedian(dal);
     }

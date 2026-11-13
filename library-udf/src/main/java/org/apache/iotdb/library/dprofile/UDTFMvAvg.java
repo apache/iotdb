@@ -37,6 +37,7 @@ public class UDTFMvAvg implements UDTF {
   Type dataType;
   DoubleCircularQueue v;
   double windowSum;
+  double windowCompensation;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -57,6 +58,7 @@ public class UDTFMvAvg implements UDTF {
     windowSize = parameters.getIntOrDefault("window", 10);
     v = new DoubleCircularQueue(windowSize);
     windowSum = 0d;
+    windowCompensation = 0d;
   }
 
   @Override
@@ -67,24 +69,39 @@ public class UDTFMvAvg implements UDTF {
     double value = Util.getValueAsDouble(row);
     if (Double.isFinite(value)) {
       if (v.isFull()) {
-        windowSum -= v.pop();
+        addToSum(-v.pop());
       }
       v.push(value);
-      windowSum += value;
+      addToSum(value);
       if (v.isFull()) {
-        if (!Double.isFinite(windowSum)) {
+        if (!Double.isFinite(windowSum + windowCompensation)) {
           // An overflow in an earlier window must not poison all subsequent windows.
           windowSum = 0d;
+          windowCompensation = 0d;
           for (int i = 0; i < v.getSize(); i++) {
-            windowSum += v.get(i);
+            addToSum(v.get(i));
           }
         }
-        double average = windowSum / windowSize;
+        double average = (windowSum + windowCompensation) / windowSize;
         if (Double.isFinite(average)) {
           collector.putDouble(row.getTime(), average);
         }
       }
     }
+  }
+
+  private void addToSum(double value) {
+    double sum = windowSum + value;
+    if (Double.isFinite(sum)) {
+      // Retain small values until larger values leave the window (Neumaier summation).
+      windowCompensation +=
+          Math.abs(windowSum) >= Math.abs(value)
+              ? (windowSum - sum) + value
+              : (value - sum) + windowSum;
+    } else {
+      windowCompensation = 0d;
+    }
+    windowSum = sum;
   }
 
   @Override

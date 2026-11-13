@@ -116,15 +116,19 @@ public class UDTFSpline implements UDTF {
       double[] x = ArrayUtils.toPrimitive(xDouble.toArray(new Double[0]));
       double[] y = ArrayUtils.toPrimitive(interpolationValues.toArray(new Double[0]));
       psf = asi.interpolate(x, y);
-      for (int i = 0; i < samplePoints; i++) {
-        long outputTimestamp = getOutputTimestamp(i);
+      int outputPoints = samplePoints;
+      if (span.compareTo(BigInteger.valueOf(samplePoints - 1L)) < 0) {
+        outputPoints = span.intValueExact() + 1;
+      }
+      for (int i = 0; i < outputPoints; i++) {
+        long outputTimestamp = getOutputTimestamp(i, outputPoints);
         double approximation =
             BigInteger.valueOf(outputTimestamp).subtract(coordinateOrigin).doubleValue()
                 / coordinateScale;
         double yhead;
         if (i == 0) {
           yhead = y[0];
-        } else if (i == samplePoints - 1) {
+        } else if (i == outputPoints - 1) {
           yhead = y[y.length - 1];
         } else {
           yhead = psf.value(approximation);
@@ -136,10 +140,10 @@ public class UDTFSpline implements UDTF {
     }
   }
 
-  private long getOutputTimestamp(int index) {
+  private long getOutputTimestamp(int index, int outputPoints) {
     BigInteger start = BigInteger.valueOf(minimumTimestamp);
     BigInteger span = BigInteger.valueOf(timestamp.get(timestamp.size() - 1)).subtract(start);
-    BigInteger denominator = BigInteger.valueOf(samplePoints - 1L);
+    BigInteger denominator = BigInteger.valueOf(outputPoints - 1L);
     BigInteger offset =
         span.multiply(BigInteger.valueOf(index)).add(denominator.shiftRight(1)).divide(denominator);
     return start.add(offset).longValueExact();

@@ -37,6 +37,7 @@ public class DTWState implements State {
   // Keep effective input because partial states may arrive in any temporal order or interleave.
   private Map<Long, Double> input;
   private Integer size;
+  private boolean needsRebuild;
 
   public DTWState() {}
 
@@ -50,12 +51,14 @@ public class DTWState implements State {
     valueBuffer = new ArrayDeque<>(size);
     timeBuffer = new ArrayDeque<>(size);
     input = new TreeMap<>();
+    needsRebuild = false;
   }
 
   @Override
   public byte[] serialize() {
     int capacity =
         Integer.BYTES * 2
+            + Byte.BYTES
             + input.size() * (Double.BYTES + Long.BYTES)
             + matchResults.size() * DTWMatchResult.BYTES;
     ByteBuffer byteBuffer = ByteBuffer.allocate(capacity);
@@ -70,6 +73,7 @@ public class DTWState implements State {
     for (DTWMatchResult matchResult : matchResults) {
       byteBuffer.put(matchResult.toByteArray());
     }
+    byteBuffer.put((byte) (needsRebuild ? 1 : 0));
 
     return byteBuffer.array();
   }
@@ -90,6 +94,7 @@ public class DTWState implements State {
       byteBuffer.get(dst);
       matchResults.add(DTWMatchResult.fromByteArray(dst));
     }
+    needsRebuild = byteBuffer.get() != 0;
   }
 
   public void setSize(int size) {
@@ -102,6 +107,10 @@ public class DTWState implements State {
 
   public void updateBuffer(long time, double dataPoint) {
     input.put(time, dataPoint);
+    updateWindow(time, dataPoint);
+  }
+
+  public void updateWindow(long time, double dataPoint) {
     if (valueBuffer.size() == size) {
       valueBuffer.poll();
       timeBuffer.poll();
@@ -120,6 +129,29 @@ public class DTWState implements State {
 
   public Map<Long, Double> getInput() {
     return Collections.unmodifiableMap(input);
+  }
+
+  public void mergeInput(DTWState other) {
+    if (other.input.isEmpty()) {
+      return;
+    }
+    input.putAll(other.input);
+    clearWindowAndMatches();
+    needsRebuild = true;
+  }
+
+  public boolean needsRebuild() {
+    return needsRebuild;
+  }
+
+  public void clearWindowAndMatches() {
+    valueBuffer.clear();
+    timeBuffer.clear();
+    matchResults.clear();
+  }
+
+  public void finishRebuild() {
+    needsRebuild = false;
   }
 
   public long getFirstTime() {

@@ -218,6 +218,26 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testMvAvgPreservesSmallValuesAfterLargeValuesLeaveWindow() throws Exception {
+    for (double large : new double[] {1e16, Double.MAX_VALUE, -Double.MAX_VALUE}) {
+      UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("window", "2"));
+      UDTFMvAvg mvAvg = new UDTFMvAvg();
+      RecordingPointCollector collector = new RecordingPointCollector();
+      mvAvg.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+      mvAvg.transform(new DoubleRow(1, large), collector);
+      mvAvg.transform(new DoubleRow(2, large), collector);
+      mvAvg.transform(new DoubleRow(3, 1), collector);
+      mvAvg.transform(new DoubleRow(4, 1), collector);
+      mvAvg.transform(new DoubleRow(5, 3), collector);
+
+      Assert.assertEquals(
+          Long.valueOf(4), collector.timestamps.get(collector.timestamps.size() - 2));
+      Assert.assertEquals(1.0, collector.values.get(collector.values.size() - 2), 0);
+      Assert.assertEquals(2.0, collector.values.get(collector.values.size() - 1), 0);
+    }
+  }
+
+  @Test
   public void testLOFSkipsNullRowsWithoutReadingCompressedIndex() throws Exception {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("k", "1");
@@ -276,7 +296,6 @@ public class UDFWindowAndQueueTest {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("k", "1");
     attributes.put("method", "series");
-    attributes.put("window", "2");
     UDTFLOF lof = new UDTFLOF();
     UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
     RecordingPointCollector collector = new RecordingPointCollector();
@@ -290,7 +309,10 @@ public class UDFWindowAndQueueTest {
             new DoubleRow(3, 2.0),
             new DoubleRow(4, 3.0),
             new DoubleRow(5, Double.POSITIVE_INFINITY),
-            new DoubleRow(6, 4.0)),
+            new DoubleRow(6, 4.0),
+            new DoubleRow(7, 5.0),
+            new DoubleRow(8, 6.0),
+            new DoubleRow(9, 7.0)),
         collector);
 
     Assert.assertEquals(Arrays.asList(1L, 3L, 4L), collector.timestamps);
@@ -1334,6 +1356,28 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testHistogramHandlesRoundedNonzeroSubnormalBucketWidth() throws Exception {
+    for (double start : new double[] {0.0, -5 * Double.MIN_VALUE}) {
+      UDFParameters parameters =
+          createSingleDoubleSeriesParameters(
+              Map.of(
+                  "min", Double.toString(start),
+                  "max", Double.toString(start + 5 * Double.MIN_VALUE),
+                  "count", "2"));
+      UDTFHistogram histogram = new UDTFHistogram();
+      RecordingPointCollector collector = new RecordingPointCollector();
+      histogram.validate(new UDFParameterValidator(parameters));
+      histogram.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+      histogram.transform(new DoubleRow(1, start + 2 * Double.MIN_VALUE), collector);
+      histogram.transform(new DoubleRow(2, start + 3 * Double.MIN_VALUE), collector);
+      histogram.terminate(collector);
+
+      Assert.assertEquals(Arrays.asList(0L, 1L), collector.timestamps);
+      Assert.assertEquals(Arrays.asList(1.0, 1.0), collector.values);
+    }
+  }
+
+  @Test
   public void testHistogramKeepsExactBucketBoundaries() throws Exception {
     UDFParameters parameters =
         createSingleDoubleSeriesParameters(Map.of("min", "0", "max", "100", "count", "100"));
@@ -2328,6 +2372,34 @@ public class UDFWindowAndQueueTest {
 
     Assert.assertEquals(Arrays.asList(0L, 1L, 3L, 4L), collector.timestamps);
     Assert.assertEquals(Arrays.asList(0.0, 1.0, 3.0, 4.0), collector.values);
+  }
+
+  @Test
+  public void testSplineEmitsEachAvailableTimestampAtMostOnce() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("points", "10"));
+    UDTFSpline spline = new UDTFSpline();
+    RecordingPointCollector collector =
+        new RecordingPointCollector() {
+          private Long previous;
+
+          @Override
+          public void putDouble(long timestamp, double value) {
+            if (previous != null) {
+              Assert.assertTrue("Output timestamps must increase", timestamp > previous);
+            }
+            previous = timestamp;
+            super.putDouble(timestamp, value);
+          }
+        };
+    spline.validate(new UDFParameterValidator(parameters));
+    spline.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    for (int i = 0; i < 5; i++) {
+      spline.transform(new DoubleRow(i, i), collector);
+    }
+    spline.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L, 4L), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(0.0, 1.0, 2.0, 3.0, 4.0), collector.values);
   }
 
   @Test

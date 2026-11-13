@@ -126,6 +126,27 @@ public class ExactOrderStatisticsTest {
   }
 
   @Test
+  public void testLongMadPreservesSmallDeviationsAtLargeOffsets() {
+    for (long start : new long[] {Long.MIN_VALUE, 9007199254740992L, Long.MAX_VALUE - 2}) {
+      Assert.assertEquals(
+          0.5, ExactOrderStatistics.getMad(LongArrayList.newListWith(start, start + 1)), 0);
+      Assert.assertEquals(
+          1.0,
+          ExactOrderStatistics.getMad(LongArrayList.newListWith(start, start + 1, start + 2)),
+          0);
+    }
+    Assert.assertEquals(
+        0.0,
+        ExactOrderStatistics.getMad(
+            LongArrayList.newListWith(Long.MIN_VALUE, Long.MAX_VALUE, Long.MAX_VALUE)),
+        0);
+    Assert.assertEquals(
+        0x1.0p63,
+        ExactOrderStatistics.getMad(LongArrayList.newListWith(Long.MIN_VALUE, Long.MAX_VALUE)),
+        0);
+  }
+
+  @Test
   public void testFloatMedianAndMadAtExtremes() {
     Assert.assertEquals(
         (double) Float.MAX_VALUE,

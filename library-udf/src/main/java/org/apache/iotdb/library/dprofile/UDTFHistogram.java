@@ -87,7 +87,7 @@ public class UDTFHistogram implements UDTF {
       }
       double width = span / count;
       // Divide by the width first to preserve exact bucket boundaries when possible.
-      double bucketPosition = width > 0 ? offset / width : (offset / span) * count;
+      double bucketPosition = width >= Double.MIN_NORMAL ? offset / width : (offset / span) * count;
       int id = Math.min(Math.max((int) Math.floor(bucketPosition), 0), count - 1);
       bucket[id]++;
     }

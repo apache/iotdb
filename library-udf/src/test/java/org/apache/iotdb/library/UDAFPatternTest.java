@@ -378,6 +378,7 @@ public class UDAFPatternTest {
     dtwSource.updateBuffer(1L, 1.0);
     dtwSource.updateBuffer(2L, 3.0);
     dtwMatch.combineState(dtwTarget, dtwSource);
+    dtwMatch.outputFinal(dtwTarget, new ResultValue(new BinaryColumnBuilder(null, 1)));
 
     Assert.assertArrayEquals(new Long[] {1L, 2L}, dtwTarget.getTimeBuffer());
     Assert.assertArrayEquals(new Double[] {1.0, 3.0}, dtwTarget.getValueBuffer());
@@ -393,7 +394,7 @@ public class UDAFPatternTest {
 
     match.combineState(target, source);
 
-    assertDtwMatches(target, new long[][] {{1, 1}, {2, 2}, {3, 3}, {4, 4}});
+    assertDtwMatches(match, target, new long[][] {{1, 1}, {2, 2}, {3, 3}, {4, 4}});
     Assert.assertArrayEquals(sourceBefore, source.serialize());
   }
 
@@ -406,7 +407,7 @@ public class UDAFPatternTest {
 
     match.combineState(target, source);
 
-    assertDtwMatches(target, new long[][] {{1, 3}, {4, 6}});
+    assertDtwMatches(match, target, new long[][] {{1, 3}, {4, 6}});
     Assert.assertArrayEquals(new Long[] {4L, 5L, 6L}, target.getTimeBuffer());
   }
 
@@ -419,7 +420,7 @@ public class UDAFPatternTest {
 
     match.combineState(target, source);
 
-    assertDtwMatches(target, new long[0][]);
+    assertDtwMatches(match, target, new long[0][]);
   }
 
   @Test
@@ -434,7 +435,7 @@ public class UDAFPatternTest {
 
       match.combineState(target, source);
 
-      assertDtwMatches(target, new long[][] {{1, 3}, {4, 6}});
+      assertDtwMatches(match, target, new long[][] {{1, 3}, {4, 6}});
     }
   }
 
@@ -453,11 +454,11 @@ public class UDAFPatternTest {
         match.combineState(first, second);
         match.combineState(first, third);
       }
-      assertDtwMatches(first, new long[][] {{1, 3}, {4, 6}});
+      assertDtwMatches(match, first, new long[][] {{1, 3}, {4, 6}});
 
       addDtwInput(match, first, new long[] {7, 8, 9}, new double[] {1, 2, 3});
 
-      assertDtwMatches(first, new long[][] {{1, 3}, {4, 6}, {7, 9}});
+      assertDtwMatches(match, first, new long[][] {{1, 3}, {4, 6}, {7, 9}});
     }
   }
 
@@ -474,12 +475,60 @@ public class UDAFPatternTest {
 
     DTWState target = dtwState(match, new long[] {1}, new double[] {1});
     match.combineState(target, restored);
-    assertDtwMatches(target, new long[][] {{1, 3}, {4, 6}});
+    assertDtwMatches(match, target, new long[][] {{1, 3}, {4, 6}});
 
     DTWState empty = dtwState(match, new long[0], new double[0]);
     restored.deserialize(empty.serialize());
     Assert.assertArrayEquals(empty.serialize(), restored.serialize());
-    assertDtwMatches(restored, new long[0][]);
+    assertDtwMatches(match, restored, new long[0][]);
+  }
+
+  @Test
+  public void testDTWMergedStateRoundTripAndContinuationBeforeOutput() throws Exception {
+    UDAFDTWMatch match = new UDAFDTWMatch();
+    match.beforeStart(createDtwParameters("1,2,3", "0"), new UDAFConfigurations());
+    DTWState target = dtwState(match, new long[0], new double[0]);
+    // Merge a sequence of small partitions without observing the intermediate matches.
+    for (int i : new int[] {8, 6, 4, 2, 7, 5, 3, 1}) {
+      DTWState source = dtwState(match, new long[] {i}, new double[] {(i - 1) % 3 + 1});
+      byte[] originalSource = source.serialize();
+      match.combineState(target, source);
+      Assert.assertArrayEquals(originalSource, source.serialize());
+      DTWState restored = (DTWState) match.createState();
+      restored.deserialize(target.serialize());
+      Assert.assertArrayEquals(target.serialize(), restored.serialize());
+      target = restored;
+    }
+    addDtwInput(match, target, new long[] {9}, new double[] {3});
+
+    assertDtwMatches(match, target, new long[][] {{1, 3}, {4, 6}, {7, 9}});
+    // Observing the same state again must not duplicate matches.
+    assertDtwMatches(match, target, new long[][] {{1, 3}, {4, 6}, {7, 9}});
+  }
+
+  @Test
+  public void testDTWMatchRetainsNonzeroDistanceAcrossMerge() throws Exception {
+    for (String threshold : new String[] {"1.99", "2"}) {
+      UDAFDTWMatch match = new UDAFDTWMatch();
+      match.beforeStart(createDtwParameters("0,10", threshold), new UDAFConfigurations());
+      DTWState target = dtwState(match, new long[] {1}, new double[] {1});
+      DTWState source = dtwState(match, new long[] {2}, new double[] {11});
+      match.combineState(target, source);
+      BinaryColumnBuilder output = new BinaryColumnBuilder(null, 1);
+      match.outputFinal(target, new ResultValue(output));
+
+      Assert.assertEquals(1, output.getPositionCount());
+      if ("2".equals(threshold)) {
+        Assert.assertFalse(output.build().isNull(0));
+        Assert.assertEquals(1, target.getMatchResults().size());
+        Assert.assertArrayEquals(
+            new DTWMatchResult(2, 1, 2).toByteArray(),
+            target.getMatchResults().get(0).toByteArray());
+      } else {
+        Assert.assertTrue(output.build().isNull(0));
+        Assert.assertTrue(target.getMatchResults().isEmpty());
+      }
+    }
   }
 
   private static DTWState dtwState(UDAFDTWMatch match, long[] times, double[] values) {
@@ -500,7 +549,12 @@ public class UDAFPatternTest {
         null);
   }
 
-  private static void assertDtwMatches(DTWState state, long[][] expectedBounds) {
+  private static void assertDtwMatches(
+      UDAFDTWMatch match, DTWState state, long[][] expectedBounds) {
+    BinaryColumnBuilder output = new BinaryColumnBuilder(null, 1);
+    match.outputFinal(state, new ResultValue(output));
+    Assert.assertEquals(1, output.getPositionCount());
+    Assert.assertEquals(expectedBounds.length == 0, output.build().isNull(0));
     Assert.assertEquals(expectedBounds.length, state.getMatchResults().size());
     for (int i = 0; i < expectedBounds.length; i++) {
       Assert.assertArrayEquals(

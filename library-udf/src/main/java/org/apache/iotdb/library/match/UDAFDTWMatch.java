@@ -39,7 +39,6 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 public class UDAFDTWMatch implements UDAF {
   //    private static final Logger LOGGER = Logger.getLogger(DTWMatch.class);
@@ -92,7 +91,7 @@ public class UDAFDTWMatch implements UDAF {
         }
         long timestamp = columns[1].getLong(i);
         DTWState.updateBuffer(timestamp, value);
-        if (DTWState.getValueBuffer().length == pattern.length) {
+        if (!DTWState.needsRebuild() && DTWState.getValueBuffer().length == pattern.length) {
           float dtw = calculateDTW(DTWState.getValueBuffer(), pattern);
           if (dtw <= threshold) {
             ((DTWState) state)
@@ -110,42 +109,39 @@ public class UDAFDTWMatch implements UDAF {
     if (n == 0 || m == 0) {
       return Float.POSITIVE_INFINITY;
     }
-    double[][] dtw = new double[n + 1][m + 1];
-
-    // Initialize the DTW matrix
-    for (int i = 0; i <= n; i++) {
-      for (int j = 0; j <= m; j++) {
-        dtw[i][j] = Double.POSITIVE_INFINITY;
-      }
-    }
-    dtw[0][0] = 0;
+    double[] previous = new double[m + 1];
+    double[] current = new double[m + 1];
+    Arrays.fill(previous, Double.POSITIVE_INFINITY);
+    previous[0] = 0;
 
     // Compute the DTW distance
     for (int i = 1; i <= n; i++) {
+      current[0] = Double.POSITIVE_INFINITY;
       for (int j = 1; j <= m; j++) {
         double cost = Math.abs(series1[i - 1] - series2[j - 1]);
-        dtw[i][j] = cost + Math.min(Math.min(dtw[i - 1][j], dtw[i][j - 1]), dtw[i - 1][j - 1]);
+        current[j] = cost + Math.min(Math.min(previous[j], current[j - 1]), previous[j - 1]);
       }
+      double[] swap = previous;
+      previous = current;
+      current = swap;
     }
 
-    return (float) dtw[n][m];
+    return (float) previous[m];
   }
 
   @Override
   public void combineState(State state, State state1) {
-    DTWState dtwState = (DTWState) state;
-    DTWState newDTWState = (DTWState) state1;
+    // Accumulate partitions without repeatedly recalculating every historical window.
+    ((DTWState) state).mergeInput((DTWState) state1);
+  }
 
-    if (newDTWState.getInput().isEmpty()) {
+  private void rebuildMatches(DTWState dtwState) {
+    if (!dtwState.needsRebuild()) {
       return;
     }
-
-    Map<Long, Double> input = new TreeMap<>(dtwState.getInput());
-    input.putAll(newDTWState.getInput());
-    // Rebuild all windows, including boundaries, without duplicating partial-state matches.
-    dtwState.reset();
-    for (Map.Entry<Long, Double> point : input.entrySet()) {
-      dtwState.updateBuffer(point.getKey(), point.getValue());
+    dtwState.clearWindowAndMatches();
+    for (Map.Entry<Long, Double> point : dtwState.getInput().entrySet()) {
+      dtwState.updateWindow(point.getKey(), point.getValue());
       if (dtwState.getValueBuffer().length == pattern.length) {
         float dtw = calculateDTW(dtwState.getValueBuffer(), pattern);
         if (dtw <= threshold) {
@@ -154,6 +150,7 @@ public class UDAFDTWMatch implements UDAF {
         }
       }
     }
+    dtwState.finishRebuild();
   }
 
   public List<DTWMatchResult> calcMatch(
@@ -178,6 +175,7 @@ public class UDAFDTWMatch implements UDAF {
   @Override
   public void outputFinal(State state, ResultValue resultValue) {
     DTWState DTWState = (DTWState) state;
+    rebuildMatches(DTWState);
     List<DTWMatchResult> matchResults = DTWState.getMatchResults();
     if (!matchResults.isEmpty()) {
       resultValue.setBinary(new Binary(matchResults.toString(), Charset.defaultCharset()));
