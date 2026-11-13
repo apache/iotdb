@@ -178,4 +178,13 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoModelForCausalLM": "modeling_moment.MomentForPrediction",
         },
     ),
+    "tirex2": ModelInfo(
+        model_id="tirex2",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="tirex2",
+        pipeline_cls="pipeline_tirex2.TiRex2Pipeline",
+        repo_id="NX-AI/TiRex-2",
+        hub_mixin_cls="modeling_tirex2.TiRex2ForPrediction",
+    ),
 }
