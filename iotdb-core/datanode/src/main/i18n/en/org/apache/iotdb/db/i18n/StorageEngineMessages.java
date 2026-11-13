@@ -23,6 +23,11 @@ public final class StorageEngineMessages {
 
   private StorageEngineMessages() {}
 
+  public static final String LOG_ERROR_OCCURRED_DURING_MOVING_FILE_ARG_TO_FAIL_DIRECTORY_F40610CE =
+      "Error occurred during moving file {} to fail directory.";
+  public static final String LOG_FAILED_TO_READ_ACTIVE_LOAD_FAILURE_METADATA_ARG_E152544E =
+      "Failed to read active LOAD failure metadata {}";
+
   public static final String
       LOG_FILE_RENAMING_FAILED_WHEN_LOADING_TSFILE_ORIGIN_ARG_TARGET_ARG_13205CEC =
           "File renaming failed when loading tsfile. Origin: {}, Target: {}";

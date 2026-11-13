@@ -32,6 +32,7 @@ public class ActiveLoadPendingQueue {
   private final Queue<ActiveLoadEntry> pendingFileQueue = new ConcurrentLinkedQueue<>();
 
   private final Set<String> loadingFileSet = new HashSet<>();
+  private final Set<String> failedFileSet = new HashSet<>();
 
   public synchronized boolean enqueue(
       final String file, final String pendingDir, final boolean isGeneratedByPipe) {
@@ -43,7 +44,9 @@ public class ActiveLoadPendingQueue {
       final String pendingDir,
       final boolean isGeneratedByPipe,
       final String conversionTaskId) {
-    if (!loadingFileSet.contains(file) && pendingFileSet.add(file)) {
+    if (!loadingFileSet.contains(file)
+        && !failedFileSet.contains(file)
+        && pendingFileSet.add(file)) {
       pendingFileQueue.offer(
           new ActiveLoadEntry(file, pendingDir, isGeneratedByPipe, conversionTaskId));
 
@@ -72,7 +75,17 @@ public class ActiveLoadPendingQueue {
   }
 
   public synchronized boolean isFilePendingOrLoading(final String file) {
-    return loadingFileSet.contains(file) || pendingFileSet.contains(file);
+    return loadingFileSet.contains(file)
+        || pendingFileSet.contains(file)
+        || failedFileSet.contains(file);
+  }
+
+  public synchronized void markFileFailed(final String file) {
+    failedFileSet.add(file);
+  }
+
+  public synchronized void clearFailedFile(final String file) {
+    failedFileSet.remove(file);
   }
 
   public synchronized int size() {
@@ -94,6 +107,7 @@ public class ActiveLoadPendingQueue {
     final int pendingFileCount = pendingFileSet.size();
     pendingFileSet.clear();
     pendingFileQueue.clear();
+    failedFileSet.clear();
     ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(-pendingFileCount);
   }
 

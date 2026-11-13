@@ -23,6 +23,11 @@ public final class StorageEngineMessages {
 
   private StorageEngineMessages() {}
 
+  public static final String LOG_ERROR_OCCURRED_DURING_MOVING_FILE_ARG_TO_FAIL_DIRECTORY_F40610CE =
+      "将文件 {} 移动到失败目录时发生错误。";
+  public static final String LOG_FAILED_TO_READ_ACTIVE_LOAD_FAILURE_METADATA_ARG_E152544E =
+      "读取主动 LOAD 失败元数据 {} 失败";
+
   public static final String
       LOG_FILE_RENAMING_FAILED_WHEN_LOADING_TSFILE_ORIGIN_ARG_TARGET_ARG_13205CEC =
           "加载 TsFile 时重命名文件失败。源文件：{}，目标文件：{}";
