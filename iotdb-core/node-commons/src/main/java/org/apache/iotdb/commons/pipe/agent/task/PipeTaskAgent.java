@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -661,6 +662,7 @@ public abstract class PipeTaskAgent {
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(existedPipeMeta.getStaticMeta());
     cleanupFloatingMemoryUsageCounterIfNecessary(pipeName, creationTime);
+    clearPipeRuntimeState(pipeName, creationTime);
 
     return true;
   }
@@ -705,6 +707,7 @@ public abstract class PipeTaskAgent {
     pipeMetaKeeper.removePipeMeta(existedPipeMeta.getStaticMeta());
     cleanupFloatingMemoryUsageCounterIfNecessary(
         pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
+    clearPipeRuntimeState(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
 
     return true;
   }
@@ -1317,6 +1320,11 @@ public abstract class PipeTaskAgent {
         generatePipeNameWithCreationTime(pipeName, creationTime),
         (key, counter) ->
             cleanupFloatingMemoryUsageCounterIfUnused(pipeName, creationTime, counter));
+  }
+
+  private void clearPipeRuntimeState(final String pipeName, final long creationTime) {
+    PipeEventCommitManager.getInstance().clear(pipeName, creationTime);
+    IoTDBSink.clearPipeRateLimiter(pipeName, creationTime);
   }
 
   public long getPipeCreationTime(final String pipeName) {

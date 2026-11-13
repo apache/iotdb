@@ -24,9 +24,14 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -191,6 +196,68 @@ public class PipeTaskAgentTest {
     Assert.assertEquals(0L, agent.getFloatingMemoryUsageInByte("concurrent-pipe"));
   }
 
+  @Test
+  public void testPipeDropClearsSharedRuntimeState() throws Exception {
+    assertPipeDropClearsSharedRuntimeState(false);
+    assertPipeDropClearsSharedRuntimeState(true);
+  }
+
+  private static void assertPipeDropClearsSharedRuntimeState(final boolean dropByName)
+      throws Exception {
+    final String pipeName = "runtime_state_cleanup_" + System.nanoTime();
+    final long creationTime = System.nanoTime();
+    final int regionId = 17;
+    final DummyPipeTaskAgent agent = new DummyPipeTaskAgent();
+    final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+    final Map<Pair<String, Long>, PipeEndPointRateLimiter> rateLimiters = getRateLimiterMap();
+    final Pair<String, Long> pipeKey = new Pair<>(pipeName, creationTime);
+
+    try {
+      commitManager.register(pipeName, creationTime, regionId, "test-sink");
+      final CommitterKey committerKey =
+          commitManager.getCommitterKey(pipeName, creationTime, regionId);
+      final CommitterKey restartTimesKey = new CommitterKey(pipeName, creationTime, regionId, -1);
+      rateLimiters.put(pipeKey, new PipeEndPointRateLimiter(pipeName, creationTime, 1.0));
+      agent.createPipeForTest(generatePipeMeta(pipeName, creationTime));
+
+      if (dropByName) {
+        Assert.assertTrue(agent.dropPipeByNameForTest(pipeName));
+      } else {
+        Assert.assertTrue(agent.dropPipeForTest(pipeName, creationTime));
+      }
+
+      Assert.assertFalse(
+          getCommitManagerMap(commitManager, "eventCommitterMap").containsKey(committerKey));
+      Assert.assertFalse(
+          getCommitManagerMap(commitManager, "eventCommitterRestartTimesMap")
+              .containsKey(restartTimesKey));
+      Assert.assertFalse(rateLimiters.containsKey(pipeKey));
+    } finally {
+      commitManager.clear(pipeName, creationTime);
+      IoTDBSink.clearPipeRateLimiter(pipeName, creationTime);
+      final PipeMeta pipeMeta = agent.getPipeMetaForTest(pipeName, creationTime);
+      if (pipeMeta != null) {
+        agent.dropPipeForTest(pipeName, creationTime);
+      }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<Pair<String, Long>, PipeEndPointRateLimiter> getRateLimiterMap()
+      throws ReflectiveOperationException {
+    final Field field = IoTDBSink.class.getDeclaredField("PIPE_END_POINT_RATE_LIMITER_MAP");
+    field.setAccessible(true);
+    return (Map<Pair<String, Long>, PipeEndPointRateLimiter>) field.get(null);
+  }
+
+  private static Map<?, ?> getCommitManagerMap(
+      final PipeEventCommitManager commitManager, final String fieldName)
+      throws ReflectiveOperationException {
+    final Field field = PipeEventCommitManager.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return (Map<?, ?>) field.get(commitManager);
+  }
+
   @SuppressWarnings("unchecked")
   private static Map<?, ?> getMapField(final PipeTaskAgent agent, final String fieldName)
       throws NoSuchFieldException, IllegalAccessException {
@@ -236,6 +303,10 @@ public class PipeTaskAgentTest {
 
     private boolean dropPipeForTest(final String pipeName, final long creationTime) {
       return dropPipe(pipeName, creationTime);
+    }
+
+    private boolean dropPipeByNameForTest(final String pipeName) {
+      return dropPipe(pipeName);
     }
 
     private PipeMeta getPipeMetaForTest(final String pipeName, final long creationTime) {
