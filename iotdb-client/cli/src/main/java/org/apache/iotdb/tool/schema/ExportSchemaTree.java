@@ -32,7 +32,9 @@ import org.apache.tsfile.read.common.RowRecord;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
@@ -98,25 +100,19 @@ public class ExportSchemaTree extends AbstractExportSchema {
       while (i++ < linesPerFile) {
         if (sessionDataSet.hasNext()) {
           if (i == 1) {
-            csvPrinterWrapper.printRecord(Constants.HEAD_COLUMNS);
+            csvPrinterWrapper.printRecord(Constants.HEAD_COLUMNS_V2);
           }
           RowRecord rowRecord = sessionDataSet.next();
           List<Field> fields = rowRecord.getFields();
-          if (fields.get(timeseriesIndex).getStringValue().startsWith(SYSTEM_DATABASE + ".")
-              || fields.get(timeseriesIndex).getStringValue().startsWith(AUDIT_DATABASE + ".")
-              || !fields.get(viewTypeIndex).getStringValue().equals(Constants.BASE_VIEW_TYPE)) {
+          String timeseries = fields.get(timeseriesIndex).getStringValue();
+          if (timeseries.startsWith(SYSTEM_DATABASE + ".")
+              || timeseries.startsWith(AUDIT_DATABASE + ".")
+              || !Constants.BASE_VIEW_TYPE.equals(fields.get(viewTypeIndex).getStringValue())) {
             continue;
           }
-          Constants.HEAD_COLUMNS.forEach(
-              column -> {
-                Field field = fields.get(headers.indexOf(column));
-                String fieldStringValue = field.getStringValue();
-                if (!"null".equals(field.getStringValue())) {
-                  csvPrinterWrapper.print(fieldStringValue);
-                } else {
-                  csvPrinterWrapper.print("");
-                }
-              });
+          if (!printRecord(csvPrinterWrapper, headers, fields, timeseries)) {
+            continue;
+          }
           csvPrinterWrapper.println();
         } else {
           hasNext = false;
@@ -127,5 +123,45 @@ public class ExportSchemaTree extends AbstractExportSchema {
       csvPrinterWrapper.flush();
       csvPrinterWrapper.close();
     }
+  }
+
+  /**
+   * Writes the cells of one {@code SHOW TIMESERIES} record.
+   *
+   * @return {@code false} when the record must be skipped because a Tags or Attributes cell could
+   *     not be parsed, in which case nothing has been written for it
+   */
+  static boolean printRecord(
+      CSVPrinterWrapper csvPrinterWrapper,
+      List<String> headers,
+      List<Field> fields,
+      String timeseries) {
+    List<String> cells = new ArrayList<>(Constants.HEAD_COLUMNS_V2.size());
+    for (String column : Constants.HEAD_COLUMNS_V2) {
+      int index = headers.indexOf(column);
+      Field field = index < 0 ? null : fields.get(index);
+      String fieldStringValue = field == null ? null : field.getStringValue();
+      if (Constants.HEADER_TAGS.equals(column) || Constants.HEADER_ATTRIBUTES.equals(column)) {
+        Map<String, String> tags;
+        try {
+          tags = parseJsonCell(fieldStringValue);
+        } catch (RuntimeException e) {
+          ioTPrinter.println(
+              String.format(
+                  CliMessages
+                      .MESSAGE_FAILED_TO_PARSE_THE_ARG_COLUMN_OF_TIMESERIES_ARG_AS_JSON_THE_RECORD_IS_SKIPPED_ARG_35D898C8,
+                  column,
+                  timeseries,
+                  String.valueOf(e.getMessage())));
+          return false;
+        }
+        cells.add(toJsonCell(tags));
+      } else {
+        cells.add(
+            "null".equals(fieldStringValue) || fieldStringValue == null ? "" : fieldStringValue);
+      }
+    }
+    cells.forEach(csvPrinterWrapper::print);
+    return true;
   }
 }

@@ -39,6 +39,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -231,7 +232,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
     String dropSql =
         String.format(Constants.DROP_TABLE_IF_EXIST, escapeSqlIdentifer(tableName)) + ";\n";
     StringBuilder sb = new StringBuilder(dropSql);
-    try (FileWriter writer = new FileWriter(fileName, true)) {
+    try (FileWriter writer = new FileWriter(fileName, StandardCharsets.UTF_8, true)) {
       while (sessionDataSet.hasNext()) {
         RowRecord rowRecord = sessionDataSet.next();
         String res = rowRecord.getField(1).getStringValue();
@@ -249,7 +250,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
     String dropSql = "DROP TABLE IF EXISTS " + tableName + ";\n";
     StringBuilder sb = new StringBuilder(dropSql);
     sb.append("CREATE TABLE " + tableName + "(\n");
-    try (FileWriter writer = new FileWriter(fileName, true)) {
+    try (FileWriter writer = new FileWriter(fileName, StandardCharsets.UTF_8, true)) {
       boolean hasNext = sessionDataSet.hasNext();
       while (hasNext) {
         RowRecord rowRecord = sessionDataSet.next();
@@ -285,7 +286,7 @@ public class ExportSchemaTable extends AbstractExportSchema {
     String dropSql = "DROP TABLE IF EXISTS " + tableName + ";\n";
     StringBuilder sb = new StringBuilder(dropSql);
     sb.append("CREATE TABLE " + tableName + "(\n");
-    try (FileWriter writer = new FileWriter(fileName, true)) {
+    try (FileWriter writer = new FileWriter(fileName, StandardCharsets.UTF_8, true)) {
       boolean hasNext = sessionDataSet.hasNext();
       while (hasNext) {
         RowRecord rowRecord = sessionDataSet.next();
