@@ -95,6 +95,9 @@ public class TimeSeriesMetadataCache {
       Collections.synchronizedMap(new WeakHashMap<>());
   private static final String SEPARATOR = "$";
 
+  /** A remainder this small is cheaper to load with per-column leaf-group lookups. */
+  private static final int MAX_PER_COLUMN_FALLBACK = 2;
+
   private final AtomicLong evictedExistingEntryCount = new AtomicLong(0);
   private final AtomicLong evictedNonExistingEntryCount = new AtomicLong(0);
 
@@ -352,6 +355,7 @@ public class TimeSeriesMetadataCache {
     long loadBloomFilterTime = 0;
     long cacheHitCount = 0;
     long diskLookupCount = 0;
+    boolean delegated = false;
     boolean externalTsFile = queryContext.isExternalTsFileScan();
     LongConsumer timeSeriesMetadataIoSizeRecorder =
         queryContext.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet;
@@ -402,6 +406,32 @@ public class TimeSeriesMetadataCache {
             return result;
           }
 
+          // the time column is always written for an aligned device, so a known-absent time
+          // column means the file will be skipped anyway; a bloom-filter false positive on a field
+          // must not force a device read and a possible absent-device error
+          if (allSensors.contains("") && result.get("") == null && !possiblyPresent.contains("")) {
+            return result;
+          }
+
+          // for a small remainder, a per-column lookup reads one leaf group instead of the whole
+          // device; those lookups record their own statistics
+          if (possiblyPresent.size() <= MAX_PER_COLUMN_FALLBACK) {
+            delegated = true;
+            diskLookupCount = missing.size() - possiblyPresent.size();
+            for (String measurement : possiblyPresent) {
+              result.put(
+                  measurement,
+                  get(
+                      filePath,
+                      new TimeSeriesMetadataCacheKey(tsFileID, device, measurement),
+                      allSensors,
+                      ignoreNotExists,
+                      false,
+                      queryContext));
+            }
+            return result;
+          }
+
           TsFileSequenceReader reader =
               FileReaderManager.getInstance()
                   .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, false);
@@ -439,11 +469,23 @@ public class TimeSeriesMetadataCache {
           reader, filePath, tsFileID, device, allSensors, false, ignoreNotExists);
     } finally {
       long endTime = System.nanoTime();
-      long cacheLookupTime = cachePhaseEndTime == 0 ? 0 : cachePhaseEndTime - startTime;
-      long diskLookupTime =
-          cachePhaseEndTime == 0
-              ? endTime - startTime - loadBloomFilterTime
-              : endTime - cachePhaseEndTime - loadBloomFilterTime;
+      long cacheLookupTime;
+      long diskLookupTime;
+      if (delegated) {
+        // the per-column fallbacks recorded their own disk time
+        cacheLookupTime = cachePhaseEndTime == 0 ? 0 : cachePhaseEndTime - startTime;
+        diskLookupTime = 0;
+      } else if (cacheHitCount == 0 || cachePhaseEndTime == 0) {
+        // cold or cache-disabled call: cache probes and the lock wait belong to the disk lookup
+        cacheLookupTime = 0;
+        diskLookupTime = endTime - startTime - loadBloomFilterTime;
+      } else if (diskLookupCount == 0) {
+        cacheLookupTime = endTime - startTime - loadBloomFilterTime;
+        diskLookupTime = 0;
+      } else {
+        cacheLookupTime = cachePhaseEndTime - startTime;
+        diskLookupTime = endTime - cachePhaseEndTime - loadBloomFilterTime;
+      }
       recordLoadStatistics(
           queryContext,
           cacheHitCount,

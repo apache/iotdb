@@ -423,7 +423,9 @@ public class TimeSeriesMetadataCacheTest {
     try {
       String filePath = "target/batch-absent-device-throw.tsfile";
       IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
-      Set<String> allSensors = Collections.singleton("");
+      // more than MAX_PER_COLUMN_FALLBACK entries so the batch read (not the per-column fallback)
+      // is used
+      Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
       fileReaderManager.setReaderForTest(tsFileID, true, reader);
@@ -431,6 +433,8 @@ public class TimeSeriesMetadataCacheTest {
           .thenReturn(Collections.emptyList());
       BloomFilter bloomFilter = BloomFilter.getEmptyBloomFilter(0.05, 1);
       bloomFilter.add(deviceID.toString() + ".");
+      bloomFilter.add(deviceID.toString() + ".s1");
+      bloomFilter.add(deviceID.toString() + ".s2");
       Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class))).thenReturn(bloomFilter);
 
       assertThrows(
@@ -534,6 +538,127 @@ public class TimeSeriesMetadataCacheTest {
       bloomFilterCache.clear();
       fileReaderManager.closeFileAndRemoveReader(tsFileID);
       assertTrue(file.delete());
+    }
+  }
+
+  @Test
+  public void testAbsentTimeColumnSkipsDeviceRead() throws Exception {
+    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
+    FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    TsFileID tsFileID = new TsFileID();
+    cache.clear();
+    bloomFilterCache.clear();
+    try {
+      String filePath = "target/batch-time-column-filtered.tsfile";
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
+      Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1"));
+
+      TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
+      fileReaderManager.setReaderForTest(tsFileID, true, reader);
+      // the time column is filtered out, while s1 is a bloom filter false positive
+      BloomFilter bloomFilter = BloomFilter.getEmptyBloomFilter(0.05, 1);
+      bloomFilter.add(deviceID.toString() + ".s1");
+      Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class))).thenReturn(bloomFilter);
+
+      Map<String, TimeseriesMetadata> result =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false);
+
+      assertNull(result.get(""));
+      assertNull(result.get("s1"));
+      Mockito.verify(reader, Mockito.never()).getDeviceTimeseriesMetadata(deviceID);
+      Mockito.verify(reader, Mockito.never())
+          .readTimeseriesMetadata(
+              Mockito.any(),
+              Mockito.<long[]>any(),
+              Mockito.any(),
+              Mockito.any(),
+              Mockito.anyBoolean(),
+              Mockito.any());
+    } finally {
+      cache.clear();
+      bloomFilterCache.clear();
+      fileReaderManager.closeFileAndRemoveReader(tsFileID);
+    }
+  }
+
+  @Test
+  public void testSingleMissingMeasurementUsesPerColumnFallback() throws Exception {
+    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
+    FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    TsFileID tsFileID = new TsFileID();
+    cache.clear();
+    bloomFilterCache.clear();
+    try {
+      String filePath = "target/batch-single-miss.tsfile";
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.device");
+      Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
+
+      Statistics<?> statistics = Statistics.getStatsByType(TSDataType.INT32);
+      statistics.setCount(1);
+      statistics.setStartTime(0);
+      statistics.setEndTime(10);
+      TimeseriesMetadata s2 =
+          new TimeseriesMetadata((byte) 0, 0, "s2", TSDataType.INT32, statistics, new PublicBAOS());
+      Statistics<?> timeStatistics = Statistics.getStatsByType(TSDataType.INT64);
+      timeStatistics.setCount(1);
+      timeStatistics.setStartTime(0);
+      timeStatistics.setEndTime(10);
+      Statistics<?> s1Statistics = Statistics.getStatsByType(TSDataType.INT32);
+      s1Statistics.setCount(1);
+      s1Statistics.setStartTime(0);
+      s1Statistics.setEndTime(10);
+
+      List<TimeseriesMetadata> deviceMetadata = new ArrayList<>();
+      deviceMetadata.add(
+          new TimeseriesMetadata(
+              (byte) 0, 0, "", TSDataType.INT64, timeStatistics, new PublicBAOS()));
+      deviceMetadata.add(
+          new TimeseriesMetadata(
+              (byte) 0, 0, "s1", TSDataType.INT32, s1Statistics, new PublicBAOS()));
+      deviceMetadata.add(s2);
+
+      TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
+      fileReaderManager.setReaderForTest(tsFileID, true, reader);
+      Mockito.when(reader.getDeviceTimeseriesMetadata(deviceID)).thenReturn(deviceMetadata);
+
+      Map<String, TimeseriesMetadata> first =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false);
+      assertNotNull(first.get("s2"));
+
+      // evict one measurement: the next call must load only that one, not the whole device
+      cache.remove(new TimeSeriesMetadataCacheKey(tsFileID, deviceID, "s2"));
+      Mockito.when(
+              reader.readTimeseriesMetadata(
+                  Mockito.eq(deviceID),
+                  Mockito.<long[]>isNull(),
+                  Mockito.eq("s2"),
+                  Mockito.eq(allSensors),
+                  Mockito.eq(false),
+                  Mockito.any(LongConsumer.class)))
+          .thenReturn(Collections.singletonList(s2));
+
+      Map<String, TimeseriesMetadata> second =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false);
+
+      assertNotNull(second.get("s2"));
+      Mockito.verify(reader, Mockito.times(1)).getDeviceTimeseriesMetadata(deviceID);
+      Mockito.verify(reader, Mockito.times(1))
+          .readTimeseriesMetadata(
+              Mockito.eq(deviceID),
+              Mockito.<long[]>isNull(),
+              Mockito.eq("s2"),
+              Mockito.eq(allSensors),
+              Mockito.eq(false),
+              Mockito.any(LongConsumer.class));
+    } finally {
+      cache.clear();
+      bloomFilterCache.clear();
+      fileReaderManager.closeFileAndRemoveReader(tsFileID);
     }
   }
 }
