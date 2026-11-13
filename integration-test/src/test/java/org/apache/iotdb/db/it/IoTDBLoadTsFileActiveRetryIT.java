@@ -196,7 +196,7 @@ public class IoTDBLoadTsFileActiveRetryIT {
       for (final File tsFile : sourceTsFiles) {
         statement.execute(
             String.format(
-                "load \"%s\" with ('database-level'='2','async'='true','on-success'='none',"
+                "load \"%s\" with ('database-level'='1','async'='true','on-success'='none',"
                     + "'auto-create-schema'='false','convert-on-type-mismatch'='false')",
                 tsFile.getAbsolutePath()));
       }
@@ -239,7 +239,7 @@ public class IoTDBLoadTsFileActiveRetryIT {
         final File failedTsFile = copyFailedGroup(failedGroup, recoveryInputRoot, i);
         statement.execute(
             String.format(
-                "load \"%s\" with ('database-level'='2','on-success'='none',"
+                "load \"%s\" with ('database-level'='1','on-success'='none',"
                     + "'auto-create-schema'='false','convert-on-type-mismatch'='false')",
                 failedTsFile.getAbsolutePath()));
         assertCount(
@@ -262,7 +262,7 @@ public class IoTDBLoadTsFileActiveRetryIT {
           Statement activeStatement = activeConnection.createStatement()) {
         activeStatement.execute(
             String.format(
-                "load \"%s\" with ('database-level'='2','async'='true','on-success'='none',"
+                "load \"%s\" with ('database-level'='1','async'='true','on-success'='none',"
                     + "'auto-create-schema'='false','convert-on-type-mismatch'='false')",
                 normalTsFile.getAbsolutePath()));
       }
