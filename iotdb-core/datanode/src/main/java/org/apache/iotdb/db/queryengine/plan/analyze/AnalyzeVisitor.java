@@ -2329,6 +2329,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public static Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> getTimePartitionSlotList(
       Filter timeFilter, MPPQueryContext context) {
     checkTimePartitionQueryTimeout(context);
+    context.finishResultSetColumnMemoryTracking();
     if (timeFilter == null) {
       // (-oo, +oo)
       return new Pair<>(Collections.emptyList(), new Pair<>(true, true));
@@ -2432,7 +2433,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
     long size = TimePartitionUtils.getEstimateTimePartitionSize(minTime, maxTime);
-    context.reserveMemoryForFrontEnd(estimateTimePartitionSlotMemory(size));
+    context.reserveMemoryForTimePartitionSlots(estimateTimePartitionSlotMemory(size));
   }
 
   private static List<TimeRange> normalizeTimeRanges(List<TimeRange> timeRanges) {

@@ -460,6 +460,37 @@ public class MPPQueryContext {
     }
   }
 
+  public void reserveMemoryForTimePartitionSlots(final long bytes) {
+    try {
+      this.memoryReservationManager.reserveMemoryCumulatively(bytes);
+    } catch (MemoryNotEnoughException e) {
+      long requestedBytes =
+          e instanceof OperatorMemoryNotEnoughException
+              ? ((OperatorMemoryNotEnoughException) e).getRequestedBytes()
+              : bytes;
+      long freeBytes =
+          e instanceof OperatorMemoryNotEnoughException
+              ? ((OperatorMemoryNotEnoughException) e).getFreeBytes()
+              : LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+      throw new MemoryNotEnoughException(
+          String.format(
+              Locale.ROOT,
+              "Not enough memory while analyzing time partitions. "
+                  + "Narrow the query time range or increase query memory. "
+                  + "Memory details: requested this time %s, current free memory %s. "
+                  + "Original error: %s",
+              formatBytes(requestedBytes),
+              formatBytes(freeBytes),
+              e.getMessage()));
+    }
+  }
+
+  public void finishResultSetColumnMemoryTracking() {
+    // Column expansion has finished. Later partition/planning reservations must not be diagnosed
+    // as excessive result columns just because this context still contains column statistics.
+    resultSetColumnMemoryTrackingEnabled = false;
+  }
+
   public void releaseAllMemoryReservedForFrontEnd() {
     this.memoryReservationManager.releaseAllReservedMemory();
   }

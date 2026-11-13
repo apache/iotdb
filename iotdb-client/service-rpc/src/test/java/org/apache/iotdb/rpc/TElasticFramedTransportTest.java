@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -89,6 +90,47 @@ public class TElasticFramedTransportTest {
     byte[] actual = new byte[payload.length];
     transport.readAll(actual, 0, actual.length);
     assertArrayEquals(payload, actual);
+  }
+
+  @Test
+  public void testInvalidCompressionBufferSizesCloseTransport() throws Exception {
+    for (int size : new int[] {-1, Integer.MAX_VALUE}) {
+      for (boolean read : new boolean[] {false, true}) {
+        boolean[] closed = {false};
+        TMemoryBuffer underlying =
+            new TMemoryBuffer(0) {
+              @Override
+              public void close() {
+                closed[0] = true;
+                super.close();
+              }
+            };
+        TSnappyElasticFramedTransport transport =
+            new TSnappyElasticFramedTransport(underlying, 8, 64, false) {
+              @Override
+              protected int maxCompressedLength(int length) {
+                // Snappy's bound overflows int for large, otherwise valid input lengths.
+                return size;
+              }
+
+              @Override
+              protected int uncompressedLength(byte[] bytes, int offset, int length) {
+                return size;
+              }
+            };
+        TTransportException failure;
+        if (read) {
+          underlying.write(new byte[] {0, 0, 0, 1, 0});
+          failure =
+              assertThrows(TTransportException.class, () -> transport.read(new byte[1], 0, 1));
+        } else {
+          transport.write(new byte[1]);
+          failure = assertThrows(TTransportException.class, transport::flush);
+        }
+        assertEquals(TTransportException.CORRUPTED_DATA, failure.getType());
+        assertTrue(closed[0]);
+      }
+    }
   }
 
   @Test

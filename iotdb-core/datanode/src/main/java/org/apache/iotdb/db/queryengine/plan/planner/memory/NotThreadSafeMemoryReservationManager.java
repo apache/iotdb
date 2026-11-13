@@ -77,7 +77,20 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
 
   @Override
   public void reserveMemoryCumulatively(final long size) {
-    bytesToBeReserved += size;
+    try {
+      bytesToBeReserved = Math.addExact(bytesToBeReserved, size);
+    } catch (ArithmeticException e) {
+      // A saturated partition-size estimate can be Long.MAX_VALUE while an earlier batch is
+      // still pending. Reject it without wrapping the counter or changing that pending batch.
+      throw new OperatorMemoryNotEnoughException(
+          "Query "
+              + queryId.getId()
+              + " cannot reserve "
+              + size
+              + " bytes: pending front-end memory reservation exceeds Long.MAX_VALUE bytes.",
+          Long.MAX_VALUE,
+          LOCAL_EXECUTION_PLANNER.getFreeMemoryForOperators());
+    }
     if (bytesToBeReserved >= MEMORY_BATCH_THRESHOLD) {
       try {
         reserveMemoryImmediately();

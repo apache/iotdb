@@ -40,8 +40,8 @@ import java.util.List;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class QueryTimePartitionTest {
 
@@ -59,12 +59,11 @@ public class QueryTimePartitionTest {
           }
         };
     context.setStartTime(1);
+    Filter filter =
+        TimeFilterApi.between(0, TimePartitionUtils.getTimePartitionInterval() * 50_000);
     try {
-      getTimePartitionSlotList(
-          TimeFilterApi.between(0, TimePartitionUtils.getTimePartitionInterval() * 50_000),
-          context);
-      fail("Time partition enumeration must periodically check the query timeout");
-    } catch (QueryTimeoutRuntimeException expected) {
+      assertThrows(
+          QueryTimeoutRuntimeException.class, () -> getTimePartitionSlotList(filter, context));
       assertTrue(LocalExecutionPlanner.getInstance().getFreeMemoryForOperators() < freeMemory);
     } finally {
       context.releaseAllMemoryReservedForFrontEnd();
@@ -78,12 +77,11 @@ public class QueryTimePartitionTest {
     context.setStartTime(System.currentTimeMillis() - 10_000);
     context.setTimeOut(1);
     long freeMemory = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    Filter filter =
+        TimeFilterApi.between(0, TimePartitionUtils.getTimePartitionInterval() * 50_000);
     try {
-      getTimePartitionSlotList(
-          TimeFilterApi.between(0, TimePartitionUtils.getTimePartitionInterval() * 50_000),
-          context);
-      fail("An expired query must stop before enumerating time partitions");
-    } catch (QueryTimeoutRuntimeException expected) {
+      assertThrows(
+          QueryTimeoutRuntimeException.class, () -> getTimePartitionSlotList(filter, context));
       assertEquals(freeMemory, LocalExecutionPlanner.getInstance().getFreeMemoryForOperators());
     } finally {
       context.releaseAllMemoryReservedForFrontEnd();

@@ -386,6 +386,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
         detectedNodeNum++;
       } catch (TException e) {
+        if (e instanceof TTransportException
+            && ((TTransportException) e).getType() == TTransportException.CORRUPTED_DATA) {
+          // Reconnecting cannot repair an invalid/oversized frame. Repeated serialization would
+          // retain query memory and eventually hide the original error as a connection failure.
+          throw e;
+        }
         final String message =
             String.format(
                 MSG_RECONNECTION_DATANODE_FAIL,

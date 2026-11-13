@@ -40,6 +40,28 @@ public class LocalExecutionPlannerOperatorsMemoryTest {
 
   private long bytesHeldByTest = 0L;
 
+  @Test
+  public void testPendingReservationOverflowDoesNotCorruptAccounting() {
+    for (boolean highestPriority : new boolean[] {false, true}) {
+      long freeBefore = PLANNER.getFreeMemoryForOperators();
+      NotThreadSafeMemoryReservationManager manager =
+          new NotThreadSafeMemoryReservationManager(new QueryId("overflow_query"), "test");
+      manager.setHighestPriority(highestPriority);
+      try {
+        manager.reserveMemoryCumulatively(128);
+        Assert.assertThrows(
+            MemoryNotEnoughException.class,
+            () -> manager.reserveMemoryCumulatively(Long.MAX_VALUE));
+        manager.reserveMemoryImmediately();
+        Assert.assertEquals(128, manager.getReservedBytesInTotalForTest());
+        Assert.assertEquals(freeBefore - 128, PLANNER.getFreeMemoryForOperators());
+      } finally {
+        manager.releaseAllReservedMemory();
+      }
+      Assert.assertEquals(freeBefore, PLANNER.getFreeMemoryForOperators());
+    }
+  }
+
   @After
   public void tearDown() {
     if (bytesHeldByTest > 0) {

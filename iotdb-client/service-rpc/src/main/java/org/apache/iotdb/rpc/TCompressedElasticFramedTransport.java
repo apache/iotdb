@@ -56,6 +56,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     RpcStat.readCompressedBytes.addAndGet(size);
     try {
       int uncompressedLength = uncompressedLength(readBuffer.getBuffer(), 0, size);
+      checkBufferSize(uncompressedLength);
       RpcStat.readBytes.addAndGet(uncompressedLength);
       readCompressBuffer.resizeIfNecessary(uncompressedLength);
       uncompress(readBuffer.getBuffer(), 0, size, readCompressBuffer.getBuffer(), 0);
@@ -73,6 +74,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     RpcStat.writeBytes.addAndGet(length);
     try {
       int maxCompressedLength = maxCompressedLength(length);
+      checkBufferSize(maxCompressedLength);
       writeCompressBuffer.resizeIfNecessary(maxCompressedLength);
       int compressedLength =
           compress(writeBuffer.getBuffer(), 0, length, writeCompressBuffer.getBuffer(), 0);
@@ -88,6 +90,16 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     writeBuffer.reset();
     writeBuffer.resizeIfNecessary(length);
     underlying.flush();
+  }
+
+  private void checkBufferSize(int size) throws TTransportException {
+    if (size < 0 || size > AutoResizingBuffer.MAX_ARRAY_SIZE) {
+      // Compression bounds can overflow int even when the input fits in a Java array. Reject
+      // before resizing and invalidate the transport, just as for an oversized wire frame.
+      close();
+      throw new TTransportException(
+          TTransportException.CORRUPTED_DATA, "Invalid compression buffer size: " + size);
+    }
   }
 
   protected abstract int uncompressedLength(byte[] but, int off, int len) throws IOException;

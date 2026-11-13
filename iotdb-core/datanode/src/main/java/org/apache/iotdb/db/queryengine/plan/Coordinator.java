@@ -162,6 +162,11 @@ public class Coordinator {
         result.status.setNeedRetry(true);
       }
       return result;
+    } catch (RuntimeException | Error e) {
+      // Analysis can fail before the execution is registered, so later error handling cannot look
+      // up its SQL in queryExecutionMap. Keep the SQL and query ID in the failure log here.
+      LOGGER.warn("[QueryFailed] queryId: {}, sql: {}", globalQueryId, sql, e);
+      throw e;
     } finally {
       if (queryContext != null) {
         queryContext.releaseAllMemoryReservedForFrontEnd();
