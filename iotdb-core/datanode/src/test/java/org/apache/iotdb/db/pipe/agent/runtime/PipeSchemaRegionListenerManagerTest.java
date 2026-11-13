@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 
 import org.junit.Assert;
@@ -29,6 +33,7 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 
 public class PipeSchemaRegionListenerManagerTest {
 
@@ -78,6 +83,38 @@ public class PipeSchemaRegionListenerManagerTest {
   }
 
   @Test
+  public void testMetricsDoNotRecreateListenerAfterRegionCleanup() throws Exception {
+    final SchemaRegionId schemaRegionId = new SchemaRegionId(Integer.MAX_VALUE - 10);
+    final TestSchemaRegionSource source = new TestSchemaRegionSource();
+    final Field schemaRegionIdField =
+        IoTDBSchemaRegionSource.class.getDeclaredField("schemaRegionId");
+    schemaRegionIdField.setAccessible(true);
+    schemaRegionIdField.set(source, schemaRegionId);
+
+    try {
+      final SchemaRegionListeningQueue listener =
+          PipeDataNodeAgent.runtime().schemaListener(schemaRegionId);
+      listener.open();
+      listener.close();
+      PipeDataNodeAgent.runtime().clearSchemaRegionState(schemaRegionId);
+
+      Assert.assertEquals(0L, source.getUnTransferredEventCount());
+      Assert.assertNull(PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegionId));
+
+      source.close();
+      Assert.assertEquals(0L, source.getUnTransferredEventCount());
+      Assert.assertNull(PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegionId));
+    } finally {
+      final SchemaRegionListeningQueue listener =
+          PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegionId);
+      if (listener != null) {
+        listener.close();
+      }
+      PipeDataNodeAgent.runtime().clearSchemaRegionState(schemaRegionId);
+    }
+  }
+
+  @Test
   public void testCreateListenerForSnapshotLoadOnlyWhenSnapshotExists() throws IOException {
     final PipeSchemaRegionListenerManager manager = new PipeSchemaRegionListenerManager();
     final SchemaRegionId schemaRegionId = new SchemaRegionId(4);
@@ -100,5 +137,12 @@ public class PipeSchemaRegionListenerManagerTest {
 
     restoredListener.close();
     manager.clearSchemaRegionState(schemaRegionId);
+  }
+
+  private static class TestSchemaRegionSource extends IoTDBSchemaRegionSource {
+
+    private TestSchemaRegionSource() {
+      pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 0);
+    }
   }
 }

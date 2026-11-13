@@ -95,6 +95,47 @@ public class PipeTaskAgentTest {
   }
 
   @Test
+  public void testLateFloatingMemoryAcquisitionDoesNotConsumeOutstandingUsage() throws Exception {
+    final DummyPipeTaskAgent agent = new DummyPipeTaskAgent();
+    agent.createPipeForTest(generatePipeMeta("pipe", 1L));
+    agent.addFloatingMemoryUsageInByte("pipe", 1L, 100L);
+    agent.dropPipeForTest("pipe", 1L);
+
+    // An assigner can retain a matched source across drop while other events still own memory.
+    agent.addFloatingMemoryUsageInByte("pipe", 1L, 20L);
+    Assert.assertEquals(120L, agent.getAllFloatingMemoryUsageInByte());
+    Assert.assertEquals(120L, agent.getFloatingMemoryUsageInByte("pipe"));
+    agent.decreaseFloatingMemoryUsageInByte("pipe", 1L, 20L);
+    Assert.assertEquals(100L, agent.getFloatingMemoryUsageInByte("pipe", 1L));
+    agent.decreaseFloatingMemoryUsageInByte("pipe", 1L, 100L);
+
+    Assert.assertEquals(0L, agent.getAllFloatingMemoryUsageInByte());
+    Assert.assertTrue(
+        getMapField(agent, "pipeNameWithCreationTime2FloatingMemoryUsageInByteMap").isEmpty());
+    Assert.assertTrue(getMapField(agent, "pipeName2CreationTimeSetMap").isEmpty());
+  }
+
+  @Test
+  public void testLateFloatingMemoryAcquisitionAfterCounterCleanup() throws Exception {
+    final DummyPipeTaskAgent agent = new DummyPipeTaskAgent();
+    agent.createPipeForTest(generatePipeMeta("pipe", 1L));
+    agent.addFloatingMemoryUsageInByte("pipe", 1L, 100L);
+    agent.dropPipeForTest("pipe", 1L);
+    agent.decreaseFloatingMemoryUsageInByte("pipe", 1L, 100L);
+
+    // Late acquisitions must also be tracked after the previous events released the last byte.
+    agent.addFloatingMemoryUsageInByte("pipe", 1L, 20L);
+    Assert.assertEquals(20L, agent.getAllFloatingMemoryUsageInByte());
+    Assert.assertEquals(20L, agent.getFloatingMemoryUsageInByte("pipe"));
+    Assert.assertEquals(20L, agent.getFloatingMemoryUsageInByte("pipe", 1L));
+    agent.decreaseFloatingMemoryUsageInByte("pipe", 1L, 20L);
+
+    Assert.assertTrue(
+        getMapField(agent, "pipeNameWithCreationTime2FloatingMemoryUsageInByteMap").isEmpty());
+    Assert.assertTrue(getMapField(agent, "pipeName2CreationTimeSetMap").isEmpty());
+  }
+
+  @Test
   public void testFloatingMemoryIncrementIsNotLostDuringDropCleanup() throws Exception {
     final DummyPipeTaskAgent agent = new DummyPipeTaskAgent();
     final PipeMeta pipeMeta = generatePipeMeta("concurrent-pipe", 1L);

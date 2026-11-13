@@ -1377,9 +1377,6 @@ public abstract class PipeTaskAgent {
     pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.compute(
         generatePipeNameWithCreationTime(pipeName, creationTime),
         (key, counter) -> {
-          if (pipeMetaKeeper.getPipeMeta(pipeName, creationTime) == null) {
-            return counter;
-          }
           final AtomicLong updatedCounter = Objects.isNull(counter) ? new AtomicLong(0) : counter;
           updatedCounter.addAndGet(sizeInByte);
           pipeName2CreationTimeSetMap.compute(

@@ -330,6 +330,16 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
   }
 
   @Override
+  public long getUnTransferredEventCount() {
+    if (hasBeenClosed.get() || Objects.isNull(pipeTaskMeta)) {
+      return 0L;
+    }
+    // Metric callbacks can outlive region cleanup and must not recreate a listener.
+    return getUnTransferredEventCount(
+        PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegionId));
+  }
+
+  @Override
   protected boolean isTypeListened(final PipeWritePlanEvent event) {
     final PlanNode planNode = ((PipeSchemaRegionWritePlanEvent) event).getPlanNode();
     return listenedTypeSet.contains(
