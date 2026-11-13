@@ -2943,4 +2943,19 @@ public final class DataNodePipeMessages {
   public static final String
       EXCEPTION_HISTORICAL_SUMMARY_EXTRACTEDTSFILECOUNT_ARG_SKIPPEDTSFILECOUNT_ARG_SPLITTSFILECOUNT_ARG_UNSPLITTSFILECOUNT_ARG_DELETIONCOUNT_ARG_C8BF3247 =
           "历史数据概览：提取的 TsFile 数=%s，跳过的 TsFile 数=%s，拆分的 TsFile 数=%s，未拆分的 TsFile 数=%s，删除数=%s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_PIN_THE_PIPE_FILE_ARG_BECAUSE_IT_DOES_NOT_EXIST_1741B8E4 =
+          "pipe 文件 %s 不存在，无法固化";
+
+  public static final String LOG_PIPE_HARDLINK_DIRECTORIES_ARE_RESOLVED_AS_ARG_1DAB3D0F =
+      "Pipe 硬链接目录解析结果为 {}。";
+
+  public static final String
+      LOG_FAILED_TO_CREATE_THE_HARDLINK_OF_THE_FILE_ARG_TO_ARG_FALLING_BACK_TO_COPYING_THE_FILE_89FED96B =
+          "为文件 {} 创建到 {} 的硬链接失败，改为拷贝该文件";
+
+  public static final String
+      EXCEPTION_FAILED_TO_PIN_THE_TSFILE_ARG_BY_CREATING_A_HARDLINK_AND_THE_TSFILE_CAN_NOT_BE_COPIED_BECAUSE_IT_IS_NOT_CLOSED_YET_4E346D68 =
+          "通过创建硬链接固化 TsFile %s 失败，且该 TsFile 尚未关闭，无法改为拷贝";
 }
