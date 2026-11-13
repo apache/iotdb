@@ -526,9 +526,10 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   public Pair<Long, Double> getRemainingEventAndTime(
       final String pipeName, final long creationTime) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.computeIfAbsent(
-            generatePipeID(pipeName, creationTime),
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
+        remainingEventAndTimeOperatorMap.get(generatePipeID(pipeName, creationTime));
+    if (Objects.isNull(operator)) {
+      return new Pair<>(0L, 0.0);
+    }
     return new Pair<>(operator.getRemainingNonHeartbeatEvents(), operator.getRemainingTime());
   }
 

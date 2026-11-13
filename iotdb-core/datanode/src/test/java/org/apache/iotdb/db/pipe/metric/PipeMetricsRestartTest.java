@@ -148,6 +148,7 @@ public class PipeMetricsRestartTest {
     metrics.updateTsFileTransferTimer(PIPE, CREATION_TIME, 10);
     metrics.increaseHeartbeatEventCount(PIPE, CREATION_TIME);
     metrics.decreaseHeartbeatEventCount(PIPE, CREATION_TIME);
+    assertEquals(0L, (long) metrics.getRemainingEventAndTime(PIPE, CREATION_TIME).getLeft());
 
     assertTrue(metrics.remainingEventAndTimeOperatorMap.isEmpty());
     service.restartService();
