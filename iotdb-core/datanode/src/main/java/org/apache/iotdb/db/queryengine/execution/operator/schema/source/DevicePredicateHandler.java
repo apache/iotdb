@@ -22,9 +22,9 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
@@ -73,9 +73,9 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
             .map(TsTableColumnSchema::getDataType)
             .collect(Collectors.toList());
     this.tagIndex =
-        PathUtils.isTableModelDatabase(database)
-            ? 3
-            : DataNodeTreeViewSchemaUtils.getPatternNodes(table).length;
+        TreeViewSchema.isTreeViewTable(table)
+            ? DataNodeTreeViewSchemaUtils.getPatternNodes(table).length
+            : 3;
   }
 
   public void addBatch(final IDeviceSchemaInfo deviceSchemaInfo) {
