@@ -96,6 +96,15 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber(
+      int loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber) {
+    setProperty(
+        "load_tsfile_analyze_schema_batch_flush_table_device_number",
+        String.valueOf(loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber));
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad) {
     properties.setProperty(
         "max_allocate_memory_ratio_for_load", String.valueOf(maxAllocateMemoryRatioForLoad));
