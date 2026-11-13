@@ -102,6 +102,7 @@ public class SessionConnection {
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
   private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
+  private static final String ENABLE_RESULT_CHUNKING_KEY = "enable_result_chunking";
   public static final String MSG_RECONNECTION_FAIL =
       SessionMessages.EXCEPTION_FAIL_TO_RECONNECT_TO_SERVER_PLEASE_CHECK_SERVER_STATUS_D9A2790F;
   protected Session session;
@@ -247,7 +248,7 @@ public class SessionConnection {
     openReq.putToConfiguration("version", session.version.toString());
     openReq.putToConfiguration("sql_dialect", sqlDialect);
     // this client can assemble fragmented query results, see TSFetchResultsReq#offset
-    openReq.putToConfiguration("enable_result_chunking", Boolean.TRUE.toString());
+    openReq.putToConfiguration(ENABLE_RESULT_CHUNKING_KEY, Boolean.TRUE.toString());
     if (session.useEncryptedPassword) {
       openReq.putToConfiguration(USE_ENCRYPTED_PASSWORD_KEY, Boolean.TRUE.toString());
     }

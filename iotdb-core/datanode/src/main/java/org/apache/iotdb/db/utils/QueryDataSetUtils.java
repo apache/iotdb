@@ -253,18 +253,12 @@ public class QueryDataSetUtils {
     long memorySize = 0;
     List<ByteBuffer> res = new ArrayList<>();
     while (rowCount < fetchSize && memorySize < MAX_RETURN_SIZE) {
-      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
+      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult(false);
       if (!optionalByteBuffer.isPresent()) {
         break;
       }
       ByteBuffer byteBuffer = optionalByteBuffer.get();
-      byteBuffer.mark();
-      int valueColumnCount = byteBuffer.getInt();
-      for (int i = 0; i < valueColumnCount; i++) {
-        byteBuffer.get();
-      }
-      int positionCount = byteBuffer.getInt();
-      byteBuffer.reset();
+      int positionCount = readPositionCount(byteBuffer);
       if (positionCount != 0) {
         res.add(byteBuffer);
       }
@@ -279,11 +273,6 @@ public class QueryDataSetUtils {
    * maxPayloadSize} is cut into fragments: the response only carries the bytes that fit into the
    * payload, and the remaining bytes are kept in {@link PendingResultFragment} on the query
    * execution, to be sent by the following request carrying the returned offset.
-   *
-   * @param queryExecution used to get TsBlock from and judge whether there is more data.
-   * @param fetchSize wanted row size
-   * @param requestOffset the offset of the pending fragment to continue, 0 if there is none
-   * @param maxPayloadSize the maximum total bytes of {@link ResultChunk#getQueryResult()}
    */
   public static ResultChunk convertQueryResultByFetchSize(
       IQueryExecution queryExecution, int fetchSize, int requestOffset, int maxPayloadSize)
@@ -294,7 +283,6 @@ public class QueryDataSetUtils {
     int rowCount = 0;
     long memorySize = 0;
 
-    // Continue the oversized TsBlock left by the previous response first
     PendingResultFragment pendingFragment = queryExecution.getPendingResultFragment();
     ByteBuffer pendingBlock = pendingFragment.getBlock();
     if (pendingBlock != null) {
@@ -311,10 +299,9 @@ public class QueryDataSetUtils {
       res.add(slice(pendingBlock, nextOffset, fragmentSize));
       if (nextOffset + fragmentSize == pendingBlock.limit()) {
         pendingFragment.clear();
-        // The fragmented block is now complete. Do not fetch new blocks in the same response,
-        // otherwise the response would carry the tail of the big block plus up to fetchSize new
-        // rows, whose row count is not accounted for. One response either starts/continues a
-        // fragmented block or delivers new blocks, never both.
+        // Do not fetch new blocks in the same response, otherwise the response would carry the
+        // tail of the big block plus up to fetchSize new rows, whose row count is not accounted
+        // for. One response either continues a fragmented block or delivers new blocks.
         return ResultChunk.complete(res, !queryExecution.hasNextResult());
       }
       pendingFragment.reset(pendingBlock, nextOffset + fragmentSize);
@@ -328,16 +315,16 @@ public class QueryDataSetUtils {
     }
 
     while (rowCount < fetchSize && memorySize < MAX_RETURN_SIZE && remainingPayloadSize > 0) {
-      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
+      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult(true);
       if (!optionalByteBuffer.isPresent()) {
         break;
       }
       ByteBuffer byteBuffer = optionalByteBuffer.get();
       int positionCount = readPositionCount(byteBuffer);
       if (positionCount == 0) {
+        pendingFragment.clear();
         continue;
       }
-      // offsets kept in PendingResultFragment are absolute positions of the buffer
       int blockStart = byteBuffer.position();
       int blockSize = byteBuffer.remaining();
       rowCount += positionCount;
@@ -345,8 +332,8 @@ public class QueryDataSetUtils {
         res.add(byteBuffer);
         remainingPayloadSize -= blockSize;
         memorySize += blockSize;
+        pendingFragment.clear();
       } else {
-        // The block exceeds the remaining payload, send a leading fragment and keep the rest
         res.add(slice(byteBuffer, blockStart, remainingPayloadSize));
         pendingFragment.reset(byteBuffer, blockStart + remainingPayloadSize);
         return ResultChunk.fragment(
@@ -367,7 +354,6 @@ public class QueryDataSetUtils {
     return positionCount;
   }
 
-  /** Returns a view of {@code [offset, offset + length)} bytes of the buffer without copying. */
   private static ByteBuffer slice(ByteBuffer buffer, int offset, int length) {
     ByteBuffer duplicate = buffer.duplicate();
     duplicate.position(offset);
@@ -391,7 +377,7 @@ public class QueryDataSetUtils {
       this.finished = finished;
     }
 
-    /** The response ends with a fragment, which starts at {@code nextOffset} of its TsBlock. */
+    /** Creates a chunk whose last element is a fragment starting at {@code nextOffset}. */
     public static ResultChunk fragment(
         List<ByteBuffer> queryResult, int nextOffset, int totalLength, boolean finished) {
       return new ResultChunk(queryResult, nextOffset, totalLength, finished);
@@ -413,7 +399,6 @@ public class QueryDataSetUtils {
       return nextOffset;
     }
 
-    /** The total serialized length of the last block, set only when the fragment starts it. */
     public boolean hasTotalLength() {
       return totalLength >= 0;
     }

@@ -116,8 +116,8 @@ public class ConfigExecution implements IQueryExecution {
   private final IConfigTask task;
   private final IConfigTaskExecutor configTaskExecutor;
 
-  // the serialized TsBlock that is partially sent to the client and waits for the next RPC
-  private final PendingResultFragment pendingResultFragment = new PendingResultFragment();
+  // the result set is not reserved from the memory pool, so nothing is released on clear
+  private final PendingResultFragment pendingResultFragment = new PendingResultFragment(() -> {});
 
   private final StatementType statementType;
   private long totalExecutionTime;
@@ -281,7 +281,8 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
-  public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
+  public Optional<ByteBuffer> getByteBufferBatchResult(boolean retainMemory) throws IoTDBException {
+    // the result set is not reserved from the memory pool, so there is no memory to retain
     if (!resultSetConsumed) {
       resultSetConsumed = true;
       try {

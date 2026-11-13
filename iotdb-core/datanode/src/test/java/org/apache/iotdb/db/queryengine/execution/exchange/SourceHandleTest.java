@@ -1079,4 +1079,120 @@ public class SourceHandleTest {
     Mockito.verify(mockSourceHandleListener, Mockito.timeout(10_0000).times(1))
         .onAborted(sourceHandle);
   }
+
+  @Test
+  public void testRetainedMemoryIsFreedWhenTheHandedOverBlockIsReleased() throws Exception {
+    final String queryId = "q0";
+    final String localPlanNodeId = "exchange_0";
+    final HandleWithPool handleWithPool =
+        createSourceHandleWithOneFetchedBlock(queryId, localPlanNodeId);
+    final SourceHandle sourceHandle = handleWithPool.handle;
+    final MemoryPool memoryPool = handleWithPool.memoryPool;
+    final String fragmentInstanceId =
+        FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+            sourceHandle.getLocalFragmentInstanceId());
+
+    // The block is taken out of the buffer, but its memory stays reserved in the pool
+    Assert.assertNotNull(sourceHandle.getSerializedTsBlock(true));
+    Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
+    Mockito.verify(memoryPool, Mockito.never())
+        .free(queryId, fragmentInstanceId, localPlanNodeId, MOCK_TSBLOCK_SIZE);
+
+    // The caller releases the memory once the block is fully sent
+    sourceHandle.freeRetainedMemory();
+    Mockito.verify(memoryPool, Mockito.times(1))
+        .free(queryId, fragmentInstanceId, localPlanNodeId, MOCK_TSBLOCK_SIZE);
+
+    // Releasing again is a no-op
+    sourceHandle.freeRetainedMemory();
+    Mockito.verify(memoryPool, Mockito.times(1))
+        .free(queryId, fragmentInstanceId, localPlanNodeId, MOCK_TSBLOCK_SIZE);
+  }
+
+  @Test
+  public void testAbortReleasesTheHandedOverMemory() throws Exception {
+    final String queryId = "q0";
+    final String localPlanNodeId = "exchange_0";
+    final HandleWithPool handleWithPool =
+        createSourceHandleWithOneFetchedBlock(queryId, localPlanNodeId);
+    final SourceHandle sourceHandle = handleWithPool.handle;
+    final MemoryPool memoryPool = handleWithPool.memoryPool;
+    final String fragmentInstanceId =
+        FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+            sourceHandle.getLocalFragmentInstanceId());
+
+    Assert.assertNotNull(sourceHandle.getSerializedTsBlock(true));
+    Mockito.verify(memoryPool, Mockito.never())
+        .free(queryId, fragmentInstanceId, localPlanNodeId, MOCK_TSBLOCK_SIZE);
+
+    // abort frees the memory that was not released by the caller (fallback path)
+    sourceHandle.abort();
+    Mockito.verify(memoryPool, Mockito.times(1))
+        .free(queryId, fragmentInstanceId, localPlanNodeId, MOCK_TSBLOCK_SIZE);
+
+    // a late release after abort must not free the same memory twice
+    sourceHandle.freeRetainedMemory();
+    Mockito.verify(memoryPool, Mockito.times(1))
+        .free(queryId, fragmentInstanceId, localPlanNodeId, MOCK_TSBLOCK_SIZE);
+  }
+
+  private static final class HandleWithPool {
+    private final SourceHandle handle;
+    private final MemoryPool memoryPool;
+
+    private HandleWithPool(SourceHandle handle, MemoryPool memoryPool) {
+      this.handle = handle;
+      this.memoryPool = memoryPool;
+    }
+  }
+
+  /** Creates a SourceHandle whose single pending block has already been fetched. */
+  private HandleWithPool createSourceHandleWithOneFetchedBlock(
+      String queryId, String localPlanNodeId) throws Exception {
+    final TEndPoint remoteEndpoint =
+        new TEndPoint("remote", IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
+
+    final LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    final MemoryPool mockMemoryPool = Utils.createMockNonBlockedMemoryPool();
+    Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
+    final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
+        Mockito.mock(IClientManager.class);
+    final SyncDataNodeMPPDataExchangeServiceClient mockClient =
+        Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
+    Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
+    Mockito.doAnswer(
+            invocation -> {
+              TGetDataBlockRequest req = invocation.getArgument(0);
+              List<ByteBuffer> byteBuffers = new ArrayList<>();
+              for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
+                byteBuffers.add(ByteBuffer.allocate(0));
+              }
+              return new TGetDataBlockResponse(byteBuffers);
+            })
+        .when(mockClient)
+        .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
+
+    final SourceHandle sourceHandle =
+        new SourceHandle(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            localFragmentInstanceId,
+            localPlanNodeId,
+            0,
+            mockLocalMemoryManager,
+            Executors.newSingleThreadExecutor(),
+            Utils.createMockTsBlockSerde(MOCK_TSBLOCK_SIZE),
+            Mockito.mock(SourceHandleListener.class),
+            mockClientManager);
+
+    sourceHandle.isBlocked();
+    sourceHandle.updatePendingDataBlockInfo(0, List.of(MOCK_TSBLOCK_SIZE));
+    Mockito.verify(mockClient, Mockito.timeout(10_000).times(1))
+        .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
+    Assert.assertTrue(sourceHandle.isBlocked().isDone());
+    Assert.assertEquals(MOCK_TSBLOCK_SIZE, sourceHandle.getBufferRetainedSizeInBytes());
+    return new HandleWithPool(sourceHandle, mockMemoryPool);
+  }
 }

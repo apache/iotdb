@@ -89,7 +89,7 @@ public class QueryDataSetHandlerTest {
 
     private final Queue<Optional<TsBlock>> batches = new ArrayDeque<>();
     private final DatasetHeader datasetHeader;
-    private final PendingResultFragment pendingResultFragment = new PendingResultFragment();
+    private final PendingResultFragment pendingResultFragment = new PendingResultFragment(() -> {});
 
     private TestQueryExecution(TsBlock... tsBlocks) {
       for (TsBlock tsBlock : tsBlocks) {
@@ -126,7 +126,7 @@ public class QueryDataSetHandlerTest {
     }
 
     @Override
-    public Optional<ByteBuffer> getByteBufferBatchResult() {
+    public Optional<ByteBuffer> getByteBufferBatchResult(boolean retainMemory) {
       return Optional.empty();
     }
 

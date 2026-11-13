@@ -25,32 +25,44 @@ import java.nio.ByteBuffer;
  * The tail of a serialized TsBlock that did not fit into the previous RPC response and is waiting
  * to be sent in the following response(s). The block is already serialized and removed from the
  * result handle, so this fragment only holds a reference to it and never copies the payload.
+ *
+ * <p>The memory the block retains stays reserved in the memory pool until the block is fully sent.
+ * The owner binds a {@code memoryReleaser} which is invoked by {@link #clear()}, so callers only
+ * interact with this holder and never release the memory themselves.
  */
 public class PendingResultFragment {
+
+  private final Runnable memoryReleaser;
 
   private ByteBuffer block;
   private int nextOffset;
 
+  public PendingResultFragment(Runnable memoryReleaser) {
+    this.memoryReleaser = memoryReleaser;
+  }
+
   /** Records that {@code block} has been sent up to {@code nextOffset} bytes. */
-  public synchronized void reset(ByteBuffer block, int nextOffset) {
-    if (block != this.block) {
-      this.block = block;
-    }
+  public void reset(ByteBuffer block, int nextOffset) {
+    this.block = block;
     this.nextOffset = nextOffset;
   }
 
-  /** Returns the block that is partially sent, or null if no fragment is pending. */
-  public synchronized ByteBuffer getBlock() {
+  public ByteBuffer getBlock() {
     return block;
   }
 
-  /** Returns the start offset of the next fragment. */
-  public synchronized int getNextOffset() {
+  public int getNextOffset() {
     return nextOffset;
   }
 
-  public synchronized void clear() {
+  /**
+   * Discards the pending fragment and releases the memory of the blocks that have been fully sent.
+   * It is also called right after a complete block has been added to a response, when nothing is
+   * pending. Calling it repeatedly is a no-op.
+   */
+  public void clear() {
     block = null;
     nextOffset = 0;
+    memoryReleaser.run();
   }
 }

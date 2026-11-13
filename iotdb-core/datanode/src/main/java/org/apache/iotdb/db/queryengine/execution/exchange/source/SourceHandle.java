@@ -109,6 +109,13 @@ public class SourceHandle implements ISourceHandle {
   /** The actual buffered memory in bytes, including the amount of memory being reserved. */
   private long bufferRetainedSizeInBytes = 0L;
 
+  /**
+   * The memory in bytes taken out of the buffer with {@code retainMemory=true}, still reserved in
+   * the memory pool on behalf of the caller. Freed by {@link #freeRetainedMemory()}, or by
+   * abort/close as a fallback.
+   */
+  private long pendingRetainedSizeInBytes = 0L;
+
   private int currSequenceId = 0;
   private int nextSequenceId = 0;
   private int lastSequenceId = Integer.MAX_VALUE;
@@ -232,7 +239,7 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public synchronized TsBlock receive() {
-    ByteBuffer tsBlock = getSerializedTsBlock();
+    ByteBuffer tsBlock = getSerializedTsBlock(false);
     if (tsBlock != null) {
       long startTime = System.nanoTime();
       try {
@@ -247,7 +254,7 @@ public class SourceHandle implements ISourceHandle {
   }
 
   @Override
-  public synchronized ByteBuffer getSerializedTsBlock() {
+  public synchronized ByteBuffer getSerializedTsBlock(boolean retainMemory) {
     long startTime = System.nanoTime();
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       checkState();
@@ -270,13 +277,17 @@ public class SourceHandle implements ISourceHandle {
       currSequenceId += 1;
       if (retainedSize > 0) {
         bufferRetainedSizeInBytes -= retainedSize;
-        localMemoryManager
-            .getQueryPool()
-            .free(
-                localFragmentInstanceId.getQueryId(),
-                fullFragmentInstanceId,
-                localPlanNodeId,
-                retainedSize);
+        if (retainMemory) {
+          pendingRetainedSizeInBytes += retainedSize;
+        } else {
+          localMemoryManager
+              .getQueryPool()
+              .free(
+                  localFragmentInstanceId.getQueryId(),
+                  fullFragmentInstanceId,
+                  localPlanNodeId,
+                  retainedSize);
+        }
       }
 
       if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
@@ -294,6 +305,22 @@ public class SourceHandle implements ISourceHandle {
       DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
           SOURCE_HANDLE_GET_TSBLOCK_REMOTE, System.nanoTime() - startTime);
     }
+  }
+
+  @Override
+  public synchronized void freeRetainedMemory() {
+    if (pendingRetainedSizeInBytes <= 0) {
+      return;
+    }
+    long retainedSize = pendingRetainedSizeInBytes;
+    pendingRetainedSizeInBytes = 0;
+    localMemoryManager
+        .getQueryPool()
+        .free(
+            localFragmentInstanceId.getQueryId(),
+            fullFragmentInstanceId,
+            localPlanNodeId,
+            retainedSize);
   }
 
   private synchronized void trySubmitGetDataBlocksTask() {
@@ -444,16 +471,7 @@ public class SourceHandle implements ISourceHandle {
         bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
       }
       sequenceIdToDataBlockSize.clear();
-      if (bufferRetainedSizeInBytes > 0) {
-        localMemoryManager
-            .getQueryPool()
-            .free(
-                localFragmentInstanceId.getQueryId(),
-                fullFragmentInstanceId,
-                localPlanNodeId,
-                bufferRetainedSizeInBytes);
-        bufferRetainedSizeInBytes = 0;
-      }
+      freeAllRetainedMemory();
       aborted = true;
       sourceHandleListener.onAborted(this);
     }
@@ -472,16 +490,7 @@ public class SourceHandle implements ISourceHandle {
         bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
       }
       sequenceIdToDataBlockSize.clear();
-      if (bufferRetainedSizeInBytes > 0) {
-        localMemoryManager
-            .getQueryPool()
-            .free(
-                localFragmentInstanceId.getQueryId(),
-                fullFragmentInstanceId,
-                localPlanNodeId,
-                bufferRetainedSizeInBytes);
-        bufferRetainedSizeInBytes = 0;
-      }
+      freeAllRetainedMemory();
       aborted = true;
       sourceHandleListener.onAborted(this);
     }
@@ -500,20 +509,30 @@ public class SourceHandle implements ISourceHandle {
         bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
       }
       sequenceIdToDataBlockSize.clear();
-      if (bufferRetainedSizeInBytes > 0) {
-        localMemoryManager
-            .getQueryPool()
-            .free(
-                localFragmentInstanceId.getQueryId(),
-                fullFragmentInstanceId,
-                localPlanNodeId,
-                bufferRetainedSizeInBytes);
-        bufferRetainedSizeInBytes = 0;
-      }
+      freeAllRetainedMemory();
       closed = true;
       executorService.submit(new SendCloseSinkChannelEventTask());
       currSequenceId = lastSequenceId + 1;
       sourceHandleListener.onFinished(this);
+    }
+  }
+
+  /**
+   * Frees the buffered memory and the memory handed over with {@code retainMemory=true}, as a
+   * fallback for blocks the caller has not released yet.
+   */
+  private void freeAllRetainedMemory() {
+    long totalRetainedSize = bufferRetainedSizeInBytes + pendingRetainedSizeInBytes;
+    if (totalRetainedSize > 0) {
+      localMemoryManager
+          .getQueryPool()
+          .free(
+              localFragmentInstanceId.getQueryId(),
+              fullFragmentInstanceId,
+              localPlanNodeId,
+              totalRetainedSize);
+      bufferRetainedSizeInBytes = 0;
+      pendingRetainedSizeInBytes = 0;
     }
   }
 

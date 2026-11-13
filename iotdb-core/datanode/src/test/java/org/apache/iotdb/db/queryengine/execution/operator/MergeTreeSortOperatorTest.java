@@ -1809,7 +1809,7 @@ public class MergeTreeSortOperatorTest {
     private final long startTime;
     private final String queryId;
     private final String sql;
-    private final PendingResultFragment pendingResultFragment = new PendingResultFragment();
+    private final PendingResultFragment pendingResultFragment = new PendingResultFragment(() -> {});
 
     FakeQueryExecution(long startTime, String queryId, String sql) {
       this.startTime = startTime;
@@ -1891,7 +1891,7 @@ public class MergeTreeSortOperatorTest {
     }
 
     @Override
-    public Optional<ByteBuffer> getByteBufferBatchResult() {
+    public Optional<ByteBuffer> getByteBufferBatchResult(boolean retainMemory) {
       return Optional.empty();
     }
 

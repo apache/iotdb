@@ -153,7 +153,8 @@ public class LocalSourceHandle implements ISourceHandle {
   }
 
   @Override
-  public ByteBuffer getSerializedTsBlock() throws IoTDBException {
+  public ByteBuffer getSerializedTsBlock(boolean retainMemory) throws IoTDBException {
+    // the returned bytes are a fresh serialization, not reserved from the memory pool
     TsBlock tsBlock = receive();
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(DataNodeQueryMessages.GET_SERIALIZED_TSBLOCK, CommonUtils.toString(tsBlock));
@@ -172,6 +173,11 @@ public class LocalSourceHandle implements ISourceHandle {
     } else {
       return null;
     }
+  }
+
+  @Override
+  public void freeRetainedMemory() {
+    // nothing is reserved from the memory pool
   }
 
   @Override

@@ -109,7 +109,8 @@ public class QueryExecution implements IQueryExecution {
   private final AtomicBoolean resultHandleCleanUp;
 
   // the serialized TsBlock that is partially sent to the client and waits for the next RPC
-  private final PendingResultFragment pendingResultFragment = new PendingResultFragment();
+  private final PendingResultFragment pendingResultFragment =
+      new PendingResultFragment(this::releaseResultHandleRetainedMemory);
 
   private final AtomicBoolean stopped;
 
@@ -440,6 +441,9 @@ public class QueryExecution implements IQueryExecution {
   /** Release the resources that current QueryExecution hold with a specified exception */
   private void releaseResource(Throwable t) {
     context.recordDeviceEntryDiskIOMetricsOnRelease();
+    // the query will not serve any more fetch requests, release the pending fragment's memory and
+    // make sure a retried execution does not continue a stale fragment
+    pendingResultFragment.clear();
     // close ResultHandle to unblock client's getResult request
     // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
     // There are only two scenarios where the ResultHandle should be closed:
@@ -598,8 +602,8 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
-  public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
-    return getResult(this::getSerializedTsBlock);
+  public Optional<ByteBuffer> getByteBufferBatchResult(boolean retainMemory) throws IoTDBException {
+    return getResult(() -> resultHandle.getSerializedTsBlock(retainMemory));
   }
 
   @Override
@@ -607,8 +611,10 @@ public class QueryExecution implements IQueryExecution {
     return pendingResultFragment;
   }
 
-  private ByteBuffer getSerializedTsBlock() throws IoTDBException {
-    return resultHandle.getSerializedTsBlock();
+  private void releaseResultHandleRetainedMemory() {
+    if (resultHandle != null) {
+      resultHandle.freeRetainedMemory();
+    }
   }
 
   /**

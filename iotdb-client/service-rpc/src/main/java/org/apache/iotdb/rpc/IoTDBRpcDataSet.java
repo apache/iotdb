@@ -332,7 +332,6 @@ public class IoTDBRpcDataSet {
       } else {
         queryResult = new ArrayList<>();
         queryResultIndex = 0;
-        queryResultSize = 0;
         addResponse(resp.getQueryResult(), resp.isSetOffset(), resp.offset, resp.totalLength);
         queryResultSize = queryResult.size();
         this.tsBlockSize = 0;
@@ -351,11 +350,6 @@ public class IoTDBRpcDataSet {
    * the fragment is either appended to the pending {@link ResultFragmentBuffer} or starts a new
    * one; the corresponding TsBlock is only added to {@link #queryResult} once all of its bytes have
    * been received.
-   *
-   * @param blocks the serialized TsBlocks in the response
-   * @param offsetSet whether the last element of {@code blocks} is a fragment
-   * @param nextOffset the start offset of the next fragment
-   * @param totalLength the total serialized length of the block the first fragment belongs to
    */
   private void addResponse(
       List<ByteBuffer> blocks, boolean offsetSet, int nextOffset, int totalLength) {
@@ -365,7 +359,6 @@ public class IoTDBRpcDataSet {
     int blockIndex = 0;
 
     if (fragmentBuffer != null) {
-      // the first element completes the pending fragment, if it is not the only element
       fragmentBuffer.append(blocks.get(blockIndex++));
       if (offsetSet && blockIndex == blocks.size()) {
         fragmentBuffer.updateOffset(nextOffset);
@@ -418,7 +411,9 @@ public class IoTDBRpcDataSet {
     }
 
     private void updateOffset(int nextOffset) {
-      if (nextOffset <= this.nextOffset || nextOffset != buffer.size()) {
+      // the accumulated buffer only grows with non-empty fragments, so this also rejects a
+      // non-increasing offset
+      if (nextOffset != buffer.size()) {
         throw new IllegalArgumentException(
             String.format(
                 RpcMessages
