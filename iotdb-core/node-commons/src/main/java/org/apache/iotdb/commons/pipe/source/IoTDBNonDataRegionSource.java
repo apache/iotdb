@@ -302,12 +302,20 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     if (Objects.isNull(pipeTaskMeta)) {
       return 0L;
     }
+    return getUnTransferredEventCount(getListeningQueue());
+  }
+
+  /** Calculate metrics from a captured queue without looking it up again during cleanup. */
+  protected long getUnTransferredEventCount(final AbstractPipeListeningQueue listeningQueue) {
+    if (Objects.isNull(pipeTaskMeta) || Objects.isNull(listeningQueue)) {
+      return 0L;
+    }
     final ProgressIndex progressIndex = pipeTaskMeta.getProgressIndex();
     warnIfUnexpectedHybridProgressIndex(progressIndex);
     final MetaProgressIndex metaProgressIndex = extractMetaProgressIndex(progressIndex);
     return Objects.nonNull(metaProgressIndex)
-        ? getListeningQueue().getTailIndex() - metaProgressIndex.getIndex() - 1
-        : getListeningQueue().getSize() + historicalEventsCount;
+        ? listeningQueue.getTailIndex() - metaProgressIndex.getIndex() - 1
+        : listeningQueue.getSize() + historicalEventsCount;
   }
 
   private static MetaProgressIndex extractMetaProgressIndex(final ProgressIndex progressIndex) {
