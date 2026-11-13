@@ -45,6 +45,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -286,6 +287,35 @@ public class IoTDBJDBCResultSetTest {
 
     // The client get TSQueryDataSet at the first request
     verify(fetchResultsResp, times(0)).getStatus();
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testBigDecimalScaleUsesFractionalDigits() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    try (ResultSet resultSet = statement.getResultSet()) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(2L, resultSet.getLong(1));
+      Assert.assertEquals(new BigDecimal("2.2"), resultSet.getBigDecimal(2, 1));
+      Assert.assertEquals(new BigDecimal("2"), resultSet.getBigDecimal(2, 0));
+      Assert.assertEquals(new BigDecimal("2.2"), resultSet.getBigDecimal("root.vehicle.d0.s2", 1));
+      Assert.assertThrows(SQLException.class, () -> resultSet.getBigDecimal(2, -1));
+
+      boolean foundLargeValue = false;
+      while (resultSet.next()) {
+        if (resultSet.getLong(1) == 1000) {
+          Assert.assertEquals(new BigDecimal("1000.11"), resultSet.getBigDecimal(2, 2));
+          Assert.assertEquals(
+              new BigDecimal("1000.11"), resultSet.getBigDecimal("root.vehicle.d0.s2", 2));
+          foundLargeValue = true;
+          break;
+        }
+      }
+      Assert.assertTrue(foundLargeValue);
+    }
   }
 
   @SuppressWarnings("resource")

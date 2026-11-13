@@ -41,7 +41,7 @@ import javax.sql.rowset.serial.SerialBlob;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
-import java.math.MathContext;
+import java.math.RoundingMode;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -311,9 +311,11 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
     try {
-      MathContext mc = new MathContext(scale);
+      if (scale < 0) {
+        throw new IllegalArgumentException();
+      }
       BigDecimal value = getBigDecimal(columnIndex);
-      return value == null ? null : value.round(mc);
+      return value == null ? null : value.setScale(scale, RoundingMode.HALF_UP);
     } catch (IllegalArgumentException e) {
       throw new SQLException(e.getMessage(), e);
     }
