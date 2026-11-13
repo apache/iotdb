@@ -114,8 +114,11 @@ public class InternalTableSessionRedirectIT {
       session.insert(createTablet(2L));
 
       final Session underlyingSession = InternalSessionITUtils.getUnderlyingSession(session);
-      final Map<?, TEndPoint> tableModelDeviceIdToEndpoint =
+      final Map<?, Map<?, TEndPoint>> tableModelDeviceIdToEndpointByDatabase =
           InternalSessionITUtils.getSessionField(underlyingSession, "tableModelDeviceIdToEndpoint");
+      assertEquals(1, tableModelDeviceIdToEndpointByDatabase.size());
+      final Map<?, TEndPoint> tableModelDeviceIdToEndpoint =
+          tableModelDeviceIdToEndpointByDatabase.values().iterator().next();
       assertEquals(1, tableModelDeviceIdToEndpoint.size());
       assertTrue(leaderEndPoints.contains(tableModelDeviceIdToEndpoint.values().iterator().next()));
     }

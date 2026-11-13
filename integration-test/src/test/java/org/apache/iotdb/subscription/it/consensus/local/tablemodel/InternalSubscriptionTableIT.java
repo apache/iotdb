@@ -163,10 +163,12 @@ public class InternalSubscriptionTableIT extends AbstractSubscriptionIT {
         session.executeNonQueryStatement("flush");
 
         final Session underlyingSession = InternalSessionITUtils.getUnderlyingSession(session);
-        final Map<?, TEndPoint> deviceToEndpoint =
+        final Map<?, Map<?, TEndPoint>> deviceToEndpointByDatabase =
             InternalSessionITUtils.getSessionField(
                 underlyingSession, "tableModelDeviceIdToEndpoint");
-        leaders.addAll(deviceToEndpoint.values());
+        deviceToEndpointByDatabase
+            .values()
+            .forEach(deviceToEndpoint -> leaders.addAll(deviceToEndpoint.values()));
       }
 
       Assert.assertTrue(

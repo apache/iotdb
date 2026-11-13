@@ -178,6 +178,63 @@ public class IoTDBSessionRelationalIT {
     }
   }
 
+  @Test
+  public void testInsertTabletIntoSpecifiedDatabase()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement(
+          "CREATE TABLE db1.tablet_database (tag1 STRING TAG, m1 DOUBLE FIELD)");
+      session.executeNonQueryStatement(
+          "CREATE TABLE db2.tablet_database (tag1 STRING TAG, m1 DOUBLE FIELD)");
+
+      List<String> columnNames = Arrays.asList("tag1", "m1");
+      List<TSDataType> dataTypes = Arrays.asList(TSDataType.STRING, TSDataType.DOUBLE);
+      List<ColumnCategory> columnCategories =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+      Tablet tablet = new Tablet("tablet_database", columnNames, dataTypes, columnCategories, 2);
+      for (int row = 0; row < 2; row++) {
+        tablet.addTimestamp(row, row);
+        tablet.addValue("tag1", row, "tag:" + row);
+        tablet.addValue("m1", row, row * 1.0);
+      }
+
+      session.insert(tablet, "db1");
+      session.executeNonQueryStatement("USE db1");
+      session.insert(tablet, "db2");
+      Tablet currentDatabaseTablet =
+          new Tablet("tablet_database", columnNames, dataTypes, columnCategories, 1);
+      currentDatabaseTablet.addTimestamp(0, 2);
+      currentDatabaseTablet.addValue("tag1", 0, "tag:2");
+      currentDatabaseTablet.addValue("m1", 0, 2.0);
+      session.insert(currentDatabaseTablet, null);
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SELECT * FROM db1.tablet_database")) {
+        assertTrue(dataSet.hasNext());
+        dataSet.next();
+        assertTrue(dataSet.hasNext());
+        dataSet.next();
+        assertTrue(dataSet.hasNext());
+        dataSet.next();
+        assertFalse(dataSet.hasNext());
+      }
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SELECT * FROM db2.tablet_database")) {
+        assertTrue(dataSet.hasNext());
+        dataSet.next();
+        assertTrue(dataSet.hasNext());
+        dataSet.next();
+        assertFalse(dataSet.hasNext());
+      }
+      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW CURRENT_DATABASE")) {
+        assertTrue(dataSet.hasNext());
+        assertEquals("db1", dataSet.next().getField(0).getStringValue());
+      }
+
+      assertThrows(StatementExecutionException.class, () -> session.insert(tablet, ""));
+    }
+  }
+
   private static void insertRelationalTabletPerformanceTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {

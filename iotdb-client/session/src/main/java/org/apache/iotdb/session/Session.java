@@ -173,12 +173,13 @@ public class Session implements ISession {
   private static final double CONVERT_THRESHOLD = 0.5;
   private static final double SAMPLE_PROPORTION = 0.05;
   private static final int MIN_RECORDS_SIZE = 40;
+  private static final String UNSPECIFIED_DATABASE_KEY = "";
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
-  protected volatile Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint;
+  protected volatile Map<String, Map<IDeviceID, TEndPoint>> tableModelDeviceIdToEndpoint;
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<TEndPoint, SessionConnection> endPointToSessionConnection;
@@ -664,6 +665,28 @@ public class Session implements ISession {
       int connectionTimeoutInMs,
       Map<String, TEndPoint> deviceIdToEndpoint,
       Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint,
+      INodeSupplier nodesSupplier)
+      throws IoTDBConnectionException {
+    Map<String, Map<IDeviceID, TEndPoint>> databaseToDeviceIdToEndpoint = new ConcurrentHashMap<>();
+    if (tableModelDeviceIdToEndpoint != null) {
+      databaseToDeviceIdToEndpoint.put(
+          resolveTableModelRouteDatabase(null), tableModelDeviceIdToEndpoint);
+    }
+    openWithTableModelDatabaseCache(
+        enableThriftRpcCompaction,
+        connectionTimeoutInMs,
+        deviceIdToEndpoint,
+        databaseToDeviceIdToEndpoint,
+        nodesSupplier);
+  }
+
+  /** Opens this Session with a database-aware table-model route cache for internal callers. */
+  @Override
+  public synchronized void openWithTableModelDatabaseCache(
+      boolean enableThriftRpcCompaction,
+      int connectionTimeoutInMs,
+      Map<String, TEndPoint> deviceIdToEndpoint,
+      Map<String, Map<IDeviceID, TEndPoint>> tableModelDeviceIdToEndpoint,
       INodeSupplier nodesSupplier)
       throws IoTDBConnectionException {
     if (!isClosed) {
@@ -1420,12 +1443,20 @@ public class Session implements ISession {
     }
   }
 
-  private SessionConnection getSessionConnection(IDeviceID deviceId)
+  private Map<IDeviceID, TEndPoint> getTableModelDatabaseRoutes(String routeDatabase) {
+    Map<IDeviceID, TEndPoint> databaseToEndpoint = tableModelDeviceIdToEndpoint.get(routeDatabase);
+    return databaseToEndpoint == null
+        ? tableModelDeviceIdToEndpoint.computeIfAbsent(
+            routeDatabase, ignored -> new ConcurrentHashMap<>())
+        : databaseToEndpoint;
+  }
+
+  private SessionConnection getSessionConnection(
+      Map<IDeviceID, TEndPoint> databaseToEndpoint, IDeviceID deviceId)
       throws IoTDBConnectionException {
     TEndPoint endPoint;
     if (enableRedirection
-        && tableModelDeviceIdToEndpoint != null
-        && (endPoint = tableModelDeviceIdToEndpoint.get(deviceId)) != null
+        && (endPoint = databaseToEndpoint.get(deviceId)) != null
         && endPointToSessionConnection.containsKey(endPoint)) {
       return endPointToSessionConnection.get(endPoint);
     } else {
@@ -1465,12 +1496,13 @@ public class Session implements ISession {
         }
       }
       if (tableModelDeviceIdToEndpoint != null && !tableModelDeviceIdToEndpoint.isEmpty()) {
-        for (Iterator<Entry<IDeviceID, TEndPoint>> it =
-                tableModelDeviceIdToEndpoint.entrySet().iterator();
-            it.hasNext(); ) {
-          Entry<IDeviceID, TEndPoint> entry = it.next();
-          if (entry.getValue().equals(endPoint)) {
-            it.remove();
+        for (Map<IDeviceID, TEndPoint> deviceIdToEndpoint : tableModelDeviceIdToEndpoint.values()) {
+          for (Iterator<Entry<IDeviceID, TEndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
+              it.hasNext(); ) {
+            Entry<IDeviceID, TEndPoint> entry = it.next();
+            if (Objects.equals(entry.getValue(), endPoint)) {
+              it.remove();
+            }
           }
         }
       }
@@ -1503,15 +1535,15 @@ public class Session implements ISession {
     }
   }
 
-  private void handleRedirection(IDeviceID deviceId, TEndPoint endpoint) {
+  private void handleRedirection(
+      Map<IDeviceID, TEndPoint> databaseToEndpoint, IDeviceID deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
       // no need to redirection
       if (UrlUtils.isWildcardAddress(endpoint.ip)) {
         return;
       }
-      if (!tableModelDeviceIdToEndpoint.containsKey(deviceId)
-          || !tableModelDeviceIdToEndpoint.get(deviceId).equals(endpoint)) {
-        tableModelDeviceIdToEndpoint.put(deviceId, endpoint);
+      if (!endpoint.equals(databaseToEndpoint.get(deviceId))) {
+        databaseToEndpoint.put(deviceId, endpoint);
       }
       SessionConnection connection =
           endPointToSessionConnection.computeIfAbsent(
@@ -1524,9 +1556,14 @@ public class Session implements ISession {
                 }
               });
       if (connection == null) {
-        tableModelDeviceIdToEndpoint.remove(deviceId);
+        databaseToEndpoint.remove(deviceId, endpoint);
       }
     }
+  }
+
+  private String resolveTableModelRouteDatabase(String database) {
+    String routeDatabase = database == null ? this.database : database;
+    return routeDatabase == null ? UNSPECIFIED_DATABASE_KEY : routeDatabase;
   }
 
   private void handleQueryRedirection(TEndPoint endPoint) throws IoTDBConnectionException {
@@ -2907,11 +2944,24 @@ public class Session implements ISession {
    */
   public void insertRelationalTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
+    insertRelationalTablet(tablet, null);
+  }
+
+  /**
+   * Inserts a relational {@link Tablet} into the specified database for this invocation only.
+   *
+   * @param tablet data batch
+   * @param database target database; if null, use the current database of this session
+   */
+  public void insertRelationalTablet(Tablet tablet, String database)
+      throws IoTDBConnectionException, StatementExecutionException {
     if (tablet.getRowSize() == 0) {
       return;
     }
+    // Capture the effective database before grouping so a later USE cannot change cached routes.
+    String routeDatabase = resolveTableModelRouteDatabase(database);
     if (enableRedirection) {
-      insertRelationalTabletWithLeaderCache(tablet);
+      insertRelationalTabletWithLeaderCache(tablet, database, routeDatabase);
     } else {
       TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
       if (request == null) {
@@ -2923,6 +2973,7 @@ public class Session implements ISession {
         return;
       }
       request.setWriteToTable(true);
+      setRelationalRequestDatabase(request, database);
       try {
         getDefaultSessionConnection().insertTablet(request);
       } catch (RedirectException ignored) {
@@ -2930,17 +2981,20 @@ public class Session implements ISession {
     }
   }
 
-  private void insertRelationalTabletWithLeaderCache(Tablet tablet)
+  private void insertRelationalTabletWithLeaderCache(
+      Tablet tablet, String database, String routeDatabase)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
-    if (tableModelDeviceIdToEndpoint.isEmpty()) {
+    Map<IDeviceID, TEndPoint> databaseToEndpoint = getTableModelDatabaseRoutes(routeDatabase);
+    if (databaseToEndpoint.isEmpty()) {
       relationalTabletGroup.put(getDefaultSessionConnection(), tablet);
     } else if (SessionUtils.isTabletContainsSingleDevice(tablet)) {
-      relationalTabletGroup.put(getSessionConnection(tablet.getDeviceID(0)), tablet);
+      relationalTabletGroup.put(
+          getSessionConnection(databaseToEndpoint, tablet.getDeviceID(0)), tablet);
     } else {
       for (int i = 0; i < tablet.getRowSize(); i++) {
         IDeviceID iDeviceID = tablet.getDeviceID(i);
-        final SessionConnection connection = getSessionConnection(iDeviceID);
+        final SessionConnection connection = getSessionConnection(databaseToEndpoint, iDeviceID);
         int finalI = i;
         relationalTabletGroup.compute(
             connection,
@@ -2975,13 +3029,16 @@ public class Session implements ISession {
       }
     }
     if (relationalTabletGroup.size() == 1) {
-      insertRelationalTabletOnce(relationalTabletGroup);
+      insertRelationalTabletOnce(relationalTabletGroup, database, databaseToEndpoint);
     } else {
-      insertRelationalTabletByGroup(relationalTabletGroup);
+      insertRelationalTabletByGroup(relationalTabletGroup, database, databaseToEndpoint);
     }
   }
 
-  private void insertRelationalTabletOnce(Map<SessionConnection, Tablet> relationalTabletGroup)
+  private void insertRelationalTabletOnce(
+      Map<SessionConnection, Tablet> relationalTabletGroup,
+      String database,
+      Map<IDeviceID, TEndPoint> databaseToEndpoint)
       throws IoTDBConnectionException, StatementExecutionException {
     Map.Entry<SessionConnection, Tablet> entry = relationalTabletGroup.entrySet().iterator().next();
     SessionConnection connection = entry.getKey();
@@ -2996,6 +3053,7 @@ public class Session implements ISession {
       return;
     }
     request.setWriteToTable(true);
+    setRelationalRequestDatabase(request, database);
     try {
       connection.insertTablet(request);
     } catch (RedirectException e) {
@@ -3006,7 +3064,8 @@ public class Session implements ISession {
           endPointMap.put(tablet.getDeviceID(i), endPointList.get(i));
         }
       }
-      endPointMap.forEach(this::handleRedirection);
+      endPointMap.forEach(
+          (deviceId, endpoint) -> handleRedirection(databaseToEndpoint, deviceId, endpoint));
     } catch (IoTDBConnectionException e) {
       if (endPointToSessionConnection != null && endPointToSessionConnection.size() > 1) {
         // remove the broken session
@@ -3024,7 +3083,10 @@ public class Session implements ISession {
   @SuppressWarnings({
     "squid:S3776"
   }) // ignore Cognitive Complexity of methods should not be too high
-  private void insertRelationalTabletByGroup(Map<SessionConnection, Tablet> relationalTabletGroup)
+  private void insertRelationalTabletByGroup(
+      Map<SessionConnection, Tablet> relationalTabletGroup,
+      String database,
+      Map<IDeviceID, TEndPoint> databaseToEndpoint)
       throws IoTDBConnectionException, StatementExecutionException {
     List<CompletableFuture<Void>> completableFutures =
         relationalTabletGroup.entrySet().stream()
@@ -3044,6 +3106,7 @@ public class Session implements ISession {
                           return;
                         }
                         request.setWriteToTable(true);
+                        setRelationalRequestDatabase(request, database);
                         InsertConsumer<TSInsertTabletReq> insertConsumer =
                             SessionConnection::insertTablet;
                         try {
@@ -3056,7 +3119,9 @@ public class Session implements ISession {
                               endPointMap.put(subTablet.getDeviceID(i), endPointList.get(i));
                             }
                           }
-                          endPointMap.forEach(this::handleRedirection);
+                          endPointMap.forEach(
+                              (deviceId, endpoint) ->
+                                  handleRedirection(databaseToEndpoint, deviceId, endpoint));
                         } catch (StatementExecutionException e) {
                           throw new CompletionException(e);
                         } catch (IoTDBConnectionException e) {
@@ -3098,6 +3163,12 @@ public class Session implements ISession {
           new StatementExecutionException(errMsgBuilder.toString());
       errors.forEach(exception::addSuppressed);
       throw exception;
+    }
+  }
+
+  private static void setRelationalRequestDatabase(TSInsertTabletReq request, String database) {
+    if (database != null) {
+      request.setDatabase(database);
     }
   }
 

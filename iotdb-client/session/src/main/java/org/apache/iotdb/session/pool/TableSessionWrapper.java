@@ -58,8 +58,14 @@ public class TableSessionWrapper implements ITableSession {
 
   @Override
   public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
+    insert(tablet, null);
+  }
+
+  @Override
+  public void insert(Tablet tablet, String database)
+      throws StatementExecutionException, IoTDBConnectionException {
     try {
-      session.insertRelationalTablet(tablet);
+      session.insertRelationalTablet(tablet, database);
     } catch (IoTDBConnectionException e) {
       sessionPool.cleanSessionAndMayThrowConnectionException(session);
       closed.set(true);
