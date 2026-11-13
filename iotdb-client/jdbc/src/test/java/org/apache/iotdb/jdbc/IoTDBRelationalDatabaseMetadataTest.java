@@ -43,14 +43,17 @@ import java.nio.ByteBuffer;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -60,6 +63,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class IoTDBRelationalDatabaseMetadataTest {
@@ -529,6 +535,98 @@ public class IoTDBRelationalDatabaseMetadataTest {
       }
     }
     assertEquals(Arrays.asList("ts#1", "region#2"), keys);
+  }
+
+  @Test
+  public void testMetadataClosesSourceResultSetsAfterReadingThem() throws Exception {
+    IoTDBConnection testConnection = mock(IoTDBConnection.class);
+    IClientRPCService.Iface testClient = mock(IClientRPCService.Iface.class);
+    when(testConnection.getTimeFactor()).thenReturn(1_000);
+
+    CloseAwareStatement tablesStatement = new CloseAwareStatement(testConnection, testClient);
+    ResultSet tablesSource = sourceResultSet(tablesStatement, values("table_name", "table1"));
+    tablesStatement.setResultSet(tablesSource);
+
+    CloseAwareStatement columnsStatement = new CloseAwareStatement(testConnection, testClient);
+    ResultSet columnsSource =
+        sourceResultSet(
+            columnsStatement,
+            values("column_name", "tag1", "datatype", "INT32", "category", "TAG"));
+    columnsStatement.setResultSet(columnsSource);
+
+    CloseAwareStatement primaryKeysStatement = new CloseAwareStatement(testConnection, testClient);
+    ResultSet primaryKeysSource =
+        sourceResultSet(
+            primaryKeysStatement,
+            values("column_name", "tag1", "datatype", "INT32", "category", "TAG"));
+    primaryKeysStatement.setResultSet(primaryKeysSource);
+
+    when(testConnection.createStatement())
+        .thenReturn(tablesStatement, columnsStatement, primaryKeysStatement);
+
+    IoTDBRelationalDatabaseMetadata testMetadata =
+        new IoTDBRelationalDatabaseMetadata(testConnection, testClient, 1L, zoneId);
+
+    assertNotNull(testMetadata.getTables(null, "rootdb", null, null));
+    assertNotNull(testMetadata.getColumns(null, "rootdb", "table1", null));
+    assertNotNull(testMetadata.getPrimaryKeys(null, "rootdb", "table1"));
+
+    verify(tablesSource).close();
+    verify(columnsSource).close();
+    verify(primaryKeysSource).close();
+  }
+
+  private static ResultSet sourceResultSet(
+      CloseAwareStatement statement, Map<String, String> values) throws Exception {
+    ResultSet resultSet = mock(ResultSet.class);
+    AtomicInteger nextCalls = new AtomicInteger();
+    when(resultSet.next())
+        .thenAnswer(
+            invocation -> {
+              if (statement.wasClosed()) {
+                throw new SQLException("metadata source was read after its Statement closed");
+              }
+              return nextCalls.getAndIncrement() == 0;
+            });
+    when(resultSet.getString(anyString()))
+        .thenAnswer(invocation -> values.get(invocation.getArgument(0)));
+    return resultSet;
+  }
+
+  private static Map<String, String> values(String... entries) {
+    Map<String, String> values = new HashMap<>();
+    for (int i = 0; i < entries.length; i += 2) {
+      values.put(entries[i], entries[i + 1]);
+    }
+    return values;
+  }
+
+  private static class CloseAwareStatement extends IoTDBStatement {
+    private ResultSet resultSet;
+    private boolean closed;
+
+    private CloseAwareStatement(IoTDBConnection connection, IClientRPCService.Iface client)
+        throws SQLException {
+      super(connection, client, 1L, ZoneId.systemDefault(), 0, -1L);
+    }
+
+    private void setResultSet(ResultSet resultSet) {
+      this.resultSet = resultSet;
+    }
+
+    private boolean wasClosed() {
+      return closed;
+    }
+
+    @Override
+    public ResultSet executeQuery(String sql) {
+      return resultSet;
+    }
+
+    @Override
+    public void close() {
+      closed = true;
+    }
   }
 
   // ========== fake server responses ==========

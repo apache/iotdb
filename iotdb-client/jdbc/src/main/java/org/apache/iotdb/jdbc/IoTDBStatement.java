@@ -647,6 +647,10 @@ public class IoTDBStatement implements Statement {
     return fetchSize;
   }
 
+  int getFetchSizeInternal() {
+    return fetchSize;
+  }
+
   @Override
   public void setFetchSize(int fetchSize) throws SQLException {
     checkConnection("setFetchSize");
@@ -789,8 +793,7 @@ public class IoTDBStatement implements Statement {
     if (isClosed) {
       throw new SQLException(
           String.format(
-              JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C,
-              action));
+              JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C, action));
     }
   }
 

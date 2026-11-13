@@ -65,7 +65,8 @@ public class Utils {
         int closingBracketIndex = authority.indexOf("]");
         if (closingBracketIndex > 1
             && closingBracketIndex + 1 < authority.length()
-            && COLON.equals(authority.substring(closingBracketIndex + 1, closingBracketIndex + 2))) {
+            && COLON.equals(
+                authority.substring(closingBracketIndex + 1, closingBracketIndex + 2))) {
           host = authority.substring(1, closingBracketIndex);
           portText = authority.substring(closingBracketIndex + 2);
         }

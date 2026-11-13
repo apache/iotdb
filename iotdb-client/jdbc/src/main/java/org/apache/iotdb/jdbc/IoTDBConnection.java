@@ -620,8 +620,7 @@ public class IoTDBConnection implements Connection {
               params.getKeyStorePwd(),
               params.getSslProtocol());
     } else {
-      transport =
-          transportFactory.getTransport(params.getHost(), params.getPort(), networkTimeout);
+      transport = transportFactory.getTransport(params.getHost(), params.getPort(), networkTimeout);
     }
     if (!transport.isOpen()) {
       transport.open();
