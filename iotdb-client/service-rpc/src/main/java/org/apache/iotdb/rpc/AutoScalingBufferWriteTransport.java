@@ -43,10 +43,20 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
   }
 
   @Override
-  public void write(byte[] toWrite, int off, int len) {
+  public void write(byte[] toWrite, int off, int len) throws TTransportException {
+    long requiredCapacity = (long) pos + len;
+    if (requiredCapacity > AutoResizingBuffer.MAX_ARRAY_SIZE) {
+      throw new TTransportException(
+          TTransportException.CORRUPTED_DATA,
+          "Write buffer size ("
+              + requiredCapacity
+              + ") larger than maximum array size ("
+              + AutoResizingBuffer.MAX_ARRAY_SIZE
+              + ")!");
+    }
     // A small prefix during serialization does not indicate a small frame. Only the complete
     // frame size, supplied after flushing, may trigger shrinking.
-    buf.ensureCapacity(pos + len);
+    buf.ensureCapacity((int) requiredCapacity);
     System.arraycopy(toWrite, off, buf.array(), pos, len);
     pos += len;
   }

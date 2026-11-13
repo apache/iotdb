@@ -40,9 +40,8 @@ public class TElasticFramedTransport extends TTransport {
   public static class Factory extends TTransportFactory {
 
     /**
-     * It is used to prevent the size of the parsing package from being too large and allocating the
-     * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
-     * reading.
+     * Maximum size of a frame on the wire. Uncompressed writes are checked before buffering;
+     * compressed writes are checked after compression.
      */
     protected final int thriftMaxFrameSize;
 
@@ -288,8 +287,22 @@ public class TElasticFramedTransport extends TTransport {
   }
 
   @Override
-  public void write(byte[] buf, int off, int len) {
+  public void write(byte[] buf, int off, int len) throws TTransportException {
+    long size = (long) writeBuffer.getPos() + len;
+    int maxSize = getMaxWriteBufferSize();
+    if (size > maxSize) {
+      // Thrift serializes the whole request before flush. Reject it before growing the buffer so
+      // an oversized request cannot keep allocating and retain the caller's query memory.
+      close();
+      throw new TTransportException(
+          TTransportException.CORRUPTED_DATA,
+          "Frame size (" + size + ") larger than protect max size (" + maxSize + ")!");
+    }
     writeBuffer.write(buf, off, len);
+  }
+
+  protected int getMaxWriteBufferSize() {
+    return Math.min(thriftMaxFrameSize, AutoResizingBuffer.MAX_ARRAY_SIZE);
   }
 
   public TTransport getSocket() {

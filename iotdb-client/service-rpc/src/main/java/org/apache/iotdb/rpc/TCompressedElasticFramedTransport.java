@@ -41,6 +41,13 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   }
 
   @Override
+  protected int getMaxWriteBufferSize() {
+    // Preserve the wire-size limit: a compressible payload may exceed thriftMaxFrameSize before
+    // compression. Incremental writes still must fit in a Java array.
+    return AutoResizingBuffer.MAX_ARRAY_SIZE;
+  }
+
+  @Override
   protected void readFrame() throws TTransportException {
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);

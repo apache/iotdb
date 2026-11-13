@@ -20,16 +20,76 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TByteBuffer;
+import org.apache.thrift.transport.TMemoryBuffer;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TElasticFramedTransportTest {
+
+  @Test
+  public void testRejectOversizedFrameBeforeGrowingBuffer() throws Exception {
+    for (int prefixLength : new int[] {0, 64}) {
+      boolean[] closed = {false};
+      TMemoryBuffer underlying =
+          new TMemoryBuffer(0) {
+            @Override
+            public void close() {
+              closed[0] = true;
+              super.close();
+            }
+          };
+      TElasticFramedTransport transport = new TElasticFramedTransport(underlying, 8, 64, false);
+      transport.write(new byte[prefixLength]);
+      byte[] buffer = transport.writeBuffer.getBuffer();
+      try {
+        transport.write(new byte[65 - prefixLength]);
+        fail("An oversized frame must fail during serialization, before flush");
+      } catch (TTransportException e) {
+        assertEquals(TTransportException.CORRUPTED_DATA, e.getType());
+        assertTrue(e.getMessage().contains("Frame size (65)"));
+        assertSame(buffer, transport.writeBuffer.getBuffer());
+        assertEquals(prefixLength, transport.writeBuffer.getPos());
+        assertEquals(0, underlying.length());
+        assertTrue(closed[0]);
+      }
+    }
+  }
+
+  @Test
+  public void testFrameAtSizeLimit() throws Exception {
+    TElasticFramedTransport transport =
+        new TElasticFramedTransport(new TMemoryBuffer(0), 8, 64, false);
+    byte[] payload = new byte[64];
+    payload[63] = 42;
+    for (int i = 0; i < payload.length; i += 8) {
+      transport.write(payload, i, 8);
+    }
+    transport.flush();
+    byte[] actual = new byte[payload.length];
+    transport.readAll(actual, 0, actual.length);
+    assertArrayEquals(payload, actual);
+  }
+
+  @Test
+  public void testCompressedFrameLimitAppliesAfterCompression() throws Exception {
+    TElasticFramedTransport transport =
+        new TSnappyElasticFramedTransport(new TMemoryBuffer(0), 8, 64, false);
+    byte[] payload = new byte[256];
+    transport.write(payload);
+    transport.flush();
+    byte[] actual = new byte[payload.length];
+    transport.readAll(actual, 0, actual.length);
+    assertArrayEquals(payload, actual);
+  }
 
   @Test
   public void testSingularSize() {

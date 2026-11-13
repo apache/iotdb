@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.transport.TMemoryBuffer;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -27,6 +28,47 @@ import java.lang.reflect.Field;
 import java.util.Random;
 
 public class AutoResizingBufferTest {
+
+  @Test
+  public void testGrowthNearIntegerLimitKeepsHeadroom() {
+    Assert.assertEquals(
+        AutoResizingBuffer.MAX_ARRAY_SIZE,
+        AutoResizingBuffer.calculateNewCapacity(1_500_000_000, 1_500_000_008));
+    Assert.assertEquals(
+        AutoResizingBuffer.MAX_ARRAY_SIZE,
+        AutoResizingBuffer.calculateNewCapacity(
+            AutoResizingBuffer.MAX_ARRAY_SIZE - 8, AutoResizingBuffer.MAX_ARRAY_SIZE));
+  }
+
+  @Test
+  public void testInvalidBufferSizeDoesNotResize() {
+    AutoResizingBuffer buffer = new AutoResizingBuffer(8);
+    for (int size : new int[] {-1, Integer.MAX_VALUE}) {
+      try {
+        buffer.ensureCapacity(size);
+        Assert.fail("The requested capacity must fit in a Java array");
+      } catch (IllegalArgumentException expected) {
+        Assert.assertEquals(8, buffer.array().length);
+      }
+    }
+  }
+
+  @Test
+  public void testWritePositionOverflowIsRejectedBeforeCopying() throws Exception {
+    AutoScalingBufferWriteTransport transport = new AutoScalingBufferWriteTransport(8);
+    Field position = AutoScalingBufferWriteTransport.class.getDeclaredField("pos");
+    position.setAccessible(true);
+    position.setInt(transport, Integer.MAX_VALUE - 4);
+    byte[] buffer = transport.getBuffer();
+    try {
+      transport.write(new byte[8]);
+      Assert.fail("The write position must not overflow");
+    } catch (TTransportException e) {
+      Assert.assertEquals(TTransportException.CORRUPTED_DATA, e.getType());
+      Assert.assertSame(buffer, transport.getBuffer());
+      Assert.assertEquals(Integer.MAX_VALUE - 4, transport.getPos());
+    }
+  }
 
   @Test
   public void testGrowthPreservesDataAndHeadroom() {
