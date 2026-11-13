@@ -238,7 +238,6 @@ public class IoTDBInsertQueryIT {
   }
 
   /** Insert a table's own rows at shifted timestamps and verify that its row count doubles. */
-
   @Test
   public void testInsertIntoSourceTable() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
