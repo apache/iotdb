@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.util.sorter;
+package org.apache.iotdb.db.utils.sorter;
 
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.BitMapUtils;
 import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -29,9 +29,11 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.lang.reflect.Array;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Objects;
 
-public class PipeInsertEventSorter {
+public class InsertEventSorter {
 
   protected final InsertEventDataAdapter dataAdapter;
 
@@ -46,7 +48,7 @@ public class PipeInsertEventSorter {
    *
    * @param tablet the tablet to sort
    */
-  public PipeInsertEventSorter(final Tablet tablet) {
+  public InsertEventSorter(final Tablet tablet) {
     this.dataAdapter = new TabletAdapter(tablet);
   }
 
@@ -55,7 +57,7 @@ public class PipeInsertEventSorter {
    *
    * @param statement the insert tablet statement to sort
    */
-  public PipeInsertEventSorter(final InsertTabletStatement statement) {
+  public InsertEventSorter(final InsertTabletStatement statement) {
     this.dataAdapter = new InsertTabletStatementAdapter(statement);
   }
 
@@ -64,7 +66,7 @@ public class PipeInsertEventSorter {
    *
    * @param adapter the data adapter
    */
-  protected PipeInsertEventSorter(final InsertEventDataAdapter adapter) {
+  protected InsertEventSorter(final InsertEventDataAdapter adapter) {
     this.dataAdapter = adapter;
   }
 
@@ -107,7 +109,7 @@ public class PipeInsertEventSorter {
     }
 
     if (bitMapsModified) {
-      dataAdapter.setBitMaps(PipeTabletUtils.compactBitMaps(bitMaps, deDuplicatedSize));
+      dataAdapter.setBitMaps(BitMapUtils.compactBitMaps(bitMaps, deDuplicatedSize));
     }
   }
 
@@ -165,5 +167,65 @@ public class PipeInsertEventSorter {
       }
     }
     return index[lastNonnullIndex];
+  }
+
+  /** Sort by time only, keeping the relative order of rows that share a timestamp. */
+  public void sortByTimestampIfNecessary() {
+    if (dataAdapter == null || dataAdapter.getRowSize() == 0) {
+      return;
+    }
+
+    final long[] timestamps = dataAdapter.getTimestamps();
+    final int rowSize = dataAdapter.getRowSize();
+    for (int i = 1; i < rowSize; ++i) {
+      if (timestamps[i] < timestamps[i - 1]) {
+        isSorted = false;
+        break;
+      }
+    }
+
+    if (isSorted) {
+      return;
+    }
+
+    index = new Integer[rowSize];
+    for (int i = 0; i < rowSize; i++) {
+      index[i] = i;
+    }
+    sortTimestamps();
+
+    deDuplicatedIndex = null;
+    deDuplicatedSize = rowSize;
+    sortAndMayDeduplicateValuesAndBitMaps();
+  }
+
+  /**
+   * The permutation the last sort applied: the row at position {@code i} came from row {@code
+   * permutation[i]} of the input. {@code null} when the rows were already in order and nothing was
+   * moved.
+   */
+  public int[] getRowPermutation() {
+    if (index == null) {
+      return null;
+    }
+    final int[] permutation = new int[index.length];
+    for (int i = 0; i < index.length; i++) {
+      permutation[i] = index[i];
+    }
+    return permutation;
+  }
+
+  protected void sortTimestamps() {
+    // Index is sorted stably because it is Integer[]
+    Arrays.sort(this.index, Comparator.comparingLong(dataAdapter::getTimestamp));
+    // The index already describes the sorted order, so rearranging the timestamps with it is O(N);
+    // sorting the timestamps again would be O(N log N).
+    final long[] timestamps = dataAdapter.getTimestamps();
+    final int rowSize = dataAdapter.getRowSize();
+    final long[] sortedTimestamps = new long[timestamps.length];
+    for (int i = 0; i < rowSize; i++) {
+      sortedTimestamps[i] = timestamps[index[i]];
+    }
+    dataAdapter.setTimestamps(sortedTimestamps);
   }
 }

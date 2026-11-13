@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.pipe.sink;
 
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.sorter.TableModelTabletEventSorter;
+import org.apache.iotdb.db.utils.sorter.TreeModelTabletEventSorter;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -82,7 +82,7 @@ public class PipeStatementEventSorterTest {
     InsertTabletStatement statement = new InsertTabletStatement(tablet, true, null);
 
     // Sort using Statement
-    new PipeTreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
+    new TreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
 
     Assert.assertEquals(indices.size(), statement.getRowCount());
 
@@ -133,7 +133,7 @@ public class PipeStatementEventSorterTest {
     InsertTabletStatement statement = new InsertTabletStatement(tablet, true, null);
 
     // Sort using Statement
-    new PipeTreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
+    new TreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
 
     Assert.assertEquals(indices.size(), statement.getRowCount());
 
@@ -198,7 +198,7 @@ public class PipeStatementEventSorterTest {
     InsertTabletStatement statement = new InsertTabletStatement(tablet, true, null);
 
     // Sort using Statement
-    new PipeTreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
+    new TreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
 
     Assert.assertEquals(indices.size(), statement.getRowCount());
 
@@ -246,7 +246,7 @@ public class PipeStatementEventSorterTest {
     InsertTabletStatement statement = new InsertTabletStatement(tablet, false, "test_db");
 
     // Sort using Statement
-    new PipeTableModelTabletEventSorter(statement).sortAndDeduplicateByDevIdTimestamp();
+    new TableModelTabletEventSorter(statement).sortAndDeduplicateByDevIdTimestamp();
 
     long[] timestamps = statement.getTimes();
     final Object[] columns = statement.getColumns();
@@ -282,7 +282,7 @@ public class PipeStatementEventSorterTest {
     InsertTabletStatement statement = new InsertTabletStatement(tablet, false, "test_db");
 
     // Sort using Statement
-    new PipeTableModelTabletEventSorter(statement).sortByTimestampIfNecessary();
+    new TableModelTabletEventSorter(statement).sortByTimestampIfNecessary();
 
     long[] timestamps = statement.getTimes();
     final Object[] columns = statement.getColumns();

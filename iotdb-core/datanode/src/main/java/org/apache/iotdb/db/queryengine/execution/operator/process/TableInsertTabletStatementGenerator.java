@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLoc
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.sorter.TableModelTabletEventSorter;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
@@ -106,6 +107,14 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
     InsertTabletStatement insertTabletStatement = super.constructInsertTabletStatement();
     insertTabletStatement.setDatabaseName(databaseName);
     insertTabletStatement.setWriteToTable(true);
+    // The rows of the SELECT output are not ordered: a join, an ORDER BY DESC or a scan over
+    // several devices can emit them in any order, while the storage layer documents that it
+    // assumes the rows of a device are ascending in time. Restore that order here, before the
+    // statement leaves the INSERT INTO path.
+    final TableModelTabletEventSorter sorter =
+        new TableModelTabletEventSorter(insertTabletStatement);
+    sorter.sortByTimestampIfNecessary();
+    insertTabletStatement.setOriginalRowIndexes(sorter.getRowPermutation());
     return insertTabletStatement;
   }
 

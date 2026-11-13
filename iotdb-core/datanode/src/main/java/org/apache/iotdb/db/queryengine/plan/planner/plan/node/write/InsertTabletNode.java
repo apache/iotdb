@@ -1358,6 +1358,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     /*
      * assume that batch has been sorted by client
+     *
+     * A table-model tablet holds the rows of several devices, so the out-of-ttl rows are not
+     * necessarily a prefix: a row placed after firstAliveLoc can still be out of ttl, and the write
+     * path below does not reject it. SeriesScanUtil applies the ttl lower bound when it scans, so
+     * such a row stays invisible instead of being read back. Dropping it needs a change in the
+     * write path as well.
      */
     int loc = 0;
     int firstAliveLoc = -1;
