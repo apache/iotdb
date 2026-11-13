@@ -464,14 +464,14 @@ public class MPPQueryContext {
     try {
       this.memoryReservationManager.reserveMemoryCumulatively(bytes);
     } catch (MemoryNotEnoughException e) {
-      long requestedBytes =
-          e instanceof OperatorMemoryNotEnoughException
-              ? ((OperatorMemoryNotEnoughException) e).getRequestedBytes()
-              : bytes;
-      long freeBytes =
-          e instanceof OperatorMemoryNotEnoughException
-              ? ((OperatorMemoryNotEnoughException) e).getFreeBytes()
-              : LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+      long requestedBytes = bytes;
+      long freeBytes;
+      if (e instanceof OperatorMemoryNotEnoughException memoryFailure) {
+        requestedBytes = memoryFailure.getRequestedBytes();
+        freeBytes = memoryFailure.getFreeBytes();
+      } else {
+        freeBytes = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+      }
       throw new MemoryNotEnoughException(
           String.format(
               Locale.ROOT,

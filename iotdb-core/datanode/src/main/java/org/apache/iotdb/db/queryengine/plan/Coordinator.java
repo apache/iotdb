@@ -124,6 +124,9 @@ public class Coordinator {
             new ThreadPoolExecutor.CallerRunsPolicy());
   }
 
+  // This boundary still owns the SQL. Observe even Errors for diagnostics, then rethrow unchanged
+  // rather than recover or wrap them, preserving caller error handling and finally cleanup.
+  @SuppressWarnings({"java:S1181", "java:S2139"})
   private ExecutionResult execution(
       long queryId,
       SessionInfo session,

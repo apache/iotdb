@@ -63,6 +63,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -124,6 +125,27 @@ public class QueryPartitionMemoryTest {
     assertEquals(freeMemory, LocalExecutionPlanner.getInstance().getFreeMemoryForOperators());
     assertNull(Coordinator.getInstance().getQueryExecution(300L));
     assertFailureLogs(sql, QueryTimeoutRuntimeException.class, 1);
+  }
+
+  @Test
+  public void testAnalysisErrorIsLoggedAndRethrownWithoutRetainingMemory() {
+    long freeMemory = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    String sql = "select s1 from root.sg.d1 where time >= 0 and time <= 100";
+    OutOfMemoryError failure = new OutOfMemoryError("simulated analysis allocation failure");
+    FakeSchemaFetcherImpl schemaFetcher =
+        new FakeSchemaFetcherImpl() {
+          @Override
+          public ClusterSchemaTree fetchSchema(
+              PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
+            context.reserveMemoryForFrontEnd(2 * 1024 * 1024);
+            throw failure;
+          }
+        };
+    assertSame(
+        failure, assertThrows(OutOfMemoryError.class, () -> execute(sql, 500, schemaFetcher)));
+    assertEquals(freeMemory, LocalExecutionPlanner.getInstance().getFreeMemoryForOperators());
+    assertNull(Coordinator.getInstance().getQueryExecution(500L));
+    assertFailureLogs(sql, OutOfMemoryError.class, 1);
   }
 
   @Test
