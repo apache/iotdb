@@ -62,7 +62,9 @@ public class AINodeTestUtils {
               new AbstractMap.SimpleEntry<>(
                   "toto", new FakeModelInfo("toto", "toto", "builtin", "active")),
               new AbstractMap.SimpleEntry<>(
-                  "moment", new FakeModelInfo("moment", "moment", "builtin", "active")))
+                  "moment", new FakeModelInfo("moment", "moment", "builtin", "active")),
+              new AbstractMap.SimpleEntry<>(
+                  "tirex2", new FakeModelInfo("tirex2", "tirex2", "builtin", "active")))
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   public static final Map<String, FakeModelInfo> BUILTIN_MODEL_MAP;

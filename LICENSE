@@ -426,3 +426,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
+
+The following files include code modified from TiRex-2 project.
+
+./iotdb-core/ainode/iotdb/ainode/core/model/tirex2/*
+
+The TiRex-2 is open source software licensed under the Apache License 2.0
+Project page: https://github.com/NX-AI/tirex-2
+License: https://github.com/NX-AI/tirex-2/blob/main/LICENSE
+Copyright 2026 NXAI GmbH
+
+--------------------------------------------------------------------------------
