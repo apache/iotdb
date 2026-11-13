@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeCompactedTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -317,6 +318,38 @@ public class PipeRealtimePriorityBlockingQueueTest {
           .decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
       verify(sourceEvent1)
           .decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
+    } finally {
+      compactedEvent.decreaseReferenceCount(
+          PipeRealtimePriorityBlockingQueue.class.getName(), false);
+    }
+  }
+
+  @Test
+  public void testCompactedHistoricalEventPinsTargetStorageFile() throws Exception {
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
+    final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
+    final File sourceFile = newTsFile("source.tsfile");
+    final File targetFile = newTsFile("target.tsfile");
+    final PipeTsFileInsertionEvent sourceEvent = createEvent(sourceFile, committerKey, 1L);
+    doReturn(true).when(sourceEvent).isGeneratedByHistoricalExtractor();
+    doReturn(true).when(sourceEvent).isWithMod();
+
+    Assert.assertTrue(queue.offer(sourceEvent));
+    queue.replace(
+        "1",
+        Collections.singleton(new TsFileResource(sourceFile)),
+        Collections.singletonList(new TsFileResource(targetFile)));
+
+    final Event event = queue.directPoll();
+    Assert.assertTrue(event instanceof PipeCompactedTsFileInsertionEvent);
+    final PipeCompactedTsFileInsertionEvent compactedEvent =
+        (PipeCompactedTsFileInsertionEvent) event;
+    try {
+      Assert.assertTrue(compactedEvent.isGeneratedByHistoricalExtractor());
+      Assert.assertFalse(compactedEvent.isWithMod());
+      Assert.assertTrue(
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(targetFile, "pipe_1")
+              .exists());
     } finally {
       compactedEvent.decreaseReferenceCount(
           PipeRealtimePriorityBlockingQueue.class.getName(), false);

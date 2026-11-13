@@ -479,7 +479,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     File increasedTsFile = null;
     boolean increased = false;
     try {
-      if (isGeneratedByHistoricalExtractor) {
+      if (isTsFileAlreadyInPipeDir()) {
         tsFile =
             PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
                 tsFile, pipeTsFileResourcePipeName);
@@ -489,6 +489,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           if (!isWithMod) {
             modFile = null;
           }
+        }
+      }
+      if (isWithMod && shouldCheckModFileExistence()) {
+        isWithMod = modFile.exists();
+        if (!isWithMod) {
+          modFile = null;
         }
       }
       increasedTsFile =
@@ -534,6 +540,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         }
       }
     }
+  }
+
+  protected boolean isTsFileAlreadyInPipeDir() {
+    return isGeneratedByHistoricalExtractor;
+  }
+
+  protected boolean shouldCheckModFileExistence() {
+    return false;
   }
 
   @Override
