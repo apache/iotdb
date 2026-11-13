@@ -117,6 +117,123 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void testDeleteDataRangeAndRejectedPathKeepSessionUsable() throws Exception {
+    // Reuse the database covered by this fixture's existing per-method cleanup.
+    final String database = "root.sg";
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE " + database);
+      for (String device : Arrays.asList("api", "sql")) {
+        session.executeNonQueryStatement(
+            "CREATE ALIGNED TIMESERIES " + database + "." + device + "(s1 INT64,s2 INT64)");
+      }
+      session.executeNonQueryStatement(
+          "CREATE TIMESERIES " + database + ".second.s1 WITH DATATYPE=INT64");
+      session.executeNonQueryStatement(
+          "CREATE TIMESERIES " + database + ".empty.s1 WITH DATATYPE=INT64");
+      for (int time = 0; time <= 5; time++) {
+        for (String device : Arrays.asList("api", "sql")) {
+          session.executeNonQueryStatement(
+              "INSERT INTO "
+                  + database
+                  + "."
+                  + device
+                  + "(time,s1,s2) ALIGNED VALUES("
+                  + time
+                  + ","
+                  + (100 + time)
+                  + ","
+                  + (200 + time)
+                  + ")");
+        }
+        session.executeNonQueryStatement(
+            "INSERT INTO "
+                + database
+                + ".second(time,s1) VALUES("
+                + time
+                + ","
+                + (500 + time)
+                + ")");
+        if (time == 2) {
+          session.executeNonQueryStatement("FLUSH");
+        }
+      }
+
+      // The RPC parses every path before dispatch. A valid first path must not be partially
+      // deleted when a later path is rejected, and the original Session must remain usable.
+      StatementExecutionException rejected =
+          assertThrows(
+              StatementExecutionException.class,
+              () -> session.deleteData(Arrays.asList(database + ".api.s2", "root..invalid"), 0, 5));
+      assertEquals(TSStatusCode.ILLEGAL_PATH.getStatusCode(), rejected.getStatusCode());
+      assertTrue(rejected.getMessage().contains("root..invalid"));
+      final String[] original = {
+        "0,100,200", "1,101,201", "2,102,202", "3,103,203", "4,104,204", "5,105,205"
+      };
+      assertDeleteSessionRows(session, database + ".api", "s1,s2", original);
+      assertDeleteSessionRows(session, database + ".sql", "s1,s2", original);
+      assertDeleteSessionRows(
+          session,
+          database + ".second",
+          "s1",
+          new String[] {"0,500", "1,501", "2,502", "3,503", "4,504", "5,505"});
+
+      // The explicit interval is closed at both ends, spans multiple paths and leaves the
+      // other aligned measurement intact. A schema-only series is a successful no-op.
+      session.deleteData(
+          Arrays.asList(database + ".api.s1", database + ".second.s1", database + ".empty.s1"),
+          1,
+          3);
+      session.executeNonQueryStatement(
+          "DELETE FROM " + database + ".sql.s1 WHERE time >= 1 AND time <= 3");
+      final String[] partial = {
+        "0,100,200", "1,null,201", "2,null,202", "3,null,203", "4,104,204", "5,105,205"
+      };
+      assertDeleteSessionRows(session, database + ".api", "s1,s2", partial);
+      assertDeleteSessionRows(session, database + ".sql", "s1,s2", partial);
+      assertDeleteSessionRows(
+          session, database + ".second", "s1", new String[] {"0,500", "4,504", "5,505"});
+      assertDeleteSessionRows(session, database + ".empty", "s1", new String[0]);
+
+      // Both end-only overloads include the endpoint. Compare against equivalent SQL without
+      // replacing the Session after the rejected request or the successful deletions.
+      session.deleteData(database + ".api.s1", 0);
+      session.deleteData(Arrays.asList(database + ".api.s2", database + ".second.s1"), 4);
+      session.executeNonQueryStatement("DELETE FROM " + database + ".sql.s1 WHERE time <= 0");
+      session.executeNonQueryStatement("DELETE FROM " + database + ".sql.s2 WHERE time <= 4");
+      for (String device : Arrays.asList("api", "sql")) {
+        session.executeNonQueryStatement(
+            "INSERT INTO " + database + "." + device + "(time,s1) ALIGNED VALUES(2,902)");
+      }
+      session.executeNonQueryStatement(
+          "INSERT INTO " + database + ".second(time,s1) VALUES(2,802)");
+      session.executeNonQueryStatement("FLUSH");
+      final String[] rewritten = {"2,902,null", "4,104,null", "5,105,205"};
+      assertDeleteSessionRows(session, database + ".api", "s1,s2", rewritten);
+      assertDeleteSessionRows(session, database + ".sql", "s1,s2", rewritten);
+      assertDeleteSessionRows(session, database + ".second", "s1", new String[] {"2,802", "5,505"});
+    }
+  }
+
+  private static void assertDeleteSessionRows(
+      ISession session, String device, String measurements, String[] expected) throws Exception {
+    try (SessionDataSet data =
+        session.executeQueryStatement(
+            "SELECT " + measurements + " FROM " + device + " ORDER BY time")) {
+      List<String> actual = new ArrayList<>();
+      while (data.hasNext()) {
+        RowRecord row = data.next();
+        StringBuilder values = new StringBuilder(Long.toString(row.getTimestamp()));
+        for (Field field : row.getFields()) {
+          values.append(',').append(field.getDataType() == null ? "null" : field.getLongV());
+        }
+        actual.add(values.toString());
+      }
+      assertEquals(device, Arrays.asList(expected), actual);
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertPartialTabletTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<IMeasurementSchema> schemaList = new ArrayList<>();

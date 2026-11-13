@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileTableGenerator;
@@ -29,10 +33,12 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -53,9 +59,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -566,6 +574,204 @@ public class IoTDBLoadTsFileIT {
         }
         Assert.assertEquals(totalRows, count);
       }
+    }
+  }
+
+  @Test
+  public void testQueryFallbackRestoresTableMetadataAndReadWriteAfterRestart() throws Exception {
+    final String target = "load_p1_target";
+    final String other = "load_p1_other";
+    final String table = "recovered";
+    final File source = new File(tmpDir, "610-0-0-0.tsfile");
+    final long markerOffset = writeTableRecoverySource(source, table);
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(source.getAbsolutePath())) {
+      reader.position(markerOffset);
+      Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarker());
+    }
+    try (final RandomAccessFile file = new RandomAccessFile(source, "rw")) {
+      file.seek(markerOffset);
+      file.writeByte(0x7f);
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv()
+                .getConnection(
+                    EnvFactory.getEnv().getDataNodeWrapper(0),
+                    SessionConfig.DEFAULT_USER,
+                    SessionConfig.DEFAULT_PASSWORD,
+                    BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database " + target);
+      statement.execute("use " + target);
+      // The source has a TAG prefix and a different FIELD order, and introduces v.
+      statement.execute(
+          "create table "
+              + table
+              + " (t1 STRING TAG,t2 STRING TAG,tail STRING TAG,n INT64 FIELD,extra INT32 FIELD)");
+      statement.execute("create database " + other);
+      statement.execute("use " + other);
+      // Disable proactive tablet conversion: the invalid later marker must fail actual splitting.
+      statement.execute(
+          String.format(
+              "load '%s' with ('database'='%s','on-success'='delete',"
+                  + "'tablet-conversion-threshold'='-1')",
+              source.getAbsolutePath(), target));
+      Assert.assertTrue(
+          EnvFactory.getEnv()
+              .getDataNodeWrapper(0)
+              .logContains(
+                  DataNodeQueryMessages
+                      .LOAD_SUCCESSFULLY_CONVERTED_TSFILE_ARG_INTO_TABLETS_AND_INSERTED
+                      .replace("{}", source.getAbsolutePath())));
+    }
+
+    // The coordinator is pinned for the log assertion; verify the result through every DataNode.
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use " + other);
+      try (final ResultSet rows = statement.executeQuery("show tables")) {
+        Assert.assertFalse("LOAD must retain its explicit target database", rows.next());
+      }
+      statement.execute("use " + target);
+      assertRecoveredTableSchema(statement, table);
+      assertRecoveredTableRows(statement, table, false);
+      assertRecoveredTableDevices(statement, table, false);
+      Assert.assertFalse(source.exists());
+      Assert.assertFalse(new File(source + TsFileResource.RESOURCE_SUFFIX).exists());
+      statement.execute("flush");
+    }
+
+    TestUtils.restartCluster(EnvFactory.getEnv());
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use " + target);
+      assertRecoveredTableSchema(statement, table);
+      assertRecoveredTableRows(statement, table, false);
+      assertRecoveredTableDevices(statement, table, false);
+      // Merge into a loaded row: retaining v proves the null trailing TAG resolves to the same
+      // device identity, which writes at fresh timestamps alone cannot establish.
+      statement.execute("insert into " + table + "(time,t1,t2,n) values(20000,'a','b',55)");
+      statement.execute(
+          "insert into " + table + "(time,t1,t2,n,v) values(20001,'a','b',60,'after')");
+      statement.execute(
+          "insert into "
+              + table
+              + "(time,t1,t2,tail,n,extra,v) values(20002,'a','b','tail',70,7,'new-tail')");
+      assertRecoveredTableRows(statement, table, true);
+      assertRecoveredTableDevices(statement, table, true);
+      statement.execute("use " + other);
+      try (final ResultSet rows = statement.executeQuery("show tables")) {
+        Assert.assertFalse(rows.next());
+      }
+    }
+  }
+
+  private static long writeTableRecoverySource(final File file, final String table)
+      throws Exception {
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("t1", TSDataType.STRING),
+            new MeasurementSchema("t2", TSDataType.STRING),
+            new MeasurementSchema("v", TSDataType.STRING),
+            new MeasurementSchema("n", TSDataType.INT64));
+    final List<String> names = Arrays.asList("t1", "t2", "v", "n");
+    final List<TSDataType> types =
+        Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.STRING, TSDataType.INT64);
+    final List<ColumnCategory> categories =
+        Arrays.asList(
+            ColumnCategory.TAG, ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD);
+    try (final TsFileWriter writer = new TsFileWriter(file)) {
+      writer.registerTableSchema(new TableSchema(table, schemas, categories));
+      final Tablet anchor = new Tablet(table, names, types, categories, 1);
+      anchor.addTimestamp(0, 0);
+      anchor.addValue(0, "t1", "anchor");
+      anchor.addValue(0, "t2", "x");
+      anchor.addValue(0, "v", "anchor");
+      anchor.addValue(0, "n", -1L);
+      writer.writeTable(anchor);
+      writer.flush();
+      final long markerOffset = writer.getIOWriter().getPos();
+      final Tablet tablet = new Tablet(table, names, types, categories, 5);
+      final long[] times = {9999, 10000, 10001, 19999, 20000};
+      final String[] firstTags = {"a", "a", "a", null, "a"};
+      final String[] secondTags = {"b", null, "b", "b", "b"};
+      final String[] values = {"one", null, "three", null, "five"};
+      final Long[] numbers = {10L, 20L, null, null, 50L};
+      for (int row = 0; row < times.length; row++) {
+        tablet.addTimestamp(row, times[row]);
+        tablet.addValue(row, "t1", firstTags[row]);
+        tablet.addValue(row, "t2", secondTags[row]);
+        tablet.addValue(row, "v", values[row]);
+        if (numbers[row] != null) {
+          tablet.addValue(row, "n", numbers[row].longValue());
+        }
+      }
+      writer.writeTable(tablet);
+      return markerOffset;
+    }
+  }
+
+  private static void assertRecoveredTableSchema(final Statement statement, final String table)
+      throws SQLException {
+    final String[][] expected = {
+      {"time", "TIMESTAMP", "TIME"}, {"t1", "STRING", "TAG"}, {"t2", "STRING", "TAG"},
+      {"tail", "STRING", "TAG"}, {"n", "INT64", "FIELD"}, {"extra", "INT32", "FIELD"},
+      {"v", "STRING", "FIELD"}
+    };
+    try (final ResultSet rows = statement.executeQuery("describe " + table)) {
+      for (final String[] row : expected) {
+        Assert.assertTrue(rows.next());
+        for (int column = 0; column < row.length; column++) {
+          Assert.assertEquals(row[column], rows.getString(column + 1));
+        }
+      }
+      Assert.assertFalse(rows.next());
+    }
+  }
+
+  private static void assertRecoveredTableRows(
+      final Statement statement, final String table, final boolean afterWrites)
+      throws SQLException {
+    final List<Object[]> expected =
+        new ArrayList<>(
+            Arrays.asList(
+                new Object[] {0L, "anchor", "x", null, -1L, null, "anchor"},
+                new Object[] {9999L, "a", "b", null, 10L, null, "one"},
+                new Object[] {10000L, "a", null, null, 20L, null, null},
+                new Object[] {10001L, "a", "b", null, null, null, "three"},
+                new Object[] {19999L, null, "b", null, null, null, null},
+                new Object[] {20000L, "a", "b", null, afterWrites ? 55L : 50L, null, "five"}));
+    if (afterWrites) {
+      expected.add(new Object[] {20001L, "a", "b", null, 60L, null, "after"});
+      expected.add(new Object[] {20002L, "a", "b", "tail", 70L, 7, "new-tail"});
+    }
+    try (final ResultSet rows =
+        statement.executeQuery(
+            "select time,t1,t2,tail,n,extra,v from " + table + " order by time")) {
+      for (final Object[] row : expected) {
+        Assert.assertTrue(Arrays.toString(row), rows.next());
+        Assert.assertEquals(row[0], rows.getLong(1));
+        for (int column = 1; column < row.length; column++) {
+          Assert.assertEquals(Arrays.toString(row), row[column], rows.getObject(column + 1));
+        }
+      }
+      Assert.assertFalse(rows.next());
+    }
+  }
+
+  private static void assertRecoveredTableDevices(
+      final Statement statement, final String table, final boolean afterWrites)
+      throws SQLException {
+    final List<String> expected =
+        new ArrayList<>(
+            Arrays.asList("anchor,x,null,", "a,b,null,", "a,null,null,", "null,b,null,"));
+    if (afterWrites) {
+      expected.add("a,b,tail,");
+    }
+    try (final ResultSet rows = statement.executeQuery("show devices from " + table)) {
+      TestUtils.assertResultSetEqualUnordered(rows, "t1,t2,tail,", expected);
     }
   }
 

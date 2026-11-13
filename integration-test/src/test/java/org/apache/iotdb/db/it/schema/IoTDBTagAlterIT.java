@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
+import com.google.gson.JsonParser;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -606,6 +608,174 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail();
+    }
+  }
+
+  @Test
+  public void tagAliasIndexSurvivesRestartAndCanBeRebuilt() throws Exception {
+    String path = "root.metadata_restore.d1.s1";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.metadata_restore");
+      statement.execute(
+          "CREATE TIMESERIES "
+              + path
+              + "(oldAlias) WITH DATATYPE=INT32, ENCODING=RLE, COMPRESSION=SNAPPY "
+              + "TAGS('kind'='old', 'source'='sensor') ATTRIBUTES('owner'='team1')");
+      statement.execute("INSERT INTO root.metadata_restore.d1(timestamp, s1) VALUES (1, 10)");
+      statement.execute(
+          "CREATE TIMESERIES root.metadata_restore.retained.s1(keepAlias) "
+              + "WITH DATATYPE=INT32, ENCODING=RLE, COMPRESSION=SNAPPY "
+              + "TAGS('kind_new'='retained') ATTRIBUTES('owner'='stable')");
+      statement.execute("INSERT INTO root.metadata_restore.retained(timestamp, s1) VALUES (1, 99)");
+      statement.execute("ALTER TIMESERIES " + path + " RENAME 'kind' TO 'kind_new'");
+      statement.execute("ALTER TIMESERIES " + path + " SET 'kind_new'='renamed'");
+      statement.execute("ALTER TIMESERIES " + path + " DROP 'source'");
+      statement.execute(
+          "ALTER TIMESERIES "
+              + path
+              + " UPSERT TAGS('kind_new'='final', 'generation'='before_restart') "
+              + "ATTRIBUTES('owner'='team2', 'rack'='r1')");
+      statement.execute("ALTER TIMESERIES " + path + " UPSERT ALIAS=currentAlias");
+      statement.execute("FLUSH");
+    }
+
+    TestUtils.restartDataNodes();
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      assertTagIndexResult(statement, "kind_new", "final", true);
+      assertTagIndexResult(statement, "kind", "old", false);
+      assertTagIndexResult(statement, "kind_new", "old", false);
+      assertTagIndexResult(statement, "kind_new", "renamed", false);
+      assertTagIndexResult(statement, "source", "sensor", false);
+      assertTagIndexResult(statement, "generation", "before_restart", true);
+      assertRestoredSeriesMetadata(
+          statement,
+          path,
+          "currentAlias",
+          "{\"kind_new\":\"final\",\"generation\":\"before_restart\"}",
+          "{\"owner\":\"team2\",\"rack\":\"r1\"}");
+      assertOldAliasAbsent(statement);
+      assertRetainedSeries(statement);
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT currentAlias FROM " + path.replace(".s1", "") + " WHERE time=1")) {
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertEquals(10, resultSet.getInt(2));
+        assertFalse(resultSet.next());
+      }
+
+      statement.execute("DELETE TIMESERIES " + path);
+      statement.execute(
+          "CREATE TIMESERIES "
+              + path
+              + "(currentAlias) WITH DATATYPE=INT32, ENCODING=RLE, COMPRESSION=SNAPPY "
+              + "TAGS('kind_new'='rebuilt') ATTRIBUTES('owner'='team3')");
+      statement.execute("INSERT INTO root.metadata_restore.d1(timestamp, s1) VALUES (2, 20)");
+
+      assertTagIndexResult(statement, "kind_new", "final", false);
+      assertTagIndexResult(statement, "kind_new", "rebuilt", true);
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT currentAlias FROM root.metadata_restore.d1")) {
+        assertTrue(resultSet.next());
+        assertEquals(2, resultSet.getLong(1));
+        assertEquals(20, resultSet.getInt(2));
+        assertFalse(resultSet.next());
+      }
+      assertRestoredSeriesMetadata(
+          statement, path, "currentAlias", "{\"kind_new\":\"rebuilt\"}", "{\"owner\":\"team3\"}");
+      assertOldAliasAbsent(statement);
+      assertTagIndexResult(statement, "generation", "before_restart", false);
+      assertRetainedSeries(statement);
+    }
+  }
+
+  private static void assertRestoredSeriesMetadata(
+      Statement statement, String path, String alias, String tags, String attributes)
+      throws Exception {
+    try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES " + path)) {
+      assertTrue(resultSet.next());
+      assertEquals(path, resultSet.getString(ColumnHeaderConstant.TIMESERIES));
+      assertEquals(alias, resultSet.getString(ColumnHeaderConstant.ALIAS));
+      assertEquals("root.metadata_restore", resultSet.getString(ColumnHeaderConstant.DATABASE));
+      assertEquals("INT32", resultSet.getString(ColumnHeaderConstant.DATATYPE));
+      assertEquals("RLE", resultSet.getString(ColumnHeaderConstant.ENCODING));
+      assertEquals("SNAPPY", resultSet.getString(ColumnHeaderConstant.COMPRESSION));
+      assertEquals(
+          JsonParser.parseString(tags),
+          JsonParser.parseString(resultSet.getString(ColumnHeaderConstant.TAGS)));
+      assertEquals(
+          JsonParser.parseString(attributes),
+          JsonParser.parseString(resultSet.getString(ColumnHeaderConstant.ATTRIBUTES)));
+      assertFalse(resultSet.next());
+    }
+  }
+
+  private static void assertOldAliasAbsent(Statement statement) throws Exception {
+    try (ResultSet resultSet =
+        statement.executeQuery("SELECT oldAlias FROM root.metadata_restore.d1")) {
+      assertFalse(
+          "The removed alias must not resolve to the restored or rebuilt series", resultSet.next());
+    }
+  }
+
+  private static void assertRetainedSeries(Statement statement) throws Exception {
+    assertRestoredSeriesMetadata(
+        statement,
+        "root.metadata_restore.retained.s1",
+        "keepAlias",
+        "{\"kind_new\":\"retained\"}",
+        "{\"owner\":\"stable\"}");
+    assertTagIndexResult(
+        statement, "kind_new", "retained", true, "root.metadata_restore.retained.s1");
+    try (ResultSet resultSet =
+        statement.executeQuery("SELECT keepAlias FROM root.metadata_restore.retained")) {
+      assertTrue(resultSet.next());
+      assertEquals(1, resultSet.getLong(1));
+      assertEquals(99, resultSet.getInt(2));
+      assertFalse(resultSet.next());
+    }
+  }
+
+  private static void assertTagIndexResult(
+      Statement statement, String tagName, String tagValue, boolean expectedMatch)
+      throws Exception {
+    assertTagIndexResult(
+        statement, tagName, tagValue, expectedMatch, "root.metadata_restore.d1.s1");
+  }
+
+  private static void assertTagIndexResult(
+      Statement statement,
+      String tagName,
+      String tagValue,
+      boolean expectedMatch,
+      String expectedPath)
+      throws Exception {
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "SHOW TIMESERIES root.metadata_restore.** WHERE TAGS("
+                + tagName
+                + ")='"
+                + tagValue
+                + "'")) {
+      assertEquals(expectedMatch, resultSet.next());
+      if (expectedMatch) {
+        assertEquals(expectedPath, resultSet.getString(ColumnHeaderConstant.TIMESERIES));
+        assertFalse(resultSet.next());
+      }
+    }
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "COUNT TIMESERIES root.metadata_restore.** WHERE TAGS("
+                + tagName
+                + ")='"
+                + tagValue
+                + "'")) {
+      assertTrue(resultSet.next());
+      assertEquals(expectedMatch ? 1 : 0, resultSet.getInt(1));
+      assertFalse(resultSet.next());
     }
   }
 

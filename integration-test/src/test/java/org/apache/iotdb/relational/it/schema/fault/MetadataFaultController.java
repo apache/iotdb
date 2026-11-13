@@ -197,6 +197,11 @@ public final class MetadataFaultController implements AutoCloseable {
       return Long.parseLong(request("count", hook, "", "").get("count"));
     }
 
+    public Map<String, String> cacheAttribute(
+        String database, String table, String device, String attribute) throws IOException {
+      return request("cache", database, table, device, attribute);
+    }
+
     public void awaitHeld(String hook) {
       Awaitility.await()
           .atMost(30, TimeUnit.SECONDS)
@@ -205,6 +210,18 @@ public final class MetadataFaultController implements AutoCloseable {
                 Map<String, String> state = status(hook);
                 if (!Boolean.parseBoolean(state.get("held"))) {
                   throw new AssertionError(hook + " did not reach the gate: " + state);
+                }
+              });
+    }
+
+    public void awaitBlocking(String hook) {
+      Awaitility.await()
+          .atMost(30, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                Map<String, String> state = status(hook);
+                if (Long.parseLong(state.get("blocking")) == 0) {
+                  throw new AssertionError(hook + " is not blocked: " + state);
                 }
               });
     }

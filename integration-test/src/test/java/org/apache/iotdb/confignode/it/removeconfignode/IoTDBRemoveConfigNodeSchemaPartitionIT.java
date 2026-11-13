@@ -26,18 +26,24 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.relational.it.schema.fault.MetadataFaultAgent;
+import org.apache.iotdb.relational.it.schema.fault.MetadataFaultController;
+import org.apache.iotdb.relational.it.schema.fault.MetadataFaultController.Node;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.transport.TTransport;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -52,10 +58,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
@@ -68,18 +76,32 @@ import static org.junit.Assert.assertTrue;
 public class IoTDBRemoveConfigNodeSchemaPartitionIT {
 
   private static final String DATABASE = "cn_removal";
+  private MetadataFaultController faultController;
+  private Node controlledDataNode;
 
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
+        // Keep the synchronous procedure wait longer than the bounded ConfigNode-removal wait.
+        .setDnConnectionTimeoutMs(180_000)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         // Seed the only slot before removal, so this test exercises reads of existing partitions.
         .setSeriesSlotNum(1)
         .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1);
-    EnvFactory.getEnv().initClusterEnvironment(3, 1);
+        .setDataReplicationFactor(1)
+        // Keep the DDL's cache propagation active throughout the bounded ConfigNode-removal wait.
+        .setMetadataLeaseFenceMs(180_000);
+    faultController =
+        new MetadataFaultController(
+            (MppJVMConfig) EnvFactory.getEnv().getConfig().getDataNodeJVMConfig());
+    try {
+      EnvFactory.getEnv().initClusterEnvironment(3, 1);
+    } finally {
+      faultController.restoreLaunchEnvironment();
+    }
+    controlledDataNode = faultController.connect(EnvFactory.getEnv().getDataNodeWrapper(0));
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
       session.executeNonQueryStatement("USE " + DATABASE);
@@ -90,8 +112,20 @@ public class IoTDBRemoveConfigNodeSchemaPartitionIT {
   }
 
   @After
-  public void tearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+  public void tearDown() throws Exception {
+    try {
+      if (faultController != null) {
+        faultController.reset();
+      }
+    } finally {
+      try {
+        EnvFactory.getEnv().cleanClusterEnvironment();
+      } finally {
+        if (faultController != null) {
+          faultController.close();
+        }
+      }
+    }
   }
 
   @Test
@@ -234,6 +268,211 @@ public class IoTDBRemoveConfigNodeSchemaPartitionIT {
       workload.cancel(true);
       executor.shutdownNow();
       assertTrue(executor.awaitTermination(60, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void testTableDdlThroughRemovedLeaderDuringConfigNodeRemoval() throws Exception {
+    final int removedIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
+    final ConfigNodeWrapper removedNode = EnvFactory.getEnv().getConfigNodeWrapper(removedIndex);
+    final int removedId;
+    try (SyncConfigNodeIServiceClient leader =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      removedId =
+          leader.showCluster().getConfigNodeList().stream()
+              .filter(location -> location.getInternalEndPoint().getPort() == removedNode.getPort())
+              .findFirst()
+              .get()
+              .getConfigNodeId();
+    }
+
+    final ExecutorService ddlExecutor = Executors.newFixedThreadPool(2);
+    Future<?> ddl = null;
+    Future<?> removal = null;
+    try {
+      controlledDataNode.arm(
+          MetadataFaultAgent.UPDATE_TABLE,
+          "HOLD_FIRST_DROP_RETRIES",
+          MetadataFaultAgent.COMMIT_UPDATE_TABLE,
+          "");
+      ddl =
+          ddlExecutor.submit(
+              () -> {
+                try (ITableSession ddlSession =
+                    EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE)) {
+                  ddlSession.executeNonQueryStatement(
+                      "ALTER TABLE devices ADD COLUMN added INT64 FIELD");
+                }
+                return null;
+              });
+      controlledDataNode.awaitBlocking(MetadataFaultAgent.UPDATE_TABLE);
+      assertDdlStillAtCommitRelease(ddl);
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE)) {
+        TestUtils.tableResultSetEqualTest(
+            "DESCRIBE devices",
+            new String[] {"ColumnName", "DataType", "Category"},
+            new String[] {
+              "time,TIMESTAMP,TIME,",
+              "device,STRING,TAG,",
+              "value,INT64,FIELD,",
+              "added,INT64,FIELD,"
+            },
+            DATABASE);
+
+        removal =
+            ddlExecutor.submit(
+                () -> {
+                  try (ITableSession removalSession =
+                      EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE)) {
+                    removalSession.executeNonQueryStatement("REMOVE CONFIGNODE " + removedId);
+                  }
+                  return null;
+                });
+        Awaitility.await()
+            .atMost(30, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    assertTrue(
+                        "The cluster should elect a different leader while the removal is running",
+                        EnvFactory.getEnv().getLeaderConfigNodeIndex() != removedIndex));
+
+        final Map<String, String> gateStatus =
+            controlledDataNode.status(MetadataFaultAgent.UPDATE_TABLE);
+        assertTrue(
+            "The COMMIT_UPDATE_TABLE RPC should still be blocked after ConfigNode removal",
+            Long.parseLong(gateStatus.get("blocking")) > 0);
+        assertEquals("0", gateStatus.get("passed"));
+        assertDdlStillAtCommitRelease(ddl);
+        controlledDataNode.release(MetadataFaultAgent.UPDATE_TABLE);
+        // A successful response here means the original ConfigNode procedure reached terminal
+        // success.
+        ddl.get(90, TimeUnit.SECONDS);
+        Awaitility.await()
+            .atMost(30, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  final Map<String, String> releasedStatus =
+                      controlledDataNode.status(MetadataFaultAgent.UPDATE_TABLE);
+                  assertEquals("0", releasedStatus.get("blocking"));
+                  assertTrue(
+                      "COMMIT_UPDATE_TABLE did not return successfully: " + releasedStatus,
+                      Long.parseLong(releasedStatus.get("acknowledged")) > 0);
+                });
+
+        removal.get(90, TimeUnit.SECONDS);
+        Awaitility.await()
+            .atMost(90, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  try (SyncConfigNodeIServiceClient currentLeader =
+                      (SyncConfigNodeIServiceClient)
+                          EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+                    final List<TConfigNodeLocation> remaining =
+                        currentLeader.showCluster().getConfigNodeList();
+                    assertEquals(2, remaining.size());
+                    assertTrue(
+                        remaining.stream().noneMatch(node -> node.getConfigNodeId() == removedId));
+                  }
+                  assertFalse(removedNode.getInstance().isAlive());
+                });
+
+        Awaitility.await()
+            .atMost(90, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.tableResultSetEqualTest(
+                        "DESCRIBE devices",
+                        new String[] {"ColumnName", "DataType", "Category"},
+                        new String[] {
+                          "time,TIMESTAMP,TIME,",
+                          "device,STRING,TAG,",
+                          "value,INT64,FIELD,",
+                          "added,INT64,FIELD,"
+                        },
+                        DATABASE));
+        session.executeNonQueryStatement(
+            "INSERT INTO devices(time, device, value, added) VALUES (1, 'd0', 1, 100)");
+        session.executeNonQueryStatement(
+            "ALTER TABLE devices ADD COLUMN after_removal INT32 FIELD");
+        session.executeNonQueryStatement(
+            "INSERT INTO devices(time, device, value, added, after_removal) "
+                + "VALUES (2, 'd0', 2, 200, 7)");
+
+        TestUtils.tableResultSetEqualTest(
+            "DESCRIBE devices",
+            new String[] {"ColumnName", "DataType", "Category"},
+            new String[] {
+              "time,TIMESTAMP,TIME,",
+              "device,STRING,TAG,",
+              "value,INT64,FIELD,",
+              "added,INT64,FIELD,",
+              "after_removal,INT32,FIELD,"
+            },
+            DATABASE);
+
+        try (SessionDataSet counts =
+            session.executeQueryStatement(
+                "SELECT count(value), count(added), count(after_removal) FROM devices")) {
+          assertTrue(counts.hasNext());
+          final RowRecord countRow = counts.next();
+          assertEquals(3L, countRow.getFields().get(0).getLongV());
+          assertEquals(2L, countRow.getFields().get(1).getLongV());
+          assertEquals(1L, countRow.getFields().get(2).getLongV());
+          assertFalse(counts.hasNext());
+        }
+        try (SessionDataSet addedRow =
+            session.executeQueryStatement(
+                "SELECT value, added FROM devices WHERE device = 'd0' AND time = 1")) {
+          assertTrue(addedRow.hasNext());
+          final RowRecord record = addedRow.next();
+          assertEquals(1L, record.getFields().get(0).getLongV());
+          assertEquals(100L, record.getFields().get(1).getLongV());
+          assertFalse(addedRow.hasNext());
+        }
+        try (SessionDataSet originalRow =
+            session.executeQueryStatement(
+                "SELECT value FROM devices WHERE device = 'd0' AND time = 0")) {
+          assertTrue(originalRow.hasNext());
+          assertEquals(0L, originalRow.next().getFields().get(0).getLongV());
+          assertFalse(originalRow.hasNext());
+        }
+        try (SessionDataSet row =
+            session.executeQueryStatement(
+                "SELECT value, added, after_removal FROM devices "
+                    + "WHERE device = 'd0' AND time = 2")) {
+          assertTrue(row.hasNext());
+          final RowRecord record = row.next();
+          assertEquals(2L, record.getFields().get(0).getLongV());
+          assertEquals(200L, record.getFields().get(1).getLongV());
+          assertEquals(7L, record.getFields().get(2).getIntV());
+          assertFalse(row.hasNext());
+        }
+      }
+    } finally {
+      try {
+        controlledDataNode.release(MetadataFaultAgent.UPDATE_TABLE);
+      } finally {
+        if (ddl != null && !ddl.isDone()) {
+          ddl.cancel(true);
+        }
+        if (removal != null && !removal.isDone()) {
+          removal.cancel(true);
+        }
+        ddlExecutor.shutdownNow();
+        assertTrue(ddlExecutor.awaitTermination(60, TimeUnit.SECONDS));
+      }
+    }
+  }
+
+  private static void assertDdlStillAtCommitRelease(Future<?> ddl) throws Exception {
+    try {
+      ddl.get(0, TimeUnit.NANOSECONDS);
+      throw new AssertionError("The ALTER TABLE completed while COMMIT_UPDATE_TABLE was blocked");
+    } catch (TimeoutException expected) {
+      // The client is still waiting for the procedure.
+    } catch (ExecutionException e) {
+      throw new AssertionError(
+          "ALTER TABLE failed while COMMIT_UPDATE_TABLE was blocked", e.getCause());
     }
   }
 
