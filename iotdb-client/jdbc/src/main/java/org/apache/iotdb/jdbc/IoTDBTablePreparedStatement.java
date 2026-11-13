@@ -205,6 +205,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   @Override
   public ResultSet executeQuery() throws SQLException {
     checkConnection("executeQuery");
+    if (!serverSidePrepared) {
+      closeCurrentResultSet();
+      return super.executeQuery(createCompleteSql(sql, parameters));
+    }
     TSExecuteStatementResp resp = executeInternal();
     return processQueryResult(resp);
   }

@@ -202,6 +202,55 @@ public class IoTDBTablePreparedStatementTest {
     assertTrue(metadata.isSigned(1));
   }
 
+  @Test
+  public void testClientSideExecuteQueryUsesCompletedSql() throws Exception {
+    TSExecuteStatementResp response = new TSExecuteStatementResp(Status_SUCCESS);
+    response.setColumns(Collections.singletonList("Version"));
+    response.setDataTypeList(Collections.singletonList(TSDataType.TEXT.name()));
+    response.setIgnoreTimeStamp(true);
+    response.setTableModel(true);
+    response.setQueryResult(Collections.emptyList());
+    when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class))).thenReturn(response);
+
+    try (IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SHOW VERSION", zoneId)) {
+      try (ResultSet resultSet = ps.executeQuery()) {
+        assertNotNull(resultSet);
+        assertSame(resultSet, ps.getResultSet());
+        assertFalse(resultSet.next());
+      }
+    }
+
+    ArgumentCaptor<TSExecuteStatementReq> request =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeQueryStatementV2(request.capture());
+    assertEquals("SHOW VERSION", request.getValue().getStatement());
+    verify(client, never()).executePreparedStatement(any(TSExecutePreparedReq.class));
+  }
+
+  @Test
+  public void testClientSideExecuteQueryPropagatesServerError() throws Exception {
+    TSStatus failure = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    failure.setMessage("statement does not produce a ResultSet");
+    when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class)))
+        .thenReturn(new TSExecuteStatementResp(failure));
+
+    try (IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "INSERT INTO t(time,s) VALUES(1,?)", zoneId)) {
+      ps.setInt(1, 42);
+
+      SQLException exception = assertThrows(SQLException.class, ps::executeQuery);
+      assertEquals(failure.getCode(), exception.getErrorCode());
+    }
+
+    ArgumentCaptor<TSExecuteStatementReq> request =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeQueryStatementV2(request.capture());
+    assertEquals("INSERT INTO t(time,s) VALUES(1,42)", request.getValue().getStatement());
+    verify(client, never()).executePreparedStatement(any(TSExecutePreparedReq.class));
+  }
+
   @SuppressWarnings("resource")
   @Test
   public void testClosedTablePreparedStatementRejectsParameterOperations() throws Exception {

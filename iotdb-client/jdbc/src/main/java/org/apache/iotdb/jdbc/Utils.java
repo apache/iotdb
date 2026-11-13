@@ -70,7 +70,7 @@ public class Utils {
           host = authority.substring(1, closingBracketIndex);
           portText = authority.substring(closingBracketIndex + 2);
         }
-      } else {
+      } else if (!authority.contains("[") && !authority.contains("]")) {
         int portSeparatorIndex = authority.lastIndexOf(COLON);
         if (portSeparatorIndex > 0 && portSeparatorIndex < authority.length() - 1) {
           host = authority.substring(0, portSeparatorIndex);

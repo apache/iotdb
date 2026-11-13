@@ -206,6 +206,18 @@ public class UtilsTest {
     Utils.parseUrl("jdbc:iotdb://test", new Properties());
   }
 
+  @Test
+  public void testParseUrlRejectsMisplacedHostBrackets() {
+    for (String host : new String[] {"localhost]", "local[host", "local[host]"}) {
+      try {
+        Utils.parseUrl("jdbc:iotdb://" + host + ":6667", new Properties());
+        fail("Expected IoTDBURLException for invalid host " + host);
+      } catch (IoTDBURLException expected) {
+        // Malformed brackets must be rejected before attempting a connection.
+      }
+    }
+  }
+
   @Test(expected = IoTDBURLException.class)
   public void testParseWrongPort() throws IoTDBURLException {
     String userName = "test";
