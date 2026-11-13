@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+
+import org.apache.tsfile.read.common.type.TimestampType;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -28,6 +33,8 @@ import java.time.ZoneId;
 import java.util.TimeZone;
 
 import static org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.dateBin;
+import static org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.nextDateBin;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class DateBinFunctionTest {
@@ -125,5 +132,54 @@ public class DateBinFunctionTest {
             MILLIS_IN_DAY,
             zoneId);
     assertEquals(getTimestamp("1969-12-31 00:00:00.000"), result);
+  }
+
+  @Test
+  public void testMonthIntervalWithSubSecondOrigin() throws ParseException {
+    // 500 ms is 1970-01-01T00:00:00.500Z, 2678400500 ms is also exactly one month later
+    assertEquals(500, dateBin(500, 500, 1, 0, zoneId));
+    assertEquals(2678400500L, dateBin(2678400500L, 500, 1, 0, zoneId));
+    // a point 200 ms into the next bin must still map to the start of that bin
+    assertEquals(2678400500L, dateBin(2678400700L, 500, 1, 0, zoneId));
+    // an origin far from the epoch must keep its sub-second part too
+    long origin = getTimestamp("2024-03-15 00:00:00.500");
+    assertEquals(origin, dateBin(origin, origin, 1, 0, zoneId));
+    assertEquals(origin, dateBin(origin + MILLIS_IN_DAY, origin, 1, 0, zoneId));
+  }
+
+  @Test
+  public void testMonthIntervalStartEndWithSubSecondOrigin() {
+    DateBinFunctionColumnTransformer transformer =
+        new DateBinFunctionColumnTransformer(TimestampType.TIMESTAMP, 1, 0, null, 500, zoneId);
+    assertArrayEquals(
+        new long[] {2678400500L, 5097600500L}, transformer.dateBinStartEnd(2678400700L));
+  }
+
+  @Test
+  public void testNextDateBinWithSubSecondOrigin() {
+    assertEquals(2678400500L, nextDateBin(1, zoneId, 500));
+  }
+
+  @Test
+  public void testMonthIntervalWithSubSecondOriginInMicrosecondPrecision() {
+    setTimestampPrecision("us");
+    assertEquals(1500, dateBin(1500, 1500, 1, 0, zoneId));
+    // 2678400000000 us is one month after the epoch
+    assertEquals(2678400001500L, dateBin(2678400001500L, 1500, 1, 0, zoneId));
+  }
+
+  @Test
+  public void testMonthIntervalWithSubSecondOriginInNanosecondPrecision() {
+    setTimestampPrecision("ns");
+    assertEquals(1_500_000L, dateBin(1_500_000L, 1_500_000L, 1, 0, zoneId));
+  }
+
+  private static void setTimestampPrecision(String precision) {
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision(precision);
+  }
+
+  @After
+  public void after() {
+    setTimestampPrecision("ms");
   }
 }
