@@ -3252,7 +3252,13 @@ public class TableDistributedPlanGenerator
     if (!isPartitionedGroup(node.getChild())) {
       return false;
     }
-    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(node.getName());
+    // LTTB samples a whole partition and FFT transforms a whole partition, so neither may run once
+    // per fragment: a partitioned GroupNode does not make a partition complete within one branch.
+    // The function therefore has to run once, over the partitions merged in order. The split rule
+    // itself is a separate planner issue; the exclusion can be revisited once that is fixed.
+    String functionName = node.getName();
+    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName)
+        && !TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(functionName);
   }
 
   private boolean isPartitionedGroup(PlanNode node) {
