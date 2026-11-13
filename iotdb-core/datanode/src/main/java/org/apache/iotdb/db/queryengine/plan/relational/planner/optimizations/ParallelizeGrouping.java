@@ -74,8 +74,22 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
  *     <li>GroupNode[PK={tag1,tag2}, OK={s1}] -> TopKNode[sort={tag1,tag2,tag3}]
  *     <li>GroupNode[PK={tag1,tag2}, OK={}] -> AggregationNode[group={tag1,tag2}]
  *     <li>GroupNode[PK={tag1,tag2}, OK={s1}] -> AggregationNode[group={tag1,tag2,s1}]
- *     <li>GroupNode[PK={tag1}, OK={}] -> TableFunctionNode[partition={tag1,tag2}]
+ *     <li>GroupNode[PK={tag1,tag2}] -> TableFunctionNode[partition={tag2,tag1}]
  *   </ul>
+ * </ul>
+ *
+ * <p>The child states its guarantee in one of two forms, and they are not interchangeable:
+ *
+ * <ul>
+ *   <li>A single globally ordered stream ({@link SortNode}, {@link StreamSortNode}, {@link
+ *       TopKNode}). Such a stream is clustered by every prefix of its sort keys, so a positional
+ *       prefix match is enough ({@link Rewriter#checkPrefixMatch}).
+ *   <li>Per-instance partitioning or grouping (a {@link GroupNode}'s own partition keys, a table
+ *       function's or pattern recognition's PARTITION BY, an aggregation's grouping keys). This
+ *       only says that each instance's stream is clustered by those keys: a required prefix may
+ *       span several instances (several DataRegions, an unordered fan-in) and be interleaved, and a
+ *       hash aggregation does not cluster its output at all. Only an exact key set makes the
+ *       consumer's partitions the child's partitions ({@link Rewriter#checkPartitionKeysMatch}).
  * </ul>
  *
  * <p>Otherwise, the GroupNode should be transformed into a SortNode.
@@ -121,17 +135,13 @@ public class ParallelizeGrouping implements PlanOptimizer {
     }
 
     /**
-     * We need to make sure: context#partitionKey can be satisfied by the prefix of childOrder.
+     * Whether the child's single ordered stream satisfies the required partition prefix.
      *
-     * <p>When the child exposes exactly the partition keys, the prefix is compared as a column set:
-     * partition columns are identified by their values, so a different writing order still produces
-     * the same partitions. This lets nested set-semantic table functions reuse their input
-     * clustering when the same PARTITION BY columns are listed in a different order. The set
-     * comparison is deliberately limited to this case: for a strict subset the child's partitions
-     * are only a refinement of the required ones, and after a fan-in over unordered sources
-     * (multiple DataRegions, hash aggregation) the subset need not be contiguous in the input.
-     *
-     * <p>Otherwise the prefix is compared positionally, as before.
+     * <p>Used when the child reports a globally sorted stream ({@link SortNode}, {@link
+     * StreamSortNode}, {@link TopKNode}). Such a stream is clustered by every prefix of its sort
+     * keys, so the prefix matches positionally. A permutation of the same key set also matches:
+     * partition columns are identified by their values, and the group node re-establishes the
+     * requested order inside every partition run.
      *
      * <p>The ORDER BY part of the requirement needs no check here. A group node sorts within every
      * partition run by its full ordering scheme, so the input only has to be clustered; whatever
@@ -155,6 +165,32 @@ public class ParallelizeGrouping implements PlanOptimizer {
           sameKeySet || requiredPrefix.equals(actualPrefix) ? ENABLE_PARALLEL : TO_SORT;
     }
 
+    /**
+     * Whether the child's per-instance partitioning satisfies the required partition keys.
+     *
+     * <p>Used for partition and grouping claims: a {@link GroupNode}'s own partition keys, a table
+     * function's or pattern recognition's PARTITION BY, and an aggregation's grouping keys.
+     *
+     * <p>Only an exact key set, in any order, is accepted. Each instance only guarantees that its
+     * own stream is clustered by the full key set; a required prefix of those keys can be
+     * interleaved across instances (several DataRegions, an unordered fan-in) or not clustered at
+     * all (hash aggregation). Only when the consumer's partitions are the child's partitions can
+     * the consumer be split per stream.
+     */
+    private void checkPartitionKeysMatch(Context context, List<Symbol> childPartitionKeys) {
+      if (context.canSkip()) {
+        return;
+      }
+      int partitionKeyCount = context.partitionKeyCount;
+      List<Symbol> requiredKeys = context.sortKey.getOrderBy().subList(0, partitionKeyCount);
+      context.canOptimized =
+          partitionKeyCount == childPartitionKeys.size()
+                  && ImmutableSet.copyOf(requiredKeys)
+                      .equals(ImmutableSet.copyOf(childPartitionKeys))
+              ? ENABLE_PARALLEL
+              : TO_SORT;
+    }
+
     @Override
     public PlanNode visitGroup(GroupNode node, Context context) {
       // A GroupNode without partition keys is a pure global ordering requirement.
@@ -167,19 +203,23 @@ public class ParallelizeGrouping implements PlanOptimizer {
             false);
       }
 
-      checkPrefixMatch(
-          context, node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount()));
+      // Decide the group's own fate first: the claim it makes to its ancestors depends on
+      // whether it survives as a partitioned group or degrades to one globally ordered sort.
       Context newContext = new Context(node.getOrderingScheme(), node.getPartitionKeyCount());
       PlanNode child = node.getChild().accept(this, newContext);
-      switch (newContext.canOptimized) {
-        case ENABLE_PARALLEL:
-          GroupNode newNode = (GroupNode) node.clone();
-          newNode.addChild(child);
-          return newNode;
-        case TO_SORT:
-        default:
-          return new SortNode(node.getPlanNodeId(), child, node.getOrderingScheme(), false, false);
+      if (newContext.canOptimized == ENABLE_PARALLEL) {
+        // The group survives and its output is only per-instance partitioned. When the ancestor's
+        // claim cannot reuse it, TO_SORT is recorded on its context and the ancestor sorts this
+        // group's output itself.
+        checkPartitionKeysMatch(
+            context, node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount()));
+        GroupNode newNode = (GroupNode) node.clone();
+        newNode.addChild(child);
+        return newNode;
       }
+      // The group degrades to a sort, so its output is one stream ordered by the full scheme.
+      checkPrefixMatch(context, node.getOrderingScheme().getOrderBy());
+      return new SortNode(node.getPlanNodeId(), child, node.getOrderingScheme(), false, false);
     }
 
     @Override
@@ -231,7 +271,7 @@ public class ParallelizeGrouping implements PlanOptimizer {
         if (!dataOrganizationSpecification.isPresent()) {
           context.canOptimized = TO_SORT;
         } else {
-          checkPrefixMatch(context, dataOrganizationSpecification.get().getPartitionBy());
+          checkPartitionKeysMatch(context, dataOrganizationSpecification.get().getPartitionBy());
         }
       }
       return visitPlan(node, context);
@@ -252,7 +292,7 @@ public class ParallelizeGrouping implements PlanOptimizer {
         if (!orderingScheme.isPresent()) {
           context.canOptimized = TO_SORT;
         } else {
-          checkPrefixMatch(context, partitionBy);
+          checkPartitionKeysMatch(context, partitionBy);
         }
       }
       return visitPlan(node, context);
@@ -307,13 +347,26 @@ public class ParallelizeGrouping implements PlanOptimizer {
 
     @Override
     public PlanNode visitAggregation(AggregationNode node, Context context) {
-      checkPrefixMatch(context, node.getGroupingKeys());
+      if (!context.canSkip()) {
+        if (node.getPreGroupedSymbols().isEmpty()) {
+          // A hash aggregation's output is not clustered by its grouping keys.
+          context.canOptimized = TO_SORT;
+        } else {
+          checkPartitionKeysMatch(context, node.getGroupingKeys());
+        }
+      }
       return visitPlan(node, context);
     }
 
     @Override
     public PlanNode visitAggregationTableScan(AggregationTableScanNode node, Context context) {
-      checkPrefixMatch(context, node.getGroupingKeys());
+      if (!context.canSkip()) {
+        if (node.getPreGroupedSymbols().isEmpty()) {
+          context.canOptimized = TO_SORT;
+        } else {
+          checkPartitionKeysMatch(context, node.getGroupingKeys());
+        }
+      }
       return node;
     }
   }

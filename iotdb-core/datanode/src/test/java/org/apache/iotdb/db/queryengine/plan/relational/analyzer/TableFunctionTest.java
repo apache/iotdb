@@ -21,9 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanNodeSearcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.TableFunctionProcessorMatcher;
@@ -65,6 +69,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topK;
 import static org.apache.iotdb.udf.api.type.Type.DOUBLE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TableFunctionTest {
@@ -321,6 +326,70 @@ public class TableFunctionTest {
     assertPlan(
         planTester.getFragmentPlan(1),
         sort(orderBy("tag2", "tag1", "time"), tableFunctionProcessor(inner, scanAllColumns())));
+  }
+
+  @Test
+  public void testNestedSetSemanticSameOrderPrefixFallsBackToSort() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => table1 "
+            + "PARTITION BY (tag1, tag2, tag3) ORDER BY time, GAP => 1m)) "
+            + "PARTITION BY (tag1, tag2) ORDER BY time, GAP => 2m)";
+    planTester.createPlan(sql);
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    // A strict prefix in the same order has the same problem as a reordered one: one outer
+    // partition can span several inner ones, which a fan-in does not keep contiguous.
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            tableFunctionProcessor(
+                outer,
+                mergeSort(orderBy("tag1", "tag2", "time"), exchange(), exchange(), exchange()))));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        sort(orderBy("tag1", "tag2", "time"), tableFunctionProcessor(inner, scanAllColumns())));
+  }
+
+  @Test
+  public void testSessionOverGroupByPrefixFallsBackToSort() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT tag1, tag2, tag3, max(time) AS time FROM table1 "
+            + "GROUP BY tag1, tag2, tag3) PARTITION BY (tag1, tag2) ORDER BY time, GAP => 1m)";
+    LogicalQueryPlan logicalPlan = planTester.createPlan(sql);
+    // A grouping is only clustered per instance; a strict prefix of the grouping keys must be
+    // re-sorted before one instance can consume it.
+    assertOuterFunctionDegradedToSort(logicalPlan);
+  }
+
+  @Test
+  public void testSessionOverHashAggregationFallsBackToSort() {
+    PlanTester planTester = new PlanTester();
+    // s1 and s2 are fields, so the aggregation cannot stream and hashes its input instead.
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT s1, s2, max(time) AS time FROM table1 "
+            + "GROUP BY s1, s2) PARTITION BY (s1, s2) ORDER BY time, GAP => 1m)";
+    LogicalQueryPlan logicalPlan = planTester.createPlan(sql);
+    // The grouping keys are exactly the partition keys, but a hash aggregation's output is not
+    // clustered by them, so the group must still degrade to a sort.
+    assertOuterFunctionDegradedToSort(logicalPlan);
+  }
+
+  private static void assertOuterFunctionDegradedToSort(LogicalQueryPlan logicalPlan) {
+    TableFunctionProcessorNode outerFunction =
+        PlanNodeSearcher.searchFrom(logicalPlan.getRootNode())
+            .where(TableFunctionProcessorNode.class::isInstance)
+            .findFirst()
+            .map(TableFunctionProcessorNode.class::cast)
+            .orElseThrow(() -> new AssertionError("no table function in plan"));
+    // GroupNode extends SortNode, so both checks are needed.
+    assertTrue(
+        "outer function must sort its input instead of reusing the grouping",
+        outerFunction.getChild() instanceof SortNode
+            && !(outerFunction.getChild() instanceof GroupNode));
   }
 
   @Test
