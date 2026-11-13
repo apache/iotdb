@@ -1405,6 +1405,42 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testHistogramKeepsSubnormalBucketBoundaries() throws Exception {
+    for (int[] range : new int[][] {{22, 22}, {10, 90}, {11, 55}, {5, 2}}) {
+      int span = range[0];
+      int count = range[1];
+      for (int start : new int[] {0, -span}) {
+        UDFParameters parameters =
+            createSingleDoubleSeriesParameters(
+                Map.of(
+                    "min", Double.toString(start * Double.MIN_VALUE),
+                    "max", Double.toString((start + span) * Double.MIN_VALUE),
+                    "count", Integer.toString(count)));
+        UDTFHistogram histogram = new UDTFHistogram();
+        RecordingPointCollector collector = new RecordingPointCollector();
+        histogram.validate(new UDFParameterValidator(parameters));
+        histogram.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+        int[] expected = new int[count];
+        for (int offset = 0; offset <= span; offset++) {
+          histogram.transform(
+              new DoubleRow(offset, (start + offset) * Double.MIN_VALUE), collector);
+          expected[Math.min(offset * count / span, count - 1)]++;
+        }
+        histogram.terminate(collector);
+
+        Assert.assertEquals(count, collector.values.size());
+        for (int i = 0; i < count; i++) {
+          Assert.assertEquals(
+              "start=" + start + ", span=" + span + ", bucket=" + i,
+              expected[i],
+              collector.values.get(i),
+              0);
+        }
+      }
+    }
+  }
+
+  @Test
   public void testHistogramKeepsExactBucketBoundaries() throws Exception {
     UDFParameters parameters =
         createSingleDoubleSeriesParameters(Map.of("min", "0", "max", "100", "count", "100"));

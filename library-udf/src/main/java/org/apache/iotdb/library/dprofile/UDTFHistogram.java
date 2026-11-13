@@ -30,6 +30,8 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.math.BigDecimal;
+
 /**
  * This function is used to calculate the distribution histogram of a single column of numerical
  * data.
@@ -79,6 +81,14 @@ public class UDTFHistogram implements UDTF {
     }
     double value = Util.getValueAsDouble(row);
     if (Double.isFinite(value)) {
+      if (value <= start) {
+        bucket[0]++;
+        return;
+      }
+      if (value >= end) {
+        bucket[count - 1]++;
+        return;
+      }
       double span = end - start;
       double offset = value - start;
       if (!Double.isFinite(span) || !Double.isFinite(offset)) {
@@ -86,8 +96,20 @@ public class UDTFHistogram implements UDTF {
         offset = value * 0.5 - start * 0.5;
       }
       double width = span / count;
+      if (width < Double.MIN_NORMAL) {
+        // Neither a rounded subnormal width nor a rounded ratio preserves bucket boundaries.
+        BigDecimal exactStart = new BigDecimal(start);
+        int id =
+            new BigDecimal(value)
+                .subtract(exactStart)
+                .multiply(BigDecimal.valueOf(count))
+                .divideToIntegralValue(new BigDecimal(end).subtract(exactStart))
+                .intValueExact();
+        bucket[id]++;
+        return;
+      }
       // Divide by the width first to preserve exact bucket boundaries when possible.
-      double bucketPosition = width >= Double.MIN_NORMAL ? offset / width : (offset / span) * count;
+      double bucketPosition = offset / width;
       int id = Math.min(Math.max((int) Math.floor(bucketPosition), 0), count - 1);
       bucket[id]++;
     }
