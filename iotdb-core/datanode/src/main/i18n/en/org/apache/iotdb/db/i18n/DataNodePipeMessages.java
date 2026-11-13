@@ -3168,4 +3168,20 @@ public final class DataNodePipeMessages {
       EXCEPTION_HISTORICAL_SUMMARY_EXTRACTEDTSFILECOUNT_ARG_SKIPPEDTSFILECOUNT_ARG_SPLITTSFILECOUNT_ARG_UNSPLITTSFILECOUNT_ARG_DELETIONCOUNT_ARG_C8BF3247 =
           "historical summary: extractedTsFileCount=%s, skippedTsFileCount=%s, splitTsFileCount=%s,"
               + " unsplitTsFileCount=%s, deletionCount=%s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_PIN_THE_PIPE_FILE_ARG_BECAUSE_IT_DOES_NOT_EXIST_1741B8E4 =
+          "Failed to pin the pipe file %s because it does not exist";
+
+  public static final String LOG_PIPE_HARDLINK_DIRECTORIES_ARE_RESOLVED_AS_ARG_1DAB3D0F =
+      "Pipe hardlink directories are resolved as {}.";
+
+  public static final String
+      LOG_FAILED_TO_CREATE_THE_HARDLINK_OF_THE_FILE_ARG_TO_ARG_FALLING_BACK_TO_COPYING_THE_FILE_89FED96B =
+          "Failed to create the hardlink of the file {} to {}, falling back to copying the file";
+
+  public static final String
+      EXCEPTION_FAILED_TO_PIN_THE_TSFILE_ARG_BY_CREATING_A_HARDLINK_AND_THE_TSFILE_CAN_NOT_BE_COPIED_BECAUSE_IT_IS_NOT_CLOSED_YET_4E346D68 =
+          "Failed to pin the TsFile %s by creating a hardlink, and the TsFile can not be copied"
+              + " because it is not closed yet";
 }

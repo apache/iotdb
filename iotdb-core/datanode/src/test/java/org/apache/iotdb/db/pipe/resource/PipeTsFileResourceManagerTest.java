@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileDirPathResolver;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -44,6 +46,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -159,6 +162,8 @@ public class PipeTsFileResourceManagerTest {
 
   @After
   public void tearDown() throws Exception {
+    PipeTsFileDirPathResolver.reset();
+
     File pipeFolder = new File(ROOT_DIR);
     if (pipeFolder.exists()) {
       FileUtils.deleteFileOrDirectory(pipeFolder);
@@ -376,5 +381,236 @@ public class PipeTsFileResourceManagerTest {
       executor.shutdownNow();
       Assert.assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
     }
+  }
+
+  @Test
+  public void testUnclosedTsFileIsNotCopiedWhenHardlinkFails() throws Exception {
+    final File originTsFile = new File(TS_FILE_NAME);
+    final File pipeTsFileDir =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(originTsFile, PIPE_NAME)
+            .getParentFile();
+    // Block the pipe dir with a regular file, so that the hardlink fails and the copy is taken.
+    final File blockingFile = pipeTsFileDir.getParentFile();
+    Assert.assertTrue(blockingFile.getParentFile().mkdirs());
+    Assert.assertTrue(blockingFile.createNewFile());
+
+    final TsFileResource unclosedResource = Mockito.mock(TsFileResource.class);
+    Mockito.when(unclosedResource.getTsFile()).thenReturn(originTsFile);
+    Mockito.when(unclosedResource.isClosed()).thenReturn(false);
+
+    // A copy of an open TsFile would be truncated, so the pin must fail and be retried later.
+    final String unclosedMessage =
+        String.format(
+            DataNodePipeMessages
+                .EXCEPTION_FAILED_TO_PIN_THE_TSFILE_ARG_BY_CREATING_A_HARDLINK_AND_THE_TSFILE_CAN_NOT_BE_COPIED_BECAUSE_IT_IS_NOT_CLOSED_YET_4E346D68,
+            originTsFile.getPath());
+    try {
+      pipeTsFileResourceManager.pinTsFileResource(unclosedResource, false, PIPE_NAME);
+      Assert.fail("The TsFile which is not closed yet should not be copied");
+    } catch (final IOException e) {
+      Assert.assertEquals(unclosedMessage, e.getMessage());
+      // The reason why the hardlink failed is kept as a suppressed exception.
+      Assert.assertEquals(1, e.getSuppressed().length);
+      Assert.assertTrue(e.getSuppressed()[0] instanceof IOException);
+    }
+
+    // A closed TsFile does fall back to copying, which fails only because the dir is blocked.
+    final TsFileResource closedResource = Mockito.mock(TsFileResource.class);
+    Mockito.when(closedResource.getTsFile()).thenReturn(originTsFile);
+    Mockito.when(closedResource.isClosed()).thenReturn(true);
+    try {
+      pipeTsFileResourceManager.pinTsFileResource(closedResource, false, PIPE_NAME);
+      Assert.fail("The pipe directory is blocked by a file, so the copy should fail");
+    } catch (final IOException e) {
+      Assert.assertNotEquals(unclosedMessage, e.getMessage());
+    }
+    // Nothing must have been pinned or copied.
+    Assert.assertFalse(pipeTsFileDir.toPath().toFile().exists());
+  }
+
+  @Test
+  public void testExistingPipeFileIsReusedInsteadOfCopiedOntoItself() throws Exception {
+    final File originTsFile = new File(TS_FILE_NAME);
+    final File pipeTsFile =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(originTsFile, PIPE_NAME);
+    Assert.assertTrue(pipeTsFile.getParentFile().mkdirs());
+    // Simulate a pipe file which has been left by a previous process and is not tracked yet.
+    FileUtils.copyFile(originTsFile, pipeTsFile);
+
+    // The target is the source here, so a failed pin must not delete it.
+    final File referencedFile =
+        pipeTsFileResourceManager.increaseFileReference(pipeTsFile, true, PIPE_NAME);
+    Assert.assertEquals(pipeTsFile, referencedFile);
+    Assert.assertTrue(pipeTsFile.exists());
+    Assert.assertEquals(
+        1, pipeTsFileResourceManager.getFileReferenceCount(referencedFile, PIPE_NAME));
+
+    pipeTsFileResourceManager.decreaseFileReference(referencedFile, PIPE_NAME);
+    Assert.assertEquals(0, pipeTsFileResourceManager.getFileReferenceCount(pipeTsFile, PIPE_NAME));
+    Assert.assertFalse(pipeTsFile.exists());
+  }
+
+  @Test
+  public void testPinTsFileUnderConfiguredDataDirKeepsItsOwnDisk() throws Exception {
+    final File dataDir = new File(ROOT_DIR, "data").getCanonicalFile();
+    final File tsFile =
+        new File(dataDir, IoTDBConstant.SEQUENCE_FOLDER_NAME + File.separator + "test.tsfile");
+    createTsfile(tsFile.getPath());
+    PipeTsFileDirPathResolver.setInstanceForTest(() -> new String[] {dataDir.getPath()});
+
+    final File pipeTsFile =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(tsFile, PIPE_NAME);
+    Assert.assertEquals(
+        new File(
+            new File(new File(dataDir, "pipe"), "tsfile"),
+            PIPE_NAME + File.separator + "sequence-test.tsfile"),
+        pipeTsFile);
+
+    pipeTsFileResourceManager.pinTsFileResource(closedResourceOf(tsFile), false, PIPE_NAME);
+    Assert.assertTrue(pipeTsFile.isFile());
+    Assert.assertEquals(tsFile.length(), pipeTsFile.length());
+
+    pipeTsFileResourceManager.unpinTsFileResource(closedResourceOf(tsFile), PIPE_NAME, false);
+    Assert.assertFalse(pipeTsFile.exists());
+  }
+
+  @Test
+  public void testCleanPipeTsFileDirCleansEveryDataDir() throws Exception {
+    final File dataDir1 = new File(ROOT_DIR, "data1").getCanonicalFile();
+    final File dataDir2 = new File(ROOT_DIR, "data2").getCanonicalFile();
+    final File tsFile1 =
+        new File(dataDir1, IoTDBConstant.SEQUENCE_FOLDER_NAME + File.separator + "f1.tsfile");
+    final File tsFile2 =
+        new File(dataDir2, IoTDBConstant.SEQUENCE_FOLDER_NAME + File.separator + "f2.tsfile");
+    createTsfile(tsFile1.getPath());
+    createTsfile(tsFile2.getPath());
+    PipeTsFileDirPathResolver.setInstanceForTest(
+        () -> new String[] {dataDir1.getPath(), dataDir2.getPath()});
+
+    pipeTsFileResourceManager.pinTsFileResource(closedResourceOf(tsFile1), false, PIPE_NAME);
+    pipeTsFileResourceManager.pinTsFileResource(closedResourceOf(tsFile2), false, PIPE_NAME);
+    final File pipeTsFileDir1 =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(tsFile1, PIPE_NAME)
+            .getParentFile();
+    final File pipeTsFileDir2 =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(tsFile2, PIPE_NAME)
+            .getParentFile();
+    Assert.assertNotEquals(pipeTsFileDir1, pipeTsFileDir2);
+    Assert.assertTrue(pipeTsFileDir1.isDirectory());
+    Assert.assertTrue(pipeTsFileDir2.isDirectory());
+
+    pipeTsFileResourceManager.cleanPipeTsFileDir(PIPE_NAME);
+
+    Assert.assertFalse(pipeTsFileDir1.exists());
+    Assert.assertFalse(pipeTsFileDir2.exists());
+    Assert.assertTrue(pipeTsFileDir1.getParentFile().isDirectory());
+    Assert.assertTrue(pipeTsFileDir2.getParentFile().isDirectory());
+  }
+
+  @Test
+  public void testPinSucceedsOnRetryAfterTheHardlinkFailed() throws Exception {
+    final File originTsFile = new File(TS_FILE_NAME);
+    final File pipeTsFile =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(originTsFile, PIPE_NAME);
+    final File blockingFile = pipeTsFile.getParentFile().getParentFile();
+    Assert.assertTrue(blockingFile.getParentFile().mkdirs());
+    Assert.assertTrue(blockingFile.createNewFile());
+
+    try {
+      pipeTsFileResourceManager.pinTsFileResource(closedResourceOf(originTsFile), false, PIPE_NAME);
+      Assert.fail("The pipe directory is blocked by a file, so the pin should fail");
+    } catch (final IOException e) {
+      // Expected: the failed pin must not leave anything behind.
+      Assert.assertFalse(pipeTsFile.exists());
+      Assert.assertFalse(new File(pipeTsFile.getPath() + ".unfinished").exists());
+    }
+
+    Assert.assertTrue(blockingFile.delete());
+    pipeTsFileResourceManager.pinTsFileResource(closedResourceOf(originTsFile), false, PIPE_NAME);
+    Assert.assertTrue(pipeTsFile.isFile());
+    Assert.assertEquals(originTsFile.length(), pipeTsFile.length());
+    Assert.assertFalse(new File(pipeTsFile.getPath() + ".unfinished").exists());
+
+    pipeTsFileResourceManager.unpinTsFileResource(closedResourceOf(originTsFile), PIPE_NAME, false);
+    Assert.assertFalse(pipeTsFile.exists());
+  }
+
+  @Test
+  public void testStalePipeFileWithDifferentContentIsReplaced() throws Exception {
+    final File originTsFile = new File(TS_FILE_NAME);
+    final File pipeTsFile =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(originTsFile, PIPE_NAME);
+    Assert.assertTrue(pipeTsFile.getParentFile().mkdirs());
+    // A stale pipe file, e.g. left by a killed process: it is replaced, not reused.
+    Files.write(pipeTsFile.toPath(), new byte[] {1, 2, 3});
+
+    pipeTsFileResourceManager.pinTsFileResource(closedResourceOf(originTsFile), false, PIPE_NAME);
+
+    Assert.assertEquals(originTsFile.length(), pipeTsFile.length());
+  }
+
+  @Test
+  public void testStaleCopiedFileIsReplacedInsteadOfFailingThePin() throws Exception {
+    final File originModFile = new File(MODS_FILE_NAME);
+    final File pipeModFile =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(originModFile, PIPE_NAME);
+    Assert.assertTrue(pipeModFile.getParentFile().mkdirs());
+    // A partial copy and the temporary file of a failure that has been killed before.
+    Files.write(pipeModFile.toPath(), new byte[] {1, 2, 3});
+    Files.write(new File(pipeModFile.getPath() + ".unfinished").toPath(), new byte[] {4});
+
+    final TsFileResource resource = closedResourceOf(new File(TS_FILE_NAME));
+    final ModificationFile modFile = Mockito.mock(ModificationFile.class);
+    Mockito.when(modFile.exists()).thenReturn(true);
+    Mockito.when(modFile.getFile()).thenReturn(originModFile);
+    Mockito.when(resource.getExclusiveModFile()).thenReturn(modFile);
+
+    Assert.assertTrue(pipeTsFileResourceManager.pinTsFileResource(resource, true, PIPE_NAME));
+
+    Assert.assertEquals(originModFile.length(), pipeModFile.length());
+    Assert.assertFalse(new File(pipeModFile.getPath() + ".unfinished").exists());
+  }
+
+  @Test
+  public void testAtomicCopyLeavesNothingBehindWhenItFails() throws Exception {
+    final File targetFile =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+            new File(MODS_FILE_NAME), PIPE_NAME);
+    try {
+      PipeTsFileResourceManager.copyFileAtomically(new File(ROOT_DIR, "missing.mod"), targetFile);
+      Assert.fail("Copying a missing file should fail");
+    } catch (final IOException e) {
+      Assert.assertFalse(targetFile.exists());
+      Assert.assertFalse(new File(targetFile.getPath() + ".unfinished").exists());
+    }
+  }
+
+  @Test
+  public void testMissingPipeFileFailsThePin() throws Exception {
+    final File pipeTsFile =
+        PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+            new File(TS_FILE_NAME), PIPE_NAME);
+    // An event pinned after the pipe directory has been moved aside must not be reported as pinned.
+    final File missingPipeFile = new File(pipeTsFile.getParentFile(), "missing.tsfile");
+    try {
+      pipeTsFileResourceManager.increaseFileReference(missingPipeFile, true, PIPE_NAME);
+      Assert.fail("The pipe file does not exist, so the pin should fail");
+    } catch (final IOException e) {
+      Assert.assertEquals(
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_FAILED_TO_PIN_THE_PIPE_FILE_ARG_BECAUSE_IT_DOES_NOT_EXIST_1741B8E4,
+              missingPipeFile.getPath()),
+          e.getMessage());
+    }
+    Assert.assertEquals(
+        0, pipeTsFileResourceManager.getFileReferenceCount(missingPipeFile, PIPE_NAME));
+  }
+
+  private static TsFileResource closedResourceOf(final File tsFile) {
+    final TsFileResource resource = Mockito.mock(TsFileResource.class);
+    Mockito.when(resource.getTsFile()).thenReturn(tsFile);
+    Mockito.when(resource.isClosed()).thenReturn(true);
+    return resource;
   }
 }

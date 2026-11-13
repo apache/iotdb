@@ -27,6 +27,8 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -35,7 +37,10 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -64,29 +69,44 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
 
   private static void cleanTsFileDir(final PeriodicalJobRegistrar periodicalJobRegistrar) {
     final String pipeHardlinkBaseDirName = PipeConfig.getInstance().getPipeHardlinkBaseDirName();
+    final String pipeHardlinkTsFileDirName =
+        PipeConfig.getInstance().getPipeHardlinkTsFileDirName();
     final List<File> stalePipeDirs = new ArrayList<>();
-    for (final String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
-      final File localDataDir = new File(dataDir);
-      collectInterruptedStalePipeDirs(localDataDir, pipeHardlinkBaseDirName, stalePipeDirs);
+    for (final File pipeBaseDir : getPipeBaseDirs(pipeHardlinkBaseDirName)) {
+      // Stale pipe dirs left by an older version, e.g., <dataDir>/pipe.startup-cleaning-...
+      collectInterruptedStalePipeDirs(
+          pipeBaseDir.getParentFile(), pipeHardlinkBaseDirName, stalePipeDirs);
+      // Stale tsfile dirs under the pipe base dir, e.g., <pipeDir>/tsfile.startup-cleaning-...
+      collectInterruptedStalePipeDirs(pipeBaseDir, pipeHardlinkTsFileDirName, stalePipeDirs);
 
-      final File pipeHardLinkDir = new File(localDataDir, pipeHardlinkBaseDirName);
-      if (pipeHardLinkDir.isDirectory()) {
-        moveAsideAndCollect(pipeHardLinkDir, pipeHardlinkBaseDirName, stalePipeDirs);
+      final File pipeTsFileDir = new File(pipeBaseDir, pipeHardlinkTsFileDirName);
+      if (pipeTsFileDir.isDirectory()) {
+        moveAsideAndCollect(pipeTsFileDir, stalePipeDirs);
       }
     }
     PERIODICAL_STALE_PIPE_DIR_CLEANER.addStalePipeDirs(stalePipeDirs);
     registerPeriodicalCleanupJob(periodicalJobRegistrar);
   }
 
+  /** Returns the pipe base directory of every local data dir, i.e. one per disk. */
+  private static Set<File> getPipeBaseDirs(final String pipeHardlinkBaseDirName) {
+    final Set<File> pipeBaseDirs = new LinkedHashSet<>();
+    for (final String dataDir : IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs()) {
+      pipeBaseDirs.add(new File(new File(dataDir), pipeHardlinkBaseDirName));
+    }
+    return pipeBaseDirs;
+  }
+
   private static void collectInterruptedStalePipeDirs(
-      final File localDataDir,
-      final String pipeHardlinkBaseDirName,
-      final List<File> stalePipeDirs) {
+      final @Nullable File dir, final String movedDirName, final List<File> stalePipeDirs) {
+    if (Objects.isNull(dir)) {
+      return;
+    }
+    // Only the directories this cleaner has moved aside are matched, not any similar name.
+    final String stalePipeDirNamePrefix = movedDirName + STALE_PIPE_DIR_SUFFIX;
     final File[] stalePipeDirFiles =
-        localDataDir.listFiles(
-            file ->
-                file.isDirectory()
-                    && file.getName().contains(pipeHardlinkBaseDirName + STALE_PIPE_DIR_SUFFIX));
+        dir.listFiles(
+            file -> file.isDirectory() && file.getName().startsWith(stalePipeDirNamePrefix));
     if (stalePipeDirFiles == null) {
       return;
     }
@@ -99,43 +119,37 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
     }
   }
 
-  private static void moveAsideAndCollect(
-      final File pipeHardLinkDir,
-      final String pipeHardlinkBaseDirName,
-      final List<File> stalePipeDirs) {
+  private static void moveAsideAndCollect(final File pipeDir, final List<File> stalePipeDirs) {
     try {
-      final File stalePipeDir = moveAside(pipeHardLinkDir, pipeHardlinkBaseDirName);
+      final File stalePipeDir = moveAside(pipeDir);
       LOGGER.info(
           DataNodePipeMessages.PIPE_HARDLINK_DIR_FOUND_MOVED_TO_PERIODICAL_DELETE,
-          pipeHardLinkDir,
+          pipeDir,
           stalePipeDir);
       stalePipeDirs.add(stalePipeDir);
     } catch (final IOException e) {
-      LOGGER.warn(
-          DataNodePipeMessages.PIPE_HARDLINK_DIR_MOVE_FAILED_DELETING_SYNC, pipeHardLinkDir, e);
-      org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(pipeHardLinkDir, true);
+      LOGGER.warn(DataNodePipeMessages.PIPE_HARDLINK_DIR_MOVE_FAILED_DELETING_SYNC, pipeDir, e);
+      org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(pipeDir, true);
       LOGGER.info(
           DataNodePipeMessages.PIPE_HARDLINK_DIR_FOUND_DELETING_IT_RESULT,
-          pipeHardLinkDir,
-          !pipeHardLinkDir.exists());
+          pipeDir,
+          !pipeDir.exists());
     }
   }
 
-  private static File moveAside(final File pipeHardLinkDir, final String pipeHardlinkBaseDirName)
-      throws IOException {
-    final File parentDir = pipeHardLinkDir.getParentFile();
-    if (parentDir == null) {
+  private static File moveAside(final File pipeDir) throws IOException {
+    final File parentDir = pipeDir.getParentFile();
+    if (Objects.isNull(parentDir)) {
       throw new IOException(
-          DataNodePipeMessages.EXCEPTION_FAILED_TO_GET_PARENT_DIR_OF_8CE21C1D + pipeHardLinkDir);
+          DataNodePipeMessages.EXCEPTION_FAILED_TO_GET_PARENT_DIR_OF_8CE21C1D + pipeDir);
     }
 
     final long timestamp = System.currentTimeMillis();
     for (int i = 0; ; ++i) {
       final File stalePipeDir =
-          new File(
-              parentDir, pipeHardlinkBaseDirName + STALE_PIPE_DIR_SUFFIX + timestamp + "-" + i);
+          new File(parentDir, pipeDir.getName() + STALE_PIPE_DIR_SUFFIX + timestamp + "-" + i);
       if (!stalePipeDir.exists()) {
-        Files.move(pipeHardLinkDir.toPath(), stalePipeDir.toPath());
+        Files.move(pipeDir.toPath(), stalePipeDir.toPath());
         return stalePipeDir;
       }
     }
@@ -161,7 +175,7 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
     final File stalePipeDirToDelete;
     if (stalePipeDir.isDirectory()) {
       try {
-        stalePipeDirToDelete = moveAside(stalePipeDir, stalePipeDir.getName());
+        stalePipeDirToDelete = moveAside(stalePipeDir);
         LOGGER.info(
             DataNodePipeMessages.PIPE_HARDLINK_DIR_FOUND_MOVED_TO_PERIODICAL_DELETE,
             stalePipeDir,

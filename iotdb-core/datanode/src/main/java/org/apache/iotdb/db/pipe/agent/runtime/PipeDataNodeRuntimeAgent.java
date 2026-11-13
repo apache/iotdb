@@ -46,6 +46,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStar
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileDirPathResolver;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -85,6 +86,9 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
   public synchronized void preparePipeResources(
       final ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
+    // Resolve the pipe hardlink directories before any pipe task starts.
+    PipeTsFileDirPathResolver.getInstance();
+
     // Clean sender (connector) hardlink file dir and snapshot dir
     PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean(this::registerPeriodicalJob);
 
