@@ -275,7 +275,7 @@ public class GapFillStartAndEndTimeExtractVisitor
             this.endTime = endTime;
           }
         } else if (operator == LESS_THAN_OR_EQUAL) {
-          this.endTime = Math.max(this.endTime, endTime);
+          this.endTime = Math.min(this.endTime, endTime);
         } else {
           throw new IllegalArgumentException(String.format(UPDATE_START_TIME_ERROR_MSG, operator));
         }
