@@ -90,19 +90,22 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
   }
 
   private static long convertToTimestamp(LocalDateTime dateTime, ZoneId zoneId) {
-    // Converting LocalDateTime to Seconds since epoch
-    long epochMilliSecond = dateTime.atZone(zoneId).toInstant().toEpochMilli();
-    // Get the nanoseconds section
-    long nanoAdjustment = dateTime.getNano();
+    // Encode from the epoch second and the nanosecond-of-second. toEpochMilli() already
+    // contains the whole milliseconds of that second, so adding getNano() on top counts
+    // those milliseconds a second time.
+    Instant instant = dateTime.atZone(zoneId).toInstant();
+    long seconds = instant.getEpochSecond();
+    long nanoOfSecond = instant.getNano();
 
     switch (CommonDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ms":
-        return epochMilliSecond + nanoAdjustment / NANOSECONDS_IN_MILLISECOND;
+        return Math.addExact(
+            Math.multiplyExact(seconds, 1000L), nanoOfSecond / NANOSECONDS_IN_MILLISECOND);
       case "us":
-        return TimeUnit.MILLISECONDS.toMicros(epochMilliSecond)
-            + nanoAdjustment / NANOSECONDS_IN_MICROSECOND;
+        return Math.addExact(
+            Math.multiplyExact(seconds, 1_000_000L), nanoOfSecond / NANOSECONDS_IN_MICROSECOND);
       case "ns":
-        return TimeUnit.MILLISECONDS.toNanos(epochMilliSecond) + nanoAdjustment;
+        return Math.addExact(Math.multiplyExact(seconds, 1_000_000_000L), nanoOfSecond);
       default:
         throw new IllegalArgumentException(
             CalcMessages.EXCEPTION_UNKNOWN_PRECISION_0119BEB0
