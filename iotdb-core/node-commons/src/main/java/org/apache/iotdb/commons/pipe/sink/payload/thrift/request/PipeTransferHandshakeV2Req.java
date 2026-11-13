@@ -41,6 +41,20 @@ public abstract class PipeTransferHandshakeV2Req extends TPipeTransferReq {
 
   protected abstract PipeRequestType getPlanType();
 
+  public static TPipeTransferReq toTPipeTransferReq(
+      final PipeRequestType requestType, final Map<String, String> params) throws IOException {
+    final TPipeTransferReq request = new TPipeTransferReq();
+    request.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    request.type = requestType.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      writeParams(params, outputStream);
+      request.body =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+    return request;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   protected final PipeTransferHandshakeV2Req convertToTPipeTransferReq(Map<String, String> params)
@@ -49,16 +63,21 @@ public abstract class PipeTransferHandshakeV2Req extends TPipeTransferReq {
     this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(params.size(), outputStream);
-      for (final Map.Entry<String, String> entry : params.entrySet()) {
-        ReadWriteIOUtils.write(entry.getKey(), outputStream);
-        ReadWriteIOUtils.write(entry.getValue(), outputStream);
-      }
+      writeParams(params, outputStream);
       this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
     this.params = params;
     return this;
+  }
+
+  private static void writeParams(
+      final Map<String, String> params, final DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(params.size(), outputStream);
+    for (final Map.Entry<String, String> entry : params.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue(), outputStream);
+    }
   }
 
   protected final PipeTransferHandshakeV2Req translateFromTPipeTransferReq(
