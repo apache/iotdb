@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.PendingResultFragment;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 
 import org.apache.tsfile.block.column.Column;
@@ -251,18 +253,12 @@ public class QueryDataSetUtils {
     long memorySize = 0;
     List<ByteBuffer> res = new ArrayList<>();
     while (rowCount < fetchSize && memorySize < MAX_RETURN_SIZE) {
-      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
+      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult(false);
       if (!optionalByteBuffer.isPresent()) {
         break;
       }
       ByteBuffer byteBuffer = optionalByteBuffer.get();
-      byteBuffer.mark();
-      int valueColumnCount = byteBuffer.getInt();
-      for (int i = 0; i < valueColumnCount; i++) {
-        byteBuffer.get();
-      }
-      int positionCount = byteBuffer.getInt();
-      byteBuffer.reset();
+      int positionCount = readPositionCount(byteBuffer);
       if (positionCount != 0) {
         res.add(byteBuffer);
       }
@@ -270,6 +266,150 @@ public class QueryDataSetUtils {
       memorySize += byteBuffer.limit();
     }
     return new Pair<>(res, !queryExecution.hasNextResult());
+  }
+
+  /**
+   * Fetches query results with a bounded payload size. A serialized TsBlock larger than {@code
+   * maxPayloadSize} is cut into fragments: the response only carries the bytes that fit into the
+   * payload, and the remaining bytes are kept in {@link PendingResultFragment} on the query
+   * execution, to be sent by the following request carrying the returned offset.
+   */
+  public static ResultChunk convertQueryResultByFetchSize(
+      IQueryExecution queryExecution, int fetchSize, int requestOffset, int maxPayloadSize)
+      throws IoTDBException {
+    fetchSize = fetchSize > 0 ? fetchSize : TSFLE_CONFIG.getMaxTsBlockLineNumber();
+    List<ByteBuffer> res = new ArrayList<>();
+    int remainingPayloadSize = maxPayloadSize;
+    int rowCount = 0;
+    long memorySize = 0;
+
+    PendingResultFragment pendingFragment = queryExecution.getPendingResultFragment();
+    ByteBuffer pendingBlock = pendingFragment.getBlock();
+    if (pendingBlock != null) {
+      int nextOffset = pendingFragment.getNextOffset();
+      if (requestOffset != nextOffset) {
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_RESULT_FRAGMENT_REQUEST_OFFSET_ARG_DOES_NOT_MATCH_PENDING_FRAGMENT_OFFSET_ARG_A1B13DBC,
+                requestOffset,
+                nextOffset));
+      }
+      int fragmentSize = Math.min(remainingPayloadSize, pendingBlock.limit() - nextOffset);
+      res.add(slice(pendingBlock, nextOffset, fragmentSize));
+      if (nextOffset + fragmentSize == pendingBlock.limit()) {
+        pendingFragment.clear();
+        // Do not fetch new blocks in the same response, otherwise the response would carry the
+        // tail of the big block plus up to fetchSize new rows, whose row count is not accounted
+        // for. One response either continues a fragmented block or delivers new blocks.
+        return ResultChunk.complete(res, !queryExecution.hasNextResult());
+      }
+      pendingFragment.reset(pendingBlock, nextOffset + fragmentSize);
+      return ResultChunk.fragment(res, nextOffset + fragmentSize, -1, false);
+    } else if (requestOffset != 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_RESULT_FRAGMENT_REQUEST_OFFSET_ARG_IS_INVALID_WITHOUT_PENDING_FRAGMENT_C403454F,
+              requestOffset));
+    }
+
+    while (rowCount < fetchSize && memorySize < MAX_RETURN_SIZE && remainingPayloadSize > 0) {
+      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult(true);
+      if (!optionalByteBuffer.isPresent()) {
+        break;
+      }
+      ByteBuffer byteBuffer = optionalByteBuffer.get();
+      int positionCount = readPositionCount(byteBuffer);
+      if (positionCount == 0) {
+        pendingFragment.clear();
+        continue;
+      }
+      int blockStart = byteBuffer.position();
+      int blockSize = byteBuffer.remaining();
+      rowCount += positionCount;
+      if (blockSize <= remainingPayloadSize) {
+        res.add(byteBuffer);
+        remainingPayloadSize -= blockSize;
+        memorySize += blockSize;
+        pendingFragment.clear();
+      } else {
+        res.add(slice(byteBuffer, blockStart, remainingPayloadSize));
+        pendingFragment.reset(byteBuffer, blockStart + remainingPayloadSize);
+        return ResultChunk.fragment(
+            res, blockStart + remainingPayloadSize, blockStart == 0 ? blockSize : -1, false);
+      }
+    }
+    return ResultChunk.complete(res, !queryExecution.hasNextResult());
+  }
+
+  private static int readPositionCount(ByteBuffer byteBuffer) {
+    byteBuffer.mark();
+    int valueColumnCount = byteBuffer.getInt();
+    for (int i = 0; i < valueColumnCount; i++) {
+      byteBuffer.get();
+    }
+    int positionCount = byteBuffer.getInt();
+    byteBuffer.reset();
+    return positionCount;
+  }
+
+  private static ByteBuffer slice(ByteBuffer buffer, int offset, int length) {
+    ByteBuffer duplicate = buffer.duplicate();
+    duplicate.position(offset);
+    duplicate.limit(offset + length);
+    return duplicate.slice();
+  }
+
+  /** The bounded-payload result of one query result RPC response. */
+  public static class ResultChunk {
+
+    private final List<ByteBuffer> queryResult;
+    private final int nextOffset;
+    private final int totalLength;
+    private final boolean finished;
+
+    private ResultChunk(
+        List<ByteBuffer> queryResult, int nextOffset, int totalLength, boolean finished) {
+      this.queryResult = queryResult;
+      this.nextOffset = nextOffset;
+      this.totalLength = totalLength;
+      this.finished = finished;
+    }
+
+    /** Creates a chunk whose last element is a fragment starting at {@code nextOffset}. */
+    public static ResultChunk fragment(
+        List<ByteBuffer> queryResult, int nextOffset, int totalLength, boolean finished) {
+      return new ResultChunk(queryResult, nextOffset, totalLength, finished);
+    }
+
+    public static ResultChunk complete(List<ByteBuffer> queryResult, boolean finished) {
+      return new ResultChunk(queryResult, -1, -1, finished);
+    }
+
+    public List<ByteBuffer> getQueryResult() {
+      return queryResult;
+    }
+
+    public boolean hasNextOffset() {
+      return nextOffset >= 0;
+    }
+
+    public int getNextOffset() {
+      return nextOffset;
+    }
+
+    public boolean hasTotalLength() {
+      return totalLength >= 0;
+    }
+
+    public int getTotalLength() {
+      return totalLength;
+    }
+
+    public boolean isFinished() {
+      return finished;
+    }
   }
 
   public static long[] readTimesFromBuffer(ByteBuffer buffer, int size) {

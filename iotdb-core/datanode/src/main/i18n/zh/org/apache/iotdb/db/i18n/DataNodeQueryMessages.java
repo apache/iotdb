@@ -5671,4 +5671,11 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s：%s ms，调用 %s 次，应用 %s 次";
+
+  public static final String
+      EXCEPTION_RESULT_FRAGMENT_REQUEST_OFFSET_ARG_DOES_NOT_MATCH_PENDING_FRAGMENT_OFFSET_ARG_A1B13DBC =
+          "请求 offset %d 与待发送结果分片的 offset %d 不一致";
+  public static final String
+      EXCEPTION_RESULT_FRAGMENT_REQUEST_OFFSET_ARG_IS_INVALID_WITHOUT_PENDING_FRAGMENT_C403454F =
+          "请求 offset %d 无效：当前没有待发送的结果分片";
 }

@@ -43,7 +43,15 @@ public interface IQueryExecution {
 
   Optional<TsBlock> getBatchResult() throws IoTDBException;
 
-  Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException;
+  /**
+   * Gets the next serialized TsBlock of the result. If {@code retainMemory} is true, the memory
+   * that the returned block retains in the memory pool is not freed when the block is taken out of
+   * the result handle. The caller then hands the block over to {@link #getPendingResultFragment()},
+   * which releases the memory once the block has been fully sent.
+   */
+  Optional<ByteBuffer> getByteBufferBatchResult(boolean retainMemory) throws IoTDBException;
+
+  PendingResultFragment getPendingResultFragment();
 
   boolean hasNextResult();
 

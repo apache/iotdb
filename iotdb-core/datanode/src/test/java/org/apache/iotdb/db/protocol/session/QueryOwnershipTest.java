@@ -298,7 +298,7 @@ public class QueryOwnershipTest {
     IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
     Mockito.when(queryExecution.getQueryId()).thenReturn("query");
     // the mock carries no buffered batch, only the "is there anything left" flag
-    Mockito.when(queryExecution.getByteBufferBatchResult()).thenReturn(Optional.empty());
+    Mockito.when(queryExecution.getByteBufferBatchResult(false)).thenReturn(Optional.empty());
     Mockito.when(queryExecution.hasNextResult()).thenReturn(hasNextResult);
     return queryExecution;
   }

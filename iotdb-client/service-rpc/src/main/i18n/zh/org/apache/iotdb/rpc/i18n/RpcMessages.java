@@ -108,4 +108,15 @@ public final class RpcMessages {
       "通过列名 %s 获取的值为 NULL。";
 
   public static final String EXCEPTION_DATA_TYPE_ARG_IS_NOT_SUPPORTED_31213160 = "不支持数据类型 %s。";
+
+  public static final String EXCEPTION_CHUNKED_RESULT_EMPTY_FRAGMENT_03A0EF39 =
+      "拼装分片查询结果时收到空分片";
+  public static final String
+      EXCEPTION_CHUNKED_RESULT_FRAGMENT_OFFSET_ARG_NOT_GREATER_THAN_ACCUMULATED_LENGTH_ARG_A0F032E3 =
+          "分片 offset %d 不大于已累计的长度 %d";
+  public static final String EXCEPTION_CHUNKED_RESULT_MISSING_TOTAL_LENGTH_FOR_FIRST_FRAGMENT_1D11374F =
+      "分片 TsBlock 的首个分片缺少 totalLength";
+  public static final String
+      EXCEPTION_CHUNKED_RESULT_ASSEMBLED_LENGTH_ARG_DOES_NOT_MATCH_TOTAL_LENGTH_ARG_925DCB15 =
+          "拼装后的分片长度 %d 与 totalLength %d 不一致";
 }

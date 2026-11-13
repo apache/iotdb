@@ -4971,4 +4971,11 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s: %s ms, %s invocations, %s applications";
+
+  public static final String
+      EXCEPTION_RESULT_FRAGMENT_REQUEST_OFFSET_ARG_DOES_NOT_MATCH_PENDING_FRAGMENT_OFFSET_ARG_A1B13DBC =
+          "Request offset %d does not match the pending result fragment offset %d";
+  public static final String
+      EXCEPTION_RESULT_FRAGMENT_REQUEST_OFFSET_ARG_IS_INVALID_WITHOUT_PENDING_FRAGMENT_C403454F =
+          "Request offset %d is invalid because no result fragment is pending";
 }

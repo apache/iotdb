@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.PendingResultFragment;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -41,6 +42,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -156,7 +158,7 @@ public class QueryDataSetUtilsTest {
     TsBlock tsBlock = buildTsBlock();
     Mockito.when(queryExecution.getBatchResult())
         .thenReturn(Optional.of(tsBlock), Optional.empty());
-    Mockito.when(queryExecution.getByteBufferBatchResult())
+    Mockito.when(queryExecution.getByteBufferBatchResult(false))
         .thenReturn(Optional.of(new TsBlockSerde().serialize(tsBlock)), Optional.empty());
     return queryExecution;
   }
@@ -280,5 +282,196 @@ public class QueryDataSetUtilsTest {
     assertEquals(
         new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET), tsBlock.getColumn(5).getBinary(0));
     assertTrue(tsBlock.getColumn(5).isNull(1));
+  }
+
+  @Test
+  public void testConvertQueryResultByFetchSizeWithSingleOversizedBlock()
+      throws IoTDBException, IOException {
+    TsBlock tsBlock = buildTsBlock();
+    ByteBuffer serialized = new TsBlockSerde().serialize(tsBlock);
+    int totalLength = serialized.remaining();
+    // one byte smaller than the block so that the block has to be split into two fragments
+    int payloadSize = totalLength - 1;
+
+    IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
+    Runnable memoryReleaser = Mockito.mock(Runnable.class);
+    PendingResultFragment pendingFragment = new PendingResultFragment(memoryReleaser);
+    Mockito.when(queryExecution.getPendingResultFragment()).thenReturn(pendingFragment);
+    Mockito.when(queryExecution.getByteBufferBatchResult(true))
+        .thenReturn(Optional.of(serialized.duplicate()), Optional.empty());
+    Mockito.when(queryExecution.hasNextResult()).thenReturn(false);
+
+    QueryDataSetUtils.ResultChunk firstChunk =
+        QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, 10, 0, payloadSize);
+    assertFalse(firstChunk.isFinished());
+    assertTrue(firstChunk.hasNextOffset());
+    assertTrue(firstChunk.hasTotalLength());
+    assertEquals(totalLength, firstChunk.getTotalLength());
+    assertEquals(payloadSize, firstChunk.getNextOffset());
+    assertEquals(1, firstChunk.getQueryResult().size());
+    assertEquals(payloadSize, firstChunk.getQueryResult().get(0).remaining());
+    assertTrue(pendingFragment.getBlock() != null);
+    // the memory of the pending block is still retained
+    Mockito.verify(memoryReleaser, Mockito.never()).run();
+
+    QueryDataSetUtils.ResultChunk secondChunk =
+        QueryDataSetUtils.convertQueryResultByFetchSize(
+            queryExecution, 10, firstChunk.getNextOffset(), payloadSize);
+    assertTrue(secondChunk.isFinished());
+    assertFalse(secondChunk.hasNextOffset());
+    assertFalse(secondChunk.hasTotalLength());
+    assertTrue(pendingFragment.getBlock() == null);
+    // the memory is released once the fragmented block has been fully sent
+    Mockito.verify(memoryReleaser, Mockito.times(1)).run();
+
+    TsBlock result = deserialize(firstChunk.getQueryResult().get(0), secondChunk.getQueryResult());
+    assertEquals(2, result.getPositionCount());
+    assertEquals(1L, result.getTimeColumn().getLong(0));
+    assertEquals(2L, result.getTimeColumn().getLong(1));
+  }
+
+  @Test
+  public void testConvertQueryResultByFetchSizeWithTrailingFragment()
+      throws IoTDBException, IOException {
+    TsBlock tsBlock = buildTsBlock();
+    ByteBuffer serialized = new TsBlockSerde().serialize(tsBlock);
+    int blockSize = serialized.remaining();
+    // a small block that fits into the payload, followed by the oversized block
+    ByteBuffer smallBlock = serialized.duplicate();
+    int payloadSize = smallBlock.remaining() + blockSize / 2;
+
+    IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
+    Runnable memoryReleaser = Mockito.mock(Runnable.class);
+    PendingResultFragment pendingFragment = new PendingResultFragment(memoryReleaser);
+    Mockito.when(queryExecution.getPendingResultFragment()).thenReturn(pendingFragment);
+    Mockito.when(queryExecution.getByteBufferBatchResult(true))
+        .thenReturn(Optional.of(smallBlock), Optional.of(serialized.duplicate()), Optional.empty());
+    Mockito.when(queryExecution.hasNextResult()).thenReturn(false);
+
+    QueryDataSetUtils.ResultChunk firstChunk =
+        QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, 10, 0, payloadSize);
+    assertFalse(firstChunk.isFinished());
+    assertTrue(firstChunk.hasNextOffset());
+    assertEquals(2, firstChunk.getQueryResult().size());
+    // the last element is the fragment of the second block
+    assertEquals(blockSize / 2, firstChunk.getQueryResult().get(1).remaining());
+    assertTrue(firstChunk.hasTotalLength());
+    assertEquals(blockSize, firstChunk.getTotalLength());
+    // the complete block is released at once, the fragmented one is released when it completes
+    Mockito.verify(memoryReleaser, Mockito.times(1)).run();
+
+    QueryDataSetUtils.ResultChunk secondChunk =
+        QueryDataSetUtils.convertQueryResultByFetchSize(
+            queryExecution, 10, firstChunk.getNextOffset(), payloadSize);
+    assertTrue(secondChunk.isFinished());
+    assertFalse(secondChunk.hasNextOffset());
+    // only the rest of the oversized block remains
+    assertEquals(1, secondChunk.getQueryResult().size());
+    assertEquals(blockSize - blockSize / 2, secondChunk.getQueryResult().get(0).remaining());
+    Mockito.verify(memoryReleaser, Mockito.times(2)).run();
+  }
+
+  @Test
+  public void testContinuationCompletionDoesNotFetchNewBlocks() throws IoTDBException, IOException {
+    TsBlock tsBlock = buildTsBlock();
+    ByteBuffer serialized = new TsBlockSerde().serialize(tsBlock);
+    int blockSize = serialized.remaining();
+    int payloadSize = blockSize / 2;
+
+    IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
+    Runnable memoryReleaser = Mockito.mock(Runnable.class);
+    PendingResultFragment pendingFragment = new PendingResultFragment(memoryReleaser);
+    Mockito.when(queryExecution.getPendingResultFragment()).thenReturn(pendingFragment);
+    Mockito.when(queryExecution.getByteBufferBatchResult(true))
+        .thenReturn(
+            Optional.of(serialized.duplicate()),
+            Optional.of(serialized.duplicate()),
+            Optional.empty());
+    Mockito.when(queryExecution.hasNextResult()).thenReturn(true, false);
+
+    QueryDataSetUtils.ResultChunk firstChunk =
+        QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, 10, 0, payloadSize);
+    assertFalse(firstChunk.isFinished());
+    assertEquals(payloadSize, firstChunk.getNextOffset());
+    Mockito.verify(memoryReleaser, Mockito.never()).run();
+
+    // The response that completes the fragmented block must not fetch new blocks, otherwise its
+    // row count would exceed fetchSize (the tail of the big block is not accounted).
+    QueryDataSetUtils.ResultChunk continuationChunk =
+        QueryDataSetUtils.convertQueryResultByFetchSize(
+            queryExecution, 10, firstChunk.getNextOffset(), blockSize);
+    assertFalse(continuationChunk.isFinished());
+    assertFalse(continuationChunk.hasNextOffset());
+    assertEquals(1, continuationChunk.getQueryResult().size());
+    assertEquals(blockSize - payloadSize, continuationChunk.getQueryResult().get(0).remaining());
+    assertTrue(pendingFragment.getBlock() == null);
+    Mockito.verify(memoryReleaser, Mockito.times(1)).run();
+
+    // New blocks are delivered by the following request only
+    QueryDataSetUtils.ResultChunk nextChunk =
+        QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, 10, 0, blockSize);
+    assertTrue(nextChunk.isFinished());
+    assertFalse(nextChunk.hasNextOffset());
+    assertEquals(1, nextChunk.getQueryResult().size());
+    assertEquals(blockSize, nextChunk.getQueryResult().get(0).remaining());
+    Mockito.verify(memoryReleaser, Mockito.times(2)).run();
+  }
+
+  @Test
+  public void testEmptyBlockReleasesItsMemory() throws IoTDBException, IOException {
+    TsBlock emptyTsBlock = new TsBlockBuilder(Collections.singletonList(TSDataType.INT64)).build();
+    ByteBuffer emptyBlock = new TsBlockSerde().serialize(emptyTsBlock);
+    TsBlock tsBlock = buildTsBlock();
+    ByteBuffer serialized = new TsBlockSerde().serialize(tsBlock);
+
+    IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
+    Runnable memoryReleaser = Mockito.mock(Runnable.class);
+    Mockito.when(queryExecution.getPendingResultFragment())
+        .thenReturn(new PendingResultFragment(memoryReleaser));
+    Mockito.when(queryExecution.getByteBufferBatchResult(true))
+        .thenReturn(Optional.of(emptyBlock), Optional.of(serialized), Optional.empty());
+    Mockito.when(queryExecution.hasNextResult()).thenReturn(false);
+
+    QueryDataSetUtils.ResultChunk chunk =
+        QueryDataSetUtils.convertQueryResultByFetchSize(
+            queryExecution, 10, 0, serialized.remaining());
+    assertTrue(chunk.isFinished());
+    assertEquals(1, chunk.getQueryResult().size());
+    // the empty block and the complete block are both released immediately
+    Mockito.verify(memoryReleaser, Mockito.times(2)).run();
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testConvertQueryResultByFetchSizeRejectsMismatchedOffset() throws IoTDBException {
+    PendingResultFragment pendingFragment = new PendingResultFragment(() -> {});
+    pendingFragment.reset(ByteBuffer.wrap(new byte[10]), 5);
+    IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
+    Mockito.when(queryExecution.getPendingResultFragment()).thenReturn(pendingFragment);
+
+    QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, 10, 3, 8);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testConvertQueryResultByFetchSizeRejectsOffsetWithoutPendingFragment()
+      throws IoTDBException {
+    IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
+    Mockito.when(queryExecution.getPendingResultFragment())
+        .thenReturn(new PendingResultFragment(() -> {}));
+
+    QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, 10, 5, 8);
+  }
+
+  private TsBlock deserialize(ByteBuffer head, List<ByteBuffer> tail) {
+    int size = head.remaining();
+    for (ByteBuffer buffer : tail) {
+      size += buffer.remaining();
+    }
+    ByteBuffer assembled = ByteBuffer.allocate(size);
+    assembled.put(head.duplicate());
+    for (ByteBuffer buffer : tail) {
+      assembled.put(buffer.duplicate());
+    }
+    assembled.flip();
+    return new TsBlockSerde().deserialize(assembled);
   }
 }

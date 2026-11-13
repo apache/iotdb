@@ -50,9 +50,19 @@ public interface ISourceHandle extends Accountable {
    * iterator with receive(). When one of these two methods is called, the cursor in iterator will
    * forward.
    *
+   * @param retainMemory if true, the memory that the returned block retains in the memory pool is
+   *     not freed when the block is taken out of this handle. The caller must release it via {@link
+   *     #freeRetainedMemory()} once the block is no longer needed. Implementations whose serialized
+   *     blocks are not reserved from the memory pool ignore this flag.
    * @throws IoTDBException throw IoTDBException
    */
-  ByteBuffer getSerializedTsBlock() throws IoTDBException;
+  ByteBuffer getSerializedTsBlock(boolean retainMemory) throws IoTDBException;
+
+  /**
+   * Releases the memory retained by the blocks taken out with {@code retainMemory=true} and not
+   * released yet. It is safe to call when nothing is retained, and after abort/close.
+   */
+  void freeRetainedMemory();
 
   /** If there are more TsBlocks. */
   boolean isFinished();

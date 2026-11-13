@@ -74,6 +74,11 @@ struct TSExecuteStatementResp {
   15: optional string database
   16: optional bool tableModel
   17: optional list<i32> columnIndex2TsBlockColumnIndexList
+  // Start offset of the next fragment. Set only when the last element in queryResult is a
+  // fragment. Only set for sessions that enabled chunked query results at openSession.
+  18: optional i32 offset
+  // Total serialized length of the TsBlock when the response starts its first fragment.
+  19: optional i32 totalLength
 }
 
 enum TSProtocolVersion {
@@ -203,6 +208,9 @@ struct TSFetchResultsReq{
   5: required bool isAlign
   6: optional i64 timeout
   7: optional i64 statementId
+  // Start offset of the fragment to continue. The client sets this field (including 0 for the
+  // first request) iff it supports chunked query results. It is optional for rolling upgrade.
+  8: optional i32 offset
 }
 
 struct TSFetchResultsResp{
@@ -213,6 +221,10 @@ struct TSFetchResultsResp{
   5: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
   6: optional list<binary> queryResult
   7: optional bool moreData
+  // Start offset of the next fragment. Set only when the last element in queryResult is a fragment.
+  8: optional i32 offset
+  // Total serialized length of the TsBlock when the response starts its first fragment.
+  9: optional i32 totalLength
 }
 
 struct TSFetchMetadataResp{
