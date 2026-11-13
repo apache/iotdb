@@ -347,7 +347,14 @@ public class Coordinator {
       queryContext.setDebug(debug);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (readOnlyInternalQuery) {
-        InternalQueryExecutor.validateReadOnlyQuery(execution);
+        try {
+          InternalQueryExecutor.validateReadOnlyQuery(execution);
+        } catch (RuntimeException e) {
+          // The execution is neither registered nor started, so nothing else would release what
+          // its analysis acquired, such as the UDF class loaders pinned in its query scope.
+          execution.stopAndCleanup(e);
+          throw e;
+        }
       }
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);

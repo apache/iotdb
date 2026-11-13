@@ -97,6 +97,7 @@ import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -186,6 +187,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Delet
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -529,9 +531,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     // We deserialize here instead of the underlying state machine because parallelism is possible
     // here but not at the underlying state machine
-    final FragmentInstance fragmentInstance;
+    final FragmentInstanceId fragmentInstanceId;
     try {
-      fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
+      fragmentInstanceId = FragmentInstanceId.deserialize(req.fragmentInstance.body);
     } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED, e);
       TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
@@ -539,27 +541,57 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return resp;
     }
 
-    RegionExecutionResult executionResult = null;
-    if (Objects.nonNull(groupId)) {
-      // For schema query, there may be a "write" before "read"
-      // the result is not null iff the "write" has failed
-      executionResult =
-          new TableSchemaQueryWriteVisitor().processFragment(fragmentInstance, groupId);
-    }
-    if (Objects.isNull(executionResult)) {
-      final RegionReadExecutor executor = new RegionReadExecutor();
-      executionResult =
-          groupId == null
-              ? executor.execute(fragmentInstance)
-              : executor.execute(groupId, fragmentInstance);
+    final UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    final UDFClassLoaderManager.QueryScope queryScope =
+        classLoaderManager == null
+            ? null
+            : classLoaderManager.openQueryScope(fragmentInstanceId.getFullId());
+    final FragmentInstance fragmentInstance;
+    try {
+      fragmentInstance =
+          queryScope == null
+              ? FragmentInstance.deserializeFrom(fragmentInstanceId, req.fragmentInstance.body)
+              : classLoaderManager.withQueryScope(
+                  queryScope,
+                  () ->
+                      FragmentInstance.deserializeFrom(
+                          fragmentInstanceId, req.fragmentInstance.body));
+      fragmentInstance.attachUDFQueryScope(queryScope);
+    } catch (final Exception e) {
+      if (classLoaderManager != null && queryScope != null) {
+        classLoaderManager.finalizeUDFQuery(queryScope);
+      }
+      LOGGER.warn(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED, e);
+      TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
+      resp.setMessage(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED + e.getMessage());
+      return resp;
     }
 
-    final TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
-    resp.setAccepted(executionResult.isAccepted());
-    resp.setMessage(executionResult.getMessage());
-    resp.setNeedRetry(executionResult.isReadNeedRetry());
-    resp.setStatus(executionResult.getStatus());
-    return resp;
+    try {
+      RegionExecutionResult executionResult = null;
+      if (Objects.nonNull(groupId)) {
+        // For schema query, there may be a "write" before "read"
+        // the result is not null iff the "write" has failed
+        executionResult =
+            new TableSchemaQueryWriteVisitor().processFragment(fragmentInstance, groupId);
+      }
+      if (Objects.isNull(executionResult)) {
+        final RegionReadExecutor executor = new RegionReadExecutor();
+        executionResult =
+            groupId == null
+                ? executor.execute(fragmentInstance)
+                : executor.execute(groupId, fragmentInstance);
+      }
+
+      final TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
+      resp.setAccepted(executionResult.isAccepted());
+      resp.setMessage(executionResult.getMessage());
+      resp.setNeedRetry(executionResult.isReadNeedRetry());
+      resp.setStatus(executionResult.getStatus());
+      return resp;
+    } finally {
+      fragmentInstance.closeUDFQueryScopeIfPresent();
+    }
   }
 
   @Override
@@ -1844,17 +1876,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     SESSION_MANAGER.registerSession(session);
 
-    SESSION_MANAGER.supplySession(
-        session,
-        // TODO: User the real userId
-        -1,
-        req.getUsername(),
-        ZoneId.of(req.getZoneId()),
-        ClientVersion.V_1_0);
-
     String executedSQL = req.queryBody;
 
     try {
+      SESSION_MANAGER.supplySession(
+          session,
+          AuthorityChecker.getUserId(req.getUsername()).orElse(-1L),
+          req.getUsername(),
+          ZoneId.of(req.getZoneId()),
+          ClientVersion.V_1_0);
+
       QueryStatement s =
           (QueryStatement) StatementGenerator.createStatement(req.queryBody, session.getZoneId());
       if (s == null) {
@@ -1886,6 +1917,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         s.getGroupByTimeComponent().setLeftCRightO(true);
       }
       executedSQL = String.join(" ", s.constructFormattedSQL().split("\n")).replaceAll(" +", " ");
+
+      // Refresh the owner's READ_DATA scope for each CQ execution.
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                      session.getUserId(), session.getUsername(), session.getClientAddress())
+                  .setSqlString(executedSQL));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            DataNodeMiscMessages.LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F,
+            req.getCqId(),
+            req.getUsername(),
+            status);
+        return status;
+      }
 
       long queryId =
           SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));

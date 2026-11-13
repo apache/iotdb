@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.confignode.client.async.DataNodeTransportFailureUtils;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -332,6 +334,18 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException;
+
+  protected static boolean isOfflineDataNodeTransportFailure(
+      final ConfigNodeProcedureEnv env,
+      final int dataNodeId,
+      final TSStatus status,
+      final int metadataPushErrorCode,
+      final boolean hasExceptionMessages) {
+    return status.getCode() == metadataPushErrorCode
+        && DataNodeTransportFailureUtils.isTransportFailure(status)
+        && !hasExceptionMessages
+        && env.getConfigManager().getLoadManager().getNodeStatus(dataNodeId).isOffline();
+  }
 
   /**
    * Pushing all the topicMeta's to all the dataNodes.

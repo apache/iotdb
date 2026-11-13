@@ -1395,7 +1395,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(false),
           () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
-      return new TSStatus(e.getCode().getStatusCode());
+      return new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage());
     }
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         context.setResult(true),

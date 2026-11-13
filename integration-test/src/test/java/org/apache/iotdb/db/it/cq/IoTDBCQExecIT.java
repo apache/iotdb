@@ -18,11 +18,19 @@
  */
 package org.apache.iotdb.db.it.cq;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
+import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.awaitility.Awaitility;
 import org.junit.AfterClass;
@@ -33,11 +41,16 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -55,6 +68,209 @@ public class IoTDBCQExecIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  // A wildcard CQ copies only readable fields, observes revoke/grant, and rejects a deleted owner.
+  @Test
+  public void testCQExecutionWithReadDataPermission() throws Exception {
+    testCQExecutionWithReadDataPermission(false, false);
+  }
+
+  // An aligned wildcard CQ filters unreadable fields and rechecks owner permissions per window.
+  @Test
+  public void testCQExecutionWithReadDataPermissionAlignByDevice() throws Exception {
+    testCQExecutionWithReadDataPermission(true, false);
+  }
+
+  // Explicit CQ targets reject missing source access and succeed when that access is restored.
+  @Test
+  public void testCQExecutionWithExplicitTargetReadDataPermission() throws Exception {
+    testCQExecutionWithReadDataPermission(false, true);
+  }
+
+  // Aligned explicit CQ targets retain positional mapping across permission revoke/grant retries.
+  @Test
+  public void testCQExecutionWithExplicitTargetReadDataPermissionAlignByDevice() throws Exception {
+    testCQExecutionWithReadDataPermission(true, true);
+  }
+
+  private void testCQExecutionWithReadDataPermission(boolean alignByDevice, boolean explicitTargets)
+      throws Exception {
+    String cqId =
+        (explicitTargets ? "cq_exp_auth" : "cq_read_auth") + (alignByDevice ? "_aligned" : "");
+    String database = "root." + cqId;
+    String username = cqId + "_user";
+    String password = "CQRead!Test2026";
+    String firstTarget = explicitTargets ? "m1" : "s1";
+    String secondTarget = explicitTargets ? "m2" : "s2";
+    String queryBody =
+        "SELECT "
+            + (explicitTargets ? "s1, s2" : "*")
+            + " INTO "
+            + database
+            + ".target("
+            + (explicitTargets ? "m1, m2" : "::")
+            + ") FROM "
+            + database
+            + ".source"
+            + (alignByDevice ? " ALIGN BY DEVICE" : "");
+    String resultQuery =
+        "SELECT " + firstTarget + ", " + secondTarget + " FROM " + database + ".target";
+    String resultHeader =
+        "Time,"
+            + database
+            + ".target."
+            + firstTarget
+            + ","
+            + database
+            + ".target."
+            + secondTarget
+            + ",";
+
+    IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients =
+        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        CQTestCleanup cleanup = new CQTestCleanup(statement)) {
+      statement.execute("CREATE USER " + username + " '" + password + "'");
+      cleanup.add("DROP USER " + username);
+      statement.execute("CREATE DATABASE " + database);
+      cleanup.add("DELETE DATABASE " + database);
+      statement.execute("CREATE TIMESERIES " + database + ".source.s1 WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES " + database + ".source.s2 WITH DATATYPE=INT64");
+      statement.execute(
+          "CREATE TIMESERIES " + database + ".target." + firstTarget + " WITH DATATYPE=INT64");
+      statement.execute(
+          "CREATE TIMESERIES " + database + ".target." + secondTarget + " WITH DATATYPE=INT64");
+      statement.execute(
+          "INSERT INTO "
+              + database
+              + ".source(time, s1, s2) VALUES (1, 11, 21), (1001, 12, 22), (2001, 13, 23), (3001, 14, 24)");
+      statement.execute("GRANT SYSTEM ON root.** TO USER " + username);
+      statement.execute("GRANT WRITE_DATA ON " + database + ".target.** TO USER " + username);
+      statement.execute("GRANT READ_DATA ON " + database + ".source.s1 TO USER " + username);
+
+      try (Connection userConnection = EnvFactory.getEnv().getConnection(username, password);
+          Statement userStatement = userConnection.createStatement()) {
+        // Keep the scheduler idle and execute deterministic windows through its DataNode RPC.
+        userStatement.execute(
+            "CREATE CQ "
+                + cqId
+                + " RESAMPLE EVERY 1s BOUNDARY "
+                + (System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1))
+                + " BEGIN "
+                + queryBody
+                + " END");
+        cleanup.add("DROP CQ " + cqId);
+      }
+
+      TExecuteCQ request = new TExecuteCQ(queryBody, 0, 1000, 10000, "UTC", cqId, username);
+      String[] expectedRows;
+      if (explicitTargets) {
+        String columnMismatch =
+            "the number of source columns and the number of target paths should be the same";
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SEMANTIC_ERROR, columnMismatch);
+        resultSetEqualTest(resultQuery, resultHeader, new String[0]);
+
+        // Explicit targets retain SELECT INTO's positional mapping. Restore access and retry the
+        // same window, as the CQ scheduler does after an execution failure.
+        statement.execute("GRANT READ_DATA ON " + database + ".source.s2 TO USER " + username);
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SUCCESS_STATUS, null);
+        resultSetEqualTest(resultQuery, resultHeader, new String[] {"1,11,21,"});
+
+        statement.execute("REVOKE READ_DATA ON " + database + ".source.s2 FROM USER " + username);
+        request.setStartTime(1000).setEndTime(2000);
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SEMANTIC_ERROR, columnMismatch);
+        resultSetEqualTest(resultQuery, resultHeader, new String[] {"1,11,21,"});
+
+        statement.execute("GRANT READ_DATA ON " + database + ".source.s2 TO USER " + username);
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SUCCESS_STATUS, null);
+        expectedRows = new String[] {"1,11,21,", "1001,12,22,"};
+      } else {
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SUCCESS_STATUS, null);
+        // The wildcard must not copy s2, for which the CQ owner has no READ_DATA privilege.
+        resultSetEqualTest(resultQuery, resultHeader, new String[] {"1,11,null,"});
+
+        statement.execute("REVOKE READ_DATA ON " + database + ".source.s1 FROM USER " + username);
+        request.setStartTime(1000).setEndTime(2000);
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SUCCESS_STATUS, null);
+        resultSetEqualTest(resultQuery, resultHeader, new String[] {"1,11,null,"});
+
+        statement.execute("GRANT READ_DATA ON " + database + ".source.** TO USER " + username);
+        request.setStartTime(2000).setEndTime(3000);
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SUCCESS_STATUS, null);
+        expectedRows = new String[] {"1,11,null,", "2001,13,23,"};
+      }
+      resultSetEqualTest(resultQuery, resultHeader, expectedRows);
+
+      statement.execute("DROP USER " + username);
+      cleanup.remove("DROP USER " + username);
+      request.setStartTime(3000).setEndTime(4000);
+      executeCQOnAllDataNodes(clients, request, TSStatusCode.EXECUTE_STATEMENT_ERROR, username);
+      resultSetEqualTest(resultQuery, resultHeader, expectedRows);
+    } finally {
+      clients.close();
+    }
+  }
+
+  private void executeCQOnAllDataNodes(
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients,
+      TExecuteCQ request,
+      TSStatusCode expectedStatus,
+      String expectedMessage)
+      throws Exception {
+    for (DataNodeWrapper dataNode : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      try (SyncDataNodeInternalServiceClient client =
+          clients.borrowClient(
+              new TEndPoint(dataNode.getInternalAddress(), dataNode.getInternalPort()))) {
+        TSStatus status = client.executeCQ(request);
+        assertEquals(status.toString(), expectedStatus.getStatusCode(), status.getCode());
+        if (expectedMessage != null) {
+          assertTrue(status.toString(), status.isSetMessage());
+          assertTrue(status.getMessage(), status.getMessage().contains(expectedMessage));
+        }
+      }
+    }
+  }
+
+  private static class CQTestCleanup implements AutoCloseable {
+    private final Statement statement;
+    private final Deque<String> statements = new ArrayDeque<>();
+
+    private CQTestCleanup(Statement statement) {
+      this.statement = statement;
+    }
+
+    private void add(String sql) {
+      statements.push(sql);
+    }
+
+    private void remove(String sql) {
+      statements.remove(sql);
+    }
+
+    @Override
+    public void close() throws SQLException {
+      // Attempt every cleanup. Try-with-resources preserves the original test failure and adds
+      // cleanup failures as suppressed exceptions.
+      SQLException failure = null;
+      for (String sql : statements) {
+        try {
+          statement.execute(sql);
+        } catch (SQLException e) {
+          if (failure == null) {
+            failure = e;
+          } else {
+            failure.addSuppressed(e);
+          }
+        }
+      }
+      if (failure != null) {
+        throw failure;
+      }
+    }
   }
 
   // A 2s resampling CQ must write the expected maximum for every 1s window after its future
