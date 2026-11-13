@@ -79,7 +79,7 @@ public final class TimeValueBuffer {
     return estimatedSizeForCapacity(times.length);
   }
 
-  static long estimatedSizeForSampleCount(int sampleCount) {
+  public static long estimatedSizeForSampleCount(int sampleCount) {
     int capacity = INITIAL_CAPACITY;
     while (capacity < sampleCount) {
       capacity = Math.multiplyExact(capacity, 2);
@@ -99,24 +99,28 @@ public final class TimeValueBuffer {
     }
   }
 
-  public void sortAndValidate(String functionName) {
+  public void sort() {
     if (sortedAndValidated) {
       return;
     }
     if (size > 1) {
       introSort(0, size, 2 * floorLog2(size));
-      for (int index = 1; index < size; index++) {
-        if (times[index - 1] == times[index]) {
-          throw new SemanticException(
-              String.format(
-                  CalcMessages
-                      .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_DUPLICATE_TIME_COL_VALUES_IN_THE_SAME_AGGREGATION_GROUP_ARG_087A91BC,
-                  functionName,
-                  times[index]));
-        }
-      }
     }
     sortedAndValidated = true;
+  }
+
+  public void sortAndValidate(String functionName) {
+    sort();
+    for (int index = 1; index < size; index++) {
+      if (times[index - 1] == times[index]) {
+        throw new SemanticException(
+            String.format(
+                CalcMessages
+                    .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_DUPLICATE_TIME_COL_VALUES_IN_THE_SAME_AGGREGATION_GROUP_ARG_087A91BC,
+                functionName,
+                times[index]));
+      }
+    }
   }
 
   private void ensureCapacity(int requiredCapacity) {

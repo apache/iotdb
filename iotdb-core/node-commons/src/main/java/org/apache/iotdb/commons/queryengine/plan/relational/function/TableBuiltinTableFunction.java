@@ -25,11 +25,13 @@ import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.Forecas
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.PatternMatchTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CumulateTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.DerivativeTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HighPassTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.LowPassTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.SampleTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
@@ -56,7 +58,9 @@ public enum TableBuiltinTableFunction {
   CLASSIFY("classify"),
   LOWPASS("lowpass"),
   HIGHPASS("highpass"),
-  XCORR("xcorr");
+  XCORR("xcorr"),
+  SAMPLE("sample"),
+  DERIVATIVE("derivative");
 
   private final String functionName;
   private final boolean preservesInputOrder;
@@ -133,6 +137,10 @@ public enum TableBuiltinTableFunction {
         return new HighPassTableFunction();
       case "xcorr":
         return new XCorrTableFunction();
+      case "sample":
+        return new SampleTableFunction();
+      case "derivative":
+        return new DerivativeTableFunction();
       default:
         throw new UnsupportedOperationException(
             String.format(QueryMessages.UNSUPPORTED_TABLE_FUNCTION, functionName));

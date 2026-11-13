@@ -518,10 +518,13 @@ public class TableFunctionOperatorTest {
               provider,
               child,
               Collections.singletonList(TSDataType.INT64),
-              Collections.singletonList(TSDataType.INT64),
+              // the extra output column is a pass-through column, which makes the operator cache
+              // the input slices until the partition ends, so closing it has retained memory to
+              // release and ramBytesUsed() has a measurable difference
+              Arrays.asList(TSDataType.INT64, TSDataType.INT64),
               1,
               Collections.singletonList(0),
-              Collections.emptyList(),
+              Collections.singletonList(0),
               false,
               Collections.emptyList(),
               false,

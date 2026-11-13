@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
@@ -38,9 +39,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.*;
 import static org.junit.Assert.assertEquals;
@@ -105,6 +109,14 @@ public class IoTDBWindowTVFIT {
         "INSERT INTO table5(time, factory_id, device_id, s1) VALUES (1970-01-01T08:00:00.002+08:00, 'F1', 'device_2', 20.0)",
         "INSERT INTO table5(time, factory_id, device_id, s1) VALUES (1970-01-01T08:00:00.011+08:00, 'F1', 'device_2', 25.0)",
         "INSERT INTO table5(time, factory_id, device_id, s1) VALUES (1970-01-01T08:00:00.003+08:00, 'F2', 'device_1', 30.0)",
+        "CREATE TABLE sample_empty(device_id STRING TAG, v DOUBLE FIELD)",
+        // derivative table function test data
+        "CREATE TABLE derivative_types(device_id STRING TAG, int_val INT32 FIELD, long_val INT64 FIELD, float_val FLOAT FIELD, double_val DOUBLE FIELD)",
+        "INSERT INTO derivative_types(time, device_id, int_val, long_val, float_val, double_val) VALUES (1, 'd1', 1, 10, 1.5, 1.25), (2, 'd1', 3, 30, 3.5, 3.75), (3, 'd1', 2, null, 2.5, null)",
+        "CREATE TABLE derivative_dup(device_id STRING TAG, v DOUBLE FIELD)",
+        "INSERT INTO derivative_dup(time, device_id, v) VALUES (1, 'd1', 1.0), (1, 'd2', 1.0), (2, 'd1', 2.0), (2, 'd2', 2.0), (3, 'd1', 3.0)",
+        "CREATE TABLE derivative_null_ts(device_id STRING TAG, v DOUBLE FIELD, ts TIMESTAMP FIELD)",
+        "INSERT INTO derivative_null_ts(time, device_id, v, ts) VALUES (1, 'd1', 1.0, 2021-01-01T00:00:01), (2, 'd1', 3.0, 2021-01-01T00:00:02), (3, 'd1', 100.0, null), (4, 'd1', 4.0, 2021-01-01T00:00:04)",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
@@ -1563,7 +1575,7 @@ public class IoTDBWindowTVFIT {
   public void testM4DescendingOrderByRejected() {
     tableAssertTestFail(
         "SELECT * FROM M4(DATA => table1 PARTITION BY device_id ORDER BY time DESC, TIMECOL => 'time', SIZE => 10ms)",
-        "701: The ORDER BY clause of the DATA argument must sort the time column in ascending order.",
+        "701: The ORDER BY clause of the DATA argument must be in ascending order.",
         DATABASE_NAME);
   }
 
@@ -1830,6 +1842,344 @@ public class IoTDBWindowTVFIT {
         "SELECT * FROM XCORR(DATA => (select time, device_id, int_val, long_val, float_val from multi_type) PARTITION BY device_id ORDER BY time, TIMECOL => 'time')",
         "701: XCorr requires exactly two calculation columns, but found 3.",
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testSampleFunctionReturnsAllRowsWhenNExceedsPartitionSize() {
+    String[] expectedHeader = new String[] {"device_id", "time", "s1", "s2", "s3"};
+    String[] retArray =
+        new String[] {
+          "device_1,1970-01-01T00:00:00.001Z,15.0,12.0,OK,",
+          "device_1,1970-01-01T00:00:00.003Z,5.0,null,OK,",
+          "device_1,1970-01-01T00:00:00.006Z,30.0,null,WARN,",
+          "device_1,1970-01-01T00:00:00.009Z,10.0,null,OK,",
+          "device_1,1970-01-01T00:00:00.020Z,40.0,35.0,CRIT,",
+          "device_2,1970-01-01T00:00:00.002Z,8.0,8.0,OK,",
+          "device_2,1970-01-01T00:00:00.005Z,25.0,24.0,WARN,",
+          "device_2,1970-01-01T00:00:00.008Z,12.0,13.0,OK,",
+          "device_2,1970-01-01T00:00:00.011Z,18.0,19.0,OK,",
+          "device_2,1970-01-01T00:00:00.015Z,6.0,7.0,WARN,"
+        };
+    // N exceeds the rows of every partition: all rows are returned, partition columns come first
+    // and null values are kept as they are.
+    tableResultSetEqualTest(
+        "SELECT * FROM SAMPLE(DATA => table1 PARTITION BY device_id ORDER BY time, N => 100) "
+            + "ORDER BY device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testSampleFunctionWithoutPartitionBy() {
+    String[] expectedHeader = new String[] {"time", "device_id", "s1"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,device_1,15.0,",
+          "1970-01-01T00:00:00.002Z,device_2,8.0,",
+          "1970-01-01T00:00:00.003Z,device_1,5.0,",
+          "1970-01-01T00:00:00.005Z,device_2,25.0,",
+          "1970-01-01T00:00:00.006Z,device_1,30.0,",
+          "1970-01-01T00:00:00.008Z,device_2,12.0,",
+          "1970-01-01T00:00:00.009Z,device_1,10.0,",
+          "1970-01-01T00:00:00.011Z,device_2,18.0,",
+          "1970-01-01T00:00:00.015Z,device_2,6.0,",
+          "1970-01-01T00:00:00.020Z,device_1,40.0,"
+        };
+    // Without PARTITION BY the whole table is a single partition, no extra column is produced and
+    // the input order of the columns is preserved.
+    tableResultSetEqualTest(
+        "SELECT * FROM SAMPLE(DATA => (SELECT time, device_id, s1 FROM table1) ORDER BY time, "
+            + "N => 100) ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testSampleFunctionWithMultiplePartitionColumns() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "time", "s1"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,1970-01-01T00:00:00.001Z,10.0,",
+          "F1,device_1,1970-01-01T00:00:00.005Z,15.0,",
+          "F1,device_1,1970-01-01T00:00:00.009Z,5.0,",
+          "F1,device_2,1970-01-01T00:00:00.002Z,20.0,",
+          "F1,device_2,1970-01-01T00:00:00.011Z,25.0,",
+          "F2,device_1,1970-01-01T00:00:00.003Z,30.0,"
+        };
+    // The output columns follow the order of PARTITION BY, not the original column order.
+    tableResultSetEqualTest(
+        "SELECT * FROM SAMPLE(DATA => table5 PARTITION BY (factory_id, device_id) ORDER BY time, "
+            + "N => 100) ORDER BY factory_id, device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testSampleFunctionKeepsAllColumnTypes() {
+    String[] expectedHeader =
+        new String[] {
+          "device_id",
+          "time",
+          "int_val",
+          "long_val",
+          "float_val",
+          "double_val",
+          "bool_val",
+          "str_val",
+          "blob_val",
+          "ts_val",
+          "date_val"
+        };
+    String[] retArray =
+        new String[] {
+          "device1,2021-01-01T09:00:00.000Z,1,null,1.0,null,null,1,null,2021-01-01T09:00:00.000Z,null,",
+          "device1,2021-01-01T09:01:00.000Z,2,2,2.0,2.0,true,1,0x01,2021-01-01T09:00:00.000Z,2021-01-01,",
+          "device1,2021-01-01T09:02:00.000Z,3,3,3.0,3.0,null,2,0x02,2021-01-01T10:00:00.000Z,2021-01-02,",
+          "device1,2021-01-01T09:03:00.000Z,null,null,null,null,false,null,null,null,null,",
+          "device1,2021-01-01T09:04:00.000Z,null,null,null,null,null,null,null,null,null,",
+          "device1,2021-01-01T09:05:00.000Z,3,3,3.0,3.0,false,2,0x02,2021-01-01T10:00:00.000Z,2021-01-02,"
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM SAMPLE(DATA => multi_type PARTITION BY device_id ORDER BY time, N => 100) "
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testSampleFunctionWhenNLessThanPartitionSize() {
+    String[] expectedHeader = new String[] {"device_id", "time", "s1", "s2", "s3"};
+    Set<String> validRows =
+        new HashSet<>(
+            Arrays.asList(
+                "device_1,1970-01-01T00:00:00.001Z,15.0,12.0,OK",
+                "device_1,1970-01-01T00:00:00.003Z,5.0,null,OK",
+                "device_1,1970-01-01T00:00:00.006Z,30.0,null,WARN",
+                "device_1,1970-01-01T00:00:00.009Z,10.0,null,OK",
+                "device_1,1970-01-01T00:00:00.020Z,40.0,35.0,CRIT"));
+
+    List<List<String[]>> rowsPerNode =
+        queryRowsPerNode(
+            "SELECT * FROM SAMPLE(DATA => (SELECT time, device_id, s1, s2, s3 FROM table1 "
+                + "WHERE device_id = 'device_1') PARTITION BY device_id ORDER BY time, N => 2)",
+            expectedHeader);
+
+    // Each node may sample different rows. Check the row count, row integrity and relative order
+    // independently for every node instead of requiring identical samples across nodes.
+    assertTrue("no node results", !rowsPerNode.isEmpty());
+    for (List<String[]> rows : rowsPerNode) {
+      assertEquals(2, rows.size());
+      Set<String> sampledTimes = new HashSet<>();
+      Instant previousTime = null;
+      for (String[] row : rows) {
+        String joinedRow = String.join(",", row);
+        assertTrue("unexpected sampled row: " + joinedRow, validRows.contains(joinedRow));
+        assertTrue("duplicate sampled row: " + row[1], sampledTimes.add(row[1]));
+        Instant time = Instant.parse(row[1]);
+        if (previousTime != null) {
+          assertTrue("sampled rows are not in input order", previousTime.isBefore(time));
+        }
+        previousTime = time;
+      }
+    }
+  }
+
+  @Test
+  public void testSampleFunctionOnEmptyTable() {
+    tableResultSetEqualTest(
+        "SELECT * FROM SAMPLE(DATA => sample_empty PARTITION BY device_id ORDER BY time, N => 10)",
+        new String[] {"device_id", "time", "v"},
+        new String[] {},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testSampleFunctionInvalidArguments() {
+    tableAssertTestFail(
+        "SELECT * FROM SAMPLE(DATA => table1 PARTITION BY device_id ORDER BY time, N => 0)",
+        "N must be a positive integer.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM SAMPLE(DATA => table1 PARTITION BY device_id ORDER BY time, N => -1)",
+        "N must be a positive integer.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM SAMPLE(DATA => table1 PARTITION BY device_id ORDER BY time, N => 1.5)",
+        "Expected type INT32",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM SAMPLE(DATA => table1 PARTITION BY device_id ORDER BY time, N => null)",
+        "The parameter N cannot be actively filled with null.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM SAMPLE(DATA => table1 PARTITION BY device_id ORDER BY time)",
+        "Missing required argument: N",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDerivativeFunctionWithUnit() {
+    String[] expectedHeader =
+        new String[] {"stock_id", "time", "derivative(price)", "derivative(s1)"};
+    String[] retArray =
+        new String[] {
+          "AAPL,2021-01-01T09:07:00.000Z,3.0,0.0,",
+          "AAPL,2021-01-01T09:09:00.000Z,-1.0,0.0,",
+          "TESL,2021-01-01T09:07:00.000Z,4.0,200.0,",
+          "TESL,2021-01-01T09:15:00.000Z,-1.75,32.5,"
+        };
+    // unit => 2m normalizes the change to (v2 - v1) / (delta time / 2 minutes), and the output
+    // time of a row is the time of the second point of the pair.
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM DERIVATIVE(DATA => bid PARTITION BY stock_id ORDER BY time, unit => 2m) "
+            + "ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDerivativeFunctionWithTwoTagPartitions() {
+    String[] expectedHeader = new String[] {"factory_id", "device_id", "time", "derivative(s1)"};
+    String[] retArray =
+        new String[] {
+          "F1,device_1,1970-01-01T00:00:00.005Z,1.25,",
+          "F1,device_1,1970-01-01T00:00:00.009Z,-2.5,",
+          "F1,device_2,1970-01-01T00:00:00.011Z,0.5555555555555556,"
+        };
+    // Two partition columns isolate the series of every (factory, device) pair, and unit 1ms
+    // normalizes the change to the change per millisecond.
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM DERIVATIVE(DATA => table5 PARTITION BY (factory_id, device_id) "
+            + "ORDER BY time, unit => 1ms) ORDER BY factory_id, device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDerivativeFunctionWithAllNumericTypes() {
+    String[] expectedHeader =
+        new String[] {
+          "device_id",
+          "time",
+          "derivative(int_val)",
+          "derivative(long_val)",
+          "derivative(float_val)",
+          "derivative(double_val)"
+        };
+    String[] retArray =
+        new String[] {
+          "d1,1970-01-01T00:00:00.002Z,2000.0,20000.0,2000.0,2500.0,",
+          "d1,1970-01-01T00:00:00.003Z,-1000.0,null,-1000.0,null,"
+        };
+    // int32/int64/float/double columns all take part in the calculation, and a null on either side
+    // only nulls that column of the pair.
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM DERIVATIVE(DATA => derivative_types PARTITION BY device_id ORDER BY time) "
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDerivativeFunctionWhenTimestampIsDuplicated() {
+    String[] expectedHeader = new String[] {"time", "derivative(v)"};
+    String[] retArray =
+        new String[] {"1970-01-01T00:00:00.002Z,1000.0,", "1970-01-01T00:00:00.003Z,1000.0,"};
+    // Without PARTITION BY, d1 and d2 rows with the same timestamp are adjacent after sorting. The
+    // later row overwrites the earlier one, so the pair produces no output and the time never goes
+    // backwards.
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, v FROM derivative_dup) ORDER BY time) "
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDerivativeFunctionDropsNullTimestamp() {
+    String[] expectedHeader = new String[] {"device_id", "ts", "derivative(v)"};
+    String[] retArray =
+        new String[] {"d1,2021-01-01T00:00:02.000Z,2.0,", "d1,2021-01-01T00:00:04.000Z,0.5,"};
+    // The ORDER BY column does not have to be the time column of the table: here it is the
+    // nullable ts field, and the row whose ts is null is dropped before pairing.
+    tableResultSetEqualWithTolerance(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT device_id, v, ts FROM derivative_null_ts) "
+            + "PARTITION BY device_id ORDER BY ts) ORDER BY ts",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDerivativeFunctionInvalidArguments() {
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, v FROM derivative_dup))",
+        "Table argument with set semantics requires an ORDER BY clause.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, v FROM derivative_dup) ORDER BY (time, v))",
+        "The ORDER BY clause of the DATA argument must contain exactly one TIMESTAMP column.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, v FROM derivative_dup) ORDER BY v)",
+        "The type of the column [v] is not as expected.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, v FROM derivative_dup) ORDER BY time DESC)",
+        "The ORDER BY clause of the DATA argument must be in ascending order.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time FROM derivative_dup) ORDER BY time)",
+        "No columns could be calculated.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => (SELECT time, device_id, v FROM derivative_dup) "
+            + "ORDER BY time)",
+        "Only column with double, float, int32, int64 can be calculated by the function, device_id is the STRING.",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM DERIVATIVE(DATA => bid PARTITION BY stock_id ORDER BY time, unit => 0)",
+        "should be a positive duration of at least 1",
+        DATABASE_NAME);
+  }
+
+  private static List<List<String[]>> queryRowsPerNode(String sql, String[] expectedHeader) {
+    List<List<String[]>> rowsPerNode = new ArrayList<>();
+    try (Connection connection = EnvFactory.getEnv().getTableConnection()) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("USE " + DATABASE_NAME);
+        try (ResultSet clusterResultSet = statement.executeQuery(sql)) {
+          for (ResultSet resultSet : ClusterTestResultSet.getNodeResultSets(clusterResultSet)) {
+            List<String[]> rows = new ArrayList<>();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            assertEquals(expectedHeader.length, metaData.getColumnCount());
+            for (int i = 1; i <= metaData.getColumnCount(); i++) {
+              assertEquals(expectedHeader[i - 1], metaData.getColumnName(i));
+            }
+            while (resultSet.next()) {
+              String[] row = new String[expectedHeader.length];
+              for (int i = 1; i <= expectedHeader.length; i++) {
+                row[i - 1] = resultSet.getString(i);
+              }
+              rows.add(row);
+            }
+            rowsPerNode.add(rows);
+          }
+        }
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+    return rowsPerNode;
   }
 
   private static void assertTimeWindowOrdering(

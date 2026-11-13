@@ -214,6 +214,9 @@ public final class CommonMessages {
   public static final String EXCEPTION_NO_COMPARABLE_COLUMNS_FOUND_FOR_M4_CALCULATION_4E5A3092 = "未找到可用于 M4 计算的可比较列。";
   public static final String EXCEPTION_INVALID_SCALAR_ARGUMENT_SLIDE_SHOULD_BE_A_POSITIVE_VALUE_F019E091 = "无效的标量参数 SLIDE，应为正数";
   public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_THE_TIME_COLUMN_SPECIFIED_BY_THE_TIMECOL_ARGUMENT_4375BAE9 = "DATA 参数的 ORDER BY 子句必须仅包含 TIMECOL 参数指定的时间列。";
+  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_CONTAIN_EXACTLY_ONE_TIMESTAMP_COLUMN_6B40C59B = "DATA 参数的 ORDER BY 子句必须仅包含一个 TIMESTAMP 列。";
+  public static final String EXCEPTION_THE_TIME_COLUMN_OF_THE_DATA_ARGUMENT_MUST_BE_MONOTONICALLY_INCREASING_WITHIN_EACH_PARTITION_68B8C2B7 = "DATA 参数的时间列在每个分区内必须单调递增。";
+  public static final String EXCEPTION_DERIVATIVE_FUNCTION_UNIT_SHOULD_BE_A_POSITIVE_DURATION_OF_AT_LEAST_ONE_43D975B7 = "应为正的时间长度，且至少为 1 %s";
   public static final String EXCEPTION_UNSUPPORTED_M4_VALUE_TYPE_AF0EF286 = "不支持的 M4 值类型：";
   public static final String EXCEPTION_DISK_SPACE_WARNING_THRESHOLD_MUST_BE_IN_0_1_BUT_WAS_7B345766 = "disk_space_warning_threshold 必须在 [0, 1) 范围内，但实际为 ";
   public static final String
@@ -225,6 +228,7 @@ public final class CommonMessages {
       LOG_USER_DATA_TRANSFER_ATTEMPT_TIME_ARG_INITIATOR_ARG_SOURCE_ARG_TARGET_ARG_PROTECTION_METHOD_ARG_RESULT_ARG_ERROR_ARG_D3E9A1DF =
           "用户数据传送尝试：时间=%d，发起者=%s，源端=%s，目标端=%s，保护方法=%s，结果=%s，错误=%s";
   public static final String EXCEPTION_FILTER_FUNCTION_WPASS_VALIDATION = "wpass的取值范围应该位于(0, 1)";
+  public static final String EXCEPTION_SAMPLE_FUNCTION_N_VALIDATION = "N 要求是正整数";
   public static final String EXCEPTION_NO_CALCULATE_COLUMNS = "没有找到可以计算的列.";
   public static final String EXCEPTION_NOT_ALLOWED_COLUMNS = "只允许列类型为double, float, int32, int64参与函数计算, 当前列 %s 类型是 %s.";
   public static final String EXCEPTION_FILTER_FUNCTION_ROW_INDEX_EXCEED_MAXIMUM = "分区行数超过了最大限制";

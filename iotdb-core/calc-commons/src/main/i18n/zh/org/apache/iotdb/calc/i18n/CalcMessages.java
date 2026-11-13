@@ -558,6 +558,12 @@ public final class CalcMessages {
   public static final String
       EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
           "聚合函数 [%s] 需要 %d 个参数，但实际传入 %d 个";
+  public static final String
+      EXCEPTION_THE_TIME_UNIT_ARGUMENT_OF_AGGREGATE_FUNCTION_ARG_IS_INVALID_89D17438 =
+          "聚合函数 [%s] 的时间单位参数无效：%s";
+  public static final String
+      EXCEPTION_AGGREGATE_FUNCTION_ARG_VALUE_EXCEEDS_THE_FINITE_RANGE_OF_DOUBLE_48936427 =
+          "聚合函数 [%s] 的值超出了 double 的有限范围：%s";
 
   public static final String EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_ARG_AFE3789A = "不支持的目标数据类型：%s";
 

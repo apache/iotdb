@@ -572,7 +572,6 @@ public final class QueryMessages {
   public static final String EXCEPTION_INVALID_ARGUMENT_ARG_EXPECTED_SCALAR_ARGUMENT_4AD4E32F = "无效的参数 %s。期望标量参数";
   public static final String EXCEPTION_THE_SLIDE_ARGUMENT_MUST_HAVE_THE_SAME_WINDOW_MODE_AS_THE_SIZE_ARGUMENT_419C9844 = "SLIDE 参数必须与 SIZE 参数具有相同的窗口模式。";
   public static final String EXCEPTION_THE_ORIGIN_ARGUMENT_IS_ONLY_SUPPORTED_IN_TIME_WINDOW_MODE_B3F358B9 = "ORIGIN 参数仅在时间窗口模式下受支持。";
-  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_SORT_THE_TIME_COLUMN_IN_ASCENDING_ORDER_C3FD0F6A = "DATA 参数的 ORDER BY 子句必须按时间列升序排序。";
   public static final String EXCEPTION_ARGUMENTS_SHOULD_NEVER_BE_EMPTY_WHEN_RESOLVING_M4_MODE_F982EA1C = "解析 M4 模式时参数不应为空";
   public static final String EXCEPTION_MISSING_REQUIRED_ARGUMENT_ARG_1308D0DC = "缺少必要参数：%s";
   public static final String EXCEPTION_UNKNOWN_ARGUMENT_ARG_F40E9394 = "未知参数：%s";
@@ -605,8 +604,6 @@ public final class QueryMessages {
   public static final String FFT_SAMPLE_INTERVAL_MUST_BE_DURATION_LITERAL =
       "FFT 的 SAMPLE_INTERVAL 参数必须是 duration 字面量。";
   public static final String FFT_N_MUST_BE_POSITIVE_INTEGER = "FFT 的 N 参数必须是正整数。";
-  public static final String FFT_ORDER_BY_MUST_SORT_ASCENDING =
-      "DATA 参数的 ORDER BY 子句必须按时间列升序排序。";
   public static final String EXCEPTION_FFT_LENGTH_MUST_BE_A_POSITIVE_INT_SIZED_VALUE_A000D3BB =
       "FFT 长度必须是正数且不能超过 int 范围。";
   public static final String

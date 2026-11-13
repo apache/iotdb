@@ -2197,6 +2197,10 @@ public final class DataNodeQueryMessages {
       "Second argument of Aggregate functions [%s] should be orderable";
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_OR_THREE_ARGUMENTS =
       "Aggregate functions [%s] should only have two or three arguments";
+  public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_TWO_OR_THREE_ARGUMENTS_C1ADA261 =
+      "Aggregate functions [%s] should only have one, two or three arguments";
+  public static final String SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_STRING_DDAEF6E8 =
+      "Second argument of Aggregate functions [%s] should be a positive duration string (e.g. '1s', '1m', '1h')";
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_ARGUMENTS =
       "Aggregate functions [%s] should only have two arguments";
   public static final String SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_NUMBERIC_TYPE_AND_DO_NOT_USE =
@@ -2420,6 +2424,12 @@ public final class DataNodeQueryMessages {
       "Invalid argument %s. Partitioning can not be specified for table argument with row semantics";
   public static final String INVALID_ARGUMENT_S_ORDERING_CAN_NOT_BE_SPECIFIED_FOR_TABLE_ARGUMENT_WITH_ROW_SEMANTICS =
       "Invalid argument %s. Ordering can not be specified for table argument with row semantics";
+  public static final String
+      EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_ASCENDING_ORDER_5E26E74A =
+          "The ORDER BY clause of the %s argument must be in ascending order.";
+  public static final String
+      EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_DESCENDING_ORDER_C2B688D7 =
+          "The ORDER BY clause of the %s argument must be in descending order.";
   public static final String INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S =
       "Invalid scalar argument '%s'. Expected type %s, got %s";
   public static final String INVALID_SCALAR_ARGUMENT_S_S =
@@ -4966,4 +4976,7 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s: %s ms, %s invocations, %s applications";
+
+  public static final String INVALID_SCALAR_ARGUMENT_S_VALUE_OUT_OF_RANGE_FOR_INT32_A865664C =
+      "Invalid scalar argument '%s'. Value out of range for INT32";
 }
