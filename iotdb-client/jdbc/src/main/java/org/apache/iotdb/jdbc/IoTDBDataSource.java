@@ -28,6 +28,7 @@ import javax.sql.DataSource;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
 
 public class IoTDBDataSource implements DataSource {
@@ -37,9 +38,9 @@ public class IoTDBDataSource implements DataSource {
   private String url;
   private String user;
   private String password;
-  private static final String PWD_STR = "password";
   private Properties properties;
-  private Integer port = 6667;
+  private Integer port = Config.IOTDB_DEFAULT_PORT;
+  private int loginTimeout;
 
   public IoTDBDataSource() {
     properties = new Properties();
@@ -48,11 +49,9 @@ public class IoTDBDataSource implements DataSource {
   public IoTDBDataSource(String url, String user, String password, Integer port) {
     this.url = url;
     this.properties = new Properties();
-    properties.setProperty("user", user);
-    properties.setProperty(PWD_STR, password);
-    if (port != 0) {
-      this.port = port;
-    }
+    setUser(user);
+    setPassword(password);
+    setPort(port);
   }
 
   public String getUser() {
@@ -61,7 +60,7 @@ public class IoTDBDataSource implements DataSource {
 
   public void setUser(String user) {
     this.user = user;
-    properties.setProperty("user", user);
+    setProperty(Config.AUTH_USER, user);
   }
 
   public String getPassword() {
@@ -70,7 +69,7 @@ public class IoTDBDataSource implements DataSource {
 
   public void setPassword(String password) {
     this.password = password;
-    properties.setProperty(PWD_STR, password);
+    setProperty(Config.AUTH_PASSWORD, password);
   }
 
   public Integer getPort() {
@@ -78,7 +77,7 @@ public class IoTDBDataSource implements DataSource {
   }
 
   public void setPort(Integer port) {
-    this.port = port;
+    this.port = port == null || port == 0 ? Config.IOTDB_DEFAULT_PORT : port;
   }
 
   public String getUrl() {
@@ -91,25 +90,15 @@ public class IoTDBDataSource implements DataSource {
 
   @Override
   public Connection getConnection() throws SQLException {
-    try {
-      return new IoTDBConnection(url, properties);
-    } catch (TTransportException e) {
-      LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
-    }
-    return null;
+    return createConnection((Properties) properties.clone());
   }
 
   @Override
-  public Connection getConnection(String username, String password) {
-    try {
-      Properties newProp = new Properties();
-      newProp.setProperty("user", username);
-      newProp.setProperty(PWD_STR, password);
-      return new IoTDBConnection(url, newProp);
-    } catch (Exception e) {
-      LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
-    }
-    return null;
+  public Connection getConnection(String username, String password) throws SQLException {
+    Properties newProp = (Properties) properties.clone();
+    setProperty(newProp, Config.AUTH_USER, username);
+    setProperty(newProp, Config.AUTH_PASSWORD, password);
+    return createConnection(newProp);
   }
 
   @Override
@@ -123,27 +112,56 @@ public class IoTDBDataSource implements DataSource {
   }
 
   @Override
-  public void setLoginTimeout(int i) {
-    // Do nothing
+  public void setLoginTimeout(int seconds) throws SQLException {
+    if (seconds < 0) {
+      throw new SQLException(JdbcMessages.EXCEPTION_LOGINTIMEOUT_MUST_BE_0_A213D684);
+    }
+    loginTimeout = seconds;
   }
 
   @Override
   public int getLoginTimeout() {
-    return 0;
+    return loginTimeout;
   }
 
   @Override
-  public java.util.logging.Logger getParentLogger() {
-    return null;
+  public java.util.logging.Logger getParentLogger() throws SQLFeatureNotSupportedException {
+    throw new SQLFeatureNotSupportedException(JdbcMessages.METHOD_NOT_SUPPORTED);
   }
 
   @Override
-  public <T> T unwrap(Class<T> aClass) {
-    return null;
+  public <T> T unwrap(Class<T> aClass) throws SQLException {
+    return JdbcWrapperUtils.unwrap(this, aClass);
   }
 
   @Override
   public boolean isWrapperFor(Class<?> aClass) {
-    return false;
+    return JdbcWrapperUtils.isWrapperFor(this, aClass);
+  }
+
+  private Connection createConnection(Properties connectionProperties) throws SQLException {
+    try {
+      int loginTimeoutInMs = (int) Math.min((long) loginTimeout * 1000, Integer.MAX_VALUE);
+      return new IoTDBConnection(url, connectionProperties, loginTimeoutInMs);
+    } catch (TTransportException e) {
+      LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
+      throw new SQLException(
+          JdbcMessages
+                  .EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_NETWORK_AVAILABLE_SERVER_CA72E0D6
+              + JdbcMessages.EXCEPTION_HAS_STARTED_BD7BC366,
+          e);
+    }
+  }
+
+  private void setProperty(String key, String value) {
+    setProperty(properties, key, value);
+  }
+
+  private static void setProperty(Properties properties, String key, String value) {
+    if (value == null) {
+      properties.remove(key);
+    } else {
+      properties.setProperty(key, value);
+    }
   }
 }

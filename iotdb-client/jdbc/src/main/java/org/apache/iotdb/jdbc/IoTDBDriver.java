@@ -56,7 +56,7 @@ public class IoTDBDriver implements Driver {
 
   @Override
   public boolean acceptsURL(String url) {
-    return Pattern.matches(TSFILE_URL_PREFIX, url);
+    return url != null && Pattern.matches(TSFILE_URL_PREFIX, url);
   }
 
   @Override
