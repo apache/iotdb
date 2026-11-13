@@ -49,6 +49,7 @@ public class Utils {
    * jdbc:iotdb://localhost:6667/.
    */
   static IoTDBConnectionParams parseUrl(String url, Properties info) throws IoTDBURLException {
+    Properties properties = info == null ? new Properties() : info;
     IoTDBConnectionParams params = new IoTDBConnectionParams(url);
     if (url.trim().equalsIgnoreCase(Config.IOTDB_URL_PREFIX)) {
       return params;
@@ -109,7 +110,7 @@ public class Utils {
           }
 
           matcher = SUFFIX_URL_PATTERN.matcher(suffixURL);
-          if (matcher.matches() && parseUrlParam(subURL, info)) {
+          if (matcher.matches() && parseUrlParam(subURL, properties)) {
             isUrlLegal = true;
           }
         }
@@ -122,41 +123,42 @@ public class Utils {
               + url);
     }
 
-    if (info.containsKey(Config.AUTH_USER)) {
-      params.setUsername(info.getProperty(Config.AUTH_USER));
+    if (properties.containsKey(Config.AUTH_USER)) {
+      params.setUsername(properties.getProperty(Config.AUTH_USER));
     }
-    if (info.containsKey(Config.AUTH_PASSWORD)) {
-      params.setPassword(info.getProperty(Config.AUTH_PASSWORD));
+    if (properties.containsKey(Config.AUTH_PASSWORD)) {
+      params.setPassword(properties.getProperty(Config.AUTH_PASSWORD));
     }
-    if (info.containsKey(Config.DEFAULT_BUFFER_CAPACITY)) {
+    if (properties.containsKey(Config.DEFAULT_BUFFER_CAPACITY)) {
       params.setThriftDefaultBufferSize(
-          Integer.parseInt(info.getProperty(Config.DEFAULT_BUFFER_CAPACITY)));
+          Integer.parseInt(properties.getProperty(Config.DEFAULT_BUFFER_CAPACITY)));
     }
-    if (info.containsKey(Config.THRIFT_FRAME_MAX_SIZE)) {
+    if (properties.containsKey(Config.THRIFT_FRAME_MAX_SIZE)) {
       params.setThriftMaxFrameSize(
-          Integer.parseInt(info.getProperty(Config.THRIFT_FRAME_MAX_SIZE)));
+          Integer.parseInt(properties.getProperty(Config.THRIFT_FRAME_MAX_SIZE)));
     }
-    if (info.containsKey(Config.VERSION)) {
-      params.setVersion(Constant.Version.valueOf(info.getProperty(Config.VERSION)));
+    if (properties.containsKey(Config.VERSION)) {
+      params.setVersion(Constant.Version.valueOf(properties.getProperty(Config.VERSION)));
     }
-    if (info.containsKey(Config.NETWORK_TIMEOUT)) {
-      params.setNetworkTimeout(Integer.parseInt(info.getProperty(Config.NETWORK_TIMEOUT)));
+    if (properties.containsKey(Config.NETWORK_TIMEOUT)) {
+      params.setNetworkTimeout(Integer.parseInt(properties.getProperty(Config.NETWORK_TIMEOUT)));
     }
-    if (info.containsKey(Config.TIME_ZONE)) {
-      params.setTimeZone(info.getProperty(Config.TIME_ZONE));
+    if (properties.containsKey(Config.TIME_ZONE)) {
+      params.setTimeZone(properties.getProperty(Config.TIME_ZONE));
     }
-    if (info.containsKey(Config.CHARSET)) {
-      params.setCharset(info.getProperty(Config.CHARSET));
+    if (properties.containsKey(Config.CHARSET)) {
+      params.setCharset(properties.getProperty(Config.CHARSET));
     }
-    if (info.containsKey(Config.USE_SSL)) {
-      params.setUseSSL(Boolean.parseBoolean(info.getProperty(Config.USE_SSL)));
+    if (properties.containsKey(Config.USE_SSL)) {
+      params.setUseSSL(Boolean.parseBoolean(properties.getProperty(Config.USE_SSL)));
     }
-    if (info.containsKey(Config.TRUST_STORE)) {
-      params.setTrustStore(info.getProperty(Config.TRUST_STORE));
+    if (properties.containsKey(Config.TRUST_STORE)) {
+      params.setTrustStore(properties.getProperty(Config.TRUST_STORE));
     }
-    if (info.containsKey(Config.TRUST_STORE_PWD)) {
-      params.setTrustStorePwd(info.getProperty(Config.TRUST_STORE_PWD));
+    if (properties.containsKey(Config.TRUST_STORE_PWD)) {
+      params.setTrustStorePwd(properties.getProperty(Config.TRUST_STORE_PWD));
     }
+<<<<<<< HEAD
     if (info.containsKey(Config.KEY_STORE)) {
       params.setKeyStore(info.getProperty(Config.KEY_STORE));
     }
@@ -168,6 +170,10 @@ public class Utils {
     }
     if (info.containsKey(Config.SQL_DIALECT)) {
       params.setSqlDialect(info.getProperty(Config.SQL_DIALECT));
+=======
+    if (properties.containsKey(Config.SQL_DIALECT)) {
+      params.setSqlDialect(properties.getProperty(Config.SQL_DIALECT));
+>>>>>>> 7e01b4e50c4 (Fix JDBC URL parsing defaults)
     }
 
     return params;
