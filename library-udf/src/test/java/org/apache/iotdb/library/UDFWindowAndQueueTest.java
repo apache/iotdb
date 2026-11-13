@@ -2421,6 +2421,58 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testSplinePreservesDenseTimestampClustersAcrossWideRange() throws Exception {
+    long span = 1L << 60;
+    for (long[] times :
+        new long[][] {{0, 1, 2, 3, 4, span}, {-span, -4, -3, -2, -1, 0}, {-span, -1, 0, 1, span}}) {
+      UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("points", "5"));
+      UDTFSpline spline = new UDTFSpline();
+      RecordingPointCollector collector = new RecordingPointCollector();
+      spline.validate(new UDFParameterValidator(parameters));
+      spline.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+      for (long time : times) {
+        spline.transform(new DoubleRow(time, Math.scalb((double) time, -60)), collector);
+      }
+      spline.terminate(collector);
+
+      long first = times[0];
+      long last = times[times.length - 1];
+      long step = (last - first) / 4;
+      double firstValue = Math.scalb((double) first, -60);
+      double valueStep = Math.scalb((double) step, -60);
+      Assert.assertEquals(
+          Arrays.asList(first, first + step, first + 2 * step, first + 3 * step, last),
+          collector.timestamps);
+      Assert.assertEquals(
+          Arrays.asList(
+              firstValue,
+              firstValue + valueStep,
+              firstValue + 2 * valueStep,
+              firstValue + 3 * valueStep,
+              Math.scalb((double) last, -60)),
+          collector.values);
+    }
+  }
+
+  @Test
+  public void testSplineRetainsAkimaWeightsAndEndpointDerivatives() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("points", "9"));
+    UDTFSpline spline = new UDTFSpline();
+    RecordingPointCollector collector = new RecordingPointCollector();
+    spline.validate(new UDFParameterValidator(parameters));
+    spline.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    double[] values = {0, 1, 1, 2, 6};
+    for (int i = 0; i < values.length; i++) {
+      spline.transform(new DoubleRow(2L * i, values[i]), collector);
+    }
+    spline.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L), collector.timestamps);
+    Assert.assertEquals(
+        Arrays.asList(0.0, 0.625, 1.0, 1.03125, 1.0, 1.21875, 2.0, 3.625, 6.0), collector.values);
+  }
+
+  @Test
   public void testSplineEvaluatesAtRoundedOutputTimestamps() throws Exception {
     UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("points", "4"));
     UDTFSpline spline = new UDTFSpline();
