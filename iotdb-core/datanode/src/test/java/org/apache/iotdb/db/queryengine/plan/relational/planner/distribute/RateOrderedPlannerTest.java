@@ -65,10 +65,22 @@ public class RateOrderedPlannerTest {
   }
 
   @Test
-  public void testDescendingSubqueryKeepsNaiveInput() {
+  public void testDescendingSubqueryWithTwoDevicesKeepsNaiveInput() {
+    // With two devices the TopK above the descending scan cannot be eliminated, so this covers
+    // rejection of an intermediate node that does not preserve the scan order.
     assertNotOrdered(
         "SELECT irate(s1, time) AS ir FROM (SELECT s1, time FROM table1"
             + TWO_DEVICE_WHERE
+            + " ORDER BY time DESC LIMIT 10)");
+  }
+
+  @Test
+  public void testDescendingSingleDeviceScanKeepsNaiveInput() {
+    // The limit of a single-device scan is pushed into the scan, so the plan is
+    // Aggregation <- DeviceTableScan(DESC) and the descending scan-order check is exercised.
+    assertNotOrdered(
+        "SELECT irate(s1, time) AS ir FROM (SELECT s1, time FROM table1"
+            + SINGLE_DEVICE_WHERE
             + " ORDER BY time DESC LIMIT 10)");
   }
 
