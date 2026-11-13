@@ -29,6 +29,10 @@
     <artifactId>iotdb-thrift-consensus</artifactId>
     <name>IoTDB: Protocol: Thrift Consensus</name>
     <description>RPC modules for consensus</description>
+    <properties>
+        <thrift.source>iotconsensus.thrift</thrift.source>
+        <thrift.skip.python>true</thrift.skip.python>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -48,18 +52,20 @@
         <plugins>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
+                <artifactId>exec-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>add-source</id>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
+                        <id>generate-iotconsensusv2-java</id>
                         <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
                         <configuration>
-                            <sources>
-                                <source>${project.build.directory}/generated-sources/thrift</source>
-                            </sources>
+                            <arguments combine.children="append">
+                                <argument>--gen</argument>
+                                <argument>java:generated_annotations=suppress</argument>
+                                <argument>${project.basedir}/src/main/thrift/iotconsensusv2.thrift</argument>
+                            </arguments>
                         </configuration>
                     </execution>
                 </executions>
