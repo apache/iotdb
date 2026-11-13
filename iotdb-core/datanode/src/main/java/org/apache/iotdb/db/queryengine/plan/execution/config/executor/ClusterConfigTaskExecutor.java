@@ -5508,6 +5508,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else if (tsStatus.getCode() == TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()
+          || tsStatus.getCode() == TSStatusCode.MEASUREMENT_NAME_CONFLICT.getStatusCode()) {
+        // Expected user failures: return the status instead of throwing, otherwise
+        // ConfigExecution logs it with a full stack trace.
+        LOGGER.info(
+            DataNodeQueryMessages
+                .LOG_FAILED_TO_CREATE_THE_TREE_TO_TABLE_VIEW_ARG_ARG_WITH_STATUS_CODE_ARG_ARG_0A3C8F10,
+            database,
+            table.getTableName(),
+            tsStatus.getCode(),
+            tsStatus.getMessage());
+        future.set(new ConfigTaskResult(tsStatus));
       } else {
         future.setException(
             new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
