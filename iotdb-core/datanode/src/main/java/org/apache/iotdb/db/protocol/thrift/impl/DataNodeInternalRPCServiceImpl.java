@@ -85,6 +85,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.partition.DataPartitionTableGenerator;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -1526,12 +1527,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     SESSION_MANAGER.registerSession(session);
 
-    SESSION_MANAGER.supplySession(
-        session, req.getUsername(), ZoneId.of(req.getZoneId()), ClientVersion.V_1_0);
-
     String executedSQL = req.queryBody;
 
     try {
+      SESSION_MANAGER.supplySession(
+          session, req.getUsername(), ZoneId.of(req.getZoneId()), ClientVersion.V_1_0);
+
       QueryStatement s =
           (QueryStatement) StatementGenerator.createStatement(req.queryBody, session.getZoneId());
       if (s == null) {
@@ -1562,6 +1563,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         s.getGroupByTimeComponent().setLeftCRightO(true);
       }
       executedSQL = String.join(" ", s.constructFormattedSQL().split("\n")).replaceAll(" +", " ");
+
+      // Refresh the owner's READ_DATA scope for each CQ execution.
+      TSStatus status = AuthorityChecker.checkAuthority(s, session);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            DataNodeQueryMessages.LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F,
+            req.getCqId(),
+            req.getUsername(),
+            status);
+        return status;
+      }
 
       long queryId =
           SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));

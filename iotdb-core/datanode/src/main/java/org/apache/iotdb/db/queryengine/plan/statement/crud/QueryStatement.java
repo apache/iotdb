@@ -225,7 +225,7 @@ public class QueryStatement extends AuthorityInformationStatement {
             AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal());
       }
     } catch (AuthException e) {
-      return new TSStatus(e.getCode().getStatusCode());
+      return new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage());
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
