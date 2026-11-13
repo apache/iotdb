@@ -36,6 +36,7 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
@@ -347,6 +348,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
     // consensus layer.
     if (statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()
         && !planNode.isGeneratedByPipe()) {
+      if (planNode instanceof LoadTsFileConsensusNode
+          && ((LoadTsFileConsensusNode) planNode).isGeneratedByRemoteConsensusLeader()) {
+        return false;
+      }
       return true;
     }
     return statusCode == TSStatusCode.METADATA_LEASE_FENCED_RETRY_REQUIRED.getStatusCode()

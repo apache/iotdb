@@ -89,35 +89,106 @@ public final class LoadTsFileSnapshot {
   // Snapshot Entrypoint
   // -------------------------------------------------------------------------
 
-  /** Captures an atomic snapshot of active staged tasks under the DataRegion. */
+  /** Captures the LOAD state when no data-file snapshot boundary needs to be supplied. */
   public static boolean snapshot(final DataRegion dataRegion, final File snapshotDir) {
+    return snapshot(dataRegion, snapshotDir, null);
+  }
+
+  /**
+   * Selects terminal records before the data-file snapshot captures its resource lists. A COMMIT
+   * published afterwards may describe data absent from those lists, so replay must not be fenced by
+   * that decision. Records are immutable and can be copied after the data files.
+   */
+  public static Map<String, File> captureTerminalHistory(final DataRegion dataRegion)
+      throws IOException {
+    Objects.requireNonNull(
+        dataRegion, StorageEngineMessages.EXCEPTION_DATAREGION_CANNOT_BE_NULL_0B936879);
+    final Map<String, File> result = new HashMap<>();
+    if (isSupportedProtocol()) {
+      // A restarted region need not have initialized its lazy LOAD manager yet.
+      for (final File historyDir :
+          LoadTsFileManager.getTerminalHistoryDirs(
+              dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString())) {
+        for (final File file : listFiles(historyDir)) {
+          if (file.isFile() && isProgressLog(file) && !file.getName().contains(TEMP_FILE_SUFFIX)) {
+            result.put(file.getName(), file);
+          }
+        }
+      }
+      final Set<String> activeLoadIds = new HashSet<>();
+      dataRegion
+          .getLoadTsFileManagerIfPresent()
+          .ifPresent(
+              manager ->
+                  manager.getActiveTaskDirs().forEach(dir -> activeLoadIds.add(dir.getName())));
+      for (final String baseDir : LoadStagingDirs.configuredBaseDirs()) {
+        final File regionDir =
+            LoadStagingDirs.regionLoadDir(
+                new File(baseDir),
+                dataRegion.getDatabaseName(),
+                dataRegion.getDataRegionIdString());
+        for (final File taskDir : listFiles(regionDir)) {
+          final String recordName = taskDir.getName() + PROGRESS_SUFFIX;
+          if (!taskDir.isDirectory()
+              || LoadTsFileManager.TERMINAL_HISTORY_DIR.equals(taskDir.getName())
+              || activeLoadIds.contains(taskDir.getName())
+              || result.containsKey(recordName)) {
+            continue;
+          }
+          // A failed migration deliberately leaves the legacy decision in staging. Snapshot that
+          // record under its task identity, even when no lazy manager has recovered the directory.
+          for (final File file : listFiles(taskDir)) {
+            if (file.isFile()
+                && isProgressLog(file)
+                && !file.getName().contains(TEMP_FILE_SUFFIX)
+                && LoadTsFileProgress.readTerminal(file) != null) {
+              result.put(recordName, file);
+              break;
+            }
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  /** Captures active staging and only the terminal decisions covered by the data-file snapshot. */
+  public static boolean snapshot(
+      final DataRegion dataRegion,
+      final File snapshotDir,
+      final Map<String, File> capturedTerminalHistory) {
     Objects.requireNonNull(
         dataRegion, StorageEngineMessages.EXCEPTION_DATAREGION_CANNOT_BE_NULL_0B936879);
     Objects.requireNonNull(
         snapshotDir, StorageEngineMessages.EXCEPTION_SNAPSHOTDIR_CANNOT_BE_NULL_283211CB);
 
-    if (!SUPPORTED_PROTOCOLS.contains(
-        ConsensusFactory.normalizeConsensusProtocolClass(
-            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass()))) {
+    if (!isSupportedProtocol()) {
       return true;
     }
 
     final LoadTsFileManager manager = dataRegion.getLoadTsFileManagerIfPresent().orElse(null);
-    if (manager == null) {
-      return true;
-    }
-
-    final List<File> taskDirs = manager.getActiveTaskDirs();
-    if (taskDirs.isEmpty()) {
-      return true;
-    }
+    final List<File> taskDirs =
+        manager == null ? Collections.emptyList() : manager.getActiveTaskDirs();
 
     final File loadSnapshotDir = new File(snapshotDir, SNAPSHOT_SUBDIR_NAME);
     try {
+      final Map<String, File> terminalHistory =
+          capturedTerminalHistory == null
+              ? captureTerminalHistory(dataRegion)
+              : capturedTerminalHistory;
+      if (taskDirs.isEmpty() && terminalHistory.isEmpty()) {
+        return true;
+      }
       writeRootsManifest(loadSnapshotDir, taskDirs);
       for (final File taskDir : taskDirs) {
         final File targetDir = new File(loadSnapshotDir, taskDir.getName());
         copyTask(taskDir, targetDir);
+      }
+      // Terminal records have no payload references and may share any restored staging root.
+      final File historyTargetDir =
+          new File(loadSnapshotDir, LoadTsFileManager.TERMINAL_HISTORY_DIR);
+      for (final Map.Entry<String, File> terminal : terminalHistory.entrySet()) {
+        publishAtomicCopy(terminal.getValue(), new File(historyTargetDir, terminal.getKey()));
       }
 
       LOGGER.info(
@@ -136,6 +207,12 @@ public final class LoadTsFileSnapshot {
     }
   }
 
+  private static boolean isSupportedProtocol() {
+    return SUPPORTED_PROTOCOLS.contains(
+        ConsensusFactory.normalizeConsensusProtocolClass(
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass()));
+  }
+
   // -------------------------------------------------------------------------
   // Task Copy Pipeline & Live Catch-Up
   // -------------------------------------------------------------------------
@@ -146,14 +223,14 @@ public final class LoadTsFileSnapshot {
   private static void copyTask(final File taskDir, final File targetDir) throws IOException {
     // 1. Snapshot raw staged and modification files first
     for (final File file : listFiles(taskDir)) {
-      if (file.isFile() && !isProgressLog(file)) {
+      if (file.isFile() && !file.getName().contains(TEMP_FILE_SUFFIX) && !isProgressLog(file)) {
         publishAtomicCopy(file, new File(targetDir, file.getName()));
       }
     }
 
     // 2. Snapshot progress logs afterwards so they describe an existing snapshot boundary
     for (final File file : listFiles(taskDir)) {
-      if (file.isFile() && isProgressLog(file)) {
+      if (file.isFile() && !file.getName().contains(TEMP_FILE_SUFFIX) && isProgressLog(file)) {
         publishAtomicCopy(file, new File(targetDir, file.getName()));
       }
     }

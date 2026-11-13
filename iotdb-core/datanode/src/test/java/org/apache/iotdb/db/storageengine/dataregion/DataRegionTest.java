@@ -147,9 +147,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
@@ -2520,6 +2523,61 @@ public class DataRegionTest {
       Assert.fail("A deleted region has to refuse to publish a LOAD manager");
     } catch (final IllegalStateException e) {
       Assert.assertTrue(e.getMessage().contains("is deleted"));
+    }
+  }
+
+  @Test
+  public void testDeletedRegionDoesNotInitializeItsLoadManager() throws Exception {
+    Assert.assertTrue(dataRegion.getLoadTsFileManagerIfPresent().isEmpty());
+
+    StorageEngine.getInstance().deleteDataRegion(new DataRegionId(0));
+
+    Assert.assertTrue(dataRegion.getLoadTsFileManagerIfPresent().isEmpty());
+    try {
+      dataRegion.getLoadTsFileManager();
+      Assert.fail("A deleted region must not initialize a LOAD manager");
+    } catch (final IllegalStateException e) {
+      Assert.assertTrue(e.getMessage().contains("is deleted"));
+    }
+    Assert.assertTrue(dataRegion.getLoadTsFileManagerIfPresent().isEmpty());
+  }
+
+  @Test
+  public void testSnapshotDoesNotDeadlockWithLazyLoadManagerInitialization() throws Exception {
+    Assert.assertTrue(dataRegion.getLoadTsFileManagerIfPresent().isEmpty());
+    final Field insertLockField = DataRegion.class.getDeclaredField("insertLock");
+    insertLockField.setAccessible(true);
+    final Lock insertWriteLock = ((ReadWriteLock) insertLockField.get(dataRegion)).writeLock();
+    final FutureTask<LoadTsFileManager> initialization =
+        new FutureTask<>(dataRegion::getLoadTsFileManager);
+    final Thread initializingThread = new Thread(initialization, "load-manager-initialization");
+    try {
+      synchronized (dataRegion) {
+        // SnapshotTaker holds this monitor before it flushes under the region's insert write lock.
+        initializingThread.start();
+        await()
+            .atMost(10, TimeUnit.SECONDS)
+            .until(() -> initializingThread.getState() == Thread.State.BLOCKED);
+        // Bound the acquisition so the regression fails instead of leaving deadlocked threads.
+        assertTrue(
+            "Snapshot must acquire insertLock while lazy initialization waits for its monitor",
+            insertWriteLock.tryLock(1, TimeUnit.SECONDS));
+        try {
+          final File snapshot =
+              new File(TestConstant.OUTPUT_DATA_DIR, "snapshot-during-load-manager-initialization");
+          assertTrue(
+              new SnapshotTaker(dataRegion).takeFullSnapshot(snapshot.getAbsolutePath(), true));
+          Assert.assertTrue(dataRegion.getLoadTsFileManagerIfPresent().isEmpty());
+        } finally {
+          insertWriteLock.unlock();
+        }
+      }
+      Assert.assertSame(
+          initialization.get(10, TimeUnit.SECONDS), dataRegion.getLoadTsFileManager());
+    } finally {
+      initializingThread.join(10_000L);
+      Assert.assertFalse(initializingThread.isAlive());
+      dataRegion.stopLoadTsFileManager();
     }
   }
 

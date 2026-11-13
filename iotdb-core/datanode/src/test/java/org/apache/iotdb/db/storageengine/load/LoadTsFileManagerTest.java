@@ -23,9 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.commons.utils.RetryUtils;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -34,6 +38,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCon
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.ChunkOffsetCalculator;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.snapshot.SnapshotTaker;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
@@ -45,6 +51,8 @@ import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadRef;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadUnavailableException;
 import org.apache.iotdb.db.storageengine.load.splitter.NonAlignedChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -81,11 +89,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.LongConsumer;
+import java.util.function.Predicate;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -118,6 +128,8 @@ public class LoadTsFileManagerTest {
   public void setUp() throws Exception {
     tempDir = Files.createTempDirectory("load-tsfile-manager-test").toFile();
     config = IoTDBDescriptor.getInstance().getConfig();
+    // Startup resolves LOAD roots once. Do that before installing this test's isolated roots.
+    TierManager.getInstance();
     originalLoadBaseDirs = config.getLoadTsFileDirs();
     config.setLoadTsFileDirs(new String[] {tempDir.getAbsolutePath()});
 
@@ -245,12 +257,6 @@ public class LoadTsFileManagerTest {
     // bytes are flushed, the objects themselves are gone, and only the staged file with its
     // progress records stays on disk.
     dropInMemoryWriters(firstRun);
-
-    // The first lookup of a staging directory makes the tier manager reformulate the configured
-    // LOAD directories from the data directories, which in a test is not the directory the pieces
-    // were just staged in. A DataNode does that once at startup, before any load, so pinning the
-    // directory here is what keeps the restarted manager looking at the very same staged file.
-    config.setLoadTsFileDirs(new String[] {tempDir.getAbsolutePath()});
 
     // A new manager resumes the very same staged directory from those records.
     final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
@@ -499,6 +505,531 @@ public class LoadTsFileManagerTest {
         second.getChunkLayout().offset() + second.getChunkLayout().length(), staged.length());
     assertTrue(progress.isReady(staged.length()));
     assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+  }
+
+  @Test
+  public void testReplicatedLoadRetriesCommandsThatOvertakePieces() throws Exception {
+    final String loadId = "replicated-out-of-order-load";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final IoTConsensusDataRegionStateMachine stateMachine =
+        new IoTConsensusDataRegionStateMachine(dataRegion);
+    Mockito.when(dataRegion.writeLoadTsFilePrepare(Mockito.any(), Mockito.anyMap()))
+        .thenAnswer(
+            invocation -> manager.prepare(invocation.getArgument(0), invocation.getArgument(1)));
+    Mockito.when(dataRegion.writeLoadTsFileCommit(Mockito.any(), Mockito.anyMap()))
+        .thenAnswer(
+            invocation -> manager.loadAll(invocation.getArgument(0), invocation.getArgument(1)));
+    emulateStagedFileImport();
+
+    final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+    final LoadTsFileConsensusNode commit = commitNode(loadId);
+    prepare.markAsGeneratedByRemoteConsensusLeader();
+    commit.markAsGeneratedByRemoteConsensusLeader();
+    try {
+      // Neither command may be acknowledged while the piece is still retrying after reconnect.
+      assertTrue(
+          RetryUtils.needRetryForWrite(stateMachine.write((IConsensusRequest) prepare).getCode()));
+      assertTrue(
+          RetryUtils.needRetryForWrite(stateMachine.write((IConsensusRequest) commit).getCode()));
+
+      final NonAlignedChunkData[] chunks = twoChunksOfTheSamePartition();
+      final List<LoadTsFileConsensusNode.PieceRef> refs =
+          manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(chunks[1])));
+      final File staged = new File(tempDir, refs.get(0).getRelativePath());
+      // A partially received piece set must remain retryable as well.
+      assertTrue(
+          RetryUtils.needRetryForWrite(stateMachine.write((IConsensusRequest) prepare).getCode()));
+      manager.writePiece(loadId, toTsFileDataList(Collections.singletonList(chunks[0])));
+      assertTrue(
+          RetryUtils.needRetryForWrite(stateMachine.write((IConsensusRequest) commit).getCode()));
+
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          stateMachine.write((IConsensusRequest) prepare).getCode());
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          stateMachine.write((IConsensusRequest) commit).getCode());
+      final File imported = new File(new File(tempDir, "data"), staged.getName());
+      assertAllSeriesReadable(
+          imported,
+          java.util.Arrays.asList(
+              new SeriesExpectation(
+                  new StringArrayDeviceID("root", "load_manager_test", "d0"), "s0", 10, 0, 9),
+              new SeriesExpectation(
+                  new StringArrayDeviceID("root", "load_manager_test", "d1"), "s1", 10, 100, 109)));
+
+      // Losing an acknowledgement must not leave PREPARE retrying forever after COMMIT succeeds.
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          stateMachine.write((IConsensusRequest) prepare).getCode());
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          stateMachine.write((IConsensusRequest) commit).getCode());
+    } finally {
+      manager.stop();
+    }
+  }
+
+  @Test
+  public void testReplicatedPrepareAfterAbortIsANoOp() throws Exception {
+    final String loadId = "replicated-aborted-load";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+    try {
+      manager.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+      assertTrue(manager.deleteAll(abortNode(loadId)));
+
+      assertFalse(manager.prepare(prepare, Collections.emptyMap()));
+      prepare.markAsGeneratedByRemoteConsensusLeader();
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+      assertFalse(manager.loadAll(commitNode(loadId), Collections.emptyMap()));
+    } finally {
+      manager.stop();
+    }
+  }
+
+  @Test
+  public void testReplicatedCommitRetrySurvivesRestartAndSnapshot() throws Exception {
+    final String loadId = "replicated-committed-retry";
+    LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    emulateStagedFileImport();
+    final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+    final LoadTsFileConsensusNode commit = commitNode(loadId);
+    prepare.markAsGeneratedByRemoteConsensusLeader();
+    commit.markAsGeneratedByRemoteConsensusLeader();
+    try {
+      manager.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+      assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+      assertTrue(manager.getActiveTaskDirs().isEmpty());
+
+      // The COMMIT response was lost, and the follower restarts before it is retried.
+      manager.stop();
+      manager = new LoadTsFileManager(dataRegion);
+      assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+
+      final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+      try {
+        config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+        // After another restart no LOAD has initialized this region's lazy manager yet.
+        manager.stop();
+        Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.empty());
+        final File snapshot = new File(tempDir, "finished-load-snapshot");
+        assertTrue(LoadTsFileSnapshot.snapshot(dataRegion, snapshot));
+        LoadTsFileSnapshot.clear(dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+        LoadTsFileSnapshot.restore(
+            dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString(), snapshot);
+        manager = new LoadTsFileManager(dataRegion);
+        assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+        assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+      } finally {
+        config.setDataRegionConsensusProtocolClass(originalProtocol);
+      }
+      Mockito.verify(dataRegion, Mockito.times(1))
+          .loadNewTsFile(
+              Mockito.any(),
+              Mockito.anyBoolean(),
+              Mockito.anyBoolean(),
+              Mockito.anyBoolean(),
+              Mockito.any());
+    } finally {
+      manager.stop();
+    }
+  }
+
+  @Test
+  public void testSnapshotRetainsStagingForLoadCommittedAfterDataFileCapture() throws Exception {
+    final String loadId = "commit-during-snapshot";
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    try {
+      config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+      Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+      emulateStagedFileImport();
+      manager.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+      assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+
+      final TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+      Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
+      final AtomicBoolean committed = new AtomicBoolean();
+      Mockito.when(tsFileManager.getTsFileList(Mockito.anyBoolean()))
+          .thenAnswer(
+              invocation ->
+                  new ArrayList<TsFileResource>() {
+                    @Override
+                    public boolean removeIf(final Predicate<? super TsFileResource> filter) {
+                      // Data-file copying starts after the snapshot boundary lock is released.
+                      if (committed.compareAndSet(false, true)) {
+                        try {
+                          assertTrue(manager.loadAll(commitNode(loadId), Collections.emptyMap()));
+                        } catch (final Exception e) {
+                          throw new AssertionError(e);
+                        }
+                      }
+                      return super.removeIf(filter);
+                    }
+                  });
+
+      final File snapshot = new File(tempDir, "concurrent-commit-snapshot");
+      assertTrue(new SnapshotTaker(dataRegion).takeFullSnapshot(snapshot.getAbsolutePath(), true));
+      assertTrue(committed.get());
+      final File history =
+          new File(
+              new File(snapshot, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME),
+              LoadTsFileManager.TERMINAL_HISTORY_DIR);
+      assertFalse(LoadTsFileProgress.progressFileFor(new File(history, loadId)).exists());
+
+      // PIECE may predate the new replica's sync channel, so it cannot be replayed after restore.
+      // The snapshot itself must retain the staging that its later COMMIT still needs.
+      manager.stop();
+      LoadTsFileSnapshot.clear(dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+      LoadTsFileSnapshot.restore(
+          dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString(), snapshot);
+      final LoadTsFileManager restored = new LoadTsFileManager(dataRegion);
+      try {
+        assertEquals(1, restored.getActiveTaskDirs().size());
+        final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+        prepare.markAsGeneratedByRemoteConsensusLeader();
+        assertTrue(restored.prepare(prepare, Collections.emptyMap()));
+        final File[] stagedFiles =
+            restored.getActiveTaskDirs().get(0).listFiles((dir, name) -> name.endsWith(".tsfile"));
+        assertNotNull(stagedFiles);
+        assertEquals(1, stagedFiles.length);
+        assertAllSeriesReadable(
+            stagedFiles[0],
+            Collections.singletonList(
+                new SeriesExpectation(
+                    new StringArrayDeviceID("root", "load_manager_test", "d0"), "s0", 10, 0, 9)));
+      } finally {
+        restored.stop();
+      }
+    } finally {
+      manager.stop();
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testAbortCannotReplaceACommittedDecisionBeforeStagingCleanup() throws Exception {
+    final String loadId = "commit-before-staging-cleanup";
+    final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    try {
+      emulateStagedFileImport();
+      manager.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+      assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+      final TsFileWriterManager writer = writerOf(manager, loadId);
+      writer.loadAll(false, false);
+      final File historyDir =
+          new File(writer.getTaskDir().getParentFile(), LoadTsFileManager.TERMINAL_HISTORY_DIR);
+      new LoadTsFileProgress(new File(historyDir, loadId))
+          .recordTerminal(LoadTsFileConsensusOp.COMMIT, 10L);
+      // A crash after the durable decision leaves staging without its per-file terminal tails.
+      writer.close(true);
+
+      final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+      try {
+        assertFalse(recovered.deleteAll(abortNode(loadId)));
+        assertTrue(recovered.loadAll(commitNode(loadId), Collections.emptyMap()));
+        assertTrue(recovered.getActiveTaskDirs().isEmpty());
+        Mockito.verify(dataRegion, Mockito.times(1))
+            .loadNewTsFile(
+                Mockito.any(),
+                Mockito.anyBoolean(),
+                Mockito.anyBoolean(),
+                Mockito.anyBoolean(),
+                Mockito.any());
+      } finally {
+        recovered.stop();
+      }
+    } finally {
+      manager.stop();
+    }
+  }
+
+  @Test
+  public void testRecoveryMigratesLegacyTerminalRecordIntoSnapshotHistory() throws Exception {
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    final String loadId = "legacy-terminal-load";
+    try {
+      useWatermarkWALNode(5L);
+      final LoadTsFileManager beforeUpgrade = new LoadTsFileManager(dataRegion);
+      try {
+        beforeUpgrade.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+        assertTrue(beforeUpgrade.prepare(prepareNode(loadId), Collections.emptyMap()));
+        final TsFileWriterManager writer = writerOf(beforeUpgrade, loadId);
+        writer.recordTerminal(LoadTsFileConsensusOp.COMMIT, 10L, Collections.emptyMap());
+        writer.close(true);
+
+        final IWALNode walNode = dataRegion.getWALNode().get();
+        Mockito.doAnswer(
+                invocation -> {
+                  // A watermark can advance as soon as recovery registers its release listener.
+                  final LongConsumer listener = invocation.getArgument(0);
+                  walWatermark.set(10L);
+                  listener.accept(10L);
+                  return null;
+                })
+            .when(walNode)
+            .setSafeDeletedSearchIndexListener(Mockito.any());
+        final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+        try {
+          assertFalse(writer.getTaskDir().exists());
+          final Map<String, File> terminalHistory =
+              LoadTsFileSnapshot.captureTerminalHistory(dataRegion);
+          assertEquals(1, terminalHistory.size());
+          assertTrue(terminalHistory.containsKey(loadId + LoadTsFileProgress.PROGRESS_SUFFIX));
+          final LoadTsFileConsensusNode commit = commitNode(loadId);
+          commit.markAsGeneratedByRemoteConsensusLeader();
+          assertTrue(recovered.loadAll(commit, Collections.emptyMap()));
+        } finally {
+          recovered.stop();
+        }
+      } finally {
+        beforeUpgrade.stop();
+      }
+    } finally {
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testReplicatedRetriesUseLegacyTerminalWhenMigrationFails() throws Exception {
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    final String loadId = "unmigratable-legacy-abort";
+    final File regionDir =
+        LoadStagingDirs.regionLoadDir(tempDir, dataRegion.getDatabaseName(), "0");
+    final File taskDir = new File(regionDir, loadId);
+    final File historyDir = new File(regionDir, LoadTsFileManager.TERMINAL_HISTORY_DIR);
+    try {
+      assertTrue(taskDir.mkdirs());
+      new LoadTsFileProgress(new File(taskDir, "legacy.tsfile"))
+          .recordTerminal(LoadTsFileConsensusOp.ABORT, 10L);
+      Files.write(historyDir.toPath(), new byte[0]);
+
+      final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+      try {
+        final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
+        final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+        final LoadTsFileConsensusNode commit = commitNode(loadId);
+        piece.markAsGeneratedByRemoteConsensusLeader();
+        prepare.markAsGeneratedByRemoteConsensusLeader();
+        commit.markAsGeneratedByRemoteConsensusLeader();
+
+        assertTrue(manager.writePiece(piece).isEmpty());
+        assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+        assertFalse(manager.loadAll(commit, Collections.emptyMap()));
+        assertFalse(manager.deleteAll(abortNode(loadId)));
+        assertTrue(taskDir.isDirectory());
+        assertTrue(historyDir.isFile());
+      } finally {
+        manager.stop();
+      }
+    } finally {
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testSnapshotPreservesLegacyTerminalsWhenMigrationCannotPersist() throws Exception {
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    LoadStagingDirs.folderManager();
+    final File regionDir =
+        LoadStagingDirs.regionLoadDir(
+            tempDir, dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+    assertTrue(regionDir.mkdirs());
+    final File historyDir = new File(regionDir, LoadTsFileManager.TERMINAL_HISTORY_DIR);
+    Files.write(historyDir.toPath(), new byte[0]);
+    final LoadTsFileConsensusOp[] outcomes = {
+      LoadTsFileConsensusOp.COMMIT, LoadTsFileConsensusOp.ABORT
+    };
+    for (final LoadTsFileConsensusOp outcome : outcomes) {
+      final File taskDir = new File(regionDir, "legacy-" + outcome);
+      new LoadTsFileProgress(new File(taskDir, "legacy.tsfile")).recordTerminal(outcome, 10L);
+    }
+
+    final LoadTsFileManager recovered = new LoadTsFileManager(dataRegion);
+    try {
+      assertTrue(recovered.getActiveTaskDirs().isEmpty());
+      assertTrue(historyDir.isFile());
+      final TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+      Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
+      Mockito.when(tsFileManager.getTsFileList(Mockito.anyBoolean()))
+          .thenAnswer(invocation -> new ArrayList<>());
+      File snapshot = null;
+      for (final boolean hasManager : new boolean[] {false, true}) {
+        Mockito.when(dataRegion.getLoadTsFileManagerIfPresent())
+            .thenReturn(hasManager ? Optional.of(recovered) : Optional.empty());
+        snapshot = new File(tempDir, "legacy-terminal-snapshot-" + hasManager);
+        assertTrue(
+            new SnapshotTaker(dataRegion).takeFullSnapshot(snapshot.getAbsolutePath(), true));
+        for (final LoadTsFileConsensusOp outcome : outcomes) {
+          final File snapshotHistory =
+              new File(
+                  new File(snapshot, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME),
+                  LoadTsFileManager.TERMINAL_HISTORY_DIR);
+          final LoadTsFileProgress.TerminalRecord terminal =
+              LoadTsFileProgress.readTerminal(
+                  new File(
+                      snapshotHistory, "legacy-" + outcome + LoadTsFileProgress.PROGRESS_SUFFIX));
+          assertNotNull(terminal);
+          assertEquals(outcome, terminal.op());
+          assertEquals(10L, terminal.searchIndex());
+        }
+      }
+
+      recovered.stop();
+      LoadTsFileSnapshot.clear(dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+      LoadTsFileSnapshot.restore(
+          dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString(), snapshot);
+      final LoadTsFileManager restored = new LoadTsFileManager(dataRegion);
+      try {
+        for (final LoadTsFileConsensusOp outcome : outcomes) {
+          final String loadId = "legacy-" + outcome;
+          final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+          prepare.markAsGeneratedByRemoteConsensusLeader();
+          assertTrue(restored.prepare(prepare, Collections.emptyMap()));
+          final LoadTsFileConsensusNode commit = commitNode(loadId);
+          commit.markAsGeneratedByRemoteConsensusLeader();
+          assertEquals(
+              outcome == LoadTsFileConsensusOp.COMMIT,
+              restored.loadAll(commit, Collections.emptyMap()));
+        }
+      } finally {
+        restored.stop();
+      }
+    } finally {
+      recovered.stop();
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testCommitCannotSplitSnapshotDataAndTerminalBoundary() throws Exception {
+    final String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    final String loadId = "commit-at-snapshot-boundary";
+    try {
+      final LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+      final AtomicBoolean commitStarted = new AtomicBoolean();
+      final CountDownLatch commitFinished = new CountDownLatch(1);
+      final AtomicReference<Throwable> commitFailure = new AtomicReference<>();
+      final AtomicReference<Thread> commitThread = new AtomicReference<>();
+      try {
+        final LoadTsFileConsensusNode commit = commitNode(loadId);
+        commit.markAsGeneratedByRemoteConsensusLeader();
+        Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+        emulateStagedFileImport();
+        manager.writePiece(loadId, Collections.singletonList(laidOutChunk()));
+        assertTrue(manager.prepare(prepareNode(loadId), Collections.emptyMap()));
+
+        final TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+        Mockito.when(tsFileManager.getTsFileList(Mockito.anyBoolean()))
+            .thenAnswer(invocation -> new ArrayList<>());
+        Mockito.when(dataRegion.getTsFileManager())
+            .thenAnswer(
+                invocation -> {
+                  if (commitStarted.compareAndSet(false, true)) {
+                    final Thread thread =
+                        new Thread(
+                            () -> {
+                              try {
+                                assertTrue(manager.loadAll(commit, Collections.emptyMap()));
+                              } catch (final Throwable t) {
+                                commitFailure.set(t);
+                              } finally {
+                                commitFinished.countDown();
+                              }
+                            });
+                    commitThread.set(thread);
+                    thread.start();
+                    assertFalse(
+                        "COMMIT must wait for snapshot boundary capture",
+                        commitFinished.await(1, TimeUnit.SECONDS));
+                  }
+                  return tsFileManager;
+                });
+
+        final File snapshot = new File(tempDir, "commit-boundary-snapshot");
+        assertTrue(
+            new SnapshotTaker(dataRegion).takeFullSnapshot(snapshot.getAbsolutePath(), true));
+        assertTrue(
+            "COMMIT must continue after snapshot boundary capture",
+            commitFinished.await(10, TimeUnit.SECONDS));
+        commitThread.get().join(10_000L);
+        assertFalse(commitThread.get().isAlive());
+        assertNull(commitFailure.get());
+
+        final File history =
+            new File(
+                new File(snapshot, LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME),
+                LoadTsFileManager.TERMINAL_HISTORY_DIR);
+        assertFalse(LoadTsFileProgress.progressFileFor(new File(history, loadId)).exists());
+      } finally {
+        final Thread thread = commitThread.get();
+        if (thread != null) {
+          thread.join(10_000L);
+        }
+        manager.stop();
+      }
+    } finally {
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
+    }
+  }
+
+  @Test
+  public void testReplicatedAbortBeforePiecesStopsRetries() throws Exception {
+    final String loadId = "replicated-abort-before-pieces";
+    LoadTsFileManager manager = new LoadTsFileManager(dataRegion);
+    final LoadTsFileConsensusNode prepare = prepareNode(loadId);
+    final LoadTsFileConsensusNode commit = commitNode(loadId);
+    final LoadTsFileConsensusNode abort = abortNode(loadId);
+    final LoadTsFileConsensusNode piece = stagedPiece(loadId, laidOutChunk());
+    prepare.markAsGeneratedByRemoteConsensusLeader();
+    commit.markAsGeneratedByRemoteConsensusLeader();
+    abort.markAsGeneratedByRemoteConsensusLeader();
+    piece.markAsGeneratedByRemoteConsensusLeader();
+    try {
+      Mockito.when(dataRegion.writeLoadTsFilePrepare(Mockito.any(), Mockito.anyMap()))
+          .thenAnswer(
+              invocation ->
+                  dataRegion
+                      .getLoadTsFileManagerIfPresent()
+                      .get()
+                      .prepare(invocation.getArgument(0), invocation.getArgument(1)));
+      Mockito.when(dataRegion.getLoadTsFileManagerIfPresent()).thenReturn(Optional.of(manager));
+      final IoTConsensusDataRegionStateMachine stateMachine =
+          new IoTConsensusDataRegionStateMachine(dataRegion);
+      assertTrue(
+          RetryUtils.needRetryForWrite(stateMachine.write((IConsensusRequest) prepare).getCode()));
+
+      // ABORT can overtake the same missing PIECE as PREPARE did.
+      assertFalse(manager.deleteAll(abort));
+      assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          stateMachine.write((IConsensusRequest) prepare).getCode());
+      manager.writePiece(piece);
+      assertTrue(manager.getActiveTaskDirs().isEmpty());
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+      assertFalse(manager.loadAll(commit, Collections.emptyMap()));
+
+      manager.stop();
+      manager = new LoadTsFileManager(dataRegion);
+      assertTrue(manager.prepare(prepare, Collections.emptyMap()));
+      assertFalse(manager.loadAll(commit, Collections.emptyMap()));
+      manager.writePiece(piece);
+      assertTrue(manager.getActiveTaskDirs().isEmpty());
+      manager.stop();
+      LoadTsFileManager.clearTerminalHistory(
+          dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+      assertTrue(manager.getTerminalHistoryDirs().isEmpty());
+    } finally {
+      manager.stop();
+    }
   }
 
   /**
@@ -1112,6 +1643,16 @@ public class LoadTsFileManagerTest {
     } catch (final IOException e) {
       assertTrue(e.getMessage().contains("has been stopped"));
     }
+    LoadTsFileManager.clearTerminalHistory(
+        dataRegion.getDatabaseName(), dataRegion.getDataRegionIdString());
+    try {
+      // A command that already obtained the manager must not recreate a deleted region's history.
+      manager.deleteAll(abortNode("abort-after-region-deletion"));
+      fail("A stopped LOAD manager has to refuse terminal publication");
+    } catch (final IOException e) {
+      assertTrue(e.getMessage().contains("has been stopped"));
+    }
+    assertTrue(manager.getTerminalHistoryDirs().isEmpty());
   }
 
   /** A stop waits for the piece in flight, and still closes the writer that piece created. */
