@@ -277,10 +277,6 @@ public class IoTDBStatement implements Statement {
     }
   }
 
-  protected void setQueryId(long queryId) {
-    this.queryId = queryId;
-  }
-
   @Override
   public void close() throws SQLException {
     if (isClosed()) {

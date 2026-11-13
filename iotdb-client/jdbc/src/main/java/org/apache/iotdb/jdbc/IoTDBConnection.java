@@ -520,7 +520,7 @@ public class IoTDBConnection implements Connection {
   public PreparedStatement prepareStatement(String sql) throws SQLException {
     checkOpen("prepareStatement");
     if (sql == null) {
-      throw new SQLException("SQL statement cannot be null");
+      throw new SQLException(JdbcMessages.EXCEPTION_SQL_STATEMENT_CANNOT_BE_NULL_163667FF);
     }
     IoTDBStatement statement;
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {

@@ -155,7 +155,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   private static String requireNonNullSql(String sql) throws SQLException {
     if (sql == null) {
-      throw new SQLException("SQL statement cannot be null");
+      throw new SQLException(JdbcMessages.EXCEPTION_SQL_STATEMENT_CANNOT_BE_NULL_163667FF);
     }
     return sql;
   }

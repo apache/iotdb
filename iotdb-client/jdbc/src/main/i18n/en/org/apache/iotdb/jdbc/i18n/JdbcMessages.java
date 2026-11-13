@@ -303,6 +303,9 @@ public final class JdbcMessages {
 
   public static final String EXCEPTION_LINES_OF_RESULT_ARG_26F474C0 = "* Lines of result: %d";
 
+  public static final String EXCEPTION_SQL_STATEMENT_CANNOT_BE_NULL_163667FF =
+      "SQL statement cannot be null";
+
   public static final String EXCEPTION_NUM_OF_RPC_ARG_AVG_COST_ARG_MS_435D62C7 =
       "* Num of RPC: %d, avg cost: %d ms";
 }

@@ -46,6 +46,7 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -978,6 +979,12 @@ public class IoTDBTablePreparedStatementTest {
   private static TSExecuteStatementResp preparedQueryResp(long queryId) {
     TSExecuteStatementResp resp = new TSExecuteStatementResp(RpcUtils.SUCCESS_STATUS);
     resp.setQueryId(queryId);
+    resp.setColumns(Collections.singletonList("s1"));
+    resp.setDataTypeList(Collections.singletonList(TSDataType.INT32.name()));
+    resp.setIgnoreTimeStamp(true);
+    resp.setTableModel(true);
+    resp.setQueryResult(Collections.emptyList());
+    resp.setMoreData(false);
     return resp;
   }
 

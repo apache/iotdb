@@ -431,9 +431,9 @@ public class IoTDBConnectionTest {
   public void testStandardConnectionStateMethods() throws Exception {
     openConnection(connection);
 
-    assertFalse(connection.getAutoCommit());
-    connection.setAutoCommit(true);
     assertTrue(connection.getAutoCommit());
+    connection.setAutoCommit(false);
+    assertFalse(connection.getAutoCommit());
     assertEquals("Apache IoTDB", connection.getCatalog());
     assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, connection.getHoldability());
     assertEquals(Connection.TRANSACTION_NONE, connection.getTransactionIsolation());

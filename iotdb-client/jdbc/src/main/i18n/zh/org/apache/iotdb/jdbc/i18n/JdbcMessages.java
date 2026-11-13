@@ -296,6 +296,8 @@ public final class JdbcMessages {
 
   public static final String EXCEPTION_LINES_OF_RESULT_ARG_26F474C0 = "* 结果行数：%d";
 
+  public static final String EXCEPTION_SQL_STATEMENT_CANNOT_BE_NULL_163667FF = "SQL 语句不能为空";
+
   public static final String EXCEPTION_NUM_OF_RPC_ARG_AVG_COST_ARG_MS_435D62C7 =
       "* RPC 次数：%d，平均耗时：%d ms";
 }
