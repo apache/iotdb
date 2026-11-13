@@ -60,6 +60,9 @@ public final class MetadataFaultAgent {
   public static final String INVALIDATE = "invalidateColumnCache";
   public static final String UPDATE = "updateAttribute";
   public static final String FILL = "putAttributes";
+  public static final String UPDATE_TABLE = "updateTable:enter";
+  public static final String COMMIT_UPDATE_TABLE = "type=COMMIT_UPDATE_TABLE";
+  private static final String UPDATE_TABLE_METHOD = "updateTable";
   private static final String RPC =
       "org/apache/iotdb/db/protocol/thrift/impl/DataNodeInternalRPCServiceImpl";
   private static final String FETCHER =
@@ -252,6 +255,14 @@ public final class MetadataFaultAgent {
       Rule entryRule = RULES.get(hook.substring(0, hook.length() - 5) + ":enter");
       if (entryRule != null && arguments[0] == entryRule.firstArgument) {
         entryRule.completed.incrementAndGet();
+        if (hook.equals(UPDATE_TABLE_METHOD + ":exit")
+            && entryRule.match.equals(COMMIT_UPDATE_TABLE)
+            && result != null) {
+          final int responseCode = ((Number) invoke(result, "getCode")).intValue();
+          if (responseCode == successStatusCode()) {
+            entryRule.acknowledged.incrementAndGet();
+          }
+        }
       }
     }
     Rule rule = RULES.get(hook);
@@ -259,6 +270,9 @@ public final class MetadataFaultAgent {
       return;
     }
     String description = Arrays.toString(arguments);
+    if (hook.equals(UPDATE_TABLE)) {
+      description = "type=" + updateTableType(arguments);
+    }
     if (receiver.getClass().getSimpleName().equals("TableDeviceSchemaCache")
         && arguments.length > 2
         && arguments[2] instanceof Map) {
@@ -306,15 +320,25 @@ public final class MetadataFaultAgent {
       rule.passed.incrementAndGet();
       return;
     }
-    if (rule.mode.equals("HOLD_FIRST") && occurrence == 1) {
+    if ((rule.mode.equals("HOLD_FIRST")
+            || rule.mode.equals("HOLD_FIRST_PASS_RETRIES")
+            || rule.mode.equals("HOLD_FIRST_DROP_RETRIES"))
+        && occurrence == 1) {
       rule.held.countDown();
-      if (!rule.release.await(120, TimeUnit.SECONDS)) {
-        throw new AssertionError("Metadata IT gate was not released: " + hook);
+      rule.blocking.incrementAndGet();
+      try {
+        final long timeoutSeconds = rule.mode.equals("HOLD_FIRST_DROP_RETRIES") ? 240 : 120;
+        if (!rule.release.await(timeoutSeconds, TimeUnit.SECONDS)) {
+          throw new AssertionError("Metadata IT gate was not released: " + hook);
+        }
+      } finally {
+        rule.blocking.decrementAndGet();
       }
       rule.finished.incrementAndGet();
       return;
     }
     if (rule.mode.equals("DROP")
+        || (rule.mode.equals("HOLD_FIRST_DROP_RETRIES") && occurrence > 1)
         || (rule.mode.equals("HOLD_FIRST")
             && rule.version != null
             && rule.version.equals(version(arguments)))) {
@@ -327,6 +351,25 @@ public final class MetadataFaultAgent {
               .newInstance("Metadata IT discarded " + hook);
     }
     rule.passed.incrementAndGet();
+  }
+
+  private static String updateTableType(Object[] arguments) throws Exception {
+    if (arguments.length != 1
+        || arguments[0] == null
+        || !arguments[0].getClass().getSimpleName().equals("TUpdateTableReq")) {
+      return "unknown";
+    }
+    final byte type = ((Number) invoke(arguments[0], "getType")).byteValue();
+    return Class.forName("org.apache.iotdb.commons.schema.table.TsTableInternalRPCType")
+        .getMethod("getType", byte.class)
+        .invoke(null, type)
+        .toString();
+  }
+
+  private static int successStatusCode() throws Exception {
+    final Object successStatus =
+        Class.forName("org.apache.iotdb.rpc.TSStatusCode").getField("SUCCESS_STATUS").get(null);
+    return ((Number) invoke(successStatus, "getStatusCode")).intValue();
   }
 
   private static String version(Object[] arguments) throws Exception {
@@ -438,6 +481,8 @@ public final class MetadataFaultAgent {
     private final AtomicLong dropped = new AtomicLong();
     private final AtomicLong passed = new AtomicLong();
     private final AtomicLong finished = new AtomicLong();
+    private final AtomicLong blocking = new AtomicLong();
+    private final AtomicLong acknowledged = new AtomicLong();
     private final AtomicLong clear = new AtomicLong();
     private final AtomicLong completed = new AtomicLong();
     private final CountDownLatch held = new CountDownLatch(1);
@@ -462,6 +507,8 @@ public final class MetadataFaultAgent {
       state.put("dropped", Long.toString(dropped.get()));
       state.put("passed", Long.toString(passed.get()));
       state.put("finished", Long.toString(finished.get()));
+      state.put("blocking", Long.toString(blocking.get()));
+      state.put("acknowledged", Long.toString(acknowledged.get()));
       state.put("held", Boolean.toString(held.getCount() == 0));
       state.put("description", description);
       state.put("stack", stack);
@@ -479,7 +526,8 @@ public final class MetadataFaultAgent {
     if (owner.equals(RPC)) {
       return method.equals(INVALIDATE)
           || method.equals(UPDATE)
-          || method.equals("deleteColumnData");
+          || method.equals("deleteColumnData")
+          || method.equals(UPDATE_TABLE_METHOD);
     }
     if (owner.equals(FETCHER + "cache/TableDeviceSchemaCache")) {
       return method.equals(FILL) && !exit;

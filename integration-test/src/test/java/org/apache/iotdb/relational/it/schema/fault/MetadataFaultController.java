@@ -214,6 +214,18 @@ public final class MetadataFaultController implements AutoCloseable {
               });
     }
 
+    public void awaitBlocking(String hook) {
+      Awaitility.await()
+          .atMost(30, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                Map<String, String> state = status(hook);
+                if (Long.parseLong(state.get("blocking")) == 0) {
+                  throw new AssertionError(hook + " is not blocked: " + state);
+                }
+              });
+    }
+
     private Map<String, String> request(String command, String hook, String mode, String match)
         throws IOException {
       return request(command, hook, mode, match, "");
