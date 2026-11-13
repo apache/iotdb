@@ -22,6 +22,7 @@ package org.apache.iotdb.session.pool;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
@@ -74,6 +75,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -97,6 +105,40 @@ public class SessionPoolTest {
   private final TSStatus successStatus = RpcUtils.SUCCESS_STATUS;
   @Mock private TSFetchMetadataResp fetchMetadataResp;
   @Mock private TSFetchResultsResp fetchResultsResp;
+
+  private static class BlockingAfterPollDeque extends ConcurrentLinkedDeque<ISession> {
+
+    private final SessionPool pool;
+    private final CountDownLatch polled = new CountDownLatch(1);
+    private final AtomicBoolean shouldBlock = new AtomicBoolean(true);
+
+    private BlockingAfterPollDeque(SessionPool pool) {
+      this.pool = pool;
+    }
+
+    @Override
+    public ISession poll() {
+      ISession session = super.poll();
+      if (session != null && shouldBlock.compareAndSet(true, false)) {
+        polled.countDown();
+        // getSession holds the pool monitor here. Waiting releases it so close() can run before
+        // the borrowed session is registered in occupied.
+        while (!pool.isPoolClosed()) {
+          try {
+            pool.wait(5_000);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(e);
+          }
+        }
+      }
+      return session;
+    }
+
+    private void awaitPolled() throws InterruptedException {
+      assertTrue(polled.await(5, TimeUnit.SECONDS));
+    }
+  }
 
   @Test
   public void testBuilder() {
@@ -1242,6 +1284,65 @@ public class SessionPoolTest {
     assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
+  }
+
+  @Test(timeout = 10_000)
+  public void testTableSessionBorrowRacingWithPoolClose() throws Exception {
+    SessionPool concreteSessionPool = (SessionPool) sessionPool;
+    BlockingAfterPollDeque blockingQueue = new BlockingAfterPollDeque(concreteSessionPool);
+    blockingQueue.add(session);
+    Whitebox.setInternalState(concreteSessionPool, "queue", blockingQueue);
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      Future<ITableSession> borrowFuture =
+          executor.submit(() -> concreteSessionPool.getPooledTableSession());
+      blockingQueue.awaitPolled();
+
+      concreteSessionPool.close();
+
+      try {
+        borrowFuture.get();
+        Assert.fail("Expected the borrow to fail after the pool closed");
+      } catch (ExecutionException e) {
+        assertTrue(e.getCause() instanceof IoTDBConnectionException);
+      }
+      Mockito.verify(session).close();
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 10_000)
+  public void testTableSessionReleaseRacingWithPoolClose() throws Exception {
+    SessionPool concreteSessionPool = (SessionPool) sessionPool;
+    Mockito.when(session.getSqlDialect()).thenReturn(concreteSessionPool.sqlDialect);
+    CountDownLatch aboutToRelease = new CountDownLatch(1);
+    CountDownLatch continueRelease = new CountDownLatch(1);
+    Mockito.when(session.getDatabase())
+        .thenAnswer(
+            ignored -> {
+              aboutToRelease.countDown();
+              assertTrue(continueRelease.await(5, TimeUnit.SECONDS));
+              return null;
+            });
+    ITableSession tableSession = concreteSessionPool.getPooledTableSession();
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      Future<?> closeFuture = executor.submit(tableSession::close);
+      assertTrue(aboutToRelease.await(5, TimeUnit.SECONDS));
+
+      // The wrapper has observed an open pool and is paused immediately before releaseSession().
+      concreteSessionPool.close();
+      continueRelease.countDown();
+      closeFuture.get();
+
+      assertEquals(0, concreteSessionPool.currentAvailableSize());
+      assertEquals(0, concreteSessionPool.currentOccupiedSize());
+      Mockito.verify(session).close();
+    } finally {
+      continueRelease.countDown();
+      executor.shutdownNow();
+    }
   }
 
   @Test
