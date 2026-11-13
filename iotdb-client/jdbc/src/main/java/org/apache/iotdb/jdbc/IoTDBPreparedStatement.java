@@ -1158,37 +1158,48 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   private List<String> splitSqlStatement(final String sql) {
     List<String> parts = new ArrayList<>();
-    int apCount = 0;
     int off = 0;
-    boolean skip = false;
-
-    for (int i = 0; i < sql.length(); i++) {
+    int i = 0;
+    while (i < sql.length()) {
       char c = sql.charAt(i);
-      if (skip) {
-        skip = false;
-        continue;
-      }
-      switch (c) {
-        case '\'':
-          // skip something like 'xxxxx'
-          apCount++;
-          break;
-        case '\\':
-          // skip something like \r\n
-          skip = true;
-          break;
-        case '?':
-          // for input like: select a from 'bc' where d, 'bc' will be skipped
-          if ((apCount & 1) == 0) {
-            parts.add(sql.substring(off, i));
-            off = i + 1;
-          }
-          break;
-        default:
-          break;
+      if (c == '\'' || c == '"' || c == '`') {
+        i = skipQuoted(sql, i, c);
+      } else if (sql.startsWith("--", i)) {
+        i += 2;
+        while (i < sql.length() && sql.charAt(i) != '\r' && sql.charAt(i) != '\n') {
+          i++;
+        }
+      } else if (sql.startsWith("/*", i)) {
+        int end = sql.indexOf("*/", i + 2);
+        i = end < 0 ? sql.length() : end + 2;
+      } else {
+        if (c == '?') {
+          parts.add(sql.substring(off, i));
+          off = i + 1;
+        }
+        i++;
       }
     }
     parts.add(sql.substring(off));
     return parts;
+  }
+
+  private static int skipQuoted(String sql, int start, char quote) {
+    int i = start + 1;
+    while (i < sql.length()) {
+      char c = sql.charAt(i);
+      if (quote == '\'' && c == '\\' && i + 1 < sql.length()) {
+        i += 2;
+      } else if (c == quote) {
+        if (i + 1 < sql.length() && sql.charAt(i + 1) == quote) {
+          i += 2;
+        } else {
+          return i + 1;
+        }
+      } else {
+        i++;
+      }
+    }
+    return sql.length();
   }
 }

@@ -141,6 +141,24 @@ public class IoTDBPreparedStatementTest {
 
   @SuppressWarnings("resource")
   @Test
+  public void testParameterMetadataIgnoresQuestionMarkInQuotedIdentifier() throws Exception {
+    String sql = "SELECT `?` FROM root.sg.d WHERE temperature < ?";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+
+    assertEquals(1, ps.getParameterMetaData().getParameterCount());
+    ps.setInt(1, 123);
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals(
+        "SELECT `?` FROM root.sg.d WHERE temperature < 123", argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
   public void getMetaDataReturnsNullWhenNoResultSetExists() throws Exception {
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
