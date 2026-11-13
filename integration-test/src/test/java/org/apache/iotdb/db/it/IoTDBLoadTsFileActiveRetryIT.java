@@ -535,8 +535,7 @@ public class IoTDBLoadTsFileActiveRetryIT {
     final Random expectedValues = new Random(seed);
     try (ResultSet resultSet =
         statement.executeQuery(
-            String.format(
-                "select time, %s from %s order by time", MEASUREMENT, COLLISION_DEVICE))) {
+            String.format("select %s from %s order by time", MEASUREMENT, COLLISION_DEVICE))) {
       for (long time = startTime; time <= endTime; time++) {
         final int value = expectedValues.nextInt();
         if (withExtraMeasurement) {
@@ -555,8 +554,7 @@ public class IoTDBLoadTsFileActiveRetryIT {
     if (withExtraMeasurement) {
       final Random expectedExtraValues = new Random(seed);
       try (ResultSet resultSet =
-          statement.executeQuery(
-              "select time, extra from " + COLLISION_DEVICE + " order by time")) {
+          statement.executeQuery("select extra from " + COLLISION_DEVICE + " order by time")) {
         for (long time = startTime; time <= endTime; time++) {
           expectedExtraValues.nextInt();
           Assert.assertTrue(resultSet.next());
