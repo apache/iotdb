@@ -34,7 +34,6 @@ public enum ThreadName {
   QUERY_SENTINEL("Query-Sentinel-Thread"),
   TIMED_QUERY_SQL_COUNT("Timed-Query-SQL-Count"),
   FRAGMENT_INSTANCE_MANAGEMENT("Fragment-Instance-Management"),
-  QUERY_ATTEMPT_EXPIRATION("Query-Attempt-Expiration"),
   FRAGMENT_INSTANCE_NOTIFICATION("Fragment-Instance-Notification"),
   FRAGMENT_INSTANCE_DISPATCH("Fragment-Instance-Dispatch"),
   DRIVER_TASK_SCHEDULER_NOTIFICATION("Driver-Task-Scheduler-Notification"),
@@ -226,7 +225,6 @@ public enum ThreadName {
               QUERY_SENTINEL,
               TIMED_QUERY_SQL_COUNT,
               FRAGMENT_INSTANCE_MANAGEMENT,
-              QUERY_ATTEMPT_EXPIRATION,
               FRAGMENT_INSTANCE_NOTIFICATION,
               DRIVER_TASK_SCHEDULER_NOTIFICATION));
   private static final Set<ThreadName> mppThreadNames =

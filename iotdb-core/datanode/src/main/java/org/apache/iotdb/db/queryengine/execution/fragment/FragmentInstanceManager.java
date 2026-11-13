@@ -87,7 +87,6 @@ public class FragmentInstanceManager {
   private final IDriverScheduler scheduler = DriverScheduler.getInstance();
 
   private final ScheduledExecutorService instanceManagementExecutor;
-  private final ScheduledExecutorService queryAttemptExpirationExecutor;
   public final ExecutorService instanceNotificationExecutor;
 
   private final Duration infoCacheTime;
@@ -111,9 +110,6 @@ public class FragmentInstanceManager {
     this.instanceManagementExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(
             1, ThreadName.FRAGMENT_INSTANCE_MANAGEMENT.getName());
-    this.queryAttemptExpirationExecutor =
-        IoTDBThreadPoolFactory.newScheduledThreadPool(
-            1, ThreadName.QUERY_ATTEMPT_EXPIRATION.getName());
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             IoTDBDescriptor.getInstance().getConfig().getFragmentInstanceNotificationThreadCount(),
@@ -121,9 +117,8 @@ public class FragmentInstanceManager {
 
     this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 
-    // Large bursts of expired admission fences must not delay stale-query or flushing cleanup.
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        queryAttemptExpirationExecutor,
+        instanceManagementExecutor,
         queryAttempts::removeExpired,
         2000,
         2000,
