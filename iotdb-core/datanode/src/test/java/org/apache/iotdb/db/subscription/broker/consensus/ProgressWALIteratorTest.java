@@ -94,6 +94,9 @@ public class ProgressWALIteratorTest {
           assertTrue(iterator.hasYieldedScan());
           assertFalse(iterator.hasBufferedNext());
           assertFalse(iterator.hasIncompleteScan());
+          iterator.releaseReadBuffers();
+          // Releasing the segment must preserve both the physical cursor and request fragments.
+          iterator.releaseReadBuffers();
           // Neither a skipped prefix nor an unfinished follower request is a completed delivery.
           assertFalse(iterator.hasNext(budget));
         }
