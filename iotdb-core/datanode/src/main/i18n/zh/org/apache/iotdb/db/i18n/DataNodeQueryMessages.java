@@ -65,4 +65,6 @@ public final class DataNodeQueryMessages {
       EXCEPTION_THE_DATABASE_ARG_DOES_NOT_EXIST_AND_AUTO_CREATE_SCHEMA_IS_DISABLED_28F8D49A =
           "数据库 %s 不存在，且 auto-create-schema 已禁用。";
   public static final String LOG_DELETE_AFTER_LOADING_ARG_ERROR_C606A060 = "加载后删除 {} 时出错。";
+  public static final String LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F =
+      "CQ {} 的用户 {} 鉴权失败：{}";
 }

@@ -69,4 +69,6 @@ public final class DataNodeQueryMessages {
           "The database %s does not exist and auto-create-schema is disabled.";
   public static final String LOG_DELETE_AFTER_LOADING_ARG_ERROR_C606A060 =
       "Delete After Loading {} error.";
+  public static final String LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F =
+      "Failed to authorize CQ {} for user {}: {}";
 }
