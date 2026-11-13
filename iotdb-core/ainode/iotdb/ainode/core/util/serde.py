@@ -82,7 +82,7 @@ def convert_tensor_to_tsblock(data_tensor: torch.Tensor):
 
     # one value column per target, each of sequence_length values
     columns = data_tensor.detach().cpu().numpy()
-    value_column_size, position_count = columns.shape[0], columns.shape[1]
+    value_column_size, position_count = columns.shape
     data_type = str(columns.dtype)
 
     parts = [value_column_size.to_bytes(4, byteorder="big")]
