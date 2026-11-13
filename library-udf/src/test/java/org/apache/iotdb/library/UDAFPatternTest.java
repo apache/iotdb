@@ -243,6 +243,18 @@ public class UDAFPatternTest {
   }
 
   @Test
+  public void testDTWMatchRejectsEmptyPatternElements() {
+    for (String pattern : new String[] {"", ",", ",,", "1.0,", ",1.0", "1.0,,2.0"}) {
+      Assert.assertThrows(
+          pattern,
+          UDFParameterNotValidException.class,
+          () ->
+              new UDAFDTWMatch()
+                  .validate(new UDFParameterValidator(createDtwParameters(pattern, "1"))));
+    }
+  }
+
+  @Test
   public void testMatchUDAFsSkipNullAndInvalidRows() throws Exception {
     Column[] columns = buildPatternInputColumns();
 

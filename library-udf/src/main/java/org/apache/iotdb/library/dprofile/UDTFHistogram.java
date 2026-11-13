@@ -81,12 +81,13 @@ public class UDTFHistogram implements UDTF {
     if (Double.isFinite(value)) {
       double span = end - start;
       double offset = value - start;
-      double bucketPosition;
-      if (Double.isFinite(span) && Double.isFinite(offset)) {
-        bucketPosition = (offset / span) * count;
-      } else {
-        bucketPosition = ((value * 0.5 - start * 0.5) / (end * 0.5 - start * 0.5)) * count;
+      if (!Double.isFinite(span) || !Double.isFinite(offset)) {
+        span = end * 0.5 - start * 0.5;
+        offset = value * 0.5 - start * 0.5;
       }
+      double width = span / count;
+      // Divide by the width first to preserve exact bucket boundaries when possible.
+      double bucketPosition = width > 0 ? offset / width : (offset / span) * count;
       int id = Math.min(Math.max((int) Math.floor(bucketPosition), 0), count - 1);
       bucket[id]++;
     }

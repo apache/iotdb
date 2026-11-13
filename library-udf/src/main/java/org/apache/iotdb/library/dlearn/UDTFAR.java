@@ -140,7 +140,7 @@ public class UDTFAR implements UDTF {
       for (int j = 1; j <= i - 1; j++) {
         tmpSum += alphas[j][i - 1] * resultCovariances[i - j];
       }
-      if (!Double.isFinite(epsilons[i - 1]) || Math.abs(epsilons[i - 1]) < 1e-12) {
+      if (!Double.isFinite(epsilons[i - 1]) || epsilons[i - 1] == 0.0) {
         return;
       }
       kappas[i] = (resultCovariances[i] - tmpSum) / epsilons[i - 1];

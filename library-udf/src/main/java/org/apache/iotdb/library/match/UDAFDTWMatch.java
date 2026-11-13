@@ -210,7 +210,7 @@ public class UDAFDTWMatch implements UDAF {
 
   private static boolean isFiniteDoubleList(String value) {
     try {
-      return Arrays.stream(value.split(",")).map(Double::valueOf).allMatch(Double::isFinite);
+      return Arrays.stream(value.split(",", -1)).map(Double::valueOf).allMatch(Double::isFinite);
     } catch (Exception e) {
       return false;
     }

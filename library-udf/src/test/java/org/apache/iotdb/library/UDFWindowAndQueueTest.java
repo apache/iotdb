@@ -200,6 +200,24 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testMvAvgRecoversAfterOverflowLeavesWindow() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("window", "2"));
+    UDTFMvAvg mvAvg = new UDTFMvAvg();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    mvAvg.validate(new UDFParameterValidator(parameters));
+    mvAvg.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    mvAvg.transform(new DoubleRow(1, Double.MAX_VALUE), collector);
+    mvAvg.transform(new DoubleRow(2, Double.MAX_VALUE), collector);
+    mvAvg.transform(new DoubleRow(3, 0.0), collector);
+    mvAvg.transform(new DoubleRow(4, 2.0), collector);
+    mvAvg.transform(new DoubleRow(5, 4.0), collector);
+
+    Assert.assertEquals(Arrays.asList(3L, 4L, 5L), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(Double.MAX_VALUE / 2, 1.0, 3.0), collector.values);
+  }
+
+  @Test
   public void testLOFSkipsNullRowsWithoutReadingCompressedIndex() throws Exception {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("k", "1");
@@ -1316,6 +1334,27 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testHistogramKeepsExactBucketBoundaries() throws Exception {
+    UDFParameters parameters =
+        createSingleDoubleSeriesParameters(Map.of("min", "0", "max", "100", "count", "100"));
+    UDTFHistogram histogram = new UDTFHistogram();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    histogram.validate(new UDFParameterValidator(parameters));
+    histogram.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    for (int i = -1; i <= 101; i++) {
+      histogram.transform(new DoubleRow(i, i), collector);
+    }
+    histogram.terminate(collector);
+
+    Assert.assertEquals(100, collector.timestamps.size());
+    for (int i = 0; i < 100; i++) {
+      Assert.assertEquals(Long.valueOf(i), collector.timestamps.get(i));
+      Assert.assertEquals(i == 0 ? 2.0 : i == 99 ? 3.0 : 1.0, collector.values.get(i), 0.0);
+    }
+  }
+
+  @Test
   public void testReservoirSampleResetsCountBetweenRuns() throws Exception {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("k", "2");
@@ -1405,7 +1444,7 @@ public class UDFWindowAndQueueTest {
       RecordingPointCollector collector = new RecordingPointCollector();
       sample.validate(new UDFParameterValidator(parameters));
       sample.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
-      sample.transform(
+      SimpleRowWindow window =
           new SimpleRowWindow(
               nullDoubleRow(1),
               new DoubleRow(2, 2.0),
@@ -1413,8 +1452,11 @@ public class UDFWindowAndQueueTest {
               nullDoubleRow(4),
               new DoubleRow(5, 5.0),
               new DoubleRow(7, 7.0),
-              nullDoubleRow(8)),
-          collector);
+              nullDoubleRow(8));
+      Row reusedRow = window.getRow(1);
+      Assert.assertSame(reusedRow, window.getRow(2));
+      Assert.assertEquals(3L, reusedRow.getTime());
+      sample.transform(window, collector);
 
       Assert.assertEquals(
           k == 2 ? Arrays.asList(2L, 5L) : Arrays.asList(2L, 3L, 5L, 7L), collector.timestamps);
@@ -2065,6 +2107,23 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testARPreservesCoefficientsForSmallAmplitudeInput() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
+    UDTFAR ar = new UDTFAR();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    ar.validate(new UDFParameterValidator(parameters));
+    ar.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    ar.transform(new DoubleRow(1, 1e-8), collector);
+    ar.transform(new DoubleRow(2, 2e-8), collector);
+    ar.transform(new DoubleRow(3, 3e-8), collector);
+    ar.terminate(collector);
+
+    Assert.assertEquals(Collections.singletonList(1L), collector.timestamps);
+    Assert.assertEquals(6.0 / 7.0, collector.values.get(0), 1e-12);
+  }
+
+  @Test
   public void testClusterSkipsInvalidRows() throws Exception {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("l", "1");
@@ -2252,6 +2311,50 @@ public class UDFWindowAndQueueTest {
 
     Assert.assertEquals(Arrays.asList(Long.MIN_VALUE, 0L, Long.MAX_VALUE), collector.timestamps);
     Assert.assertEquals(Arrays.asList(-0.5, 0.0, 0.5), collector.values);
+  }
+
+  @Test
+  public void testSplineEvaluatesAtRoundedOutputTimestamps() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("points", "4"));
+    UDTFSpline spline = new UDTFSpline();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    spline.validate(new UDFParameterValidator(parameters));
+    spline.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    for (int i = 0; i < 5; i++) {
+      spline.transform(new DoubleRow(i, i), collector);
+    }
+    spline.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(0L, 1L, 3L, 4L), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(0.0, 1.0, 3.0, 4.0), collector.values);
+  }
+
+  @Test
+  public void testSplinePreservesEndpointsWhenCoordinatesCollide() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("points", "3"));
+    UDTFSpline spline = new UDTFSpline();
+    RecordingPointCollector collector = new RecordingPointCollector();
+    long[] times = {
+      Long.MIN_VALUE,
+      Long.MIN_VALUE + 1,
+      Long.MIN_VALUE / 2,
+      0,
+      Long.MAX_VALUE / 2,
+      Long.MAX_VALUE - 1,
+      Long.MAX_VALUE
+    };
+    double[] values = {0, 99, 1, 2, 3, 99, 4};
+
+    spline.validate(new UDFParameterValidator(parameters));
+    spline.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    for (int i = 0; i < times.length; i++) {
+      spline.transform(new DoubleRow(times[i], values[i]), collector);
+    }
+    spline.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(Long.MIN_VALUE, 0L, Long.MAX_VALUE), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(0.0, 2.0, 4.0), collector.values);
   }
 
   @Test
@@ -2910,9 +3013,23 @@ public class UDFWindowAndQueueTest {
   private static class SimpleRowWindow implements RowWindow {
 
     private final Row[] rows;
+    private final Row row;
+    private int rowIndex;
 
     private SimpleRowWindow(Row... rows) {
       this.rows = rows;
+      this.row =
+          (Row)
+              Proxy.newProxyInstance(
+                  Row.class.getClassLoader(),
+                  new Class<?>[] {Row.class},
+                  (proxy, method, args) -> {
+                    try {
+                      return method.invoke(this.rows[rowIndex], args);
+                    } catch (InvocationTargetException e) {
+                      throw e.getCause();
+                    }
+                  });
     }
 
     @Override
@@ -2922,12 +3039,13 @@ public class UDFWindowAndQueueTest {
 
     @Override
     public Row getRow(int rowIndex) {
-      return rows[rowIndex];
+      this.rowIndex = rowIndex;
+      return row;
     }
 
     @Override
     public Type getDataType(int columnIndex) {
-      return Type.DOUBLE;
+      return rows.length == 0 ? Type.DOUBLE : rows[0].getDataType(columnIndex);
     }
 
     @Override

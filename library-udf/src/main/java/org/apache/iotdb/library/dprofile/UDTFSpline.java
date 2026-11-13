@@ -104,6 +104,9 @@ public class UDTFSpline implements UDTF {
         if (xDouble.isEmpty() || coordinate > xDouble.get(xDouble.size() - 1)) {
           xDouble.add(coordinate);
           interpolationValues.add(yDouble.get(i));
+        } else if (i == timestamp.size() - 1) {
+          // Keep the terminal value when adjacent timestamps share a double coordinate.
+          interpolationValues.set(interpolationValues.size() - 1, yDouble.get(i));
         }
       }
       if (xDouble.size() < 5) {
@@ -114,8 +117,10 @@ public class UDTFSpline implements UDTF {
       double[] y = ArrayUtils.toPrimitive(interpolationValues.toArray(new Double[0]));
       psf = asi.interpolate(x, y);
       for (int i = 0; i < samplePoints; i++) {
+        long outputTimestamp = getOutputTimestamp(i);
         double approximation =
-            (x[0] * (samplePoints - 1 - i) + x[x.length - 1] * i) / (samplePoints - 1);
+            BigInteger.valueOf(outputTimestamp).subtract(coordinateOrigin).doubleValue()
+                / coordinateScale;
         double yhead;
         if (i == 0) {
           yhead = y[0];
@@ -125,7 +130,7 @@ public class UDTFSpline implements UDTF {
           yhead = psf.value(approximation);
         }
         if (Double.isFinite(yhead)) {
-          collector.putDouble(getOutputTimestamp(i), yhead);
+          collector.putDouble(outputTimestamp, yhead);
         }
       }
     }

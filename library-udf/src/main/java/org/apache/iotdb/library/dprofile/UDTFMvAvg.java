@@ -72,7 +72,17 @@ public class UDTFMvAvg implements UDTF {
       v.push(value);
       windowSum += value;
       if (v.isFull()) {
-        collector.putDouble(row.getTime(), windowSum / windowSize);
+        if (!Double.isFinite(windowSum)) {
+          // An overflow in an earlier window must not poison all subsequent windows.
+          windowSum = 0d;
+          for (int i = 0; i < v.getSize(); i++) {
+            windowSum += v.get(i);
+          }
+        }
+        double average = windowSum / windowSize;
+        if (Double.isFinite(average)) {
+          collector.putDouble(row.getTime(), average);
+        }
       }
     }
   }
