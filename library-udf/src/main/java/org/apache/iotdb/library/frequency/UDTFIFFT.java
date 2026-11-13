@@ -34,8 +34,6 @@ import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.jtransforms.fft.DoubleFFT_1D;
 
-import java.text.SimpleDateFormat;
-
 /** This function does Inverse Fast Fourier Transform for input series. */
 public class UDTFIFFT implements UDTF {
 
@@ -52,20 +50,18 @@ public class UDTFIFFT implements UDTF {
     validator
         .validateInputSeriesNumber(2)
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
+        .validateInputSeriesDataType(1, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
-            x -> (long) x > 0,
+            x -> Util.isPositiveTime((String) x, validator.getParameters()),
             LibraryUdfMessages
                 .EXCEPTION_INTERVAL_SHOULD_BE_A_TIME_PERIOD_WHOSE_UNIT_IS_MS_S_M_H_D_AF16953B,
-            Util.parseTime(
-                validator.getParameters().getStringOrDefault("interval", "1s"),
-                validator.getParameters()));
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            validator.getParameters().getStringOrDefault("interval", "1s"));
     if (validator.getParameters().hasAttribute(START_PARAM)) {
       validator.validate(
-          x -> (long) x > 0,
+          x -> Util.isPositiveDateTime((String) x),
           LibraryUdfMessages
               .EXCEPTION_START_SHOULD_CONFORM_TO_THE_FORMAT_YYYY_MM_DD_HH_MM_SS_3FAAA2A2,
-          format.parse(validator.getParameters().getString(START_PARAM)).getTime());
+          validator.getParameters().getString(START_PARAM));
     }
   }
 
@@ -73,28 +69,38 @@ public class UDTFIFFT implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
+    real.clear();
+    imag.clear();
+    time.clear();
     this.interval = Util.parseTime(parameters.getStringOrDefault("interval", "1s"), parameters);
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     this.start = 0;
     if (parameters.hasAttribute(START_PARAM)) {
-      this.start = format.parse(parameters.getString(START_PARAM)).getTime();
+      this.start = Util.parseDateTime(parameters.getString(START_PARAM));
     }
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    if (!row.isNull(0)
-        && !row.isNull(1)
-        && Double.isFinite(Util.getValueAsDouble(row, 0))
-        && Double.isFinite(Util.getValueAsDouble(row, 1))) {
+    if (row.getTime() < 0 || row.getTime() >= Integer.MAX_VALUE / 2) {
+      return;
+    }
+    if (!row.isNull(0) && !row.isNull(1)) {
+      double realValue = Util.getValueAsDouble(row, 0);
+      double imagValue = Util.getValueAsDouble(row, 1);
+      if (!Double.isFinite(realValue) || !Double.isFinite(imagValue)) {
+        return;
+      }
       time.add((int) row.getTime());
-      real.add(Util.getValueAsDouble(row, 0));
-      imag.add(Util.getValueAsDouble(row, 1));
+      real.add(realValue);
+      imag.add(imagValue);
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
+    if (time.isEmpty()) {
+      return;
+    }
     int n = time.get(time.size() - 1) + 1;
     double[] a = new double[n * 2];
     for (int i = 0; i < time.size(); i++) {
@@ -111,7 +117,14 @@ public class UDTFIFFT implements UDTF {
     DoubleFFT_1D fft = new DoubleFFT_1D(n);
     fft.complexInverse(a, true);
     for (int i = 0; i < n; i++) {
-      collector.putDouble(start + i * interval, a[2 * i]);
+      double value = a[2 * i];
+      if (Double.isFinite(value)) {
+        try {
+          collector.putDouble(Math.addExact(start, Math.multiplyExact((long) i, interval)), value);
+        } catch (ArithmeticException ignored) {
+          // skip timestamps that overflow the long range
+        }
+      }
     }
   }
 }

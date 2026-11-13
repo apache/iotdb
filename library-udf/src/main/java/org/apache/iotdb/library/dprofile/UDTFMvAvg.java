@@ -31,11 +31,16 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.math.BigDecimal;
+
 /** This function calculates moving average of given window length of input series. */
 public class UDTFMvAvg implements UDTF {
   int windowSize;
   Type dataType;
   DoubleCircularQueue v;
+  double windowSum;
+  double windowCompensation;
+  private BigDecimal exactWindowSum;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -55,23 +60,70 @@ public class UDTFMvAvg implements UDTF {
     dataType = parameters.getDataType(0);
     windowSize = parameters.getIntOrDefault("window", 10);
     v = new DoubleCircularQueue(windowSize);
+    windowSum = 0d;
+    windowCompensation = 0d;
+    exactWindowSum = null;
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    long t = row.getTime();
-    double windowSum = 0d;
-    if (v.isFull()) {
-      windowSum -= v.pop();
+    if (row.isNull(0)) {
+      return;
     }
     double value = Util.getValueAsDouble(row);
     if (Double.isFinite(value)) {
-      v.push(value);
-      windowSum += value;
+      boolean rebuild = false;
       if (v.isFull()) {
-        collector.putDouble(t, windowSum / windowSize);
+        double removed = v.pop();
+        if (exactWindowSum == null) {
+          rebuild = addToSum(-removed);
+        } else {
+          exactWindowSum = exactWindowSum.subtract(new BigDecimal(removed));
+        }
+      }
+      v.push(value);
+      if (exactWindowSum == null) {
+        rebuild |= addToSum(value);
+        if (rebuild) {
+          // A single compensation term cannot retain every scale of a finite input window.
+          // Rebuild once, then keep an exact sum so later removals recover the small values.
+          exactWindowSum = BigDecimal.ZERO;
+          for (int i = 0; i < v.getSize(); i++) {
+            exactWindowSum = exactWindowSum.add(new BigDecimal(v.get(i)));
+          }
+        }
+      } else {
+        exactWindowSum = exactWindowSum.add(new BigDecimal(value));
+      }
+      if (v.isFull()) {
+        double sum =
+            exactWindowSum == null ? windowSum + windowCompensation : exactWindowSum.doubleValue();
+        double average = sum / windowSize;
+        if (Double.isFinite(average)) {
+          collector.putDouble(row.getTime(), average);
+        }
       }
     }
+  }
+
+  private boolean addToSum(double value) {
+    double sum = windowSum + value;
+    if (!Double.isFinite(sum)) {
+      return true;
+    }
+    // Retain small values until larger values leave the window (Neumaier summation).
+    double correction =
+        Math.abs(windowSum) >= Math.abs(value)
+            ? (windowSum - sum) + value
+            : (value - sum) + windowSum;
+    double compensation = windowCompensation + correction;
+    double lost =
+        Math.abs(windowCompensation) >= Math.abs(correction)
+            ? (windowCompensation - compensation) + correction
+            : (correction - compensation) + windowCompensation;
+    windowSum = sum;
+    windowCompensation = compensation;
+    return !Double.isFinite(compensation) || lost != 0d;
   }
 
   @Override

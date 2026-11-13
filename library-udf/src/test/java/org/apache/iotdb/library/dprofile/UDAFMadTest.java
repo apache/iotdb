@@ -84,6 +84,8 @@ public class UDAFMadTest {
               switch (method.getName()) {
                 case "getTime":
                   return 0L;
+                case "isNull":
+                  return false;
                 case "getDouble":
                   return value;
                 case "getDataType":

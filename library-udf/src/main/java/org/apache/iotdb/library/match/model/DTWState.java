@@ -24,14 +24,20 @@ import org.apache.iotdb.udf.api.State;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class DTWState implements State {
   private List<DTWMatchResult> matchResults;
   private Deque<Double> valueBuffer;
   private Deque<Long> timeBuffer;
+  // Keep effective input because partial states may arrive in any temporal order or interleave.
+  private Map<Long, Double> input;
   private Integer size;
+  private boolean needsRebuild;
 
   public DTWState() {}
 
@@ -44,34 +50,37 @@ public class DTWState implements State {
     matchResults = new ArrayList<>();
     valueBuffer = new ArrayDeque<>(size);
     timeBuffer = new ArrayDeque<>(size);
+    input = new TreeMap<>();
+    needsRebuild = false;
   }
 
   @Override
   public byte[] serialize() {
     int capacity =
         Integer.BYTES * 2
-            + valueBuffer.size() * (Double.BYTES + Long.BYTES)
+            + Byte.BYTES
+            + input.size() * (Double.BYTES + Long.BYTES)
             + matchResults.size() * DTWMatchResult.BYTES;
     ByteBuffer byteBuffer = ByteBuffer.allocate(capacity);
 
-    byteBuffer.putInt(valueBuffer.size());
-    Object[] times = timeBuffer.toArray();
-    Object[] values = valueBuffer.toArray();
-    for (int i = 0; i < timeBuffer.size(); i++) {
-      byteBuffer.putLong((long) times[i]);
-      byteBuffer.putDouble((double) values[i]);
+    byteBuffer.putInt(input.size());
+    for (Map.Entry<Long, Double> point : input.entrySet()) {
+      byteBuffer.putLong(point.getKey());
+      byteBuffer.putDouble(point.getValue());
     }
 
     byteBuffer.putInt(matchResults.size());
     for (DTWMatchResult matchResult : matchResults) {
       byteBuffer.put(matchResult.toByteArray());
     }
+    byteBuffer.put((byte) (needsRebuild ? 1 : 0));
 
     return byteBuffer.array();
   }
 
   @Override
   public void deserialize(byte[] bytes) {
+    reset();
     ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
 
     int size = byteBuffer.getInt();
@@ -85,6 +94,7 @@ public class DTWState implements State {
       byteBuffer.get(dst);
       matchResults.add(DTWMatchResult.fromByteArray(dst));
     }
+    needsRebuild = byteBuffer.get() != 0;
   }
 
   public void setSize(int size) {
@@ -96,6 +106,15 @@ public class DTWState implements State {
   }
 
   public void updateBuffer(long time, double dataPoint) {
+    if (!timeBuffer.isEmpty() && time <= timeBuffer.getLast()) {
+      // Late or replaced points invalidate previously calculated windows, just like a merge.
+      needsRebuild = true;
+    }
+    input.put(time, dataPoint);
+    updateWindow(time, dataPoint);
+  }
+
+  public void updateWindow(long time, double dataPoint) {
     if (valueBuffer.size() == size) {
       valueBuffer.poll();
       timeBuffer.poll();
@@ -112,6 +131,33 @@ public class DTWState implements State {
     return timeBuffer.toArray(new Long[0]);
   }
 
+  public Map<Long, Double> getInput() {
+    return Collections.unmodifiableMap(input);
+  }
+
+  public void mergeInput(DTWState other) {
+    if (other.input.isEmpty()) {
+      return;
+    }
+    input.putAll(other.input);
+    clearWindowAndMatches();
+    needsRebuild = true;
+  }
+
+  public boolean needsRebuild() {
+    return needsRebuild;
+  }
+
+  public void clearWindowAndMatches() {
+    valueBuffer.clear();
+    timeBuffer.clear();
+    matchResults.clear();
+  }
+
+  public void finishRebuild() {
+    needsRebuild = false;
+  }
+
   public long getFirstTime() {
     return timeBuffer.getFirst();
   }
@@ -123,6 +169,9 @@ public class DTWState implements State {
   @Override
   public void destroyState() {
     valueBuffer.clear();
+    timeBuffer.clear();
+    input.clear();
+    matchResults.clear();
     State.super.destroyState();
   }
 
@@ -132,30 +181,5 @@ public class DTWState implements State {
 
   public List<DTWMatchResult> getMatchResults() {
     return matchResults;
-  }
-
-  public static void main(String[] args) {
-    DTWState state = new DTWState();
-    state.setSize(5);
-    state.reset();
-    for (int i = 0; i < 4; i++) {
-      state.updateBuffer(i, i);
-      state.addMatchResult(new DTWMatchResult(i, i, i));
-    }
-    for (int i = 0; i < state.getTimeBuffer().length; i++) {
-      System.out.println(state.getTimeBuffer()[i] + " " + state.getValueBuffer()[i]);
-    }
-    for (DTWMatchResult matchResult : state.matchResults) {
-      System.out.println(matchResult);
-    }
-
-    DTWState newState = new DTWState();
-    newState.setSize(5);
-    newState.reset();
-    newState.deserialize(state.serialize());
-    for (int i = 0; i < state.getTimeBuffer().length; i++) {
-      System.out.println(state.getTimeBuffer()[i] + " " + state.getValueBuffer()[i]);
-    }
-    System.out.println(newState.getMatchResults());
   }
 }

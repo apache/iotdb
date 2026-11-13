@@ -24,7 +24,6 @@ import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
-import org.apache.iotdb.udf.api.access.RowIterator;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -36,9 +35,12 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 /** This function samples data by pool sampling. */
@@ -58,7 +60,6 @@ public class UDTFSample implements UDTF {
   private int num = 0; // number of points already sampled
   private Random random;
   private Type dataType;
-  private TypeServices.NumericValueWriter numericValueWriter;
   private TypeServices.NumericRowReader numericRowReader;
   private TypeServices.RowValueReader valueReader;
   private TypeServices.RowValueWriter valueWriter;
@@ -84,9 +85,8 @@ public class UDTFSample implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     this.k = parameters.getIntOrDefault("k", 1);
+    this.num = 0;
     this.dataType = parameters.getDataType(0);
-    numericValueWriter =
-        TypeServices.NUMERIC_VALUE_WRITER_SERVICE.call(TypeServices.toReadType(dataType));
     numericRowReader =
         TypeServices.NUMERIC_ROW_READER_SERVICE.call(TypeServices.toReadType(dataType));
     valueReader = TypeServices.rowValueReader(dataType);
@@ -100,6 +100,8 @@ public class UDTFSample implements UDTF {
       this.method = Method.RESERVOIR;
     }
     if (this.method == Method.ISOMETRIC || this.method == Method.TRIANGLE) {
+      this.samples = null;
+      this.random = null;
       configurations
           .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
           .setOutputDataType(parameters.getDataType(0));
@@ -114,6 +116,9 @@ public class UDTFSample implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     // pool sampling
     int x;
     if (this.num < this.k) {
@@ -133,43 +138,71 @@ public class UDTFSample implements UDTF {
   @SuppressWarnings("javabugs:S6320")
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     // equal-distance sampling
-    int n = rowWindow.windowSize();
-
-    if (this.k < n) {
-      if (this.method == Method.TRIANGLE) {
-        List<Pair<Long, Double>> input = new LinkedList<>();
-        for (int i = 0; i < n; i++) {
-          Row row = rowWindow.getRow(i);
-          long time = row.getTime();
-          double data = numericRowReader.read(row);
-          input.add(Pair.of(time, data));
+    if (this.method == Method.TRIANGLE) {
+      List<Pair<Long, Double>> input = new LinkedList<>();
+      List<Integer> validIndexes = new ArrayList<>();
+      Map<Long, Object> originalValues = new HashMap<>();
+      for (int i = 0; i < rowWindow.windowSize(); i++) {
+        Row row = rowWindow.getRow(i);
+        if (row.isNull(0)) {
+          continue;
         }
+        double data = numericRowReader.read(row);
+        if (Double.isFinite(data)) {
+          long time = row.getTime();
+          input.add(Pair.of(time, data));
+          validIndexes.add(i);
+          originalValues.put(time, valueReader.read(row));
+        }
+      }
+      int n = input.size();
+      if (n == 0) {
+        return;
+      }
+      if (this.k < n) {
         if (k > 2) {
           // The first and last element will always be sampled so the buckets is k - 2
           List<Pair<Long, Double>> output = LTThreeBuckets.sorted(input, k - 2);
           for (Pair<Long, Double> p : output) {
-            numericValueWriter.write(p.getLeft(), p.getRight(), collector);
+            valueWriter.write(collector, p.getLeft(), originalValues.get(p.getLeft()));
           }
         } else { // For corner case of k == 1 and k == 2
-          Row row = rowWindow.getRow(0); // Put first element
+          Row row = rowWindow.getRow(validIndexes.get(0)); // Put first element
           valueWriter.write(collector, row.getTime(), valueReader.read(row));
           if (k == 2) {
-            row = rowWindow.getRow(n - 1); // Put last element
+            row = rowWindow.getRow(validIndexes.get(n - 1)); // Put last element
             valueWriter.write(collector, row.getTime(), valueReader.read(row));
           }
         }
-      } else { // Method.ISOMETRIC
-        for (long i = 0; i < this.k; i++) {
-          long j = Math.floorDiv(i * n, (long) k); // avoid intermediate result overflows
-          Row row = rowWindow.getRow((int) j);
+      } else { // when k is larger than series length, output all points
+        for (int index : validIndexes) {
+          Row row = rowWindow.getRow(index);
           valueWriter.write(collector, row.getTime(), valueReader.read(row));
         }
       }
-    } else { // when k is larger than series length, output all points
-      RowIterator iterator = rowWindow.getRowIterator();
-      while (iterator.hasNextRow()) {
-        Row row = iterator.next();
-        valueWriter.write(collector, row.getTime(), valueReader.read(row));
+    } else {
+      // Row instances are reused by the window and iterator, so retain only their indexes.
+      List<Integer> validIndexes = new ArrayList<>();
+      for (int i = 0; i < rowWindow.windowSize(); i++) {
+        if (!rowWindow.getRow(i).isNull(0)) {
+          validIndexes.add(i);
+        }
+      }
+      int n = validIndexes.size();
+      if (n == 0) {
+        return;
+      }
+      if (this.k < n) {
+        for (long i = 0; i < this.k; i++) {
+          long j = Math.floorDiv(i * n, (long) k); // avoid intermediate result overflows
+          Row row = rowWindow.getRow(validIndexes.get((int) j));
+          valueWriter.write(collector, row.getTime(), valueReader.read(row));
+        }
+      } else { // when k is larger than series length, output all points
+        for (int index : validIndexes) {
+          Row row = rowWindow.getRow(index);
+          valueWriter.write(collector, row.getTime(), valueReader.read(row));
+        }
       }
     }
   }

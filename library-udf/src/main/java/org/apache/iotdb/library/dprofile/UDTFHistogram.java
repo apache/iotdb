@@ -30,6 +30,8 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.math.BigDecimal;
+
 /**
  * This function is used to calculate the distribution histogram of a single column of numerical
  * data.
@@ -37,9 +39,9 @@ import org.apache.iotdb.udf.api.type.Type;
 public class UDTFHistogram implements UDTF {
 
   private int[] bucket;
-  private double gap;
   private int count;
   private double start;
+  private double end;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -51,9 +53,12 @@ public class UDTFHistogram implements UDTF {
             LibraryUdfMessages.EXCEPTION_PARAMETER_COUNT_SHOULD_BE_LARGER_THAN_0_8E8FFF68,
             validator.getParameters().getIntOrDefault("count", 1))
         .validate(
-            params -> (double) params[0] <= (double) params[1],
+            params ->
+                Double.isFinite((double) params[0])
+                    && Double.isFinite((double) params[1])
+                    && (double) params[0] < (double) params[1],
             LibraryUdfMessages
-                .EXCEPTION_PARAMETER_END_SHOULD_BE_LARGER_THAN_OR_EQUAL_TO_START_FBDBED0B,
+                .EXCEPTION_PARAMETER_END_SHOULD_BE_FINITE_AND_LARGER_THAN_START_A5FB7AEC,
             validator.getParameters().getDoubleOrDefault("min", -Double.MAX_VALUE),
             validator.getParameters().getDoubleOrDefault("max", Double.MAX_VALUE));
   }
@@ -64,17 +69,48 @@ public class UDTFHistogram implements UDTF {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.INT32);
     // input param min is var start, param max is var end
     start = parameters.getDoubleOrDefault("min", -Double.MAX_VALUE);
-    double end = parameters.getDoubleOrDefault("max", Double.MAX_VALUE);
+    end = parameters.getDoubleOrDefault("max", Double.MAX_VALUE);
     count = parameters.getIntOrDefault("count", 1);
     bucket = new int[count];
-    gap = (end - start) / count;
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double value = Util.getValueAsDouble(row);
     if (Double.isFinite(value)) {
-      int id = Math.min(Math.max((int) Math.floor((value - start) / gap), 0), count - 1);
+      if (value <= start) {
+        bucket[0]++;
+        return;
+      }
+      if (value >= end) {
+        bucket[count - 1]++;
+        return;
+      }
+      double span = end - start;
+      double offset = value - start;
+      if (!Double.isFinite(span) || !Double.isFinite(offset)) {
+        span = end * 0.5 - start * 0.5;
+        offset = value * 0.5 - start * 0.5;
+      }
+      double width = span / count;
+      if (width < Double.MIN_NORMAL) {
+        // Neither a rounded subnormal width nor a rounded ratio preserves bucket boundaries.
+        BigDecimal exactStart = new BigDecimal(start);
+        int id =
+            new BigDecimal(value)
+                .subtract(exactStart)
+                .multiply(BigDecimal.valueOf(count))
+                .divideToIntegralValue(new BigDecimal(end).subtract(exactStart))
+                .intValueExact();
+        bucket[id]++;
+        return;
+      }
+      // Divide by the width first to preserve exact bucket boundaries when possible.
+      double bucketPosition = offset / width;
+      int id = Math.min(Math.max((int) Math.floor(bucketPosition), 0), count - 1);
       bucket[id]++;
     }
   }
