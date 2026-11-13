@@ -1081,6 +1081,11 @@ public class WALNode implements IWALNode {
     return buffer.getCurrentSearchIndex();
   }
 
+  /** Returns a version that changes after a batch containing replicated WAL entries is flushed. */
+  public long getReplicatedWalVersion() {
+    return buffer.getReplicatedWalVersion();
+  }
+
   @Override
   public long getCurrentWALFileVersion() {
     return buffer.getCurrentWALFileVersion();

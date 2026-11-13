@@ -115,8 +115,6 @@ public class ConsensusPrefetchingQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusPrefetchingQueue.class);
 
-  static final long EMPTY_POLL_PREFETCH_WAKEUP_INTERVAL_NANOS = TimeUnit.MILLISECONDS.toNanos(100L);
-
   private static final ExecutorService CLOSE_CLEANUP_EXECUTOR =
       IoTDBThreadPoolFactory.newCachedThreadPoolWithDaemon(
           ThreadName.SUBSCRIPTION_CONSENSUS_PREFETCH_EXECUTOR_POOL.getName() + "-Close-Cleanup");
@@ -309,7 +307,7 @@ public class ConsensusPrefetchingQueue {
 
   private final Object prefetchBindingLock = new Object();
 
-  private final AtomicLong lastEmptyPollPrefetchWakeupNanos = new AtomicLong(Long.MIN_VALUE);
+  private volatile long lastPrefetchReplicatedWalVersion;
 
   private volatile ConsensusPrefetchSubtask prefetchSubtask;
 
@@ -967,12 +965,12 @@ public class ConsensusPrefetchingQueue {
             || prefetchExecutor != currentExecutor;
     if (!bindingMissing) {
       // Replicated WAL entries do not update the local search index or enter the realtime queue.
-      // Wake an idle worker on empty polls to discover entries that arrived after its last scan.
-      return !currentSubtask.isScheduledOrRunning()
-          && tryAcquireEmptyPollPrefetchWakeup(lastEmptyPollPrefetchWakeupNanos, System.nanoTime());
+      // Wake only when another replicated batch has become readable since the last round began.
+      return !currentSubtask.isScheduledOrRunning() && hasUnobservedReplicatedWalEntries();
     }
 
-    return hasImmediatePrefetchableWork()
+    return hasUnobservedReplicatedWalEntries()
+        || hasImmediatePrefetchableWork()
         || !orderedWriterReplay.isEmpty()
         || hasHistoricalWalLag()
         || !lingerBatch.isEmpty()
@@ -980,18 +978,10 @@ public class ConsensusPrefetchingQueue {
         || computeWatermarkDelayMs() > 0L;
   }
 
-  static boolean tryAcquireEmptyPollPrefetchWakeup(
-      final AtomicLong lastWakeupNanos, final long currentTimeNanos) {
-    while (true) {
-      final long lastWakeupTimeNanos = lastWakeupNanos.get();
-      if (lastWakeupTimeNanos != Long.MIN_VALUE
-          && currentTimeNanos - lastWakeupTimeNanos < EMPTY_POLL_PREFETCH_WAKEUP_INTERVAL_NANOS) {
-        return false;
-      }
-      if (lastWakeupNanos.compareAndSet(lastWakeupTimeNanos, currentTimeNanos)) {
-        return true;
-      }
-    }
+  private boolean hasUnobservedReplicatedWalEntries() {
+    return consensusReqReader instanceof WALNode
+        && ((WALNode) consensusReqReader).getReplicatedWalVersion()
+            != lastPrefetchReplicatedWalVersion;
   }
 
   // ======================== Poll ========================
@@ -1875,6 +1865,12 @@ public class ConsensusPrefetchingQueue {
       final ProgressWALIterator.ScanBudget walScanBudget = newWalScanBudget();
       if (isClosed || closeRequested || !prefetchInitialized) {
         return PrefetchRoundResult.dormant();
+      }
+
+      // Capture before scanning: replication published during this round must remain observable
+      // even if it arrives after the final iterator check and the worker goes dormant.
+      if (consensusReqReader instanceof WALNode) {
+        lastPrefetchReplicatedWalVersion = ((WALNode) consensusReqReader).getReplicatedWalVersion();
       }
 
       if (LOGGER.isDebugEnabled()) {
