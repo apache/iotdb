@@ -229,7 +229,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public void close() throws SQLException {
-    if (explicitlyClosed) {
+    if (explicitlyClosed && ioTDBRpcDataSet.isClosed()) {
       return;
     }
     try {

@@ -40,6 +40,7 @@ public class IoTDBDataSource implements DataSource {
   private String password;
   private Properties properties;
   private Integer port = Config.IOTDB_DEFAULT_PORT;
+  private int loginTimeout;
 
   public IoTDBDataSource() {
     properties = new Properties();
@@ -111,13 +112,16 @@ public class IoTDBDataSource implements DataSource {
   }
 
   @Override
-  public void setLoginTimeout(int i) {
-    // Do nothing
+  public void setLoginTimeout(int seconds) throws SQLException {
+    if (seconds < 0) {
+      throw new SQLException(JdbcMessages.EXCEPTION_LOGINTIMEOUT_MUST_BE_0_A213D684);
+    }
+    loginTimeout = seconds;
   }
 
   @Override
   public int getLoginTimeout() {
-    return 0;
+    return loginTimeout;
   }
 
   @Override
@@ -137,7 +141,8 @@ public class IoTDBDataSource implements DataSource {
 
   private Connection createConnection(Properties connectionProperties) throws SQLException {
     try {
-      return new IoTDBConnection(url, connectionProperties);
+      int loginTimeoutInMs = (int) Math.min((long) loginTimeout * 1000, Integer.MAX_VALUE);
+      return new IoTDBConnection(url, connectionProperties, loginTimeoutInMs);
     } catch (TTransportException e) {
       LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
       throw new SQLException(

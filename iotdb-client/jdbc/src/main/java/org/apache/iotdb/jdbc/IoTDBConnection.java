@@ -25,6 +25,7 @@ import org.apache.iotdb.jdbc.relational.IoTDBRelationalDatabaseMetadata;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -143,6 +144,11 @@ public class IoTDBConnection implements Connection {
   }
 
   public IoTDBConnection(String url, Properties info) throws SQLException, TTransportException {
+    this(url, info, 0);
+  }
+
+  IoTDBConnection(String url, Properties info, int loginTimeoutInMs)
+      throws SQLException, TTransportException {
     if (url == null) {
       throw new IoTDBURLException(JdbcMessages.INPUT_URL_NULL);
     }
@@ -153,10 +159,18 @@ public class IoTDBConnection implements Connection {
     this.networkTimeout = params.getNetworkTimeout();
     this.zoneId = ZoneId.of(params.getTimeZone());
     this.charset = params.getCharset();
-    openTransport();
+    int connectionTimeout = networkTimeout;
+    if (loginTimeoutInMs > 0) {
+      connectionTimeout =
+          networkTimeout > 0 ? Math.min(networkTimeout, loginTimeoutInMs) : loginTimeoutInMs;
+    }
+    openTransport(connectionTimeout);
     openClient();
     // open client session
     openSession();
+    if (connectionTimeout != networkTimeout) {
+      ((TimeoutChangeableTransport) transport).setTimeout(networkTimeout);
+    }
     // Wrap the client with a thread-safe proxy to serialize the RPC calls
     setClient(RpcUtils.newSynchronizedClient(getClient()));
   }
@@ -631,6 +645,10 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
+    openTransport(networkTimeout);
+  }
+
+  private void openTransport(int timeout) throws TTransportException {
     DeepCopyRpcTransportFactory transportFactory =
         DeepCopyRpcTransportFactory.getInstance(
             params.getThriftDefaultBufferSize(), params.getThriftMaxFrameSize());
@@ -640,14 +658,14 @@ public class IoTDBConnection implements Connection {
           transportFactory.getTransport(
               params.getHost(),
               params.getPort(),
-              networkTimeout,
+              timeout,
               params.getTrustStore(),
               params.getTrustStorePwd(),
               params.getKeyStore(),
               params.getKeyStorePwd(),
               params.getSslProtocol());
     } else {
-      transport = transportFactory.getTransport(params.getHost(), params.getPort(), networkTimeout);
+      transport = transportFactory.getTransport(params.getHost(), params.getPort(), timeout);
     }
     if (!transport.isOpen()) {
       transport.open();

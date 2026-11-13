@@ -141,6 +141,8 @@ public final class JdbcMessages {
   // IoTDBDataSource
   public static final String EXCEPTION_INVALID_VALUE_FOR_JDBC_CONNECTION_PROPERTY_ARG_ARG_2193D0EE =
       "Invalid value for JDBC connection property %s: %s";
+  public static final String EXCEPTION_LOGINTIMEOUT_MUST_BE_0_A213D684 =
+      "loginTimeout must be >= 0";
   public static final String GET_CONNECTION_ERROR = "get connection error:";
 
   // IoTDBJDBCResultSet

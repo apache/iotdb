@@ -305,6 +305,7 @@ public class IoTDBStatement implements Statement {
 
     if (clientOperationClosed) {
       isClosed = true;
+      resultSet = null;
     }
     if (isClosed) {
       unregisterStatement();
@@ -870,9 +871,11 @@ public class IoTDBStatement implements Statement {
 
   protected void closeCurrentResultSet() throws SQLException {
     if (resultSet != null) {
-      ResultSet currentResultSet = resultSet;
+      resultSet.close();
       resultSet = null;
-      currentResultSet.close();
+    }
+    if (queryId != -1) {
+      closeQueryOperation(queryId);
     }
   }
 
@@ -880,7 +883,9 @@ public class IoTDBStatement implements Statement {
     if (current == null) {
       return next;
     }
-    current.addSuppressed(next);
+    if (current != next) {
+      current.addSuppressed(next);
+    }
     return current;
   }
 

@@ -56,6 +56,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -269,6 +270,32 @@ public class IoTDBStatementTest {
     assertEquals(2L, closeReq.getValue().getStatementId());
     assertEquals(queryId, closeReq.getValue().getQueryId());
     assertNull(statement.resultSet);
+  }
+
+  @Test
+  public void testExecuteRetriesQueryCleanupAfterResultSetCreationFailure() throws Exception {
+    IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L);
+    TSExecuteStatementResp nextResponse = new TSExecuteStatementResp(RpcUtils.SUCCESS_STATUS);
+    when(client.executeStatementV2(any(TSExecuteStatementReq.class)))
+        .thenReturn(malformedQueryResponse(10L), nextResponse);
+    when(client.closeOperation(any(TSCloseOperationReq.class)))
+        .thenReturn(
+            new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()),
+            RpcUtils.SUCCESS_STATUS);
+
+    SQLException failure =
+        assertThrows(SQLException.class, () -> statement.execute("select s1 from root.sg.d"));
+    assertEquals(1, failure.getSuppressed().length);
+    assertFalse(statement.execute("flush"));
+
+    ArgumentCaptor<TSCloseOperationReq> closeReq =
+        ArgumentCaptor.forClass(TSCloseOperationReq.class);
+    verify(client, times(2)).closeOperation(closeReq.capture());
+    for (TSCloseOperationReq request : closeReq.getAllValues()) {
+      assertEquals(10L, request.getQueryId());
+    }
+    statement.cancel();
+    verify(client, never()).cancelOperation(any(TSCancelOperationReq.class));
   }
 
   @Test
