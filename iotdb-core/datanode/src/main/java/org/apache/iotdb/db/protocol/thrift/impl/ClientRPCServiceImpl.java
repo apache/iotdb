@@ -1682,6 +1682,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     false,
                     s.isDebug());
           }
+          if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && result.status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            isAllSuccessful = false;
+          }
           results.add(result.status);
         } catch (Exception e) {
           LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
