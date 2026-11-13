@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -61,7 +62,6 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
@@ -81,7 +81,7 @@ public class QueryPartitionMemoryTest {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     logger = (Logger) LoggerFactory.getLogger(Coordinator.class);
     originalLogLevel = logger.getLevel();
-    logger.setLevel(Level.WARN);
+    logger.setLevel(Level.INFO);
     appender = new ListAppender<>();
     appender.start();
     logger.addAppender(appender);
@@ -113,7 +113,7 @@ public class QueryPartitionMemoryTest {
       assertEquals(freeMemory, LocalExecutionPlanner.getInstance().getFreeMemoryForOperators());
       assertNull(Coordinator.getInstance().getQueryExecution(queryId));
     }
-    assertFailureLogs(sql, MemoryNotEnoughException.class, 3);
+    assertFailureLogs(sql, 3);
   }
 
   @Test
@@ -124,7 +124,22 @@ public class QueryPartitionMemoryTest {
     assertThrows(QueryTimeoutRuntimeException.class, () -> execute(sql, 300, schemaFetcher));
     assertEquals(freeMemory, LocalExecutionPlanner.getInstance().getFreeMemoryForOperators());
     assertNull(Coordinator.getInstance().getQueryExecution(300L));
-    assertFailureLogs(sql, QueryTimeoutRuntimeException.class, 1);
+    assertFailureLogs(sql, 1);
+  }
+
+  @Test
+  public void testSemanticFailureOnlyLogsSqlContext() {
+    long freeMemory = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+    String sql = "select count(s1), s1 from root.sg.d1";
+    FakeSchemaFetcherImpl schemaFetcher = new FakeSchemaFetcherImpl();
+    SemanticException failure =
+        assertThrows(SemanticException.class, () -> execute(sql, 600, schemaFetcher));
+    assertEquals(
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+        ErrorHandlingUtils.onQueryException(failure, "query").getCode());
+    assertEquals(freeMemory, LocalExecutionPlanner.getInstance().getFreeMemoryForOperators());
+    assertNull(Coordinator.getInstance().getQueryExecution(600L));
+    assertFailureLogs(sql, 1);
   }
 
   @Test
@@ -145,7 +160,7 @@ public class QueryPartitionMemoryTest {
         failure, assertThrows(OutOfMemoryError.class, () -> execute(sql, 500, schemaFetcher)));
     assertEquals(freeMemory, LocalExecutionPlanner.getInstance().getFreeMemoryForOperators());
     assertNull(Coordinator.getInstance().getQueryExecution(500L));
-    assertFailureLogs(sql, OutOfMemoryError.class, 1);
+    assertFailureLogs(sql, 1);
   }
 
   @Test
@@ -194,14 +209,13 @@ public class QueryPartitionMemoryTest {
     };
   }
 
-  private void assertFailureLogs(String sql, Class<? extends Throwable> exception, int count) {
+  private void assertFailureLogs(String sql, int count) {
     assertEquals(count, appender.list.size());
     for (ILoggingEvent event : appender.list) {
-      assertEquals(Level.WARN, event.getLevel());
+      assertEquals(Level.INFO, event.getLevel());
       assertTrue(event.getFormattedMessage(), event.getFormattedMessage().contains(sql));
       assertTrue(event.getFormattedMessage(), event.getFormattedMessage().contains("queryId:"));
-      assertNotNull(event.getThrowableProxy());
-      assertEquals(exception.getName(), event.getThrowableProxy().getClassName());
+      assertNull(event.getThrowableProxy());
     }
   }
 
@@ -263,14 +277,14 @@ public class QueryPartitionMemoryTest {
                       60_000,
                       true,
                       false));
-      assertTrue(
-          failure.getMessage(),
-          failure.getMessage().contains("larger than protect max size (1024)"));
+      assertTrue(failure.getMessage(), failure.getMessage().contains("at least"));
+      assertTrue(failure.getMessage(), failure.getMessage().contains("1024 bytes"));
+      assertTrue(failure.getMessage(), failure.getMessage().contains("dn_thrift_max_frame_size"));
       assertTrue(serializedBytes[0] > 0);
       assertTrue("Serialization must stop at the frame limit", serializedBytes[0] <= 1024);
       assertEquals(freeMemory, planner.getFreeMemoryForOperators());
       assertNull(Coordinator.getInstance().getQueryExecution(queryId));
     }
-    assertFailureLogs(sql, StatementAnalyzeException.class, 3);
+    assertFailureLogs(sql, 3);
   }
 }

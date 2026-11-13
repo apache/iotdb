@@ -26,6 +26,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -56,11 +57,53 @@ public class TElasticFramedTransportTest {
         fail("An oversized frame must fail during serialization, before flush");
       } catch (TTransportException e) {
         assertEquals(TTransportException.CORRUPTED_DATA, e.getType());
-        assertTrue(e.getMessage().contains("Frame size (65)"));
+        assertTrue(e.getMessage(), e.getMessage().contains("at least 65 bytes"));
+        assertTrue(e.getMessage(), e.getMessage().contains("dn_thrift_max_frame_size"));
         assertSame(buffer, transport.writeBuffer.getBuffer());
         assertEquals(prefixLength, transport.writeBuffer.getPos());
         assertEquals(0, underlying.length());
         assertTrue(closed[0]);
+      }
+    }
+  }
+
+  @Test
+  public void testIncrementalGrowthDoesNotExceedFrameLimit() throws Exception {
+    int limit = 1024 * 1024;
+    try (TElasticFramedTransport transport =
+        new TElasticFramedTransport(new TMemoryBuffer(0), 1024, limit, false)) {
+      byte[] chunk = new byte[8];
+      Arrays.fill(chunk, (byte) 42);
+      for (int written = 0; written < limit; written += chunk.length) {
+        transport.write(chunk);
+        assertTrue(
+            "Allocated " + transport.writeBuffer.getBuffer().length + " bytes for limit " + limit,
+            transport.writeBuffer.getBuffer().length <= limit);
+      }
+      assertEquals(limit, transport.writeBuffer.getBuffer().length);
+      assertEquals(42, transport.writeBuffer.getBuffer()[0]);
+      assertEquals(42, transport.writeBuffer.getBuffer()[limit - 1]);
+      TTransportException failure =
+          assertThrows(TTransportException.class, () -> transport.write(chunk));
+      assertTrue(failure.getMessage(), failure.getMessage().contains("at least 1048584 bytes"));
+      assertEquals(limit, transport.writeBuffer.getBuffer().length);
+    }
+  }
+
+  @Test
+  public void testInitialWriteBufferRespectsFrameLimit() throws Exception {
+    try (TElasticFramedTransport transport =
+        new TElasticFramedTransport(new TMemoryBuffer(0), 1024, 64, false)) {
+      assertEquals(64, transport.writeBuffer.getBuffer().length);
+      byte[] payload = new byte[64];
+      payload[63] = 42;
+      for (int frame = 0; frame < 2; frame++) {
+        transport.write(payload);
+        transport.flush();
+        byte[] actual = new byte[payload.length];
+        transport.readAll(actual, 0, actual.length);
+        assertArrayEquals(payload, actual);
+        assertEquals(64, transport.writeBuffer.getBuffer().length);
       }
     }
   }
@@ -83,7 +126,7 @@ public class TElasticFramedTransportTest {
   @Test
   public void testCompressedFrameLimitAppliesAfterCompression() throws Exception {
     TElasticFramedTransport transport =
-        new TSnappyElasticFramedTransport(new TMemoryBuffer(0), 8, 64, false);
+        new TSnappyElasticFramedTransport(new TMemoryBuffer(0), 128, 64, false);
     byte[] payload = new byte[256];
     transport.write(payload);
     transport.flush();

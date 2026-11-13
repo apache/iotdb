@@ -61,12 +61,18 @@ class AutoResizingBuffer {
   }
 
   void ensureCapacity(int size) {
-    if (size < 0 || size > MAX_ARRAY_SIZE) {
+    ensureCapacity(size, MAX_ARRAY_SIZE);
+  }
+
+  void ensureCapacity(int size, int maxCapacity) {
+    int limit = Math.min(maxCapacity, MAX_ARRAY_SIZE);
+    if (size < 0 || size > limit) {
       throw new IllegalArgumentException("Invalid buffer size: " + size);
     }
     final int currentCapacity = this.array.length;
     if (currentCapacity < size) {
-      this.array = Arrays.copyOf(array, calculateNewCapacity(currentCapacity, size));
+      this.array =
+          Arrays.copyOf(array, Math.min(calculateNewCapacity(currentCapacity, size), limit));
       bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
     }
   }

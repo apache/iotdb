@@ -124,9 +124,8 @@ public class Coordinator {
             new ThreadPoolExecutor.CallerRunsPolicy());
   }
 
-  // This boundary still owns the SQL. Observe even Errors for diagnostics, then rethrow unchanged
-  // rather than recover or wrap them, preserving caller error handling and finally cleanup.
-  @SuppressWarnings({"java:S1181", "java:S2139"})
+  // Record the SQL for Errors as well, preserving the original failure and finally cleanup.
+  @SuppressWarnings("java:S1181")
   private ExecutionResult execution(
       long queryId,
       SessionInfo session,
@@ -166,9 +165,10 @@ public class Coordinator {
       }
       return result;
     } catch (RuntimeException | Error e) {
-      // Analysis can fail before the execution is registered, so later error handling cannot look
-      // up its SQL in queryExecutionMap. Keep the SQL and query ID in the failure log here.
-      LOGGER.warn("[QueryFailed] queryId: {}, sql: {}", globalQueryId, sql, e);
+      // Analysis can fail before registration. Only link the query ID to its SQL here; callers
+      // classify the failure and log its stack, avoiding duplicate stacks and WARNs for user
+      // errors.
+      LOGGER.info("[QueryFailed] queryId: {}, sql: {}", globalQueryId, sql);
       throw e;
     } finally {
       if (queryContext != null) {

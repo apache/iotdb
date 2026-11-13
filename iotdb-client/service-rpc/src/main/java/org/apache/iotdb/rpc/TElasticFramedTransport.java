@@ -87,7 +87,11 @@ public class TElasticFramedTransport extends TTransport {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.copyBinary = copyBinary;
     readBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
-    writeBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
+    writeBuffer =
+        new AutoScalingBufferWriteTransport(
+            Math.min(
+                thriftDefaultBufferSize,
+                Math.min(thriftMaxFrameSize, AutoResizingBuffer.MAX_ARRAY_SIZE)));
   }
 
   protected final int thriftDefaultBufferSize;
@@ -294,11 +298,21 @@ public class TElasticFramedTransport extends TTransport {
       // Thrift serializes the whole request before flush. Reject it before growing the buffer so
       // an oversized request cannot keep allocating and retain the caller's query memory.
       close();
+      String limitDescription =
+          maxSize == AutoResizingBuffer.MAX_ARRAY_SIZE
+              ? "maximum Java array size"
+              : "RPC frame-size limit (dn_thrift_max_frame_size on DataNode)";
       throw new TTransportException(
           TTransportException.CORRUPTED_DATA,
-          "Frame size (" + size + ") larger than protect max size (" + maxSize + ")!");
+          "Serialized frame size is at least "
+              + size
+              + " bytes, exceeding the "
+              + limitDescription
+              + " of "
+              + maxSize
+              + " bytes.");
     }
-    writeBuffer.write(buf, off, len);
+    writeBuffer.write(buf, off, len, maxSize);
   }
 
   protected int getMaxWriteBufferSize() {
