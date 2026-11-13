@@ -43,6 +43,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
@@ -440,11 +441,13 @@ public class FileLoaderUtils {
   static boolean shouldUseDeviceMetadataBatchScan(
       int selectedColumnCount, int totalFieldColumnCount, boolean debug, boolean offsetAddressed) {
     // DEBUG queries keep the per-column cache's diagnostic logs; offset-addressed external
-    // tsfiles cannot be resolved through the table metadata index; a single-column device gains
-    // nothing from a batch read (one leaf either way)
+    // tsfiles cannot be resolved through the table metadata index; and when the device's series
+    // fit in a single measurement leaf group, one per-column lookup already reads them all, so
+    // batching only pays off once the table has more field columns than the index fan-out
     return !debug
         && !offsetAddressed
-        && totalFieldColumnCount > 1
+        && totalFieldColumnCount
+            > TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()
         && (double) selectedColumnCount / totalFieldColumnCount >= DEVICE_METADATA_BATCH_SCAN_RATIO;
   }
 
