@@ -240,16 +240,24 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   private PipeDataNodeRemainingEventAndTimeOperator getOrCreateOperatorIfPipeAlive(
       final String pipeName, final long creationTime) {
     final String pipeID = generatePipeID(pipeName, creationTime);
-    final PipeDataNodeRemainingEventAndTimeOperator operator =
+    PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.get(pipeID);
     if (Objects.nonNull(operator)) {
       return operator;
     }
-    if (!isPipeAlive(pipeName, creationTime)) {
-      return null;
+
+    // Serialize creation with deregistration so a late update cannot restore a removed operator.
+    synchronized (this) {
+      operator = remainingEventAndTimeOperatorMap.get(pipeID);
+      if (Objects.nonNull(operator)) {
+        return operator;
+      }
+      if (!isPipeAlive(pipeName, creationTime)) {
+        return null;
+      }
+      return remainingEventAndTimeOperatorMap.computeIfAbsent(
+          pipeID, key -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
     }
-    return remainingEventAndTimeOperatorMap.computeIfAbsent(
-        pipeID, key -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
   }
 
   public synchronized void register(final IoTDBDataRegionSource source) {
