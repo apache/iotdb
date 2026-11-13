@@ -42,7 +42,7 @@ import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
-public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
+public class IoTDBPipeInclusionIT extends AbstractPipeTreeModelManualSharedClusterIT {
   @Test
   public void testPureSchemaInclusion() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -269,6 +269,8 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
     }
   }
 
+  // A pipe that includes all events except auth must leave a newly created sender user absent on
+  // the receiver throughout the observation period.
   @Test
   public void testAuthExclusion() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -301,7 +303,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      TestUtils.executeNonQuery(senderEnv, "create user `ln_write_user` 'write_pwd123456'", null);
+      TestUtils.executeNonQuery(senderEnv, "create user `ln_write_user` 'Write_pwd!123456'", null);
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
@@ -311,6 +313,8 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
     }
   }
 
+  // An auth-only pipe with a root.ln path filter must replicate the user and retain global grants,
+  // while limiting the replicated data privileges to root.ln.**.
   @Test
   public void testAuthInclusionWithPattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -346,7 +350,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "create user `ln_write_user` 'write_pwd123456'",
+              "create user `ln_write_user` 'Write_pwd!123456'",
               "grant system,security on root.** to USER ln_write_user with grant option",
               "GRANT READ_DATA, WRITE_DATA ON root.** TO USER ln_write_user;"),
           null);

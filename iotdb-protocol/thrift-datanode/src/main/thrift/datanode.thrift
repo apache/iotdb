@@ -139,9 +139,19 @@ struct TPlanNode {
   1: required binary body
 }
 
+// Issued and checked by one DataNode process using its own monotonic clock. Opaque to peers.
+struct TQueryAdmissionToken {
+  1: required string issuer
+  2: required i64 deadlineNanos
+  3: required i64 validityMs
+}
+
 struct TSendFragmentInstanceReq {
   1: required TFragmentInstance fragmentInstance
   2: optional common.TConsensusGroupId consensusGroupId
+  // Attempt metadata is absent for a legacy coordinator. Do not change the binary FI body.
+  3: optional i32 queryAttemptId
+  4: optional TQueryAdmissionToken admissionToken
 }
 
 struct TSendFragmentInstanceResp {
@@ -187,6 +197,9 @@ struct TCancelQueryReq {
   1: required string queryId
   2: required list<TFragmentInstanceId> fragmentInstanceIds
   3: required bool hasThrowable
+  // Close this attempt even if some of its planned FIs were never dispatched.
+  4: optional i32 queryAttemptId
+  5: optional TQueryAdmissionToken admissionToken
 }
 
 struct TCancelPlanFragmentReq {
@@ -938,6 +951,9 @@ service IDataNodeRPCService {
   /**
   * dispatch FragmentInstance to remote node for query request
   */
+  // Stateless: a delayed token request cannot create or reopen a query attempt.
+  TQueryAdmissionToken fetchQueryAdmissionToken(1: i64 validityMs);
+
   TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req);
 
   /**

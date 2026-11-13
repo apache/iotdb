@@ -180,7 +180,7 @@ public class TableModelPlanner implements IPlanner {
   }
 
   @Override
-  public IScheduler doSchedule(
+  public IScheduler createScheduler(
       final IAnalysis analysis,
       final DistributedQueryPlan distributedPlan,
       final MPPQueryContext context,
@@ -210,7 +210,6 @@ public class TableModelPlanner implements IPlanner {
               syncInternalServiceClientManager,
               asyncInternalServiceClientManager);
     }
-    scheduler.start();
     return scheduler;
   }
 

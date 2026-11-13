@@ -19,25 +19,37 @@
 
 package org.apache.iotdb.pipe.it.single;
 
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.ExternalResource;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -48,21 +60,132 @@ import static org.junit.Assert.fail;
 @Category({MultiClusterIT1.class})
 public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
 
+  private static BaseEnv sharedEnv;
+
+  @ClassRule
+  public static final ExternalResource CLUSTER =
+      new ExternalResource() {
+        @Override
+        protected void after() {
+          try {
+            if (sharedEnv != null) {
+              sharedEnv.cleanClusterEnvironment();
+            }
+          } finally {
+            sharedEnv = null;
+          }
+        }
+      };
+
   @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(1);
-    env = MultiEnvFactory.getEnv(0);
-    env.getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setDatanodeMemoryProportion("3:3:1:1:1:0")
-        .setPipeMemoryManagementEnabled(false)
-        .setDataReplicationFactor(1)
-        .setSchemaReplicationFactor(1)
-        .setIsPipeEnableMemoryCheck(false)
-        .setPipeAutoSplitFullEnabled(false);
-    // 1C1D to directly show the remaining count
-    env.initClusterEnvironment(1, 1);
+  public void setUp() throws Exception {
+    if (sharedEnv == null) {
+      try {
+        MultiEnvFactory.createEnv(1);
+        env = MultiEnvFactory.getEnv(0);
+        env.getConfig()
+            .getCommonConfig()
+            .setAutoCreateSchemaEnabled(true)
+            .setDatanodeMemoryProportion("3:3:1:1:1:0")
+            .setPipeMemoryManagementEnabled(false)
+            .setDataReplicationFactor(1)
+            .setSchemaReplicationFactor(1)
+            .setIsPipeEnableMemoryCheck(false)
+            .setPipeAutoSplitFullEnabled(false);
+        // 1C1D to directly show the remaining count
+        env.initClusterEnvironment(1, 1);
+        sharedEnv = env;
+      } catch (Exception | Error e) {
+        if (env != null) {
+          env.cleanClusterEnvironment();
+        }
+        throw e;
+      }
+    }
+    env = sharedEnv;
+  }
+
+  @Override
+  protected void cleanEnvironment() {
+    if (sharedEnv == null) {
+      return;
+    }
+    try {
+      dropPipes(sharedEnv);
+      resetCatalog(sharedEnv);
+    } catch (Exception e) {
+      throw new AssertionError("Failed to reset shared permission test cluster", e);
+    }
+  }
+
+  private static void dropPipes(final BaseEnv env) throws Exception {
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
+      for (final boolean tableModel : new boolean[] {false, true}) {
+        final TShowPipeResp response =
+            client.showPipe(
+                new TShowPipeReq()
+                    .setIsTableModel(tableModel)
+                    .setUserName(SessionConfig.DEFAULT_USER));
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+        for (final TShowPipeInfo pipe : response.getPipeInfoList()) {
+          if (!pipe.getId().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+            Assert.assertEquals(
+                TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                client
+                    .dropPipeExtended(new TDropPipeReq(pipe.getId()).setIsTableModel(tableModel))
+                    .getCode());
+          }
+        }
+      }
+    }
+  }
+
+  private static void resetCatalog(final BaseEnv env) throws SQLException {
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      final List<String> databases = new ArrayList<>();
+      try (final ResultSet result = statement.executeQuery("show databases")) {
+        while (result.next()) {
+          final String database = result.getString(1);
+          if (!"information_schema".equals(database)) {
+            databases.add(database);
+          }
+        }
+      }
+      for (final String database : databases) {
+        TestUtils.dropDatabaseWithRetry(statement, "\"" + database.replace("\"", "\"\"") + "\"");
+      }
+    }
+
+    try (final Connection connection = env.getConnection();
+        final Statement statement = connection.createStatement()) {
+      final List<String> databases = new ArrayList<>();
+      try (final ResultSet result = statement.executeQuery("show databases")) {
+        while (result.next()) {
+          databases.add(result.getString(1));
+        }
+      }
+      for (final String database : databases) {
+        statement.execute("delete database " + database);
+      }
+
+      for (final String type : new String[] {"user", "role"}) {
+        final List<String> names = new ArrayList<>();
+        try (final ResultSet result = statement.executeQuery("list " + type)) {
+          while (result.next()) {
+            final String name = result.getString("user".equals(type) ? "User" : "Role");
+            if (!"user".equals(type) || !SessionConfig.DEFAULT_USER.equals(name)) {
+              names.add(name);
+            }
+          }
+        }
+        for (final String name : names) {
+          statement.execute("drop " + type + " `" + name.replace("`", "``") + "`");
+        }
+      }
+    }
   }
 
   @Test

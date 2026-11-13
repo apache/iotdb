@@ -92,6 +92,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMqttHandlerPoolSize(int mqttHandlerPoolSize) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
     return this;
   }

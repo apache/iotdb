@@ -46,11 +46,14 @@ public class UDFClassLoader extends URLClassLoader {
    */
   private volatile boolean deprecated;
 
+  private boolean closed;
+
   public UDFClassLoader(String libRoot) throws IOException {
     super(new URL[0]);
     this.libRoot = libRoot;
     activeQueriesCount = new AtomicLong(0);
     deprecated = false;
+    closed = false;
     addURLs();
   }
 
@@ -65,23 +68,28 @@ public class UDFClassLoader extends URLClassLoader {
     }
   }
 
-  public void acquire() {
+  public synchronized boolean tryAcquire() {
+    if (deprecated || closed) {
+      return false;
+    }
     activeQueriesCount.incrementAndGet();
+    return true;
   }
 
-  public void release() throws IOException {
+  public synchronized void release() throws IOException {
     activeQueriesCount.decrementAndGet();
     closeIfPossible();
   }
 
-  public void markAsDeprecated() throws IOException {
+  public synchronized void markAsDeprecated() throws IOException {
     deprecated = true;
     closeIfPossible();
   }
 
-  public void closeIfPossible() throws IOException {
-    if (deprecated && activeQueriesCount.get() == 0) {
+  public synchronized void closeIfPossible() throws IOException {
+    if (!closed && deprecated && activeQueriesCount.get() == 0) {
       close();
+      closed = true;
     }
   }
 }

@@ -46,6 +46,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -114,6 +115,8 @@ public class IoTDBPartitionCreationIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // Partition allocation excludes Removing and ReadOnly nodes, permits an offline node, and
+  // restores all regions after that node restarts.
   @Test
   public void testPartitionAllocation() throws Exception {
     try (SyncConfigNodeIServiceClient client =
@@ -347,9 +350,24 @@ public class IoTDBPartitionCreationIT {
       // Status: Running, Running, Removing, ReadOnly, Stopped (Unknown on Windows), Running.
       // RegionGroup: [0, 1, 2, 3], [0, 1, 2], [0], [1], [2, 3], [3]
       EnvFactory.getEnv().registerNewDataNode(false);
-      // Use thread sleep to replace verifying because the offline DataNode can not pass the
-      // connection check
-      TimeUnit.SECONDS.sleep(25);
+      DataNodeWrapper registeredDataNode = EnvFactory.getEnv().getDataNodeWrapper(5);
+      // Check only the new node because a cluster-wide readiness check includes the offline node.
+      Awaitility.await("new DataNode registration")
+          .atMost(60, TimeUnit.SECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
+          .until(
+              () -> {
+                TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                    showDataNodesResp.getStatus().getCode());
+                return showDataNodesResp.getDataNodesInfoList().stream()
+                    .anyMatch(
+                        dataNodeInfo ->
+                            registeredDataNode.getIp().equals(dataNodeInfo.getRpcAddresss())
+                                && registeredDataNode.getPort() == dataNodeInfo.getRpcPort()
+                                && NodeStatus.Running.getStatus().equals(dataNodeInfo.getStatus()));
+              });
       partitionSlotsMap =
           ConfigNodeTestUtils.constructPartitionSlotsMap(
               sg,

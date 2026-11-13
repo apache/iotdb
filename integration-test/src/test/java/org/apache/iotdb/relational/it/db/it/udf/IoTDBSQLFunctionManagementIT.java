@@ -31,25 +31,42 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 
+import javax.tools.JavaCompiler;
+import javax.tools.ToolProvider;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_USER_DEFINED_AGG_FUNC;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBSQLFunctionManagementIT {
+
+  private static final String GENERATED_UDF_PACKAGE = "org.apache.iotdb.test.generated.crossmodel";
 
   private static final int BUILTIN_SCALAR_FUNCTIONS_COUNT =
       TableBuiltinScalarFunction.getBuiltInScalarFunctionName().size();
@@ -71,6 +88,8 @@ public class IoTDBSQLFunctionManagementIT {
           + File.separator;
 
   private static final String UDF_JAR_PREFIX = new File(UDF_LIB_PREFIX).toURI().toString();
+
+  @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -129,6 +148,24 @@ public class IoTDBSQLFunctionManagementIT {
           ++count;
         }
         Assert.assertEquals(BUILTIN_FUNCTIONS_COUNT, count);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testInformationSchemaFunctionsShowsExternalScalarType() {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'");
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select function_type from information_schema.functions where function_table = 'UDSF'")) {
+        assertTrue(resultSet.next());
+        assertEquals(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC, resultSet.getString(1));
+        assertFalse(resultSet.next());
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -349,6 +386,202 @@ public class IoTDBSQLFunctionManagementIT {
       } finally {
         statement.execute("DROP DATABASE db");
       }
+    }
+  }
+
+  @Test
+  public void testTableUdfLazyDependencySurvivesTreeModelRegistration() throws Exception {
+    Path jarPath = buildCrossModelUDFJar();
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement();
+        Connection treeConnection = EnvFactory.getEnv().getConnection();
+        Statement treeStatement = treeConnection.createStatement()) {
+      statement.execute("create database udf_cross_model");
+      try {
+        statement.execute("use udf_cross_model");
+        statement.execute("create table t(device_id STRING TAG, v INT32 FIELD)");
+        statement.execute("insert into t(time, device_id, v) values(1, 'd1', 1), (2, 'd1', 2)");
+        statement.execute(
+            String.format(
+                "create function lazy_f as '%s.LazyScalarFunction' using URI '%s'",
+                GENERATED_UDF_PACKAGE, jarPath.toUri()));
+        // The function model is determined by the SQL dialect, not by the implemented class.
+        treeStatement.execute(
+            String.format(
+                "create function tree_f as '%s.TreeIdentity' using URI '%s'",
+                GENERATED_UDF_PACKAGE, jarPath.toUri()));
+
+        try (ResultSet resultSet = statement.executeQuery("select lazy_f(v) from t")) {
+          assertTrue(resultSet.next());
+          assertTrue(resultSet.next());
+          assertFalse(resultSet.next());
+        }
+      } finally {
+        treeStatement.execute("drop function tree_f");
+        statement.execute("drop function lazy_f");
+        statement.execute("drop database udf_cross_model");
+      }
+    }
+  }
+
+  @Test
+  public void testUdfRejectedInUpdateAndDeleteDevice() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database udf_write_guard");
+      try {
+        statement.execute("use udf_write_guard");
+        statement.execute(
+            "create table t(device_id STRING TAG, attr1 STRING ATTRIBUTE, v INT64 FIELD)");
+        statement.execute(
+            "insert into t(time, device_id, attr1, v) values(1, 'd1', 'a', 1), (2, 'd2', 'b', 2)");
+        statement.execute(
+            "create function write_guard_udf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'");
+
+        assertUdfRejected(
+            statement, "update t set attr1 = write_guard_udf(device_id) where device_id = 'd1'");
+        assertUdfRejected(
+            statement, "update t set attr1 = 'x' where write_guard_udf(device_id) = true");
+
+        // DELETE DEVICE currently rejects function expressions before the UDF-specific check.
+        // Keep this assertion message-agnostic so future changes cannot allow UDFs here.
+        assertRejected(statement, "delete devices from t where write_guard_udf(device_id)");
+
+        try (ResultSet resultSet =
+            statement.executeQuery(
+                "select write_guard_udf(device_id) from t where device_id = 'd1'")) {
+          assertTrue(resultSet.next());
+        }
+
+        statement.execute("update t set attr1 = upper(device_id) where device_id = 'd2'");
+        try (ResultSet resultSet =
+            statement.executeQuery("select attr1 from t where device_id = 'd2'")) {
+          assertTrue(resultSet.next());
+          assertEquals("D2", resultSet.getString(1));
+        }
+      } finally {
+        statement.execute("drop function write_guard_udf");
+        statement.execute("drop database udf_write_guard");
+      }
+    }
+  }
+
+  private Path buildCrossModelUDFJar() throws Exception {
+    Path sourceRoot = temporaryFolder.newFolder("cross-model-source").toPath();
+    Path sourceDir = sourceRoot.resolve(GENERATED_UDF_PACKAGE.replace('.', File.separatorChar));
+    Files.createDirectories(sourceDir);
+
+    Files.writeString(
+        sourceDir.resolve("LazyScalarFunction.java"),
+        "package "
+            + GENERATED_UDF_PACKAGE
+            + ";\n"
+            + "import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;\n"
+            + "import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;\n"
+            + "import org.apache.iotdb.udf.api.relational.ScalarFunction;\n"
+            + "import org.apache.iotdb.udf.api.relational.access.Record;\n"
+            + "import org.apache.iotdb.udf.api.type.Type;\n"
+            + "public class LazyScalarFunction implements ScalarFunction {\n"
+            + "  public ScalarFunctionAnalysis analyze(FunctionArguments arguments) {\n"
+            + "    try {\n"
+            + "      Class.forName(\""
+            + GENERATED_UDF_PACKAGE
+            + ".LazyHelper\", true, LazyScalarFunction.class.getClassLoader());\n"
+            + "    } catch (ClassNotFoundException e) {\n"
+            + "      throw new RuntimeException(e);\n"
+            + "    }\n"
+            + "    return new ScalarFunctionAnalysis.Builder().outputDataType(Type.INT32).build();\n"
+            + "  }\n"
+            + "  public Object evaluate(Record input) { return null; }\n"
+            + "}\n",
+        StandardCharsets.UTF_8);
+    Files.writeString(
+        sourceDir.resolve("LazyHelper.java"),
+        "package " + GENERATED_UDF_PACKAGE + ";\npublic class LazyHelper {}\n",
+        StandardCharsets.UTF_8);
+    Files.writeString(
+        sourceDir.resolve("TreeIdentity.java"),
+        "package "
+            + GENERATED_UDF_PACKAGE
+            + ";\n"
+            + "import java.io.IOException;\n"
+            + "import org.apache.iotdb.udf.api.UDTF;\n"
+            + "import org.apache.iotdb.udf.api.access.Row;\n"
+            + "import org.apache.iotdb.udf.api.collector.PointCollector;\n"
+            + "import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;\n"
+            + "import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;\n"
+            + "import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;\n"
+            + "import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;\n"
+            + "import org.apache.iotdb.udf.api.type.Type;\n"
+            + "public class TreeIdentity implements UDTF {\n"
+            + "  public void validate(UDFParameterValidator validator) throws Exception {\n"
+            + "    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, Type.INT32);\n"
+            + "  }\n"
+            + "  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {\n"
+            + "    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.INT32);\n"
+            + "  }\n"
+            + "  public void transform(Row row, PointCollector collector) throws IOException {\n"
+            + "    if (!row.isNull(0)) { collector.putInt(row.getTime(), row.getInt(0)); }\n"
+            + "  }\n"
+            + "}\n",
+        StandardCharsets.UTF_8);
+
+    Path classesDir = temporaryFolder.newFolder("cross-model-classes").toPath();
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    assertNotNull("The test requires a JDK compiler", compiler);
+    String testClassPath =
+        System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
+    ByteArrayOutputStream compilerOutput = new ByteArrayOutputStream();
+    int compilerExitCode =
+        compiler.run(
+            null,
+            compilerOutput,
+            compilerOutput,
+            "-classpath",
+            testClassPath,
+            "-d",
+            classesDir.toString(),
+            sourceDir.resolve("LazyScalarFunction.java").toString(),
+            sourceDir.resolve("LazyHelper.java").toString(),
+            sourceDir.resolve("TreeIdentity.java").toString());
+    assertEquals(compilerOutput.toString(StandardCharsets.UTF_8), 0, compilerExitCode);
+
+    Path jarPath = temporaryFolder.newFile("cross-model-udf.jar").toPath();
+    try (JarOutputStream outputStream = new JarOutputStream(Files.newOutputStream(jarPath));
+        Stream<Path> paths = Files.walk(classesDir)) {
+      paths
+          .filter(Files::isRegularFile)
+          .forEach(
+              path -> {
+                try {
+                  String entryName =
+                      classesDir.relativize(path).toString().replace(File.separatorChar, '/');
+                  outputStream.putNextEntry(new JarEntry(entryName));
+                  Files.copy(path, outputStream);
+                  outputStream.closeEntry();
+                } catch (IOException e) {
+                  throw new RuntimeException(e);
+                }
+              });
+    }
+    return jarPath;
+  }
+
+  private static void assertUdfRejected(final Statement statement, final String sql) {
+    try {
+      statement.execute(sql);
+      fail("Expected external UDF to be rejected in write statement: " + sql);
+    } catch (SQLException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("External user-defined function"));
+    }
+  }
+
+  private static void assertRejected(final Statement statement, final String sql) {
+    try {
+      statement.execute(sql);
+      fail("Expected statement to be rejected: " + sql);
+    } catch (SQLException ignored) {
+      // The current error may come from an earlier expression validation.
     }
   }
 }

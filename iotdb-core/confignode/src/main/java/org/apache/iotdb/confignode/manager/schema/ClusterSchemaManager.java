@@ -2018,7 +2018,8 @@ public class ClusterSchemaManager {
             key -> {
               if (TsTable.TTL_PROPERTY.equals(key)
                   && IoTDBConstant.TTL_INFINITE.equalsIgnoreCase(updatedProperties.get(key))) {
-                return originalTable.getTableTTL() == Long.MAX_VALUE;
+                return IoTDBConstant.TTL_INFINITE.equalsIgnoreCase(
+                    originalTable.getPropValue(key).orElse(IoTDBConstant.TTL_INFINITE));
               }
               return Objects.equals(
                   updatedProperties.get(key), originalTable.getPropValue(key).orElse(null));

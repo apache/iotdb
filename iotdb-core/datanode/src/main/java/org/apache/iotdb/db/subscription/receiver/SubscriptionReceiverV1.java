@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
@@ -38,6 +40,8 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
@@ -150,6 +154,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
+  private static final AtomicLong NODE_RETIREMENT_VERSION = new AtomicLong();
+
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
   private volatile String authenticatedUsername;
@@ -163,6 +169,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private final PipeSubscribeSliceReqHandler sliceReqHandler =
       new PipeSubscribeSliceReqHandler(maxReassembledRequestBodySize);
   private long consumerStateVersion;
+  private boolean connectionExited;
+  private boolean timeoutCleanupSuspended;
+  private long observedNodeRetirementVersion = NODE_RETIREMENT_VERSION.get();
 
   private static final String SQL_DIALECT_TABLE_VALUE = "table";
 
@@ -306,6 +315,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           }
         }
       } finally {
+        connectionExited = true;
+        if (timeoutCleanupSuspended || hasNodeRetired()) {
+          // Retiring this transport transfers timeout responsibility to the other DataNodes.
+          // Discard only the local receiver state, including when removal has already rolled back.
+          clearSharedConsumerState();
+        }
         sliceReqHandler.clear();
         consumerConfigThreadLocal.remove();
         pollTimerThreadLocal.remove();
@@ -368,6 +383,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   @Override
   public void handleTimeout() {
     synchronized (this) {
+      timeoutCleanupSuspended |= hasNodeRetired();
+      if (timeoutCleanupSuspended) {
+        // The SDK retires this node's connection while the consumer remains active elsewhere.
+        // Rollback alone does not restore that connection: wait for a new request before allowing
+        // this receiver to close the cluster consumer again.
+        if (connectionExited) {
+          clearSharedConsumerState();
+        }
+        return;
+      }
       final ConsumerConfig consumerConfig = sharedConsumerConfig;
       if (Objects.isNull(consumerConfig) || inFlightRequestCount.get() > 0) {
         return;
@@ -401,6 +426,20 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             e);
       }
     }
+  }
+
+  private static boolean isNodeRetiring() {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    return commonConfig.getNodeStatus() == NodeStatus.Removing || commonConfig.isStopping();
+  }
+
+  public static void handleNodeRetirement() {
+    // A removal and rollback can both occur between timeout checks, requests, and exit callbacks.
+    NODE_RETIREMENT_VERSION.incrementAndGet();
+  }
+
+  private boolean hasNodeRetired() {
+    return observedNodeRetirementVersion != NODE_RETIREMENT_VERSION.get() || isNodeRetiring();
   }
 
   @Override
@@ -438,6 +477,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // set consumer config thread local
     final ConsumerConfig existedConsumerConfig = consumerConfigThreadLocal.get();
     final ConsumerConfig consumerConfig = req.getConsumerConfig();
+    final IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+    if (currentSession != null && currentSession.isInternalRpcSession()) {
+      if (currentSession.getUsername() != null) {
+        consumerConfig
+            .getAttribute()
+            .put(ConsumerConstant.USERNAME_KEY, currentSession.getUsername());
+      }
+      consumerConfig.getAttribute().remove(ConsumerConstant.PASSWORD_KEY);
+      consumerConfig.getAttribute().remove(ConsumerConstant.ENCRYPTED_PASSWORD_KEY);
+    }
 
     String consumerId = consumerConfig.getConsumerId();
     if (Objects.isNull(consumerId)) {
@@ -564,6 +613,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final Map<Integer, TEndPoint> endPoints = new HashMap<>();
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+      final boolean internalRpcSession =
+          Objects.nonNull(currentSession) && currentSession.isInternalRpcSession();
       final TShowDataNodesResp resp = configNodeClient.showDataNodes();
       // refer to org.apache.iotdb.session.NodesSupplier.updateDataNodeList
 
@@ -572,10 +624,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         if (Objects.equals(NodeStatus.Removing.getStatus(), dataNodeInfo.getStatus())) {
           continue;
         }
-        final String ip = dataNodeInfo.getRpcAddresss();
-        final int port = dataNodeInfo.getRpcPort();
-        if (ip != null && port != 0) {
-          endPoints.put(dataNodeInfo.getDataNodeId(), new TEndPoint(ip, port));
+        if (internalRpcSession) {
+          final TEndPoint internalRpcEndPoint = dataNodeInfo.getInternalRpcEndPoint();
+          if (Objects.isNull(internalRpcEndPoint)
+              || Objects.isNull(internalRpcEndPoint.getIp())
+              || internalRpcEndPoint.getIp().isEmpty()
+              || internalRpcEndPoint.getPort() <= 0) {
+            throw new SubscriptionException(
+                String.format(
+                    DataNodePipeMessages
+                        .EXCEPTION_INTERNAL_SUBSCRIPTION_ENDPOINT_DISCOVERY_FAILED_BECAUSE_DATANODE_ARG_DID_NOT_REPORT_AN_INTERNAL_RPC_ENDPOINT_45E4D232,
+                    dataNodeInfo.getDataNodeId()));
+          }
+          endPoints.put(dataNodeInfo.getDataNodeId(), internalRpcEndPoint);
+        } else {
+          final String ip = dataNodeInfo.getRpcAddresss();
+          final int port = dataNodeInfo.getRpcPort();
+          if (ip != null && port != 0) {
+            endPoints.put(dataNodeInfo.getDataNodeId(), new TEndPoint(ip, port));
+          }
         }
       }
     } catch (final ClientManagerException | TException e) {
@@ -1549,6 +1616,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private boolean beforeHandle(final short reqType) {
     synchronized (this) {
+      // A request on a restored node starts a fresh local inactivity deadline.
+      observedNodeRetirementVersion = NODE_RETIREMENT_VERSION.get();
+      timeoutCleanupSuspended = isNodeRetiring();
+      connectionExited = false;
       final boolean isHandshake = PipeSubscribeRequestType.HANDSHAKE.getType() == reqType;
       // Replaced connections are terminal, even when the consumer instance itself is still valid.
       // An old connection must not handshake again and replace the current connection in turn.

@@ -40,16 +40,6 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
-import com.google.common.base.Throwables;
-import io.airlift.airline.Cli;
-import io.airlift.airline.Help;
-import io.airlift.airline.ParseArgumentsMissingException;
-import io.airlift.airline.ParseArgumentsUnexpectedException;
-import io.airlift.airline.ParseCommandMissingException;
-import io.airlift.airline.ParseCommandUnrecognizedException;
-import io.airlift.airline.ParseOptionConversionException;
-import io.airlift.airline.ParseOptionMissingException;
-import io.airlift.airline.ParseOptionMissingValueException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
@@ -59,13 +49,10 @@ import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.time.ZoneId;
-import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.utils.TypeServices.ValueConversion.VALUE_PARSER_SERVICE;
 
-@SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
 
   private static final int MAX_SLOW_NATIVE_API_OUTPUT_NUM = 10;
@@ -211,39 +198,6 @@ public class CommonUtils {
         req.getSensors());
   }
 
-  public static int runCli(
-      List<Class<? extends Runnable>> commands,
-      String[] args,
-      String cliName,
-      String cliDescription) {
-    Cli.CliBuilder<Runnable> builder = Cli.builder(cliName);
-
-    builder.withDescription(cliDescription).withDefaultCommand(Help.class).withCommands(commands);
-
-    Cli<Runnable> parser = builder.build();
-
-    int status = 0;
-    try {
-      Runnable parse = parser.parse(args);
-      parse.run();
-    } catch (IllegalArgumentException
-        | IllegalStateException
-        | ParseArgumentsMissingException
-        | ParseArgumentsUnexpectedException
-        | ParseOptionConversionException
-        | ParseOptionMissingException
-        | ParseOptionMissingValueException
-        | ParseCommandMissingException
-        | ParseCommandUnrecognizedException e) {
-      badUse(e);
-      status = 1;
-    } catch (Exception e) {
-      err(Throwables.getRootCause(e));
-      status = 2;
-    }
-    return status;
-  }
-
   /**
    * Converts a string into a byte array based on the encoding format (hex or escape).
    *
@@ -258,22 +212,6 @@ public class CommonUtils {
     } catch (SemanticException e) {
       throw new IllegalArgumentException(e.getMessage());
     }
-  }
-
-  private static void badUse(Exception e) {
-    System.out.println(
-        String.format(
-            DataNodeMiscMessages.LOG_NODE_TOOL_ARG_076E307A, Objects.toString(e.getMessage())));
-    System.out.println(
-        DataNodeMiscMessages.LOG_SEE_NODE_TOOL_HELP_OR_NODE_TOOL_HELP_COMMAND_BB9F5146);
-  }
-
-  private static void err(Throwable e) {
-    System.err.println(
-        String.format(
-            DataNodeMiscMessages.LOG_ERROR_ARG_76028BAA, Objects.toString(e.getMessage())));
-    System.err.println(DataNodeMiscMessages.LOG_STACKTRACE_131CBB85);
-    System.err.println(Throwables.getStackTraceAsString(e));
   }
 
   public static String[] deviceIdToStringArray(IDeviceID deviceID) {

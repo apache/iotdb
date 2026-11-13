@@ -57,6 +57,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualTreeModelManualIT {
     receiverEnv.getConfig().getCommonConfig().setPipeConnectorRequestSliceThresholdBytes(4);
   }
 
+  // A ten-row tablet exceeding the four-byte request threshold must arrive intact after reassembly.
   @Test
   public void insertTablet() {
     prepareReqAutoSliceTest(
@@ -313,7 +314,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualTreeModelManualIT {
         createPipe(senderSession, true);
       } else {
         createPipe(senderSession, false);
-        Thread.sleep(2000);
+        // Pipe creation has completed; verify() waits for delivery of the sliced requests.
         consumer.accept(senderSession, receiverSession, tablet);
         senderSession.executeNonQueryStatement("flush");
       }

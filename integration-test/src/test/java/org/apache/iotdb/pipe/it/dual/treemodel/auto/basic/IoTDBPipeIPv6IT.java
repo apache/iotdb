@@ -71,8 +71,7 @@ public class IoTDBPipeIPv6IT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
     setupConfig();
-    senderEnv.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 1);
+    executeOnBothEnvs(env -> env.initClusterEnvironment(1, 1));
   }
 
   @Override
@@ -90,6 +89,7 @@ public class IoTDBPipeIPv6IT extends AbstractPipeDualTreeModelAutoIT {
         .setSchemaReplicationFactor(1);
   }
 
+  // Both thrift sinks must replicate their own row through bracketed IPv6 URLs on 1C1D clusters.
   @Test
   public void testSyncAndAsyncSinksThroughIPv6Loopback() throws Exception {
     assertDataNodesUseIPv6(senderEnv.getDataNodeWrapperList());

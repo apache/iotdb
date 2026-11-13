@@ -20,13 +20,11 @@
 package org.apache.iotdb.pipe.it.dual.treemodel.auto.basic;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
-import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -39,20 +37,18 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
-public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeModelAutoIT {
+public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeTreeModelSharedClusterIT {
 
   @Override
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-    setupConfig();
-    senderEnv.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 1);
+  protected CompletableFuture<Void> initializeClusters() {
+    // Preserve the original 1C1D topology while reusing it across all receiver-schema scenarios.
+    return CompletableFuture.allOf(
+        CompletableFuture.runAsync(() -> senderEnv.initClusterEnvironment(1, 1)),
+        CompletableFuture.runAsync(() -> receiverEnv.initClusterEnvironment(1, 1)));
   }
 
   @Override

@@ -33,9 +33,11 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.After;
+import org.awaitility.Awaitility;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -67,6 +69,7 @@ public class DataPartitionTableIntegrityCheckProcedureIT {
 
   private static final String TABLE_DATABASE = "repair_table_db";
   private static final String TABLE_NAME = "table1";
+  private static final long POLL_INTERVAL_IN_MS = 100;
   private static final long TIME_PARTITION_INTERVAL = 604_800_000L;
   private static final long TABLE_TTL = 7 * TIME_PARTITION_INTERVAL;
   private static final long CURRENT_TIME_PARTITION_START =
@@ -74,8 +77,9 @@ public class DataPartitionTableIntegrityCheckProcedureIT {
   private static final long EXPIRED_TIME_PARTITION_START =
       CURRENT_TIME_PARTITION_START - TABLE_TTL * 2;
 
-  @Before
-  public void setUp() {
+  // Only one scenario creates data, in its own database; all three can reuse the same cluster.
+  @BeforeClass
+  public static void setUp() {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -95,11 +99,21 @@ public class DataPartitionTableIntegrityCheckProcedureIT {
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @Before
+  public void waitForPreviousRepairCompletion() throws Exception {
+    // Repair is cluster-wide and asynchronous, so database isolation alone cannot isolate tasks.
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      waitForRepairCompletion(statement);
+    }
+  }
+
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // Ten concurrent repair requests must accept exactly one procedure and reject the other nine.
   @Test
   public void testConcurrentSubmitDataPartitionTableIntegrityCheckProcedure()
       throws InterruptedException {
@@ -159,6 +173,7 @@ public class DataPartitionTableIntegrityCheckProcedureIT {
         "The other concurrent submissions should be rejected", threadCount - 1, failCount.get());
   }
 
+  // An idle cluster reports zero progress; a submitted repair reports a known state and 0-100%.
   @Test
   public void testShowRepairDataPartitionTableProgress() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
@@ -170,6 +185,7 @@ public class DataPartitionTableIntegrityCheckProcedureIT {
     }
   }
 
+  // Repair must preserve current table partitions and must not restore those removed by table TTL.
   @Test
   public void testRepairDataPartitionTableIgnoresTableModelDatabase() throws Exception {
     final TDataPartitionReq dataPartitionReq = new TDataPartitionReq();
@@ -241,30 +257,29 @@ public class DataPartitionTableIntegrityCheckProcedureIT {
 
   private static void waitUntilTimePartitionRemoved(
       final TDataPartitionReq request, final long timePartitionStart) throws Exception {
-    for (int retry = 0; retry < 120; retry++) {
-      if (!containsTimePartition(request, timePartitionStart)) {
-        return;
-      }
-      TimeUnit.SECONDS.sleep(1);
-    }
-    Assert.fail("The expired table-model time partition was not cleaned within the timeout");
+    Awaitility.await("expired table-model time partition cleanup")
+        .atMost(120, TimeUnit.SECONDS)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(POLL_INTERVAL_IN_MS, TimeUnit.MILLISECONDS)
+        .until(() -> !containsTimePartition(request, timePartitionStart));
   }
 
   private static void waitForRepairCompletion(final Statement statement) throws Exception {
-    TimeUnit.SECONDS.sleep(1);
-    for (int retry = 0; retry < 120; retry++) {
-      try (final ResultSet resultSet =
-          statement.executeQuery("SHOW REPAIR DATA PARTITION TABLE PROGRESS")) {
-        Assert.assertTrue(resultSet.next());
-        if (RepairDataPartitionTableProgressState.IDLE
-            .name()
-            .equals(resultSet.getString("Status"))) {
-          return;
-        }
-      }
-      TimeUnit.SECONDS.sleep(1);
-    }
-    Assert.fail("The data partition table repair did not complete within the timeout");
+    // Submission registers the procedure before returning, so IDLE can be checked immediately.
+    Awaitility.await("data partition table repair completion")
+        .atMost(120, TimeUnit.SECONDS)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(POLL_INTERVAL_IN_MS, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              try (final ResultSet resultSet =
+                  statement.executeQuery("SHOW REPAIR DATA PARTITION TABLE PROGRESS")) {
+                Assert.assertTrue(resultSet.next());
+                return RepairDataPartitionTableProgressState.IDLE
+                    .name()
+                    .equals(resultSet.getString("Status"));
+              }
+            });
   }
 
   private static void assertRepairProgress(

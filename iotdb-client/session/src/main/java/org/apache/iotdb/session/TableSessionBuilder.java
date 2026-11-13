@@ -451,7 +451,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
           Collections.singletonList(SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT);
     }
     this.sqlDialect = TABLE;
-    Session newSession = new Session(this);
+    Session newSession = createSession();
     newSession.enableIoTDBRpcCompression = isIoTDBRpcCompressionEnabled;
     newSession.tabletCompressionMinRowSize = tabletCompressionMinRowSize;
 
@@ -462,5 +462,9 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
       throw e;
     }
     return new TableSession(newSession);
+  }
+
+  protected Session createSession() {
+    return new Session(this);
   }
 }

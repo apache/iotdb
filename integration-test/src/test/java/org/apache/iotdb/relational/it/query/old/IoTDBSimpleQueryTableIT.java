@@ -28,8 +28,9 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -51,6 +52,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
+import static org.apache.iotdb.db.it.utils.TestUtils.dropDatabaseWithRetry;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -62,13 +64,23 @@ import static org.junit.Assert.fail;
 public class IoTDBSimpleQueryTableIT {
   private static final String DATABASE_NAME = "test";
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() throws SQLException {
+    // Keep the catalog empty for the database-listing test while reusing the cluster.
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      dropDatabaseWithRetry(statement, DATABASE_NAME);
+      dropDatabaseWithRetry(statement, "group_with_hyphen");
+    }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

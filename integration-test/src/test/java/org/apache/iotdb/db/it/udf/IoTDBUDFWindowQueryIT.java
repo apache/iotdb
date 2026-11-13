@@ -46,6 +46,7 @@ import static org.junit.Assert.fail;
 public class IoTDBUDFWindowQueryIT {
 
   protected static final int ITERATION_TIMES = 10000;
+  private static final int INSERT_BATCH_SIZE = 100;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -82,10 +83,18 @@ public class IoTDBUDFWindowQueryIT {
   private static void generateData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (int i = 0; i < ITERATION_TIMES; ++i) {
-        statement.execute(
-            (String.format(
-                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+      // Preserve every point and its order for the window queries while reducing fixture RPCs.
+      for (int start = 0; start < ITERATION_TIMES; start += INSERT_BATCH_SIZE) {
+        StringBuilder insertSql =
+            new StringBuilder("insert into root.vehicle.d1(timestamp,s1,s2) values");
+        int end = Math.min(start + INSERT_BATCH_SIZE, ITERATION_TIMES);
+        for (int i = start; i < end; i++) {
+          if (i > start) {
+            insertSql.append(',');
+          }
+          insertSql.append('(').append(i).append(',').append(i).append(',').append(i).append(')');
+        }
+        statement.execute(insertSql.toString());
       }
       // test empty window, details could be found at https://github.com/apache/iotdb/issues/7738
       statement.execute("insert into root.vehicle1.d1(timestamp, s1) values (1,2),(2,3),(7,8)");

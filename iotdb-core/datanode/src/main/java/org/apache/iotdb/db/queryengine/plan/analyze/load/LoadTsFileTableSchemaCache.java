@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
@@ -242,6 +244,24 @@ public class LoadTsFileTableSchemaCache {
       getTableSchemaValidationIterator()
           .forEachRemaining(o -> metadata.validateDeviceSchema(o, context));
     } catch (Exception e) {
+      // Preserve region unavailability so Active LOAD can retry while schema regions recover.
+      Throwable current = e;
+      while (current != null) {
+        if (current instanceof IoTDBRuntimeException
+            && ((IoTDBRuntimeException) current).getErrorCode()
+                == TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()) {
+          throw (IoTDBRuntimeException) current;
+        }
+        if (current instanceof IoTDBException
+            && ((IoTDBException) current).getErrorCode()
+                == TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode()) {
+          throw new IoTDBRuntimeException(
+              current.getMessage(),
+              current,
+              TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());
+        }
+        current = current.getCause();
+      }
       LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
       throw new SemanticException(
           String.format(

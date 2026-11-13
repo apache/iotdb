@@ -234,6 +234,11 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
               (long) queryTimeout * 1000,
               resp.isSetMoreData() && resp.isMoreData(),
               zoneId,
+              charset,
+              resp.isSetTableModel() && resp.isTableModel(),
+              resp.getColumnIndex2TsBlockColumnIndexList() == null
+                  ? null
+                  : new ArrayList<>(resp.getColumnIndex2TsBlockColumnIndexList()),
               resp.isSetOffset(),
               resp.offset,
               resp.totalLength);

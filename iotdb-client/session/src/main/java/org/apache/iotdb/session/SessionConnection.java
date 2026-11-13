@@ -74,6 +74,8 @@ import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TMultiplexedProtocol;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.utils.Pair;
@@ -234,11 +236,15 @@ public class SessionConnection {
       throw new IoTDBConnectionException(e);
     }
 
-    if (session.enableThriftRpcCompaction) {
-      client = new IClientRPCService.Client(new TCompactProtocol(transport));
-    } else {
-      client = new IClientRPCService.Client(new TBinaryProtocol(transport));
+    TProtocol protocol =
+        session.enableThriftRpcCompaction
+            ? new TCompactProtocol(transport)
+            : new TBinaryProtocol(transport);
+    final String rpcServiceName = session.getRpcServiceName();
+    if (rpcServiceName != null) {
+      protocol = new TMultiplexedProtocol(protocol, rpcServiceName);
     }
+    client = new IClientRPCService.Client(protocol);
     client = RpcUtils.newSynchronizedClient(client);
 
     TSOpenSessionReq openReq = new TSOpenSessionReq();

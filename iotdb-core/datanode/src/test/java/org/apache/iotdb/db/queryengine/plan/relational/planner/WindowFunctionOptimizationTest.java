@@ -124,6 +124,25 @@ public class WindowFunctionOptimizationTest {
   }
 
   @Test
+  public void testReorderedSubsetWindowPartitionKeepsSingleInstance() {
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT count(s1) OVER (PARTITION BY tag2, tag1) FROM "
+            + "(SELECT *, max(s1) OVER (PARTITION BY tag1, tag2, tag3) AS m FROM table1)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // The outer PARTITION BY is a reordered strict subset of the inner one. It must not reuse the
+    // inner grouping, whose partitions are finer than the outer window's, so the outer window
+    // stays single-instance above a sort.
+    assertPlan(logicalQueryPlan, output(project(window(sort(project(group(tableScan)))))));
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(project(window(mergeSort(exchange(), exchange(), exchange())))));
+  }
+
+  @Test
   public void testTopKRankingPushDown() {
     PlanTester planTester = new PlanTester();
 
