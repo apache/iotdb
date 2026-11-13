@@ -40,6 +40,7 @@ import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
 
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TSerializer;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -73,13 +74,19 @@ import static org.mockito.Mockito.when;
 @RunWith(Parameterized.class)
 public class LogCompressionTest {
   @Parameterized.Parameters(name = "{0}")
-  public static Object[] codecs() {
-    return new Object[] {
-      TLogCompressionType.LZ4, TLogCompressionType.SNAPPY, TLogCompressionType.ZSTD
+  public static Object[][] codecs() {
+    return new Object[][] {
+      {CompressionType.LZ4, TLogCompressionType.LZ4},
+      {CompressionType.SNAPPY, TLogCompressionType.SNAPPY},
+      {CompressionType.ZSTD, TLogCompressionType.ZSTD}
     };
   }
 
-  @Parameterized.Parameter public TLogCompressionType codec;
+  @Parameterized.Parameter public CompressionType codec;
+
+  @Parameterized.Parameter(1)
+  public TLogCompressionType expectedWireCodec;
+
   private IMemoryBlock previous;
   private final IoTConsensusMemoryManager memory = IoTConsensusMemoryManager.getInstance();
   private static final int LIMIT = 8 * 1024 * 1024;
@@ -149,7 +156,7 @@ public class LogCompressionTest {
         assertTrue(encoded.getEncodedBytes() < encoded.getRawBytes());
         assertTrue(memory.getMemoryBlock().getUsedMemoryInBytes() > 0);
         assertEquals(
-            codec,
+            expectedWireCodec,
             encoded.getRequest().getLogEntries().get(0).getCompressionInfo().get(0).getCodec());
         assertEquals(
             TLogCompressionType.NONE,
@@ -186,7 +193,7 @@ public class LogCompressionTest {
         } else {
           assertNotSame(raw, encoded.getRequest());
           assertEquals(
-              codec,
+              expectedWireCodec,
               encoded.getRequest().getLogEntries().get(0).getCompressionInfo().get(0).getCodec());
         }
         TSyncLogEntriesReq received = encoded.getRequest().deepCopy();
@@ -202,7 +209,7 @@ public class LogCompressionTest {
   public void testAdaptiveAndMemoryFallback() throws Exception {
     TSyncLogEntriesReq raw = request();
     try (LogCompression.EncodedRequest result =
-        LogCompression.compress(raw, TLogCompressionType.NONE, LIMIT)) {
+        LogCompression.compress(raw, CompressionType.UNCOMPRESSED, LIMIT)) {
       assertSame(raw, result.getRequest());
     }
     byte[] random = new byte[16384];
@@ -389,13 +396,13 @@ public class LogCompressionTest {
       assertNotSame(raw, encoded.getRequest());
       assertTrue(encoded.isMemoryLimited());
       assertEquals(
-          codec,
+          expectedWireCodec,
           encoded.getRequest().getLogEntries().get(0).getCompressionInfo().get(0).getCodec());
       assertEquals(
           TLogCompressionType.NONE,
           encoded.getRequest().getLogEntries().get(0).getCompressionInfo().get(1).getCodec());
       assertEquals(
-          codec,
+          expectedWireCodec,
           encoded.getRequest().getLogEntries().get(0).getCompressionInfo().get(2).getCodec());
       TSyncLogEntriesReq received = encoded.getRequest().deepCopy();
       LogCompression.decompress(received, LIMIT);

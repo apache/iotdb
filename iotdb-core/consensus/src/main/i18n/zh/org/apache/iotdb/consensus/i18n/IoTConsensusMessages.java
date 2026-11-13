@@ -27,6 +27,8 @@ public final class IoTConsensusMessages {
 
   public static final String EXCEPTION_INVALID_IOTCONSENSUS_COMPRESSED_LOG_ARG_EXPECTED_ARG_ACTUAL_ARG_4986175E = "无效的 IoTConsensus 压缩日志（%s，预期 %d，实际 %d）";
 
+  public static final String EXCEPTION_UNSUPPORTED_IOTCONSENSUS_LOG_COMPRESSION_TYPE_ARG_4008DA9A = "不支持的 IoTConsensus 日志压缩类型：%s";
+
   private IoTConsensusMessages() {}
 
   // ===================== IoTConsensus 生命周期 =====================

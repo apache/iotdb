@@ -29,10 +29,10 @@ import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
-import org.apache.iotdb.consensus.iot.thrift.TLogCompressionType;
 import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
 
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -59,12 +59,10 @@ public class CompressedReplicationTest {
 
   @Parameterized.Parameters(name = "{0}")
   public static Object[] codecs() {
-    return new Object[] {
-      TLogCompressionType.LZ4, TLogCompressionType.SNAPPY, TLogCompressionType.ZSTD
-    };
+    return new Object[] {CompressionType.LZ4, CompressionType.SNAPPY, CompressionType.ZSTD};
   }
 
-  @Parameterized.Parameter public TLogCompressionType codec;
+  @Parameterized.Parameter public CompressionType codec;
   private static final int COUNT = 32;
   private static final int BYTES = 65536;
 

@@ -22,7 +22,9 @@ package org.apache.iotdb.consensus.config;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
-import org.apache.iotdb.consensus.iot.thrift.TLogCompressionType;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
+
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -311,7 +313,7 @@ public class IoTConsensusConfig {
 
     private final int maxLogEntriesNumPerBatch;
     private final int maxSizePerBatch;
-    private final TLogCompressionType logCompressionType;
+    private final CompressionType logCompressionType;
     private final int maxPendingBatchesNum;
 
     private final int maxQueueLength;
@@ -332,7 +334,7 @@ public class IoTConsensusConfig {
     private Replication(
         int maxLogEntriesNumPerBatch,
         int maxSizePerBatch,
-        TLogCompressionType logCompressionType,
+        CompressionType logCompressionType,
         int maxPendingBatchesNum,
         int maxQueueLength,
         long maxWaitingTimeForWaitBatchInMs,
@@ -376,7 +378,7 @@ public class IoTConsensusConfig {
       return maxSizePerBatch;
     }
 
-    public TLogCompressionType getLogCompressionType() {
+    public CompressionType getLogCompressionType() {
       return logCompressionType;
     }
 
@@ -448,7 +450,7 @@ public class IoTConsensusConfig {
 
       private int maxLogEntriesNumPerBatch = 1024;
       private int maxSizePerBatch = 16 * 1024 * 1024;
-      private TLogCompressionType logCompressionType = TLogCompressionType.NONE;
+      private CompressionType logCompressionType = CompressionType.UNCOMPRESSED;
       private int maxPendingBatchesNum = 5;
       private int maxQueueLength = 4096;
       private long maxWaitingTimeForWaitBatchInMs = 10 * 1000L;
@@ -482,7 +484,20 @@ public class IoTConsensusConfig {
         return this;
       }
 
-      public Builder setLogCompressionType(TLogCompressionType type) {
+      public Builder setLogCompressionType(CompressionType type) {
+        switch (type) {
+          case UNCOMPRESSED:
+          case LZ4:
+          case SNAPPY:
+          case ZSTD:
+            break;
+          default:
+            throw new IllegalArgumentException(
+                String.format(
+                    IoTConsensusMessages
+                        .EXCEPTION_UNSUPPORTED_IOTCONSENSUS_LOG_COMPRESSION_TYPE_ARG_4008DA9A,
+                    type));
+        }
         this.logCompressionType = type;
         return this;
       }

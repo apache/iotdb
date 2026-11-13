@@ -28,6 +28,8 @@ public final class IoTConsensusMessages {
 
   public static final String EXCEPTION_INVALID_IOTCONSENSUS_COMPRESSED_LOG_ARG_EXPECTED_ARG_ACTUAL_ARG_4986175E = "Invalid IoTConsensus compressed log (%s, expected %d, actual %d)";
 
+  public static final String EXCEPTION_UNSUPPORTED_IOTCONSENSUS_LOG_COMPRESSION_TYPE_ARG_4008DA9A = "Unsupported IoTConsensus log compression type: %s";
+
   private IoTConsensusMessages() {}
 
   // ===================== IoTConsensus lifecycle =====================

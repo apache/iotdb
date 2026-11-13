@@ -115,10 +115,6 @@
             <artifactId>jsr305</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.github.luben</groupId>
-            <artifactId>zstd-jni</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.apache.tsfile</groupId>
             <artifactId>tsfile</artifactId>
             <version>${tsfile.version}</version>

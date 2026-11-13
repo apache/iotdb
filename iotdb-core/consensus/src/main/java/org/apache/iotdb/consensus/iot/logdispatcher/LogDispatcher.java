@@ -35,12 +35,12 @@ import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
-import org.apache.iotdb.consensus.iot.thrift.TLogCompressionType;
 import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
 
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -600,7 +600,7 @@ public class LogDispatcher {
             batch.getStartIndex(),
             batch.getEndIndex(),
             peer.getGroupId().convertToTConsensusGroupId());
-        if (config.getReplication().getLogCompressionType() == TLogCompressionType.NONE) {
+        if (config.getReplication().getLogCompressionType() == CompressionType.UNCOMPRESSED) {
           clientManager.borrowClient(peer.getEndpoint()).syncLogEntries(req, handler);
           return;
         }

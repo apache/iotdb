@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.iot.thrift.TLogCompressionType;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
@@ -1131,7 +1130,7 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   // IoTConsensus Config
   private int maxLogEntriesNumPerBatch = 1024;
   private int maxSizePerBatch = 16 * 1024 * 1024;
-  private TLogCompressionType iotLogCompressionType = TLogCompressionType.NONE;
+  private CompressionType iotLogCompressionType = CompressionType.UNCOMPRESSED;
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
@@ -1311,11 +1310,11 @@ public class IoTDBConfig implements DefaultEncodingProvider {
     return maxLogEntriesNumPerBatch;
   }
 
-  public TLogCompressionType getIotLogCompressionType() {
+  public CompressionType getIotLogCompressionType() {
     return iotLogCompressionType;
   }
 
-  public void setIotLogCompressionType(TLogCompressionType type) {
+  public void setIotLogCompressionType(CompressionType type) {
     iotLogCompressionType = type;
   }
 

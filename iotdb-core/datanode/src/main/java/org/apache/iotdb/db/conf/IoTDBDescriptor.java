@@ -39,7 +39,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
-import org.apache.iotdb.consensus.iot.thrift.TLogCompressionType;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -1197,8 +1196,19 @@ public class IoTDBDescriptor {
     // Sending policy is a startup setting. Decoding is always available for in-flight requests.
     String compression = properties.getProperty("data_region_iot_log_compression", "NONE").trim();
     try {
-      TLogCompressionType type = TLogCompressionType.valueOf(compression.toUpperCase(Locale.ROOT));
-      conf.setIotLogCompressionType(type);
+      String normalizedCompression = compression.toUpperCase(Locale.ROOT);
+      switch (normalizedCompression) {
+        case "NONE":
+          conf.setIotLogCompressionType(CompressionType.UNCOMPRESSED);
+          break;
+        case "LZ4":
+        case "SNAPPY":
+        case "ZSTD":
+          conf.setIotLogCompressionType(CompressionType.valueOf(normalizedCompression));
+          break;
+        default:
+          throw new IllegalArgumentException();
+      }
     } catch (IllegalArgumentException e) {
       throw new IOException(
           String.format(

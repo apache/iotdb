@@ -31,7 +31,6 @@ import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
-import org.apache.iotdb.consensus.iot.thrift.TLogCompressionType;
 import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
@@ -39,6 +38,7 @@ import org.apache.iotdb.consensus.iot.util.FakeConsensusReqReader;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -86,7 +86,7 @@ public class LogDispatcherCompressionTest {
         IoTConsensusConfig.newBuilder()
             .setReplication(
                 IoTConsensusConfig.Replication.newBuilder()
-                    .setLogCompressionType(TLogCompressionType.LZ4)
+                    .setLogCompressionType(CompressionType.LZ4)
                     .build())
             .build();
     IoTConsensusServerImpl impl = mock(IoTConsensusServerImpl.class);
