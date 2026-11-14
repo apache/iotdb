@@ -122,10 +122,27 @@ class mLSTMLayer(nn.Module):
             torch.nn.init.zeros_(self.in_proj.weight[i_rows])
             torch.nn.init.normal_(self.in_proj.bias[i_rows], mean=0.0, std=0.1)
 
-    def _load_from_state_dict(self, state_dict, prefix, *args, **kwargs):
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
         # Older checkpoints store a separate linear layer per projection
         legacy = ("q", "k", "v", "ogate_preact", "igate_preact", "fgate_preact")
         if all(f"{prefix}{name}.weight" in state_dict for name in legacy):
+            # The i and f gates always have a bias, the other projections only with use_bias.
+            # A missing bias that the checkpoint must have is reported instead of zero-filled.
+            required = legacy if self.config.use_bias else legacy[-2:]
+            missing_keys.extend(
+                f"{prefix}{name}.bias"
+                for name in required
+                if f"{prefix}{name}.bias" not in state_dict
+            )
             weights = [state_dict.pop(f"{prefix}{name}.weight") for name in legacy]
             biases = [state_dict.pop(f"{prefix}{name}.bias", None) for name in legacy]
             biases = [
@@ -134,7 +151,15 @@ class mLSTMLayer(nn.Module):
             ]
             state_dict[f"{prefix}in_proj.weight"] = torch.cat(weights)
             state_dict[f"{prefix}in_proj.bias"] = torch.cat(biases)
-        super()._load_from_state_dict(state_dict, prefix, *args, **kwargs)
+        super()._load_from_state_dict(
+            state_dict,
+            prefix,
+            local_metadata,
+            strict,
+            missing_keys,
+            unexpected_keys,
+            error_msgs,
+        )
 
     def _kernel(self, x: torch.Tensor):
         """The chunkwise mLSTM kernel for inputs on the device of ``x``."""
