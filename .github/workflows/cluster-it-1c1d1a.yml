@@ -81,6 +81,9 @@ jobs:
           PY
           "$AINODE_VENV_PY" -m unittest discover -v -s tests -p 'test_dependency_security.py'
           "$AINODE_VENV_PY" -m unittest discover -v -s tests -p 'test_sundial_flow_loss.py'
+          "$AINODE_VENV_PY" -m unittest discover -v -s tests -p 'test_timestral.py'
+          "$AINODE_VENV_PY" -m unittest discover -v -s tests -p 'test_builtin_model_download.py'
+          "$AINODE_VENV_PY" -m unittest discover -v -s tests -p 'test_builtin_model_load.py'
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v6
