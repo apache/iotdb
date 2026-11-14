@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.snapshot.SnapshotLoader;
@@ -33,7 +35,9 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExternalResource;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -46,6 +50,22 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class PortableDataRegionSnapshotTest {
+  // Snapshot fixtures write only a few KiB; host free-space ratios must not change their behavior.
+  @Rule
+  public final ExternalResource snapshotDiskPolicy =
+      new ExternalResource() {
+        @Override
+        protected void before() {
+          JVMCommonUtils.setDiskSpaceWarningThreshold(0);
+        }
+
+        @Override
+        protected void after() {
+          JVMCommonUtils.setDiskSpaceWarningThreshold(
+              CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
+        }
+      };
+
   private String[][] oldDataDirs;
   private Path root;
 

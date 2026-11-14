@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
@@ -35,7 +37,9 @@ import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExternalResource;
 
 import java.io.File;
 import java.util.Arrays;
@@ -61,6 +65,21 @@ import static org.junit.Assert.fail;
  * replays the log only after it, still has these rows.
  */
 public class ResearchSnapshotConcurrentCloseTest {
+  // Snapshot fixtures write only a few KiB; host free-space ratios must not change their behavior.
+  @Rule
+  public final ExternalResource snapshotDiskPolicy =
+      new ExternalResource() {
+        @Override
+        protected void before() {
+          JVMCommonUtils.setDiskSpaceWarningThreshold(0);
+        }
+
+        @Override
+        protected void after() {
+          JVMCommonUtils.setDiskSpaceWarningThreshold(
+              CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
+        }
+      };
 
   private static final String DATABASE = "root.researchsnapshot";
   private static final String DEVICE = DATABASE + ".d0";

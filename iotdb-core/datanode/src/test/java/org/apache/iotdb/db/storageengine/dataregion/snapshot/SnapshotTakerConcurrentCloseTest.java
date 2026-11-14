@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
@@ -39,7 +41,9 @@ import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExternalResource;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -75,6 +79,21 @@ import static org.junit.Assert.fail;
  * the snapshot then replaces the region's files with ones that lack these rows.
  */
 public class SnapshotTakerConcurrentCloseTest {
+  // Snapshot fixtures write only a few KiB; host free-space ratios must not change their behavior.
+  @Rule
+  public final ExternalResource snapshotDiskPolicy =
+      new ExternalResource() {
+        @Override
+        protected void before() {
+          JVMCommonUtils.setDiskSpaceWarningThreshold(0);
+        }
+
+        @Override
+        protected void after() {
+          JVMCommonUtils.setDiskSpaceWarningThreshold(
+              CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
+        }
+      };
 
   private static final String DATABASE = "root.snapshotrace";
   private static final String DEVICE = DATABASE + ".d0";
