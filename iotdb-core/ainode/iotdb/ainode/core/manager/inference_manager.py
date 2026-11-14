@@ -248,7 +248,7 @@ class InferenceManager:
             inference_attrs = extract_attrs(req)
             output_length = int(inference_attrs.get("output_length", 96))
             max_output_length = self._max_output_length(model_id)
-            if output_length > max_output_length:
+            if not 1 <= output_length <= max_output_length:
                 raise NumericalRangeException(
                     "output_length", output_length, 1, max_output_length
                 )
