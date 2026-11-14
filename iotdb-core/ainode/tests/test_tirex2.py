@@ -19,6 +19,7 @@
 import copy
 import json
 import os
+import re
 import tempfile
 import unittest
 from unittest import mock
@@ -140,14 +141,24 @@ class TiRex2Test(unittest.TestCase):
             torch.testing.assert_close(actual[key], expected[key], rtol=0, atol=0)
 
     def test_checkpoint_with_missing_weight_is_rejected(self):
-        with tempfile.TemporaryDirectory() as directory:
-            with open(os.path.join(directory, "config.json"), "w") as f:
-                json.dump(TINY_CONFIG, f)
-            state_dict = _published_layout(self.model.state_dict())
-            state_dict.pop("output_patch_embedding.output_layer.weight")
-            save_file(state_dict, os.path.join(directory, "model.safetensors"))
-            with self.assertRaises(RuntimeError):
-                TiRex2ForPrediction.from_pretrained(directory)
+        published = _published_layout(self.model.state_dict())
+        gate_biases = [
+            k
+            for k in published
+            if k.endswith(("igate_preact.bias", "fgate_preact.bias"))
+        ]
+        self.assertTrue(gate_biases)
+        for missing in ["output_patch_embedding.output_layer.weight", *gate_biases[:2]]:
+            with self.subTest(
+                missing=missing
+            ), tempfile.TemporaryDirectory() as directory:
+                with open(os.path.join(directory, "config.json"), "w") as f:
+                    json.dump(TINY_CONFIG, f)
+                state_dict = dict(published)
+                state_dict.pop(missing)
+                save_file(state_dict, os.path.join(directory, "model.safetensors"))
+                with self.assertRaisesRegex(RuntimeError, re.escape(missing)):
+                    TiRex2ForPrediction.from_pretrained(directory)
 
     def test_builtin_pipeline_forecasts_median(self):
         pipeline = self.load_pipeline()
