@@ -145,6 +145,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -183,6 +184,32 @@ public class TypeServices {
   private static <T> TypeService<T> cached(final TypeService<T> service) {
     final Map<Object, T> cache = new ConcurrentHashMap<>();
     return type -> cache.computeIfAbsent(type.getTypeEnum(), ignored -> service.call(type));
+  }
+
+  /**
+   * Converts a numeric IN-list literal for an INT32 or INT64 column. Returns {@code null} when the
+   * literal can never equal a value of the column (out of range or not an integer), which matches
+   * how {@code =} treats such literals.
+   */
+  public static Long getIntegralInListValue(final Literal value, final Type type) {
+    final boolean isInt32 = type.getTypeEnum() == TypeEnum.INT32;
+    final long min = isInt32 ? Integer.MIN_VALUE : Long.MIN_VALUE;
+    final long max = isInt32 ? Integer.MAX_VALUE : Long.MAX_VALUE;
+    if (value instanceof LongLiteral) {
+      final long v = ((LongLiteral) value).getParsedValue();
+      return v >= min && v <= max ? v : null;
+    }
+    final double v;
+    if (value instanceof DoubleLiteral) {
+      v = ((DoubleLiteral) value).getValue();
+    } else if (value instanceof FloatLiteral) {
+      v = ((FloatLiteral) value).getValue();
+    } else {
+      throw new SemanticException(
+          String.format(CalcMessages.CANNOT_CAST_TO_TYPE, value, type.getTypeEnum()));
+    }
+    // (double) max + 1 is exact for INT32 and rounds to 2^63 for INT64, so the bound stays exact.
+    return v == Math.floor(v) && v >= min && v < (double) max + 1 ? (long) v : null;
   }
 
   private static final IdentityLinearFill IDENTITY_LINEAR_FILL = new IdentityLinearFill();
@@ -1137,15 +1164,9 @@ public class TypeServices {
                     (valueColumnTransformers, values) -> {
                       Set<Integer> intSet = new HashSet<>();
                       for (Literal value : values) {
-                        try {
-                          long v = ((LongLiteral) value).getParsedValue();
-                          if (v <= Integer.MAX_VALUE && v >= Integer.MIN_VALUE) {
-                            intSet.add((int) v);
-                          }
-                        } catch (IllegalArgumentException e) {
-                          throw new SemanticException(
-                              String.format(
-                                  CalcMessages.CANNOT_CAST_TO_TYPE, value, type.getTypeEnum()));
+                        Long v = getIntegralInListValue(value, type);
+                        if (v != null) {
+                          intSet.add(v.intValue());
                         }
                       }
                       return new InInt32MultiColumnTransformer(intSet, valueColumnTransformers);
@@ -1162,7 +1183,10 @@ public class TypeServices {
                     (valueColumnTransformers, values) -> {
                       Set<Long> longSet = new HashSet<>();
                       for (Literal value : values) {
-                        longSet.add(((LongLiteral) value).getParsedValue());
+                        Long v = getIntegralInListValue(value, type);
+                        if (v != null) {
+                          longSet.add(v);
+                        }
                       }
                       return new InInt64MultiColumnTransformer(longSet, valueColumnTransformers);
                     };

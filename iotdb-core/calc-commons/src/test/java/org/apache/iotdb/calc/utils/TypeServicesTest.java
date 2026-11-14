@@ -24,6 +24,10 @@ import org.apache.iotdb.calc.execution.operator.process.join.merge.comparator.Jo
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -36,6 +40,8 @@ import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.type.IntType;
+import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -51,10 +57,49 @@ import java.util.function.Supplier;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class TypeServicesTest {
+
+  @Test
+  public void testIntegralInListValue() {
+    // INT32: in-range integers and integral decimals are kept, others never match
+    assertEquals(Long.valueOf(1), integralInListValue("1", IntType.INT32));
+    assertEquals(Long.valueOf(2), integralInListValue("2.0", IntType.INT32));
+    assertEquals(Long.valueOf(-3), integralInListValue("-3.0", IntType.INT32));
+    assertEquals(
+        Long.valueOf(Integer.MIN_VALUE), integralInListValue("-2147483648", IntType.INT32));
+    assertEquals(Long.valueOf(Integer.MAX_VALUE), integralInListValue("2147483647", IntType.INT32));
+    assertNull(integralInListValue("2147483648", IntType.INT32));
+    assertNull(integralInListValue("-2147483649", IntType.INT32));
+    assertNull(integralInListValue("4294967298", IntType.INT32));
+    assertNull(integralInListValue("-4294967293", IntType.INT32));
+    assertNull(integralInListValue("2.5", IntType.INT32));
+    assertNull(integralInListValue("2147483648.0", IntType.INT32));
+
+    // INT64
+    assertEquals(Long.valueOf(4294967298L), integralInListValue("4294967298", LongType.INT64));
+    assertEquals(Long.valueOf(3), integralInListValue("3.0", LongType.INT64));
+    assertEquals(
+        Long.valueOf(Long.MIN_VALUE),
+        integralInListValue("-9223372036854775808.0", LongType.INT64));
+    assertNull(integralInListValue("2.5", LongType.INT64));
+    assertNull(integralInListValue("9223372036854775808.0", LongType.INT64));
+    assertNull(integralInListValue("-9.3E18", LongType.INT64));
+
+    assertThrows(
+        SemanticException.class,
+        () -> TypeServices.getIntegralInListValue(new StringLiteral("2"), IntType.INT32));
+  }
+
+  private static Long integralInListValue(String literal, Type type) {
+    boolean isDecimal = literal.contains(".") || literal.contains("E");
+    return TypeServices.getIntegralInListValue(
+        isDecimal ? new DoubleLiteral(literal) : new LongLiteral(literal), type);
+  }
 
   @Test
   public void testStatisticsValueSetterCreatesExceptionOnlyForUnsupportedType() {

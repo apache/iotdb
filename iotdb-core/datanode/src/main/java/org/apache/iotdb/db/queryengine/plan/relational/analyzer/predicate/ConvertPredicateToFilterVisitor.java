@@ -75,6 +75,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
+import static org.apache.iotdb.calc.utils.TypeServices.getIntegralInListValue;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor.getLongValue;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
@@ -137,10 +138,25 @@ public class ConvertPredicateToFilterVisitor
     return ValueFilterApi.in(measurementIndex, inSet, dataType);
   }
 
+  @SuppressWarnings("unchecked")
   private <T extends Comparable<T>> Set<T> constructInSet(List<Literal> literals, Type dataType) {
+    TSDataType tsDataType = InternalTypeManager.getTSDataType(dataType);
     Set<T> values = new HashSet<>();
     for (Literal literal : literals) {
-      values.add(getValue(literal, dataType));
+      if (tsDataType != INT32 && tsDataType != INT64) {
+        values.add(getValue(literal, dataType));
+        continue;
+      }
+      // Like "=", drop literals that can never equal an INT32/INT64 value instead of narrowing them
+      Long value = getIntegralInListValue(literal, dataType);
+      if (value == null) {
+        continue;
+      }
+      if (tsDataType == INT32) {
+        values.add((T) Integer.valueOf(value.intValue()));
+      } else {
+        values.add((T) value);
+      }
     }
     return values;
   }
