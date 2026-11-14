@@ -190,7 +190,7 @@ public class TElasticFramedTransportTest {
       position.setAccessible(true);
       int oldPosition = AutoResizingBuffer.MAX_ARRAY_SIZE - 4;
       position.setInt(transport.writeBuffer, oldPosition);
-      byte[] buffer = transport.writeBuffer.getBuffer();
+      final byte[] buffer = transport.writeBuffer.getBuffer();
       TTransportException failure =
           assertThrows(TTransportException.class, () -> transport.write(new byte[16]));
       assertEquals(TTransportException.CORRUPTED_DATA, failure.getType());
