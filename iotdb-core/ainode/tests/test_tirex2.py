@@ -217,6 +217,18 @@ class TiRex2Test(unittest.TestCase):
     def test_cpu_inputs_use_pytorch_kernels(self):
         self.assertFalse(kernel.use_triton(torch.zeros(1)))
 
+    def test_pre_ampere_gpus_use_pytorch_kernels(self):
+        cuda_input = mock.Mock(is_cuda=True, device=torch.device("cuda", 0))
+        for capability, expected in (((7, 0), False), ((7, 5), False), ((8, 0), True)):
+            kernel._supports_triton_kernels.cache_clear()
+            with self.subTest(capability=capability), mock.patch.object(
+                kernel, "triton_available", return_value=True
+            ), mock.patch.object(
+                torch.cuda, "get_device_capability", return_value=capability
+            ):
+                self.assertEqual(kernel.use_triton(cuda_input), expected)
+        kernel._supports_triton_kernels.cache_clear()
+
 
 if __name__ == "__main__":
     unittest.main()
