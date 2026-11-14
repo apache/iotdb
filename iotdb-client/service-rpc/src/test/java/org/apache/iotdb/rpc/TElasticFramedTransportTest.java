@@ -22,10 +22,14 @@ package org.apache.iotdb.rpc;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TMemoryBuffer;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -40,6 +44,44 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TElasticFramedTransportTest {
+
+  @Test
+  public void testEarlyFrameLimitErrorKeepsRemoteEndpoint() throws Exception {
+    assertEarlyWriteRejectionKeepsRemoteEndpoint(false);
+  }
+
+  @Test
+  public void testEarlyArrayLimitErrorKeepsRemoteEndpoint() throws Exception {
+    assertEarlyWriteRejectionKeepsRemoteEndpoint(true);
+  }
+
+  private void assertEarlyWriteRejectionKeepsRemoteEndpoint(boolean arrayLimit) throws Exception {
+    try (ServerSocket server = new ServerSocket(0, 1, InetAddress.getLoopbackAddress());
+        Socket client = new Socket(server.getInetAddress(), server.getLocalPort());
+        Socket accepted = server.accept();
+        TSocket underlying = new TSocket(client);
+        TElasticFramedTransport transport =
+            arrayLimit
+                ? new TSnappyElasticFramedTransport(underlying, 8, 64, false)
+                : new TElasticFramedTransport(underlying, 8, 64, false)) {
+      String remoteEndpoint = client.getRemoteSocketAddress().toString();
+      if (arrayLimit) {
+        Field position = AutoScalingBufferWriteTransport.class.getDeclaredField("pos");
+        position.setAccessible(true);
+        position.setInt(transport.writeBuffer, AutoResizingBuffer.MAX_ARRAY_SIZE - 4);
+      } else {
+        transport.write(new byte[64]);
+      }
+
+      TTransportException failure =
+          assertThrows(TTransportException.class, () -> transport.write(new byte[16]));
+      assertEquals(TTransportException.CORRUPTED_DATA, failure.getType());
+      assertTrue(failure.getMessage(), failure.getMessage().contains(" to " + remoteEndpoint));
+      assertTrue(client.isClosed());
+      accepted.setSoTimeout(1000);
+      assertEquals(-1, accepted.getInputStream().read());
+    }
+  }
 
   @Test
   public void testRejectOversizedFrameBeforeGrowingBuffer() throws Exception {

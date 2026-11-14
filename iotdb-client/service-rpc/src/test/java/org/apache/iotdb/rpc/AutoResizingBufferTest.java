@@ -113,6 +113,36 @@ public class AutoResizingBufferTest {
   }
 
   @Test
+  public void testCrossingReuseThresholdWithinCapacityUsesTemporaryBuffer() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    try (TElasticFramedTransport transport =
+        new TElasticFramedTransport(new TMemoryBuffer(0), 8, 100, false, 32)) {
+      byte[] payload = new byte[36];
+      new Random(0).nextBytes(payload);
+      for (int offset = 0; offset < 32; offset += 8) {
+        transport.write(payload, offset, 8);
+      }
+      byte[] reusableBuffer = transport.writeBuffer.getBuffer();
+      Assert.assertEquals(36, reusableBuffer.length);
+      Assert.assertEquals(44, memoryControl.getUsedMemoryInBytes());
+
+      // This write crosses the reuse threshold while still fitting in the reusable array.
+      transport.write(payload, 32, 4);
+      Assert.assertNotSame(reusableBuffer, transport.writeBuffer.getBuffer());
+      Assert.assertArrayEquals(payload, transport.writeBuffer.getBuffer());
+      Assert.assertEquals(16, memoryControl.getUsedMemoryInBytes());
+      transport.flush();
+      Assert.assertEquals(8, transport.writeBuffer.getBuffer().length);
+      Assert.assertEquals(16, memoryControl.getUsedMemoryInBytes());
+
+      byte[] actual = new byte[payload.length];
+      transport.readAll(actual, 0, actual.length);
+      Assert.assertArrayEquals(payload, actual);
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
   public void testTemporaryWriteBufferGrowthRespectsFrameLimit() throws Exception {
     AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
     try (TElasticFramedTransport transport =

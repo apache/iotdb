@@ -123,4 +123,10 @@ public final class RpcMessages {
   public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_1CDD4BB9 =
       "序列化帧大小至少为 %d 字节，超过配置的 Thrift 最大帧大小 %d 字节。";
 
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_TO_ARG_6F166F0C =
+      "序列化帧大小至少为 %d 字节，超过 Java 数组最大大小 %d 字节，目标地址为 %s。";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_TO_ARG_7EF64898 =
+      "序列化帧大小至少为 %d 字节，超过配置的 Thrift 最大帧大小 %d 字节，目标地址为 %s。";
+
 }

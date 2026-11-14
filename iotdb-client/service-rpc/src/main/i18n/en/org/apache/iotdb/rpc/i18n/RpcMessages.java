@@ -142,4 +142,10 @@ public final class RpcMessages {
   public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_1CDD4BB9 =
       "Serialized frame size is at least %d bytes, exceeding the configured Thrift max frame size of %d bytes.";
 
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_TO_ARG_6F166F0C =
+      "Serialized frame size is at least %d bytes, exceeding the maximum Java array size of %d bytes to %s.";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_TO_ARG_7EF64898 =
+      "Serialized frame size is at least %d bytes, exceeding the configured Thrift max frame size of %d bytes to %s.";
+
 }

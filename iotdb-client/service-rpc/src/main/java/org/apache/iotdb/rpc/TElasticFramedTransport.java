@@ -394,15 +394,36 @@ public class TElasticFramedTransport extends TTransport {
     if (size > maxSize) {
       // Thrift serializes the whole request before flush. Reject it before growing the buffer so
       // an oversized request cannot keep allocating and retain the caller's query memory.
+      // TSocket.close() clears its socket, so retain the destination before invalidating it.
+      SocketAddress remoteAddress = null;
+      if (underlying instanceof TSocket socket && socket.getSocket() != null) {
+        remoteAddress = socket.getSocket().getRemoteSocketAddress();
+      }
       close();
-      String message =
-          maxSize == AutoResizingBuffer.MAX_ARRAY_SIZE
-              ? RpcMessages
-                  .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_E21E05CA
-              : RpcMessages
-                  .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_1CDD4BB9;
-      throw new TTransportException(
-          TTransportException.CORRUPTED_DATA, String.format(message, size, maxSize));
+      String message;
+      if (remoteAddress == null) {
+        message =
+            String.format(
+                maxSize == AutoResizingBuffer.MAX_ARRAY_SIZE
+                    ? RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_E21E05CA
+                    : RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_1CDD4BB9,
+                size,
+                maxSize);
+      } else {
+        message =
+            String.format(
+                maxSize == AutoResizingBuffer.MAX_ARRAY_SIZE
+                    ? RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_TO_ARG_6F166F0C
+                    : RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_TO_ARG_7EF64898,
+                size,
+                maxSize,
+                remoteAddress);
+      }
+      throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
     }
     writeBuffer.write(buf, off, len, maxSize);
   }
