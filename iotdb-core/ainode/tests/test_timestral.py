@@ -149,6 +149,29 @@ class TimestralTest(unittest.TestCase):
             expected = forecaster.forecast(targets.unsqueeze(0), 40).median[0]
             torch.testing.assert_close(output, expected)
 
+    def test_batches_are_bounded_by_rows(self):
+        # Many requests of the same shape are split into batches of at most
+        # max_batch_rows targets, and each forecast equals the forecast of its own series.
+        pipeline = self.load_pipeline()
+        pipeline.max_batch_rows = 4
+        torch.manual_seed(2)
+        inputs = [{"targets": torch.randn(2, 60).cumsum(-1)} for _ in range(5)]
+        inputs.append({"targets": torch.randn(6, 60).cumsum(-1)})
+        rows = []
+        forecast = pipeline.forecaster.forecast
+
+        def record_rows(context, *args, **kwargs):
+            rows.append(context.shape[0] * context.shape[1])
+            return forecast(context, *args, **kwargs)
+
+        with mock.patch.object(pipeline.forecaster, "forecast", record_rows):
+            outputs = self.run_pipeline(pipeline, copy.deepcopy(inputs), 24)
+        self.assertEqual(rows, [4, 4, 2, 6])
+        forecaster = TimestralForecaster(self.model)
+        for output, item in zip(outputs, inputs):
+            expected = forecaster.forecast(item["targets"].unsqueeze(0), 24).median[0]
+            torch.testing.assert_close(output, expected)
+
     def test_covariates(self):
         pipeline = self.load_pipeline()
         torch.manual_seed(2)

@@ -33,6 +33,12 @@ class TimestralPipeline(ForecastPipeline):
     each block's median back as context. The pipeline returns the median.
     """
 
+    # Timestral forecasts a batch as one set of rows, one row per target, and its
+    # variate-attention mask grows with the square of the number of rows. Series of the same
+    # shape are batched together only up to this many rows, so that the memory of a batch of
+    # requests grows linearly with the number of requests.
+    max_batch_rows = 64
+
     def __init__(self, model_info: ModelInfo, **model_kwargs):
         super().__init__(model_info, **model_kwargs)
         self.forecaster = TimestralForecaster(self.model)
@@ -98,7 +104,8 @@ class TimestralPipeline(ForecastPipeline):
 
     def forecast(self, inputs: list[dict], **infer_kwargs) -> list[torch.Tensor]:
         """
-        Forecast the series, batching those of the same shape without covariates.
+        Forecast the series, batching those of the same shape without covariates, up to
+        `max_batch_rows` targets per batch.
 
         Returns
         -------
@@ -107,13 +114,23 @@ class TimestralPipeline(ForecastPipeline):
         """
         output_length = infer_kwargs.get("output_length", 96)
         outputs: list[torch.Tensor | None] = [None] * len(inputs)
-        batches: dict[tuple, list[int]] = {}
+        batches: list[list[int]] = []
+        open_batches: dict[tuple, list[int]] = {}
         for i, item in enumerate(inputs):
-            if item["past_covariates"] is None and item["known_covariates"] is None:
-                batches.setdefault(tuple(item["context"].shape), []).append(i)
-            else:
-                batches[("series", i)] = [i]
-        for indices in batches.values():
+            if (
+                item["past_covariates"] is not None
+                or item["known_covariates"] is not None
+            ):
+                batches.append([i])
+                continue
+            shape = tuple(item["context"].shape)
+            batch = open_batches.get(shape)
+            if batch is None or (len(batch) + 1) * shape[1] > self.max_batch_rows:
+                batch = []
+                batches.append(batch)
+                open_batches[shape] = batch
+            batch.append(i)
+        for indices in batches:
             items = [inputs[i] for i in indices]
             forecast = self.forecaster.forecast(
                 torch.cat([item["context"] for item in items]),
