@@ -103,6 +103,17 @@ public class AINodeTestUtils {
     BUILTIN_MODEL_MAP = Collections.unmodifiableMap(tmp);
   }
 
+  /** AINode's default limit on output_length (ain_inference_max_output_length). */
+  public static final int DEFAULT_MAX_OUTPUT_LENGTH = 2880;
+
+  /** Built-in models whose own forecast horizon is below AINode's limit. */
+  private static final Map<String, Integer> MODEL_MAX_OUTPUT_LENGTH =
+      Collections.singletonMap("tirex2", 320);
+
+  public static int getMaxOutputLength(String modelId) {
+    return MODEL_MAX_OUTPUT_LENGTH.getOrDefault(modelId, DEFAULT_MAX_OUTPUT_LENGTH);
+  }
+
   private static final Logger LOGGER = LoggerFactory.getLogger(AINodeTestUtils.class);
 
   private static final long CONCURRENT_INFERENCE_TIMEOUT_MILLIS = TimeUnit.MINUTES.toMillis(10);
