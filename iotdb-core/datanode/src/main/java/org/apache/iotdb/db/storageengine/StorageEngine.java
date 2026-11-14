@@ -213,7 +213,7 @@ public class StorageEngine implements IService {
     asyncRecover(futures);
 
     // wait until wal is recovered
-    if (!CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (!ConsensusFactory.isConsensusLogBacked(CONFIG.getDataRegionConsensusProtocolClass())) {
       try {
         WALRecoverManager.getInstance().recover();
       } catch (WALException e) {

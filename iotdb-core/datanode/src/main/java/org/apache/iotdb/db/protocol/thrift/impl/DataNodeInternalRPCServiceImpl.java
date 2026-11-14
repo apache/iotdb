@@ -1949,7 +1949,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     return RpcUtils.getStatus(
                         TSStatusCode.DATA_TYPE_MISMATCH,
                         String.format(
-                            "Multiple types encountered when auto detecting type of measurement '%s', please check",
+                            "Multiple types encountered when auto detecting type of measurement"
+                                + " '%s', please check",
                             measurementName));
                   }
                 }
@@ -2237,7 +2238,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             groupId ->
                 result.put(
                     groupId.convertToTConsensusGroupId(),
-                    DataRegionConsensusImpl.getInstance().isLeader(groupId)));
+                    DataRegionConsensusImpl.getInstance().isLeader(groupId)
+                        && (!ConsensusFactory.isResearchRaft(
+                                IoTDBDescriptor.getInstance()
+                                    .getConfig()
+                                    .getDataRegionConsensusProtocolClass())
+                            || DataRegionConsensusImpl.getInstance().isLeaderReady(groupId))));
 
     SchemaRegionConsensusImpl.getInstance()
         .getAllConsensusGroupIds()

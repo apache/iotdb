@@ -22,6 +22,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.consensus.common.request.NormalizedRequest;
+import org.apache.iotdb.consensus.common.request.RequestNormalizationProvider;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -30,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -43,7 +46,58 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class InsertMultiTabletsNode extends InsertNode {
+public class InsertMultiTabletsNode extends InsertNode implements RequestNormalizationProvider {
+
+  /**
+   * Splits every tablet into its rows, tablets in list order, so a multi-device session write uses
+   * the same one-row entries as a single tablet. Any tablet that cannot be split keeps the whole
+   * node intact.
+   */
+  @Override
+  public NormalizedRequest normalizeRequest() {
+    if (getClass() != InsertMultiTabletsNode.class
+        || isGeneratedByPipe()
+        || insertTabletNodeList.isEmpty()) {
+      return NormalizedRequest.single(this);
+    }
+    final List<NormalizedRequest> tablets = new ArrayList<>(insertTabletNodeList.size());
+    int size = 0;
+    for (InsertTabletNode tablet : insertTabletNodeList) {
+      // Table-model, pipe and unknown extensions retain their complete application operation.
+      if (tablet == null
+          || tablet.getClass() != InsertTabletNode.class
+          || tablet.isGeneratedByPipe()
+          || tablet.getRowCount() <= 0) {
+        return NormalizedRequest.single(this);
+      }
+      NormalizedRequest rows = tablet.normalizeRequest();
+      tablets.add(rows);
+      size += rows.size();
+    }
+    final int[] tabletOf = new int[size];
+    final int[] rowOf = new int[size];
+    int index = 0;
+    for (int tablet = 0; tablet < tablets.size(); tablet++) {
+      for (int row = 0; row < tablets.get(tablet).size(); row++) {
+        tabletOf[index] = tablet;
+        rowOf[index++] = row;
+      }
+    }
+    results.clear();
+    return new NormalizedRequest(
+        size,
+        i -> tablets.get(tabletOf[i]).requestAt(rowOf[i]),
+        // One position per row is not available here; report the row's tablet in the original
+        // request, the granularity at which failures are propagated back.
+        i -> parentInsertTabletNodeIndexList.get(tabletOf[i]),
+        // Match DataExecutionVisitor: the first failing tablet decides the returned status.
+        NormalizedRequest.FailureSelection.FIRST,
+        (i, status) -> {
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            results.putIfAbsent(tabletOf[i], status);
+          }
+        });
+  }
 
   /**
    * the value is used to indict the parent InsertTabletNode's index when the parent

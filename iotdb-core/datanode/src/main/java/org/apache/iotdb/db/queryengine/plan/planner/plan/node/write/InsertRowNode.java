@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.consensus.common.request.RequestSemantics;
+import org.apache.iotdb.consensus.common.request.RequestSemanticsProvider;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -58,7 +60,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class InsertRowNode extends InsertNode implements WALEntryValue {
+public class InsertRowNode extends InsertNode implements WALEntryValue, RequestSemanticsProvider {
+
+  @Override
+  public RequestSemantics getRequestSemantics() {
+    // Table writes and unrecognized subclasses may have effects beyond this timestamp.
+    return getClass() == InsertRowNode.class && !isGeneratedByPipe()
+        ? seriesData(time)
+        : RequestSemantics.barrier();
+  }
 
   private static final byte TYPE_RAW_STRING = -1;
 
@@ -208,7 +218,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     this.values = values;
   }
 
-  @Override
   public long getTime() {
     return time;
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -48,13 +50,24 @@ import java.util.concurrent.TimeUnit;
  */
 public class SnapshotTaker {
   private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotTaker.class);
+
+  /** How long a snapshot that flushes first waits for the closes that seal the region's TsFiles. */
+  static final long DEFAULT_SEAL_WAIT_MILLIS = TimeUnit.MINUTES.toMillis(1);
+
   private final DataRegion dataRegion;
+  private final long sealWaitMillis;
   private SnapshotLogger snapshotLogger;
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
 
   public SnapshotTaker(DataRegion dataRegion) {
+    this(dataRegion, DEFAULT_SEAL_WAIT_MILLIS);
+  }
+
+  @TestOnly
+  SnapshotTaker(DataRegion dataRegion, long sealWaitMillis) {
     this.dataRegion = dataRegion;
+    this.sealWaitMillis = sealWaitMillis;
   }
 
   public boolean takeFullSnapshot(String snapshotDirPath, boolean flushBeforeSnapshot)
@@ -91,15 +104,8 @@ public class SnapshotTaker {
 
       try {
         readLockTheFile();
-        if (flushBeforeSnapshot) {
-          try {
-            dataRegion.writeLock("snapshotTaker");
-            dataRegion.syncCloseAllWorkingTsFileProcessors();
-          } finally {
-            dataRegion.writeUnlock();
-          }
-        }
-        success = createSnapshot(seqFiles, tempSnapshotId);
+        success = !flushBeforeSnapshot || sealListedTsFiles();
+        success = success && createSnapshot(seqFiles, tempSnapshotId);
         success = success && createSnapshot(unseqFiles, tempSnapshotId);
         success = success && snapshotCompressionRatio(snapshotDirPath);
       } finally {
@@ -122,6 +128,13 @@ public class SnapshotTaker {
       }
 
       return success;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          "Interrupted while waiting for the TsFiles of {}-{} to close, no snapshot taken",
+          dataRegion.getDatabaseName(),
+          dataRegion.getDataRegionIdString());
+      return false;
     } catch (Exception e) {
       LOGGER.error(
           "Exception occurs when taking snapshot for {}-{}",
@@ -136,6 +149,47 @@ public class SnapshotTaker {
         LOGGER.error("Failed to close snapshot logger", e);
       }
     }
+  }
+
+  /**
+   * Seals the listed TsFiles before they are linked. The wait also covers the closes that another
+   * thread started before (StorageEngine.stop() at shutdown, an insert or a timed flush); without
+   * it the snapshot would leave out a TsFile that is still being sealed. A listed TsFile that is
+   * still unsealed afterwards, because its close failed or outlasted the wait, fails the snapshot
+   * instead of being left out: a consensus layer that restores the region from the snapshot would
+   * lose its rows. So do rows that a failed flush dropped, before or during this wait: their TsFile
+   * may be gone from the list or kept without them, yet the region had accepted them.
+   */
+  private boolean sealListedTsFiles() throws InterruptedException {
+    boolean closesOver = dataRegion.syncCloseAllTsFileProcessors(sealWaitMillis);
+    List<TsFileResource> unsealed = new ArrayList<>();
+    for (TsFileResource resource : seqFiles) {
+      if (!resource.isClosed()) {
+        unsealed.add(resource);
+      }
+    }
+    for (TsFileResource resource : unseqFiles) {
+      if (!resource.isClosed()) {
+        unsealed.add(resource);
+      }
+    }
+    if (closesOver && unsealed.isEmpty()) {
+      if (!dataRegion.hasFlushDroppedRows()) {
+        return true;
+      }
+      LOGGER.warn(
+          "Cannot take snapshot for {}-{}: a failed flush dropped rows of the region",
+          dataRegion.getDatabaseName(),
+          dataRegion.getDataRegionIdString());
+      return false;
+    }
+    LOGGER.warn(
+        "Cannot take snapshot for {}-{}: closes did not seal the TsFiles within {} ms, unsealed: {}",
+        dataRegion.getDatabaseName(),
+        dataRegion.getDataRegionIdString(),
+        sealWaitMillis,
+        unsealed);
+    return false;
   }
 
   private boolean snapshotCompressionRatio(String snapshotDir) {
@@ -227,6 +281,11 @@ public class SnapshotTaker {
         }
         File tsFile = resource.getTsFile();
         if (!resource.isClosed()) {
+          continue;
+        }
+        if (resource.isDeleted() && !tsFile.exists()) {
+          // Removed, e.g. an empty TsFile that its close deleted: there is nothing to link, and
+          // waiting for the missing file (checkHardLinkSourceFile) would only stall the snapshot.
           continue;
         }
         File snapshotTsFile = getSnapshotFilePathForTsFile(tsFile, snapshotId);

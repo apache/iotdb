@@ -260,13 +260,27 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public synchronized void serialize(String targetFilePath) throws IOException {
+    serialize(targetFilePath, true);
+  }
+
+  /**
+   * Serialize an unpublished scratch sidecar. The caller must force this sidecar and its TsFile at
+   * the destination before publishing either name; this method provides no durability.
+   */
+  public synchronized void serializeForStaging() throws IOException {
+    serialize(file + RESOURCE_SUFFIX, false);
+  }
+
+  private void serialize(String targetFilePath, boolean durable) throws IOException {
     FileOutputStream fileOutputStream = new FileOutputStream(targetFilePath + TEMP_SUFFIX);
     BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
     try {
       serializeTo(outputStream);
     } finally {
       outputStream.flush();
-      fileOutputStream.getFD().sync();
+      if (durable) {
+        fileOutputStream.getFD().sync();
+      }
       outputStream.close();
     }
     File src = fsFactory.getFile(targetFilePath + TEMP_SUFFIX);

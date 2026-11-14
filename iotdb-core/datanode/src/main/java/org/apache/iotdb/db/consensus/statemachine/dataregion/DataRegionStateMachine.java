@@ -130,19 +130,18 @@ public class DataRegionStateMachine extends BaseStateMachine {
                 region.getDataRegionIdString())
             .loadSnapshotForStateMachine();
     if (newRegion == null) {
-      logger.error("Fail to load snapshot from {}", latestSnapshotRootDir);
-      return;
+      throw new IllegalStateException("Fail to load snapshot from " + latestSnapshotRootDir);
     }
-    this.region = newRegion;
     try {
       StorageEngine.getInstance()
           .setDataRegion(
-              new DataRegionId(Integer.parseInt(region.getDataRegionIdString())), region);
+              new DataRegionId(Integer.parseInt(newRegion.getDataRegionIdString())), newRegion);
+      this.region = newRegion;
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
     } catch (Exception e) {
-      logger.error("Exception occurs when replacing data region in storage engine.", e);
+      throw new IllegalStateException("Cannot replace data region after loading snapshot", e);
     }
   }
 

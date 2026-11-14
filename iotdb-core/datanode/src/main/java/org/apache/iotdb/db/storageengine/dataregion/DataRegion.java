@@ -191,10 +191,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -211,12 +215,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -281,6 +287,18 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** Data region has been deleted or not. */
   private volatile boolean deleted = false;
+
+  /**
+   * Set once a failed flush dropped rows of this region: TsFileProcessor#flushOneMemTable truncates
+   * the TsFile back to its mark and releases the memtable, so the region no longer holds every row
+   * it accepted, and a snapshot of it would be incomplete. A restart builds a new region.
+   */
+  private volatile boolean flushDroppedRows = false;
+
+  // A verified L0-only prefix introduces closed files only. Every raw processor creation
+  // invalidates its boundary, including processors reopened by native recovery.
+  private final AtomicLong lsmRawWriterEpoch = new AtomicLong();
+  private long lsmCheckedRawWriterEpoch = -1;
 
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
@@ -414,11 +432,12 @@ public class DataRegion implements IDataRegionForQuery {
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             databaseName + "-" + dataRegionIdString + "-UpgradeMod");
 
-    // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
+    // Snapshot-backed consensus restores a clean state machine from snapshot and committed log.
+    if (ConsensusFactory.isConsensusLogBacked(config.getDataRegionConsensusProtocolClass())
         && !StorageEngine.getInstance().isReadyForReadAndWrite()) {
       logger.debug(
-          "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
+          "Skip recovering data region {}[{}] during consensus-log recovery while storage engine is"
+              + " not ready.",
           databaseName,
           dataRegionIdString);
       for (String fileFolder : TierManager.getInstance().getAllFilesFolders()) {
@@ -899,8 +918,9 @@ public class DataRegion implements IDataRegionForQuery {
         && fileTime < RepairUnsortedFileCompactionTask.getInitialAllocatedFileTimestamp()) {
       throw new DataRegionException(
           String.format(
-              "data region %s[%s] is down, because the time of tsfile %s is larger than system current time, "
-                  + "file time is %d while system current time is %d, please check it.",
+              "data region %s[%s] is down, because the time of tsfile %s is larger than system"
+                  + " current time, file time is %d while system current time is %d, please check"
+                  + " it.",
               databaseName, dataRegionIdString, tsFile.getAbsolutePath(), fileTime, currentTime));
     }
   }
@@ -958,6 +978,7 @@ public class DataRegion implements IDataRegionForQuery {
             && workUnsequenceTsFileProcessors.get(tsFileProcessor.getTimeRangeId()) == null) {
           WritingMetrics.getInstance().recordActiveTimePartitionCount(1);
         }
+        lsmRawWriterEpoch.incrementAndGet();
         if (isSeq) {
           workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         } else {
@@ -1609,7 +1630,8 @@ public class DataRegion implements IDataRegionForQuery {
                   return schema;
                 } catch (TException | ClientManagerException e) {
                   logger.error(
-                      "Remote request config node failed that judgment if table is exist, occur exception. {}",
+                      "Remote request config node failed that judgment if table is exist, occur"
+                          + " exception. {}",
                       e.getMessage());
                   TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
                   return null; // unreachable, throwTableNotExistsException always throws
@@ -1618,7 +1640,8 @@ public class DataRegion implements IDataRegionForQuery {
                 // Here may be invoked by leader node, the table is very unexpected not exist in the
                 // DataNodeTableCache
                 logger.error(
-                    "Due tsTable is null, table schema can't be got, leader node occur special situation need to resolve.");
+                    "Due tsTable is null, table schema can't be got, leader node occur special"
+                        + " situation need to resolve.");
                 throw new TableLostRuntimeException(getDatabaseName(), tableName);
               }
             }
@@ -1844,7 +1867,8 @@ public class DataRegion implements IDataRegionForQuery {
         }
       } catch (DiskSpaceInsufficientException e) {
         logger.error(
-            "disk space is insufficient when creating TsFile processor, change system mode to read-only",
+            "disk space is insufficient when creating TsFile processor, change system mode to"
+                + " read-only",
             e);
         CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         break;
@@ -1888,6 +1912,7 @@ public class DataRegion implements IDataRegionForQuery {
           && workUnsequenceTsFileProcessors.get(timeRangeId) == null) {
         WritingMetrics.getInstance().recordActiveTimePartitionCount(1);
       }
+      lsmRawWriterEpoch.incrementAndGet();
       tsFileProcessorTreeMap.put(timeRangeId, res);
       tsFileManager.add(res.getTsFileResource(), sequence);
     }
@@ -2156,7 +2181,8 @@ public class DataRegion implements IDataRegionForQuery {
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableUpdateTime() < timeLowerBound) {
           logger.info(
-              "Exceed sequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
+              "Exceed sequence memtable flush interval, so flush working memtable of time partition"
+                  + " {} in database {}[{}]",
               tsFileProcessor.getTimeRangeId(),
               databaseName,
               dataRegionIdString);
@@ -2182,7 +2208,8 @@ public class DataRegion implements IDataRegionForQuery {
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableUpdateTime() < timeLowerBound) {
           logger.info(
-              "Exceed unsequence memtable flush interval, so flush working memtable of time partition {} in database {}[{}]",
+              "Exceed unsequence memtable flush interval, so flush working memtable of time"
+                  + " partition {} in database {}[{}]",
               tsFileProcessor.getTimeRangeId(),
               databaseName,
               dataRegionIdString);
@@ -2246,6 +2273,64 @@ public class DataRegion implements IDataRegionForQuery {
           e);
       Thread.currentThread().interrupt();
     }
+  }
+
+  /**
+   * Closes every working TsFileProcessor and waits until these closes, and the ones other threads
+   * started before, are over, or until the timeout. It holds the write lock throughout, so no close
+   * can start meanwhile; a close ends without that lock or the read-write lock of a TsFileResource.
+   * A close is over once its flush thread has finished, whether or not it sealed the TsFile, so a
+   * caller that needs the TsFiles sealed checks them afterwards.
+   *
+   * @return false if a close was still running at the timeout
+   */
+  public boolean syncCloseAllTsFileProcessors(long timeoutMillis) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+    writeLock("syncCloseAllTsFileProcessors");
+    try {
+      List<Future<?>> closes = new ArrayList<>(asyncCloseAllWorkingTsFileProcessors());
+      // Closes started before this lock: StorageEngine.stop(), an insert or a timed flush.
+      for (TsFileProcessor processor : closingSequenceTsFileProcessor) {
+        closes.add(processor.getCloseFuture());
+      }
+      for (TsFileProcessor processor : closingUnSequenceTsFileProcessor) {
+        closes.add(processor.getCloseFuture());
+      }
+      for (Future<?> close : closes) {
+        if (close == null) {
+          continue;
+        }
+        try {
+          close.get(Math.max(0L, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
+        } catch (TimeoutException e) {
+          logger.warn(
+              "{} still has TsFiles closing after {} ms, seq files: {}, unseq files: {}",
+              databaseName + "-" + dataRegionIdString,
+              timeoutMillis,
+              closingSequenceTsFileProcessor,
+              closingUnSequenceTsFileProcessor);
+          return false;
+        } catch (ExecutionException | CancellationException e) {
+          logger.warn(
+              "A TsFile close of {} ended with an error",
+              databaseName + "-" + dataRegionIdString,
+              e);
+        }
+      }
+      return true;
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /** Records that a failed flush dropped rows of this region. */
+  public void markFlushDroppedRows() {
+    flushDroppedRows = true;
+  }
+
+  /** Whether a failed flush dropped rows of this region, which a snapshot would then miss. */
+  public boolean hasFlushDroppedRows() {
+    return flushDroppedRows;
   }
 
   private void waitClosingTsFileProcessorFinished() throws InterruptedException {
@@ -3281,7 +3366,8 @@ public class DataRegion implements IDataRegionForQuery {
                       device -> {
                         if (logger.isDebugEnabled()) {
                           logger.debug(
-                              "device is {}, deviceTable is {}, tableDeletionEntry.getPredicate().matches(device) is {}",
+                              "device is {}, deviceTable is {},"
+                                  + " tableDeletionEntry.getPredicate().matches(device) is {}",
                               device,
                               device.getTableName(),
                               tableDeletionEntry.getPredicate().matches(device));
@@ -3314,7 +3400,8 @@ public class DataRegion implements IDataRegionForQuery {
 
             if (logger.isDebugEnabled()) {
               logger.debug(
-                  "tableName is {}, device is {}, deletionStartTime is {}, deletionEndTime is {}, fileStartTime is {}, fileEndTime is {}",
+                  "tableName is {}, device is {}, deletionStartTime is {}, deletionEndTime is {},"
+                      + " fileStartTime is {}, fileEndTime is {}",
                   device.getTableName(),
                   device,
                   deletion.getStartTime(),
@@ -3844,6 +3931,70 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean isGeneratedByPipe,
       final boolean isFromConsensus)
       throws LoadFileException {
+    loadNewTsFile(newTsFileResource, deleteOriginFile, isGeneratedByPipe, isFromConsensus, false);
+  }
+
+  /**
+   * Publish an already committed L0 file with its durable resource sidecar preceding the TsFile.
+   * Recovery therefore cannot observe a closed L0 file without its Raft index metadata.
+   */
+  public void loadLsmRaftTsFile(final TsFileResource resource) throws LoadFileException {
+    writeLock("loadLsmRaftTsFile");
+    try {
+      // A subsequent raw overwrite must get a newer file version than this L0 file. Keeping an
+      // older unsequence processor open would make its later points lose query merge priority.
+      if (hasFlushDroppedRows()) {
+        throw new LoadFileException("Cannot publish L0 after a raw flush dropped rows");
+      }
+      long rawEpoch = lsmRawWriterEpoch.get();
+      if (lsmCheckedRawWriterEpoch != rawEpoch
+          || !workSequenceTsFileProcessors.isEmpty()
+          || !workUnsequenceTsFileProcessors.isEmpty()
+          || !closingSequenceTsFileProcessor.isEmpty()
+          || !closingUnSequenceTsFileProcessor.isEmpty()) {
+        try {
+          if (!syncCloseAllTsFileProcessors(60_000) || hasFlushDroppedRows()) {
+            throw new LoadFileException("Cannot publish L0 after failed or timed-out raw flush");
+          }
+          long visited = 0;
+          for (boolean sequence : new boolean[] {true, false}) {
+            for (TsFileResource old : tsFileManager.getTsFileList(sequence)) {
+              visited++;
+              if (!old.isClosed()) {
+                throw new LoadFileException("Cannot publish L0 while an older TsFile is unsealed");
+              }
+            }
+          }
+          org.apache.iotdb.consensus.common.research.ResearchMetrics.add(
+              "lsm-raft.l0.raw_boundary_resource_visits", visited);
+          lsmCheckedRawWriterEpoch = lsmRawWriterEpoch.get();
+        } catch (InterruptedException error) {
+          Thread.currentThread().interrupt();
+          throw new LoadFileException(error);
+        }
+      }
+      CompactionScheduler.exclusiveLockCompactionSelection();
+      resource.readLock();
+      try {
+        loadNewTsFile(resource, true, false, true, true);
+        // L0 files also apply on the leader: no accompanying memtable write refreshes its cache.
+        TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(databaseName);
+      } finally {
+        resource.readUnlock();
+        CompactionScheduler.exclusiveUnlockCompactionSelection();
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  private void loadNewTsFile(
+      final TsFileResource newTsFileResource,
+      final boolean deleteOriginFile,
+      final boolean isGeneratedByPipe,
+      final boolean isFromConsensus,
+      final boolean durableL0Publication)
+      throws LoadFileException {
     if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus) {
       final IoTConsensusServerImpl impl =
           ((IoTConsensus) DataRegionConsensusImpl.getInstance()).getImpl(dataRegionId);
@@ -3884,6 +4035,9 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("loadNewTsFile");
     try {
       if (deleted) {
+        if (durableL0Publication) {
+          throw new LoadFileException("Cannot install committed L0 file into a deleted DataRegion");
+        }
         logger.info(
             "Won't load TsFile {}, because region is deleted",
             tsfileToBeInserted.getAbsolutePath());
@@ -3910,7 +4064,8 @@ public class DataRegion implements IDataRegionForQuery {
           newTsFileResource,
           newFilePartitionId,
           deleteOriginFile,
-          isGeneratedByPipe);
+          isGeneratedByPipe,
+          durableL0Publication);
 
       FileMetrics.getInstance()
           .addTsFile(
@@ -3948,7 +4103,8 @@ public class DataRegion implements IDataRegionForQuery {
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
     } catch (final DiskSpaceInsufficientException e) {
       logger.error(
-          "Failed to append the tsfile {} to database processor {} because the disk space is insufficient.",
+          "Failed to append the tsfile {} to database processor {} because the disk space is"
+              + " insufficient.",
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
       throw new LoadFileException(e);
@@ -4074,7 +4230,8 @@ public class DataRegion implements IDataRegionForQuery {
       final TsFileResource tsFileResource,
       final long filePartitionId,
       final boolean deleteOriginFile,
-      boolean isGeneratedByPipe)
+      boolean isGeneratedByPipe,
+      boolean durableL0Publication)
       throws LoadFileException, DiskSpaceInsufficientException {
     final int targetTierLevel = 0;
     final String fileName =
@@ -4093,7 +4250,14 @@ public class DataRegion implements IDataRegionForQuery {
                 tsFileToLoad.getParentFile(), fileName, true, targetTierLevel);
 
     tsFileResource.setFile(targetFile);
-    if (tsFileManager.contains(tsFileResource, false)) {
+    if (durableL0Publication) {
+      // getAndSetNewVersion reserved a fresh version under the region write lock. L0 replay
+      // identity is checked by the ordered applier, so a linked-list history search is redundant.
+      // Still fail closed if that supposedly new destination already exists on disk.
+      if (targetFile.exists()) {
+        throw new LoadFileException("New L0 destination already exists: " + targetFile);
+      }
+    } else if (tsFileManager.contains(tsFileResource, false)) {
       logger.warn("The file {} has already been loaded in unsequence list", tsFileResource);
       return false;
     }
@@ -4105,68 +4269,75 @@ public class DataRegion implements IDataRegionForQuery {
 
     LoadTsFileRateLimiter.getInstance().acquire(tsFileResource.getTsFile().length());
 
-    // move file from sync dir to data dir
-    if (!targetFile.getParentFile().exists()) {
-      targetFile.getParentFile().mkdirs();
-    }
-    try {
-      if (deleteOriginFile) {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.moveFile(tsFileToLoad, targetFile);
-              return null;
-            });
-      } else {
-        RetryUtils.retryOnException(
-            () -> {
-              Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
-              return null;
-            });
+    if (durableL0Publication) {
+      try {
+        publishLsmRaftFilesDurably(tsFileToLoad.toPath(), targetFile.toPath(), deleteOriginFile);
+      } catch (IOException e) {
+        throw new LoadFileException(e);
       }
-    } catch (final IOException e) {
-      logger.warn(
-          "File renaming failed when loading tsfile. Origin: {}, Target: {}",
-          tsFileToLoad.getAbsolutePath(),
-          targetFile.getAbsolutePath(),
-          e);
-      throw new LoadFileException(
-          String.format(
-              "File renaming failed when loading tsfile. Origin: %s, Target: %s, because %s",
-              tsFileToLoad.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
-    }
-
-    final File resourceFileToLoad =
-        fsFactory.getFile(tsFileToLoad.getAbsolutePath() + RESOURCE_SUFFIX);
-    final File targetResourceFile =
-        fsFactory.getFile(targetFile.getAbsolutePath() + RESOURCE_SUFFIX);
-    try {
-      if (deleteOriginFile) {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
-              return null;
-            });
-      } else {
-        RetryUtils.retryOnException(
-            () -> {
-              Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
-              return null;
-            });
+    } else {
+      // move file from sync dir to data dir
+      if (!targetFile.getParentFile().exists()) {
+        targetFile.getParentFile().mkdirs();
       }
-    } catch (final IOException e) {
-      logger.warn(
-          "File renaming failed when loading .resource file. Origin: {}, Target: {}",
-          resourceFileToLoad.getAbsolutePath(),
-          targetResourceFile.getAbsolutePath(),
-          e);
-      throw new LoadFileException(
-          String.format(
-              "File renaming failed when loading .resource file. Origin: %s, Target: %s, because %s",
-              resourceFileToLoad.getAbsolutePath(),
-              targetResourceFile.getAbsolutePath(),
-              e.getMessage()));
-    }
+      try {
+        if (deleteOriginFile) {
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.moveFile(tsFileToLoad, targetFile);
+                return null;
+              });
+        } else {
+          RetryUtils.retryOnException(
+              () -> {
+                Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
+                return null;
+              });
+        }
+      } catch (final IOException e) {
+        logger.warn(
+            "File renaming failed when loading tsfile. Origin: {}, Target: {}",
+            tsFileToLoad.getAbsolutePath(),
+            targetFile.getAbsolutePath(),
+            e);
+        throw new LoadFileException(
+            String.format(
+                "File renaming failed when loading tsfile. Origin: %s, Target: %s, because %s",
+                tsFileToLoad.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
+      }
 
+      final File resourceFileToLoad =
+          fsFactory.getFile(tsFileToLoad.getAbsolutePath() + RESOURCE_SUFFIX);
+      final File targetResourceFile =
+          fsFactory.getFile(targetFile.getAbsolutePath() + RESOURCE_SUFFIX);
+      try {
+        if (deleteOriginFile) {
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
+                return null;
+              });
+        } else {
+          RetryUtils.retryOnException(
+              () -> {
+                Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
+                return null;
+              });
+        }
+      } catch (final IOException e) {
+        logger.warn(
+            "File renaming failed when loading .resource file. Origin: {}, Target: {}",
+            resourceFileToLoad.getAbsolutePath(),
+            targetResourceFile.getAbsolutePath(),
+            e);
+        throw new LoadFileException(
+            String.format(
+                "File renaming failed when loading .resource file. Origin: %s, Target: %s, because %s",
+                resourceFileToLoad.getAbsolutePath(),
+                targetResourceFile.getAbsolutePath(),
+                e.getMessage()));
+      }
+    }
     loadModFile(tsFileToLoad, targetFile, deleteOriginFile, tsFileResource);
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
@@ -4176,6 +4347,81 @@ public class DataRegion implements IDataRegionForQuery {
     tsFileManager.add(tsFileResource, false);
 
     return true;
+  }
+
+  private static void publishLsmRaftFilesDurably(Path source, Path target, boolean deleteOriginFile)
+      throws IOException {
+    Path parent = target.toAbsolutePath().getParent();
+    List<Path> newDirectories = new ArrayList<>();
+    for (Path directory = parent;
+        directory != null && !Files.exists(directory);
+        directory = directory.getParent()) {
+      newDirectories.add(directory);
+    }
+    Files.createDirectories(parent);
+    for (Path directory : newDirectories) {
+      forceLsmRaftDirectory(directory);
+      forceLsmRaftDirectory(directory.getParent());
+    }
+    Path temporaryFile = Files.createTempFile(parent, ".lsmraft-", ".data");
+    Path temporaryResource = Files.createTempFile(parent, ".lsmraft-", ".resource");
+    Path sourceResource = Paths.get(source + RESOURCE_SUFFIX);
+    Path targetResource = Paths.get(target + RESOURCE_SUFFIX);
+    try {
+      if (!Files.isRegularFile(sourceResource)) {
+        throw new IOException("L0 source resource is missing: " + sourceResource);
+      }
+      stageLsmRaftFile(source, temporaryFile, deleteOriginFile);
+      stageLsmRaftFile(sourceResource, temporaryResource, deleteOriginFile);
+      forceLsmRaftFile(temporaryFile);
+      forceLsmRaftFile(temporaryResource);
+      // A crash before the second rename leaves an ignored orphan resource, never a visible
+      // TsFile whose index metadata has not reached stable storage.
+      Files.move(temporaryResource, targetResource, StandardCopyOption.ATOMIC_MOVE);
+      forceLsmRaftDirectory(parent);
+      Files.move(temporaryFile, target, StandardCopyOption.ATOMIC_MOVE);
+      forceLsmRaftDirectory(parent);
+      if (deleteOriginFile) {
+        Files.deleteIfExists(source);
+        Files.deleteIfExists(sourceResource);
+      }
+    } finally {
+      Files.deleteIfExists(temporaryFile);
+      Files.deleteIfExists(temporaryResource);
+    }
+  }
+
+  private static void stageLsmRaftFile(Path source, Path target, boolean consume)
+      throws IOException {
+    if (consume) {
+      try {
+        Files.move(
+            source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        org.apache.iotdb.consensus.common.research.ResearchMetrics.add(
+            "lsm-raft.l0.source_moves", 1);
+        return;
+      } catch (AtomicMoveNotSupportedException crossDevice) {
+        // Cross-device and non-atomic filesystems still copy then force the destination.
+      }
+    }
+    Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+    org.apache.iotdb.consensus.common.research.ResearchMetrics.add("lsm-raft.l0.source_copies", 1);
+  }
+
+  private static void forceLsmRaftFile(Path file) throws IOException {
+    try (FileChannel channel = FileChannel.open(file, StandardOpenOption.WRITE)) {
+      org.apache.iotdb.consensus.common.research.ResearchIo.force(
+          channel, true, "lsm-raft.l0.publication");
+    }
+  }
+
+  private static void forceLsmRaftDirectory(Path directory) throws IOException {
+    if (directory != null && !System.getProperty("os.name", "").startsWith("Windows")) {
+      try (FileChannel channel = FileChannel.open(directory, StandardOpenOption.READ)) {
+        org.apache.iotdb.consensus.common.research.ResearchIo.force(
+            channel, true, "lsm-raft.l0.directory");
+      }
+    }
   }
 
   private void loadModFile(

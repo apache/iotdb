@@ -1252,7 +1252,7 @@ public class ConfigNodeConfig {
     return (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
             && getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS))
         || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-            && getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS));
+            && ConsensusFactory.isConsensusLogBacked(getDataRegionConsensusProtocolClass()));
   }
 
   public String getFailureDetector() {

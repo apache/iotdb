@@ -169,16 +169,17 @@ public class IoTDBStartCheck {
     for (String dataDir : config.getLocalDataDirs()) {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
     }
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (ConsensusFactory.isConsensusLogBacked(config.getDataRegionConsensusProtocolClass())) {
       if (DirectoryChecker.getInstance().isCrossDisk(config.getDataDirs())) {
         throw new ConfigurationException(
-            "Configuring the data directories as cross-disk directories is not supported under RatisConsensus(it will be supported in a later version).");
+            "Configuring the data directories as cross-disk directories is not supported by"
+                + " snapshot-backed DataRegion consensus.");
       }
     }
     // check system dir
     DirectoryChecker.getInstance().registerDirectory(new File(config.getSystemDir()));
     // check WAL dir
-    if (!(config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS))
+    if (!(ConsensusFactory.isConsensusLogBacked(config.getDataRegionConsensusProtocolClass()))
         && !config.getWalMode().equals(WALMode.DISABLE)) {
       for (String walDir : commonConfig.getWalDirs()) {
         DirectoryChecker.getInstance().registerDirectory(new File(walDir));
@@ -234,7 +235,8 @@ public class IoTDBStartCheck {
                       .equals(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE)))
           && config.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
-            "Configuring the WALMode as disable is not supported under IoTConsensus and IoTConsensusV2 stream mode");
+            "Configuring the WALMode as disable is not supported under IoTConsensus and"
+                + " IoTConsensusV2 stream mode");
       }
     } else {
       // check whether upgrading from <=v0.9
@@ -316,7 +318,8 @@ public class IoTDBStartCheck {
       String token = System.getenv("user_encrypt_token");
       if (token == null || token.trim().isEmpty()) {
         throw new EncryptException(
-            "encryptType is not UNENCRYPTED, but user_encrypt_token is not set. Please set it in the environment variable.");
+            "encryptType is not UNENCRYPTED, but user_encrypt_token is not set. Please set it in"
+                + " the environment variable.");
       }
       String tokenHint = System.getenv("user_encrypt_token_hint");
       if (tokenHint != null && !tokenHint.trim().isEmpty()) {
@@ -324,13 +327,15 @@ public class IoTDBStartCheck {
         // For example, it could not include user_encrypt_token.
         if (tokenHint.toLowerCase().contains(token.toLowerCase())) {
           throw new EncryptException(
-              "user_encrypt_token_hint should not include user_encrypt_token, please check it in your environment variable.");
+              "user_encrypt_token_hint should not include user_encrypt_token, please check it in"
+                  + " your environment variable.");
         }
         if (tokenHint
             .toLowerCase()
             .contains(new StringBuilder(token.toLowerCase()).reverse().toString())) {
           throw new EncryptException(
-              "user_encrypt_token_hint should not include the reverse of user_encrypt_token, please check it in your environment variable.");
+              "user_encrypt_token_hint should not include the reverse of user_encrypt_token, please"
+                  + " check it in your environment variable.");
         }
       }
     }
@@ -397,7 +402,8 @@ public class IoTDBStartCheck {
       String token = System.getenv("user_encrypt_token");
       if (token == null || token.trim().isEmpty()) {
         throw new EncryptException(
-            "restart system after not storing key, but user_encrypt_token is not set. Please set it in the environment variable before restart. Here is your token hint info: "
+            "restart system after not storing key, but user_encrypt_token is not set. Please set it"
+                + " in the environment variable before restart. Here is your token hint info: "
                 + CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint());
       }
       TSFileDescriptor.getInstance().getConfig().setEncryptKeyFromToken(token);
@@ -410,7 +416,8 @@ public class IoTDBStartCheck {
       if (!Objects.equals(decryptedMagicString, magicString)) {
         logger.error("encrypt_magic_string is not matched");
         throw new ConfigurationException(
-            "Changing encrypt type or key for tsfile encryption after first start is not permitted. Here is your token hint info: "
+            "Changing encrypt type or key for tsfile encryption after first start is not permitted."
+                + " Here is your token hint info: "
                 + CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint());
       }
     }

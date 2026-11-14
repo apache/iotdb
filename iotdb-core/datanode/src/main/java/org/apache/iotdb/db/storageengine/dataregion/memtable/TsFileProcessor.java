@@ -1517,6 +1517,10 @@ public class TsFileProcessor {
                 dataRegionName,
                 tsFileResource.getTsFile().getAbsolutePath(),
                 e);
+            // The rows of this memtable leave the TsFile and memory below. Recorded before the
+            // next call, which exits under handle_system_error=SHUTDOWN; the shutdown hook then
+            // takes snapshots.
+            dataRegionInfo.getDataRegion().markFlushDroppedRows();
             CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
             try {
               logger.error(

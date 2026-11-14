@@ -27,6 +27,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.consensus.common.request.NormalizedRequest;
+import org.apache.iotdb.consensus.common.request.RequestNormalizationProvider;
+import org.apache.iotdb.consensus.common.request.RequestSemantics;
+import org.apache.iotdb.consensus.common.request.RequestSemanticsProvider;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -63,6 +67,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,7 +81,100 @@ import java.util.Objects;
 
 import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
 
-public class InsertTabletNode extends InsertNode implements WALEntryValue {
+public class InsertTabletNode extends InsertNode
+    implements WALEntryValue, RequestNormalizationProvider, RequestSemanticsProvider {
+
+  @Override
+  public RequestSemantics getRequestSemantics() {
+    return getClass() == InsertTabletNode.class && !isGeneratedByPipe() && rowCount == 1
+        ? seriesData(times[0])
+        : RequestSemantics.barrier();
+  }
+
+  @Override
+  public NormalizedRequest normalizeRequest() {
+    if (getClass() != InsertTabletNode.class || isGeneratedByPipe() || rowCount <= 0) {
+      return NormalizedRequest.single(this);
+    }
+    final int[] sourceRows = consensusSourceRows();
+    return new NormalizedRequest(
+        rowCount,
+        index -> consensusRow(index, sourceRows[index]),
+        index -> sourceRows[index],
+        // Match DataExecutionVisitor's tablet failure selection; rejection still takes priority.
+        NormalizedRequest.FailureSelection.LAST,
+        (index, status) -> {});
+  }
+
+  private int[] consensusSourceRows() {
+    int[] rows = new int[rowCount];
+    if (range == null || range.isEmpty()) {
+      for (int i = 0; i < rowCount; i++) {
+        rows[i] = i;
+      }
+      return rows;
+    }
+    if (range.size() % 2 != 0) {
+      throw new IllegalArgumentException("Incomplete InsertTablet source range");
+    }
+    int index = 0;
+    for (int i = 0; i < range.size(); i += 2) {
+      int start = range.get(i);
+      int end = range.get(i + 1);
+      if (start < 0 || end < start || end - start > rowCount - index) {
+        throw new IllegalArgumentException("Invalid InsertTablet source range");
+      }
+      for (int source = start; source < end; source++) {
+        rows[index++] = source;
+      }
+    }
+    if (index != rowCount) {
+      throw new IllegalArgumentException("InsertTablet source range/row count mismatch");
+    }
+    return rows;
+  }
+
+  /**
+   * Keep tablet execution (including TTL/OBJECT handling) and every measurement of a row intact.
+   */
+  private InsertTabletNode consensusRow(int row, int sourceRow) {
+    Object[] rowColumns = new Object[columns.length];
+    BitMap[] rowBitMaps = bitMaps == null ? null : new BitMap[bitMaps.length];
+    for (int column = 0; column < columns.length; column++) {
+      if (columns[column] != null) {
+        rowColumns[column] = Array.newInstance(columns[column].getClass().getComponentType(), 1);
+        System.arraycopy(columns[column], row, rowColumns[column], 0, 1);
+      }
+      if (rowBitMaps != null && bitMaps[column] != null) {
+        rowBitMaps[column] = new BitMap(1);
+        if (bitMaps[column].isMarked(row)) {
+          rowBitMaps[column].mark(0);
+        }
+      }
+    }
+    InsertTabletNode result =
+        new InsertTabletNode(
+            getPlanNodeId(),
+            targetPath,
+            isAligned,
+            measurements.clone(),
+            dataTypes.clone(),
+            measurementSchemas == null ? null : measurementSchemas.clone(),
+            new long[] {times[row]},
+            rowBitMaps,
+            rowColumns,
+            1);
+    result.range = Arrays.asList(sourceRow, sourceRow + 1);
+    result.failedMeasurementNumber = failedMeasurementNumber;
+    result.dataRegionReplicaSet = dataRegionReplicaSet;
+    result.deviceID = deviceID;
+    result.progressIndex = progressIndex;
+    result.searchIndex = searchIndex;
+    result.isGeneratedByRemoteConsensusLeader = isGeneratedByRemoteConsensusLeader;
+    result.shouldCheckTTL = shouldCheckTTL;
+    return result;
+  }
+
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   protected long[] times; // times should be sorted. It is done in the session API.
@@ -447,11 +545,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     measurements[index] = null;
     dataTypes[index] = null;
     columns[index] = null;
-  }
-
-  @Override
-  public long getTime() {
-    return getMinTime();
   }
 
   @Override
