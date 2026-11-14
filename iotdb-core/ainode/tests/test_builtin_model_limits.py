@@ -50,8 +50,8 @@ class BuiltinModelLimitsTest(unittest.TestCase):
             self._manager(model_info)._max_output_length("chronos2"), 320
         )
 
-    def test_loaded_model_rejects_long_horizon_and_serves_next_request(self):
-        # With tirex2 loaded, a request above its horizon must fail without reaching the
+    def test_loaded_model_rejects_invalid_horizon_and_serves_next_request(self):
+        # With tirex2 loaded, a request outside its horizon must fail without reaching the
         # inference pool, and the next valid request must still be served by the pool.
         manager = self._manager(BUILTIN_HF_TRANSFORMERS_MODEL_MAP["tirex2"])
         manager._pool_controller = mock.Mock()
@@ -65,18 +65,31 @@ class BuiltinModelLimitsTest(unittest.TestCase):
         manager._process_request = process_request
         input_data = convert_tensor_to_tsblock(torch.randn(1, 64))
 
-        rejected = manager.forecast(
-            TForecastReq(modelId="tirex2", inputData=input_data, outputLength=400)
-        )
-        self.assertEqual(rejected.status.code, TSStatusCode.AINODE_INTERNAL_ERROR.value)
-        self.assertIn("between 1 and 320, got 400", rejected.status.message)
-        self.assertEqual(dispatched, [])
+        for output_length in (400, 0):
+            with self.subTest(output_length=output_length):
+                dispatched.clear()
+                rejected = manager.forecast(
+                    TForecastReq(
+                        modelId="tirex2",
+                        inputData=input_data,
+                        outputLength=output_length,
+                    )
+                )
+                self.assertEqual(
+                    rejected.status.code, TSStatusCode.AINODE_INTERNAL_ERROR.value
+                )
+                self.assertIn(
+                    f"between 1 and 320, got {output_length}", rejected.status.message
+                )
+                self.assertEqual(dispatched, [])
 
-        served = manager.forecast(
-            TForecastReq(modelId="tirex2", inputData=input_data, outputLength=24)
-        )
-        self.assertEqual(served.status.code, TSStatusCode.SUCCESS_STATUS.value)
-        self.assertEqual([r.output_length for r in dispatched], [24])
+                served = manager.forecast(
+                    TForecastReq(
+                        modelId="tirex2", inputData=input_data, outputLength=24
+                    )
+                )
+                self.assertEqual(served.status.code, TSStatusCode.SUCCESS_STATUS.value)
+                self.assertEqual([r.output_length for r in dispatched], [24])
 
 
 if __name__ == "__main__":
