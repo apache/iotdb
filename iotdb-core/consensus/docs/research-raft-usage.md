@@ -59,6 +59,10 @@ as migration inputs. No rolling mixed-version upgrade has been validated.
 
 ## Repeatable checks
 
+On a fresh Maven cache, first run `bash tools/build-research-dependencies.sh`
+from the repository root. See [the pinned dependency build](research-dependency-build.md)
+for the expired upstream snapshot and verification details.
+
 Use a JDK supported by this IoTDB checkout and Maven. Generate Thrift classes
 through the reactor; do not copy generated files from another checkout.
 
