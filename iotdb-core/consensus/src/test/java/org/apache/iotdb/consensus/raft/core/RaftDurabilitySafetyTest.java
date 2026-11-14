@@ -36,7 +36,6 @@ import org.apache.iotdb.consensus.raft.core.policy.Mutations;
 import org.apache.iotdb.consensus.raft.core.policy.ProtocolPolicy;
 import org.apache.iotdb.consensus.raft.core.profile.ProtocolProfile;
 import org.apache.iotdb.consensus.raft.core.profile.RaftProfile;
-import org.apache.iotdb.consensus.raft.core.profile.SnapshotMetaExt;
 
 import org.junit.Test;
 
@@ -176,12 +175,4 @@ public class RaftDurabilitySafetyTest {
     assertEquals(2, response.term);
     assertTrue(response.acks.isEmpty());
   }
-
-
-
-
-
-
-
-
 }

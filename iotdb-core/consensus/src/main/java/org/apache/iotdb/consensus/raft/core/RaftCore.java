@@ -1133,7 +1133,8 @@ public final class RaftCore implements SchedulerContext, ApplyContext, ProtocolC
     }
     if (cfg.snapshotTriggerEntries > 0
         && !snapshotInProgress
-        && st.lastApplied - Math.max(log.firstIndex() - 1, snapshotIndex) >= cfg.snapshotTriggerEntries) {
+        && st.lastApplied - Math.max(log.firstIndex() - 1, snapshotIndex)
+            >= cfg.snapshotTriggerEntries) {
       requestSnapshot(false);
     }
   }
@@ -1174,8 +1175,12 @@ public final class RaftCore implements SchedulerContext, ApplyContext, ProtocolC
     if (!snapshotInProgress || index < 0 || index != st.lastApplied) {
       throw new IllegalStateException("checkpoint boundary is not the applied frontier: " + index);
     }
-    return new Action.TakeSnapshot(index, termAtOr0(index), membershipAt(index),
-        profile.snapshotMeta(log, index, snapshotExt), force);
+    return new Action.TakeSnapshot(
+        index,
+        termAtOr0(index),
+        membershipAt(index),
+        profile.snapshotMeta(log, index, snapshotExt),
+        force);
   }
 
   /** Driver install barrier: all writes queued before the barrier must reach durable callbacks. */
