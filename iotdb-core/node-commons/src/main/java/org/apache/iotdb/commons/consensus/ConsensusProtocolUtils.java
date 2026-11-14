@@ -23,6 +23,8 @@ public final class ConsensusProtocolUtils {
 
   public static final String RAFT_CONSENSUS = "org.apache.iotdb.consensus.raft.RaftConsensus";
 
+  public static final String T_RAFT_CONSENSUS = "org.apache.iotdb.consensus.traft.TRaftConsensus";
+
   private ConsensusProtocolUtils() {}
 
   /** Whether leadership is elected by a Raft group rather than assigned by ConfigNode routing. */
@@ -33,6 +35,6 @@ public final class ConsensusProtocolUtils {
 
   /** Research Raft backends restore regions from consensus logs and portable snapshots. */
   public static boolean isSelfRaftConsensus(String protocolClass) {
-    return RAFT_CONSENSUS.equals(protocolClass);
+    return RAFT_CONSENSUS.equals(protocolClass) || T_RAFT_CONSENSUS.equals(protocolClass);
   }
 }

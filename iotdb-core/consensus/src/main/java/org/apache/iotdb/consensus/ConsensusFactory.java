@@ -36,6 +36,7 @@ public class ConsensusFactory {
 
   public static final String SIMPLE_CONSENSUS = "org.apache.iotdb.consensus.simple.SimpleConsensus";
   public static final String RAFT_CONSENSUS = "org.apache.iotdb.consensus.raft.RaftConsensus";
+  public static final String TRAFT_CONSENSUS = "org.apache.iotdb.consensus.traft.TRaftConsensus";
   public static final String RATIS_CONSENSUS = "org.apache.iotdb.consensus.ratis.RatisConsensus";
   public static final String IOT_CONSENSUS = "org.apache.iotdb.consensus.iot.IoTConsensus";
   public static final String REAL_PIPE_CONSENSUS = "org.apache.iotdb.consensus.pipe.PipeConsensus";
@@ -51,7 +52,7 @@ public class ConsensusFactory {
 
   /** Fixed-group research backend supplied by this branch. */
   public static boolean isResearchRaft(String protocol) {
-    return RAFT_CONSENSUS.equals(protocol);
+    return RAFT_CONSENSUS.equals(protocol) || TRAFT_CONSENSUS.equals(protocol);
   }
 
   public static boolean isConsensusLogBacked(String protocol) {

@@ -282,6 +282,8 @@ public class EnvUtils {
     switch (consensus) {
       case SIMPLE_CONSENSUS:
         return SIMPLE_CONSENSUS_STR;
+      case "org.apache.iotdb.consensus.traft.TRaftConsensus":
+        return "TRaft";
       case RAFT_CONSENSUS:
         return "Raft";
       case RATIS_CONSENSUS:
@@ -299,6 +301,8 @@ public class EnvUtils {
     switch (consensus) {
       case SIMPLE_CONSENSUS_STR:
         return SIMPLE_CONSENSUS;
+      case "TRaft":
+        return "org.apache.iotdb.consensus.traft.TRaftConsensus";
       case "Raft":
         return RAFT_CONSENSUS;
       case RATIS_CONSENSUS_STR:

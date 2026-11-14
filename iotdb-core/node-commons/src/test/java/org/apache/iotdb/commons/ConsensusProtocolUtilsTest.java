@@ -30,7 +30,7 @@ public class ConsensusProtocolUtilsTest {
   public void recognizesElectedRaftProtocolsWithoutChangingWalRequirements() {
     for (String protocol :
         new String[] {
-          ConsensusProtocolUtils.RAFT_CONSENSUS,
+          ConsensusProtocolUtils.RAFT_CONSENSUS, ConsensusProtocolUtils.T_RAFT_CONSENSUS,
         }) {
       assertTrue(ConsensusProtocolUtils.isRaftConsensus(protocol));
       assertTrue(ConsensusProtocolUtils.isSelfRaftConsensus(protocol));

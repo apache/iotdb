@@ -251,6 +251,7 @@ public abstract class InsertNode extends SearchNode {
     switch (config.getDataRegionConsensusProtocolClass()) {
       case ConsensusFactory.IOT_CONSENSUS:
       case ConsensusFactory.IOT_CONSENSUS_V2:
+      case ConsensusFactory.TRAFT_CONSENSUS:
       case ConsensusFactory.RAFT_CONSENSUS:
       case ConsensusFactory.RATIS_CONSENSUS:
         return isGeneratedByRemoteConsensusLeader;
