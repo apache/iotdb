@@ -34,6 +34,43 @@ public class MPPQueryContextTest {
   private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
 
   @Test
+  public void timePartitionMemoryFailureDoesNotUseColumnDiagnostics() {
+    MPPQueryContext context = new MPPQueryContext(new QueryId("time_partition_oom_test"));
+    context.initResultSetColumnMemoryTracking(10, 2, false);
+    context.recordMatchedSourceColumnsForResultSet(1);
+    context.recordGeneratedResultSetColumn(128);
+    long requestedBytes = requestLargerThanFreeOperatorMemory();
+    MemoryNotEnoughException exception =
+        Assert.assertThrows(
+            MemoryNotEnoughException.class,
+            () -> context.reserveMemoryForTimePartitionSlots(requestedBytes));
+    assertContains(exception.getMessage(), "while analyzing time partitions");
+    assertContains(exception.getMessage(), "requested this time");
+    assertContains(exception.getMessage(), "current free memory");
+    Assert.assertFalse(exception.getMessage().contains("too many columns"));
+    Assert.assertFalse(exception.getMessage().contains("SLIMIT"));
+    Assert.assertEquals(
+        TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH.getStatusCode(),
+        ErrorHandlingUtils.onQueryException(exception, "query").getCode());
+  }
+
+  @Test
+  public void laterPlanningMemoryFailureDoesNotUseStaleColumnStatistics() {
+    MPPQueryContext context = new MPPQueryContext(new QueryId("planning_oom_test"));
+    context.initResultSetColumnMemoryTracking(10, 2, false);
+    context.recordMatchedSourceColumnsForResultSet(1);
+    context.recordGeneratedResultSetColumn(128);
+    context.finishResultSetColumnMemoryTracking();
+    long requestedBytes = requestLargerThanFreeOperatorMemory();
+    MemoryNotEnoughException exception =
+        Assert.assertThrows(
+            MemoryNotEnoughException.class, () -> context.reserveMemoryForFrontEnd(requestedBytes));
+    Assert.assertTrue(exception instanceof OperatorMemoryNotEnoughException);
+    Assert.assertFalse(exception.getMessage().contains("too many columns"));
+    Assert.assertFalse(exception.getMessage().contains("SLIMIT"));
+  }
+
+  @Test
   public void resultSetColumnMemoryNotEnoughExceptionContainsColumnDiagnostics() {
     MPPQueryContext context = new MPPQueryContext(new QueryId("result_column_oom_test"));
     long failedRequestBytes = requestLargerThanFreeOperatorMemory();

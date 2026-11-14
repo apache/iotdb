@@ -124,6 +124,8 @@ public class Coordinator {
             new ThreadPoolExecutor.CallerRunsPolicy());
   }
 
+  // Record the SQL for Errors as well, preserving the original failure and finally cleanup.
+  @SuppressWarnings("java:S1181")
   private ExecutionResult execution(
       long queryId,
       SessionInfo session,
@@ -162,6 +164,12 @@ public class Coordinator {
         result.status.setNeedRetry(true);
       }
       return result;
+    } catch (RuntimeException | Error e) {
+      // Analysis can fail before registration. Only link the query ID to its SQL here; callers
+      // classify the failure and log its stack, avoiding duplicate stacks and WARNs for user
+      // errors.
+      LOGGER.info("[QueryFailed] queryId: {}, sql: {}", globalQueryId, sql);
+      throw e;
     } finally {
       if (queryContext != null) {
         queryContext.releaseAllMemoryReservedForFrontEnd();

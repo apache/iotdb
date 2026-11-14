@@ -34,6 +34,8 @@ import java.util.Arrays;
  */
 class AutoResizingBuffer {
 
+  static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+
   private byte[] array;
   private int bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
   private final int initialCapacity;
@@ -59,14 +61,27 @@ class AutoResizingBuffer {
   }
 
   void ensureCapacity(int size) {
+    ensureCapacity(size, MAX_ARRAY_SIZE);
+  }
+
+  void ensureCapacity(int size, int maxCapacity) {
+    int limit = Math.min(maxCapacity, MAX_ARRAY_SIZE);
+    if (size < 0 || size > limit) {
+      throw new IllegalArgumentException("Invalid buffer size: " + size);
+    }
     final int currentCapacity = this.array.length;
     if (currentCapacity < size) {
-      // Increase by a factor of 1.5x
-      int growCapacity = currentCapacity + (currentCapacity >> 1);
-      int newCapacity = Math.max(growCapacity, size);
-      this.array = Arrays.copyOf(array, newCapacity);
+      this.array =
+          Arrays.copyOf(array, Math.min(calculateNewCapacity(currentCapacity, size), limit));
       bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
     }
+  }
+
+  static int calculateNewCapacity(int currentCapacity, int requiredCapacity) {
+    // Keep geometric growth even above 1.33 GiB. An int overflow here would otherwise copy the
+    // entire buffer for every small write during Thrift serialization.
+    long growCapacity = currentCapacity + (long) (currentCapacity >> 1);
+    return (int) Math.min(MAX_ARRAY_SIZE, Math.max(growCapacity, requiredCapacity));
   }
 
   public byte[] array() {
