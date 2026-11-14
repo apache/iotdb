@@ -397,6 +397,7 @@ public class AINodeSharedClusterIT {
     errorTest(
         statement, invalidOutputLengthSQLWithZero, "701: OUTPUT_LENGTH should be greater than 0");
 
+    int maxOutputLength = AINodeTestUtils.getMaxOutputLength(modelInfo.getModelId());
     String invalidOutputLengthSQLWithOutOfRange =
         String.format(
             FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
@@ -405,13 +406,15 @@ public class AINodeSharedClusterIT {
             5760,
             2880,
             5760,
-            2881,
+            maxOutputLength + 1,
             1,
             "time");
     errorTest(
         statement,
         invalidOutputLengthSQLWithOutOfRange,
-        "1599: Error occurred while executing forecast:[Attribute output_length expect value between 1 and 2880, got 2881 instead.]");
+        String.format(
+            "1599: Error occurred while executing forecast:[Attribute output_length expect value between 1 and %d, got %d instead.]",
+            maxOutputLength, maxOutputLength + 1));
 
     String invalidOutputIntervalSQL =
         String.format(
