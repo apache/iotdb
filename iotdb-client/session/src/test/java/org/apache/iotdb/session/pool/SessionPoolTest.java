@@ -294,6 +294,63 @@ public class SessionPoolTest {
   }
 
   @Test
+  public void test_InsertTabletList_WhenSessionAcceptsIt_PassesTabletsOnAndPutsSessionBack()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<Tablet> tablets = Arrays.asList(createBooleanTablet(), createBooleanTablet());
+
+    sessionPool.insertTablets(tablets);
+
+    Mockito.verify(session).insertTablets(tablets);
+    assertEquals(1, sessionPool.currentAvailableSize());
+    assertEquals(0, sessionPool.currentOccupiedSize());
+  }
+
+  @Test
+  public void test_InsertAlignedTabletList_WhenSessionAcceptsIt_PassesTabletsOnAndPutsSessionBack()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<Tablet> tablets = Arrays.asList(createBooleanTablet(), createBooleanTablet());
+
+    sessionPool.insertAlignedTablets(tablets);
+
+    Mockito.verify(session).insertAlignedTablets(tablets);
+    assertEquals(1, sessionPool.currentAvailableSize());
+    assertEquals(0, sessionPool.currentOccupiedSize());
+  }
+
+  @Test
+  public void test_InsertTabletList_WhenSessionRejectsIt_RethrowsAndPutsSessionBack()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<Tablet> tablets = Collections.singletonList(createBooleanTablet());
+    doThrow(new StatementExecutionException("rejected")).when(session).insertTablets(tablets);
+
+    try {
+      sessionPool.insertTablets(tablets);
+      Assert.fail("expected StatementExecutionException");
+    } catch (StatementExecutionException e) {
+      // expected
+    }
+
+    assertEquals(1, sessionPool.currentAvailableSize());
+  }
+
+  @Test
+  public void test_InsertAlignedTabletList_WhenConnectionBreaks_ClosesSessionAndThrows()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<Tablet> tablets = Collections.singletonList(createBooleanTablet());
+    doThrow(new IoTDBConnectionException("broken")).when(session).insertAlignedTablets(tablets);
+
+    try {
+      sessionPool.insertAlignedTablets(tablets);
+      Assert.fail("expected IoTDBConnectionException");
+    } catch (IoTDBConnectionException e) {
+      // expected
+    }
+
+    Mockito.verify(session).close();
+    assertEquals(0, sessionPool.currentAvailableSize());
+  }
+
+  @Test
   public void testTestInsertTablets() throws IoTDBConnectionException, StatementExecutionException {
     List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
@@ -1633,5 +1690,13 @@ public class SessionPoolTest {
     }
 
     return Collections.singletonList(tsBlock);
+  }
+
+  private static Tablet createBooleanTablet() {
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("pressure", TSDataType.BOOLEAN));
+    long[] timestamp = new long[] {1L, 2L};
+    boolean[][] values = new boolean[][] {{true, false}};
+    return new Tablet("device1", schemas, timestamp, values, new BitMap[1], 2);
   }
 }

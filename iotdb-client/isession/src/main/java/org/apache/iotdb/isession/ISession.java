@@ -367,6 +367,22 @@ public interface ISession extends AutoCloseable {
   void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  /**
+   * Inserts several tablets in one request. Unlike {@link #insertTablets(Map)}, several tablets may
+   * belong to the same device, e.g. one tablet per measurement for measurements with different
+   * timestamps. With redirection enabled, each tablet is routed by its own device id.
+   */
+  void insertTablets(List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  /**
+   * Inserts several tablets of aligned devices in one request. Unlike {@link
+   * #insertAlignedTablets(Map)}, several tablets may belong to the same device. With redirection
+   * enabled, each tablet is routed by its own device id.
+   */
+  void insertAlignedTablets(List<Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException;
+
   void testInsertTablet(Tablet tablet) throws IoTDBConnectionException, StatementExecutionException;
 
   void testInsertTablet(Tablet tablet, boolean sorted)
