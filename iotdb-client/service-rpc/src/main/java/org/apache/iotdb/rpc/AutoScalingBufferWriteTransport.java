@@ -47,6 +47,18 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
     write(toWrite, off, len, AutoResizingBuffer.MAX_ARRAY_SIZE);
   }
 
+  // Framed callers keep capacity within their limit. A fitting write needs no further limit
+  // checks; compare remaining space rather than adding pos and len, which could overflow.
+  boolean tryWriteWithinCapacity(byte[] toWrite, int off, int len) {
+    byte[] array = buf.array();
+    if (len > array.length - pos) {
+      return false;
+    }
+    System.arraycopy(toWrite, off, array, pos, len);
+    pos += len;
+    return true;
+  }
+
   void write(byte[] toWrite, int off, int len, int maxCapacity) throws TTransportException {
     int limit = Math.min(maxCapacity, AutoResizingBuffer.MAX_ARRAY_SIZE);
     long requiredCapacity = (long) pos + len;

@@ -24,12 +24,15 @@ import org.apache.thrift.transport.TMemoryBuffer;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Random;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -58,7 +61,10 @@ public class TElasticFramedTransportTest {
       } catch (TTransportException e) {
         assertEquals(TTransportException.CORRUPTED_DATA, e.getType());
         assertTrue(e.getMessage(), e.getMessage().contains("at least 65 bytes"));
-        assertTrue(e.getMessage(), e.getMessage().contains("dn_thrift_max_frame_size"));
+        assertTrue(
+            e.getMessage(),
+            e.getMessage().contains("configured Thrift max frame size of 64 bytes"));
+        assertFalse(e.getMessage(), e.getMessage().contains("dn_thrift_max_frame_size"));
         assertSame(buffer, transport.writeBuffer.getBuffer());
         assertEquals(prefixLength, transport.writeBuffer.getPos());
         assertEquals(0, underlying.length());
@@ -133,6 +139,67 @@ public class TElasticFramedTransportTest {
     byte[] actual = new byte[payload.length];
     transport.readAll(actual, 0, actual.length);
     assertArrayEquals(payload, actual);
+  }
+
+  @Test
+  public void testCompressedFrameLimitIsCheckedAfterBufferedWrites() throws Exception {
+    boolean[] closed = {false};
+    TMemoryBuffer underlying =
+        new TMemoryBuffer(0) {
+          @Override
+          public void close() {
+            closed[0] = true;
+            super.close();
+          }
+        };
+    TSnappyElasticFramedTransport transport =
+        new TSnappyElasticFramedTransport(underlying, 8, 64, false);
+    byte[] payload = new byte[256];
+    transport.write(payload);
+    transport.flush();
+    byte[] actual = new byte[payload.length];
+    transport.readAll(actual, 0, actual.length);
+    assertArrayEquals(payload, actual);
+    byte[] buffer = transport.writeBuffer.getBuffer();
+
+    new Random(0).nextBytes(payload);
+    transport.write(payload);
+    assertSame(buffer, transport.writeBuffer.getBuffer());
+    TTransportException failure = assertThrows(TTransportException.class, transport::flush);
+    assertEquals(TTransportException.CORRUPTED_DATA, failure.getType());
+    assertTrue(closed[0]);
+  }
+
+  @Test
+  public void testBufferedWriteCannotBypassArrayLimitOnOverflow() throws Exception {
+    for (boolean compressed : new boolean[] {false, true}) {
+      boolean[] closed = {false};
+      TMemoryBuffer underlying =
+          new TMemoryBuffer(0) {
+            @Override
+            public void close() {
+              closed[0] = true;
+              super.close();
+            }
+          };
+      TElasticFramedTransport transport =
+          compressed
+              ? new TSnappyElasticFramedTransport(underlying, 8, 64, false)
+              : new TElasticFramedTransport(underlying, 8, Integer.MAX_VALUE, false);
+      Field position = AutoScalingBufferWriteTransport.class.getDeclaredField("pos");
+      position.setAccessible(true);
+      int oldPosition = AutoResizingBuffer.MAX_ARRAY_SIZE - 4;
+      position.setInt(transport.writeBuffer, oldPosition);
+      byte[] buffer = transport.writeBuffer.getBuffer();
+      TTransportException failure =
+          assertThrows(TTransportException.class, () -> transport.write(new byte[16]));
+      assertEquals(TTransportException.CORRUPTED_DATA, failure.getType());
+      assertTrue(failure.getMessage(), failure.getMessage().contains("maximum Java array size"));
+      assertFalse(failure.getMessage(), failure.getMessage().contains("dn_thrift_max_frame_size"));
+      assertSame(buffer, transport.writeBuffer.getBuffer());
+      assertEquals(oldPosition, transport.writeBuffer.getPos());
+      assertTrue(closed[0]);
+    }
   }
 
   @Test

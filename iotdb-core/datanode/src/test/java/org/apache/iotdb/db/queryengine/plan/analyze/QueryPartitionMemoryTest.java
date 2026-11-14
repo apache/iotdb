@@ -279,7 +279,9 @@ public class QueryPartitionMemoryTest {
                       false));
       assertTrue(failure.getMessage(), failure.getMessage().contains("at least"));
       assertTrue(failure.getMessage(), failure.getMessage().contains("1024 bytes"));
-      assertTrue(failure.getMessage(), failure.getMessage().contains("dn_thrift_max_frame_size"));
+      assertTrue(
+          failure.getMessage(), failure.getMessage().contains("configured Thrift max frame size"));
+      assertFalse(failure.getMessage(), failure.getMessage().contains("dn_thrift_max_frame_size"));
       assertTrue(serializedBytes[0] > 0);
       assertTrue("Serialization must stop at the frame limit", serializedBytes[0] <= 1024);
       assertEquals(freeMemory, planner.getFreeMemoryForOperators());

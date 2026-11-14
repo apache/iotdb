@@ -292,6 +292,9 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void write(byte[] buf, int off, int len) throws TTransportException {
+    if (writeBuffer.tryWriteWithinCapacity(buf, off, len)) {
+      return;
+    }
     long size = (long) writeBuffer.getPos() + len;
     int maxSize = getMaxWriteBufferSize();
     if (size > maxSize) {
@@ -301,7 +304,7 @@ public class TElasticFramedTransport extends TTransport {
       String limitDescription =
           maxSize == AutoResizingBuffer.MAX_ARRAY_SIZE
               ? "maximum Java array size"
-              : "RPC frame-size limit (dn_thrift_max_frame_size on DataNode)";
+              : "configured Thrift max frame size";
       throw new TTransportException(
           TTransportException.CORRUPTED_DATA,
           "Serialized frame size is at least "
