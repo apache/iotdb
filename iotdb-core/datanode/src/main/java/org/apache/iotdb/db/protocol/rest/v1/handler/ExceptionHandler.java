@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.rest.exception.RequestLimitExceededException;
 import org.apache.iotdb.db.protocol.rest.v1.model.ExecutionStatus;
+import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
@@ -85,7 +86,7 @@ public class ExceptionHandler {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    LOGGER.warn(e.getMessage(), e);
+    ErrorHandlingUtils.logQueryException(LOGGER, e.getMessage(), responseResult.getCode(), e);
     return responseResult;
   }
 
