@@ -26,9 +26,12 @@ from torch import nn
 from iotdb.ainode.core.model.tirex2.component.norm import RMSNorm
 
 
-@torch.compile
 class ResidualBlock(nn.Module):
-    """Two-layer MLP with residual projection and optional layer norm."""
+    """Two-layer MLP with residual projection and optional layer norm.
+
+    Upstream compiles this block with ``torch.compile``. AINode runs it eagerly: Inductor needs a C++
+    compiler and the Python headers at run time, and the packaged AINode executable has no headers.
+    """
 
     def __init__(
         self,
