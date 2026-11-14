@@ -218,6 +218,15 @@ class TiRex2Test(unittest.TestCase):
                 pipeline, copy.deepcopy(inputs), TINY_CONFIG["future_len"] + 1
             )
 
+    def test_forecast_runs_without_torch_compile(self):
+        # Inductor needs a C++ compiler and the Python headers, which the packaged AINode lacks.
+        from torch._dynamo.utils import counters
+
+        pipeline = self.load_pipeline()
+        frames = counters["frames"]["total"]
+        self.run_pipeline(pipeline, [{"targets": torch.randn(2, 64)}], 8)
+        self.assertEqual(counters["frames"]["total"], frames)
+
     def test_activation_must_be_a_torch_nn_module(self):
         for act_func in ("os.system", "torch.nn.functional.silu", "Linear.x"):
             config = copy.deepcopy(TINY_CONFIG)
