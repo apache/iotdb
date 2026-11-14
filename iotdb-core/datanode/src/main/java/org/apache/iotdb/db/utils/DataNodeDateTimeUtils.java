@@ -164,6 +164,22 @@ public class DataNodeDateTimeUtils {
    */
   public static long convertDurationStrToLong(
       long currentTime, String duration, String timestampPrecision, boolean convertYearToMonth) {
+    return convertDurationStrToLong(
+        currentTime, duration, timestampPrecision, convertYearToMonth, false);
+  }
+
+  /**
+   * Same as {@link #convertDurationStrToLong(long, String, String, boolean)}, but if {@code
+   * negative} is true, every unit is applied backwards from {@code currentTime} and the returned
+   * offset is negative. This is what {@code currentTime - duration} means for natural months, e.g.
+   * 2024-03-15 and 1mo gives -29 days (to 2024-02-15), not -31 days (the length of the next month).
+   */
+  public static long convertDurationStrToLong(
+      long currentTime,
+      String duration,
+      String timestampPrecision,
+      boolean convertYearToMonth,
+      boolean negative) {
     try {
       long total = 0;
       long temp = 0;
@@ -188,7 +204,7 @@ public class DataNodeDateTimeUtils {
                   total,
                   convertDurationStrToLong(
                       currentTime == -1 ? -1 : Math.addExact(currentTime, total),
-                      temp,
+                      negative ? -temp : temp,
                       unit,
                       timestampPrecision));
           temp = 0;
@@ -203,11 +219,17 @@ public class DataNodeDateTimeUtils {
 
   public static long convertDurationStrToLong(
       long currentTime, String duration, boolean convertYearToMonth) {
+    return convertDurationStrToLong(currentTime, duration, convertYearToMonth, false);
+  }
+
+  public static long convertDurationStrToLong(
+      long currentTime, String duration, boolean convertYearToMonth, boolean negative) {
     return convertDurationStrToLong(
         currentTime,
         duration,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
-        convertYearToMonth);
+        convertYearToMonth,
+        negative);
   }
 
   /**

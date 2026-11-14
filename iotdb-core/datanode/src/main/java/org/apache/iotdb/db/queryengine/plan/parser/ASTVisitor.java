@@ -3677,13 +3677,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateTimeFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       try {
-        long duration =
+        // apply "- duration" backwards from time, so that natural months are counted correctly
+        long offset =
             DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), precision, false);
-        time =
-            "+".equals(ctx.getChild(i).getText())
-                ? Math.addExact(time, duration)
-                : Math.subtractExact(time, duration);
+                time,
+                ctx.getChild(i + 1).getText(),
+                precision,
+                false,
+                "-".equals(ctx.getChild(i).getText()));
+        time = Math.addExact(time, offset);
       } catch (ArithmeticException e) {
         throw new SemanticException(
             String.format(
@@ -3699,13 +3701,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       try {
-        long duration =
+        // apply "- duration" backwards from time, so that natural months are counted correctly
+        long offset =
             DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), false);
-        time =
-            "+".equals(ctx.getChild(i).getText())
-                ? Math.addExact(time, duration)
-                : Math.subtractExact(time, duration);
+                time, ctx.getChild(i + 1).getText(), false, "-".equals(ctx.getChild(i).getText()));
+        time = Math.addExact(time, offset);
       } catch (ArithmeticException e) {
         throw new SemanticException(
             String.format(
