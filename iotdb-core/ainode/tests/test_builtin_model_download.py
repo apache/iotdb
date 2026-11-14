@@ -110,6 +110,23 @@ class BuiltinModelDownloadTest(unittest.TestCase):
             storage.get_model_info("timestral").state, ModelStates.INACTIVE
         )
 
+    def test_malformed_config_leaves_model_inactive(self):
+        storage = self.discover()
+
+        def malformed_download(repo_id, filename, local_dir):
+            with open(os.path.join(local_dir, filename), "w") as f:
+                f.write("{not json")
+            return os.path.join(local_dir, filename)
+
+        with mock.patch(
+            "iotdb.ainode.core.model.model_storage.hf_hub_download",
+            side_effect=malformed_download,
+        ):
+            self.assertFalse(storage.download_builtin_model("timestral"))
+        self.assertEqual(
+            storage.get_model_info("timestral").state, ModelStates.INACTIVE
+        )
+
     def test_forecast_before_download_is_rejected(self):
         storage = self.discover()
         handler = mock.Mock(_model_manager=storage)

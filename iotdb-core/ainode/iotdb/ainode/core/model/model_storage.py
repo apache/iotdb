@@ -224,7 +224,7 @@ class ModelStorage:
             try:
                 succeeded = self._download_builtin_model_files(model_id, model_dir)
             finally:
-                self._set_model_download_result(model_id, succeeded)
+                succeeded = self._set_model_download_result(model_id, succeeded)
             return succeeded
 
     def _callback_model_download_result(self, future, model_id: str):
@@ -236,8 +236,13 @@ class ModelStorage:
             succeeded = False
         self._set_model_download_result(model_id, succeeded)
 
-    def _set_model_download_result(self, model_id: str, succeeded: bool):
-        """Mark a built-in model ACTIVE after a successful download, INACTIVE otherwise."""
+    def _set_model_download_result(self, model_id: str, succeeded: bool) -> bool:
+        """
+        Mark a built-in model ACTIVE after a successful download, INACTIVE otherwise.
+        Returns:
+            bool: True if the model is ACTIVE, False if the download or reading its
+            config.json failed.
+        """
         with self._lock_pool.get_lock(model_id).write_lock():
             try:
                 if succeeded:
@@ -271,6 +276,10 @@ class ModelStorage:
                 self._models[ModelCategory.BUILTIN.value][
                     model_id
                 ].state = ModelStates.INACTIVE
+            return (
+                self._models[ModelCategory.BUILTIN.value][model_id].state
+                == ModelStates.ACTIVE
+            )
 
     def _process_user_defined_model_directory(self, model_dir: str, model_id: str):
         """Handling the discovery logic for a user-defined model directory."""
