@@ -228,12 +228,10 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
 
     if (insertionDeletionListeningOptionPair.getLeft().equals(true)
-        && IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getDataRegionConsensusProtocolClass()
-            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+        && ConsensusFactory.isConsensusLogBacked(
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())) {
       throw new PipeException(
-          "The pipe cannot transfer data when data region is using ratis consensus.");
+          "The pipe cannot transfer data with a consensus-log-backed DataRegion.");
     }
 
     // Validate source.pattern.format is within valid range
@@ -321,7 +319,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             && (((IoTDBTreePatternOperations) treePattern).isPrefixOrFullPath()))) {
       throw new IllegalArgumentException(
           String.format(
-              "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
+              "The path pattern %s is not valid for the source. Only prefix or full path is"
+                  + " allowed.",
               treePattern));
     }
   }
@@ -621,7 +620,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
         rethrowExceptionIfAny(exceptionHolder);
 
         LOGGER.info(
-            "Pipe {}@{}: Started historical source {} and realtime source {} successfully within {} ms.",
+            "Pipe {}@{}: Started historical source {} and realtime source {} successfully within {}"
+                + " ms.",
             pipeName,
             regionId,
             historicalSource.getClass().getSimpleName(),

@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.consensus.common.request.NormalizedRequest;
+import org.apache.iotdb.consensus.common.request.RequestNormalizationProvider;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -52,7 +54,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-public class InsertRowsOfOneDeviceNode extends InsertNode {
+public class InsertRowsOfOneDeviceNode extends InsertNode implements RequestNormalizationProvider {
+
+  @Override
+  public NormalizedRequest normalizeRequest() {
+    return ResearchInsertNormalizer.rows(
+        this, InsertRowsOfOneDeviceNode.class, insertRowNodeList, insertRowNodeIndexList, results);
+  }
 
   /**
    * Suppose there is an InsertRowsOfOneDeviceNode, which contains 5 InsertRowNodes,

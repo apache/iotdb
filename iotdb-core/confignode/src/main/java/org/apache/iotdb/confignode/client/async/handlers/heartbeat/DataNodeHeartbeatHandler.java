@@ -45,7 +45,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
   private static final boolean SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE =
       ConsensusFactory.RATIS_CONSENSUS.equals(CONF.getSchemaRegionConsensusProtocolClass());
   private static final boolean DATA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE =
-      ConsensusFactory.RATIS_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass());
+      ConsensusFactory.isConsensusLogBacked(CONF.getDataRegionConsensusProtocolClass());
 
   private final int nodeId;
 
