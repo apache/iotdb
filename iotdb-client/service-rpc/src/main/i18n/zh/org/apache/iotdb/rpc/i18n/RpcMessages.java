@@ -108,4 +108,19 @@ public final class RpcMessages {
       "通过列名 %s 获取的值为 NULL。";
 
   public static final String EXCEPTION_DATA_TYPE_ARG_IS_NOT_SUPPORTED_31213160 = "不支持数据类型 %s。";
+  public static final String EXCEPTION_INVALID_BUFFER_SIZE_ARG_5131C6CA =
+      "无效的缓冲区大小：%d";
+
+  public static final String EXCEPTION_WRITE_BUFFER_SIZE_ARG_LARGER_THAN_MAXIMUM_BUFFER_SIZE_ARG_C0A47F3D =
+      "写缓冲区大小（%d）超过最大缓冲区大小（%d）！";
+
+  public static final String EXCEPTION_INVALID_COMPRESSION_BUFFER_SIZE_ARG_D677543D =
+      "无效的压缩缓冲区大小：%d";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_E21E05CA =
+      "序列化帧大小至少为 %d 字节，超过 Java 数组最大大小 %d 字节。";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_1CDD4BB9 =
+      "序列化帧大小至少为 %d 字节，超过配置的 Thrift 最大帧大小 %d 字节。";
+
 }

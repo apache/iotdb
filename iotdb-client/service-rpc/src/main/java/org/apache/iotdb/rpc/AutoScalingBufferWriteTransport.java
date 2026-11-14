@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransportException;
 
@@ -55,15 +57,46 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
 
   @Override
   public void write(byte[] toWrite, int off, int len) throws TTransportException {
+    write(toWrite, off, len, AutoResizingBuffer.MAX_ARRAY_SIZE);
+  }
+
+  void write(byte[] toWrite, int off, int len, int maxCapacity) throws TTransportException {
+    int limit = Math.min(maxCapacity, AutoResizingBuffer.MAX_ARRAY_SIZE);
+    long requiredCapacity = (long) pos + len;
+    if (requiredCapacity > limit) {
+      throw new TTransportException(
+          TTransportException.CORRUPTED_DATA,
+          String.format(
+              RpcMessages
+                  .EXCEPTION_WRITE_BUFFER_SIZE_ARG_LARGER_THAN_MAXIMUM_BUFFER_SIZE_ARG_C0A47F3D,
+              requiredCapacity,
+              limit));
+    }
+    // A small prefix during serialization does not indicate a small frame. Only the complete
+    // frame size, supplied after flushing, may trigger shrinking.
     try {
-      // A small prefix during serialization does not indicate a small frame. Only the complete
-      // frame size, supplied after flushing, may trigger shrinking.
-      ensureCapacity(pos + len);
+      ensureCapacity((int) requiredCapacity, limit);
     } catch (IOException e) {
       throw new TTransportException(e);
     }
     System.arraycopy(toWrite, off, getBuffer(), pos, len);
     pos += len;
+  }
+
+  // Framed callers keep capacity within their limit. A fitting write needs no further limit
+  // checks; compare remaining space rather than adding pos and len, which could overflow.
+  boolean tryWriteWithinCapacity(byte[] toWrite, int off, int len) {
+    byte[] array = getBuffer();
+    // A closed reusable buffer must reserve its memory again. Crossing the reuse threshold
+    // must also go through ensureCapacity so the large frame uses temporary storage.
+    if (buf.isClosed()
+        || len > array.length - pos
+        || (temporaryBuffer == null && len > maxReusableBufferSize - pos)) {
+      return false;
+    }
+    System.arraycopy(toWrite, off, array, pos, len);
+    pos += len;
+    return true;
   }
 
   public int getPos() {
@@ -101,6 +134,10 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
   }
 
   private void ensureCapacity(int size) throws IOException {
+    ensureCapacity(size, AutoResizingBuffer.MAX_ARRAY_SIZE);
+  }
+
+  private void ensureCapacity(int size, int maxCapacity) throws IOException {
     if (size > maxReusableBufferSize) {
       if (temporaryBuffer == null || temporaryBuffer.length < size) {
         // Preserve an unfinished frame when incremental serialization crosses the threshold.
@@ -108,13 +145,15 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
         int capacity =
             temporaryBuffer == null
                 ? size
-                : Math.max(size, temporaryBuffer.length + (temporaryBuffer.length >> 1));
+                : Math.min(
+                    AutoResizingBuffer.calculateNewCapacity(temporaryBuffer.length, size),
+                    maxCapacity);
         byte[] newBuffer = Arrays.copyOf(getBuffer(), capacity);
         buf.resetToInitialCapacity();
         temporaryBuffer = newBuffer;
       }
     } else {
-      buf.ensureCapacity(size);
+      buf.ensureCapacity(size, maxCapacity);
     }
   }
 

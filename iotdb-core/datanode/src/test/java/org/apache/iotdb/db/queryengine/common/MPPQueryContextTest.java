@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.common;
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
+import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -31,6 +32,43 @@ import org.junit.Test;
 public class MPPQueryContextTest {
 
   private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
+
+  @Test
+  public void timePartitionMemoryFailureDoesNotUseColumnDiagnostics() {
+    MPPQueryContext context = new MPPQueryContext(new QueryId("time_partition_oom_test"));
+    context.initResultSetColumnMemoryTracking(10, 2, false);
+    context.recordMatchedSourceColumnsForResultSet(1);
+    context.recordGeneratedResultSetColumn(128);
+    long requestedBytes = requestLargerThanFreeOperatorMemory();
+    MemoryNotEnoughException exception =
+        Assert.assertThrows(
+            MemoryNotEnoughException.class,
+            () -> context.reserveMemoryForTimePartitionSlots(requestedBytes));
+    assertContains(exception.getMessage(), "while analyzing time partitions");
+    assertContains(exception.getMessage(), "requested this time");
+    assertContains(exception.getMessage(), "current free memory");
+    Assert.assertFalse(exception.getMessage().contains("too many columns"));
+    Assert.assertFalse(exception.getMessage().contains("SLIMIT"));
+    Assert.assertEquals(
+        TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode(),
+        ErrorHandlingUtils.onQueryException(exception, "query").getCode());
+  }
+
+  @Test
+  public void laterPlanningMemoryFailureDoesNotUseStaleColumnStatistics() {
+    MPPQueryContext context = new MPPQueryContext(new QueryId("planning_oom_test"));
+    context.initResultSetColumnMemoryTracking(10, 2, false);
+    context.recordMatchedSourceColumnsForResultSet(1);
+    context.recordGeneratedResultSetColumn(128);
+    context.finishResultSetColumnMemoryTracking();
+    long requestedBytes = requestLargerThanFreeOperatorMemory();
+    MemoryNotEnoughException exception =
+        Assert.assertThrows(
+            MemoryNotEnoughException.class, () -> context.reserveMemoryForFrontEnd(requestedBytes));
+    Assert.assertTrue(exception instanceof OperatorMemoryNotEnoughException);
+    Assert.assertFalse(exception.getMessage().contains("too many columns"));
+    Assert.assertFalse(exception.getMessage().contains("SLIMIT"));
+  }
 
   @Test
   public void resultSetColumnMemoryNotEnoughExceptionContainsColumnDiagnostics() {

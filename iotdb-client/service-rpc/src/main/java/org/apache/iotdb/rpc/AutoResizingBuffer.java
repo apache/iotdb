@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -34,6 +36,8 @@ import java.util.Arrays;
  * is bounded below by the initial capacity.
  */
 class AutoResizingBuffer implements AutoCloseable {
+
+  static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
   private byte[] array;
   private int bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
@@ -71,19 +75,36 @@ class AutoResizingBuffer implements AutoCloseable {
   }
 
   void ensureCapacity(int size) throws IOException {
+    ensureCapacity(size, MAX_ARRAY_SIZE);
+  }
+
+  void ensureCapacity(int size, int maxCapacity) throws IOException {
+    int limit = Math.min(maxCapacity, MAX_ARRAY_SIZE);
+    if (size < 0 || size > limit) {
+      throw new IllegalArgumentException(
+          String.format(RpcMessages.EXCEPTION_INVALID_BUFFER_SIZE_ARG_5131C6CA, size));
+    }
     reserveCurrentCapacityIfReleased();
     final int currentCapacity = this.array.length;
     if (currentCapacity < size) {
-      // Increase by a factor of 1.5x
-      int growCapacity = currentCapacity + (currentCapacity >> 1);
-      int newCapacity = Math.max(growCapacity, size);
-      resize(newCapacity, size);
+      resize(Math.min(calculateNewCapacity(currentCapacity, size), limit), size);
       bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
     }
   }
 
+  static int calculateNewCapacity(int currentCapacity, int requiredCapacity) {
+    // Keep geometric growth even above 1.33 GiB. An int overflow here would otherwise copy the
+    // entire buffer for every small write during Thrift serialization.
+    long growCapacity = currentCapacity + (long) (currentCapacity >> 1);
+    return (int) Math.min(MAX_ARRAY_SIZE, Math.max(growCapacity, requiredCapacity));
+  }
+
   public byte[] array() {
     return this.array;
+  }
+
+  boolean isClosed() {
+    return closed;
   }
 
   void resetToInitialCapacity() throws IOException {

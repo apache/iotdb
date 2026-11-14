@@ -700,6 +700,35 @@ public class MPPQueryContext implements IAuditEntity {
     }
   }
 
+  public void reserveMemoryForTimePartitionSlots(final long bytes) {
+    try {
+      this.memoryReservationManager.reserveMemoryCumulatively(bytes);
+    } catch (MemoryNotEnoughException e) {
+      long requestedBytes = bytes;
+      long freeBytes;
+      if (e instanceof OperatorMemoryNotEnoughException memoryFailure) {
+        requestedBytes = memoryFailure.getRequestedBytes();
+        freeBytes = memoryFailure.getFreeBytes();
+      } else {
+        freeBytes = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+      }
+      throw new MemoryNotEnoughException(
+          String.format(
+              Locale.ROOT,
+              DataNodeQueryMessages
+                  .EXCEPTION_NOT_ENOUGH_MEMORY_WHILE_ANALYZING_TIME_PARTITIONS_NARROW_THE_QUERY_TIME_RANGE_OR_INCREASE_QUERY_MEMORY_MEMORY_DETAILS_REQUESTED_THIS_TIME_ARG_CURRENT_FREE_MEMORY_ARG_ORIGINAL_ERROR_ARG_37676B2A,
+              formatBytes(requestedBytes),
+              formatBytes(freeBytes),
+              e.getMessage()));
+    }
+  }
+
+  public void finishResultSetColumnMemoryTracking() {
+    // Column expansion has finished. Later partition/planning reservations must not be diagnosed
+    // as excessive result columns just because this context still contains column statistics.
+    resultSetColumnMemoryTrackingEnabled = false;
+  }
+
   public void releaseAllMemoryReservedForFrontEnd() {
     this.memoryReservationManager.releaseAllReservedMemory();
   }

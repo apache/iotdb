@@ -41,6 +41,107 @@ public class AutoResizingBufferTest {
   }
 
   @Test
+  public void testGrowthNearIntegerLimitKeepsHeadroom() {
+    Assert.assertEquals(
+        AutoResizingBuffer.MAX_ARRAY_SIZE,
+        AutoResizingBuffer.calculateNewCapacity(1_500_000_000, 1_500_000_008));
+    Assert.assertEquals(
+        AutoResizingBuffer.MAX_ARRAY_SIZE,
+        AutoResizingBuffer.calculateNewCapacity(
+            AutoResizingBuffer.MAX_ARRAY_SIZE - 8, AutoResizingBuffer.MAX_ARRAY_SIZE));
+  }
+
+  @Test
+  public void testInvalidBufferSizeDoesNotResize() throws Exception {
+    AutoResizingBuffer buffer = new AutoResizingBuffer(8);
+    for (int size : new int[] {-1, Integer.MAX_VALUE}) {
+      try {
+        buffer.ensureCapacity(size);
+        Assert.fail("The requested capacity must fit in a Java array");
+      } catch (IllegalArgumentException expected) {
+        Assert.assertEquals(8, buffer.array().length);
+      }
+    }
+  }
+
+  @Test
+  public void testWritePositionOverflowIsRejectedBeforeCopying() throws Exception {
+    AutoScalingBufferWriteTransport transport = new AutoScalingBufferWriteTransport(8);
+    Field position = AutoScalingBufferWriteTransport.class.getDeclaredField("pos");
+    position.setAccessible(true);
+    position.setInt(transport, Integer.MAX_VALUE - 4);
+    byte[] buffer = transport.getBuffer();
+    try {
+      transport.write(new byte[8]);
+      Assert.fail("The write position must not overflow");
+    } catch (TTransportException e) {
+      Assert.assertEquals(TTransportException.CORRUPTED_DATA, e.getType());
+      Assert.assertSame(buffer, transport.getBuffer());
+      Assert.assertEquals(Integer.MAX_VALUE - 4, transport.getPos());
+    }
+  }
+
+  @Test
+  public void testGrowthPreservesDataAndHeadroom() throws Exception {
+    AutoResizingBuffer buffer = new AutoResizingBuffer(100);
+    buffer.array()[99] = 42;
+    buffer.resizeIfNecessary(110);
+    Assert.assertEquals(150, buffer.array().length);
+    Assert.assertEquals(42, buffer.array()[99]);
+
+    buffer.resizeIfNecessary(1000);
+    Assert.assertEquals(1000, buffer.array().length);
+    Assert.assertEquals(42, buffer.array()[99]);
+  }
+
+  @Test
+  public void testFramedFastPathReservesMemoryAfterReopening() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    try (TElasticFramedTransport transport =
+        new TElasticFramedTransport(new TMemoryBuffer(0), 32, 128, false)) {
+      Assert.assertEquals(64, memoryControl.getUsedMemoryInBytes());
+      transport.write(new byte[8]);
+      transport.close();
+      Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+
+      transport.open();
+      transport.write(new byte[8]);
+      Assert.assertEquals(32, memoryControl.getUsedMemoryInBytes());
+      Assert.assertEquals(8, transport.writeBuffer.getPos());
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testTemporaryWriteBufferGrowthRespectsFrameLimit() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    try (TElasticFramedTransport transport =
+        new TElasticFramedTransport(new TMemoryBuffer(0), 8, 100, false, 32)) {
+      byte[] payload = new byte[100];
+      new Random(0).nextBytes(payload);
+      for (int frame = 0; frame < 2; frame++) {
+        for (int offset = 0; offset < payload.length; offset += 8) {
+          transport.write(payload, offset, Math.min(8, payload.length - offset));
+          Assert.assertTrue(transport.writeBuffer.getBuffer().length <= payload.length);
+        }
+        Assert.assertEquals(100, transport.writeBuffer.getBuffer().length);
+        transport.flush();
+        Assert.assertEquals(8, transport.writeBuffer.getBuffer().length);
+        byte[] actual = new byte[payload.length];
+        transport.readAll(actual, 0, actual.length);
+        Assert.assertArrayEquals(payload, actual);
+      }
+      transport.write(payload);
+      TTransportException failure =
+          Assert.assertThrows(TTransportException.class, () -> transport.write(new byte[1]));
+      Assert.assertEquals(TTransportException.CORRUPTED_DATA, failure.getType());
+      Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+      Assert.assertEquals(8, transport.writeBuffer.getBuffer().length);
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
   public void testAllocateAndReleaseMemoryWhenResizing() throws Exception {
     AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
 
