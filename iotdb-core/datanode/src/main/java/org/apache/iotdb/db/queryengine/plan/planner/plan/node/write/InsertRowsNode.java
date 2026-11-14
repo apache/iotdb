@@ -302,11 +302,6 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public long getTime() {
-    return getMinTime();
-  }
-
-  @Override
   public long getMinTime() {
     return insertRowNodeList.stream()
         .map(InsertRowNode::getMinTime)

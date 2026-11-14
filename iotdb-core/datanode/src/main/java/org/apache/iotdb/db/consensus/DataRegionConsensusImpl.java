@@ -38,7 +38,6 @@ import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
-import org.apache.iotdb.consensus.config.TRaftConfig;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -287,7 +286,6 @@ public class DataRegionConsensusImpl {
                                   CONF.getConnectionTimeoutInMS(), TimeUnit.MILLISECONDS))
                           .build())
                   .build())
-          .setTRaftConfig(TRaftConfig.newBuilder().build())
           .build();
     }
   }

@@ -450,11 +450,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public long getTime() {
-    return getMinTime();
-  }
-
-  @Override
   public long getMinTime() {
     return times[0];
   }

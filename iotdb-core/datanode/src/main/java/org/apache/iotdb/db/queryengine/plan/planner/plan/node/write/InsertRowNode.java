@@ -208,7 +208,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     this.values = values;
   }
 
-  @Override
   public long getTime() {
     return time;
   }
