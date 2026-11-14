@@ -123,10 +123,8 @@ public class DataNodeShutdownHook extends Thread {
     DeletionResourceManager.exit();
 
     // Flush data to Tsfile and remove WAL log files
-    if (!IoTDBDescriptor.getInstance()
-        .getConfig()
-        .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (!ConsensusFactory.isConsensusLogBacked(
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     }
 
@@ -135,10 +133,8 @@ public class DataNodeShutdownHook extends Thread {
     // own
     // latest snapshot, while other consensus algorithms will not. This judgement ensures that
     // compaction work is not discarded even if there are frequent restarts
-    if (IoTDBDescriptor.getInstance()
-        .getConfig()
-        .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (ConsensusFactory.isConsensusLogBacked(
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())) {
       triggerSnapshotForAllDataRegion();
     }
 
@@ -187,7 +183,8 @@ public class DataNodeShutdownHook extends Thread {
     // Set and report shutdown to cluster ConfigNode-leader
     if (!reportShutdownToConfigNodeLeader()) {
       logger.warn(
-          "Failed to report DataNode's shutdown to ConfigNode. The cluster will still take the current DataNode as Running for a few seconds.");
+          "Failed to report DataNode's shutdown to ConfigNode. The cluster will still take the"
+              + " current DataNode as Running for a few seconds.");
     }
 
     // Clear lock file. All services should be shutdown before this line.

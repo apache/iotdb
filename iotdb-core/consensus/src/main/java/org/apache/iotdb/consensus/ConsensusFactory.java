@@ -49,6 +49,15 @@ public class ConsensusFactory {
     throw new IllegalStateException("Utility class ConsensusFactory");
   }
 
+  /** Fixed-group research backend supplied by this branch. */
+  public static boolean isResearchRaft(String protocol) {
+    return RAFT_CONSENSUS.equals(protocol);
+  }
+
+  public static boolean isConsensusLogBacked(String protocol) {
+    return RATIS_CONSENSUS.equals(protocol) || isResearchRaft(protocol);
+  }
+
   public static Optional<IConsensus> getConsensusImpl(
       String className, ConsensusConfig config, IStateMachine.Registry registry) {
     try {

@@ -43,6 +43,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataRegionStateMachine;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
+import org.apache.iotdb.db.consensus.statemachine.dataregion.ResearchRaftDataRegionStateMachine;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeRuntimeAgentGuardian;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
@@ -116,6 +117,8 @@ public class DataRegionConsensusImpl {
       DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) gid);
       if (ConsensusFactory.IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
         return new IoTConsensusDataRegionStateMachine(dataRegion);
+      } else if (ConsensusFactory.isResearchRaft(CONF.getDataRegionConsensusProtocolClass())) {
+        return new ResearchRaftDataRegionStateMachine(dataRegion);
       } else {
         return new DataRegionStateMachine(dataRegion);
       }

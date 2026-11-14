@@ -651,6 +651,12 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   abstract String getNodeType();
 
+  /** Existing test-only remote JMX endpoint; callers close their own connector. */
+  public JMXServiceURL getJmxServiceUrl() throws MalformedURLException {
+    return new JMXServiceURL(
+        String.format("service:jmx:rmi:///jndi/rmi://127.0.0.1:%d/jmxrmi", jmxPort));
+  }
+
   public void dumpJVMSnapshot(String testCaseName) {
     JMXServiceURL url;
     try {

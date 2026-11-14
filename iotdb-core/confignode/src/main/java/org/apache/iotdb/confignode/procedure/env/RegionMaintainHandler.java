@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusProtocolUtils;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -90,7 +91,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.E
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
-import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 
 public class RegionMaintainHandler {
 
@@ -199,7 +199,8 @@ public class RegionMaintainHandler {
           getIdWithRpcEndpoint(destDataNode));
     } else {
       LOGGER.error(
-          "{}, Send action createNewRegionPeer error, regionId: {}, newPeerDataNodeId: {}, result: {}",
+          "{}, Send action createNewRegionPeer error, regionId: {}, newPeerDataNodeId: {}, result:"
+              + " {}",
           REGION_MIGRATE_PROCESS,
           regionId,
           getIdWithRpcEndpoint(destDataNode),
@@ -237,7 +238,8 @@ public class RegionMaintainHandler {
                     maintainPeerReq,
                     CnToDnSyncRequestType.ADD_REGION_PEER);
     LOGGER.info(
-        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}, status: {}",
+        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {},"
+            + " status: {}",
         REGION_MIGRATE_PROCESS,
         regionId,
         getIdWithRpcEndpoint(coordinator),
@@ -688,7 +690,7 @@ public class RegionMaintainHandler {
     long timestamp = System.nanoTime();
     if (TConsensusGroupType.SchemaRegion.equals(regionId.getType())
         || TConsensusGroupType.DataRegion.equals(regionId.getType())
-            && RATIS_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
+            && ConsensusProtocolUtils.isRaftConsensus(CONF.getDataRegionConsensusProtocolClass())) {
       final int MAX_RETRY_TIME = 10;
       int retryTime = 0;
       long sleepTime =

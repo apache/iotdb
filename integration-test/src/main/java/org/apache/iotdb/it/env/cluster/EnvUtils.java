@@ -33,6 +33,7 @@ import java.util.stream.IntStream;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
+import static org.apache.iotdb.consensus.ConsensusFactory.RAFT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 import static org.apache.iotdb.db.utils.DateTimeUtils.convertLongToDate;
@@ -281,6 +282,8 @@ public class EnvUtils {
     switch (consensus) {
       case SIMPLE_CONSENSUS:
         return SIMPLE_CONSENSUS_STR;
+      case RAFT_CONSENSUS:
+        return "Raft";
       case RATIS_CONSENSUS:
         return RATIS_CONSENSUS_STR;
       case IOT_CONSENSUS:
@@ -296,6 +299,8 @@ public class EnvUtils {
     switch (consensus) {
       case SIMPLE_CONSENSUS_STR:
         return SIMPLE_CONSENSUS;
+      case "Raft":
+        return RAFT_CONSENSUS;
       case RATIS_CONSENSUS_STR:
         return RATIS_CONSENSUS;
       case IOT_CONSENSUS_STR:

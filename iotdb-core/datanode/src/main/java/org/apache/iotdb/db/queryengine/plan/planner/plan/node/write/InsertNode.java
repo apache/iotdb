@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.common.request.RequestSemantics;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
@@ -55,6 +56,17 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class InsertNode extends SearchNode {
+
+  /**
+   * A one-row write touches only this node's device at one timestamp; carrying the device lets a
+   * consensus backend tell writes of different series apart. Without a device it stays keyless.
+   */
+  protected RequestSemantics seriesData(long timestamp) {
+    return targetPath == null
+        ? RequestSemantics.data(timestamp)
+        : RequestSemantics.data(timestamp, RequestSemantics.seriesKeyOf(targetPath.getFullPath()));
+  }
+
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
@@ -239,6 +251,7 @@ public abstract class InsertNode extends SearchNode {
     switch (config.getDataRegionConsensusProtocolClass()) {
       case ConsensusFactory.IOT_CONSENSUS:
       case ConsensusFactory.IOT_CONSENSUS_V2:
+      case ConsensusFactory.RAFT_CONSENSUS:
       case ConsensusFactory.RATIS_CONSENSUS:
         return isGeneratedByRemoteConsensusLeader;
       case ConsensusFactory.SIMPLE_CONSENSUS:

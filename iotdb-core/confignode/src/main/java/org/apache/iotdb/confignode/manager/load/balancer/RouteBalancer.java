@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.consensus.ConsensusProtocolUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -84,7 +85,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
       CONF.getDataRegionConsensusProtocolClass();
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION =
       (CONF.isEnableAutoLeaderBalanceForRatisConsensus()
-              && ConsensusFactory.RATIS_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
+              && ConsensusProtocolUtils.isRaftConsensus(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
@@ -93,7 +94,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
           || ConsensusFactory.SIMPLE_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION =
       (CONF.isEnableAutoLeaderBalanceForRatisConsensus()
-              && ConsensusFactory.RATIS_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
+              && ConsensusProtocolUtils.isRaftConsensus(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.IOT_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
           // The simple consensus protocol will always automatically designate itself as the leader
@@ -186,7 +187,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     Map<TConsensusGroupId, ConsensusGroupHeartbeatSample> successTransferMap = new TreeMap<>();
     optimalLeaderMap.forEach(
         (regionGroupId, newLeaderId) -> {
-          if (ConsensusFactory.RATIS_CONSENSUS.equals(consensusProtocolClass)
+          if (ConsensusProtocolUtils.isRaftConsensus(consensusProtocolClass)
               && currentTime - lastFailedTimeForLeaderBalance.getOrDefault(regionGroupId, 0L)
                   <= BALANCE_RATIS_LEADER_FAILED_INTERVAL_IN_NS) {
             return;
@@ -523,7 +524,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
 
     LOGGER.warn(
-        "[RegionPriority] The routing priority of RegionGroups: {} is not determined after 10 heartbeat interval. Some function might fail.",
+        "[RegionPriority] The routing priority of RegionGroups: {} is not determined after 10"
+            + " heartbeat interval. Some function might fail.",
         regionGroupIds);
   }
 

@@ -296,7 +296,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 null);
         String logMessage =
             String.format(
-                "Successfully start the Audit service with configurations (auditableOperationType %s, auditableOperationLevel %s, auditableOperationResult %s) in DataNode %s",
+                "Successfully start the Audit service with configurations (auditableOperationType"
+                    + " %s, auditableOperationLevel %s, auditableOperationResult %s) in DataNode"
+                    + " %s",
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationType().toString(),
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationLevel().toString(),
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationResult(),
@@ -315,7 +317,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   @Override
   protected void remove(Set<Integer> nodeIds) throws IoTDBException {
     throw new IoTDBException(
-        "The remove-datanode script has been deprecated. Please connect to the CLI and use SQL: remove datanode [datanode_id].",
+        "The remove-datanode script has been deprecated. Please connect to the CLI and use SQL:"
+            + " remove datanode [datanode_id].",
         -1);
   }
 
@@ -390,8 +393,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           "Cannot pull system configurations from ConfigNode-leader after {} retries.",
           DEFAULT_RETRY);
       throw new StartupException(
-          "Cannot pull system configurations from ConfigNode-leader. "
-              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
+          "Cannot pull system configurations from ConfigNode-leader. Please check whether the"
+              + " dn_seed_config_node in iotdb-system.properties is correct or alive.");
     }
 
     /* Load system configurations */
@@ -417,8 +420,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     try {
       IoTDBStartCheck.getInstance().checkSystemConfig();
       IoTDBStartCheck.getInstance().checkDirectory();
-      if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
-        // In current implementation, only IoTConsensus need separated memory from Consensus
+      if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          && !ConsensusFactory.isResearchRaft(config.getDataRegionConsensusProtocolClass())) {
+        // Research Raft backends also retain a separate consensus memory budget.
         IoTDBDescriptor.getInstance().reclaimConsensusMemory();
       }
     } catch (Exception e) {
@@ -539,8 +543,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       // All tries failed
       logger.error("Cannot register into cluster after {} retries.", DEFAULT_RETRY);
       throw new StartupException(
-          "Cannot register into the cluster. "
-              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
+          "Cannot register into the cluster. Please check whether the dn_seed_config_node in"
+              + " iotdb-system.properties is correct or alive.");
     }
 
     if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -718,8 +722,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           "Cannot send restart DataNode request to ConfigNode-leader after {} retries.",
           DEFAULT_RETRY);
       throw new StartupException(
-          "Cannot send restart DataNode request to ConfigNode-leader. "
-              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
+          "Cannot send restart DataNode request to ConfigNode-leader. Please check whether the"
+              + " dn_seed_config_node in iotdb-system.properties is correct or alive.");
     }
 
     if (dataNodeRestartResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -805,8 +809,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
 
-    // Close wal when using ratis consensus
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    // These backends recover from their own durable consensus log.
+    if (ConsensusFactory.isConsensusLogBacked(config.getDataRegionConsensusProtocolClass())) {
       config.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());
@@ -822,7 +826,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     registerUdfServices();
 
     logger.info(
-        "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
+        "IoTDB DataNode is setting up, some databases may not be ready now, please wait several"
+            + " seconds...");
     long startTime = System.currentTimeMillis();
     while (!StorageEngine.getInstance().isReadyForReadAndWrite()) {
       try {

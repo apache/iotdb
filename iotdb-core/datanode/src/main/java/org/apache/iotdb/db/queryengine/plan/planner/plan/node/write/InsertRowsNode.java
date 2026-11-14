@@ -25,6 +25,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.consensus.common.request.NormalizedRequest;
+import org.apache.iotdb.consensus.common.request.RequestNormalizationProvider;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -50,7 +52,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class InsertRowsNode extends InsertNode implements WALEntryValue {
+public class InsertRowsNode extends InsertNode
+    implements WALEntryValue, RequestNormalizationProvider {
+
+  @Override
+  public NormalizedRequest normalizeRequest() {
+    return ResearchInsertNormalizer.rows(
+        this, InsertRowsNode.class, insertRowNodeList, insertRowNodeIndexList, results);
+  }
 
   /**
    * Suppose there is an InsertRowsNode, which contains 5 InsertRowNodes,

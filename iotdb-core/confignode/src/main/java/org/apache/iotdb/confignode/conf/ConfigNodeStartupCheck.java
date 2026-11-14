@@ -90,6 +90,13 @@ public class ConfigNodeStartupCheck extends StartupChecks {
    * @throws ConfigurationException checkGlobalConfig()
    */
   private void checkGlobalConfig() throws ConfigurationException {
+    if (ConsensusFactory.isResearchRaft(CONF.getConfigNodeConsensusProtocolClass())
+        || ConsensusFactory.isResearchRaft(CONF.getSchemaRegionConsensusProtocolClass())) {
+      throw new ConfigurationException(
+          "The research consensus backends support DataRegions only; use Ratis for ConfigNode and"
+              + " SchemaRegion.");
+    }
+
     // When the ConfigNode consensus protocol is set to SIMPLE_CONSENSUS,
     // the seed_config_node needs to point to itself
     if (CONF.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.SIMPLE_CONSENSUS)

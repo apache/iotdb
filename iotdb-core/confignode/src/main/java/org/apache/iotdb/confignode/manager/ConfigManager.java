@@ -248,6 +248,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -509,6 +510,11 @@ public class ConfigManager implements IManager {
 
   @Override
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
+    if (ConsensusFactory.isResearchRaft(CONF.getDataRegionConsensusProtocolClass())) {
+      DataNodeToStatusResp response = new DataNodeToStatusResp();
+      response.setStatus(researchMembershipUnsupported());
+      return response;
+    }
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return nodeManager.removeDataNode(removeDataNodePlan);
@@ -999,7 +1005,8 @@ public class ConfigManager implements IManager {
       Map<String, List<TSeriesPartitionSlot>> databaseNameSlotMap, TSchemaPartitionTableResp resp) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "[GetOrCreateSchemaPartition]:{}Receive databaseNameSlotMap: {}, Return TSchemaPartitionTableResp: {}",
+          "[GetOrCreateSchemaPartition]:{}Receive databaseNameSlotMap: {}, Return"
+              + " TSchemaPartitionTableResp: {}",
           System.lineSeparator(),
           databaseNameSlotMap,
           partitionTableRespToString(resp));
@@ -1017,7 +1024,8 @@ public class ConfigManager implements IManager {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "[GetOrCreateSchemaPartition]:{}Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
+          "[GetOrCreateSchemaPartition]:{}Receive PathPatternTree: {}, Return"
+              + " TSchemaPartitionTableResp: {}",
           lineSeparator,
           devicePathString,
           partitionTableRespToString(resp));
@@ -1104,7 +1112,8 @@ public class ConfigManager implements IManager {
 
     schemaNodeManagementRespString.append(lineSeparator).append("}");
     LOGGER.info(
-        "[GetNodePathsPartition]:{}Received PartialPath: {}, Level: {}, PathPatternTree: {}, Resp: {}",
+        "[GetNodePathsPartition]:{}Received PartialPath: {}, Level: {}, PathPatternTree: {}, Resp:"
+            + " {}",
         lineSeparator,
         partialPath,
         level,
@@ -1213,7 +1222,8 @@ public class ConfigManager implements IManager {
     dataPartitionRespString.append(lineSeparator).append("}");
 
     LOGGER.info(
-        "[GetOrCreateDataPartition]:{}Receive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}",
+        "[GetOrCreateDataPartition]:{}Receive PartitionSlotsMap: {}, Return"
+            + " TDataPartitionTableResp: {}",
         lineSeparator,
         partitionSlotsMapString,
         dataPartitionRespString);
@@ -2569,8 +2579,18 @@ public class ConfigManager implements IManager {
         : new TGetSeriesSlotListResp(status);
   }
 
+  private static TSStatus researchMembershipUnsupported() {
+    return new TSStatus(TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode())
+        .setMessage(
+            "Research consensus backends require fixed membership; region migration, extension,"
+                + " removal and DataNode removal are disabled.");
+  }
+
   @Override
   public TSStatus migrateRegion(TMigrateRegionReq req) {
+    if (ConsensusFactory.isResearchRaft(CONF.getDataRegionConsensusProtocolClass())) {
+      return researchMembershipUnsupported();
+    }
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? procedureManager.migrateRegion(req)
@@ -2579,6 +2599,9 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus reconstructRegion(TReconstructRegionReq req) {
+    if (ConsensusFactory.isResearchRaft(CONF.getDataRegionConsensusProtocolClass())) {
+      return researchMembershipUnsupported();
+    }
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? procedureManager.reconstructRegion(req)
@@ -2587,6 +2610,9 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus extendRegion(TExtendRegionReq req) {
+    if (ConsensusFactory.isResearchRaft(CONF.getDataRegionConsensusProtocolClass())) {
+      return researchMembershipUnsupported();
+    }
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? procedureManager.extendRegions(req)
@@ -2595,6 +2621,9 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus removeRegion(TRemoveRegionReq req) {
+    if (ConsensusFactory.isResearchRaft(CONF.getDataRegionConsensusProtocolClass())) {
+      return researchMembershipUnsupported();
+    }
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? procedureManager.removeRegions(req)

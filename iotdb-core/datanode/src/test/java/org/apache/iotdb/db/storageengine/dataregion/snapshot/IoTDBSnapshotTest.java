@@ -49,6 +49,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -154,7 +155,8 @@ public class IoTDBSnapshotTest {
       File snapshotDir = new File("target" + File.separator + "snapshot");
       Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
       try {
-        new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+        // A snapshot that does not flush first leaves the unsealed TsFiles out.
+        new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), false);
         File[] files =
             snapshotDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
         Assert.assertEquals(1, files.length);
@@ -167,6 +169,83 @@ public class IoTDBSnapshotTest {
         for (TsFileResource resource : resources) {
           Assert.assertTrue(resource.tryWriteLock());
         }
+      } finally {
+        FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
+      TierManager.getInstance().resetFolders();
+    }
+  }
+
+  @Test
+  public void testFlushFirstSnapshotFailsOnTsFileItCannotSeal()
+      throws IOException, WriteProcessException, DirectoryNotLegalException {
+    String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
+    TierManager.getInstance().resetFolders();
+    try {
+      List<TsFileResource> resources = writeTsFiles();
+      resources.subList(50, 100).forEach(x -> x.setStatusForTest(TsFileResourceStatus.UNCLOSED));
+      DataRegion region = new DataRegion(testSgName, "0");
+      region.setAllowCompaction(false);
+      region.getTsFileManager().addAll(resources, true);
+      File snapshotDir = new File("target" + File.separator + "snapshot");
+      Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
+      try {
+        // No close can seal these TsFiles, and a snapshot without them would lose their rows.
+        Assert.assertFalse(
+            new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true));
+        File[] files =
+            snapshotDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
+        Assert.assertEquals(1, files.length);
+        SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
+        Assert.assertFalse(analyzer.isSnapshotComplete());
+        analyzer.close();
+        for (TsFileResource resource : resources) {
+          Assert.assertTrue(resource.tryWriteLock());
+        }
+      } finally {
+        FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
+      TierManager.getInstance().resetFolders();
+    }
+  }
+
+  @Test
+  public void testSnapshotLeavesOutRemovedTsFilesWithoutWaitingForThem()
+      throws IOException, WriteProcessException, DirectoryNotLegalException {
+    String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
+    TierManager.getInstance().resetFolders();
+    try {
+      List<TsFileResource> resources = writeTsFiles();
+      // As an empty TsFile that its close deleted while the snapshot waited for that close.
+      for (TsFileResource removed : resources.subList(98, 100)) {
+        Assert.assertTrue(removed.remove());
+      }
+      DataRegion region = new DataRegion(testSgName, "0");
+      region.setAllowCompaction(false);
+      region.getTsFileManager().addAll(resources, true);
+      File snapshotDir = new File("target" + File.separator + "snapshot");
+      Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
+      try {
+        long start = System.nanoTime();
+        Assert.assertTrue(
+            new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true));
+        // A missing file is otherwise waited for 10 s (checkHardLinkSourceFile) before it is left
+        // out, and so is its .resource file.
+        Assert.assertTrue(System.nanoTime() - start < TimeUnit.SECONDS.toNanos(10));
+        File[] files =
+            snapshotDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
+        Assert.assertEquals(1, files.length);
+        SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
+        Assert.assertTrue(analyzer.isSnapshotComplete());
+        int cnt = analyzer.getTotalFileCountInSnapshot();
+        analyzer.close();
+        Assert.assertEquals(196, cnt);
       } finally {
         FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
       }
