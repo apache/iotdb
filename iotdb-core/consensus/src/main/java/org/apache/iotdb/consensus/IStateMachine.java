@@ -29,6 +29,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -51,6 +52,19 @@ public interface IStateMachine {
    * @param request deserialized request
    */
   TSStatus write(IConsensusRequest request);
+
+  /**
+   * Applies deserialized write requests in list order and returns one status per request, as if
+   * each were passed to {@link #write} in turn. A backend may hand over a run of committed requests
+   * at once so the state machine can share per-call work; the default writes them one by one.
+   */
+  default List<TSStatus> writeBatch(List<IConsensusRequest> requests) {
+    List<TSStatus> statuses = new ArrayList<>(requests.size());
+    for (IConsensusRequest request : requests) {
+      statuses.add(write(request));
+    }
+    return statuses;
+  }
 
   /**
    * deserialize IConsensusRequest.
