@@ -95,12 +95,10 @@ def slstm_torch(
     assert states.shape == (B, NH, NG, HD)
     states = states.unbind(dim=-2)
 
+    w_t = weight.view(NH, NG * HD, HD).transpose(-1, -2).float()
     output = []
     for i in range(S):
-        y_bf16, w_t = (
-            states[0].bfloat16().float(),
-            weight.view(NH, NG * HD, HD).transpose(-1, -2).float(),
-        )
+        y_bf16 = states[0].bfloat16().float()
         Ry = torch.einsum("BHE,HEO->BHO", y_bf16, w_t).view(B, NH, NG, HD)
         states = slstm_torch_pointwise(
             x[:, i].float(), Ry.float(), bias.unsqueeze(0), states
