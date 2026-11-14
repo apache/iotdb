@@ -192,6 +192,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -439,6 +440,12 @@ public abstract class AbstractConfigNodeClient<C extends AbstractConfigNodeClien
         }
         detectedNodeNum++;
       } catch (TException e) {
+        if (e instanceof TTransportException transportException
+            && transportException.getType() == TTransportException.CORRUPTED_DATA) {
+          // Reconnecting cannot repair an invalid/oversized frame. Repeated serialization would
+          // retain query memory and eventually hide the original error as a connection failure.
+          throw e;
+        }
         final String message =
             String.format(
                 ConfigMessages.MSG_RECONNECTION_NODE_FAIL,

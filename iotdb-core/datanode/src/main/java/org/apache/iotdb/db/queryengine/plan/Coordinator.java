@@ -320,6 +320,8 @@ public class Coordinator {
     return execution(queryId, session, sql, userQuery, debug, false, iQueryExecutionFactory);
   }
 
+  // Record the SQL for Errors as well, preserving the original failure and finally cleanup.
+  @SuppressWarnings("java:S1181")
   private ExecutionResult execution(
       long queryId,
       SessionInfo session,
@@ -369,6 +371,13 @@ public class Coordinator {
         result.status.setNeedRetry(true);
       }
       return result;
+    } catch (RuntimeException | Error e) {
+      // Analysis can fail before registration. Only link the query ID to its SQL here; callers
+      // classify the failure and log its stack, avoiding duplicate stacks and WARNs for user
+      // errors.
+      LOGGER.info(
+          DataNodeQueryMessages.LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9, globalQueryId, sql);
+      throw e;
     } finally {
       if (queryContext != null) {
         queryContext.releaseAllMemoryReservedForFrontEnd();

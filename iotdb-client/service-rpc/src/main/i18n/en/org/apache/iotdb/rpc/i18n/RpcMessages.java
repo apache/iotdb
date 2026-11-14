@@ -127,4 +127,25 @@ public final class RpcMessages {
 
   public static final String EXCEPTION_DATA_TYPE_ARG_IS_NOT_SUPPORTED_31213160 =
       "Data type %s is not supported.";
+  public static final String EXCEPTION_INVALID_BUFFER_SIZE_ARG_5131C6CA =
+      "Invalid buffer size: %d";
+
+  public static final String EXCEPTION_WRITE_BUFFER_SIZE_ARG_LARGER_THAN_MAXIMUM_BUFFER_SIZE_ARG_C0A47F3D =
+      "Write buffer size (%d) larger than maximum buffer size (%d)!";
+
+  public static final String EXCEPTION_INVALID_COMPRESSION_BUFFER_SIZE_ARG_D677543D =
+      "Invalid compression buffer size: %d";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_E21E05CA =
+      "Serialized frame size is at least %d bytes, exceeding the maximum Java array size of %d bytes.";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_1CDD4BB9 =
+      "Serialized frame size is at least %d bytes, exceeding the configured Thrift max frame size of %d bytes.";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_TO_ARG_6F166F0C =
+      "Serialized frame size is at least %d bytes, exceeding the maximum Java array size of %d bytes to %s.";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_TO_ARG_7EF64898 =
+      "Serialized frame size is at least %d bytes, exceeding the configured Thrift max frame size of %d bytes to %s.";
+
 }
