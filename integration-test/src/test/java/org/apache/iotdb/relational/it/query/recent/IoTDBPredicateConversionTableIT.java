@@ -376,4 +376,133 @@ public class IoTDBPredicateConversionTableIT {
         allInt64Rows,
         DATABASE_NAME);
   }
+
+  @Test
+  public void testMultiValueInPredicateAndInt32Column() {
+    String[] header = {"time", "int32_col"};
+    String[] onlyRow1 = {"1970-01-01T00:00:00.001Z,20,"};
+
+    // 4294967326 and -4294967266 wrap to 30 when narrowed to INT32, so they must not match row 3
+    tableResultSetEqualTest(
+        "SELECT time, int32_col FROM PredicateTestTable WHERE int32_col IN (20, 4294967326) ORDER BY time",
+        header,
+        onlyRow1,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, int32_col FROM PredicateTestTable WHERE int32_col IN (20, -4294967266) ORDER BY time",
+        header,
+        onlyRow1,
+        DATABASE_NAME);
+    // OR of equalities is normalized into the same IN predicate
+    tableResultSetEqualTest(
+        "SELECT time, int32_col FROM PredicateTestTable WHERE int32_col = 20 OR int32_col = 4294967326 ORDER BY time",
+        header,
+        onlyRow1,
+        DATABASE_NAME);
+    // duplicate and integral decimal values
+    tableResultSetEqualTest(
+        "SELECT time, int32_col FROM PredicateTestTable WHERE int32_col IN (20, 20.0, 20) ORDER BY time",
+        header,
+        onlyRow1,
+        DATABASE_NAME);
+
+    // non-integral decimals never match
+    tableResultSetEqualTest(
+        "SELECT time, int32_col FROM PredicateTestTable WHERE int32_col IN (29, 29.5) ORDER BY time",
+        header,
+        new String[] {"1970-01-01T00:00:00.002Z,29,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, int32_col FROM PredicateTestTable WHERE int32_col IN (30.0, 31.5) ORDER BY time",
+        header,
+        new String[] {"1970-01-01T00:00:00.003Z,30,"},
+        DATABASE_NAME);
+
+    // NOT IN keeps row 3 and still excludes NULL rows 5 and 7
+    tableResultSetEqualTest(
+        "SELECT time, int32_col FROM PredicateTestTable WHERE int32_col NOT IN (20, 4294967326) ORDER BY time",
+        header,
+        new String[] {
+          "1970-01-01T00:00:00.002Z,29,",
+          "1970-01-01T00:00:00.003Z,30,",
+          "1970-01-01T00:00:00.004Z,31,",
+          "1970-01-01T00:00:00.006Z,35,",
+          "1970-01-01T00:00:00.008Z,1000,",
+          "1970-01-01T00:00:00.009Z,-29,",
+          "1970-01-01T00:00:00.010Z,-30,"
+        },
+        DATABASE_NAME);
+    // no literal can match: NOT IN returns every non-NULL row
+    tableResultSetEqualTest(
+        "SELECT time, int32_col FROM PredicateTestTable WHERE int32_col NOT IN (29.5, 4294967326) ORDER BY time",
+        header,
+        new String[] {
+          "1970-01-01T00:00:00.001Z,20,",
+          "1970-01-01T00:00:00.002Z,29,",
+          "1970-01-01T00:00:00.003Z,30,",
+          "1970-01-01T00:00:00.004Z,31,",
+          "1970-01-01T00:00:00.006Z,35,",
+          "1970-01-01T00:00:00.008Z,1000,",
+          "1970-01-01T00:00:00.009Z,-29,",
+          "1970-01-01T00:00:00.010Z,-30,"
+        },
+        DATABASE_NAME);
+
+    // projection is evaluated by the column transformer instead of the pushed-down filter
+    tableResultSetEqualTest(
+        "SELECT time, int32_col IN (29, 29.5, 4294967326) AS m FROM PredicateTestTable ORDER BY time",
+        new String[] {"time", "m"},
+        new String[] {
+          "1970-01-01T00:00:00.001Z,false,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,false,",
+          "1970-01-01T00:00:00.004Z,false,",
+          "1970-01-01T00:00:00.005Z,null,",
+          "1970-01-01T00:00:00.006Z,false,",
+          "1970-01-01T00:00:00.007Z,null,",
+          "1970-01-01T00:00:00.008Z,false,",
+          "1970-01-01T00:00:00.009Z,false,",
+          "1970-01-01T00:00:00.010Z,false,"
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testMultiValueInPredicateAndInt64Column() {
+    String[] header = {"time", "int64_col"};
+    tableResultSetEqualTest(
+        "SELECT time, int64_col FROM PredicateTestTable WHERE int64_col IN (29, 29.5) ORDER BY time",
+        header,
+        new String[] {"1970-01-01T00:00:00.002Z,29,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, int64_col FROM PredicateTestTable WHERE int64_col NOT IN (20, 29.5) ORDER BY time",
+        header,
+        new String[] {
+          "1970-01-01T00:00:00.002Z,29,",
+          "1970-01-01T00:00:00.003Z,30,",
+          "1970-01-01T00:00:00.004Z,31,",
+          "1970-01-01T00:00:00.005Z,35,",
+          "1970-01-01T00:00:00.008Z,1000,",
+          "1970-01-01T00:00:00.009Z,-29,",
+          "1970-01-01T00:00:00.010Z,-30,"
+        },
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, int64_col IN (29, 29.5) AS m FROM PredicateTestTable ORDER BY time",
+        new String[] {"time", "m"},
+        new String[] {
+          "1970-01-01T00:00:00.001Z,false,",
+          "1970-01-01T00:00:00.002Z,true,",
+          "1970-01-01T00:00:00.003Z,false,",
+          "1970-01-01T00:00:00.004Z,false,",
+          "1970-01-01T00:00:00.005Z,false,",
+          "1970-01-01T00:00:00.006Z,null,",
+          "1970-01-01T00:00:00.007Z,null,",
+          "1970-01-01T00:00:00.008Z,false,",
+          "1970-01-01T00:00:00.009Z,false,",
+          "1970-01-01T00:00:00.010Z,false,"
+        },
+        DATABASE_NAME);
+  }
 }
