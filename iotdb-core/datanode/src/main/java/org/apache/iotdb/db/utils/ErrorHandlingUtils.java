@@ -109,36 +109,42 @@ public class ErrorHandlingUtils {
   public static TSStatus onQueryException(Exception e, String operation, TSStatusCode statusCode) {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
-      // ignore logging sg not ready exception
-      if (status.getCode() != TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
-        String message =
-            String.format(
-                "Status code: %s, Query Statement: %s failed because %s",
-                status.getCode(), operation, status.getMessage());
-        if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()
-            || status.getCode() == TSStatusCode.ILLEGAL_PATH.getStatusCode()
-            || status.getCode() == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
-            || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()
-            || status.getCode() == TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode()
-            || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
-            || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()
-            || status.getCode() == TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode()
-            || status.getCode() == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
-            || status.getCode() == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
-          LOGGER.info(message);
-        } else {
-          LOGGER.warn(message, e);
-        }
-      }
+      String message =
+          String.format(
+              "Status code: %s, Query Statement: %s failed because %s",
+              status.getCode(), operation, status.getMessage());
+      logQueryException(LOGGER, message, status.getCode(), e);
       status.setNeedRetry(needRetry(status));
       return status;
     } else {
       return onNpeOrUnexpectedException(e, operation, statusCode);
+    }
+  }
+
+  /** Logs expected query errors without stack traces and retains traces for unexpected errors. */
+  public static void logQueryException(Logger logger, String message, int statusCode, Exception e) {
+    // ignore logging sg not ready exception
+    if (statusCode == TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
+      return;
+    }
+    if (statusCode == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.NO_PERMISSION.getStatusCode()
+        || statusCode == TSStatusCode.ILLEGAL_PATH.getStatusCode()
+        || statusCode == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
+        || statusCode == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()
+        || statusCode == TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode()
+        || statusCode == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
+        || statusCode == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()
+        || statusCode == TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode()
+        || statusCode == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
+        || statusCode == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
+      logger.info(message);
+    } else {
+      logger.warn(message, e);
     }
   }
 
