@@ -32,13 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
-/**
- * NOTICE: TableSessionWrapper is specific to the table model.
- *
- * <p>used for SessionPool.getSession need to do some other things like calling
- * cleanSessionAndMayThrowConnectionException in SessionPool while encountering connection exception
- * only need to putBack to SessionPool while closing.
- */
+/** Adapts a pooled session to the table-session API and releases it back to the pool on close. */
 public class TableSessionWrapper implements ITableSession {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TableSessionWrapper.class);
@@ -52,13 +46,13 @@ public class TableSessionWrapper implements ITableSession {
   protected TableSessionWrapper(Session session, SessionPool sessionPool) {
     this.session = session;
     this.sessionPool = sessionPool;
-    this.closed = false;
   }
 
   @Override
   public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
+    Session currentSession = getOpenSession();
     try {
-      session.insertRelationalTablet(tablet);
+      currentSession.insertRelationalTablet(tablet);
     } catch (IoTDBConnectionException e) {
       throw releaseOnConnectionFailure(e);
     }
@@ -67,8 +61,9 @@ public class TableSessionWrapper implements ITableSession {
   @Override
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
+    Session currentSession = getOpenSession();
     try {
-      return session.executeQueryStatement(sql);
+      return currentSession.executeQueryStatement(sql);
     } catch (IoTDBConnectionException e) {
       throw releaseOnConnectionFailure(e);
     }
@@ -77,8 +72,9 @@ public class TableSessionWrapper implements ITableSession {
   @Override
   public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
+    Session currentSession = getOpenSession();
     try {
-      return session.executeQueryStatement(sql, timeoutInMs);
+      return currentSession.executeQueryStatement(sql, timeoutInMs);
     } catch (IoTDBConnectionException e) {
       throw releaseOnConnectionFailure(e);
     }
@@ -87,8 +83,9 @@ public class TableSessionWrapper implements ITableSession {
   @Override
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
+    Session currentSession = getOpenSession();
     try {
-      session.executeNonQueryStatement(sql);
+      currentSession.executeNonQueryStatement(sql);
     } catch (IoTDBConnectionException e) {
       throw releaseOnConnectionFailure(e);
     }
@@ -104,10 +101,6 @@ public class TableSessionWrapper implements ITableSession {
       closed = true;
       sessionToRelease = session;
       session = null;
-    }
-
-    if (sessionToRelease == null) {
-      return;
     }
 
     if (sessionPool.isPoolClosed()) {
@@ -149,6 +142,15 @@ public class TableSessionWrapper implements ITableSession {
     }
 
     sessionPool.releaseSession(sessionToRelease, reusable);
+  }
+
+  private Session getOpenSession() throws IoTDBConnectionException {
+    synchronized (this) {
+      if (closed || session == null) {
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+      }
+      return session;
+    }
   }
 
   private IoTDBConnectionException releaseOnConnectionFailure(IoTDBConnectionException exception) {

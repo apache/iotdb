@@ -100,7 +100,7 @@ public class SessionPool implements ISessionPool {
   private static final int FINAL_RETRY = RETRY - 1;
 
   private final ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
-  // for session whose resultSet is not released.
+  // sessions currently borrowed for a result set or a table-session wrapper.
   private final ConcurrentMap<ISession, ISession> occupied = new ConcurrentHashMap<>();
   private int size = 0;
   private int maxSize = 0;
@@ -850,15 +850,17 @@ public class SessionPool implements ISessionPool {
    *
    * @return whether the session was still owned by the pool and has been released
    */
-  protected boolean releaseSession(ISession session, boolean reusable) {
+  boolean releaseSession(ISession session, boolean reusable) {
+    boolean wasOccupied;
     boolean replenish = false;
     synchronized (this) {
-      if (occupied.remove(session) == null) {
-        return false;
-      }
+      wasOccupied = occupied.remove(session) != null;
       if (reusable && !closed) {
+        if (!wasOccupied) {
+          return false;
+        }
         queue.push(session);
-        this.notifyAll();
+        this.notify();
         return true;
       }
       replenish = !closed;
@@ -868,21 +870,10 @@ public class SessionPool implements ISessionPool {
     if (replenish) {
       tryConstructNewSession();
     }
-    return true;
+    return wasOccupied;
   }
 
-  private void discardSession(ISession session) {
-    boolean replenish;
-    synchronized (this) {
-      replenish = !closed;
-    }
-    closeSession(session);
-    if (replenish) {
-      tryConstructNewSession();
-    }
-  }
-
-  protected boolean isPoolClosed() {
+  boolean isPoolClosed() {
     synchronized (this) {
       return closed;
     }
@@ -894,31 +885,38 @@ public class SessionPool implements ISessionPool {
 
   /** close all connections in the pool */
   @Override
-  public synchronized void close() {
-    if (closed) {
-      return;
-    }
-    closed = true;
-
-    for (ISession session : queue) {
-      closeSession(session);
-    }
-    for (ISession session : occupied.keySet()) {
-      closeSession(session);
-    }
-    queue.clear();
-    occupied.clear();
-    this.notifyAll();
-
-    if (this.executorService != null) {
-      this.executorService.shutdown();
-      this.executorService = null;
-    }
-    if (availableNodes != null) {
-      if (!this.availableNodes.isCallerManaged()) {
-        this.availableNodes.close();
+  public void close() {
+    final List<ISession> idleSessions;
+    final List<ISession> borrowedSessions;
+    final ScheduledExecutorService executorToShutdown;
+    final INodeSupplier nodesToClose;
+    synchronized (this) {
+      if (closed) {
+        return;
       }
-      this.availableNodes = null;
+      closed = true;
+      idleSessions = new ArrayList<>(queue);
+      borrowedSessions = new ArrayList<>(occupied.keySet());
+      queue.clear();
+      occupied.clear();
+      executorToShutdown = this.executorService;
+      this.executorService = null;
+      nodesToClose = availableNodes;
+      availableNodes = null;
+      this.notifyAll();
+    }
+
+    for (ISession session : idleSessions) {
+      closeSession(session);
+    }
+    for (ISession session : borrowedSessions) {
+      forceCloseSession(session);
+    }
+    if (executorToShutdown != null) {
+      executorToShutdown.shutdown();
+    }
+    if (nodesToClose != null && !nodesToClose.isCallerManaged()) {
+      nodesToClose.close();
     }
     LOGGER.info(SessionMessages.CLOSING_SESSION_POOL);
   }
@@ -981,11 +979,21 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  private void forceCloseSession(ISession session) {
+    if (session instanceof Session) {
+      try {
+        ((Session) session).forceClose();
+      } catch (Exception e) {
+        LOGGER.warn(CLOSE_THE_SESSION_FAILED, e);
+      }
+    } else {
+      closeSession(session);
+    }
+  }
+
   private void cleanSessionAndMayThrowConnectionException(
       ISession session, int times, IoTDBConnectionException e) throws IoTDBConnectionException {
-    if (!releaseSession(session, false)) {
-      discardSession(session);
-    }
+    releaseSession(session, false);
     if (times == FINAL_RETRY) {
       throw new IoTDBConnectionException(
           String.format(
@@ -995,6 +1003,14 @@ public class SessionPool implements ISessionPool {
               e.getMessage()),
           e);
     }
+  }
+
+  /**
+   * @deprecated Use the pool's internal release path.
+   */
+  @Deprecated
+  protected void cleanSessionAndMayThrowConnectionException(ISession session) {
+    releaseSession(session, false);
   }
 
   /**
@@ -3020,13 +3036,8 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
-  public void sortTablet(Tablet tablet) throws IoTDBConnectionException {
-    ISession session = getSession();
-    try {
-      session.sortTablet(tablet);
-    } finally {
-      putBack(session);
-    }
+  public void sortTablet(Tablet tablet) {
+    Session.sortTabletInMemory(tablet);
   }
 
   @Override

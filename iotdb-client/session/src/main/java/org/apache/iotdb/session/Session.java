@@ -692,27 +692,9 @@ public class Session implements ISession {
         return;
       }
 
-      Set<SessionConnection> closedConnections = Collections.newSetFromMap(new IdentityHashMap<>());
-      if (endPointToSessionConnection != null) {
-        for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
-          if (sessionConnection != null && closedConnections.add(sessionConnection)) {
-            try {
-              sessionConnection.close();
-            } catch (IoTDBConnectionException | RuntimeException e) {
-              if (closeException == null) {
-                closeException = e;
-              } else if (closeException != e) {
-                closeException.addSuppressed(e);
-              }
-            }
-          }
-        }
-      }
-
-      SessionConnection defaultSessionConnection = getDefaultSessionConnection();
-      if (defaultSessionConnection != null && closedConnections.add(defaultSessionConnection)) {
+      for (SessionConnection sessionConnection : getSessionConnections()) {
         try {
-          defaultSessionConnection.close();
+          sessionConnection.close();
         } catch (IoTDBConnectionException | RuntimeException e) {
           if (closeException == null) {
             closeException = e;
@@ -722,23 +704,7 @@ public class Session implements ISession {
         }
       }
     } finally {
-      if (!isClosed) {
-        if (endPointToSessionConnection != null) {
-          endPointToSessionConnection.clear();
-        }
-        setDefaultSessionConnection(null);
-      }
-      // if executorService is null, it means that availableNodes is got from SessionPool and we
-      // shouldn't clean that
-      if (this.executorService != null) {
-        this.executorService.shutdown();
-        this.executorService = null;
-        if (!this.availableNodes.isCallerManaged()) {
-          this.availableNodes.close();
-        }
-        this.availableNodes = null;
-      }
-      isClosed = true;
+      finishClose();
     }
 
     if (closeException instanceof IoTDBConnectionException) {
@@ -746,6 +712,55 @@ public class Session implements ISession {
     }
     if (closeException instanceof RuntimeException) {
       throw (RuntimeException) closeException;
+    }
+  }
+
+  /** Closes the underlying transports without waiting for a close-session RPC. */
+  public synchronized void forceClose() {
+    if (isClosed) {
+      return;
+    }
+    try {
+      for (SessionConnection sessionConnection : getSessionConnections()) {
+        sessionConnection.forceCloseTransport();
+      }
+    } finally {
+      finishClose();
+    }
+  }
+
+  private Set<SessionConnection> getSessionConnections() {
+    Set<SessionConnection> connections = Collections.newSetFromMap(new IdentityHashMap<>());
+    if (endPointToSessionConnection != null) {
+      for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
+        if (sessionConnection != null) {
+          connections.add(sessionConnection);
+        }
+      }
+    }
+    if (defaultSessionConnection != null) {
+      connections.add(defaultSessionConnection);
+    }
+    return connections;
+  }
+
+  private void finishClose() {
+    if (!isClosed) {
+      if (endPointToSessionConnection != null) {
+        endPointToSessionConnection.clear();
+      }
+      setDefaultSessionConnection(null);
+    }
+    isClosed = true;
+    // if executorService is null, it means that availableNodes is got from SessionPool and we
+    // shouldn't clean that
+    if (this.executorService != null) {
+      this.executorService.shutdown();
+      this.executorService = null;
+      if (!this.availableNodes.isCallerManaged()) {
+        this.availableNodes.close();
+      }
+      this.availableNodes = null;
     }
   }
 
@@ -3810,10 +3825,15 @@ public class Session implements ISession {
     return true;
   }
 
+  public void sortTablet(Tablet tablet) {
+    sortTabletInMemory(tablet);
+  }
+
+  /** Sorts the rows of the tablet by timestamp without using a server connection. */
   @SuppressWarnings({
     "squid:S3776"
   }) // ignore Cognitive Complexity of methods should not be too high
-  public void sortTablet(Tablet tablet) {
+  public static void sortTabletInMemory(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
@@ -3856,7 +3876,7 @@ public class Session implements ISession {
    * @param index index
    * @return sorted list
    */
-  private Object sortList(Object valueList, TSDataType dataType, int[] index) {
+  private static Object sortList(Object valueList, TSDataType dataType, int[] index) {
     return SessionUtils.sortValueList(valueList, dataType, index);
   }
 
@@ -3867,7 +3887,7 @@ public class Session implements ISession {
    * @param index index
    * @return sorted bitMap
    */
-  private BitMap sortBitMap(BitMap bitMap, int[] index) {
+  private static BitMap sortBitMap(BitMap bitMap, int[] index) {
     BitMap sortedBitMap = new BitMap(bitMap.getSize());
     for (int i = 0; i < index.length; i++) {
       if (bitMap.isMarked(index[i])) {
