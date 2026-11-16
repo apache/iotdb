@@ -312,10 +312,6 @@ public final class SessionMessages {
   public static final String EXCEPTION_SESSION_CAN_NOT_CONNECT_TO_ARG_226FBA66 =
       "Session can not connect to {}";
 
-  public static final String EXCEPTION_INVALID_TABLE_MODEL_DATABASE_NAME_ARG_30813145 =
-      "Invalid table-model database name \"%s\". Expected an identifier of at most 64 characters"
-          + " using letters, numbers, Chinese characters, backticks, underscores, or hyphens.";
-
   public static final String
       EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIME_IS_ARG_MEASUREMENTS_IS_ARG_5524221C =
           "All values are null and this submission is ignored,deviceId is [{}],time is"

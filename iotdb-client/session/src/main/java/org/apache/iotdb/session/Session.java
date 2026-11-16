@@ -21,7 +21,6 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
@@ -33,7 +32,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
@@ -110,7 +108,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntToLongFunction;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
@@ -178,9 +175,6 @@ public class Session implements ISession {
   private static final double SAMPLE_PROPORTION = 0.05;
   private static final int MIN_RECORDS_SIZE = 40;
   private static final String UNSPECIFIED_DATABASE_KEY = "";
-  private static final int MAX_TABLE_MODEL_DATABASE_NAME_LENGTH = 64;
-  private static final Pattern TABLE_MODEL_DATABASE_NAME_PATTERN =
-      Pattern.compile("([a-zA-Z0-9`_\\-\\u2E80-\\u9FFF]+)");
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
@@ -1578,24 +1572,8 @@ public class Session implements ISession {
         : routeDatabase.toLowerCase(Locale.ENGLISH);
   }
 
-  private static String normalizeAndValidateTableModelDatabaseName(String database)
-      throws StatementExecutionException {
-    if (database == null) {
-      return null;
-    }
-    String normalizedDatabase = database.toLowerCase(Locale.ENGLISH);
-    if (normalizedDatabase.isEmpty()
-        || normalizedDatabase.length() > MAX_TABLE_MODEL_DATABASE_NAME_LENGTH
-        || normalizedDatabase.indexOf('.') >= 0
-        || !TABLE_MODEL_DATABASE_NAME_PATTERN.matcher(normalizedDatabase).matches()) {
-      throw new StatementExecutionException(
-          new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
-              .setMessage(
-                  String.format(
-                      SessionMessages.EXCEPTION_INVALID_TABLE_MODEL_DATABASE_NAME_ARG_30813145,
-                      database)));
-    }
-    return normalizedDatabase;
+  private static String normalizeTableModelDatabaseName(String database) {
+    return database == null ? null : database.toLowerCase(Locale.ENGLISH);
   }
 
   private void handleQueryRedirection(TEndPoint endPoint) throws IoTDBConnectionException {
@@ -2987,7 +2965,7 @@ public class Session implements ISession {
    */
   public void insertRelationalTablet(Tablet tablet, String database)
       throws IoTDBConnectionException, StatementExecutionException {
-    String normalizedDatabase = normalizeAndValidateTableModelDatabaseName(database);
+    String normalizedDatabase = normalizeTableModelDatabaseName(database);
     if (tablet.getRowSize() == 0) {
       return;
     }
