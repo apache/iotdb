@@ -19,16 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.group;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
@@ -39,6 +44,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topKRanking;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.window;
+import static org.junit.Assert.assertTrue;
 
 public class WindowFunctionOptimizationTest {
   @Test
@@ -158,6 +164,133 @@ public class WindowFunctionOptimizationTest {
     assertPlan(
         planTester.getFragmentPlan(0),
         output(project(window(mergeSort(exchange(), exchange(), exchange())))));
+  }
+
+  @Test
+  public void testPermutedPrefixWindowPartitionKeepsGroup() {
+    PlanTester planTester = new PlanTester();
+
+    // The outer PARTITION BY permutes the first two keys of the inner window's sort, which keeps
+    // the grouped property: no extra full sort.
+    String sql =
+        "SELECT count(s1) OVER (PARTITION BY tag2, tag1) FROM "
+            + "(SELECT *, sum(s1) OVER (PARTITION BY tag1, tag2 ORDER BY time) AS m FROM table1)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                window(
+                    ImmutableList.of("tag2", "tag1"),
+                    ImmutableList.of(),
+                    group(project(sort(tableScan("testdb.table1"))))))));
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            project(
+                window(
+                    ImmutableList.of("tag2", "tag1"),
+                    ImmutableList.of(),
+                    group(project(mergeSort(exchange(), exchange(), exchange())))))));
+  }
+
+  @Test
+  public void testWindowOverRowNumberFallsBackToSort() {
+    PlanTester planTester = new PlanTester();
+
+    // Distribution drops the sort below a row number, so the outer window must keep its own.
+    String sql =
+        "SELECT s1, s3, rn, count(*) OVER (PARTITION BY s1) AS cnt FROM "
+            + "(SELECT s1, s3, row_number() OVER (PARTITION BY s1, s3) AS rn FROM table1)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            window(
+                ImmutableList.of("s1"),
+                ImmutableList.of(),
+                sort(rowNumber(sort(tableScan("testdb.table1")))))));
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            window(
+                ImmutableList.of("s1"),
+                ImmutableList.of(),
+                sort(rowNumber(collect(exchange(), exchange(), exchange()))))));
+  }
+
+  @Test
+  public void testWindowOverRowNumberWithDegradedInputFallsBackToSort() {
+    PlanTester planTester = new PlanTester();
+
+    // The keys match the row number's, but its input grouping cannot survive, so no claim passes
+    // through. The filter keeps the two windows from being merged.
+    String sql =
+        "SELECT s1, s3, rn, count(*) OVER (PARTITION BY s1, s3) AS cnt FROM "
+            + "(SELECT * FROM (SELECT s1, s3, row_number() OVER (PARTITION BY s1, s3) AS rn "
+            + "FROM table1) WHERE rn >= 1)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            window(
+                ImmutableList.of("s1", "s3"),
+                ImmutableList.of(),
+                sort(filter(rowNumber(sort(tableScan("testdb.table1"))))))));
+  }
+
+  @Test
+  public void testWindowOverTopKRankingFallsBackToSort() {
+    PlanTester planTester = new PlanTester();
+
+    // Same as the row number: a sort below a ranking is dropped in distribution.
+    String sql =
+        "SELECT *, count(*) OVER (PARTITION BY tag1) AS cnt FROM "
+            + "(SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2 ORDER BY s1) AS rn "
+            + "FROM table1) WHERE rn <= 2)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            window(
+                ImmutableList.of("tag1"),
+                ImmutableList.of(),
+                sort(topKRanking(sort(tableScan("testdb.table1")))))));
+  }
+
+  @Test
+  public void testTimeBucketWindowOverTaggedAggregationKeepsGroup() {
+    PlanTester planTester = new PlanTester();
+
+    // The scan is ordered by the pre-grouped tags, which equal the window partition keys, so
+    // per-device windows stay parallel instead of moving to a single instance above a sort.
+    String sql =
+        "SELECT tag1, tag2, tag3, h, m, "
+            + "lag(m) OVER (PARTITION BY tag1, tag2, tag3 ORDER BY h) AS prev FROM "
+            + "(SELECT tag1, tag2, tag3, date_bin(1h, time) AS h, avg(s1) AS m FROM table1 "
+            + "GROUP BY tag1, tag2, tag3, date_bin(1h, time))";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    WindowNode window =
+        PlanNodeSearcher.searchFrom(logicalQueryPlan.getRootNode())
+            .where(WindowNode.class::isInstance)
+            .findFirst()
+            .map(WindowNode.class::cast)
+            .orElseThrow(() -> new AssertionError("no window in plan"));
+    assertTrue(
+        "the window must reuse the aggregation's clustering instead of sorting",
+        window.getChild() instanceof GroupNode);
+    assertTrue(
+        "the aggregation must stay pushed into the table scan",
+        ((GroupNode) window.getChild()).getChild() instanceof AggregationTableScanNode);
+    // The regions keep the aggregation.
+    assertPlan(planTester.getFragmentPlan(1), aggregationTableScan());
+    assertPlan(planTester.getFragmentPlan(2), aggregationTableScan());
+    assertPlan(planTester.getFragmentPlan(3), aggregationTableScan());
   }
 
   @Test

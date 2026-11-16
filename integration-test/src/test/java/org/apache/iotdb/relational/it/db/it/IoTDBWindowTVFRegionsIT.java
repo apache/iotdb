@@ -49,6 +49,8 @@ public class IoTDBWindowTVFRegionsIT {
   private static final String DATABASE_NAME = "test";
   private static final int DEVICE_NUM = 40;
   private static final int HASH_AGGREGATION_ROW_NUM = 6000;
+  private static final int SUBSET_DEVICE_NUM = 40;
+  private static final int SUBSET_ROWS_PER_DEVICE = 10;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -62,6 +64,7 @@ public class IoTDBWindowTVFRegionsIT {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
     insertHashAggregationData();
+    insertStreamingAggregationData();
   }
 
   @AfterClass
@@ -92,12 +95,14 @@ public class IoTDBWindowTVFRegionsIT {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute("CREATE TABLE t2(d STRING TAG, s1 INT32 FIELD, s3 INT32 FIELD)");
+      statement.execute(
+          "CREATE TABLE t2(d STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD)");
       for (int start = 0; start < HASH_AGGREGATION_ROW_NUM; start += 1000) {
-        StringBuilder sql = new StringBuilder("INSERT INTO t2(time, d, s1, s3) VALUES ");
+        StringBuilder sql = new StringBuilder("INSERT INTO t2(time, d, s1, s2, s3) VALUES ");
         for (int row = start; row < start + 1000; row++) {
-          // Pseudo-random s1 in {0, 1, 2}; s3 is unique.
+          // Pseudo-random s1 in {0, 1, 2} and s2 in {0..4}; s3 is unique.
           int s1 = (int) ((((long) row * 0x9E3779B1L) & 0xFFFFFFFFL) >> 20) % 3;
+          int s2 = (int) ((((long) row * 0x85EBCA6BL) & 0xFFFFFFFFL) >> 20) % 5;
           if (row > start) {
             sql.append(", ");
           }
@@ -105,6 +110,8 @@ public class IoTDBWindowTVFRegionsIT {
               .append(row + 1)
               .append(", 'd1', ")
               .append(s1)
+              .append(", ")
+              .append(s2)
               .append(", ")
               .append(row)
               .append(')');
@@ -116,6 +123,66 @@ public class IoTDBWindowTVFRegionsIT {
       e.printStackTrace();
       fail(String.valueOf(e.getMessage()));
     }
+  }
+
+  private static void insertStreamingAggregationData() {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      // 40 devices all share d = 'A', so (d, s1) groups span regions.
+      statement.execute("CREATE TABLE t3(d STRING TAG, e STRING TAG, s1 INT32 FIELD)");
+      for (int dev = 0; dev < SUBSET_DEVICE_NUM; dev++) {
+        StringBuilder sql = new StringBuilder("INSERT INTO t3(time, d, e, s1) VALUES ");
+        for (int i = 0; i < SUBSET_ROWS_PER_DEVICE; i++) {
+          if (i > 0) {
+            sql.append(", ");
+          }
+          sql.append('(')
+              .append(i * 100 + dev + 1)
+              .append(", 'A', 'e")
+              .append(dev)
+              .append("', ")
+              .append((i + dev) % 3)
+              .append(')');
+        }
+        statement.execute(sql.toString());
+      }
+      statement.execute("FLUSH");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(String.valueOf(e.getMessage()));
+    }
+  }
+
+  @Test
+  public void testStreamingAggregationSubsetPreGroupedSessionKeepsPartitionsWhole() {
+    // The aggregation streams on the pre-grouped tag d only, a strict subset of (d, s1). The
+    // final aggregation merges the regions before the session, so each partition stays whole:
+    // three rows in, three single-row windows, not three windows per region.
+    tableResultSetEqualTest(
+        "SELECT d, s1, window_start, window_end, count(*) AS cnt FROM SESSION(DATA => ("
+            + "    SELECT d, s1, max(time) AS time FROM t3 GROUP BY d, s1"
+            + ") PARTITION BY (d, s1) ORDER BY time, GAP => 1000000ms) "
+            + "GROUP BY d, s1, window_start, window_end ORDER BY window_start",
+        new String[] {"d", "s1", "window_start", "window_end", "cnt"},
+        new String[] {
+          "A,1,1970-01-01T00:00:00.938Z,1970-01-01T00:00:00.938Z,1,",
+          "A,2,1970-01-01T00:00:00.939Z,1970-01-01T00:00:00.939Z,1,",
+          "A,0,1970-01-01T00:00:00.940Z,1970-01-01T00:00:00.940Z,1,"
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testStreamingAggregationSubsetPreGroupedWindowKeepsPartitionsWhole() {
+    // Same shape for a plain window function.
+    tableResultSetEqualTest(
+        "SELECT count(*) AS rows, max(cnt) AS mx, min(cnt) AS mn FROM ("
+            + "    SELECT count(s1) OVER (PARTITION BY d, s1) AS cnt "
+            + "    FROM (SELECT d, s1, max(time) AS time FROM t3 GROUP BY d, s1))",
+        new String[] {"rows", "mx", "mn"},
+        new String[] {"3,1,1,"},
+        DATABASE_NAME);
   }
 
   @Test
@@ -171,6 +238,35 @@ public class IoTDBWindowTVFRegionsIT {
           "1,1970-01-01T00:00:00.005Z,1970-01-01T00:00:05.999Z,2013,",
           "2,1970-01-01T00:00:00.002Z,1970-01-01T00:00:06.000Z,2007,"
         },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testWindowOverRowNumberKeepsPartitionsWhole() {
+    // Distribution drops the sort below a row number, so the window must re-sort. s3 is unique,
+    // so each (s1, s3) partition is one row; a per-region split fragments each s1.
+    tableResultSetEqualTest(
+        "SELECT s1, cnt, count(*) AS n, max(rn) AS mrn FROM ("
+            + "    SELECT s1, rn, count(*) OVER (PARTITION BY s1) AS cnt "
+            + "    FROM (SELECT s1, s3, row_number() OVER (PARTITION BY s1, s3) AS rn FROM t2)) "
+            + "GROUP BY s1, cnt ORDER BY s1, cnt",
+        new String[] {"s1", "cnt", "n", "mrn"},
+        new String[] {"0,1980,1980,1,", "1,2013,2013,1,", "2,2007,2007,1,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testWindowOverTopKRankingKeepsPartitionsWhole() {
+    // Same shape through the ranking node: rn <= 1 keeps every row because s3 is unique.
+    tableResultSetEqualTest(
+        "SELECT s1, cnt, count(*) AS n, count(s2) AS c2, count(s3) AS c3 FROM ("
+            + "    SELECT s1, s2, s3, count(*) OVER (PARTITION BY s1) AS cnt "
+            + "    FROM (SELECT s1, s2, s3 FROM ("
+            + "        SELECT s1, s2, s3, row_number() OVER (PARTITION BY s1, s3 ORDER BY s2) AS rn "
+            + "        FROM t2) WHERE rn <= 1)) "
+            + "GROUP BY s1, cnt ORDER BY s1, cnt",
+        new String[] {"s1", "cnt", "n", "c2", "c3"},
+        new String[] {"0,1980,1980,1980,1980,", "1,2013,2013,2013,2013,", "2,2007,2007,2007,2007,"},
         DATABASE_NAME);
   }
 

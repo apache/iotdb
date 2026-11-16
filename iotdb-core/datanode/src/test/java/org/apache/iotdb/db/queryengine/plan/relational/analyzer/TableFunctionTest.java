@@ -366,25 +366,60 @@ public class TableFunctionTest {
   }
 
   @Test
-  public void testSessionOverHashAggregationFallsBackToSort() {
+  public void testSessionOverHashAggregationExactKeySetKeepsGroup() {
     PlanTester planTester = new PlanTester();
-    // s1 and s2 are fields, so the aggregation cannot stream and hashes its input instead.
+    // s1 and s2 are fields, so the aggregation hashes its input.
     String sql =
         "SELECT * FROM SESSION(DATA => (SELECT s1, s2, max(time) AS time FROM table1 "
             + "GROUP BY s1, s2) PARTITION BY (s1, s2) ORDER BY time, GAP => 1m)";
     LogicalQueryPlan logicalPlan = planTester.createPlan(sql);
-    // The grouping keys are exactly the partition keys, but a hash aggregation's output is not
-    // clustered by them, so the group must still degrade to a sort.
+    // Each full grouping key is emitted once, so every partition is a single row.
+    TableFunctionProcessorNode outerFunction = findOuterFunction(logicalPlan);
+    assertTrue(
+        "the group must survive: every (s1, s2) partition is a single row",
+        outerFunction.getChild() instanceof GroupNode);
+    assertEquals(2, ((GroupNode) outerFunction.getChild()).getPartitionKeyCount());
+  }
+
+  @Test
+  public void testSessionOverHashAggregationSubsetFallsBackToSort() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT s1, s2, max(time) AS time FROM table1 "
+            + "GROUP BY s1, s2) PARTITION BY (s1) ORDER BY time, GAP => 1m)";
+    LogicalQueryPlan logicalPlan = planTester.createPlan(sql);
     assertOuterFunctionDegradedToSort(logicalPlan);
   }
 
+  @Test
+  public void testSessionOverStreamingAggregationExactKeySetKeepsGroup() {
+    PlanTester planTester = new PlanTester();
+    // s1 is a field, so the aggregation streams on the pre-grouped tag1 only.
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT tag1, s1, max(time) AS time FROM table1 "
+            + "GROUP BY tag1, s1) PARTITION BY (tag1, s1) ORDER BY time, GAP => 1m)";
+    LogicalQueryPlan logicalPlan = planTester.createPlan(sql);
+    TableFunctionProcessorNode outerFunction = findOuterFunction(logicalPlan);
+    assertTrue(
+        "the group must survive: the aggregation output is partitioned by its full grouping keys",
+        outerFunction.getChild() instanceof GroupNode);
+    assertEquals(2, ((GroupNode) outerFunction.getChild()).getPartitionKeyCount());
+    // A final aggregation merges the regions before the session, so it is not split per region.
+    TableFunctionProcessorNode fragmentFunction =
+        (TableFunctionProcessorNode) planTester.getFragmentPlan(0).getChildren().get(0);
+    assertEquals(1, fragmentFunction.getChildren().size());
+  }
+
+  private static TableFunctionProcessorNode findOuterFunction(LogicalQueryPlan logicalPlan) {
+    return PlanNodeSearcher.searchFrom(logicalPlan.getRootNode())
+        .where(TableFunctionProcessorNode.class::isInstance)
+        .findFirst()
+        .map(TableFunctionProcessorNode.class::cast)
+        .orElseThrow(() -> new AssertionError("no table function in plan"));
+  }
+
   private static void assertOuterFunctionDegradedToSort(LogicalQueryPlan logicalPlan) {
-    TableFunctionProcessorNode outerFunction =
-        PlanNodeSearcher.searchFrom(logicalPlan.getRootNode())
-            .where(TableFunctionProcessorNode.class::isInstance)
-            .findFirst()
-            .map(TableFunctionProcessorNode.class::cast)
-            .orElseThrow(() -> new AssertionError("no table function in plan"));
+    TableFunctionProcessorNode outerFunction = findOuterFunction(logicalPlan);
     // GroupNode extends SortNode, so both checks are needed.
     assertTrue(
         "outer function must sort its input instead of reusing the grouping",
