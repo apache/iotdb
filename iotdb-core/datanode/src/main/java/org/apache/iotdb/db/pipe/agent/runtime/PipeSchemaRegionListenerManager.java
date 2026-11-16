@@ -54,10 +54,16 @@ public class PipeSchemaRegionListenerManager {
   public synchronized SchemaRegionListeningQueue listenerForSnapshotLoad(
       final SchemaRegionId schemaRegionId, final File snapshotDir) {
     final PipeSchemaRegionListener listener = id2ListenerMap.get(schemaRegionId);
-    if (listener != null) {
-      return listener.listeningQueue;
+    if (!SchemaRegionListeningQueue.hasSnapshot(snapshotDir)) {
+      // The snapshot can replace a follower that missed the queue-close log entry. Absence of a
+      // queue snapshot represents a closed queue, so discard the follower's previous contents.
+      if (listener != null) {
+        listener.listeningQueue.close();
+        cleanupListenerIfUnused(schemaRegionId, listener);
+      }
+      return null;
     }
-    return SchemaRegionListeningQueue.hasSnapshot(snapshotDir) ? listener(schemaRegionId) : null;
+    return listener == null ? listener(schemaRegionId) : listener.listeningQueue;
   }
 
   public synchronized int increaseAndGetReferenceCount(final SchemaRegionId schemaRegionId) {

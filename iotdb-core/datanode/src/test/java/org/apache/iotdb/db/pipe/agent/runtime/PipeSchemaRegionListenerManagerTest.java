@@ -22,9 +22,14 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.consensus.statemachine.schemaregion.SchemaRegionStateMachine;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionListenerMetrics;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
 import org.junit.Assert;
 import org.junit.Rule;
@@ -34,6 +39,10 @@ import org.junit.rules.TemporaryFolder;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.Map;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class PipeSchemaRegionListenerManagerTest {
 
@@ -137,6 +146,74 @@ public class PipeSchemaRegionListenerManagerTest {
 
     restoredListener.close();
     manager.clearSchemaRegionState(schemaRegionId);
+  }
+
+  @Test
+  public void testSnapshotWithoutListenerClearsStaleFollowerQueue() throws Exception {
+    assertSnapshotWithoutListenerClearsStaleQueue(false);
+  }
+
+  @Test
+  public void testSnapshotWithoutListenerRetainsReferencedClosedQueue() throws Exception {
+    assertSnapshotWithoutListenerClearsStaleQueue(true);
+  }
+
+  private void assertSnapshotWithoutListenerClearsStaleQueue(final boolean hasLocalReference)
+      throws Exception {
+    final SchemaRegionId schemaRegionId =
+        new SchemaRegionId(Integer.MAX_VALUE - (hasLocalReference ? 12 : 11));
+    final File snapshotDir = temporaryFolder.newFolder();
+    final ISchemaRegion schemaRegion = mock(ISchemaRegion.class);
+    when(schemaRegion.getSchemaRegionId()).thenReturn(schemaRegionId);
+    when(schemaRegion.createSnapshot(snapshotDir)).thenReturn(true);
+    when(schemaRegion.loadSnapshot(snapshotDir)).thenReturn(true);
+    final SchemaRegionStateMachine stateMachine = new SchemaRegionStateMachine(schemaRegion);
+    final Field queueMapField =
+        PipeSchemaRegionListenerMetrics.class.getDeclaredField("listeningQueueMap");
+    queueMapField.setAccessible(true);
+    final Map<?, ?> metricQueues =
+        (Map<?, ?>) queueMapField.get(PipeSchemaRegionListenerMetrics.getInstance());
+
+    try {
+      // The leader has applied queue-close and cleaned its listener before taking this snapshot.
+      Assert.assertTrue(stateMachine.takeSnapshot(snapshotDir));
+      Assert.assertFalse(SchemaRegionListeningQueue.hasSnapshot(snapshotDir));
+      Assert.assertNull(PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegionId));
+
+      // A lagging follower can still have the queue from before the close log entry.
+      final SchemaRegionListeningQueue staleQueue =
+          PipeDataNodeAgent.runtime().schemaListener(schemaRegionId);
+      if (hasLocalReference) {
+        PipeDataNodeAgent.runtime().increaseAndGetSchemaListenerReferenceCount(schemaRegionId);
+      }
+      staleQueue.open();
+      final PlanNode node = mock(PlanNode.class);
+      when(node.getType()).thenReturn(PlanNodeType.CREATE_TIME_SERIES);
+      staleQueue.tryListenToNode(node);
+      Assert.assertEquals(1L, staleQueue.getSize());
+
+      Assert.assertTrue(stateMachine.loadSnapshot(snapshotDir));
+
+      Assert.assertFalse(staleQueue.isOpened());
+      Assert.assertEquals(0L, staleQueue.getSize());
+      if (hasLocalReference) {
+        Assert.assertSame(
+            staleQueue, PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegionId));
+        Assert.assertTrue(metricQueues.containsKey(schemaRegionId.getId()));
+        Assert.assertEquals(
+            0,
+            PipeDataNodeAgent.runtime().decreaseAndGetSchemaListenerReferenceCount(schemaRegionId));
+      }
+      Assert.assertNull(PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegionId));
+      Assert.assertFalse(metricQueues.containsKey(schemaRegionId.getId()));
+    } finally {
+      final SchemaRegionListeningQueue listener =
+          PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegionId);
+      if (listener != null) {
+        listener.close();
+      }
+      PipeDataNodeAgent.runtime().clearSchemaRegionState(schemaRegionId);
+    }
   }
 
   private static class TestSchemaRegionSource extends IoTDBSchemaRegionSource {
