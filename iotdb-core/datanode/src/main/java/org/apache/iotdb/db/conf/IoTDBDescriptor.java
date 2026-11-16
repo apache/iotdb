@@ -1313,8 +1313,8 @@ public class IoTDBDescriptor {
   /**
    * Resolves a per-fragment byte budget. A non-positive configured value becomes {@code min(32 MiB,
    * operator memory / query_thread_count / threadDivisor)}. Sort and the mods cache split one query
-   * thread's operator memory in two. LTTB splits it in eight: its budget is counted in the peak
-   * and again in the retained size, and the sort buffer is reserved beside those two.
+   * thread's operator memory in two. LTTB splits it in eight: its budget is counted in the peak and
+   * again in the retained size, and the sort buffer is reserved beside those two.
    */
   private void loadFixedSizeLimitForQuery(
       TrimProperties properties, String name, LongConsumer setFunction, int threadDivisor) {
