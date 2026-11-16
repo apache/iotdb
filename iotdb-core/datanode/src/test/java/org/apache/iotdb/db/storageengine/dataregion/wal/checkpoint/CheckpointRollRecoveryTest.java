@@ -59,6 +59,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.db.storageengine.dataregion.wal.WALTestUtils.getInsertRowNode;
 import static org.junit.Assert.assertArrayEquals;
@@ -215,9 +216,7 @@ public class CheckpointRollRecoveryTest {
         WALBuffer buffer = new WALBuffer("checkpoint-roll", directory.getPath(), manager, 0, 0)) {
       addCheckpoint(manager, table);
       manager.fsyncCheckpointFile();
-      WALInfoEntry first = new WALInfoEntry(1, getInsertRowNode(DEVICE, 10), true);
-      buffer.write(first);
-      assertEquals(WALFlushListener.Status.SUCCESS, first.getWalFlushListener().waitForResult());
+      assertEquals(WALFlushListener.Status.SUCCESS, writeWalRow(buffer, 1, 10).waitForResult());
       long walSize = buffer.getCurrentWALOriginalFileSize();
       byte[] oldBytes = Files.readAllBytes(oldFile.toPath());
 
@@ -235,9 +234,7 @@ public class CheckpointRollRecoveryTest {
 
       commonConfig.setNodeStatus(NodeStatus.Running);
       addCheckpoint(manager, memTable(2));
-      WALInfoEntry second = new WALInfoEntry(2, getInsertRowNode(DEVICE, 20), true);
-      buffer.write(second);
-      WALFlushListener listener = second.getWalFlushListener();
+      WALFlushListener listener = writeWalRow(buffer, 2, 20);
       assertEquals(WALFlushListener.Status.FAILURE, listener.waitForResult());
       assertSame(syncFailure, listener.getCause());
       assertArrayEquals(new Throwable[] {rollbackFailure}, syncFailure.getSuppressed());
@@ -246,6 +243,64 @@ public class CheckpointRollRecoveryTest {
       assertArrayEquals(nextBytes, Files.readAllBytes(nextFile.toPath()));
     }
     assertReplay(table, 10);
+  }
+
+  @Test(timeout = 30000)
+  public void testActiveCheckpointForceFailureFailsWalBatch() throws Exception {
+    assertActiveCheckpointFailureFailsWalBatch(true);
+  }
+
+  @Test(timeout = 30000)
+  public void testActiveCheckpointWriteFailureFailsWalBatch() throws Exception {
+    assertActiveCheckpointFailureFailsWalBatch(false);
+  }
+
+  private void assertActiveCheckpointFailureFailsWalBatch(boolean failForce) throws Exception {
+    MemTableInfo first = memTable(1);
+    File activeFile = checkpointFile(1);
+    byte[] durableCheckpoint;
+    try (CheckpointManager manager =
+            spy(new CheckpointManager("checkpoint-roll", directory.getPath()));
+        WALBuffer buffer = new WALBuffer("checkpoint-roll", directory.getPath(), manager, 0, 0)) {
+      // Publish a real successor and capture its writer so the fault affects the active file.
+      AtomicReference<CheckpointWriter> rolledWriter = new AtomicReference<>();
+      doAnswer(
+              invocation -> {
+                CheckpointWriter writer = spy(new CheckpointWriter(invocation.getArgument(0)));
+                rolledWriter.set(writer);
+                return writer;
+              })
+          .when(manager)
+          .openCheckpointWriter(any(File.class));
+      config.setCheckpointFileSizeThresholdInByte(1);
+      addCheckpoint(manager, first);
+      manager.fsyncCheckpointFile();
+      CheckpointWriter active = rolledWriter.get();
+      assertEquals(activeFile, active.getLogFile());
+      durableCheckpoint = Files.readAllBytes(activeFile.toPath());
+      assertEquals(WALFlushListener.Status.SUCCESS, writeWalRow(buffer, 1, 10).waitForResult());
+      long walSize = buffer.getCurrentWALOriginalFileSize();
+
+      IOException failure = new IOException("injected active checkpoint I/O failure");
+      if (failForce) {
+        doThrow(failure).doCallRealMethod().when(active).force();
+      } else {
+        doThrow(failure).when(active).write(any(ByteBuffer.class));
+      }
+      MemTableInfo second = memTable(2);
+      manager.makeCreateMemTableCPInMemory(second);
+      buffer.write(
+          new WALInfoEntry(2, new Checkpoint(CheckpointType.CREATE_MEMORY_TABLE, List.of(second))));
+      WALFlushListener listener = writeWalRow(buffer, 2, 20);
+      assertEquals(WALFlushListener.Status.FAILURE, listener.waitForResult());
+      assertSame(failure, listener.getCause());
+      assertEquals(walSize, buffer.getCurrentWALOriginalFileSize());
+      assertFalse(checkpointFile(2).exists());
+    }
+
+    // Recover from the bytes that were durable before the active checkpoint failed.
+    Files.write(activeFile.toPath(), durableCheckpoint);
+    assertReplay(first, 10);
   }
 
   private CheckpointWriter writerWithDirectorySyncFailure(
@@ -349,21 +404,72 @@ public class CheckpointRollRecoveryTest {
     assertReplay(first, 10);
   }
 
+  @Test
+  public void testRecoveryReplaysLegacyIncrementsAfterMissingVersion() throws Exception {
+    assertRecoveryReplaysLegacyIncrementsAfterGap(false);
+  }
+
+  @Test
+  public void testRecoveryReplaysLegacyIncrementsAfterUnreadableVersion() throws Exception {
+    assertRecoveryReplaysLegacyIncrementsAfterGap(true);
+  }
+
+  private void assertRecoveryReplaysLegacyIncrementsAfterGap(boolean keepEmptyFile)
+      throws Exception {
+    MemTableInfo stale = memTable(1);
+    MemTableInfo replacement = memTable(2, stale.getTsFilePath());
+    writeCheckpointFile(
+        checkpointFile(0),
+        1,
+        new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, List.of(stale)));
+    // The checkpoint that flushed the old memtable is missing or has no readable records.
+    if (keepEmptyFile) {
+      Files.createFile(checkpointFile(1).toPath());
+    }
+    writeCheckpointFile(
+        checkpointFile(2),
+        2,
+        new Checkpoint(CheckpointType.CREATE_MEMORY_TABLE, List.of(replacement)));
+    writeCheckpointFile(
+        checkpointFile(3),
+        3,
+        new Checkpoint(CheckpointType.CREATE_MEMORY_TABLE, List.of(memTable(3))));
+    Files.createFile(checkpointFile(5).toPath());
+    writeWalEntry(replacement, 20);
+
+    CheckpointRecoverUtils.CheckpointInfo recovered =
+        CheckpointRecoverUtils.recoverMemTableInfo(directory);
+    assertReplay(replacement, 20);
+    assertEquals(3, recovered.getMaxMemTableId());
+    assertEquals(Set.of(2L, 3L), recovered.getMemTableId2Info().keySet());
+  }
+
   private File checkpointFile(long version) {
     return new File(directory, CheckpointFileUtils.getLogFileName(version));
   }
 
   private MemTableInfo memTable(long id) {
+    File tsFile = new File(folder.getRoot(), "sequence/root.recovery/0/0/" + id + "-1-0-0.tsfile");
+    return memTable(id, tsFile.getAbsolutePath());
+  }
+
+  private MemTableInfo memTable(long id, String tsFilePath) {
     IMemTable table = mock(IMemTable.class);
     when(table.getMemTableId()).thenReturn(id);
     when(table.getDataRegionId()).thenReturn("0");
-    File tsFile = new File(folder.getRoot(), "sequence/root.recovery/0/0/" + id + "-1-0-0.tsfile");
-    return new MemTableInfo(table, tsFile.getAbsolutePath(), 0);
+    return new MemTableInfo(table, tsFilePath, 0);
   }
 
-  private void addCheckpoint(CheckpointManager manager, MemTableInfo table) {
+  private void addCheckpoint(CheckpointManager manager, MemTableInfo table) throws IOException {
     manager.makeCreateMemTableCPInMemory(table);
     manager.makeCreateMemTableCPOnDisk(table.getMemTableId());
+  }
+
+  private WALFlushListener writeWalRow(WALBuffer buffer, long memTableId, long time)
+      throws Exception {
+    WALInfoEntry entry = new WALInfoEntry(memTableId, getInsertRowNode(DEVICE, time), true);
+    buffer.write(entry);
+    return entry.getWalFlushListener();
   }
 
   private void writeCheckpointFile(File file, long maxMemTableId, Checkpoint checkpoint)

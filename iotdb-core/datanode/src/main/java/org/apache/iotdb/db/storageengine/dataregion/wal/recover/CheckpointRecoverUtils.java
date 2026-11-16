@@ -45,19 +45,28 @@ public class CheckpointRecoverUtils {
     }
     // desc sort by version id
     CheckpointFileUtils.descSortByVersionId(checkpointFiles);
-    // Read back to the latest complete snapshot. Legacy rolls can have readable incremental
-    // checkpoints even if writing their snapshot failed.
+    // Read back to a complete snapshot within the newest contiguous run of readable checkpoints.
+    // A missing version may have removed mappings that are still present in an older snapshot.
     Deque<CheckpointReader> readers = new ArrayDeque<>();
+    int nextVersion = -1;
     for (File checkpointFile : checkpointFiles) {
+      int version = CheckpointFileUtils.parseVersionId(checkpointFile.getName());
+      if (!readers.isEmpty() && version != nextVersion) {
+        break;
+      }
       CheckpointReader reader = new CheckpointReader(checkpointFile);
       List<Checkpoint> checkpoints = reader.getCheckpoints();
       if (checkpoints.isEmpty()) {
+        if (!readers.isEmpty()) {
+          break;
+        }
         continue;
       }
       readers.addFirst(reader);
       if (checkpoints.get(0).getType() == CheckpointType.GLOBAL_MEMORY_TABLE_INFO) {
         break;
       }
+      nextVersion = version - 1;
     }
 
     // Apply the snapshot and the readable incremental checkpoints in version order.

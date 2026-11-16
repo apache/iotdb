@@ -770,7 +770,7 @@ public class WALBuffer extends AbstractWALBuffer {
       }
     }
 
-    private void makeMemTableCheckpoints() {
+    private void makeMemTableCheckpoints() throws IOException {
       if (info.checkpoints.isEmpty()) {
         return;
       }

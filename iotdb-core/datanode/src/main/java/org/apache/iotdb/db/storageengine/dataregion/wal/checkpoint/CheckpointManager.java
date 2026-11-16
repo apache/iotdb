@@ -135,7 +135,7 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   /** Make checkpoint for create memTable info on disk. */
-  public void makeCreateMemTableCPOnDisk(long memTableId) {
+  public void makeCreateMemTableCPOnDisk(long memTableId) throws IOException {
     infoLock.lock();
     long start = System.nanoTime();
     try {
@@ -155,7 +155,7 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   /** Make checkpoint for flush memTable info. */
-  public void makeFlushMemTableCP(long memTableId) {
+  public void makeFlushMemTableCP(long memTableId) throws IOException {
     infoLock.lock();
     long start = System.nanoTime();
     try {
@@ -163,12 +163,12 @@ public class CheckpointManager implements AutoCloseable {
       if (memTableInfo == null || checkpointPublicationFailure != null) {
         return;
       }
-      memTableInfo.setFlushed();
-      memTableId2Info.remove(memTableId);
       Checkpoint checkpoint =
           new Checkpoint(
               CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(memTableInfo));
       logByCachedByteBuffer(checkpoint);
+      memTableInfo.setFlushed();
+      memTableId2Info.remove(memTableId);
     } finally {
       WRITING_METRICS.recordMakeCheckpointCost(
           CheckpointType.FLUSH_MEMORY_TABLE, System.nanoTime() - start);
@@ -176,12 +176,13 @@ public class CheckpointManager implements AutoCloseable {
     }
   }
 
-  private void logByCachedByteBuffer(Checkpoint checkpoint) {
+  private void logByCachedByteBuffer(Checkpoint checkpoint) throws IOException {
     try {
       writeCheckpoint(currentLogWriter, checkpoint);
     } catch (IOException e) {
       logger.error(StorageEngineMessages.FAIL_TO_MAKE_CHECKPOINT, checkpoint, e);
       DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      throw e;
     }
   }
 
@@ -207,8 +208,8 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   // region Task to fsync checkpoint file
-  /** Fsync checkpoints to the disk. */
-  public void fsyncCheckpointFile() {
+  /** Fsyncs the active checkpoint before attempting to roll. */
+  public void fsyncCheckpointFile() throws IOException {
     infoLock.lock();
     try {
       if (checkpointPublicationFailure != null) {
@@ -223,8 +224,7 @@ public class CheckpointManager implements AutoCloseable {
             identifier,
             e);
         DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-        CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
-        return;
+        throw e;
       }
 
       try {
