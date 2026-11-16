@@ -1347,10 +1347,10 @@ sort_buffer_size_in_bytes=0
 # Unit: bytes
 cte_buffer_size_in_bytes=131072
 
-# The per-processor buffer budget of the LTTB table function. It is charged to the estimated memory of every fragment that
-# runs LTTB. Such a fragment also reserves a sort buffer, so if lttb_buffer_size_in_bytes <= 0 a default value is used,
-# default value = min(32MB, memory for query operators / query_thread_count / 4). Raise it for queries with very large
-# partitions or many overlapping windows.
+# The per-processor buffer budget of the LTTB table function. It is charged to both the peak and the retained size of
+# every fragment that runs LTTB, and a sort above it reserves its own buffer too. If lttb_buffer_size_in_bytes <= 0 a
+# default value is used, default value = min(32MB, memory for query operators / query_thread_count / 8), so those three
+# reservations fit one query thread. Raise it for queries with very large partitions or many overlapping windows.
 # effectiveMode: hot_reload
 # Datatype: long
 # Privilege: SYSTEM

@@ -606,13 +606,12 @@ public class TableFunctionOperatorTest {
   }
 
   /**
-   * The processor buffers survive until a partition completes. They are charged to the peak, which
-   * is what the fragment estimator reserves. They are not charged to the retained size as well:
-   * parents that add a child's retained size also take the child's peak, so charging both reserves
-   * the budget twice and rejects the fragment with error 719 on the 1C1D heap.
+   * The processor buffers survive until a partition completes, so the operator charges them to both
+   * the peak and the retained size. FilterAndProjectOperator reserves only the retained size, while
+   * sinks and LimitOperator reserve only the peak.
    */
   @Test
-  public void testBufferedBytesAreChargedToThePeakOnly() throws Exception {
+  public void testBufferedBytesAreChargedToPeakAndRetainedSize() throws Exception {
     long budget = 4096L;
     OperatorContext operatorContext = createOperatorContext("lttb_buffer_estimate");
     Operator child = constructLongChildOperator(operatorContext, new long[] {1});
@@ -642,7 +641,7 @@ public class TableFunctionOperatorTest {
             Collections.emptyList(),
             false,
             mock(IoTDBLocal.class))) {
-      assertEquals(0L, operator.calculateRetainedSizeAfterCallingNext());
+      assertEquals(budget, operator.calculateRetainedSizeAfterCallingNext());
       // peek = child peak (0) + budget + max(return size, block builder retained)
       assertTrue(operator.calculateMaxPeekMemory() >= budget + operator.calculateMaxReturnSize());
     }

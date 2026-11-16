@@ -581,9 +581,10 @@ public class CommonConfig {
 
   /**
    * The per-processor memory budget of the LTTB table function. The shipped value is {@code 0},
-   * which the DataNode resolves to {@code min(32 MiB, operator memory / query_thread_count / 4)}.
-   * The divisor is 4 rather than the 2 used by {@link #sortBufferSize} because a fragment that
-   * runs LTTB reserves both budgets. This initial value matches {@link #sortBufferSize}.
+   * which the DataNode resolves to {@code min(32 MiB, operator memory / query_thread_count / 8)}.
+   * The divisor is 8 rather than the 2 used by {@link #sortBufferSize}: the LTTB budget is reserved
+   * twice and the sort budget once, and that sum has to fit one query thread. This initial value
+   * matches {@link #sortBufferSize}.
    */
   private long lttbBufferSize = 32 * 1024 * 1024L;
 
