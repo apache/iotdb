@@ -242,13 +242,8 @@ public class WALRecoverManager {
     return recoverPerformer.getRecoverListener();
   }
 
-  UnsealedTsFileRecoverPerformer removeRecoverPerformer(File file) {
-    try {
-      return absolutePath2RecoverPerformer.remove(getTsFileRelativePath(file.getCanonicalPath()));
-    } catch (IOException e) {
-      logger.error(StorageEngineMessages.FAIL_TO_REMOVE_RECOVER_PERFORMER, file, e);
-    }
-    return null;
+  UnsealedTsFileRecoverPerformer removeRecoverPerformer(String tsFileRelativePath) {
+    return absolutePath2RecoverPerformer.remove(tsFileRelativePath);
   }
 
   public ExceptionalCountDownLatch getAllDataRegionScannedLatch() {
