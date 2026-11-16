@@ -28,7 +28,11 @@ cmake -S iotdb-client/odbc -B "${odbc_build}" \
   -DODBC_PACKAGE_VERSION="${ODBC_PACKAGE_VERSION:-$(sed -n 's:.*<version>\([^<]*\)</version>.*:\1:p' iotdb-client/pom.xml | head -1)}" \
   -DODBC_PACKAGE_CLASSIFIER="linux-x86_64-glibc${NATIVE_GLIBC_BASELINE}"
 cmake --build "${odbc_build}" --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-4}"
-ctest --test-dir "${odbc_build}" --output-on-failure
+ctest --test-dir "${odbc_build}" --output-on-failure --no-tests=error
 cmake -DDRIVER="${odbc_build}/libapache_iotdb_odbc.so" \
   -DGLIBC_BASELINE="${NATIVE_GLIBC_BASELINE}" -P iotdb-client/odbc/cmake/CheckLinuxPackage.cmake
 (cd "${odbc_build}" && cpack)
+
+python3 iotdb-client/odbc/test/verify_release.py "${odbc_build}"/iotdb-odbc-*.zip \
+  --commit "$(git -c safe.directory="$PWD" rev-parse HEAD)" \
+  --platform "linux-x86_64-glibc${NATIVE_GLIBC_BASELINE}"

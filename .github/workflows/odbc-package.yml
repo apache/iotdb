@@ -33,6 +33,11 @@ on:
       - '.github/scripts/*odbc*'
       - '.github/scripts/native-linux-env.sh'
       - '.github/workflows/odbc-package.yml'
+permissions:
+  contents: read
+concurrency:
+  group: odbc-package-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   linux:
     runs-on: ubuntu-latest
@@ -63,18 +68,7 @@ jobs:
       - name: Build, test and package
         shell: pwsh
         run: |
-          $version = ([xml](Get-Content iotdb-client/pom.xml)).project.parent.version
-          cmake -S iotdb-client/odbc -B iotdb-client/odbc/target/build -A x64 "-DODBC_PACKAGE_VERSION=$version" -DODBC_PACKAGE_CLASSIFIER=windows-x86_64
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          cmake --build iotdb-client/odbc/target/build --config Release --parallel 4
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          ctest --test-dir iotdb-client/odbc/target/build -C Release --output-on-failure
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          & iotdb-client/odbc/test/check-windows-dependencies.ps1 iotdb-client/odbc/target/build/Release/apache_iotdb_odbc.dll
-          Push-Location iotdb-client/odbc/target/build
-          cpack -C Release
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          Pop-Location
+          & .github/scripts/package-odbc-windows.ps1
       - uses: actions/upload-artifact@v7
         with:
           name: odbc-windows-x86_64
@@ -87,12 +81,15 @@ jobs:
       matrix:
         image: ['almalinux:8', 'ubuntu:22.04', 'ubuntu:24.04']
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: odbc-linux-x86_64-glibc2.28
           path: artifacts
-      - name: Extract release
-        run: unzip -q artifacts/*.zip -d package
+      - name: Verify and extract release
+        run: |
+          python3 iotdb-client/odbc/test/verify_release.py artifacts/*.zip --commit "$GITHUB_SHA" --platform linux-x86_64-glibc2.28
+          unzip -q artifacts/*.zip -d package
       - name: Load with system ODBC manager in a clean runtime
         run: |
           docker run --rm -v "$PWD/package:/package:ro" '${{ matrix.image }}' sh -ec '
@@ -113,6 +110,8 @@ jobs:
           distribution: corretto
           java-version: 17
           cache: maven
+      - name: Test release validation
+        run: python3 -m unittest discover -s iotdb-client/odbc/test -p 'test_release.py' -v
       - name: Check ODBC source formatting
         run: |
           sudo apt-get update
@@ -158,6 +157,12 @@ jobs:
       - name: Install runtime ODBC manager
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y unixodbc lsof
+      - name: Verify release checksum and provenance
+        shell: pwsh
+        run: |
+          $platform = if ($IsWindows) { 'windows-x86_64' } else { 'linux-x86_64-glibc2.28' }
+          python iotdb-client/odbc/test/verify_release.py (Get-ChildItem artifacts/driver/*.zip).FullName --commit $env:GITHUB_SHA --platform $platform
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Extract packages
         shell: pwsh
         run: |

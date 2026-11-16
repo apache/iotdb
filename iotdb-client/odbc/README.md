@@ -46,6 +46,27 @@ On Windows pass `-A x64` to configure. Maven also supports
 `./mvnw package -P with-odbc -pl iotdb-client/odbc`; CMake and CPack must be on PATH.
 `-DskipTests` skips test execution. Builds do not register the driver on the host.
 
+For the same Windows release pipeline used by CI, put CMake, CTest, CPack,
+Python 3 and Perl on PATH, then run from the repository root:
+
+```powershell
+& .github/scripts/package-odbc-windows.ps1
+```
+
+The script builds x64 Release, runs CTest and the system-dependency check, then
+packages and validates the ZIP. It accepts `-BuildDirectory` and `-Parallel`.
+The ZIP and adjacent `.zip.sha512` travel together. Before extraction, verify:
+
+```powershell
+python iotdb-client/odbc/test/verify_release.py path/to/iotdb-odbc-VERSION-windows-x86_64.zip --commit FULL_SOURCE_COMMIT_SHA --platform windows-x86_64
+```
+
+CI applies this gate before upload and again before runtime tests. It verifies
+SHA-512, source commit, version/platform naming, required files and notices,
+archive paths, and the single driver library contract. Linux uses classifier
+`linux-x86_64-glibc2.28`. A checksum detects corruption; it is not a release
+signature or an assertion that the source checkout was clean.
+
 For Linux release packages use the same manylinux 2.28 baseline as the C++ SDK:
 
 ```sh
@@ -201,3 +222,7 @@ Query UI test. Validate Navigator, loading into a worksheet and refresh on the
 target Excel installation before claiming that particular Office version has
 been tested. WPS registering `Excel.Application` does not establish Microsoft
 Excel compatibility.
+
+For the repeatable Excel and Power BI Desktop acceptance procedure, expected
+data, refresh checks and evidence requirements, see
+[Windows desktop validation](docs/windows-validation.md).
