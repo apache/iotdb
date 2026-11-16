@@ -71,11 +71,19 @@ public class UDAFIntegralAvg implements UDTF {
         startTime = nowTime;
       } else {
         // calculate the ladder-shaped area between last point and this one
-        integralValue += (lastValue + nowValue) * (nowTime - lastTime) / 2.0;
+        integralValue += (lastValue + nowValue) * timeDifference(nowTime, lastTime) / 2.0;
       }
       lastTime = nowTime;
       lastValue = nowValue;
       hasValue = true;
+    }
+  }
+
+  private double timeDifference(long endTime, long startTime) {
+    try {
+      return Math.subtractExact(endTime, startTime);
+    } catch (ArithmeticException ignored) {
+      return (double) endTime - (double) startTime;
     }
   }
 
@@ -88,7 +96,8 @@ public class UDAFIntegralAvg implements UDTF {
       // one single point
       collector.putDouble(0, lastValue);
     } else {
-      collector.putDouble(0, integralValue / (lastTime - startTime)); // 所有UDAF函数的时间戳都默认为0
+      collector.putDouble(
+          0, integralValue / timeDifference(lastTime, startTime)); // 所有UDAF函数的时间戳都默认为0
     }
   }
 }

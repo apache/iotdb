@@ -157,16 +157,19 @@ public class UDTFLOF implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     this.method = parameters.getStringOrDefault("method", DEFAULT_METHOD);
+    this.multipleK = parameters.getIntOrDefault("k", 3);
+    this.dim = parameters.getChildExpressionsSize();
+    this.window = parameters.getIntOrDefault("window", DEFAULT_SERIES_WINDOW_SIZE);
+    long seriesAccessWindowSize = (long) this.window + this.multipleK;
     int accessWindowSize =
         this.method.equalsIgnoreCase(METHOD_SERIES)
-            ? DEFAULT_ACCESS_WINDOW_SIZE
+            ? (int)
+                Math.min(
+                    Integer.MAX_VALUE, Math.max(DEFAULT_ACCESS_WINDOW_SIZE, seriesAccessWindowSize))
             : parameters.getIntOrDefault("window", DEFAULT_ACCESS_WINDOW_SIZE);
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(accessWindowSize))
         .setOutputDataType(Type.DOUBLE);
-    this.multipleK = parameters.getIntOrDefault("k", 3);
-    this.dim = parameters.getChildExpressionsSize();
-    this.window = parameters.getIntOrDefault("window", DEFAULT_SERIES_WINDOW_SIZE);
   }
 
   @Override

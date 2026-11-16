@@ -80,11 +80,20 @@ public class UDAFIntegral implements UDTF {
       // calculate the ladder-shaped area between last point and this one
       // skip and initialize the memory if no existing previous point is available
       if (hasLastValue) {
-        integralValue += (lastValue + nowValue) * (nowTime - lastTime) / 2.0 / unitTime;
+        integralValue +=
+            (lastValue + nowValue) * timeDifference(nowTime, lastTime) / 2.0 / unitTime;
       }
       lastTime = nowTime;
       lastValue = nowValue;
       hasLastValue = true;
+    }
+  }
+
+  private double timeDifference(long endTime, long startTime) {
+    try {
+      return Math.subtractExact(endTime, startTime);
+    } catch (ArithmeticException ignored) {
+      return (double) endTime - (double) startTime;
     }
   }
 

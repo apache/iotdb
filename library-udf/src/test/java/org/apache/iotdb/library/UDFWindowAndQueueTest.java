@@ -357,6 +357,36 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testLOFSeriesLargeEmbeddingWindowStillHasEnoughNeighbors() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("k", "3");
+    attributes.put("method", "series");
+    attributes.put("window", "9998");
+    UDTFLOF lof = new UDTFLOF();
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    RecordingPointCollector collector = new RecordingPointCollector();
+    UDTFConfigurations configurations = new UDTFConfigurations(ZoneId.systemDefault());
+
+    lof.validate(new UDFParameterValidator(parameters));
+    lof.beforeStart(parameters, configurations);
+    Assert.assertEquals(
+        10001,
+        ((SlidingSizeWindowAccessStrategy) configurations.getAccessStrategy()).getWindowSize());
+
+    Row[] rows = new Row[10001];
+    for (int i = 0; i < rows.length; i++) {
+      rows[i] = new DoubleRow(i, (double) i);
+    }
+    lof.transform(new SimpleRowWindow(rows), collector);
+
+    Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L), collector.timestamps);
+    Assert.assertEquals(4, collector.values.size());
+    for (double value : collector.values) {
+      Assert.assertTrue(Double.isFinite(value));
+    }
+  }
+
+  @Test
   public void testLOFValidatesAllInputSeriesTypes() {
     UDFParameters parameters =
         new UDFParameters(
@@ -2667,6 +2697,24 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testIntegralHandlesTimeDifferenceAcrossLongRange() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("unit", "1ms");
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    UDAFIntegral integral = new UDAFIntegral();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    integral.validate(new UDFParameterValidator(parameters));
+    integral.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    integral.transform(new DoubleRow(Long.MIN_VALUE, 1.0), collector);
+    integral.transform(new DoubleRow(0, 1.0), collector);
+    integral.transform(new DoubleRow(Long.MAX_VALUE, 1.0), collector);
+    integral.terminate(collector);
+
+    Assert.assertEquals(Math.scalb(1.0, 64), collector.values.get(0), 0.0);
+  }
+
+  @Test
   public void testIntegralAvgUsesFirstFinitePointAndResetsBetweenRuns() throws Exception {
     UDFParameters parameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
     UDAFIntegralAvg integralAvg = new UDAFIntegralAvg();
@@ -2698,6 +2746,22 @@ public class UDFWindowAndQueueTest {
 
     Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
     Assert.assertEquals(2.0, collector.values.get(0), 0.0);
+  }
+
+  @Test
+  public void testIntegralAvgHandlesTimeDifferenceAcrossLongRange() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
+    UDAFIntegralAvg integralAvg = new UDAFIntegralAvg();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    integralAvg.validate(new UDFParameterValidator(parameters));
+    integralAvg.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    integralAvg.transform(new DoubleRow(Long.MIN_VALUE, 0.0), collector);
+    integralAvg.transform(new DoubleRow(0, 0.0), collector);
+    integralAvg.transform(new DoubleRow(Long.MAX_VALUE, 1.0), collector);
+    integralAvg.terminate(collector);
+
+    Assert.assertEquals(0.25, collector.values.get(0), 0.0);
   }
 
   @Test
