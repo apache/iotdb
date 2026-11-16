@@ -153,21 +153,79 @@ public class DateTimeUtilsTest {
 
   @Test
   public void getInstantWithPrecisionTest() {
-    Assert.assertEquals(7000000000L, DateTimeUtils.convertDurationStrToLongForTest(7, "s", "ns"));
-    Assert.assertEquals(420000000000L, DateTimeUtils.convertDurationStrToLongForTest(7, "m", "ns"));
-    Assert.assertEquals(
-        25200000000000L, DateTimeUtils.convertDurationStrToLongForTest(7, "h", "ns"));
-    Assert.assertEquals(
-        604800000000000L, DateTimeUtils.convertDurationStrToLongForTest(7, "d", "ns"));
-    Assert.assertEquals(
-        4233600000000000L, DateTimeUtils.convertDurationStrToLongForTest(7, "w", "ns"));
-    Assert.assertEquals(
-        18144000000000000L, DateTimeUtils.convertDurationStrToLongForTest(7, "mo", "ns"));
-    Assert.assertEquals(
-        220752000000000000L, DateTimeUtils.convertDurationStrToLongForTest(7, "y", "ns"));
-    Assert.assertEquals(7000000L, DateTimeUtils.convertDurationStrToLongForTest(7, "ms", "ns"));
-    Assert.assertEquals(7000L, DateTimeUtils.convertDurationStrToLongForTest(7, "us", "ns"));
-    Assert.assertEquals(7L, DateTimeUtils.convertDurationStrToLongForTest(7, "ns", "ns"));
+    // the epoch and later
+    assertEquals(0L, DateTimeUtils.getInstantWithPrecision("1970-01-01T00:00:00+00:00", "ms"));
+    assertEquals(0L, DateTimeUtils.getInstantWithPrecision("1970-01-01T00:00:00+00:00", "us"));
+    assertEquals(0L, DateTimeUtils.getInstantWithPrecision("1970-01-01T00:00:00+00:00", "ns"));
+    assertEquals(
+        500_000L, DateTimeUtils.getInstantWithPrecision("1970-01-01T00:00:00.5+00:00", "us"));
+    assertEquals(
+        1_546_413_207_689L,
+        DateTimeUtils.getInstantWithPrecision("2019-01-02T15:13:27.689123456+08:00", "ms"));
+    assertEquals(
+        1_546_413_207_689_123L,
+        DateTimeUtils.getInstantWithPrecision("2019-01-02T15:13:27.689123456+08:00", "us"));
+    assertEquals(
+        1_546_413_207_689_123_456L,
+        DateTimeUtils.getInstantWithPrecision("2019-01-02T15:13:27.689123456+08:00", "ns"));
+
+    // whole seconds before the epoch
+    assertEquals(-1_000L, DateTimeUtils.getInstantWithPrecision("1969-12-31T23:59:59+00:00", "ms"));
+    assertEquals(
+        -1_000_000L, DateTimeUtils.getInstantWithPrecision("1969-12-31T23:59:59+00:00", "us"));
+    assertEquals(
+        -1_000_000_000L, DateTimeUtils.getInstantWithPrecision("1969-12-31T23:59:59+00:00", "ns"));
+
+    // the largest instant that microsecond precision can hold, and the next one
+    assertEquals(
+        Long.MAX_VALUE,
+        DateTimeUtils.getInstantWithPrecision("294247-01-10T04:00:54.775807+00:00", "us"));
+    Assert.assertThrows(
+        ArithmeticException.class,
+        () -> DateTimeUtils.getInstantWithPrecision("294247-01-10T04:00:54.775808+00:00", "us"));
+  }
+
+  @Test
+  public void getInstantWithPrecisionBeforeEpochWithFractionTest() {
+    assertEquals(-500L, DateTimeUtils.getInstantWithPrecision("1969-12-31T23:59:59.5+00:00", "ms"));
+    assertEquals(
+        -500_000L, DateTimeUtils.getInstantWithPrecision("1969-12-31T23:59:59.5+00:00", "us"));
+    assertEquals(
+        -500_000_000L, DateTimeUtils.getInstantWithPrecision("1969-12-31T23:59:59.5+00:00", "ns"));
+    // the same instant written with a UTC+8 offset
+    assertEquals(
+        -500_000L, DateTimeUtils.getInstantWithPrecision("1970-01-01T07:59:59.5+08:00", "us"));
+
+    assertEquals(
+        -1L, DateTimeUtils.getInstantWithPrecision("1969-12-31T23:59:59.999999+00:00", "us"));
+    assertEquals(
+        -1_000_001L,
+        DateTimeUtils.getInstantWithPrecision("1969-12-31T23:59:58.999999+00:00", "us"));
+    assertEquals(
+        -1L, DateTimeUtils.getInstantWithPrecision("1969-12-31T23:59:59.999999999+00:00", "ns"));
+
+    // digits below the precision are rounded down, the same way for ms and us
+    assertEquals(
+        -1L, DateTimeUtils.getInstantWithPrecision("1969-12-31T23:59:59.999999+00:00", "ms"));
+    assertEquals(
+        -1_000_000L,
+        DateTimeUtils.getInstantWithPrecision("1969-12-31T23:59:59.000000001+00:00", "us"));
+  }
+
+  /** Datetime literals in SQL reach getInstantWithPrecision through this method. */
+  @Test
+  public void convertDatetimeStrToLongBeforeEpochWithFractionTest() {
+    assertEquals(
+        -500_000L,
+        DateTimeUtils.convertDatetimeStrToLong("1969-12-31T23:59:59.5Z", ZoneOffset.UTC, 0, "us"));
+    assertEquals(
+        -500_000L,
+        DateTimeUtils.convertDatetimeStrToLong("1969-12-31 23:59:59.5", ZoneOffset.UTC, 0, "us"));
+    // a 1970-01-01 local time in a UTC+8 session is still before the epoch
+    assertEquals(
+        -500_000L,
+        DateTimeUtils.convertDatetimeStrToLong(
+            "1970-01-01T07:59:59.500", ZoneOffset.ofHours(8), 0, "us"));
   }
 
   /** Test convert duration including natural month unit. Time includes: 1970-01-01 ~ 1970-12-01 */
