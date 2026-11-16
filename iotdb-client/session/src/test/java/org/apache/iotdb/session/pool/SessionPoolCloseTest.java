@@ -37,7 +37,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -103,6 +103,7 @@ public class SessionPoolCloseTest {
     CountDownLatch operationStarted = new CountDownLatch(1);
     CountDownLatch continueOperation = new CountDownLatch(1);
     CountDownLatch closeStarted = new CountDownLatch(1);
+    AtomicReference<Thread> closeThread = new AtomicReference<>();
     doAnswer(
             invocation -> {
               operationStarted.countDown();
@@ -128,12 +129,20 @@ public class SessionPoolCloseTest {
       Future<?> closing =
           executor.submit(
               () -> {
+                closeThread.set(Thread.currentThread());
                 closeStarted.countDown();
                 borrowed.close();
                 return null;
               });
       assertTrue(closeStarted.await(5, TimeUnit.SECONDS));
-      assertThrows(TimeoutException.class, () -> closing.get(1, TimeUnit.SECONDS));
+      long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+      while (!closing.isDone()
+          && closeThread.get().getState() != Thread.State.BLOCKED
+          && System.nanoTime() < deadline) {
+        Thread.yield();
+      }
+      assertFalse("close should wait for the in-flight operation", closing.isDone());
+      assertEquals(Thread.State.BLOCKED, closeThread.get().getState());
       continueOperation.countDown();
 
       assertSame(failure, operation.get(5, TimeUnit.SECONDS));
