@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
+import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.CheckpointFileUtils;
@@ -43,19 +44,20 @@ public class CheckpointRecoverUtils {
     // desc sort by version id
     CheckpointFileUtils.descSortByVersionId(checkpointFiles);
     // find last valid .checkpoint file and load checkpoints from it
-    long maxMemTableId = 0;
-    List<Checkpoint> checkpoints = null;
     for (File checkpointFile : checkpointFiles) {
       CheckpointReader reader = new CheckpointReader(checkpointFile);
-      maxMemTableId = reader.getMaxMemTableId();
-      checkpoints = reader.getCheckpoints();
-      if (!checkpoints.isEmpty()) {
-        break;
+      List<Checkpoint> checkpoints = reader.getCheckpoints();
+      // A file left by an older failed roll may have incremental records without a snapshot.
+      if (!checkpoints.isEmpty()
+          && checkpoints.get(0).getType() == CheckpointType.GLOBAL_MEMORY_TABLE_INFO) {
+        return recoverMemTableInfo(reader.getMaxMemTableId(), checkpoints);
       }
     }
-    if (checkpoints == null || checkpoints.isEmpty()) {
-      return new CheckpointInfo(0, Collections.emptyMap());
-    }
+    return new CheckpointInfo(0, Collections.emptyMap());
+  }
+
+  private static CheckpointInfo recoverMemTableInfo(
+      long maxMemTableId, List<Checkpoint> checkpoints) {
     // recover memTables information by checkpoints
     Map<Long, MemTableInfo> memTableId2Info = new HashMap<>();
     for (Checkpoint checkpoint : checkpoints) {

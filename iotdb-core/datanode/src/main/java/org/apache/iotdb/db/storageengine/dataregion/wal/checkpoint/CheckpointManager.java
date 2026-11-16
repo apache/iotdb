@@ -38,6 +38,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -75,6 +77,8 @@ public class CheckpointManager implements AutoCloseable {
   private long currentCheckPointFileVersion = 0;
   // current checkpoint file log writer, only updated by fsyncAndDeleteThread
   private ILogWriter currentLogWriter;
+  // size of the file before any incremental checkpoints are appended
+  private long initialCheckpointSize;
 
   // endregion
 
@@ -85,11 +89,13 @@ public class CheckpointManager implements AutoCloseable {
     if (!logDirFile.exists() && logDirFile.mkdirs()) {
       logger.info(StorageEngineMessages.CREATE_FOLDER_FOR_WAL_BUFFER, logDirectory, identifier);
     }
+    File initialFile =
+        SystemFileFactory.INSTANCE.getFile(
+            logDirectory, CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion));
     currentLogWriter =
-        new CheckpointWriter(
-            SystemFileFactory.INSTANCE.getFile(
-                logDirectory, CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion)));
-    logHeader();
+        initializeLogWriter(
+            initialFile, Files.exists(initialFile.toPath(), LinkOption.NOFOLLOW_LINKS));
+    initialCheckpointSize = currentLogWriter.size();
   }
 
   public List<MemTableInfo> activeOrPinnedMemTables() {
@@ -101,36 +107,15 @@ public class CheckpointManager implements AutoCloseable {
     }
   }
 
-  private void logHeader() {
-    infoLock.lock();
-    try {
-      // log max memTable id
-      ByteBuffer tmpBuffer = ByteBuffer.allocate(Long.BYTES);
-      tmpBuffer.putLong(maxMemTableId);
-      try {
-        currentLogWriter.write(tmpBuffer);
-      } catch (IOException e) {
-        logger.error(StorageEngineMessages.FAIL_TO_LOG_MAX_MEMTABLE_ID, maxMemTableId, e);
-        DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-      }
-      // log global memTables' info
-      makeGlobalInfoCP();
-    } finally {
-      infoLock.unlock();
-    }
-  }
-
-  /**
-   * Make checkpoint for global memTables info, this checkpoint only exists in the beginning of each
-   * checkpoint file.
-   */
-  private void makeGlobalInfoCP() {
+  /** Writes the recovery header and global snapshot while the checkpoint state is stable. */
+  private void writeInitialCheckpoint(ILogWriter writer) throws IOException {
+    writer.write(ByteBuffer.allocate(Long.BYTES).putLong(maxMemTableId));
     long start = System.nanoTime();
     List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
     memTableInfos.removeIf(MemTableInfo::isFlushed);
     Checkpoint checkpoint = new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, memTableInfos);
-    logByCachedByteBuffer(checkpoint);
-    fsyncCheckpointFile();
+    writeCheckpoint(writer, checkpoint);
+    writer.force();
     WRITING_METRICS.recordMakeCheckpointCost(checkpoint.getType(), System.nanoTime() - start);
   }
 
@@ -191,18 +176,23 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   private void logByCachedByteBuffer(Checkpoint checkpoint) {
+    try {
+      writeCheckpoint(currentLogWriter, checkpoint);
+    } catch (IOException e) {
+      logger.error(StorageEngineMessages.FAIL_TO_MAKE_CHECKPOINT, checkpoint, e);
+      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+    }
+  }
+
+  private void writeCheckpoint(ILogWriter writer, Checkpoint checkpoint) throws IOException {
     // make sure cached ByteBuffer has enough capacity
     int estimateSize = checkpoint.serializedSize();
     if (cachedByteBuffer == null || estimateSize > cachedByteBuffer.capacity()) {
       cachedByteBuffer = ByteBuffer.allocate(estimateSize);
     }
-    checkpoint.serialize(cachedByteBuffer);
-
     try {
-      currentLogWriter.write(cachedByteBuffer);
-    } catch (IOException e) {
-      logger.error(StorageEngineMessages.FAIL_TO_MAKE_CHECKPOINT, checkpoint, e);
-      DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
+      checkpoint.serialize(cachedByteBuffer);
+      writer.write(cachedByteBuffer);
     } finally {
       cachedByteBuffer.clear();
     }
@@ -223,19 +213,11 @@ public class CheckpointManager implements AutoCloseable {
             e);
         DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
         CommonDescriptor.getInstance().getConfig().handleUnrecoverableError(e);
+        return;
       }
 
       try {
-        if (tryRollingLogWriter()) {
-          // first log max memTable id and global memTables' info, then delete old checkpoint file
-          logHeader();
-          currentLogWriter.force();
-          File oldFile =
-              SystemFileFactory.INSTANCE.getFile(
-                  logDirectory,
-                  CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion - 1));
-          Files.delete(oldFile.toPath());
-        }
+        rollLogWriterIfNeeded();
       } catch (IOException e) {
         logger.error(
             StorageEngineMessages
@@ -250,17 +232,62 @@ public class CheckpointManager implements AutoCloseable {
     }
   }
 
-  private boolean tryRollingLogWriter() throws IOException {
-    if (currentLogWriter.size() < config.getCheckpointFileSizeThresholdInByte()) {
-      return false;
+  private void rollLogWriterIfNeeded() throws IOException {
+    long size = currentLogWriter.size();
+    // A global snapshot can exceed the threshold by itself. Wait for an incremental checkpoint.
+    if (size <= initialCheckpointSize || size < config.getCheckpointFileSizeThresholdInByte()) {
+      return;
     }
-    currentLogWriter.close();
-    currentCheckPointFileVersion++;
+    long nextVersion = currentCheckPointFileVersion + 1;
     File nextLogFile =
         SystemFileFactory.INSTANCE.getFile(
-            logDirectory, CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion));
-    currentLogWriter = new CheckpointWriter(nextLogFile);
-    return true;
+            logDirectory, CheckpointFileUtils.getLogFileName(nextVersion));
+    ILogWriter oldWriter = currentLogWriter;
+    currentLogWriter = initializeLogWriter(nextLogFile, false);
+    currentCheckPointFileVersion = nextVersion;
+    initialCheckpointSize = currentLogWriter.size();
+    oldWriter.close();
+    Files.deleteIfExists(oldWriter.getLogFile().toPath());
+  }
+
+  private CheckpointWriter initializeLogWriter(File file, boolean append) throws IOException {
+    // The .tmp suffix keeps a candidate out of checkpoint recovery, even after a crash.
+    Path candidate =
+        append
+            ? null
+            : Files.createTempFile(
+                file.toPath().toAbsolutePath().getParent(), file.getName(), ".tmp");
+    CheckpointWriter writer = null;
+    try {
+      writer = openCheckpointWriter(candidate == null ? file : candidate.toFile());
+      writeInitialCheckpoint(writer);
+      if (candidate != null) {
+        writer.publish(file);
+      }
+      return writer;
+    } catch (IOException | RuntimeException | Error e) {
+      if (writer != null) {
+        try {
+          writer.close();
+        } catch (IOException | RuntimeException | Error closeException) {
+          if (e != closeException) {
+            e.addSuppressed(closeException);
+          }
+        }
+      }
+      if (candidate != null) {
+        try {
+          Files.deleteIfExists(candidate);
+        } catch (IOException | RuntimeException | Error deleteException) {
+          e.addSuppressed(deleteException);
+        }
+      }
+      throw e;
+    }
+  }
+
+  CheckpointWriter openCheckpointWriter(File file) throws IOException {
+    return new CheckpointWriter(file);
   }
 
   // endregion
