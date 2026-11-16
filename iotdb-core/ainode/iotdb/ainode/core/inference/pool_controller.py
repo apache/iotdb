@@ -241,6 +241,11 @@ class PoolController:
             # The download runs in its own thread, so that tasks for other models and
             # stop() do not wait for it.
             self._tasks_waiting_for_download[model_id] = []
+            if model_info.weights_license_notice:
+                logger.warning(
+                    f"[Inference] Downloading the weights of model {model_id}. "
+                    f"{model_info.weights_license_notice}"
+                )
             threading.Thread(
                 target=self._download_model,
                 args=(model_id, device_id_list),
