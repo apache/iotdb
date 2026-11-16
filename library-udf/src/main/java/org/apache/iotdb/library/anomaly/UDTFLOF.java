@@ -40,6 +40,8 @@ public class UDTFLOF implements UDTF {
   private int dim;
   private static final String DEFAULT_METHOD = "default";
   private static final String METHOD_SERIES = "series";
+  private static final int DEFAULT_ACCESS_WINDOW_SIZE = 10000;
+  private static final int DEFAULT_SERIES_WINDOW_SIZE = 5;
   private String method = DEFAULT_METHOD;
   private int window;
 
@@ -123,6 +125,11 @@ public class UDTFLOF implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
+    String methodName = validator.getParameters().getStringOrDefault("method", DEFAULT_METHOD);
+    int defaultWindowSize =
+        METHOD_SERIES.equalsIgnoreCase(methodName)
+            ? DEFAULT_SERIES_WINDOW_SIZE
+            : DEFAULT_ACCESS_WINDOW_SIZE;
     validator.validateInputSeriesNumber(1, Integer.MAX_VALUE);
     for (int i = 0; i < validator.getParameters().getChildExpressionsSize(); i++) {
       validator.validateInputSeriesDataType(i, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
@@ -135,7 +142,7 @@ public class UDTFLOF implements UDTF {
         .validate(
             window -> (int) window > 0,
             LibraryUdfMessages.EXCEPTION_PARAMETER_WINDOW_SHOULD_BE_A_POSITIVE_INTEGER_54FB7DBB,
-            validator.getParameters().getIntOrDefault("window", 10000))
+            validator.getParameters().getIntOrDefault("window", defaultWindowSize))
         .validate(
             method -> isValidMethod((String) method),
             LibraryUdfMessages.EXCEPTION_METHOD_SHOULD_BE_DEFAULT_OR_SERIES_181EEECF,
@@ -149,14 +156,17 @@ public class UDTFLOF implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
+    this.method = parameters.getStringOrDefault("method", DEFAULT_METHOD);
+    int accessWindowSize =
+        this.method.equalsIgnoreCase(METHOD_SERIES)
+            ? DEFAULT_ACCESS_WINDOW_SIZE
+            : parameters.getIntOrDefault("window", DEFAULT_ACCESS_WINDOW_SIZE);
     configurations
-        .setAccessStrategy(
-            new SlidingSizeWindowAccessStrategy(parameters.getIntOrDefault("window", 10000)))
+        .setAccessStrategy(new SlidingSizeWindowAccessStrategy(accessWindowSize))
         .setOutputDataType(Type.DOUBLE);
     this.multipleK = parameters.getIntOrDefault("k", 3);
     this.dim = parameters.getChildExpressionsSize();
-    this.method = parameters.getStringOrDefault("method", DEFAULT_METHOD);
-    this.window = parameters.getIntOrDefault("window", 5);
+    this.window = parameters.getIntOrDefault("window", DEFAULT_SERIES_WINDOW_SIZE);
   }
 
   @Override

@@ -90,6 +90,7 @@ import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFAttributeNotProvidedException;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
@@ -320,16 +321,21 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
-  public void testLOFSeriesSkipsInvalidRows() throws Exception {
+  public void testLOFSeriesWindowKeepsBatchSizeAndSkipsInvalidRows() throws Exception {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("k", "1");
     attributes.put("method", "series");
+    attributes.put("window", "5");
     UDTFLOF lof = new UDTFLOF();
     UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
     RecordingPointCollector collector = new RecordingPointCollector();
+    UDTFConfigurations configurations = new UDTFConfigurations(ZoneId.systemDefault());
 
     lof.validate(new UDFParameterValidator(parameters));
-    lof.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    lof.beforeStart(parameters, configurations);
+    Assert.assertEquals(
+        10000,
+        ((SlidingSizeWindowAccessStrategy) configurations.getAccessStrategy()).getWindowSize());
     lof.transform(
         new SimpleRowWindow(
             new DoubleRow(1, 1.0),

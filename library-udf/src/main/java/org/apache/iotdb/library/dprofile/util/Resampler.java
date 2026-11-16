@@ -46,6 +46,7 @@ public class Resampler {
   private boolean hasCurrentTime;
   private long startTime;
   private long endTime; // start time (contained) and end time (not contained) of resampling
+  private final boolean hasEndTime;
   private boolean outer = true; // if to use outer interpolate
 
   public Resampler(long newPeriod, String aggregator, String interpolator) {
@@ -59,6 +60,7 @@ public class Resampler {
     this.interpolator = interpolator;
     this.startTime = startTime;
     this.endTime = endTime;
+    this.hasEndTime = endTime >= 0;
     this.currentTime = this.startTime;
     this.hasCurrentTime = startTime >= 0;
   }
@@ -67,14 +69,14 @@ public class Resampler {
   public void insert(long time, double value) {
     if (Double.isNaN(value)
         || (startTime > 0 && time < startTime)
-        || (endTime > 0 && time >= endTime)) {
+        || (hasEndTime && time >= endTime)) {
       return;
     }
     if (!hasCurrentTime) {
       currentTime = time;
       hasCurrentTime = true;
     }
-    while (time >= currentTime + newPeriod) {
+    while (canAdvanceCurrentTime() && time >= currentTime + newPeriod) {
       downSample();
       upSample();
       currentTime += newPeriod;
@@ -87,10 +89,17 @@ public class Resampler {
   public void flush() {
     do { // process data in the last window in first cycle
       downSample();
+      if (!canAdvanceCurrentTime()) {
+        break;
+      }
       currentTime += newPeriod;
-    } while (endTime >= currentTime);
+    } while (hasEndTime && endTime >= currentTime);
     outer = true;
     upSample();
+  }
+
+  private boolean canAdvanceCurrentTime() {
+    return currentTime <= Long.MAX_VALUE - newPeriod;
   }
 
   /** Upsampling. Interpolate at NaN points. */
@@ -105,7 +114,7 @@ public class Resampler {
         if (!outer && source.get(1).time < t) { // no enough data for inner interpolate
           break;
         }
-        if (endTime < 0 || t < endTime) { // no output for timestamp larger than end time
+        if (!hasEndTime || t < endTime) { // no output for timestamp larger than end time
           timeBuffer.push(t);
           valueBuffer.push(interpolate(t)); // interpolate
         }
