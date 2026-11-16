@@ -149,6 +149,28 @@ public class PipeSchemaRegionListenerManagerTest {
   }
 
   @Test
+  public void testLoadClosedListenerSnapshotCleansUnusedListener() throws IOException {
+    final SchemaRegionId schemaRegionId = new SchemaRegionId(Integer.MAX_VALUE - 13);
+    final File snapshotDir = temporaryFolder.newFolder();
+    final ISchemaRegion schemaRegion = mock(ISchemaRegion.class);
+    when(schemaRegion.getSchemaRegionId()).thenReturn(schemaRegionId);
+    when(schemaRegion.loadSnapshot(snapshotDir)).thenReturn(true);
+    final SchemaRegionStateMachine stateMachine = new SchemaRegionStateMachine(schemaRegion);
+    final SchemaRegionListeningQueue originalListener =
+        PipeDataNodeAgent.runtime().schemaListener(schemaRegionId);
+    originalListener.close();
+    Assert.assertTrue(originalListener.createSnapshot(snapshotDir));
+    PipeDataNodeAgent.runtime().clearSchemaRegionState(schemaRegionId);
+
+    try {
+      Assert.assertTrue(stateMachine.loadSnapshot(snapshotDir));
+      Assert.assertNull(PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegionId));
+    } finally {
+      PipeDataNodeAgent.runtime().clearSchemaRegionState(schemaRegionId);
+    }
+  }
+
+  @Test
   public void testSnapshotWithoutListenerClearsStaleFollowerQueue() throws Exception {
     assertSnapshotWithoutListenerClearsStaleQueue(false);
   }

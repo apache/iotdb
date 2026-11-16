@@ -158,6 +158,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
                   schemaRegion.getSchemaRegionId(), latestSnapshotRootDir);
       if (listener != null) {
         listener.loadSnapshot(latestSnapshotRootDir);
+        PipeDataNodeAgent.runtime().cleanupSchemaListenerIfUnused(schemaRegion.getSchemaRegionId());
         // We recompute the snapshot for pipe listener when loading snapshot
         // to recover the newest snapshot in cache
         listen2Snapshot4PipeListener(false);
