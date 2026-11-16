@@ -118,13 +118,17 @@ public abstract class ThriftService implements IService {
         // sleep 100ms for waiting the rpc server start.
         Thread.sleep(100);
       }
-    } catch (InterruptedException
-        | ClassNotFoundException
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new StartupException(this.getID().getName(), e.getMessage());
+    } catch (ClassNotFoundException
         | IllegalAccessException
         | InstantiationException
         | NoSuchMethodException
         | InvocationTargetException e) {
-      Thread.currentThread().interrupt();
+      // only an interruption re-sets the interrupt flag; a failed start (e.g. the port is in use,
+      // reported as IllegalAccessException) must not leave the calling thread interrupted, or the
+      // cleanup after it runs on an interrupted thread
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
 

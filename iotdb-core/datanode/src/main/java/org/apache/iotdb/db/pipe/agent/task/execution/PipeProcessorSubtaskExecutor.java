@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
+import com.google.common.annotations.VisibleForTesting;
+
 public class PipeProcessorSubtaskExecutor extends PipeSubtaskExecutor {
 
   public PipeProcessorSubtaskExecutor() {
@@ -30,5 +32,13 @@ public class PipeProcessorSubtaskExecutor extends PipeSubtaskExecutor {
         PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
         ThreadName.PIPE_PROCESSOR_EXECUTOR_POOL.getName(),
         false);
+  }
+
+  @VisibleForTesting
+  public PipeProcessorSubtaskExecutor(
+      final int corePoolSize,
+      final long workerThreadKeepAliveTimeInSeconds,
+      final String workingThreadName) {
+    super(corePoolSize, workingThreadName, null, false, workerThreadKeepAliveTimeInSeconds);
   }
 }

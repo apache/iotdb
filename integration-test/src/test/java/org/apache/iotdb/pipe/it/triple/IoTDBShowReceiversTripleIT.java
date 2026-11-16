@@ -44,6 +44,7 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
@@ -52,7 +53,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.itbase.runtime.ClusterTestResultSet.getNodeResultSets;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT3.class})
@@ -73,9 +77,13 @@ public class IoTDBShowReceiversTripleIT {
     setupConfig(senderEnv2);
     setupConfig(receiverEnv);
 
-    senderEnv1.initClusterEnvironment(1, 1);
-    senderEnv2.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 3);
+    // Independent clusters can start together. Await all three starts even if one fails so no
+    // startup task can outlive setup and race with teardown.
+    CompletableFuture.allOf(
+            CompletableFuture.runAsync(() -> senderEnv1.initClusterEnvironment(1, 1)),
+            CompletableFuture.runAsync(() -> senderEnv2.initClusterEnvironment(1, 1)),
+            CompletableFuture.runAsync(() -> receiverEnv.initClusterEnvironment(1, 3)))
+        .join();
   }
 
   private static void setupConfig(final BaseEnv env) {
@@ -98,6 +106,8 @@ public class IoTDBShowReceiversTripleIT {
     receiverEnv.cleanClusterEnvironment();
   }
 
+  // Route two senders to different DataNodes in one 1C3D receiver cluster; both SHOW RECEIVERS
+  // and the table information schema must aggregate the two active pipes and their node IDs.
   @Test
   public void testShowReceiversAggregatesMultipleSendersOnMultipleDataNodes() throws Exception {
     Assert.assertTrue(receiverEnv.getDataNodeWrapperList().size() >= 2);
@@ -188,65 +198,73 @@ public class IoTDBShowReceiversTripleIT {
       final String firstPipeName,
       final int firstReceiverDataNodeId,
       final String secondPipeName,
-      final int secondReceiverDataNodeId) {
-    Awaitility.await()
-        .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
-        .atMost(60L, TimeUnit.SECONDS)
-        .untilAsserted(
-            () ->
-                Assert.assertTrue(
-                    hasReceiversOnDifferentDataNodes(
-                        sql,
-                        sqlDialect,
-                        firstPipeName,
-                        firstReceiverDataNodeId,
-                        secondPipeName,
-                        secondReceiverDataNodeId)));
+      final int secondReceiverDataNodeId)
+      throws SQLException {
+    // Reuse the connection across polls; the running clusters do not change during this check.
+    try (final Connection connection =
+            receiverEnv.getConnection(
+                SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+        final Statement statement = connection.createStatement()) {
+      Awaitility.await()
+          .pollInSameThread()
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
+          .atMost(60L, TimeUnit.SECONDS)
+          .untilAsserted(
+              () ->
+                  Assert.assertTrue(
+                      hasReceiversOnDifferentDataNodes(
+                          statement,
+                          sql,
+                          firstPipeName,
+                          firstReceiverDataNodeId,
+                          secondPipeName,
+                          secondReceiverDataNodeId)));
+    }
   }
 
   private boolean hasReceiversOnDifferentDataNodes(
+      final Statement statement,
       final String sql,
-      final String sqlDialect,
       final String firstPipeName,
       final int firstReceiverDataNodeId,
       final String secondPipeName,
       final int secondReceiverDataNodeId)
       throws SQLException {
-    boolean hasFirstPipe = false;
-    boolean hasSecondPipe = false;
-    final Set<Integer> receiverDataNodeIds = new HashSet<>();
-    try (final Connection connection =
-            receiverEnv.getConnection(
-                SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
-        final Statement statement = connection.createStatement();
-        final ResultSet resultSet = statement.executeQuery(sql)) {
-      while (resultSet.next()) {
-        final String pipeIds = getString(resultSet, "PipeIDs", "pipe_ids");
-        if (!"DataNode".equals(getString(resultSet, "ReceiverNodeType", "receiver_node_type"))
-            || !"thrift".equals(getString(resultSet, "Protocol", "protocol"))
-            || pipeIds == null) {
-          continue;
+    try (final ResultSet clusterResult = statement.executeQuery(sql)) {
+      for (ResultSet resultSet : getNodeResultSets(clusterResult)) {
+        boolean hasFirstPipe = false;
+        boolean hasSecondPipe = false;
+        final Set<Integer> receiverDataNodeIds = new HashSet<>();
+        while (resultSet.next()) {
+          final String pipeIds = getString(resultSet, "PipeIDs", "pipe_ids");
+          if (!"DataNode".equals(getString(resultSet, "ReceiverNodeType", "receiver_node_type"))
+              || !"thrift".equals(getString(resultSet, "Protocol", "protocol"))
+              || pipeIds == null) {
+            continue;
+          }
+          final int receiverDataNodeId = getInt(resultSet, "ReceiverNodeId", "receiver_node_id");
+          if (receiverDataNodeId == firstReceiverDataNodeId
+              && pipeIds.contains(firstPipeName + "@")
+              && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
+              && getInt(resultSet, "PipeCount", "pipe_count") >= 1) {
+            hasFirstPipe = true;
+            receiverDataNodeIds.add(receiverDataNodeId);
+          }
+          if (receiverDataNodeId == secondReceiverDataNodeId
+              && pipeIds.contains(secondPipeName + "@")
+              && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
+              && getInt(resultSet, "PipeCount", "pipe_count") >= 1) {
+            hasSecondPipe = true;
+            receiverDataNodeIds.add(receiverDataNodeId);
+          }
         }
-        final int receiverDataNodeId = getInt(resultSet, "ReceiverNodeId", "receiver_node_id");
-        if (receiverDataNodeId == firstReceiverDataNodeId
-            && pipeIds.contains(firstPipeName + "@")
-            && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
-            && getInt(resultSet, "PipeCount", "pipe_count") >= 1) {
-          hasFirstPipe = true;
-          receiverDataNodeIds.add(receiverDataNodeId);
-        }
-        if (receiverDataNodeId == secondReceiverDataNodeId
-            && pipeIds.contains(secondPipeName + "@")
-            && getInt(resultSet, "ConnectionCount", "connection_count") >= 1
-            && getInt(resultSet, "PipeCount", "pipe_count") >= 1) {
-          hasSecondPipe = true;
-          receiverDataNodeIds.add(receiverDataNodeId);
+        if (!hasFirstPipe || !hasSecondPipe || receiverDataNodeIds.size() < 2) {
+          return false;
         }
       }
     }
-    return hasFirstPipe && hasSecondPipe && receiverDataNodeIds.size() >= 2;
+    return true;
   }
 
   private int getDataNodeId(final DataNodeWrapper targetDataNode) throws Exception {
@@ -268,20 +286,27 @@ public class IoTDBShowReceiversTripleIT {
   private static String getString(
       final ResultSet resultSet, final String treeColumnName, final String tableColumnName)
       throws SQLException {
-    try {
-      return resultSet.getString(treeColumnName);
-    } catch (final SQLException ignored) {
-      return resultSet.getString(tableColumnName);
-    }
+    return resultSet.getString(getColumnIndex(resultSet, treeColumnName, tableColumnName));
   }
 
   private static int getInt(
       final ResultSet resultSet, final String treeColumnName, final String tableColumnName)
       throws SQLException {
-    try {
-      return resultSet.getInt(treeColumnName);
-    } catch (final SQLException ignored) {
-      return resultSet.getInt(tableColumnName);
+    return resultSet.getInt(getColumnIndex(resultSet, treeColumnName, tableColumnName));
+  }
+
+  private static int getColumnIndex(
+      final ResultSet resultSet, final String treeColumnName, final String tableColumnName)
+      throws SQLException {
+    // SHOW RECEIVERS and information_schema.receivers expose different column names.
+    final ResultSetMetaData metadata = resultSet.getMetaData();
+    for (int column = 1; column <= metadata.getColumnCount(); column++) {
+      final String name = metadata.getColumnName(column);
+      if (treeColumnName.equals(name) || tableColumnName.equals(name)) {
+        return column;
+      }
     }
+    throw new AssertionError(
+        "Missing receiver column: " + treeColumnName + " / " + tableColumnName);
   }
 }

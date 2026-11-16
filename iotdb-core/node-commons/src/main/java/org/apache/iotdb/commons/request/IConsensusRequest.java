@@ -42,6 +42,14 @@ public interface IConsensusRequest {
   }
 
   /**
+   * Whether a consensus implementation may forward this write to another leader. Requests based on
+   * the local leader's runtime state must not be forwarded after that leader steps down.
+   */
+  default boolean isForwardable() {
+    return true;
+  }
+
+  /**
    * Returns whether this request materializes its bytes only when it is about to be sent, instead
    * of when it is handed over to the replication layer.
    *

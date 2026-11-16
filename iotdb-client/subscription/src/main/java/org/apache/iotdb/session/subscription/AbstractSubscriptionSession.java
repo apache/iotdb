@@ -241,7 +241,7 @@ abstract class AbstractSubscriptionSession {
     while (dataSet.hasNext()) {
       final RowRecord record = dataSet.next();
       final List<Field> fields = record.getFields();
-      if (fields.size() != 2) {
+      if (fields.size() < 2) {
         throw new SubscriptionException(
             String.format(
                 SubscriptionMessages

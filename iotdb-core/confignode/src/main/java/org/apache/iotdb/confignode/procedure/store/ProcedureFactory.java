@@ -382,11 +382,20 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_TOPIC_PROCEDURE:
         procedure = new DropTopicProcedure();
         break;
+      case DROP_TOPIC_WITH_RETAINED_PROGRESS_PROCEDURE:
+        procedure = new DropTopicProcedure(true);
+        break;
       case ALTER_TOPIC_PROCEDURE:
         procedure = new AlterTopicProcedure();
         break;
       case ALTER_TOPIC_WITH_ATTRIBUTES_PROCEDURE:
         procedure = new AlterTopicProcedure(true);
+        break;
+      case ALTER_TOPIC_WITH_RETAINED_PROGRESS_PROCEDURE:
+        procedure = new AlterTopicProcedure(false, true);
+        break;
+      case ALTER_TOPIC_WITH_ATTRIBUTES_AND_RETAINED_PROGRESS_PROCEDURE:
+        procedure = new AlterTopicProcedure(true, true);
         break;
       case TOPIC_META_SYNC_PROCEDURE:
         procedure = new TopicMetaSyncProcedure();
@@ -550,9 +559,17 @@ public class ProcedureFactory implements IProcedureFactory {
     } else if (procedure instanceof CreateTopicProcedure) {
       return ProcedureType.CREATE_TOPIC_PROCEDURE;
     } else if (procedure instanceof DropTopicProcedure) {
-      return ProcedureType.DROP_TOPIC_PROCEDURE;
+      return ((DropTopicProcedure) procedure).shouldSerializeRetainedProgressState()
+          ? ProcedureType.DROP_TOPIC_WITH_RETAINED_PROGRESS_PROCEDURE
+          : ProcedureType.DROP_TOPIC_PROCEDURE;
     } else if (procedure instanceof AlterTopicProcedure) {
-      return ((AlterTopicProcedure) procedure).shouldMergeUpdatedTopicAttributes()
+      final AlterTopicProcedure alterTopicProcedure = (AlterTopicProcedure) procedure;
+      if (alterTopicProcedure.shouldSerializeRetainedProgressState()) {
+        return alterTopicProcedure.shouldMergeUpdatedTopicAttributes()
+            ? ProcedureType.ALTER_TOPIC_WITH_ATTRIBUTES_AND_RETAINED_PROGRESS_PROCEDURE
+            : ProcedureType.ALTER_TOPIC_WITH_RETAINED_PROGRESS_PROCEDURE;
+      }
+      return alterTopicProcedure.shouldMergeUpdatedTopicAttributes()
           ? ProcedureType.ALTER_TOPIC_WITH_ATTRIBUTES_PROCEDURE
           : ProcedureType.ALTER_TOPIC_PROCEDURE;
     } else if (procedure instanceof TopicMetaSyncProcedure) {

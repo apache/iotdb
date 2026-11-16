@@ -45,14 +45,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -72,13 +75,15 @@ public class MemTableFlushTask {
 
   /* storage group name -> last time */
   private static final Map<String, Long> flushPointsCache = new ConcurrentHashMap<>();
-  private final Future<?> encodingTaskFuture;
-  private final Future<?> ioTaskFuture;
+  private final CompletableFuture<Void> subTaskFailure = new CompletableFuture<>();
+  private FlushSubTask encodingSubTask;
+  private FlushSubTask ioSubTask;
+  private final boolean encodingFasterThanIo = SystemInfo.getInstance().isEncodingFasterThanIo();
   private RestorableTsFileIOWriter writer;
 
   private final BlockingQueue<Object> encodingTaskQueue = new LinkedBlockingQueue<>();
   private final BlockingQueue<Object> ioTaskQueue =
-      (SystemInfo.getInstance().isEncodingFasterThanIo())
+      encodingFasterThanIo
           ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
           : new LinkedBlockingQueue<>();
 
@@ -118,8 +123,6 @@ public class MemTableFlushTask {
     this.storageGroup = storageGroup;
     this.dataRegionId = dataRegionId;
     this.ignoreAllNullRows = !isTableModel;
-    this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
-    this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
 
     long MAX_NUMBER_OF_POINTS_IN_CHUNK = config.getTargetChunkPointNum();
     long TARGET_CHUNK_SIZE = config.getTargetChunkSize();
@@ -138,9 +141,76 @@ public class MemTableFlushTask {
         writer.getFile().getName());
   }
 
+  /**
+   * Headroom of the queued chunk buffers over the raw data counted by {@code memSize}, as a
+   * fraction (5/2 = 2.5): the encoded data can be up to 1.25 times the raw values (variable-length
+   * integers take 5 bytes for an {@code int} and 10 for a {@code long}; the other encodings stay
+   * within about 6%), and the buffers grow by doubling, so their capacity can reach twice the
+   * encoded data.
+   */
+  private static final long CHUNK_BUFFER_HEADROOM_NUMERATOR = 5;
+
+  private static final long CHUNK_BUFFER_HEADROOM_DENOMINATOR = 2;
+
+  /**
+   * Temporary memory of a flush: the bounded IO queue holds up to {@code ioTaskQueueSize} encoded
+   * chunks of average size. With no more series than queue slots the queue can't hold more than the
+   * memtable, so the raw share is capped at {@code memSize}; without the cap a memtable of 3 series
+   * reserved 3.3 times its size, which can exceed the whole MemTable budget and make the reject
+   * threshold negative. The share is multiplied by 2.5 for the encoding expansion and the growth
+   * slack of the chunk buffers.
+   */
+  static long estimateTemporaryMemory(
+      long memSize, int seriesNumber, int ioTaskQueueSize, boolean encodingFasterThanIo) {
+    if (!encodingFasterThanIo || seriesNumber == 0) {
+      return 0;
+    }
+    long queuedShare =
+        seriesNumber <= ioTaskQueueSize ? memSize : memSize / seriesNumber * ioTaskQueueSize;
+    return queuedShare * CHUNK_BUFFER_HEADROOM_NUMERATOR / CHUNK_BUFFER_HEADROOM_DENOMINATOR;
+  }
+
   /** the function for flushing memtable. */
   @SuppressWarnings("squid:S3776")
   public void syncFlushMemTable() throws ExecutionException, InterruptedException {
+    long estimatedBytes =
+        estimateTemporaryMemory(
+            memTable.memSize(),
+            memTable.getSeriesNumber(),
+            config.getIoTaskQueueSizeForFlushing(),
+            encodingFasterThanIo);
+    try (SystemInfo.FlushMemoryReservation ignored =
+        SystemInfo.getInstance()
+            .reserveTemporaryMemoryForFlushing(
+                "Flush[" + storageGroup + "/" + dataRegionId + "/" + memTable.getMemTableId() + "]",
+                estimatedBytes)) {
+      encodingSubTask = new FlushSubTask(encodingTask);
+      ioSubTask = new FlushSubTask(ioTask);
+      try {
+        SUB_TASK_POOL_MANAGER.submit(encodingSubTask);
+        SUB_TASK_POOL_MANAGER.submit(ioSubTask);
+        doSyncFlushMemTable();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw e;
+      } finally {
+        // Future.cancel/get alone does not establish that a running task has exited.
+        encodingSubTask.cancel();
+        ioSubTask.cancel();
+        boolean interrupted = Thread.interrupted();
+        interrupted |= encodingSubTask.awaitExit();
+        interrupted |= ioSubTask.awaitExit();
+        encodingTaskQueue.clear();
+        ioTaskQueue.clear();
+        times = null;
+        if (interrupted) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
+  }
+
+  private void doSyncFlushMemTable() throws ExecutionException, InterruptedException {
     long avgSeriesPointsNum =
         memTable.getSeriesNumber() == 0
             ? 0
@@ -152,16 +222,6 @@ public class MemTableFlushTask {
         memTable.getTotalPointsNum(),
         avgSeriesPointsNum);
 
-    long estimatedTemporaryMemSize = 0L;
-    if (SystemInfo.getInstance().isEncodingFasterThanIo()) {
-      estimatedTemporaryMemSize =
-          memTable.getSeriesNumber() == 0
-              ? 0
-              : memTable.memSize()
-                  / memTable.getSeriesNumber()
-                  * config.getIoTaskQueueSizeForFlushing();
-      SystemInfo.getInstance().applyTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
-    }
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
@@ -207,21 +267,17 @@ public class MemTableFlushTask {
         sortTime);
     WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_SORT, sortTime);
 
-    try {
-      encodingTaskFuture.get();
-    } catch (InterruptedException | ExecutionException e) {
-      ioTaskFuture.cancel(true);
-      if (e instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
-      throw e;
-    }
-
-    ioTaskFuture.get();
+    CompletableFuture.anyOf(
+            subTaskFailure, CompletableFuture.allOf(encodingSubTask.finished, ioSubTask.finished))
+        .get();
 
     try {
       long writePlanIndicesStartTime = System.currentTimeMillis();
       writer.writePlanIndices();
+      if (writer.getEncryptParameter() != null && writer.getEncryptParameter().isTdePageAead()) {
+        // The file header and data must be durable before the WAL checkpoint can be released.
+        writer.getTsFileOutput().force();
+      }
       WRITING_METRICS.recordFlushCost(
           WritingMetrics.WRITE_PLAN_INDICES,
           System.currentTimeMillis() - writePlanIndicesStartTime);
@@ -230,9 +286,6 @@ public class MemTableFlushTask {
       throw new ExecutionException(e);
     }
 
-    if (estimatedTemporaryMemSize != 0) {
-      SystemInfo.getInstance().releaseTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
-    }
     SystemInfo.getInstance().setEncodingFasterThanIo(ioTime >= memSerializeTime);
 
     MetricService.getInstance()
@@ -258,14 +311,16 @@ public class MemTableFlushTask {
               storageGroup,
               writer.getFile().getName());
           while (true) {
-
+            if (encodingSubTask.isCancelled()) {
+              return;
+            }
             Object task;
             try {
               task = encodingTaskQueue.take();
             } catch (InterruptedException e1) {
               LOGGER.error(StorageEngineMessages.TAKE_TASK_INTO_IO_QUEUE_INTERRUPTED);
               Thread.currentThread().interrupt();
-              break;
+              throw new CompletionException(e1);
             }
             if (task instanceof StartFlushGroupIOTask || task instanceof EndChunkGroupIoTask) {
               try {
@@ -279,8 +334,8 @@ public class MemTableFlushTask {
                     storageGroup,
                     writer.getFile().getName(),
                     e);
-                // generally it is because the thread pool is shutdown so the task should be aborted
-                break;
+                Thread.currentThread().interrupt();
+                throw new CompletionException(e);
               }
             } else if (task instanceof TaskEnd) {
               break;
@@ -301,6 +356,7 @@ public class MemTableFlushTask {
           } catch (InterruptedException e) {
             LOGGER.error(StorageEngineMessages.PUT_TASK_INTO_IO_QUEUE_INTERRUPTED);
             Thread.currentThread().interrupt();
+            throw new CompletionException(e);
           }
 
           DataRegion.getNonSystemDatabaseName(storageGroup)
@@ -350,13 +406,16 @@ public class MemTableFlushTask {
             storageGroup,
             writer.getFile().getName());
         while (true) {
+          if (ioSubTask.isCancelled()) {
+            return;
+          }
           Object ioMessage = null;
           try {
             ioMessage = ioTaskQueue.take();
           } catch (InterruptedException e1) {
             LOGGER.error(StorageEngineMessages.TAKE_TASK_FROM_IO_QUEUE_INTERRUPTED);
             Thread.currentThread().interrupt();
-            break;
+            throw new CompletionException(e1);
           }
           long starTime = System.currentTimeMillis();
           try {
@@ -378,7 +437,7 @@ public class MemTableFlushTask {
                 memTable,
                 e);
             DataNodeExceptionMetrics.getInstance().recordSuspiciousDiskException(e);
-            return;
+            throw new UncheckedIOException(e);
           }
           long subTaskTime = System.currentTimeMillis() - starTime;
           ioTime += subTaskTime;
@@ -393,6 +452,72 @@ public class MemTableFlushTask {
         WRITING_METRICS.recordFlushTsFileSize(storageGroup, writer.getFile().length());
         WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_IO, ioTime);
       };
+
+  /** Tracks actual worker exit, including cancellation before the executor starts it. */
+  private final class FlushSubTask implements Runnable {
+    private final Runnable task;
+    private final CompletableFuture<Void> finished = new CompletableFuture<>();
+    private final CountDownLatch exited = new CountDownLatch(1);
+    private Thread runner;
+    private boolean cancelled;
+
+    private FlushSubTask(Runnable task) {
+      this.task = task;
+    }
+
+    @Override
+    public void run() {
+      synchronized (this) {
+        if (cancelled) {
+          return;
+        }
+        runner = Thread.currentThread();
+      }
+      try {
+        task.run();
+      } catch (Throwable failure) {
+        subTaskFailure.completeExceptionally(
+            failure instanceof CompletionException || failure instanceof UncheckedIOException
+                ? failure.getCause()
+                : failure);
+      } finally {
+        synchronized (this) {
+          runner = null;
+          finished.complete(null);
+          exited.countDown();
+        }
+      }
+    }
+
+    private synchronized boolean isCancelled() {
+      return cancelled;
+    }
+
+    private synchronized void cancel() {
+      cancelled = true;
+      if (runner != null) {
+        runner.interrupt();
+      } else {
+        finished.complete(null);
+        exited.countDown();
+      }
+    }
+
+    private boolean awaitExit() {
+      boolean interrupted = false;
+      while (true) {
+        try {
+          exited.await();
+          return interrupted;
+        } catch (InterruptedException e) {
+          // Cancellation has already interrupted the worker. It may still own buffers or the
+          // writer, so cleanup must wait for its actual exit before releasing the reservation.
+          // Restore the caller's interrupt flag after both workers have exited.
+          interrupted = true;
+        }
+      }
+    }
+  }
 
   static class TaskEnd {
 

@@ -299,6 +299,56 @@ public class LoadTsFileManagerSplitCoverageTest {
             5_000L));
   }
 
+  /**
+   * An aligned column whose values are all null in one page has to keep that page slot: the aligned
+   * reader pairs the pages of a value chunk with the pages of its time chunk by position, so a
+   * dropped page shifts every later value onto the wrong timestamp. Covers a page that is copied as
+   * it was read, a page that is split at a time partition boundary and a chunk that has to be
+   * re-encoded.
+   */
+  @Test
+  public void testAllNullPageKeepsItsPageSlot() throws Exception {
+    final List<long[][]> copiedPages = new ArrayList<>();
+    copiedPages.add(new long[][] {page(0, 9), page(10, 19), page(20, 29), page(100, 109)});
+    final List<long[][]> splitPages = new ArrayList<>();
+    splitPages.add(new long[][] {page(190, 209), page(210, 229)});
+    // A page copied as it was read plus a page that has to be decoded: here the empty page is
+    // written
+    // by the re-encoding path, which has to keep it as well.
+    final List<long[][]> mixedPages = new ArrayList<>();
+    mixedPages.add(new long[][] {page(0, 9), page(10, 19), page(90, 209)});
+
+    final List<DeviceSpec> devices = new ArrayList<>();
+    devices.add(
+        alignedDevice(
+            "null_page_copied",
+            ChunkOrder.CHUNK_MAJOR,
+            series("m0", TSDataType.INT64, NullMode.NONE, copiedPages),
+            series(
+                "m1", TSDataType.INT64, NullMode.NONE, copiedPages, new long[][] {page(10, 19)})));
+    devices.add(
+        alignedDevice(
+            "null_page_split",
+            ChunkOrder.CHUNK_MAJOR,
+            series("m0", TSDataType.INT64, NullMode.NONE, splitPages),
+            series(
+                "m1", TSDataType.INT64, NullMode.NONE, splitPages, new long[][] {page(190, 209)})));
+    devices.add(
+        alignedDevice(
+            "null_page_reencoded",
+            ChunkOrder.CHUNK_MAJOR,
+            series("m0", TSDataType.INT64, NullMode.NONE, mixedPages),
+            series(
+                "m1", TSDataType.INT64, NullMode.NONE, mixedPages, new long[][] {page(10, 19)})));
+    runScenario(
+        new Scenario(
+            "all-null-page",
+            FINE_PARTITION_INTERVAL,
+            devices,
+            new DispatchPlan(2, false, false),
+            400L));
+  }
+
   /** Non-aligned devices with 1..5 measurements, both chunk layouts and null-heavy series. */
   @Test
   public void testNonAlignedMeasurementMatrix() throws Exception {
@@ -1204,7 +1254,7 @@ public class LoadTsFileManagerSplitCoverageTest {
     for (int chunkIndex = 0; chunkIndex < series.chunks.size(); chunkIndex++) {
       for (final long[] pageRange : series.chunks.get(chunkIndex)) {
         for (long time = pageRange[0]; time <= pageRange[1]; time++) {
-          if (series.nullMode.isNull(time, chunkIndex)) {
+          if (series.isNull(time, chunkIndex)) {
             continue;
           }
           expected.add(new Object[] {time, valueFor(series.dataType, time)});
@@ -1293,7 +1343,7 @@ public class LoadTsFileManagerSplitCoverageTest {
     for (final long[] pageRange : series.chunks.get(chunkIndex)) {
       boolean wroteThisPage = false;
       for (long time = pageRange[0]; time <= pageRange[1]; time++) {
-        if (series.nullMode.isNull(time, chunkIndex)) {
+        if (series.isNull(time, chunkIndex)) {
           continue;
         }
         writeNonAlignedValue(chunkWriter, series.dataType, time, valueFor(series.dataType, time));
@@ -1335,7 +1385,7 @@ public class LoadTsFileManagerSplitCoverageTest {
               series.dataType,
               time,
               valueFor(series.dataType, time),
-              series.nullMode.isNull(time, chunkIndex));
+              series.isNull(time, chunkIndex));
         }
         alignedWriter.write(time);
       }
@@ -1639,9 +1689,14 @@ public class LoadTsFileManagerSplitCoverageTest {
   }
 
   private static final class SeriesSpec {
+    static final long[][] NO_NULL_RANGES = new long[0][];
+
     final String measurement;
     final TSDataType dataType;
     final NullMode nullMode;
+
+    /** Inclusive time ranges that are null on top of {@link #nullMode}. */
+    final long[][] nullRanges;
 
     /** Outer list = chunks; inner list = pages; each page = [startTime, endTime] inclusive. */
     final List<long[][]> chunks;
@@ -1651,10 +1706,32 @@ public class LoadTsFileManagerSplitCoverageTest {
         final TSDataType dataType,
         final NullMode nullMode,
         final List<long[][]> chunks) {
+      this(measurement, dataType, nullMode, chunks, NO_NULL_RANGES);
+    }
+
+    SeriesSpec(
+        final String measurement,
+        final TSDataType dataType,
+        final NullMode nullMode,
+        final List<long[][]> chunks,
+        final long[][] nullRanges) {
       this.measurement = measurement;
       this.dataType = dataType;
       this.nullMode = nullMode;
       this.chunks = chunks;
+      this.nullRanges = nullRanges;
+    }
+
+    boolean isNull(final long time, final int chunkIndex) {
+      if (nullMode.isNull(time, chunkIndex)) {
+        return true;
+      }
+      for (final long[] range : nullRanges) {
+        if (time >= range[0] && time <= range[1]) {
+          return true;
+        }
+      }
+      return false;
     }
   }
 
@@ -1743,6 +1820,16 @@ public class LoadTsFileManagerSplitCoverageTest {
       final NullMode nullMode,
       final List<long[][]> chunks) {
     return new SeriesSpec(measurement, dataType, nullMode, chunks);
+  }
+
+  /** A series whose points inside {@code nullRanges} are written as nulls. */
+  private static SeriesSpec series(
+      final String measurement,
+      final TSDataType dataType,
+      final NullMode nullMode,
+      final List<long[][]> chunks,
+      final long[][] nullRanges) {
+    return new SeriesSpec(measurement, dataType, nullMode, chunks, nullRanges);
   }
 
   private static DeviceSpec alignedDevice(

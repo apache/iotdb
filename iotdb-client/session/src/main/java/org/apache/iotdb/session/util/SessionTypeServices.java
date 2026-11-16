@@ -20,6 +20,7 @@ package org.apache.iotdb.session.util;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encoding.encoder.Encoder;
@@ -34,6 +35,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
 
@@ -275,6 +277,127 @@ final class SessionTypeServices {
                 };
           };
 
+  /**
+   * Writes a tablet column in the PLAIN layout that {@code TabletEncoder} sends. The fixed-width
+   * types produce the same bytes as {@code PlainEncoder} through {@link
+   * #TABLET_VALUE_ENCODER_SERVICE} (big-endian; a null repeats the last non-null value, 0 before
+   * the first one), but fill one buffer per column instead of making one {@code write(int)} call,
+   * with its capacity check, per byte. INT32, DATE and the binary types keep their fixed-length
+   * layout, because {@code PlainEncoder} writes INT32 as a var int.
+   */
+  private static final TypeService<TabletPlainValueWriter> TABLET_PLAIN_VALUE_WRITER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 ->
+                (tablet, columnIndex, outputStream) -> {
+                  int[] values = (int[]) tablet.getValues()[columnIndex];
+                  ByteBuffer buffer = ByteBuffer.allocate(tablet.getRowSize() * Integer.BYTES);
+                  for (int index = 0; index < tablet.getRowSize(); index++) {
+                    buffer.putInt(values[index]);
+                  }
+                  writeTo(buffer, outputStream);
+                };
+            case DATE ->
+                (tablet, columnIndex, outputStream) -> {
+                  LocalDate[] values = (LocalDate[]) tablet.getValues()[columnIndex];
+                  ByteBuffer buffer = ByteBuffer.allocate(tablet.getRowSize() * Integer.BYTES);
+                  for (int index = 0; index < tablet.getRowSize(); index++) {
+                    buffer.putInt(
+                        tablet.isNull(index, columnIndex)
+                            ? 0
+                            : DateUtils.parseDateExpressionToInt(values[index]));
+                  }
+                  writeTo(buffer, outputStream);
+                };
+            case INT64, TIMESTAMP ->
+                (tablet, columnIndex, outputStream) -> {
+                  long[] values = (long[]) tablet.getValues()[columnIndex];
+                  ByteBuffer buffer = ByteBuffer.allocate(tablet.getRowSize() * Long.BYTES);
+                  long lastNonNullValue = 0;
+                  for (int index = 0; index < tablet.getRowSize(); index++) {
+                    if (!tablet.isNull(index, columnIndex)) {
+                      lastNonNullValue = values[index];
+                    }
+                    buffer.putLong(lastNonNullValue);
+                  }
+                  writeTo(buffer, outputStream);
+                };
+            case FLOAT ->
+                (tablet, columnIndex, outputStream) -> {
+                  float[] values = (float[]) tablet.getValues()[columnIndex];
+                  ByteBuffer buffer = ByteBuffer.allocate(tablet.getRowSize() * Float.BYTES);
+                  float lastNonNullValue = 0.0f;
+                  for (int index = 0; index < tablet.getRowSize(); index++) {
+                    if (!tablet.isNull(index, columnIndex)) {
+                      lastNonNullValue = values[index];
+                    }
+                    // floatToIntBits like PlainEncoder, which collapses NaN payloads
+                    buffer.putInt(Float.floatToIntBits(lastNonNullValue));
+                  }
+                  writeTo(buffer, outputStream);
+                };
+            case DOUBLE ->
+                (tablet, columnIndex, outputStream) -> {
+                  double[] values = (double[]) tablet.getValues()[columnIndex];
+                  ByteBuffer buffer = ByteBuffer.allocate(tablet.getRowSize() * Double.BYTES);
+                  double lastNonNullValue = 0.0;
+                  for (int index = 0; index < tablet.getRowSize(); index++) {
+                    if (!tablet.isNull(index, columnIndex)) {
+                      lastNonNullValue = values[index];
+                    }
+                    // doubleToLongBits like PlainEncoder, which collapses NaN payloads
+                    buffer.putLong(Double.doubleToLongBits(lastNonNullValue));
+                  }
+                  writeTo(buffer, outputStream);
+                };
+            case BOOLEAN ->
+                (tablet, columnIndex, outputStream) -> {
+                  boolean[] values = (boolean[]) tablet.getValues()[columnIndex];
+                  byte[] bytes = new byte[tablet.getRowSize()];
+                  boolean lastNonNullValue = false;
+                  for (int index = 0; index < bytes.length; index++) {
+                    if (!tablet.isNull(index, columnIndex)) {
+                      lastNonNullValue = values[index];
+                    }
+                    bytes[index] = BytesUtils.boolToByte(lastNonNullValue);
+                  }
+                  outputStream.write(bytes, 0, bytes.length);
+                };
+            case TEXT, STRING, BLOB, OBJECT ->
+                (tablet, columnIndex, outputStream) -> {
+                  Binary[] values = (Binary[]) tablet.getValues()[columnIndex];
+                  try {
+                    for (int index = 0; index < tablet.getRowSize(); index++) {
+                      ReadWriteIOUtils.write(
+                          tablet.isNull(index, columnIndex) ? Binary.EMPTY_VALUE : values[index],
+                          outputStream);
+                    }
+                  } catch (IOException e) {
+                    throw new IllegalStateException(e);
+                  }
+                };
+            case ROW, UNKNOWN, VECTOR ->
+                (tablet, columnIndex, outputStream) -> {
+                  throw unsupportedTabletDataType(type.getTypeEnum());
+                };
+          };
+
+  /**
+   * Bytes per row of a column in the PLAIN layout of {@link #TABLET_PLAIN_VALUE_WRITER_SERVICE}, to
+   * pre-size the output. Binary types count only their length prefix, so that no values are read;
+   * the stream grows for their bytes.
+   */
+  private static final TypeService<Integer> TABLET_PLAIN_ROW_SIZE_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case BOOLEAN -> Byte.BYTES;
+            case INT32, FLOAT, DATE -> Integer.BYTES;
+            case INT64, DOUBLE, TIMESTAMP -> Long.BYTES;
+            case TEXT, STRING, BLOB, OBJECT -> Integer.BYTES;
+            // the writer refuses these types
+            case ROW, UNKNOWN, VECTOR -> 0;
+          };
+
   private static final TypeService<ValueListSorter> VALUE_LIST_SORTER_SERVICE =
       type ->
           switch (type.getTypeEnum()) {
@@ -353,6 +476,8 @@ final class SessionTypeServices {
     TABLET_COLUMN_OCCUPATION_CALCULATOR_SERVICE.check();
     TABLET_VALUE_WRITER_SERVICE.check();
     TABLET_VALUE_ENCODER_SERVICE.check();
+    TABLET_PLAIN_VALUE_WRITER_SERVICE.check();
+    TABLET_PLAIN_ROW_SIZE_SERVICE.check();
     VALUE_LIST_SORTER_SERVICE.check();
   }
 
@@ -378,6 +503,14 @@ final class SessionTypeServices {
     return TABLET_VALUE_ENCODER_SERVICE.call(Type.fromTsDataType(dataType));
   }
 
+  static TabletPlainValueWriter tabletPlainValueWriter(TSDataType dataType) {
+    return TABLET_PLAIN_VALUE_WRITER_SERVICE.call(Type.fromTsDataType(dataType));
+  }
+
+  static int tabletPlainRowSize(TSDataType dataType) {
+    return TABLET_PLAIN_ROW_SIZE_SERVICE.call(Type.fromTsDataType(dataType));
+  }
+
   static ValueListSorter valueListSorter(TSDataType dataType) {
     return VALUE_LIST_SORTER_SERVICE.call(Type.fromTsDataType(dataType));
   }
@@ -389,13 +522,17 @@ final class SessionTypeServices {
     return ((String) value).getBytes(TSFileConfig.STRING_CHARSET);
   }
 
+  private static void writeTo(ByteBuffer buffer, ByteArrayOutputStream outputStream) {
+    outputStream.write(buffer.array(), 0, buffer.position());
+  }
+
   private static IoTDBConnectionException unsupportedDataType(Object dataType) {
     return new IoTDBConnectionException(Session.MSG_UNSUPPORTED_DATA_TYPE + dataType);
   }
 
   private static UnSupportedDataTypeException unsupportedTabletDataType(Object dataType) {
     return new UnSupportedDataTypeException(
-        String.format("Data type %s is not supported.", dataType));
+        String.format(SessionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
   }
 
   private static UnSupportedDataTypeException unsupportedValueListDataType(Object dataType) {
@@ -426,6 +563,11 @@ final class SessionTypeServices {
   interface TabletValueEncoder {
     void encode(
         Tablet tablet, int columnIndex, Encoder encoder, ByteArrayOutputStream outputStream);
+  }
+
+  @FunctionalInterface
+  interface TabletPlainValueWriter {
+    void write(Tablet tablet, int columnIndex, ByteArrayOutputStream outputStream);
   }
 
   @FunctionalInterface

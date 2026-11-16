@@ -87,6 +87,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   private final int thriftDefaultBufferSize;
 
   private final int thriftMaxFrameSize;
+  private final int thriftMaxReusableBufferSize;
 
   private final int connectionTimeoutInMs;
 
@@ -163,6 +164,49 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       boolean enableRPCCompression,
       String version) {
 
+    return createNodeSupplier(
+        endPointList,
+        seedNodes,
+        executorService,
+        userName,
+        password,
+        zoneId,
+        thriftDefaultBufferSize,
+        thriftMaxFrameSize,
+        connectionTimeoutInMs,
+        useSSL,
+        trustStore,
+        trustStorePwd,
+        keyStore,
+        keyStorePwd,
+        sslProtocol,
+        enableRPCCompression,
+        version,
+        Integer.MAX_VALUE);
+  }
+
+  /** Bootstrap discovery using the owning Session's buffer reuse threshold. */
+  @SuppressWarnings("unsafeThreadSchedule")
+  public static NodesSupplier createNodeSupplier(
+      List<TEndPoint> endPointList,
+      List<TEndPoint> seedNodes,
+      ScheduledExecutorService executorService,
+      String userName,
+      String password,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      int connectionTimeoutInMs,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol,
+      boolean enableRPCCompression,
+      String version,
+      int thriftMaxReusableBufferSize) {
+
     NodesSupplier nodesSupplier =
         new NodesSupplier(
             endPointList,
@@ -181,7 +225,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
             keyStorePwd,
             sslProtocol,
             enableRPCCompression,
-            version);
+            version,
+            thriftMaxReusableBufferSize);
 
     // call executorService.scheduleAtFixedRate here in a separate line
     // instead of the constructor to prevent leaking the "this" reference to
@@ -208,7 +253,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       String keyStorePwd,
       String sslProtocol,
       boolean enableRPCCompression,
-      String version) {
+      String version,
+      int thriftMaxReusableBufferSize) {
     this.seedNodes =
         Collections.unmodifiableList(
             seedNodes.stream().distinct().map(TEndPoint::deepCopy).collect(Collectors.toList()));
@@ -228,6 +274,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     this.version = version;
   }
@@ -351,7 +398,11 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   private ThriftConnection createConnection(TEndPoint endPoint) {
     ThriftConnection current =
         new ThriftConnection(
-            endPoint, thriftDefaultBufferSize, thriftMaxFrameSize, connectionTimeoutInMs);
+            endPoint,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            thriftMaxReusableBufferSize);
     synchronized (clientLock) {
       if (closed) {
         return null;

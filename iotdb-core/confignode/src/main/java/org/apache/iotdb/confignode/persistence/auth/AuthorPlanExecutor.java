@@ -59,6 +59,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.auth.utils.AuthUtils.constructAuthorityScope;
@@ -85,7 +86,10 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
       if (status) {
         result = getUserPermissionInfo(username, ModelType.ALL);
 
-        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.SUCCESS_STATUS,
+                ConfigNodeMessages.EXCEPTION_LOGIN_SUCCESSFULLY_1C2EF670));
       } else {
         result = AuthUtils.generateEmptyPermissionInfoResp();
       }
@@ -482,7 +486,10 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
       if (role == null) {
         result.setStatus(
             RpcUtils.getStatus(
-                TSStatusCode.ROLE_NOT_EXIST, "No such role : " + plan.getRoleName()));
+                TSStatusCode.ROLE_NOT_EXIST,
+                String.format(
+                    ConfigNodeMessages.EXCEPTION_NO_SUCH_ROLE_ARG_42B804EB,
+                    Objects.toString(plan.getRoleName()))));
         return result;
       }
       final Iterator<String> itr = userList.iterator();
@@ -535,7 +542,11 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     final Role role = authorizer.getRole(plan.getRoleName());
     if (role == null) {
       result.setStatus(
-          RpcUtils.getStatus(TSStatusCode.ROLE_NOT_EXIST, "No such role : " + plan.getRoleName()));
+          RpcUtils.getStatus(
+              TSStatusCode.ROLE_NOT_EXIST,
+              String.format(
+                  ConfigNodeMessages.EXCEPTION_NO_SUCH_ROLE_ARG_42B804EB,
+                  Objects.toString(plan.getRoleName()))));
       result.setMemberInfo(permissionInfo);
       return result;
     }
@@ -678,7 +689,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     } catch (IOException e) {
       resp.setStatus(
           RpcUtils.getStatus(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Get error when serialize pattern tree."));
+              TSStatusCode.EXECUTE_STATEMENT_ERROR,
+              ConfigNodeMessages.EXCEPTION_GET_ERROR_WHEN_SERIALIZE_PATTERN_TREE_9545A29E));
       return resp;
     }
     resp.setPathPatternTree(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));

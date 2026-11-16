@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.util.Version;
@@ -53,9 +54,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -97,6 +100,78 @@ public class SessionTest {
     if (null != session) {
       session.close();
     }
+  }
+
+  @Test
+  public void testCloseAttemptsEveryConnectionAndCleansUpAfterFailure() throws Exception {
+    SessionConnection redirectedConnection = Mockito.mock(SessionConnection.class);
+    IoTDBConnectionException defaultCloseException = new IoTDBConnectionException("default");
+    IoTDBConnectionException redirectedCloseException = new IoTDBConnectionException("redirected");
+    Mockito.doThrow(defaultCloseException).when(sessionConnection).close();
+    Mockito.doThrow(redirectedCloseException).when(redirectedConnection).close();
+
+    Map<TEndPoint, SessionConnection> connections = new LinkedHashMap<>();
+    connections.put(new TEndPoint("default", 1), sessionConnection);
+    connections.put(new TEndPoint("redirected", 2), redirectedConnection);
+    Whitebox.setInternalState(session, "endPointToSessionConnection", connections);
+    Whitebox.setInternalState(session, "enableRedirection", true);
+    Whitebox.setInternalState(session, "isClosed", false);
+
+    ScheduledExecutorService executorService = Mockito.mock(ScheduledExecutorService.class);
+    INodeSupplier availableNodes = Mockito.mock(INodeSupplier.class);
+    Whitebox.setInternalState(session, "executorService", executorService);
+    Whitebox.setInternalState(session, "availableNodes", availableNodes);
+
+    try {
+      session.close();
+      fail("Expected the first connection close failure to be propagated");
+    } catch (IoTDBConnectionException e) {
+      Assert.assertSame(defaultCloseException, e);
+      Assert.assertArrayEquals(
+          new Throwable[] {redirectedCloseException}, defaultCloseException.getSuppressed());
+    }
+
+    Mockito.verify(sessionConnection).close();
+    Mockito.verify(redirectedConnection).close();
+    Assert.assertTrue(connections.isEmpty());
+    Assert.assertNull(Whitebox.getInternalState(session, "defaultSessionConnection"));
+    Assert.assertNull(Whitebox.getInternalState(session, "executorService"));
+    Assert.assertNull(Whitebox.getInternalState(session, "availableNodes"));
+    Mockito.verify(executorService).shutdown();
+    Mockito.verify(availableNodes).close();
+
+    session.close();
+    Mockito.verify(sessionConnection).close();
+    Mockito.verify(redirectedConnection).close();
+  }
+
+  @Test
+  public void testCloseClosesQueryRedirectedConnections() throws Exception {
+    SessionConnection redirectedConnection = Mockito.mock(SessionConnection.class);
+    Map<TEndPoint, SessionConnection> connections = new LinkedHashMap<>();
+    connections.put(new TEndPoint("default", 1), sessionConnection);
+    connections.put(new TEndPoint("redirected", 2), redirectedConnection);
+    Whitebox.setInternalState(session, "endPointToSessionConnection", connections);
+    Whitebox.setInternalState(session, "enableRedirection", false);
+    Whitebox.setInternalState(session, "enableQueryRedirection", true);
+    Whitebox.setInternalState(session, "isClosed", false);
+
+    session.close();
+
+    Mockito.verify(sessionConnection).close();
+    Mockito.verify(redirectedConnection).close();
+    Assert.assertTrue(connections.isEmpty());
+  }
+
+  @Test
+  public void testCloseDoesNotCloseBorrowedNodeSupplier() throws Exception {
+    INodeSupplier availableNodes = Mockito.mock(INodeSupplier.class);
+    Whitebox.setInternalState(session, "availableNodes", availableNodes);
+    Whitebox.setInternalState(session, "isClosed", false);
+
+    session.close();
+
+    Mockito.verify(availableNodes, Mockito.never()).close();
   }
 
   @Test

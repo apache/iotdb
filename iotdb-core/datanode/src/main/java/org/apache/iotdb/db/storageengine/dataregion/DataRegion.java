@@ -25,7 +25,6 @@ import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -73,6 +72,7 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
@@ -211,6 +211,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -283,6 +284,7 @@ public class DataRegion implements IDataRegionForQuery {
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
+  private static final String LOAD_PENDING_SUFFIX = ".load-pending";
 
   /**
    * A read write lock for guaranteeing concurrent safety when accessing all fields in this class
@@ -372,7 +374,7 @@ public class DataRegion implements IDataRegionForQuery {
               .build();
 
   /** database info for mem control. */
-  private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
+  private final DataRegionInfo dataRegionInfo;
 
   /** whether it's ready from recovery. */
   private boolean isReady = false;
@@ -431,6 +433,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionIdString = dataRegionIdString;
     this.dataRegionId = new DataRegionId(Integer.parseInt(dataRegionIdString));
     this.databaseName = databaseName;
+    this.dataRegionInfo = new DataRegionInfo(this);
     this.fileFlushPolicy = fileFlushPolicy;
     this.isTableModel = isTableModelDatabase(databaseName);
     this.delayAnalyzer =
@@ -512,6 +515,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.isTableModel = isTableModelDatabase(databaseName);
     this.dataRegionIdString = dataRegionIdString;
     this.dataRegionId = new DataRegionId(Integer.parseInt(this.dataRegionIdString));
+    this.dataRegionInfo = new DataRegionInfo(this);
     this.tsFileManager = new TsFileManager(databaseName, dataRegionIdString, "");
     this.partitionMaxFileVersions = new HashMap<>();
     partitionMaxFileVersions.put(0L, 0L);
@@ -952,6 +956,14 @@ public class DataRegion implements IDataRegionForQuery {
           } else {
             // some TsFileResource may be being persisted when the system crashed, try recovering
             // such resources
+            final File[] pendingLoads =
+                fsFactory.listFilesBySuffix(
+                    partitionFolder.getAbsolutePath(), TSFILE_SUFFIX + LOAD_PENDING_SUFFIX);
+            if (pendingLoads != null) {
+              for (File pendingLoad : pendingLoads) {
+                deleteUnpublishedLoad(pendingLoad);
+              }
+            }
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
             String partitionName = partitionFolder.getName();
             File[] tsFilesInThisFolder =
@@ -993,6 +1005,21 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  private void deleteUnpublishedLoad(File pendingFile) throws IOException {
+    final File targetFile =
+        new File(
+            pendingFile
+                .getPath()
+                .substring(0, pendingFile.getPath().length() - LOAD_PENDING_SUFFIX.length()));
+    if (!targetFile.exists()) {
+      Files.deleteIfExists(new File(targetFile + RESOURCE_SUFFIX).toPath());
+      Files.deleteIfExists(ModificationFileV1.getNormalMods(targetFile).toPath());
+      Files.deleteIfExists(ModificationFile.getExclusiveMods(targetFile).toPath());
+    }
+    // Keep the pending file until all sidecars are removed, so interrupted cleanup is retryable.
+    Files.deleteIfExists(pendingFile.toPath());
+  }
+
   /** check if the tsfile's time is smaller than system current time. */
   private void checkTsFileTime(File tsFile, long currentTime) throws DataRegionException {
     String[] items = tsFile.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
@@ -1018,7 +1045,8 @@ public class DataRegion implements IDataRegionForQuery {
   private WALRecoverListener recoverUnsealedTsFile(
       TsFileResource unsealedTsFile, DataRegionRecoveryContext context, boolean isSeq) {
     UnsealedTsFileRecoverPerformer recoverPerformer =
-        new UnsealedTsFileRecoverPerformer(unsealedTsFile, isSeq, context.recoverPerformers::add);
+        new UnsealedTsFileRecoverPerformer(
+            unsealedTsFile, isSeq, isTableModel, context.recoverPerformers::add);
     // remember to close UnsealedTsFileRecoverPerformer
     return WALRecoverManager.getInstance().addRecoverPerformer(recoverPerformer);
   }
@@ -1073,7 +1101,9 @@ public class DataRegion implements IDataRegionForQuery {
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
-        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
+        TsFileProcessorInfo tsFileProcessorInfo =
+            new TsFileProcessorInfo(
+                dataRegionInfo, tsFileProcessor.getTsFileResource().getTsFilePath());
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
         this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
         // get chunkMetadata size
@@ -1687,7 +1717,7 @@ public class DataRegion implements IDataRegionForQuery {
         logger.debug(
             StorageEngineMessages.STORAGE_LOG_WON_T_INSERT_TABLET_BECAUSE_C2DC8032,
             insertTabletNode.getSearchIndex(),
-            "insertTabletNode allMeasurementFailed");
+            StorageEngineMessages.MESSAGE_INSERTTABLETNODE_ALLMEASUREMENTFAILED_A147C989);
       }
       return true;
     }
@@ -1850,7 +1880,8 @@ public class DataRegion implements IDataRegionForQuery {
                   logger.error(
                       StorageEngineMessages
                           .STORAGE_LOG_REMOTE_REQUEST_CONFIG_NODE_FAILED_THAT_JUDGMENT_IF_TABLE_25FE3602,
-                      e.getMessage());
+                      e.getMessage(),
+                      e);
                   CommonMetadataUtils.throwTableNotExistsException(getDatabaseName(), tableName);
                   return null; // unreachable, throwTableNotExistsException always throws
                 }
@@ -2232,9 +2263,6 @@ public class DataRegion implements IDataRegionForQuery {
             StorageEngineMessages
                 .STORAGE_LOG_DISK_SPACE_IS_INSUFFICIENT_WHEN_CREATING_TSFILE_PROCESSOR_4032BAF0,
             e);
-        CommonDescriptor.getInstance()
-            .getConfig()
-            .setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
         throw new WriteProcessException(e.getMessage(), e.getErrorCode(), true);
       } catch (IOException e) {
         if (retryCnt < 3) {
@@ -2322,7 +2350,9 @@ public class DataRegion implements IDataRegionForQuery {
             this::flushCallback,
             sequence);
 
-    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
+    TsFileProcessorInfo tsFileProcessorInfo =
+        new TsFileProcessorInfo(
+            dataRegionInfo, tsFileProcessor.getTsFileResource().getTsFilePath());
     tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
 
@@ -4831,87 +4861,120 @@ public class DataRegion implements IDataRegionForQuery {
           targetFile.getAbsolutePath());
     }
 
-    LoadTsFileRateLimiter.getInstance().acquire(tsFileResource.getTsFile().length());
+    LoadTsFileRateLimiter.getInstance().acquire(tsFileToLoad.length());
 
     // move file from sync dir to data dir
     if (!targetFile.getParentFile().exists()) {
       targetFile.getParentFile().mkdirs();
     }
-    try {
-      if (deleteOriginFile) {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.moveFile(tsFileToLoad, targetFile);
-              return null;
-            });
-      } else {
-        // The staged bytes have to stay for a replica that has not applied this command yet, so
-        // they cannot be moved. A sealed TsFile is never written again, so a hard link gives this
-        // region its own path to the very same bytes instead of a second copy of them; the resource
-        // file below is updated by the load and is still copied.
-        RetryUtils.retryOnException(
-            () -> {
-              LoadUtil.transferFile(tsFileToLoad, targetFile, true);
-              return null;
-            });
-      }
-    } catch (final IOException e) {
-      logger.warn(
-          StorageEngineMessages
-              .STORAGE_LOG_FILE_RENAMING_FAILED_WHEN_LOADING_TSFILE_ORIGIN_TARGET_28E43D85,
-          tsFileToLoad.getAbsolutePath(),
-          targetFile.getAbsolutePath(),
-          e);
-      throw new LoadFileException(
-          String.format(
-              StorageEngineMessages
-                  .STORAGE_EXCEPTION_FILE_RENAMING_FAILED_WHEN_LOADING_TSFILE_ORIGIN_S_TARGET_37BDA16F,
-              tsFileToLoad.getAbsolutePath(),
-              targetFile.getAbsolutePath(),
-              e.getMessage()));
-    }
-
+    // Recovery only discovers names ending in .tsfile. Keep the data invisible until its resource
+    // and every deletion are installed, including when hard-link creation falls back to a copy.
+    final File pendingFile = new File(targetFile + LOAD_PENDING_SUFFIX);
     final File resourceFileToLoad =
         fsFactory.getFile(tsFileToLoad.getAbsolutePath() + RESOURCE_SUFFIX);
     final File targetResourceFile =
         fsFactory.getFile(targetFile.getAbsolutePath() + RESOURCE_SUFFIX);
+    boolean loadPublished = false;
     try {
-      if (deleteOriginFile) {
+      try {
+        if (pendingFile.exists()) {
+          deleteUnpublishedLoad(pendingFile);
+        }
         RetryUtils.retryOnException(
             () -> {
-              FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
+              LoadUtil.transferFile(tsFileToLoad, pendingFile, true);
               return null;
             });
-      } else {
-        RetryUtils.retryOnException(
-            () -> {
-              Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
-              return null;
-            });
+      } catch (final IOException e) {
+        logger.warn(
+            StorageEngineMessages
+                .STORAGE_LOG_FILE_RENAMING_FAILED_WHEN_LOADING_TSFILE_ORIGIN_TARGET_28E43D85,
+            tsFileToLoad.getAbsolutePath(),
+            targetFile.getAbsolutePath(),
+            e);
+        throw new LoadFileException(
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_FILE_RENAMING_FAILED_WHEN_LOADING_TSFILE_ORIGIN_S_TARGET_37BDA16F,
+                tsFileToLoad.getAbsolutePath(),
+                targetFile.getAbsolutePath(),
+                e.getMessage()));
       }
-    } catch (final IOException e) {
-      logger.warn(
-          StorageEngineMessages
-              .STORAGE_LOG_FILE_RENAMING_FAILED_WHEN_LOADING_RESOURCE_FILE_ORIGIN_TARGET_9C22DDF3,
-          resourceFileToLoad.getAbsolutePath(),
-          targetResourceFile.getAbsolutePath(),
-          e);
-      throw new LoadFileException(
-          String.format(
-              StorageEngineMessages
-                  .STORAGE_EXCEPTION_FILE_RENAMING_FAILED_WHEN_LOADING_RESOURCE_FILE_ORIGIN_S_9622AA6D,
-              resourceFileToLoad.getAbsolutePath(),
-              targetResourceFile.getAbsolutePath(),
-              e.getMessage()));
+
+      try {
+        RetryUtils.retryOnException(
+            () -> {
+              Files.copy(
+                  resourceFileToLoad.toPath(),
+                  targetResourceFile.toPath(),
+                  StandardCopyOption.REPLACE_EXISTING);
+              return null;
+            });
+      } catch (final IOException e) {
+        logger.warn(
+            StorageEngineMessages
+                .STORAGE_LOG_FILE_RENAMING_FAILED_WHEN_LOADING_RESOURCE_FILE_ORIGIN_TARGET_9C22DDF3,
+            resourceFileToLoad.getAbsolutePath(),
+            targetResourceFile.getAbsolutePath(),
+            e);
+        throw new LoadFileException(
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_FILE_RENAMING_FAILED_WHEN_LOADING_RESOURCE_FILE_ORIGIN_S_9622AA6D,
+                resourceFileToLoad.getAbsolutePath(),
+                targetResourceFile.getAbsolutePath(),
+                e.getMessage()));
+      }
+
+      // Keep all source files intact until the complete destination is published.
+      loadModFile(tsFileToLoad, targetFile, false, tsFileResource);
+      try {
+        Files.move(pendingFile.toPath(), targetFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
+      } catch (IOException e) {
+        throw new LoadFileException(e);
+      }
+      loadPublished = true;
+    } finally {
+      if (!loadPublished && pendingFile.exists()) {
+        try {
+          deleteUnpublishedLoad(pendingFile);
+        } catch (IOException e) {
+          logger.warn(StorageEngineMessages.FAILED_TO_DELETE_FILE_OR_DIR, pendingFile, e);
+        }
+      }
     }
 
-    loadModFile(tsFileToLoad, targetFile, deleteOriginFile, tsFileResource);
+    // Only published mods belong in FileMetrics. Also replace any cached source-side handle.
+    tsFileResource.setExclusiveModFile(ModificationFile.getExclusiveMods(tsFileResource));
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
         .listenToTsFile(dataRegionId.getId(), databaseName, tsFileResource, true);
 
     tsFileManager.add(tsFileResource, false);
+
+    if (deleteOriginFile) {
+      for (File sourceFile :
+          new File[] {
+            tsFileToLoad,
+            resourceFileToLoad,
+            ModificationFileV1.getNormalMods(tsFileToLoad),
+            ModificationFile.getExclusiveMods(tsFileToLoad)
+          }) {
+        try {
+          RetryUtils.retryOnException(
+              () -> {
+                Files.deleteIfExists(sourceFile.toPath());
+                return null;
+              });
+        } catch (IOException e) {
+          // The installed TsFile is already visible and registered; source cleanup cannot roll it
+          // back.
+          logger.warn(StorageEngineMessages.FAILED_TO_DELETE_FILE_OR_DIR, sourceFile, e);
+          break;
+        }
+      }
+    }
 
     return true;
   }
@@ -4925,7 +4988,9 @@ public class DataRegion implements IDataRegionForQuery {
       final File oldTargetModFile = ModificationFileV1.getNormalMods(targetTsFile);
       moveModFile(oldModFileToLoad, oldTargetModFile, deleteOriginFile);
       try {
-        tsFileResource.upgradeModFile(upgradeModFileThreadPool);
+        // Publishing must wait for a successful conversion; a background failure must not be
+        // swallowed by getExclusiveModFile and expose an incomplete deletion set after restart.
+        tsFileResource.upgradeModFile(null, false);
       } catch (IOException e) {
         throw new LoadFileException(e);
       }
@@ -4933,8 +4998,6 @@ public class DataRegion implements IDataRegionForQuery {
       final File newTargetModFile = ModificationFile.getExclusiveMods(targetTsFile);
       moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
     }
-    // force update mod file metrics
-    tsFileResource.getExclusiveModFile();
   }
 
   @SuppressWarnings("java:S2139")
@@ -5159,7 +5222,7 @@ public class DataRegion implements IDataRegionForQuery {
                   RpcUtils.getStatus(
                       TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
-                          "Insertion time [%s] is less than ttl time bound [%s]",
+                          DataNodeQueryMessages.OUT_OF_TTL_FMT,
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(CommonUtils.getTTLLowerBound(ttl)))));
           continue;
@@ -5277,7 +5340,7 @@ public class DataRegion implements IDataRegionForQuery {
                   RpcUtils.getStatus(
                       TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
-                          "Insertion time [%s] is less than ttl time bound [%s]",
+                          DataNodeQueryMessages.OUT_OF_TTL_FMT,
                           DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
                           DateTimeUtils.convertLongToDate(CommonUtils.getTTLLowerBound(ttl)))));
           insertRowNode.setFailedMeasurementNumber(

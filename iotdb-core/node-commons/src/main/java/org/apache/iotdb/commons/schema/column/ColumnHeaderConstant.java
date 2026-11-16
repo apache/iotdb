@@ -134,6 +134,8 @@ public class ColumnHeaderConstant {
   // column names for show topics statement
   public static final String TOPIC_NAME = "TopicName";
   public static final String TOPIC_CONFIGS = "TopicConfigs";
+  public static final String TAG_FILTER_STATUS = "TagFilterStatus";
+  public static final String TAG_FILTER_MESSAGE = "TagFilterMessage";
   public static final String TOPIC = "Topic";
   public static final String CREATE_TOPIC = "Create Topic";
 
@@ -154,6 +156,7 @@ public class ColumnHeaderConstant {
   public static final String LAST_POLL_TIME = "LastPollTime";
   public static final String LAST_CONSUMER_ID = "LastConsumerId";
   public static final String SEEK_GENERATION = "SeekGeneration";
+  public static final String READY_ON_DNS = "ready_on_dns";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -696,6 +699,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showTableTopicColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
+          new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT),
+          new ColumnHeader(TAG_FILTER_STATUS, TSDataType.TEXT),
+          new ColumnHeader(TAG_FILTER_MESSAGE, TSDataType.TEXT));
+
   public static final List<ColumnHeader> showCreateTopicColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TOPIC, TSDataType.TEXT),
@@ -729,7 +739,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(LAST_PROGRESS_TIME, TSDataType.INT64),
           new ColumnHeader(LAST_POLL_TIME, TSDataType.INT64),
           new ColumnHeader(LAST_CONSUMER_ID, TSDataType.TEXT),
-          new ColumnHeader(SEEK_GENERATION, TSDataType.INT64));
+          new ColumnHeader(SEEK_GENERATION, TSDataType.INT64),
+          new ColumnHeader(READY_ON_DNS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
       ImmutableList.of(

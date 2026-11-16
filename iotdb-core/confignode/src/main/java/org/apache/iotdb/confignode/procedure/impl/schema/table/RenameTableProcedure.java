@@ -228,7 +228,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
 
   @Override
   protected String getActionMessage() {
-    return "rename table";
+    return ProcedureMessages.MESSAGE_RENAME_TABLE_D9C28057;
   }
 
   @Override

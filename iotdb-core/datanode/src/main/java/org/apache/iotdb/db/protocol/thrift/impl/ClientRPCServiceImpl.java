@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.path.AlignedFullPath;
@@ -58,6 +59,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -66,6 +68,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
@@ -294,7 +297,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private static final String NO_QUERY_EXECUTION_ERR_MSG =
-      "Query is not found, it may be killed by others, timeout or some other runtime errors, you can see more details in server log.";
+      DataNodeMiscMessages
+          .EXCEPTION_QUERY_IS_NOT_FOUND_IT_MAY_BE_KILLED_BY_OTHERS_TIMEOUT_OR_SOME_OTHER_RUNTIME_ERRORS_YOU_CAN_SEE_MORE_DETAILS_IN_SERVER_LOG_90BD085E;
 
   @FunctionalInterface
   public interface SelectResult {
@@ -358,7 +362,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (s == null) {
           return RpcUtils.getTSExecuteStatementResp(
               RpcUtils.getStatus(
-                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+                  TSStatusCode.SQL_PARSE_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE));
         }
 
         if (s instanceof CreateTableViewStatement) {
@@ -436,7 +441,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (s == null) {
           return RpcUtils.getTSExecuteStatementResp(
               RpcUtils.getStatus(
-                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+                  TSStatusCode.SQL_PARSE_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE));
         }
 
         queryId = SESSION_MANAGER.requestQueryId(clientSession, statementId);
@@ -1445,11 +1451,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           TSStatus tsstatus = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
           tsstatus.setRedirectNode(
-              regionReplicaSets
-                  .get(regionReplicaSets.size() - 1)
-                  .dataNodeLocations
-                  .get(0)
-                  .clientRpcEndPoint);
+              DataNodeEndPoints.getRedirectEndPoint(
+                  regionReplicaSets.get(regionReplicaSets.size() - 1).dataNodeLocations.get(0),
+                  clientSession.isInternalRpcSession()));
           resp.setStatus(tsstatus);
           finished = SELECT_RESULT.apply(resp, queryExecution, req.fetchSize);
           resp.setMoreData(!finished);
@@ -1622,16 +1626,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     Optional<String> database = parseDatabase(req);
     IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    BasicOpenSessionResp openSessionResp =
-        SESSION_MANAGER.login(
-            SESSION_MANAGER.getCurrSession(),
-            req.username,
-            req.password,
-            req.zoneId,
-            req.client_protocol,
-            clientVersion,
-            sqlDialect,
-            parseUseEncryptedPassword(req));
+    BasicOpenSessionResp openSessionResp = login(clientSession, req, clientVersion, sqlDialect);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
 
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1645,6 +1640,30 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     configuration.put(
         TIME_PRECISION, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     return resp.setSessionId(openSessionResp.getSessionId()).setConfiguration(configuration);
+  }
+
+  private BasicOpenSessionResp login(
+      IClientSession session,
+      TSOpenSessionReq req,
+      IoTDBConstant.ClientVersion clientVersion,
+      SqlDialect sqlDialect) {
+    if (useInternalSessionLogin()) {
+      return SESSION_MANAGER.loginInternal(
+          session, req.username, req.zoneId, req.client_protocol, clientVersion, sqlDialect);
+    }
+    return SESSION_MANAGER.login(
+        session,
+        req.username,
+        req.password,
+        req.zoneId,
+        req.client_protocol,
+        clientVersion,
+        sqlDialect,
+        parseUseEncryptedPassword(req));
+  }
+
+  protected boolean useInternalSessionLogin() {
+    return false;
   }
 
   private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {
@@ -1701,7 +1720,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus cancelOperation(TSCancelOperationReq req) {
     // TODO implement
-    return RpcUtils.getStatus(TSStatusCode.QUERY_NOT_ALLOWED, "Cancellation is not implemented");
+    return RpcUtils.getStatus(
+        TSStatusCode.QUERY_NOT_ALLOWED,
+        DataNodeMiscMessages.EXCEPTION_CANCELLATION_IS_NOT_IMPLEMENTED_91FA6607);
   }
 
   @Override
@@ -1753,7 +1774,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (statement == null) {
         return new TSPrepareResp(
-            RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, "Failed to parse SQL: " + sql));
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR,
+                String.format(
+                    DataNodeMiscMessages.EXCEPTION_FAILED_TO_PARSE_SQL_ARG_20075759,
+                    Objects.toString(sql))));
       }
 
       int parameterCount = ParameterExtractor.getParameterCount(statement);
@@ -1810,12 +1835,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       ZoneId zoneId = SESSION_MANAGER.getCurrSession().getZoneId();
       return new TSGetTimeZoneResp(
           RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
-          zoneId != null ? zoneId.toString() : "Unknown time zone");
+          zoneId != null
+              ? zoneId.toString()
+              : DataNodeMiscMessages.EXCEPTION_UNKNOWN_TIME_ZONE_D224D82D);
     } catch (Exception e) {
       return new TSGetTimeZoneResp(
           onQueryException(
               e, OperationType.GET_TIME_ZONE.getName(), TSStatusCode.GENERATE_TIME_ZONE_ERROR),
-          "Unknown time zone");
+          DataNodeMiscMessages.EXCEPTION_UNKNOWN_TIME_ZONE_D224D82D);
     }
   }
 
@@ -2135,7 +2162,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
     return new TSFetchMetadataResp(
-        RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION, "Fetch Metadata is not supported."));
+        RpcUtils.getStatus(
+            TSStatusCode.UNSUPPORTED_OPERATION,
+            DataNodeMiscMessages.EXCEPTION_FETCH_METADATA_IS_NOT_SUPPORTED_20489A74));
   }
 
   @Override
@@ -2168,7 +2197,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
             if (s == null) {
               return RpcUtils.getStatus(
-                  TSStatusCode.EXECUTE_STATEMENT_ERROR, "This operation type is not supported");
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE);
             }
 
             if (s instanceof CreateTableViewStatement) {
@@ -2244,7 +2274,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
             if (s == null) {
               return RpcUtils.getStatus(
-                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
+                  TSStatusCode.SQL_PARSE_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE);
             }
 
             // TODO audit log, quota, StatementType
@@ -2280,6 +2311,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             }
           }
 
+          if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && result.status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            isAllSuccessful = false;
+          }
           results.add(result.status);
         } catch (Exception e) {
           LOGGER.warn(DataNodeMiscMessages.ERROR_EXECUTING_BATCH_STATEMENT, e);
@@ -2304,7 +2339,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     if (isAllSuccessful) {
       TSStatus res =
-          RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully");
+          RpcUtils.getStatus(
+              TSStatusCode.SUCCESS_STATUS,
+              DataNodeMiscMessages.EXCEPTION_EXECUTE_BATCH_STATEMENTS_SUCCESSFULLY_38422BA6);
       if (useDatabase || isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
         final TSStatus useDB =
             RpcUtils.getStatus(TSStatusCode.USE_OR_DROP_DB, clientSession.getDatabaseName());
@@ -2312,6 +2349,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
       return res;
     } else {
+      if (useDatabase || isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
+        // Keep the JDBC connection's cached database synchronized after a partially failed batch.
+        results.add(
+            RpcUtils.getStatus(TSStatusCode.USE_OR_DROP_DB, clientSession.getDatabaseName()));
+      }
       return RpcUtils.getStatus(results);
     }
   }
@@ -3050,13 +3092,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
     return RpcUtils.getStatus(
-        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        DataNodeMiscMessages.EXCEPTION_MODIFY_TEMPLATE_HAS_NOT_BEEN_SUPPORTED_976B19DE);
   }
 
   @Override
   public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
     return RpcUtils.getStatus(
-        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        DataNodeMiscMessages.EXCEPTION_MODIFY_TEMPLATE_HAS_NOT_BEEN_SUPPORTED_976B19DE);
   }
 
   @Override
@@ -3079,7 +3123,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setStatus(
             RpcUtils.getStatus(
                 TSStatusCode.UNSUPPORTED_OPERATION,
-                TemplateQueryType.values()[req.getQueryType()].name() + "has not been supported."));
+                String.format(
+                    DataNodeMiscMessages.EXCEPTION_ARG_HAS_NOT_BEEN_SUPPORTED_F90BAF99,
+                    Objects.toString(TemplateQueryType.values()[req.getQueryType()].name()))));
         return resp;
       }
       switch (TemplateQueryType.values()[req.getQueryType()]) {
@@ -3239,7 +3285,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           }
         }
         resp.setMeasurements(result);
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
+        resp.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.SUCCESS_STATUS,
+                DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59));
         return resp;
       }
     } catch (Exception e) {
@@ -3512,6 +3561,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInPipeSubscribeResp();
       }
+      if (!PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
+        return new TPipeSubscribeResp(
+            RpcUtils.getStatus(
+                TSStatusCode.UNSUPPORTED_OPERATION,
+                PipeMessages
+                    .MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431),
+            PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+            PipeSubscribeResponseType.ACK.getType());
+      }
 
       return SubscriptionAgent.receiver().handle(req, clientSession.getUsername());
     } finally {
@@ -3635,8 +3693,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   protected TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
-        TSStatusCode.NOT_LOGIN,
-        "Log in failed. Either you are not authorized or the session has timed out.");
+        TSStatusCode.NOT_LOGIN, DataNodePipeMessages.LOGIN_FAILED_OR_SESSION_TIMED_OUT);
   }
 
   private String checkIdentifierAndRemoveBackQuotesIfNecessary(String identifier) {
@@ -3663,7 +3720,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     PipeDataNodeAgent.receiver().thrift().handleClientExit();
     PipeDataNodeAgent.receiver().legacy().handleClientExit();
-    if (COMMON_CONFIG.getSubscriptionEnabled()) {
+    if (COMMON_CONFIG.getSubscriptionEnabled()
+        && PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
       SubscriptionAgent.receiver().handleClientExit();
     }
   }

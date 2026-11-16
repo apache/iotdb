@@ -44,6 +44,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadRef;
 import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -176,6 +177,11 @@ final class TsFileWriterManager {
   List<LoadTsFileConsensusNode.PieceRef> writePiece(final List<TsFileData> tsFileDataList)
       throws IOException, PageException {
     checkNotClosed();
+    if (EncryptDBUtils.requiresFileRewrite()) {
+      throw new IOException(
+          StorageEngineMessages
+              .EXCEPTION_PRECALCULATED_CHUNK_STAGING_IS_NOT_SUPPORTED_BY_THE_FILE_ENCRYPTION_POLICY_13DA8C32);
+    }
 
     for (final TsFileData tsFileData : tsFileDataList) {
       switch (tsFileData.getType()) {
@@ -298,9 +304,10 @@ final class TsFileWriterManager {
       throw new IOException(
           String.format(
               StorageEngineMessages
-                  .EXCEPTION_LOAD_PIECE_OF_THE_TASK_ARG_ARRIVED_WITHOUT_ITS_CHUNK_PAYLOAD_ARG_04664404,
+                  .EXCEPTION_FAILED_TO_WRITE_A_PIECE_OF_THE_LOAD_TASK_ARG_BECAUSE_THE_PAYLOAD_OF_ITS_CHUNK_IS_ONLY_REFERENCED_AT_ARG_OF_ARG_AND_HAS_NOT_BEEN_READ_BACK_5AE8586E,
               taskDir,
-              incomingRefs.size() + " of " + chunks.size()));
+              incomingRefs.size(),
+              chunks.size()));
     }
 
     final List<ChunkPayloadRef> chunkPayloadRefs = new ArrayList<>(chunks.size());

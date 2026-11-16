@@ -34,6 +34,7 @@ public class AuditTest {
     assertTrue(Audit.isAuditDatabase("ROOT.__AUDIT"));
     assertTrue(Audit.isAuditDatabase("__audit.data"));
     assertTrue(Audit.isAuditDatabase("root.__audit.data"));
+    assertTrue(Audit.isAuditDatabase("root.__Audit.data"));
     assertFalse(Audit.isAuditDatabase("__audit_data"));
     assertFalse(Audit.isAuditDatabase("root.__audit_data"));
     assertFalse(Audit.isAuditDatabase(null));

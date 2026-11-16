@@ -23,8 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -36,6 +38,8 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProced
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTree2TableView;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
@@ -46,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -116,11 +121,86 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
       }
     }
     final TSStatus status =
-        new TreeDeviceViewFieldDetector(env.getConfigManager(), table, null)
-            .detectMissingFieldTypes();
+        new TreeDeviceViewFieldDetector(env.getConfigManager(), table).detectFieldsForCreation();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
+  }
+
+  @Override
+  protected TUpdateTableReq buildCommitReleaseTableReq() {
+    final boolean newAutoSync =
+        table.getPropValue(TsTable.AUTO_SYNC_SCHEMA).map(Boolean::parseBoolean).orElse(false);
+    if (newAutoSync) {
+      // Whether the view is a new one, or replace the old table, just add view
+      final TUpdateTree2TableView viewInfo =
+          new TUpdateTree2TableView(TreeToTableViewTrieOperationType.ADD.getOperationType());
+      table.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).ifPresent(viewInfo::setTreePath);
+      viewInfo.setIsRestrict(TreeViewSchema.isRestrict(table));
+      viewInfo.setTagNum(table.getTagNum());
+      return SchemaUtils.buildCommitUpdateTableReq(database, table.getTableName(), null, viewInfo);
+    }
+    // Creating, or replacing with the auto detection turned off: the view the old definition had
+    // registered has to go. drop a non-existing view is allowed.
+    final boolean oldAutoSync =
+        Objects.nonNull(oldView)
+            && oldView
+                .getPropValue(TsTable.AUTO_SYNC_SCHEMA)
+                .map(Boolean::parseBoolean)
+                .orElse(false);
+    if (oldAutoSync) {
+      return SchemaUtils.buildCommitUpdateTableReq(
+          database,
+          table.getTableName(),
+          null,
+          new TUpdateTree2TableView(TreeToTableViewTrieOperationType.REMOVE.getOperationType()));
+    }
+    return super.buildCommitReleaseTableReq();
+  }
+
+  /**
+   * A rolled-back replace restores the view the old definition had. A DataNode which restarted
+   * while the replace was running does not hold it: the table such a DataNode pulls is only
+   * pre-created, and a pre-created table does not enter the index. Registering the old view again
+   * is idempotent, so a DataNode which never lost it is not affected.
+   */
+  @Override
+  protected TUpdateTableReq buildRollbackTableReq() {
+    final boolean oldAutoSync =
+        Objects.nonNull(oldView)
+            && oldView
+                .getPropValue(TsTable.AUTO_SYNC_SCHEMA)
+                .map(Boolean::parseBoolean)
+                .orElse(false);
+    if (!oldAutoSync) {
+      return super.buildRollbackTableReq();
+    }
+    final TUpdateTree2TableView viewInfo =
+        new TUpdateTree2TableView(TreeToTableViewTrieOperationType.ADD.getOperationType());
+    oldView.getPropValue(TreeViewSchema.TREE_PATH_PATTERN).ifPresent(viewInfo::setTreePath);
+    viewInfo.setIsRestrict(TreeViewSchema.isRestrict(oldView));
+    viewInfo.setTagNum(oldView.getTagNum());
+    return SchemaUtils.rollbackUpdateTableReq(database, table.getTableName(), null, viewInfo);
+  }
+
+  @Override
+  protected void reconcileTree2TableViewColumns(final ConfigNodeProcedureEnv env) {
+    // The series which already existed under the path pattern were created before the DataNodes
+    // mounted the view, so they never triggered the addition of their column.
+    final List<TsTableColumnSchema> missingColumns =
+        TreeDeviceViewFieldDetector.detectMissingColumnsAfterCreation(
+            env.getConfigManager(), database, table);
+    if (missingColumns.isEmpty()) {
+      return;
+    }
+
+    addChildProcedure(
+        new AddViewColumnProcedure(
+            database,
+            table.getTableName(),
+            String.format("create_view_reconcile_%s.%s", database, table.getTableName()),
+            missingColumns,
+            false));
   }
 
   @Override

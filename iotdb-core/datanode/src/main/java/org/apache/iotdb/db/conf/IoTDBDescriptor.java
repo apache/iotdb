@@ -2636,6 +2636,12 @@ public class IoTDBDescriptor {
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
 
+    conf.setLoadTsFileWriteBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_write_buffer_size_in_byte",
+                String.valueOf(conf.getLoadTsFileWriteBufferSize()))));
+
     conf.setLoadTsFileAllowedDirs(
         Arrays.stream(properties.getProperty("load_tsfile_allowed_dirs", "").trim().split(","))
             .filter(dir -> !dir.isEmpty())
@@ -2718,6 +2724,17 @@ public class IoTDBDescriptor {
                 "load_active_listening_verify_enable",
                 Boolean.toString(conf.isLoadActiveListeningVerifyEnable()))));
 
+    conf.setLoadRequireUserIdentity(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_require_user_identity", Boolean.toString(conf.isLoadRequireUserIdentity()))));
+
+    conf.setPipeReceiverRequireUserIdentity(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_receiver_require_user_identity",
+                Boolean.toString(conf.isPipeReceiverRequireUserIdentity()))));
+
     conf.setLoadDiskSelectStrategy(
         properties.getProperty(
             "load_disk_select_strategy",
@@ -2784,6 +2801,12 @@ public class IoTDBDescriptor {
                 "load_write_throughput_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_write_throughput_bytes_per_second"))));
+
+    conf.setLoadTsFileWriteBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_write_buffer_size_in_byte",
+                String.valueOf(conf.getLoadTsFileWriteBufferSize()))));
 
     conf.setLoadTsFileAllowedDirs(
         Arrays.stream(

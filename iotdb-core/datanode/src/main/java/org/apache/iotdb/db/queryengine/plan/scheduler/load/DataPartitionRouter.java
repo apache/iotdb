@@ -67,8 +67,9 @@ class DataPartitionRouter {
 
     final int totalChunks = chunkDataList.size();
     final int[] chunkPartitionIndexes = new int[totalChunks];
-    final List<SlotKey> distinctSlotList = new ArrayList<>();
-    final Map<SlotKey, Integer> slotToIndexMap = new HashMap<>(totalChunks);
+    final List<Pair<IDeviceID, TTimePartitionSlot>> distinctSlotList = new ArrayList<>();
+    final Map<Pair<IDeviceID, TTimePartitionSlot>, Integer> slotToIndexMap =
+        new HashMap<>(totalChunks);
 
     // 1. Deduplicate (device, time-partition) pairs and record mapping index per chunk
     for (int i = 0; i < totalChunks; i++) {
@@ -88,7 +89,7 @@ class DataPartitionRouter {
               chunkData.getTimePartitionSlot(),
               DataNodeQueryMessages.EXCEPTION_CHUNK_TIME_PARTITION_SLOT_CANNOT_BE_NULL_E5B04C6F);
 
-      final SlotKey slotKey = new SlotKey(device, slot);
+      final Pair<IDeviceID, TTimePartitionSlot> slotKey = new Pair<>(device, slot);
       final Integer existingIndex = slotToIndexMap.get(slotKey);
 
       if (existingIndex == null) {
@@ -102,8 +103,7 @@ class DataPartitionRouter {
     }
 
     // 2. Resolve the replica sets of the distinct slots, reusing the ones the judgement resolved.
-    final List<TRegionReplicaSet> replicaSets =
-        partitionResolver.resolve(toQuerySlots(distinctSlotList));
+    final List<TRegionReplicaSet> replicaSets = partitionResolver.resolve(distinctSlotList);
 
     // 3. Map resolved replica sets back to original input order
     final List<TRegionReplicaSet> routedReplicaSets = new ArrayList<>(totalChunks);
@@ -111,34 +111,17 @@ class DataPartitionRouter {
       final int partitionIndex = chunkPartitionIndexes[i];
       final TRegionReplicaSet replicaSet = replicaSets.get(partitionIndex);
       if (replicaSet == null) {
-        final SlotKey slotKey = distinctSlotList.get(partitionIndex);
+        final Pair<IDeviceID, TTimePartitionSlot> slotKey = distinctSlotList.get(partitionIndex);
         throw new IllegalStateException(
             String.format(
                 DataNodeQueryMessages
                     .EXCEPTION_NULL_REPLICA_SET_RESOLVED_FOR_DEVICE_ARG_AT_PARTITION_ARG_19CA94B2,
-                slotKey.device(),
-                slotKey.slot()));
+                slotKey.getLeft(),
+                slotKey.getRight()));
       }
       routedReplicaSets.add(replicaSet);
     }
 
     return routedReplicaSets;
   }
-
-  // -------------------------------------------------------------------------
-  // Internal Model
-  // -------------------------------------------------------------------------
-
-  /** The distinct slots in the pair form the resolver takes. */
-  private static List<Pair<IDeviceID, TTimePartitionSlot>> toQuerySlots(
-      final List<SlotKey> distinctSlots) {
-    final List<Pair<IDeviceID, TTimePartitionSlot>> slots = new ArrayList<>(distinctSlots.size());
-    for (final SlotKey slot : distinctSlots) {
-      slots.add(new Pair<>(slot.device(), slot.slot()));
-    }
-    return slots;
-  }
-
-  /** Composite key for slot deduplication; the only slot representation this class holds. */
-  private record SlotKey(IDeviceID device, TTimePartitionSlot slot) {}
 }

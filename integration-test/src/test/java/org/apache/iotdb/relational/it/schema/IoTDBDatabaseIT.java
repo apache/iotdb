@@ -30,8 +30,9 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,6 +42,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -59,8 +61,9 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBDatabaseIT {
 
-  @Before
-  public void setUp() throws Exception {
+  // All scenarios use the same node configuration; reset their catalogs between methods.
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -78,11 +81,74 @@ public class IoTDBDatabaseIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  @After
+  public void resetCatalog() throws SQLException {
+    // These scenarios assert complete catalogs, requiring an empty namespace between methods.
+    try (final Connection connection = EnvFactory.getEnv().getTableConnection();
+        final Statement statement = connection.createStatement();
+        final Connection treeConnection = EnvFactory.getEnv().getConnection();
+        final Statement treeStatement = treeConnection.createStatement()) {
+      // Drop pipes first so write-back sinks cannot recreate tables during database cleanup.
+      // Double-living creates separate tree/table pipes with the same name; drop both copies.
+      for (final Statement pipeStatement : new Statement[] {statement, treeStatement}) {
+        final List<String> names = new ArrayList<>();
+        try (final ResultSet resultSet = pipeStatement.executeQuery("SHOW PIPES")) {
+          while (resultSet.next()) {
+            names.add(resultSet.getString(1));
+          }
+        }
+        for (final String name : names) {
+          pipeStatement.execute("DROP PIPE " + name);
+        }
+      }
+
+      final List<String> databases = new ArrayList<>();
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+        while (resultSet.next()) {
+          final String database = resultSet.getString(1);
+          if (!"information_schema".equals(database)) {
+            databases.add(database);
+          }
+        }
+      }
+      for (final String database : databases) {
+        // Database-name tests include backticks and numeric identifiers; always quote names.
+        statement.execute("DROP DATABASE \"" + database.replace("\"", "\"\"") + "\"");
+      }
+
+      // Dropping the test user also removes grants before the next permission scenario reuses it.
+      boolean testUserExists = false;
+      try (final ResultSet resultSet = statement.executeQuery("LIST USER")) {
+        while (resultSet.next()) {
+          if ("test".equals(resultSet.getString("User"))) {
+            testUserExists = true;
+            break;
+          }
+        }
+      }
+      if (testUserExists) {
+        statement.execute("DROP USER test");
+      }
+      // The mixed-model scenario also creates a tree database with the same unqualified name.
+      final boolean databaseExists;
+      try (final ResultSet resultSet = treeStatement.executeQuery("SHOW DATABASES root.test")) {
+        databaseExists = resultSet.next();
+      }
+      if (databaseExists) {
+        treeStatement.execute("DELETE DATABASE root.test");
+      }
+    }
+  }
+
+  /**
+   * Create, alter, list, count and drop databases, checking default/custom properties, duplicate
+   * and missing names, invalid identifiers, and the 64-character name boundary.
+   */
   @Test
   public void testManageDatabase() {
     try (final Connection connection =
@@ -298,6 +364,10 @@ public class IoTDBDatabaseIT {
     }
   }
 
+  /**
+   * Create a database with explicit TTL and partition interval, then verify SHOW CREATE retains
+   * these values and includes the resolved region-group limits.
+   */
   @Test
   public void testShowCreateDatabase() throws SQLException {
     try (final Connection connection =
@@ -323,6 +393,10 @@ public class IoTDBDatabaseIT {
     }
   }
 
+  /**
+   * Create databases with disabled and default last caches, alter/reset the property, and verify
+   * both metadata views agree while a non-boolean property is rejected.
+   */
   @Test
   public void testNeedLastCacheDatabaseProperty() throws SQLException {
     try (final Connection connection =
@@ -354,6 +428,10 @@ public class IoTDBDatabaseIT {
     }
   }
 
+  /**
+   * Create a pipe using the do-nothing sink and verify SHOW CREATE returns the pipe name and the
+   * exact sink configuration needed to recreate it.
+   */
   @Test
   public void testShowCreatePipe() throws SQLException {
     try (final Connection connection =
@@ -369,6 +447,10 @@ public class IoTDBDatabaseIT {
     }
   }
 
+  /**
+   * Request CREATE statements for information_schema and __audit, verifying both system databases
+   * reject SHOW CREATE with the expected diagnostic rather than exposing a creation statement.
+   */
   @Test
   public void testShowCreateInformationSchemaDatabase() throws SQLException {
     try (final Connection connection =
@@ -413,6 +495,10 @@ public class IoTDBDatabaseIT {
     }
   }
 
+  /**
+   * Reject illegal database-name characters, then create a backtick-containing name and verify
+   * quoted table creation, insertion, queries, device metadata, and attribute updates succeed.
+   */
   @Test
   public void testDatabaseWithSpecificCharacters() throws SQLException {
     try (final Connection connection =
@@ -478,17 +564,21 @@ public class IoTDBDatabaseIT {
     }
   }
 
+  /**
+   * Check read-only system metadata and ordinary-user visibility, then verify administrator
+   * metadata for tables, views, pipes, functions, configuration, and the running cluster.
+   */
   @Test
   public void testInformationSchema() throws SQLException {
     // Use a normal user to test visibility
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("create user test 'password123456'");
+      adminStmt.execute("create user test 'IoTDB!Test2024'");
       adminStmt.execute("create pipe test ('sink'='do-nothing-sink')");
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "IoTDB!Test2024", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       // Test unsupported write plans
       final Set<String> writeSQLs =
@@ -1011,6 +1101,10 @@ public class IoTDBDatabaseIT {
     }
   }
 
+  /**
+   * Create tree and table databases named test, exercise independent data and cache properties,
+   * then verify dropping the table database preserves the tree database and model-specific counts.
+   */
   @Test
   public void testMixedDatabase() throws SQLException {
     try (final Connection connection =
@@ -1089,6 +1183,10 @@ public class IoTDBDatabaseIT {
     }
   }
 
+  /**
+   * Create two table databases and verify both COUNT DATABASES and information_schema include
+   * exactly these databases plus the built-in information_schema database in their totals.
+   */
   @Test
   public void testCountDatabases() throws SQLException {
     try (final Connection connection =
@@ -1106,6 +1204,10 @@ public class IoTDBDatabaseIT {
     }
   }
 
+  /**
+   * Under the default AUTO region policy, reject explicit maximum data-region counts in both CREATE
+   * and ALTER DATABASE while accepting database creation without that property.
+   */
   @Test
   public void testMaxRegionGroupNumRejectedInAutoPolicy() throws SQLException {
     try (final Connection connection =
@@ -1134,18 +1236,22 @@ public class IoTDBDatabaseIT {
     }
   }
 
+  /**
+   * Start a new user without database access, grant SELECT, then grant DROP and verify metadata
+   * visibility and rejected ALTER/DROP operations follow the permissions at each step.
+   */
   @Test
   public void testDBAuth() throws SQLException {
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("create user test 'password123456'");
+      adminStmt.execute("create user test 'IoTDB!Test2024'");
       adminStmt.execute("create database db");
       adminStmt.execute(
           "create pipe a2b with source('double-living'='true') with sink ('sink'='write-back-sink')");
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "IoTDB!Test2024", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("count databases"), "count,", Collections.singleton("1,"));
@@ -1179,7 +1285,7 @@ public class IoTDBDatabaseIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "IoTDB!Test2024", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("count databases"), "count,", Collections.singleton("2,"));
@@ -1215,7 +1321,7 @@ public class IoTDBDatabaseIT {
     }
 
     try (final Connection userCon =
-            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "IoTDB!Test2024", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       userStmt.execute("drop database db");
     }

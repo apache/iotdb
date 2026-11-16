@@ -22,11 +22,14 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel.CompactionTableModelTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.After;
 import org.junit.Assert;
@@ -35,6 +38,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 
 public class CompactionTestFileWriterTest extends AbstractCompactionTest {
   @Before
@@ -194,6 +198,25 @@ public class CompactionTestFileWriterTest extends AbstractCompactionTest {
       System.out.println(seqResource1.getTsFile().getAbsolutePath());
     } catch (Exception e) {
       Assert.fail();
+    }
+  }
+
+  @Test
+  public void testFieldlessTableSchemaWithTimeDataIsRetained() throws IOException {
+    final TsFileResource resource = createEmptyFileAndResource(true);
+    try (final CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource)) {
+      writer.registerTableSchemaWithTagAndTime("table1", Collections.singletonList("tag1"));
+      writer.startChunkGroup("table1", Collections.singletonList("tag1_value"));
+      writer.generateTimeOnlyDataToCurrentDevice(new TimeRange[] {new TimeRange(1, 3)});
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    try (final TsFileSequenceReader reader =
+        new TsFileSequenceReader(resource.getTsFile().getAbsolutePath())) {
+      Assert.assertTrue(reader.getTableSchemaMap().containsKey("table1"));
+      Assert.assertFalse(
+          reader.getTableSchemaMap().get("table1").getColumnTypes().contains(ColumnCategory.FIELD));
     }
   }
 }

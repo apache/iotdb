@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.anomaly;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.CircularQueue;
 import org.apache.iotdb.library.util.LongCircularQueue;
 import org.apache.iotdb.library.util.TypeServices;
@@ -53,11 +54,11 @@ public class UDTFKSigma implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x > 0,
-            "Window size should be larger than 0.",
+            LibraryUdfMessages.EXCEPTION_WINDOW_SIZE_SHOULD_BE_LARGER_THAN_0_F4C2184C,
             validator.getParameters().getIntOrDefault("window", 10))
         .validate(
             x -> (double) x > 0,
-            "Parameter k should be larger than 0.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_LARGER_THAN_0_9F12BFC9,
             validator.getParameters().getDoubleOrDefault("k", 3));
   }
 

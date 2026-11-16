@@ -50,6 +50,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -146,6 +147,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
+  protected boolean isPipeDataInsertionEnabled(final PipeStaticMeta pipeStaticMeta) {
+    return PipeDataNodeAgent.isPipeDataInsertionEnabled(pipeStaticMeta.getSourceParameters());
+  }
+
+  @Override
   protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
       throws IllegalPathException {
     return pipeMetaFromConfigNode.getStaticMeta().isSourceExternal()
@@ -199,6 +205,61 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         .put(consensusGroupId, pipeTaskMeta);
   }
 
+  /** Applies a partial metadata batch without dropping pipes omitted from the request. */
+  public List<TPushPipeMetaRespExceptionMessage> handleMultiPipeMetaChanges(
+      final List<PipeMeta> pipeMetaListFromCoordinator) {
+    if (pipeMetaListFromCoordinator.isEmpty()) {
+      return Collections.emptyList();
+    }
+    if (!tryWriteLockWithTimeOutInMs(
+        CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
+      return null;
+    }
+    try {
+      // Reconciliation and alter-progress reuse need one complete view under the same write lock.
+      // Resolve replacements using the keeper's name/visibility identity, including new versions
+      // of existing pipes. Preserve the incoming old-DROPPED/new pair used by alter procedures.
+      final Set<PipeStaticMeta> replacedLocalMetas =
+          pipeMetaListFromCoordinator.stream()
+              .map(
+                  meta -> {
+                    final PipeStaticMeta staticMeta = meta.getStaticMeta();
+                    final PipeStatus status = meta.getRuntimeMeta().getStatus().get();
+                    if (status == PipeStatus.DROPPED) {
+                      return pipeMetaKeeper.getPipeMeta(
+                          staticMeta.getPipeName(), staticMeta.getCreationTime());
+                    }
+                    return status == PipeStatus.PRE_DELETE
+                        ? null
+                        : pipeMetaKeeper.getPipeMeta(staticMeta);
+                  })
+              .filter(Objects::nonNull)
+              .map(PipeMeta::getStaticMeta)
+              .collect(Collectors.toSet());
+      final List<PipeMeta> fullPipeMetaList = new ArrayList<>(pipeMetaListFromCoordinator);
+      for (final PipeMeta localMeta : pipeMetaKeeper.getPipeMetaList()) {
+        if (!replacedLocalMetas.contains(localMeta.getStaticMeta())) {
+          fullPipeMetaList.add(localMeta);
+        }
+      }
+      return handlePipeMetaChangesInternal(fullPipeMetaList);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  @Override
+  protected TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
+      final PipeMeta pipeMetaFromCoordinator) {
+    clearCompletedEmptySnapshotTasks(pipeMetaFromCoordinator);
+    final TPushPipeMetaRespExceptionMessage exception =
+        super.handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator);
+    if (exception == null) {
+      restoreCompletedEmptySnapshot(pipeMetaFromCoordinator);
+    }
+    return exception;
+  }
+
   @Override
   public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       final List<PipeMeta> pipeMetaListFromCoordinator) {
@@ -208,6 +269,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     carryOverLocalProgressIndexForAlter(pipeMetaListFromCoordinator);
+    pipeMetaListFromCoordinator.forEach(this::clearCompletedEmptySnapshotTasks);
 
     final List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
         super.handlePipeMetaChangesInternal(pipeMetaListFromCoordinator);
@@ -224,7 +286,51 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           new TPushPipeMetaRespExceptionMessage("", e.getMessage(), System.currentTimeMillis()));
     }
 
+    for (final PipeMeta pipeMeta : pipeMetaListFromCoordinator) {
+      final String pipeName = pipeMeta.getStaticMeta().getPipeName();
+      if (exceptionMessages.stream().noneMatch(exception -> pipeName.equals(exception.pipeName))) {
+        restoreCompletedEmptySnapshot(pipeMeta);
+      }
+    }
+
     return exceptionMessages;
+  }
+
+  private void clearCompletedEmptySnapshotTasks(final PipeMeta pipeMeta) {
+    final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+    if (PipeStaticMeta.isSubscriptionPipe(staticMeta.getPipeName())
+        && staticMeta
+            .getSourceParameters()
+            .getBooleanOrDefault(SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY, false)) {
+      // Region creation/leader changes may append tasks after this snapshot has completed. Those
+      // tasks must never scan data that arrived after the original empty snapshot.
+      pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().clear();
+    }
+  }
+
+  private void restoreCompletedEmptySnapshot(final PipeMeta pipeMeta) {
+    final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+    if (isShutdown()
+        || !SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        || !PipeDataNodeAgent.isSubscriptionFeatureEnabled()
+        || pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.RUNNING
+        || !PipeStaticMeta.isSubscriptionPipe(staticMeta.getPipeName())
+        || !staticMeta
+            .getSourceParameters()
+            .getBooleanOrDefault(SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY, false)) {
+      return;
+    }
+
+    // This is a coordinator-wide completion decision, not the absence of local tasks. Reapply it
+    // after both single-pipe updates and full metadata recovery so the snapshot terminates after a
+    // DataNode restart.
+    final String consumerGroupId =
+        staticMeta.getSinkParameters().getString(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY);
+    SubscriptionAgent.broker().createPipeBrokerIfNotExist(consumerGroupId);
+    SubscriptionAgent.broker()
+        .updateCompletedTopicNames(
+            consumerGroupId,
+            staticMeta.getSinkParameters().getString(PipeSinkConstant.SINK_TOPIC_KEY));
   }
 
   /**
@@ -1132,6 +1238,16 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
+    // Snapshot/query and non-streaming sources do not retain InsertNode tablets.
+    if (isSnapshotMode(sourceParameters)
+        || !sourceParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_MODE_STREAMING_KEY,
+                PipeSourceConstant.SOURCE_MODE_STREAMING_KEY),
+            PipeSourceConstant.EXTRACTOR_MODE_STREAMING_DEFAULT_VALUE)) {
+      return;
+    }
+
     // If the realtime mode is batch or file, we do not need to allocate memory
     final String realtimeMode =
         sourceParameters.getStringByKeys(
@@ -1142,8 +1258,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
+    // Hybrid sources share a pipe-wide floating-memory limit and downgrade to TsFiles when it is
+    // reached. Charging a full queue for every region rejects an idle pipe as its region count
+    // grows.
+    // Only forced-log sources cannot downgrade and retain the per-region estimate.
     final long needFloatingMemory =
-        PipeConfig.getInstance().getPipeInsertNodeQueueMemory() * dataRegionTaskCount;
+        PipeConfig.getInstance().getPipeInsertNodeQueueMemory()
+            * (PipeSourceConstant.EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE.equals(realtimeMode)
+                ? dataRegionTaskCount
+                : 1);
     final long allocatedMemorySizeInBytes = this.getAllFloatingMemoryUsageInByte();
     final long remainingMemory =
         PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes()

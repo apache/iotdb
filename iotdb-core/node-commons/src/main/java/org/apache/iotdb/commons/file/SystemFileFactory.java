@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.file;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.StorageMessages;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.fileSystem.FSType;
@@ -33,7 +34,8 @@ public enum SystemFileFactory {
 
   private static FSType fsType =
       CommonDescriptor.getInstance().getConfig().getSystemFileStorageFs();
-  private static final String UNSUPPORTED_FILE_SYSTEM = "Unsupported file system: ";
+  private static final String UNSUPPORTED_FILE_SYSTEM =
+      StorageMessages.EXCEPTION_UNSUPPORTED_FILE_SYSTEM_3C31AA63;
 
   public File getFile(String pathname) {
     if (fsType.equals(FSType.HDFS)) {

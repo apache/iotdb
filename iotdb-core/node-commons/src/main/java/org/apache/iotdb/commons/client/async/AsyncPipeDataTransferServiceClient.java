@@ -88,7 +88,9 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     ThriftClient.resolveException(e, this);
     setPrintLogWhenEncounterException(false);
     returnSelf(
-        (i) -> i instanceof IllegalStateException && "Client has an error!".equals(i.getMessage()));
+        (i) ->
+            i instanceof IllegalStateException
+                && ClientMessages.EXCEPTION_CLIENT_HAS_AN_ERROR_50E34F89.equals(i.getMessage()));
   }
 
   @Override

@@ -74,6 +74,8 @@ import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TMultiplexedProtocol;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.utils.Pair;
@@ -103,7 +105,7 @@ public class SessionConnection {
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
   private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
   public static final String MSG_RECONNECTION_FAIL =
-      "Fail to reconnect to server. Please check server status.";
+      SessionMessages.EXCEPTION_FAIL_TO_RECONNECT_TO_SERVER_PLEASE_CHECK_SERVER_STATUS_D9A2790F;
   protected Session session;
   private TTransport transport;
   protected IClientRPCService.Iface client;
@@ -202,7 +204,9 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException {
     DeepCopyRpcTransportFactory transportFactory =
         DeepCopyRpcTransportFactory.getInstance(
-            session.thriftDefaultBufferSize, session.thriftMaxFrameSize);
+            session.thriftDefaultBufferSize,
+            session.thriftMaxFrameSize,
+            session.thriftMaxReusableBufferSize);
     try {
       if (transport != null && transport.isOpen()) {
         close();
@@ -231,11 +235,15 @@ public class SessionConnection {
       throw new IoTDBConnectionException(e);
     }
 
-    if (session.enableThriftRpcCompaction) {
-      client = new IClientRPCService.Client(new TCompactProtocol(transport));
-    } else {
-      client = new IClientRPCService.Client(new TBinaryProtocol(transport));
+    TProtocol protocol =
+        session.enableThriftRpcCompaction
+            ? new TCompactProtocol(transport)
+            : new TBinaryProtocol(transport);
+    final String rpcServiceName = session.getRpcServiceName();
+    if (rpcServiceName != null) {
+      protocol = new TMultiplexedProtocol(protocol, rpcServiceName);
     }
+    client = new IClientRPCService.Client(protocol);
     client = RpcUtils.newSynchronizedClient(client);
 
     TSOpenSessionReq openReq = new TSOpenSessionReq();

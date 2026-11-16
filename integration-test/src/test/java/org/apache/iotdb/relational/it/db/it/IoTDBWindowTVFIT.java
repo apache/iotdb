@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -43,6 +44,8 @@ import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.*;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -246,6 +249,100 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testNestedSessionWithPermutedPartitionColumns() {
+    String[] expectedHeader =
+        new String[] {
+          "window_start",
+          "window_end",
+          "inner_start",
+          "inner_end",
+          "time",
+          "factory_id",
+          "device_id",
+          "s1"
+        };
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.001Z,F1,device_1,10.0,",
+          "1970-01-01T00:00:00.005Z,1970-01-01T00:00:00.005Z,1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.005Z,F1,device_1,15.0,",
+          "1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.009Z,F1,device_1,5.0,",
+          "1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.002Z,F1,device_2,20.0,",
+          "1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,F1,device_2,25.0,",
+          "1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,F2,device_1,30.0,"
+        };
+    // The outer PARTITION BY lists the same columns as the inner one in a different order; the
+    // result must be identical to the same-order variant (next test).
+    String sql =
+        "SELECT window_start, window_end, inner_start, inner_end, time, factory_id, device_id, s1 "
+            + "FROM SESSION(DATA => ("
+            + "    SELECT window_start AS inner_start, window_end AS inner_end, time, factory_id, device_id, s1 "
+            + "    FROM SESSION(DATA => table5 PARTITION BY (factory_id, device_id) ORDER BY time, GAP => 5ms)"
+            + ") PARTITION BY (device_id, factory_id) ORDER BY time, GAP => 3ms) "
+            + "ORDER BY factory_id, device_id, time";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Test
+  public void testNestedSessionWithSamePartitionColumnOrder() {
+    String[] expectedHeader =
+        new String[] {
+          "window_start",
+          "window_end",
+          "inner_start",
+          "inner_end",
+          "time",
+          "factory_id",
+          "device_id",
+          "s1"
+        };
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.001Z,F1,device_1,10.0,",
+          "1970-01-01T00:00:00.005Z,1970-01-01T00:00:00.005Z,1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.005Z,F1,device_1,15.0,",
+          "1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.009Z,F1,device_1,5.0,",
+          "1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.002Z,F1,device_2,20.0,",
+          "1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,F1,device_2,25.0,",
+          "1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,F2,device_1,30.0,"
+        };
+    // Reference case: both levels list the PARTITION BY columns in the same order.
+    String sql =
+        "SELECT window_start, window_end, inner_start, inner_end, time, factory_id, device_id, s1 "
+            + "FROM SESSION(DATA => ("
+            + "    SELECT window_start AS inner_start, window_end AS inner_end, time, factory_id, device_id, s1 "
+            + "    FROM SESSION(DATA => table5 PARTITION BY (factory_id, device_id) ORDER BY time, GAP => 5ms)"
+            + ") PARTITION BY (factory_id, device_id) ORDER BY time, GAP => 3ms) "
+            + "ORDER BY factory_id, device_id, time";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  @Test
+  public void testThreeLevelNestedSessionWithPermutedPartitionColumns() {
+    String[] expectedHeader =
+        new String[] {"window_start", "window_end", "time", "factory_id", "device_id", "s1"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.001Z,F1,device_1,10.0,",
+          "1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.005Z,F1,device_1,15.0,",
+          "1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.009Z,1970-01-01T00:00:00.009Z,F1,device_1,5.0,",
+          "1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.002Z,F1,device_2,20.0,",
+          "1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,1970-01-01T00:00:00.011Z,F1,device_2,25.0,",
+          "1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,1970-01-01T00:00:00.003Z,F2,device_1,30.0,"
+        };
+    // Adjacent levels list the same PARTITION BY columns in different orders.
+    String sql =
+        "SELECT window_start, window_end, time, factory_id, device_id, s1 "
+            + "FROM SESSION(DATA => ("
+            + "    SELECT window_start AS mid_start, window_end AS mid_end, inner_start, inner_end, time, factory_id, device_id, s1 "
+            + "    FROM SESSION(DATA => ("
+            + "        SELECT window_start AS inner_start, window_end AS inner_end, time, factory_id, device_id, s1 "
+            + "        FROM SESSION(DATA => table5 PARTITION BY (factory_id, device_id) ORDER BY time, GAP => 5ms)"
+            + "    ) PARTITION BY (device_id, factory_id) ORDER BY time, GAP => 3ms)"
+            + ") PARTITION BY (factory_id, device_id) ORDER BY time, GAP => 5ms) "
+            + "ORDER BY factory_id, device_id, time";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
@@ -1076,6 +1173,76 @@ public class IoTDBWindowTVFIT {
         "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
         "Invalid pattern",
         DATABASE_NAME);
+  }
+
+  @Test
+  public void testPatternMatchEmptyRepetitionGroups() throws SQLException {
+    assertInvalidPatternMatchPatterns(
+        new String[] {
+          "1,{,}+,1",
+          "1,{}+,1",
+          "1,{ , , }*,1",
+          "{,}+,1,2",
+          "1,2,{,}+",
+          "1,{2,{,}+,3}+,1",
+          "1,{{,}*}+,1"
+        },
+        "Repetition groups must contain at least one numeric data point.");
+  }
+
+  @Test
+  public void testPatternMatchMisplacedRepetitionSigns() throws SQLException {
+    assertInvalidPatternMatchPatterns(
+        new String[] {
+          "1,+,2",
+          "1,*,2",
+          "1, + ,2",
+          "1, * ,2",
+          "+,1,2",
+          "*,1,2",
+          "1,2,+",
+          "1,2,*",
+          "1+,2",
+          "1*,2",
+          "1,{2,+,3}+,1",
+          "1,{2,*,3}*,1",
+          "1,{2,3}++,1",
+          "1,{2,3}+*,1",
+          "1,{2,3}*+,1",
+          "1,{2,3}**,1"
+        },
+        "Repetition signs '+' and '*' must immediately follow '}'.");
+  }
+
+  private void assertInvalidPatternMatchPatterns(String[] patterns, String expectedMessage)
+      throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      for (String data : new String[] {"t1", "(SELECT * FROM t1 WHERE time < 0)"}) {
+        for (String pattern : patterns) {
+          SQLException exception =
+              assertThrows(
+                  SQLException.class,
+                  () ->
+                      statement.execute(
+                          "SELECT * FROM pattern_match(data => "
+                              + data
+                              + " ORDER BY time, data_col => 'value', pattern => '"
+                              + pattern
+                              + "', smooth => 0.0, threshold => 100.0)"));
+          assertEquals(
+              exception.getMessage(),
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+              exception.getErrorCode());
+          assertTrue(
+              exception.getMessage(),
+              exception
+                  .getMessage()
+                  .contains("Invalid pattern: '" + pattern + "'. " + expectedMessage));
+        }
+      }
+    }
   }
 
   @Test

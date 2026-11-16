@@ -48,9 +48,11 @@ import org.slf4j.LoggerFactory;
 
 public class RegionReadExecutor {
 
-  public static final String RESPONSE_NULL_ERROR_MSG = "ReadResponse is null";
+  public static final String RESPONSE_NULL_ERROR_MSG =
+      DataNodeQueryMessages.EXCEPTION_READRESPONSE_IS_NULL_B51DD7E0;
 
-  public static final String ERROR_MSG_FORMAT = "Execute FragmentInstance failed: %s";
+  public static final String ERROR_MSG_FORMAT =
+      DataNodeQueryMessages.EXCEPTION_EXECUTE_FRAGMENTINSTANCE_FAILED_ARG_311B4A77;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionReadExecutor.class);
 

@@ -38,8 +38,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY;
 
 /**
  * Fallback execution handler for the LOAD scheduler. When direct chunk staging fails, converts
@@ -132,9 +135,8 @@ public class LoadFallbackHandler {
 
       try {
         final TSStatus status =
-            failedNode.isTableModel()
-                ? executeTableModelConversion(converter, failedNode, filePath)
-                : executeTreeModelConversion(converter, failedNode, filePath);
+            convertTsFileToTablets(
+                converter, failedNode, isGeneratedByPipe, failedNode.isDeleteAfterLoad());
 
         if (converter.isSuccessful(status)) {
           iterator.remove();
@@ -173,29 +175,51 @@ public class LoadFallbackHandler {
     resolveFinalState(failureDetails);
   }
 
-  private TSStatus executeTableModelConversion(
+  static TSStatus convertTsFileToTablets(
       final LoadTsFileDataTypeConverter converter,
       final LoadSingleTsFileNode node,
-      final String filePath) {
+      final boolean isGeneratedByPipe,
+      final boolean deleteAfterLoad)
+      throws FileNotFoundException {
+    final String filePath = node.getTsFileResource().getTsFilePath();
+    return node.isTableModel()
+        ? executeTableModelConversion(converter, node, filePath, isGeneratedByPipe, deleteAfterLoad)
+        : executeTreeModelConversion(converter, node, filePath, isGeneratedByPipe, deleteAfterLoad);
+  }
+
+  private static TSStatus executeTableModelConversion(
+      final LoadTsFileDataTypeConverter converter,
+      final LoadSingleTsFileNode node,
+      final String filePath,
+      final boolean isGeneratedByPipe,
+      final boolean deleteAfterLoad) {
+    final Map<String, String> attributes =
+        Collections.singletonMap(AUTO_CREATE_SCHEMA_KEY, String.valueOf(node.isAutoCreateSchema()));
     final LoadTsFile statement =
         (isGeneratedByPipe
-                ? LoadTsFile.createForPipe(null, filePath, Collections.emptyMap())
-                : LoadTsFile.createUnchecked(null, filePath, Collections.emptyMap()))
+                ? LoadTsFile.createForPipe(null, filePath, attributes)
+                : LoadTsFile.createUnchecked(null, filePath, attributes))
             .setDatabase(node.getDatabase())
-            .setDeleteAfterLoad(node.isDeleteAfterLoad())
+            .setDeleteAfterLoad(deleteAfterLoad)
             .setConvertOnTypeMismatch(true);
 
+    if (isGeneratedByPipe) {
+      statement.markIsGeneratedByPipe();
+    }
     return converter.convertForTableModel(statement).orElse(null);
   }
 
-  private TSStatus executeTreeModelConversion(
+  private static TSStatus executeTreeModelConversion(
       final LoadTsFileDataTypeConverter converter,
       final LoadSingleTsFileNode node,
-      final String filePath)
+      final String filePath,
+      final boolean isGeneratedByPipe,
+      final boolean deleteAfterLoad)
       throws FileNotFoundException {
     final String database = LoadTsFileScheduler.getPartitionQueryDatabase(node, isGeneratedByPipe);
     final LoadTsFileStatement statement =
-        buildRetryTreeLoadStatement(filePath, node.isDeleteAfterLoad(), database);
+        buildRetryTreeLoadStatement(filePath, deleteAfterLoad, database, isGeneratedByPipe);
+    statement.setAutoCreateSchema(node.isAutoCreateSchema());
 
     return converter.convertForTreeModel(statement).orElse(null);
   }
@@ -229,6 +253,15 @@ public class LoadFallbackHandler {
 
   private LoadTsFileStatement buildRetryTreeLoadStatement(
       final String filePath, final boolean deleteAfterLoad, final String database)
+      throws FileNotFoundException {
+    return buildRetryTreeLoadStatement(filePath, deleteAfterLoad, database, isGeneratedByPipe);
+  }
+
+  private static LoadTsFileStatement buildRetryTreeLoadStatement(
+      final String filePath,
+      final boolean deleteAfterLoad,
+      final String database,
+      final boolean isGeneratedByPipe)
       throws FileNotFoundException {
     final LoadTsFileStatement statement =
         (isGeneratedByPipe

@@ -77,6 +77,70 @@ public class SourceHandleTest {
   }
 
   @Test
+  public void testPendingHandleCanCloseAfterForcedMemoryDeregistration() throws Exception {
+    for (int closeMode = 0; closeMode < 3; closeMode++) {
+      MemoryPool memoryPool =
+          new MemoryPool("pending", new MemoryManager(MOCK_TSBLOCK_SIZE), MOCK_TSBLOCK_SIZE);
+      memoryPool.registerPlanNodeIdToQueryMemoryMap(
+          "holder",
+          "0.0",
+          "holder",
+          org.apache.iotdb.db.queryengine.execution.memory.MemorySide.INPUT);
+      Assert.assertTrue(
+          memoryPool.tryReserve("holder", "0.0", "holder", MOCK_TSBLOCK_SIZE, MOCK_TSBLOCK_SIZE));
+      LocalMemoryManager manager = Mockito.mock(LocalMemoryManager.class);
+      Mockito.when(manager.getQueryPool()).thenReturn(memoryPool);
+      ExecutorService executor = Mockito.mock(ExecutorService.class);
+      Mockito.doAnswer(
+              invocation -> {
+                ((Runnable) invocation.getArgument(0)).run();
+                return null;
+              })
+          .when(executor)
+          .execute(Mockito.any(Runnable.class));
+      SourceHandleListener listener = Mockito.mock(SourceHandleListener.class);
+      SourceHandle source =
+          new SourceHandle(
+              new TEndPoint("remote", 12345),
+              new TFragmentInstanceId("pending", 1, "0"),
+              new TFragmentInstanceId("pending", 0, "0"),
+              "src",
+              0,
+              manager,
+              executor,
+              new TsBlockSerde(),
+              listener,
+              Mockito.mock(IClientManager.class));
+      source.isBlocked();
+      source.updatePendingDataBlockInfo(0, List.of(MOCK_TSBLOCK_SIZE));
+      Assert.assertEquals(1, memoryPool.getMemoryReservationSize());
+      memoryPool.deRegisterFragmentInstanceFromQueryMemoryMap("pending", "0.0", true);
+      // Detachment must not schedule an RPC for an unreserved block.
+      Mockito.verify(executor, Mockito.never()).execute(Mockito.any(Runnable.class));
+      Mockito.verify(executor, Mockito.never()).submit(Mockito.any(Runnable.class));
+      memoryPool.free("holder", "0.0", "holder", MOCK_TSBLOCK_SIZE);
+      if (closeMode == 0) {
+        source.abort();
+      } else if (closeMode == 1) {
+        source.abort(new RuntimeException("cancel query"));
+      } else {
+        source.close();
+      }
+      Assert.assertEquals(0, source.getBufferRetainedSizeInBytes());
+      Assert.assertEquals(0, memoryPool.getMemoryReservationSize());
+      Assert.assertEquals(0, memoryPool.getReservedBytes());
+      if (closeMode < 2) {
+        Assert.assertTrue(source.isAborted());
+        Mockito.verify(listener).onAborted(source);
+      } else {
+        Mockito.verify(listener).onFinished(source);
+      }
+      memoryPool.deRegisterFragmentInstanceFromQueryMemoryMap("holder", "0.0", true);
+      Assert.assertEquals(0, memoryPool.getQueryMemoryReservationSize());
+    }
+  }
+
+  @Test
   public void testCloseStopsFragmentFetchAfterInFlightRpc() throws Exception {
     testCancellationStopsFragmentFetchAfterInFlightRpc(false);
   }

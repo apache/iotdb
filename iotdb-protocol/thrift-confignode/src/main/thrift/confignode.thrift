@@ -691,6 +691,8 @@ struct TDataNodeInfo {
   // The reason why the DataNode is in its current status, independent of status.
   // Absent when the ConfigNode is an old version.
   8: optional string statusReason
+  // DataNode internal RPC endpoint. Absent when the ConfigNode is an old version.
+  9: optional common.TEndPoint internalRpcEndPoint
 }
 
 struct TAINodeInfo {
@@ -1113,6 +1115,7 @@ struct TSubscriptionProgressInfo {
     17: required i64 lastPollTimeMs
     18: required string lastConsumerId
     19: required i64 seekGeneration
+    20: optional list<i32> readyOnDns
 }
 
 struct TDropSubscriptionReq {
@@ -1367,6 +1370,23 @@ struct TCreateTableViewReq {
     1: required binary tableInfo
     2: required bool replace
 }
+
+ struct TAutoSyncViewColumnsFailure {
+      1: required string database
+      2: required string tableName
+      3: required common.TSStatus status
+  }
+
+
+struct TAutoSyncViewColumnsResp{
+    1: required common.TSStatus status
+    2: optional list<TAutoSyncViewColumnsFailure> failedViews
+}
+
+struct TAutoSyncViewColumnsReq{
+    1:required list<TAlterOrDropTableReq> viewInfos
+}
+
 
 service IConfigNodeRPCService {
 
@@ -2171,4 +2191,6 @@ service IConfigNodeRPCService {
   // Table view
 
   common.TSStatus createTableView(TCreateTableViewReq req)
+
+  TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req)
 }

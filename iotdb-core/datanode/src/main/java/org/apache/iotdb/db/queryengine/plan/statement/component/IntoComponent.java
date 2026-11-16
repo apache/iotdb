@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.component;
 
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 
@@ -32,19 +33,26 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.check
 public class IntoComponent extends StatementNode {
 
   public static final String PLACEHOLDER_MISMATCH_ERROR_MSG =
-      "select into: the correspondence between the placeholder and the raw time series could not be established.";
+      DataNodeQueryMessages
+          .EXCEPTION_SELECT_INTO_THE_CORRESPONDENCE_BETWEEN_THE_PLACEHOLDER_AND_THE_RAW_TIME_SERIES_COULD_NOT_BE_ESTABLISHED_650A8F14;
   public static final String FORBID_PLACEHOLDER_ERROR_MSG =
-      "select into: placeholders can only be used in raw time series data queries.";
+      DataNodeQueryMessages
+          .EXCEPTION_SELECT_INTO_PLACEHOLDERS_CAN_ONLY_BE_USED_IN_RAW_TIME_SERIES_DATA_QUERIES_1C0D9C58;
   public static final String DEVICE_NUM_MISMATCH_ERROR_MSG =
-      "select into: the number of source devices and the number of target devices should be the same.";
+      DataNodeQueryMessages
+          .EXCEPTION_SELECT_INTO_THE_NUMBER_OF_SOURCE_DEVICES_AND_THE_NUMBER_OF_TARGET_DEVICES_SHOULD_BE_THE_SAME_BC612211;
   public static final String PATH_NUM_MISMATCH_ERROR_MSG =
-      "select into: the number of source columns and the number of target paths should be the same.";
+      DataNodeQueryMessages
+          .EXCEPTION_SELECT_INTO_THE_NUMBER_OF_SOURCE_COLUMNS_AND_THE_NUMBER_OF_TARGET_PATHS_SHOULD_BE_THE_SAME_57533A57;
   public static final String DUPLICATE_TARGET_PATH_ERROR_MSG =
-      "select into: target paths in into clause should be different.";
+      DataNodeQueryMessages
+          .EXCEPTION_SELECT_INTO_TARGET_PATHS_IN_INTO_CLAUSE_SHOULD_BE_DIFFERENT_A1674412;
   public static final String DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG =
-      "select into: alignment property must be the same for the same device.";
+      DataNodeQueryMessages
+          .EXCEPTION_SELECT_INTO_ALIGNMENT_PROPERTY_MUST_BE_THE_SAME_FOR_THE_SAME_DEVICE_DCC52B89;
   public static final String ILLEGAL_NODE_NAME_ERROR_MSG =
-      "is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard";
+      DataNodeQueryMessages
+          .EXCEPTION_IS_ILLEGAL_UNQUOTED_NODE_NAME_CAN_ONLY_CONSIST_OF_DIGITS_CHARACTERS_AND_UNDERSCORE_OR_START_OR_END_WITH_WILDCARD_7239755D;
 
   private final List<IntoItem> intoItems;
 

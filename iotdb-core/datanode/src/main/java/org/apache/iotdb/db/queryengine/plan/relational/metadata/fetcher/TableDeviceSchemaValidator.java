@@ -283,7 +283,8 @@ public class TableDeviceSchemaValidator {
                 ? SessionManager.getInstance()
                     .getSessionInfo(SessionManager.getInstance().getCurrSession())
                 : context.getSession(),
-            "Create device or update device attribute for insert",
+            DataNodeQueryMessages
+                .MESSAGE_CREATE_DEVICE_OR_UPDATE_DEVICE_ATTRIBUTE_FOR_INSERT_BFA7C2DA,
             LocalExecutionPlanner.getInstance().metadata,
             // Never timeout for write statement
             Long.MAX_VALUE,

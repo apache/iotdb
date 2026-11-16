@@ -29,6 +29,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -38,6 +40,39 @@ import java.util.Map;
 import static org.junit.Assert.fail;
 
 public class ConsumerGroupDeSerTest {
+
+  @Test
+  public void testRetainedTopicsAreSelfDelimitedAndPreserveModel() throws Exception {
+    for (final String dialect : new String[] {"tree", "table"}) {
+      final ConsumerGroupMeta group =
+          new ConsumerGroupMeta(
+              "retained",
+              1L,
+              new ConsumerMeta(
+                  "consumer",
+                  1L,
+                  Collections.singletonMap(ConsumerConstant.SQL_DIALECT_KEY, dialect)));
+      group.retainTopic("topic");
+      group.removeConsumer("consumer");
+      final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+      final DataOutputStream output = new DataOutputStream(bytes);
+      group.serialize(output);
+      output.writeInt(123456);
+
+      final ByteBuffer buffer = ByteBuffer.wrap(bytes.toByteArray());
+      final ConsumerGroupMeta restored = ConsumerGroupMeta.deserialize(buffer);
+      Assert.assertEquals(group, restored);
+      Assert.assertEquals(123456, buffer.getInt());
+      final ByteArrayInputStream input = new ByteArrayInputStream(bytes.toByteArray());
+      Assert.assertEquals(group, ConsumerGroupMeta.deserialize(input));
+      Assert.assertEquals(Integer.BYTES, input.available());
+      final ConsumerGroupMeta copied = group.deepCopy();
+      copied.removeRetainedTopic("topic");
+      Assert.assertEquals(Collections.singleton("topic"), group.getRetainedTopicNames());
+      Assert.assertTrue(copied.getRetainedTopicNames().isEmpty());
+      Assert.assertEquals("table".equals(dialect), restored.visibleUnder(true));
+    }
+  }
 
   @Test
   public void testEmptyGroupPreservesDialectAcrossSerializationAndRejoin() throws Exception {

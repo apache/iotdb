@@ -277,7 +277,8 @@ public class PipeTerminateEvent extends EnrichedEvent {
 
     public String toReportMessage() {
       return String.format(
-          "historical summary: extractedTsFileCount=%s, skippedTsFileCount=%s, splitTsFileCount=%s, unsplitTsFileCount=%s, deletionCount=%s",
+          DataNodePipeMessages
+              .EXCEPTION_HISTORICAL_SUMMARY_EXTRACTEDTSFILECOUNT_ARG_SKIPPEDTSFILECOUNT_ARG_SPLITTSFILECOUNT_ARG_UNSPLITTSFILECOUNT_ARG_DELETIONCOUNT_ARG_C8BF3247,
           extractedHistoricalTsFileCount,
           skippedHistoricalTsFileCount,
           splitHistoricalTsFileCount,

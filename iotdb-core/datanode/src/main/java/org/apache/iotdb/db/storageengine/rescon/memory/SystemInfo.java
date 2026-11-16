@@ -58,6 +58,8 @@ public class SystemInfo {
   private volatile boolean rejected = false;
 
   private long memorySizeForMemtable;
+  // Flush reservations reduce the MemTable budget; they must not also enter DataRegion usage.
+  private final WriteMemoryManager flushMemoryManager = new WriteMemoryManager("FlushTasks");
   private final Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
@@ -369,8 +371,10 @@ public class SystemInfo {
     return compactionMemoryBlock.getTotalMemorySizeInBytes();
   }
 
-  public void loadWriteMemory() {
-    memorySizeForMemtable = memoryConfig.getMemtableMemoryManager().getTotalMemorySizeInBytes();
+  public synchronized void loadWriteMemory() {
+    memorySizeForMemtable =
+        memoryConfig.getMemtableMemoryManager().getTotalMemorySizeInBytes()
+            - flushMemoryManager.getMemoryUsageInBytes();
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
     REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
@@ -491,24 +495,39 @@ public class SystemInfo {
     private static final SystemInfo instance = new SystemInfo();
   }
 
-  public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
-    memorySizeForMemtable -= estimatedTemporaryMemSize;
-    FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
-    WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
-    WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
-    WritingMetrics.getInstance()
-        .recordWALQueueMaxMemorySize(walBufferQueueMemoryBlock.getTotalMemorySizeInBytes());
+  public synchronized FlushMemoryReservation reserveTemporaryMemoryForFlushing(
+      String name, long estimatedBytes) {
+    WriteMemoryBlock block =
+        flushMemoryManager.createBlock(name, WriteMemoryBlock.Category.FLUSH_TEMPORARY);
+    try {
+      block.add(estimatedBytes);
+      loadWriteMemory();
+      return new FlushMemoryReservation(block);
+    } catch (RuntimeException e) {
+      block.close();
+      loadWriteMemory();
+      throw e;
+    }
   }
 
-  public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
-    memorySizeForMemtable += estimatedTemporaryMemSize;
-    FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
-    WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
-    WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
-    WritingMetrics.getInstance()
-        .recordWALQueueMaxMemorySize(walBufferQueueMemoryBlock.getTotalMemorySizeInBytes());
+  public WriteMemoryManager getFlushMemoryManager() {
+    return flushMemoryManager;
+  }
+
+  public final class FlushMemoryReservation implements AutoCloseable {
+    private final WriteMemoryBlock block;
+
+    private FlushMemoryReservation(WriteMemoryBlock block) {
+      this.block = block;
+    }
+
+    @Override
+    public void close() {
+      synchronized (SystemInfo.this) {
+        block.close();
+        loadWriteMemory();
+      }
+    }
   }
 
   public long getTotalMemTableSize() {

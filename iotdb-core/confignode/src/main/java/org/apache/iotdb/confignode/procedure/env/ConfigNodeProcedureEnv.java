@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.DataNodeTransportFailureUtils;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -492,7 +493,10 @@ public class ConfigNodeProcedureEnv {
       LOG.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
           .setMessage(
-              "Failed to persist RegionGroup allocation in the consensus layer: " + e.getMessage());
+              String.format(
+                  ProcedureMessages
+                      .MESSAGE_FAILED_TO_PERSIST_REGIONGROUP_ALLOCATION_IN_THE_CONSENSUS_LAYER_ARG_E9C4A532,
+                  Objects.toString(e.getMessage())));
     }
   }
 
@@ -862,7 +866,8 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseMap();
   }
 
-  public List<TSStatus> pushSingleConsumerGroupOnDataNode(ByteBuffer consumerGroupMeta) {
+  public Map<Integer, TPushConsumerGroupMetaResp> pushSingleConsumerGroupOnDataNode(
+      ByteBuffer consumerGroupMeta) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushSingleConsumerGroupMetaReq request =
@@ -877,9 +882,7 @@ public class ConfigNodeProcedureEnv {
     final long timeoutInMs = getRequiredSubscriptionMetadataRequestTimeoutInMs();
     sendRequiredMetadataRequest(clientHandler, timeoutInMs);
     fillMissingConsumerGroupPushMetaResponses(clientHandler, timeoutInMs);
-    return clientHandler.getResponseList().stream()
-        .map(TPushConsumerGroupMetaResp::getStatus)
-        .collect(Collectors.toList());
+    return clientHandler.getResponseMap();
   }
 
   public List<TSStatus> dropSingleConsumerGroupOnDataNode(String consumerGroupNameToDrop) {
@@ -1097,11 +1100,12 @@ public class ConfigNodeProcedureEnv {
                     .putIfAbsent(
                         dataNodeId,
                         new TPushPipeMetaResp(
-                            createMetadataTimeoutStatus(
-                                clientHandler.getRequestType(),
-                                dataNodeId,
-                                TSStatusCode.PIPE_PUSH_META_ERROR,
-                                timeoutInMs))));
+                            DataNodeTransportFailureUtils.markTransportFailure(
+                                createMetadataTimeoutStatus(
+                                    clientHandler.getRequestType(),
+                                    dataNodeId,
+                                    TSStatusCode.PIPE_PUSH_META_ERROR,
+                                    timeoutInMs)))));
   }
 
   private static void fillMissingTopicPushMetaResponses(
@@ -1135,11 +1139,12 @@ public class ConfigNodeProcedureEnv {
                     .putIfAbsent(
                         dataNodeId,
                         new TPushConsumerGroupMetaResp(
-                            createMetadataTimeoutStatus(
-                                clientHandler.getRequestType(),
-                                dataNodeId,
-                                TSStatusCode.CONSUMER_PUSH_META_ERROR,
-                                timeoutInMs))));
+                            DataNodeTransportFailureUtils.markTransportFailure(
+                                createMetadataTimeoutStatus(
+                                    clientHandler.getRequestType(),
+                                    dataNodeId,
+                                    TSStatusCode.CONSUMER_PUSH_META_ERROR,
+                                    timeoutInMs)))));
   }
 
   private static void fillMissingPullCommitProgressResponses(
@@ -1186,8 +1191,11 @@ public class ConfigNodeProcedureEnv {
     return new TSStatus(statusCode.getStatusCode())
         .setMessage(
             String.format(
-                "Failed to %s on DataNode %s before metadata request timeout %sms",
-                requestType, dataNodeId, timeoutInMs));
+                ProcedureMessages
+                    .MESSAGE_FAILED_TO_ARG_ON_DATANODE_ARG_BEFORE_METADATA_REQUEST_TIMEOUT_ARG_MS_88BC27CA,
+                requestType,
+                dataNodeId,
+                timeoutInMs));
   }
 
   private static long getRuntimeMetaPushTimeoutInMs() {

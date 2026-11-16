@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.Segment;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -51,22 +52,22 @@ public class UDTFSegment implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x > 0,
-            "Window size should be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_WINDOW_SIZE_SHOULD_BE_A_POSITIVE_INTEGER_AF4CCC06,
             validator.getParameters().getIntOrDefault("window", 10))
         .validate(
             x -> (double) x >= 0,
-            "Error bound should be no less than 0.",
+            LibraryUdfMessages.EXCEPTION_ERROR_BOUND_SHOULD_BE_NO_LESS_THAN_0_1C260253,
             validator.getParameters().getDoubleOrDefault("error", 0.1))
         .validate(
             x ->
                 ((String) x).equalsIgnoreCase(METHOD_BOTTOM_UP)
                     || ((String) x).equalsIgnoreCase("swab"),
-            "Method is illegal.",
+            LibraryUdfMessages.EXCEPTION_METHOD_IS_ILLEGAL_4B26E375,
             validator.getParameters().getStringOrDefault("method", METHOD_BOTTOM_UP))
         .validate(
             x ->
                 ((String) x).equalsIgnoreCase(OUTPUT_FIRST) || ((String) x).equalsIgnoreCase("all"),
-            "Output type is invalid.",
+            LibraryUdfMessages.EXCEPTION_OUTPUT_TYPE_IS_INVALID_75CA99CF,
             validator.getParameters().getStringOrDefault("output", OUTPUT_FIRST));
   }
 

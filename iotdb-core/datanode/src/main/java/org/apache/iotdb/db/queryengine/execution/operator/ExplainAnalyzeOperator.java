@@ -74,7 +74,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ExplainAnalyzeOperator.class);
   private static final String LOG_TITLE =
-      "---------------------Intermediate Results of EXPLAIN ANALYZE---------------------:";
+      DataNodeQueryMessages.EXCEPTION_INTERMEDIATE_RESULTS_OF_EXPLAIN_ANALYZE_D4A79BC4;
   private static final double NS_TO_MS_FACTOR = 1.0 / 1000000;
 
   private final OperatorContext operatorContext;
@@ -292,7 +292,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
             sb.append(SPACE);
           }
           analyzeResult.add(sb.toString());
-          if (line.contains("Logical Plan Cost:")) {
+          if (line.contains(DataNodeQueryMessages.EXCEPTION_LOGICAL_PLAN_COST_DB290604)) {
             mppQueryContext
                 .getCteMaterializationCosts()
                 .forEach(
@@ -300,8 +300,10 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
                       sb.setLength(0);
                       sb.append(
                           String.format(
-                              "  %s Materialization Total Cost: %.3f ms",
-                              tableRef.getNode().getName().toString(), cost * NS_TO_MS_FACTOR));
+                              DataNodeQueryMessages
+                                  .EXCEPTION_ARG_MATERIALIZATION_TOTAL_COST_ARG_MS_75BFA6DA,
+                              tableRef.getNode().getName().toString(),
+                              cost * NS_TO_MS_FACTOR));
                       int currentLength = sb.length();
                       for (int i = 0; i < maxLineLength - currentLength; i++) {
                         sb.append(SPACE);

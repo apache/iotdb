@@ -227,7 +227,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private void handleBind(WebSocket webSocket, String pipeName) {
     if (router.containsKey(pipeName)) {
       broadcast("ERROR", Collections.singletonList(webSocket));
-      webSocket.close(4000, "Too many connections.");
+      webSocket.close(4000, DataNodePipeMessages.MESSAGE_TOO_MANY_CONNECTIONS_59B1E815);
       return;
     }
 

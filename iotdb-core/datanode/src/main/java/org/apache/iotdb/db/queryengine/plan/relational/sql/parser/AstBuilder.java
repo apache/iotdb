@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
-import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -143,12 +142,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ZeroOrMoreQu
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ZeroOrOneQuantifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
-import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -199,7 +195,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputForm
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertValues;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
@@ -262,12 +258,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
@@ -278,7 +271,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatemen
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 
@@ -288,9 +280,7 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.TimeDuration;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import javax.annotation.Nullable;
 
@@ -845,232 +835,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       final List<Identifier> identifiers =
           visit(ctx.columnAliases().identifier(), Identifier.class);
       if (query.getQueryBody() instanceof Values) {
-        return visitInsertValues(
-            databaseName, tableName, identifiers, ((Values) query.getQueryBody()));
+        return new InsertValues(
+            databaseName, tableName, identifiers, ((Values) query.getQueryBody()), zoneId);
       } else {
         return new Insert(new Table(qualifiedName), identifiers, query);
       }
     } else {
       return query.getQueryBody() instanceof Values
-          ? visitInsertValues(
-              databaseName,
-              DataNodeTableCache.getInstance().getTable(databaseName, tableName),
-              ((Values) query.getQueryBody()))
+          ? new InsertValues(databaseName, tableName, null, ((Values) query.getQueryBody()), zoneId)
           : new Insert(new Table(qualifiedName), query);
     }
-  }
-
-  private Node visitInsertValues(
-      final String databaseName, final TsTable table, final Values queryBody) {
-    final List<Expression> rows = queryBody.getRows();
-    final List<InsertRowStatement> rowStatements =
-        rows.stream()
-            .map(
-                r -> {
-                  List<Expression> expressions;
-                  if (r instanceof Row) {
-                    expressions = ((Row) r).getItems();
-                  } else if (r instanceof Literal) {
-                    expressions = Collections.singletonList(r);
-                  } else {
-                    throw new SemanticException(DataNodeQueryMessages.UNEXPECTED_EXPRESSION_2 + r);
-                  }
-                  return toInsertRowStatement(expressions, table, databaseName);
-                })
-            .collect(toList());
-
-    InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
-    insertRowsStatement.setInsertRowStatementList(rowStatements);
-    insertRowsStatement.setWriteToTable(true);
-    // All rows of a parsed `INSERT INTO <table> ... VALUES ...` share the same table and columns.
-    insertRowsStatement.setUniformTargets(true);
-    return new InsertRows(insertRowsStatement, null);
-  }
-
-  private Node visitInsertValues(
-      final String databaseName,
-      final String tableName,
-      final List<Identifier> identifiers,
-      final Values queryBody) {
-    final List<String> columnNames =
-        identifiers.stream().map(Identifier::getValue).collect(toList());
-    int timeColumnIndex = -1;
-
-    // retrieve the table schema to identify the actual time column
-    TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
-    List<TsTableColumnSchema> timeColumnCandidates =
-        table.getColumnList().stream()
-            .filter(col -> col.getColumnCategory() == TIME)
-            .collect(toList());
-    if (timeColumnCandidates.size() != 1) {
-      throw new SemanticException(
-          DataNodeQueryMessages.THE_TABLE_SHOULD_ONLY_HAVE_ONE_COLUMN_FOUND);
-    } else {
-      // locate the time column index in the input identifiers if time column exists in the schema
-      for (int i = 0; i < columnNames.size(); i++) {
-        if (timeColumnCandidates.get(0).getColumnName().equalsIgnoreCase(columnNames.get(i))) {
-          if (timeColumnIndex == -1) {
-            timeColumnIndex = i;
-          } else {
-            throw new SemanticException(
-                DataNodeQueryMessages.ONE_ROW_SHOULD_ONLY_HAVE_ONE_TIME_VALUE);
-          }
-        }
-      }
-    }
-
-    if (timeColumnIndex != -1) {
-      columnNames.remove(timeColumnIndex);
-    }
-
-    List<Expression> rows = queryBody.getRows();
-    if (timeColumnIndex == -1 && rows.size() > 1) {
-      throw new SemanticException(DataNodeQueryMessages.NEED_TIMESTAMPS_WHEN_INSERT_MULTI_ROWS);
-    }
-    int finalTimeColumnIndex = timeColumnIndex;
-    List<InsertRowStatement> rowStatements =
-        rows.stream()
-            .map(
-                r -> {
-                  List<Expression> expressions;
-                  if (r instanceof Row) {
-                    expressions = ((Row) r).getItems();
-                  } else if (r instanceof Literal) {
-                    expressions = Collections.singletonList(r);
-                  } else {
-                    throw new SemanticException(DataNodeQueryMessages.UNEXPECTED_EXPRESSION_2 + r);
-                  }
-                  String[] columnNameArray = columnNames.toArray(new String[0]);
-                  return toInsertRowStatement(
-                      expressions,
-                      finalTimeColumnIndex,
-                      columnNameArray,
-                      tableName,
-                      databaseName,
-                      columnNames.size());
-                })
-            .collect(toList());
-
-    InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
-    insertRowsStatement.setInsertRowStatementList(rowStatements);
-    insertRowsStatement.setWriteToTable(true);
-    // All rows of a parsed `INSERT INTO <table> ... VALUES ...` share the same table and columns.
-    insertRowsStatement.setUniformTargets(true);
-    return new InsertRows(insertRowsStatement, null);
-  }
-
-  private InsertRowStatement toInsertRowStatement(
-      List<Expression> expressions, TsTable table, String databaseName) {
-    InsertRowStatement insertRowStatement = new InsertRowStatement();
-    insertRowStatement.setWriteToTable(true);
-    insertRowStatement.setDevicePath(new PartialPath(new String[] {table.getTableName()}));
-
-    List<TsTableColumnSchema> columnList = table.getColumnList();
-    if (expressions.size() != columnList.size()) {
-      throw new SemanticException(
-          DataNodeQueryMessages.EXPRESSIONS_AND_COLUMNS_DO_NOT_MATCH_EXPRESSIONS_SIZE
-              + expressions.size()
-              + DataNodeQueryMessages.COLUMNS_SIZE
-              + columnList.size());
-    }
-
-    String[] nonTimeColumnNames = new String[columnList.size() - 1];
-    Object[] nonTimeValues = new Object[columnList.size() - 1];
-    TsTableColumnCategory[] nonTimeColumnCategories =
-        new TsTableColumnCategory[columnList.size() - 1];
-    MeasurementSchema[] columnSchemas = new MeasurementSchema[columnList.size() - 1];
-    TSDataType[] dataTypes = new TSDataType[columnList.size() - 1];
-    int nonTimeColumnIndex = 0;
-    long timestamp = -1;
-    for (int i = 0; i < columnList.size(); i++) {
-      TsTableColumnSchema columnSchema = columnList.get(i);
-      Expression expression = expressions.get(i);
-
-      if (columnSchema.getColumnCategory().equals(TIME)) {
-        timestamp = AstUtil.expressionToTimestamp(expression, zoneId);
-      } else {
-        Object value = AstUtil.expressionToTsValue(expression);
-        nonTimeValues[nonTimeColumnIndex] = value;
-        nonTimeColumnNames[nonTimeColumnIndex] = columnSchema.getColumnName();
-        dataTypes[nonTimeColumnIndex] = columnSchema.getDataType();
-        nonTimeColumnCategories[nonTimeColumnIndex] = columnSchema.getColumnCategory();
-        columnSchemas[nonTimeColumnIndex] =
-            new MeasurementSchema(columnSchema.getColumnName(), columnSchema.getDataType());
-        nonTimeColumnIndex++;
-      }
-    }
-
-    TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
-    insertRowStatement.setTime(timestamp);
-    insertRowStatement.setMeasurements(nonTimeColumnNames);
-    insertRowStatement.setDataTypes(dataTypes);
-    insertRowStatement.setMeasurementSchemas(columnSchemas);
-    insertRowStatement.setValues(nonTimeValues);
-    insertRowStatement.setColumnCategories(nonTimeColumnCategories);
-    insertRowStatement.setNeedInferType(false);
-    insertRowStatement.setDatabaseName(databaseName);
-
-    try {
-      insertRowStatement.transferType(zoneId);
-    } catch (QueryProcessException e) {
-      throw new SemanticException(e);
-    }
-    return insertRowStatement;
-  }
-
-  private InsertRowStatement toInsertRowStatement(
-      List<Expression> expressions,
-      int timeColumnIndex,
-      String[] nonTimeColumnNames,
-      String tableName,
-      String databaseName,
-      int columnSize) {
-    InsertRowStatement insertRowStatement = new InsertRowStatement();
-    insertRowStatement.setWriteToTable(true);
-    insertRowStatement.setDevicePath(new PartialPath(new String[] {tableName}));
-    long timestamp;
-    int nonTimeColCnt;
-    if (timeColumnIndex == -1) {
-      timestamp = CommonDateTimeUtils.currentTime();
-      nonTimeColCnt = expressions.size();
-    } else {
-      if (timeColumnIndex >= expressions.size()) {
-        throw new SemanticException(
-            String.format(
-                DataNodeQueryMessages.TIMECOLUMNINDEX_OUT_OF_BOUND_D_D,
-                timeColumnIndex,
-                expressions.size()));
-      }
-
-      Expression timeExpression = expressions.get(timeColumnIndex);
-      timestamp = AstUtil.expressionToTimestamp(timeExpression, zoneId);
-      nonTimeColCnt = expressions.size() - 1;
-    }
-
-    if (nonTimeColCnt != nonTimeColumnNames.length) {
-      throw new SemanticException(
-          String.format(
-              DataNodeQueryMessages.INCONSISTENT_NUMBERS_OF_NON_TIME_COLUMN_NAMES_AND_VALUES_D_D,
-              nonTimeColumnNames.length,
-              nonTimeColCnt));
-    }
-
-    TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
-    insertRowStatement.setTime(timestamp);
-    insertRowStatement.setMeasurements(nonTimeColumnNames);
-
-    Object[] values = new Object[nonTimeColumnNames.length];
-    int valuePos = 0;
-    for (int i = 0; i < expressions.size(); i++) {
-      if (i != timeColumnIndex) {
-        values[valuePos++] = AstUtil.expressionToTsValue(expressions.get(i));
-      }
-    }
-
-    insertRowStatement.setValues(values);
-    insertRowStatement.setNeedInferType(true);
-    insertRowStatement.setDatabaseName(databaseName);
-    return insertRowStatement;
   }
 
   @Override
@@ -3587,7 +3361,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitTrim(RelationalSqlParser.TrimContext ctx) {
     if (ctx.FROM() != null && ctx.trimsSpecification() == null && ctx.trimChar == null) {
       throw parseError(
-          "The 'trim' function must have specification, char or both arguments when it takes FROM",
+          DataNodeQueryMessages
+              .EXCEPTION_THE_TRIM_FUNCTION_MUST_HAVE_SPECIFICATION_CHAR_OR_BOTH_ARGUMENTS_WHEN_IT_TAKES_FROM_F0E51E3E,
           ctx);
     }
 
@@ -3645,7 +3420,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     try {
       field = Extract.Field.valueOf(fieldString.toUpperCase(ENGLISH));
     } catch (IllegalArgumentException e) {
-      throw parseError("Invalid EXTRACT field: " + fieldString, context);
+      throw parseError(
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_EXTRACT_FIELD_ARG_C1050A03,
+              Objects.toString(fieldString)),
+          context);
     }
     return new Extract(getLocation(context), (Expression) visit(context.valueExpression()), field);
   }
@@ -3715,11 +3494,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (name.toString().equalsIgnoreCase("if")) {
       check(
           ctx.expression().size() == 2 || ctx.expression().size() == 3,
-          "Invalid number of arguments for 'if' function",
+          DataNodeQueryMessages.EXCEPTION_INVALID_NUMBER_OF_ARGUMENTS_FOR_IF_FUNCTION_4FFCACCE,
           ctx);
-      check(!distinct, "DISTINCT not valid for 'if' function", ctx);
-      check(processingMode == null, "Running or final semantics not valid for 'if' function", ctx);
-      check(nullTreatment == null, "Null treatment clause not valid for 'if' function", ctx);
+      check(
+          !distinct,
+          DataNodeQueryMessages.EXCEPTION_DISTINCT_NOT_VALID_FOR_IF_FUNCTION_DAABCB19,
+          ctx);
+      check(
+          processingMode == null,
+          DataNodeQueryMessages
+              .EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_IF_FUNCTION_53CF9A7E,
+          ctx);
+      check(
+          nullTreatment == null,
+          DataNodeQueryMessages.EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_IF_FUNCTION_42DE8DB5,
+          ctx);
 
       Expression elseExpression = null;
       if (ctx.expression().size() == 3) {
@@ -3734,13 +3523,24 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     if (name.toString().equalsIgnoreCase("nullif")) {
-      check(ctx.expression().size() == 2, "Invalid number of arguments for 'nullif' function", ctx);
-      check(!distinct, "DISTINCT not valid for 'nullif' function", ctx);
+      check(
+          ctx.expression().size() == 2,
+          DataNodeQueryMessages.EXCEPTION_INVALID_NUMBER_OF_ARGUMENTS_FOR_NULLIF_FUNCTION_DAFB26BF,
+          ctx);
+      check(
+          !distinct,
+          DataNodeQueryMessages.EXCEPTION_DISTINCT_NOT_VALID_FOR_NULLIF_FUNCTION_BC065363,
+          ctx);
       check(
           processingMode == null,
-          "Running or final semantics not valid for 'nullif' function",
+          DataNodeQueryMessages
+              .EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_NULLIF_FUNCTION_D2ADE7AD,
           ctx);
-      check(nullTreatment == null, "Null treatment clause not valid for 'nullif' function", ctx);
+      check(
+          nullTreatment == null,
+          DataNodeQueryMessages
+              .EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_NULLIF_FUNCTION_4D3234AA,
+          ctx);
 
       return new NullIfExpression(
           getLocation(ctx),
@@ -3751,14 +3551,23 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (name.toString().equalsIgnoreCase("coalesce")) {
       check(
           ctx.expression().size() >= 2,
-          "The 'coalesce' function must have at least two arguments",
+          DataNodeQueryMessages
+              .EXCEPTION_THE_COALESCE_FUNCTION_MUST_HAVE_AT_LEAST_TWO_ARGUMENTS_D93EC8BF,
           ctx);
-      check(!distinct, "DISTINCT not valid for 'coalesce' function", ctx);
+      check(
+          !distinct,
+          DataNodeQueryMessages.EXCEPTION_DISTINCT_NOT_VALID_FOR_COALESCE_FUNCTION_0473D98C,
+          ctx);
       check(
           processingMode == null,
-          "Running or final semantics not valid for 'coalesce' function",
+          DataNodeQueryMessages
+              .EXCEPTION_RUNNING_OR_FINAL_SEMANTICS_NOT_VALID_FOR_COALESCE_FUNCTION_0D0143A2,
           ctx);
-      check(nullTreatment == null, "Null treatment clause not valid for 'coalesce' function", ctx);
+      check(
+          nullTreatment == null,
+          DataNodeQueryMessages
+              .EXCEPTION_NULL_TREATMENT_CLAUSE_NOT_VALID_FOR_COALESCE_FUNCTION_CCF1779B,
+          ctx);
 
       return new CoalesceExpression(getLocation(ctx), visit(ctx.expression(), Expression.class));
     }
@@ -4271,13 +4080,22 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     char escape;
     if (context.UESCAPE() != null) {
       String escapeString = unquote(context.STRING().getText());
-      check(!escapeString.isEmpty(), "Empty Unicode escape character", context);
       check(
-          escapeString.length() == 1, "Invalid Unicode escape character: " + escapeString, context);
+          !escapeString.isEmpty(),
+          DataNodeQueryMessages.EXCEPTION_EMPTY_UNICODE_ESCAPE_CHARACTER_2094672A,
+          context);
+      check(
+          escapeString.length() == 1,
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_UNICODE_ESCAPE_CHARACTER_ARG_C7E374D5,
+              Objects.toString(escapeString)),
+          context);
       escape = escapeString.charAt(0);
       check(
           isValidUnicodeEscape(escape),
-          "Invalid Unicode escape character: " + escapeString,
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_INVALID_UNICODE_ESCAPE_CHARACTER_ARG_C7E374D5,
+              Objects.toString(escapeString)),
           context);
     } else {
       escape = '\\';
@@ -4310,11 +4128,20 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             charactersNeeded = 4;
             escapedCharacterBuilder.append(ch);
           } else {
-            throw parseError("Invalid hexadecimal digit: " + ch, context);
+            throw parseError(
+                String.format(
+                    DataNodeQueryMessages.EXCEPTION_INVALID_HEXADECIMAL_DIGIT_ARG_1A042DF1,
+                    Objects.toString(ch)),
+                context);
           }
           break;
         case UNICODE_SEQUENCE:
-          check(isHexDigit(ch), "Incomplete escape sequence: " + escapedCharacterBuilder, context);
+          check(
+              isHexDigit(ch),
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_INCOMPLETE_ESCAPE_SEQUENCE_ARG_9FC5CC3B,
+                  Objects.toString(escapedCharacterBuilder)),
+              context);
           escapedCharacterBuilder.append(ch);
           if (charactersNeeded == escapedCharacterBuilder.length()) {
             String currentEscapedCode = escapedCharacterBuilder.toString();
@@ -4322,7 +4149,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             int codePoint = Integer.parseInt(currentEscapedCode, 16);
             check(
                 Character.isValidCodePoint(codePoint),
-                "Invalid escaped character: " + currentEscapedCode,
+                String.format(
+                    DataNodeQueryMessages.EXCEPTION_INVALID_ESCAPED_CHARACTER_ARG_A324BE13,
+                    Objects.toString(currentEscapedCode)),
                 context);
             if (Character.isSupplementaryCodePoint(codePoint)) {
               unicodeStringBuilder.appendCodePoint(codePoint);
@@ -4331,7 +4160,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               if (Character.isSurrogate(currentCodePoint)) {
                 throw parseError(
                     String.format(
-                        "Invalid escaped character: %s. Escaped character is a surrogate. Use '\\+123456' instead.",
+                        DataNodeQueryMessages
+                            .EXCEPTION_INVALID_ESCAPED_CHARACTER_ARG_ESCAPED_CHARACTER_IS_A_SURROGATE_USE_123456_INSTEAD_AB5CFF96,
                         currentEscapedCode),
                     context);
               }
@@ -4342,7 +4172,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           } else {
             check(
                 charactersNeeded > escapedCharacterBuilder.length(),
-                "Unexpected escape sequence length: " + escapedCharacterBuilder.length(),
+                String.format(
+                    DataNodeQueryMessages.EXCEPTION_UNEXPECTED_ESCAPE_SEQUENCE_LENGTH_ARG_2DAD5CAB,
+                    Objects.toString(escapedCharacterBuilder.length())),
                 context);
           }
           break;
@@ -4353,7 +4185,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     check(
         state == UnicodeDecodeState.EMPTY,
-        "Incomplete escape sequence: " + escapedCharacterBuilder.toString(),
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_INCOMPLETE_ESCAPE_SEQUENCE_ARG_9FC5CC3B,
+            Objects.toString(escapedCharacterBuilder.toString())),
         context);
     return unicodeStringBuilder.toString();
   }
@@ -4558,9 +4392,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   private static void validateArgumentAlias(Identifier alias, ParserRuleContext context) {
     check(
         alias.isDelimited() || !alias.getValue().equalsIgnoreCase("COPARTITION"),
-        "The word \"COPARTITION\" is ambiguous in this context. "
-            + "To alias an argument, precede the alias with \"AS\". "
-            + "To specify co-partitioning, change the argument order so that the last argument cannot be aliased.",
+        DataNodeQueryMessages
+            .EXCEPTION_THE_WORD_COPARTITION_IS_AMBIGUOUS_IN_THIS_CONTEXT_TO_ALIAS_AN_ARGUMENT_PRECEDE_THE_ALIAS_WITH_AS_TO_SPECIFY_CO_PARTITIONING_CHANGE_THE_ARGUMENT_ORDER_SO_THAT_THE_LAST_ARGUMENT_CANNOT_BE_ALIASED_EC31C71A,
         context);
   }
 }

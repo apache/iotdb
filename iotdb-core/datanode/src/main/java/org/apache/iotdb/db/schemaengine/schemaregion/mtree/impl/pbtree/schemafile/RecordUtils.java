@@ -374,36 +374,38 @@ public class RecordUtils {
       builder.append("measurementNode, ");
       builder.append(
           String.format(
-              "alias: %s, ",
+              DataNodeSchemaMessages.EXCEPTION_ALIAS_ARG_EA404C75,
               node.getAsMeasurementMNode().getAlias() == null
                   ? ""
                   : node.getAsMeasurementMNode().getAlias()));
       builder.append(
-          String.format("type: %s, ", node.getAsMeasurementMNode().getDataType().toString()));
+          String.format(
+              DataNodeSchemaMessages.EXCEPTION_TYPE_ARG_EBFECBD8,
+              node.getAsMeasurementMNode().getDataType().toString()));
       builder.append(
           String.format(
-              "encoding: %s, ",
+              DataNodeSchemaMessages.EXCEPTION_ENCODING_ARG_C3BBB084,
               node.getAsMeasurementMNode().getSchema().getEncodingType().toString()));
       builder.append(
           String.format(
-              "compressor: %s]",
+              DataNodeSchemaMessages.EXCEPTION_COMPRESSOR_ARG_313D1482,
               node.getAsMeasurementMNode().getSchema().getCompressor().toString()));
       return builder.toString();
     } else if (node.isDevice()) {
       builder.append("entityNode, ");
 
       if (node.getAsDeviceMNode().isAlignedNullable() == null) {
-        builder.append("aligned is null, ");
+        builder.append(DataNodeSchemaMessages.EXCEPTION_ALIGNED_IS_NULL_1EFBFBEC);
       } else if (node.getAsDeviceMNode().isAligned()) {
         builder.append("aligned, ");
       } else {
-        builder.append("not aligned, ");
+        builder.append(DataNodeSchemaMessages.EXCEPTION_NOT_ALIGNED_EED2E48F);
       }
 
       if (node.getAsDeviceMNode().isUseTemplate()) {
-        builder.append("using template.]");
+        builder.append(DataNodeSchemaMessages.EXCEPTION_USING_TEMPLATE_07534BF6);
       } else {
-        builder.append("not using template.]");
+        builder.append(DataNodeSchemaMessages.EXCEPTION_NOT_USING_TEMPLATE_9E135BEE);
       }
 
     } else {

@@ -43,10 +43,9 @@ class DataNodeRegionGroupUtil {
     regionReplicaSetMap.forEach(
         (consensusGroupId, regionReplicaSet) -> {
           Integer leaderId = leaderMap.get(consensusGroupId);
-          TDataNodeLocation leaderDataNodeLocation = null;
-          if (leaderId == null || leaderId == -1) {
-            leaderDataNodeLocation = regionReplicaSet.getDataNodeLocations().get(0);
-          } else {
+          TDataNodeLocation leaderDataNodeLocation = regionReplicaSet.getDataNodeLocations().get(0);
+          // The leader cache can still reference a removed replica during region migration.
+          if (leaderId != null && leaderId != -1) {
             for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
               if (dataNodeLocation.getDataNodeId() == leaderId) {
                 leaderDataNodeLocation = dataNodeLocation;

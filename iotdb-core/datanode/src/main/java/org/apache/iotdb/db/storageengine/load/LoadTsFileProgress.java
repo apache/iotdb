@@ -130,7 +130,7 @@ public class LoadTsFileProgress {
   // -------------------------------------------------------------------------
 
   private void ensureActivated() throws IOException {
-    if (!progressFile.exists()) {
+    if (!progressFile.exists() || progressFile.length() == 0L) {
       final File parent = progressFile.getParentFile();
       if (parent != null && !parent.exists()) {
         parent.mkdirs();
@@ -394,7 +394,7 @@ public class LoadTsFileProgress {
   }
 
   public List<ChunkRangeRecord> readAllRecords() throws IOException {
-    if (!progressFile.isFile()) {
+    if (!progressFile.isFile() || progressFile.length() == 0L) {
       return Collections.emptyList();
     }
 
@@ -460,7 +460,7 @@ public class LoadTsFileProgress {
    * destructive.
    */
   public static TerminalRecord readTerminal(final File progressFile) throws IOException {
-    if (progressFile == null || !progressFile.isFile()) {
+    if (progressFile == null || !progressFile.isFile() || progressFile.length() == 0L) {
       return null;
     }
     TerminalRecord terminal = null;
@@ -516,49 +516,56 @@ public class LoadTsFileProgress {
     return null;
   }
 
-  /** Locates the offset of an incomplete trailing append entry, or -1 when the file is intact. */
+  /** Locates an incomplete header or trailing entry, or -1 when the file is intact. */
   private long findTornTailOffset() throws IOException {
     try (final CountingInputStream countingIn =
             new CountingInputStream(new BufferedInputStream(new FileInputStream(progressFile)));
         final DataInputStream in = new DataInputStream(countingIn)) {
-      final String magic = ReadWriteIOUtils.readString(in);
-      if (!MAGIC.equals(magic)) {
+      final long fileLength = progressFile.length();
+      if (fileLength < Integer.BYTES) {
+        return 0L;
+      }
+      final int magicLength = in.readInt();
+      if (magicLength != MAGIC.length()) {
         return -1L;
       }
-      skipUuid(in);
-
-      // The length prefix is read into the same four bytes for every entry.
-      final byte[] lengthBuf = new byte[Integer.BYTES];
-      final ByteBuffer lengthView = ByteBuffer.wrap(lengthBuf);
-
-      while (true) {
-        final long entryStart = countingIn.getBytesRead();
-        // The mark keeps skip() inside the buffer. Without it, a skip that runs past the end of the
-        // file is delegated to the file stream, which reports it as a full skip and hides the tear.
-        in.mark(Integer.BYTES);
-        final int read = in.read(lengthBuf);
-        if (read < 0) {
-          return -1L; // Clean EOF
-        }
-        if (read < Integer.BYTES) {
-          return entryStart; // Partially written length header
-        }
-
-        lengthView.clear();
-        final int entryLength = lengthView.getInt();
-        if (entryLength <= 0) {
-          return -1L; // Corrupted marker, not a simple append truncation
-        }
-
-        long skipped = 0;
-        while (skipped < entryLength) {
-          final long step = in.skip(entryLength - skipped);
-          if (step <= 0) {
-            return entryStart; // Incomplete entry payload
-          }
-          skipped += step;
-        }
+      if (fileLength - countingIn.getBytesRead() < magicLength) {
+        return 0L;
       }
+      final byte[] magic = new byte[magicLength];
+      in.readFully(magic);
+      if (!MAGIC.equals(new String(magic, StandardCharsets.UTF_8))) {
+        return -1L;
+      }
+      if (fileLength - countingIn.getBytesRead() < Integer.BYTES) {
+        return 0L;
+      }
+      final int uuidLength = in.readInt();
+      if (uuidLength < 0) {
+        return -1L;
+      }
+      if (fileLength - countingIn.getBytesRead() < uuidLength) {
+        return 0L;
+      }
+      in.skipNBytes(uuidLength);
+
+      while (countingIn.getBytesRead() < fileLength) {
+        final long entryStart = countingIn.getBytesRead();
+        if (fileLength - entryStart < Integer.BYTES) {
+          return entryStart;
+        }
+        final int entryLength = in.readInt();
+        if (entryLength <= 0) {
+          return -1L;
+        }
+        // FileInputStream.skip() can report success beyond EOF. Check the captured file length
+        // before skipping, including for entries larger than a BufferedInputStream's buffer.
+        if (fileLength - countingIn.getBytesRead() < entryLength) {
+          return entryStart;
+        }
+        in.skipNBytes(entryLength);
+      }
+      return -1L;
     }
   }
 

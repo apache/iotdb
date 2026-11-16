@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicP
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
@@ -49,8 +50,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -121,6 +124,10 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
           continue;
         }
 
+        if (topicMeta.getConfig().isProgressRetainedAfterUnsubscribe()) {
+          continue;
+        }
+
         // Topic will be subscribed by no consumers in this group
         dropPipeProcedures.add(
             new DropPipeProcedureV2(
@@ -184,25 +191,41 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
       throws SubscriptionException, IOException {
     LOGGER.info(ProcedureMessages.DROPSUBSCRIPTIONPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
-    // Push pipe meta to data nodes
-    final String exceptionMessage =
-        AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
-            null, dropMultiPipeOnDataNodes(dropPipeProcedures, env));
-    if (!exceptionMessage.isEmpty()) {
-      // throw exception instead of logging warn, do not rely on metadata synchronization
-      throw new SubscriptionException(
-          String.format(
-              ProcedureMessages
-                  .FAILED_TO_DROP_PIPES_WHEN_DROPPING_SUBSCRIPTION_WITH_REQUEST_BECAUSE,
-              dropPipeProcedures.stream()
-                  .map(DropPipeProcedureV2::getPipeName)
-                  .collect(Collectors.toList()),
-              unsubscribeReq,
-              exceptionMessage));
+    if (!dropPipeProcedures.isEmpty()) {
+      // An empty Pipe metadata batch triggers full reconciliation and drops every local Pipe.
+      final Map<Integer, TPushPipeMetaResp> responseMap =
+          dropMultiPipeOnDataNodes(dropPipeProcedures, env);
+      final Map<Integer, TPushPipeMetaResp> responseMapToCheck = new HashMap<>(responseMap);
+      responseMapToCheck
+          .entrySet()
+          .removeIf(
+              entry ->
+                  isOfflineDataNodeTransportFailure(
+                      env,
+                      entry.getKey(),
+                      entry.getValue().getStatus(),
+                      TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode(),
+                      entry.getValue().isSetExceptionMessages()
+                          && !entry.getValue().getExceptionMessages().isEmpty()));
+      final String exceptionMessage =
+          AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
+              null, responseMapToCheck);
+      if (!exceptionMessage.isEmpty()) {
+        // throw exception instead of logging warn, do not rely on metadata synchronization
+        throw new SubscriptionException(
+            String.format(
+                ProcedureMessages
+                    .FAILED_TO_DROP_PIPES_WHEN_DROPPING_SUBSCRIPTION_WITH_REQUEST_BECAUSE,
+                dropPipeProcedures.stream()
+                    .map(DropPipeProcedureV2::getPipeName)
+                    .collect(Collectors.toList()),
+                unsubscribeReq,
+                exceptionMessage));
+      }
     }
 
     // Push consumer group meta to data nodes
-    alterConsumerGroupProcedure.executeFromOperateOnDataNodes(env);
+    alterConsumerGroupProcedure.executeFromOperateOnDataNodesForUnsubscribe(env);
   }
 
   @Override
@@ -227,7 +250,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     LOGGER.info(ProcedureMessages.DROPSUBSCRIPTIONPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
 
     // Rollback AlterConsumerGroupProcedure
-    alterConsumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
+    alterConsumerGroupProcedure.rollbackFromOperateOnDataNodesForUnsubscribe(env);
 
     // Do nothing to rollback DropPipeProcedureV2s
   }

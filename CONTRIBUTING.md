@@ -79,6 +79,27 @@ Precautions:
 * Do not use special Unicode chars, e.g., U+FF1A 
 * Do not use the character of dollar (as we will use Latex to generate pdf files)
 
+## Coding agents
+
+[AGENTS.md](AGENTS.md) is the shared entry point for repository-wide build, testing, and coding
+instructions. Follow any module-level `AGENTS.md` as well, including
+[integration-test/AGENTS.md](integration-test/AGENTS.md) when working on integration tests.
+Maintain shared guidance in these files.
+
+For Claude Code contributors:
+
+* Upgrade to a current release. Direct `AGENTS.md` support was introduced in v2.1.277;
+  v2.1.281 or later is needed for some sessions, including Amazon Bedrock or sessions with
+  telemetry disabled.
+* By default, a `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md` in the working directory
+  or an ancestor directory takes precedence over `AGENTS.md`. To load both, open `/config`
+  and set **Project instructions** to `claude-md-and-agents-md`.
+* Start a new session after upgrading and check that the repository's `AGENTS.md` appears in
+  `/memory` (available for directly loaded `AGENTS.md` files since v2.1.280).
+
+See the [Claude Code loading and configuration rules](https://code.claude.com/docs/en/memory#agentsmd)
+for details.
+
 ## Code Formatting
 
 We use the [Spotless

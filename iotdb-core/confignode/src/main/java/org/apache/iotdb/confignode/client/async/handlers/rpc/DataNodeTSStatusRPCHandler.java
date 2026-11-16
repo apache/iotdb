@@ -33,7 +33,9 @@ import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeoutException;
 
 /** General RPC handler for TSStatus response type. */
 public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSStatus> {
@@ -72,17 +74,21 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Failed to "
-            + requestType
-            + " on DataNode: "
-            + formattedTargetLocation
-            + ", exception: "
-            + e.getMessage();
+        String.format(
+            ConfigNodeMessages.EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D,
+            Objects.toString(requestType),
+            Objects.toString(formattedTargetLocation),
+            Objects.toString(e.getMessage()));
     logFailure(errorMsg);
     // the DN throw Exception -> TApplicationException
     // the DN crash -> TTransportException or ConnectException
+    // the thrift frame timeout -> TimeoutException
+    // A timeout means no response was received, not that the DataNode failed to execute the
+    // request.
     int code =
-        e instanceof TTransportException || e instanceof ConnectException
+        e instanceof TTransportException
+                || e instanceof ConnectException
+                || e instanceof TimeoutException
             ? TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode()
             : TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode();
 

@@ -491,10 +491,12 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
 
   private String buildPowerShellFailure(CommandResult commandResult) {
     if (isAccessDeniedOutput(commandResult.getOutput())) {
-      return "Access denied while collecting windows disk metrics through PowerShell/CIM";
+      return MetricsMessages
+          .EXCEPTION_ACCESS_DENIED_WHILE_COLLECTING_WINDOWS_DISK_METRICS_THROUGH_POWERSHELL_CIM_DBA4F845;
     }
     return String.format(
-        "Failed to collect windows disk metrics, powershell exit code: %s",
+        MetricsMessages
+            .EXCEPTION_FAILED_TO_COLLECT_WINDOWS_DISK_METRICS_POWERSHELL_EXIT_CODE_ARG_E9F65DC2,
         commandResult.getExitCode());
   }
 

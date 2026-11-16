@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -68,9 +69,9 @@ public interface IAnalysis {
 
   List<TEndPoint> getRedirectNodeList();
 
-  void setRedirectNodeList(List<TEndPoint> redirectNodeList);
+  void setRedirectNodeList(List<TDataNodeLocation> dataNodeLocations);
 
-  void addEndPointToRedirectNodeList(TEndPoint endPoint);
+  void addEndPointToRedirectNodeList(TDataNodeLocation dataNodeLocation);
 
   TimePredicate getConvertedTimePredicate();
 

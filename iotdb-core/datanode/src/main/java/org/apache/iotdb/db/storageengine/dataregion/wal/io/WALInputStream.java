@@ -52,6 +52,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private final ByteBuffer compressedSizeBuffer = ByteBuffer.allocate(Integer.BYTES);
   private ByteBuffer dataBuffer = null;
   private ByteBuffer compressedBuffer = null;
+  private long currentSegmentOffset = -1;
+  private long currentSegmentBlockIndex;
+  private long suspendedSegmentOffset = -1;
+  private int suspendedSegmentPosition;
+  private int suspendedSegmentRemaining;
   private final long fileSize;
   File logFile;
   /*
@@ -63,6 +68,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private long endOffset = -1;
   private long logicalReadOffset;
   private boolean recoveringEntries;
+  private WALFileContext fileContext;
+  private long dataStartOffset;
+  private long blockIndex;
 
   WALFileVersion version;
 
@@ -77,7 +85,12 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     try {
       fileSize = channel.size();
       analyzeFileVersion();
-      if (ignoreMetadata) {
+      WALFormats.validateRead(logFile, version);
+      if (version == WALFileVersion.EXTENDED) {
+        fileContext = WALFormats.open(logFile, channel);
+        dataStartOffset = channel.position();
+        endOffset = fileSize;
+      } else if (ignoreMetadata) {
         // Recovery must not trust even a plausible footer length. Stop at the entry end marker
         // or the first unreadable entry instead.
         endOffset = fileSize;
@@ -85,8 +98,23 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       } else {
         getEndOffset();
       }
-    } catch (Exception e) {
-      channel.close();
+    } catch (IOException | RuntimeException | Error e) {
+      try {
+        channel.close();
+      } catch (IOException closeException) {
+        e.addSuppressed(closeException);
+      }
+      if (fileContext != null) {
+        try {
+          fileContext.close();
+        } catch (RuntimeException | Error closeException) {
+          e.addSuppressed(closeException);
+        }
+      }
+      if (version == WALFileVersion.EXTENDED && !WALFormatException.isFatal(e)) {
+        throw new WALFormatException(
+            StorageEngineMessages.EXCEPTION_UNSUPPORTED_OR_UNAVAILABLE_WAL_FORMAT_4629CFE4, e);
+      }
       throw e;
     }
   }
@@ -205,8 +233,36 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    channel.close();
-    MmapUtil.clean(dataBuffer);
+    try {
+      channel.close();
+    } finally {
+      try {
+        releaseReadBuffers();
+      } finally {
+        try {
+          if (fileContext != null) {
+            fileContext.close();
+          }
+        } finally {
+          suspendedSegmentOffset = -1;
+          suspendedSegmentRemaining = 0;
+        }
+      }
+    }
+  }
+
+  /**
+   * Releases segment scratch buffers while preserving the unread position. A paused reader must not
+   * pin a complete WAL segment for each subscription queue. The next read reloads only the current
+   * segment, without reopening the file or rescanning entry metadata.
+   */
+  public void releaseReadBuffers() {
+    if (dataBuffer != null && dataBuffer.hasRemaining()) {
+      suspendedSegmentOffset = currentSegmentOffset;
+      suspendedSegmentPosition = dataBuffer.position();
+      suspendedSegmentRemaining = dataBuffer.remaining();
+    }
+    releaseSegment();
     MmapUtil.clean(compressedBuffer);
     dataBuffer = null;
     compressedBuffer = null;
@@ -217,25 +273,68 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     long size = (endOffset - channel.position());
     if (!Objects.isNull(dataBuffer)) {
       size += dataBuffer.limit() - dataBuffer.position();
+    } else {
+      size += suspendedSegmentRemaining;
     }
     return (int) size;
   }
 
   private void loadNextSegment() throws IOException {
+    if (suspendedSegmentOffset >= 0) {
+      channel.position(suspendedSegmentOffset);
+      if (version == WALFileVersion.EXTENDED) {
+        blockIndex = currentSegmentBlockIndex;
+      }
+    }
     if (channel.position() >= endOffset) {
       throw new EOFException(StorageEngineMessages.REACH_END_OFFSET_OF_WAL_FILE);
     }
     long startTime = System.nanoTime();
     long startPosition = channel.position();
-    if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
+    if (version == WALFileVersion.EXTENDED) {
+      loadNextExtendedSegment();
+    } else if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
       loadNextSegmentV2();
     } else if (version == WALFileVersion.V1) {
       loadNextSegmentV1();
     } else {
       tryLoadSegment();
     }
+    currentSegmentOffset = startPosition;
+    if (suspendedSegmentOffset >= 0) {
+      if (suspendedSegmentPosition >= dataBuffer.limit()) {
+        throw new EOFException(StorageEngineMessages.UNEXPECTED_END_OF_FILE);
+      }
+      dataBuffer.position(suspendedSegmentPosition);
+      suspendedSegmentOffset = -1;
+      suspendedSegmentRemaining = 0;
+    }
     WritingMetrics.getInstance()
         .recordWALRead(channel.position() - startPosition, System.nanoTime() - startTime);
+  }
+
+  private void loadNextExtendedSegment() throws IOException {
+    releaseSegment();
+    currentSegmentOffset = channel.position();
+    currentSegmentBlockIndex = blockIndex;
+    dataBuffer = fileContext.readSegment(channel, endOffset, blockIndex);
+    if (dataBuffer == null || !dataBuffer.hasRemaining()) {
+      throw WALFormatException.unsupported();
+    }
+    blockIndex++;
+  }
+
+  private void releaseSegment() {
+    ByteBuffer segment = dataBuffer;
+    dataBuffer = null;
+    if (segment == null) {
+      return;
+    }
+    if (fileContext != null) {
+      fileContext.release(segment);
+    } else {
+      MmapUtil.clean(segment);
+    }
   }
 
   private void loadNextSegmentV1() throws IOException {
@@ -349,6 +448,28 @@ public class WALInputStream extends InputStream implements AutoCloseable {
    * @throws IOException If the file is broken or the given position is invalid
    */
   public void skipToGivenLogicalPosition(long pos) throws IOException {
+    releaseReadBuffers();
+    suspendedSegmentOffset = -1;
+    suspendedSegmentRemaining = 0;
+    if (version == WALFileVersion.EXTENDED) {
+      if (pos < 0) {
+        throw new WALFormatException(
+            StorageEngineMessages.EXCEPTION_INVALID_WAL_LOGICAL_POSITION_8CF34AFE);
+      }
+      channel.position(dataStartOffset);
+      blockIndex = 0;
+      logicalReadOffset = 0;
+      long remaining = pos;
+      while (true) {
+        loadNextExtendedSegment();
+        if (remaining < dataBuffer.remaining()) {
+          dataBuffer.position((int) remaining);
+          logicalReadOffset = pos;
+          return;
+        }
+        remaining -= dataBuffer.remaining();
+      }
+    }
     if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
       channel.position(version.getVersionBytes().length);
       long posRemain = pos;
@@ -360,6 +481,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
           posRemain -= segmentInfo.uncompressedSize;
           channel.position(currentPos + segmentInfo.dataInDiskSize + segmentInfo.headerSize());
         } else {
+          currentSegmentOffset = currentPos;
           break;
         }
       } while (posRemain >= 0);
@@ -389,7 +511,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   public void read(ByteBuffer buffer) throws IOException {
     int totalBytesToBeRead = buffer.remaining();
     while (totalBytesToBeRead > 0) {
-      if (dataBuffer.remaining() == 0) {
+      if (dataBuffer == null || dataBuffer.remaining() == 0) {
         loadNextSegment();
       }
       int currReadBytes = Math.min(dataBuffer.remaining(), totalBytesToBeRead);

@@ -278,11 +278,12 @@ public class UpdateDetailContainer implements UpdateContainer {
           outputStream.writeWithLength(valueBytes);
           ++attributeCount;
         }
-        outputStream.rewrite(deviceEntry.getValue().size(), attributeOffset);
+        // Concurrent updates may change the map size after its iterator has been exhausted.
+        outputStream.rewrite(attributeCount, attributeOffset);
       }
-      outputStream.rewrite(tableEntry.getValue().size(), deviceSizeOffset);
+      outputStream.rewrite(deviceEntryCount, deviceSizeOffset);
     }
-    outputStream.rewrite(updateMap.size(), mapSizeOffset);
+    outputStream.rewrite(mapEntryCount, mapSizeOffset);
   }
 
   @Override

@@ -81,11 +81,7 @@ public class JVMCommonUtils {
 
   public static double getDiskFreeRatio(String dir) {
     try {
-      File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
-      if (!dirFile.mkdirs()) {
-        // This may solve getFreeSpace() == 0?
-        dirFile = new File(dir);
-      }
+      File dirFile = getDiskSpaceFile(dir);
       long freeSpace =
           IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
       if (freeSpace == 0) {
@@ -105,6 +101,26 @@ public class JVMCommonUtils {
 
   public static boolean hasSpace(String dir) {
     return getDiskFreeRatio(dir) > diskSpaceWarningThreshold;
+  }
+
+  /** Probe once during heartbeat recovery. A later heartbeat can retry a failed probe. */
+  public static boolean hasSpaceWithoutRetry(String dir) {
+    try {
+      File dirFile = getDiskSpaceFile(dir);
+      long freeSpace = dirFile.getFreeSpace();
+      long totalSpace = dirFile.getTotalSpace();
+      return freeSpace > 0
+          && totalSpace > 0
+          && (double) freeSpace / totalSpace > diskSpaceWarningThreshold;
+    } catch (Exception e) {
+      LOGGER.error(UtilMessages.UNEXPECTED_ERROR_CHECKING_DISK_SPACE, dir, e);
+      return false;
+    }
+  }
+
+  private static File getDiskSpaceFile(String dir) {
+    File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
+    return dirFile.mkdirs() ? dirFile : new File(dir);
   }
 
   public static long getOccupiedSpace(String folderPath) throws IOException {

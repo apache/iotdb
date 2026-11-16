@@ -79,6 +79,38 @@ import static org.apache.iotdb.db.auth.AuthorityChecker.NO_PERMISSION_PROMOTION;
 
 public class PipeTsFileInsertionEventTest {
   @Test
+  public void testRealtimeTsFileTimeParsingRemainsUnchanged() {
+    final TsFileResource resource = new TsFileResource(new File("1-1-0-0.tsfile"));
+    final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"t1", "d1"});
+    resource.updateStartTime(device, 0);
+    resource.updateEndTime(device, Long.MIN_VALUE);
+    resource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            true,
+            "db1",
+            resource,
+            null,
+            false,
+            false,
+            false,
+            Collections.singleton("t1"),
+            "realtime_time_filter",
+            1L,
+            null,
+            null,
+            new TablePattern(true, null, null),
+            null,
+            null,
+            null,
+            true,
+            -10,
+            10);
+    Assert.assertFalse(event.shouldParseTime());
+    event.close();
+  }
+
+  @Test
   public void testHistoricalModsSurviveOriginalFileRemoval() throws Exception {
     assertHistoricalModsAfterOriginalFileRemoval(true, true);
   }

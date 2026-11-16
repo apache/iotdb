@@ -63,12 +63,16 @@ import static java.util.stream.Collectors.toList;
 
 public class TagManager {
 
-  private static final String TAG_FORMAT = "tag key is %s, tag value is %s, tlog offset is %d";
-  private static final String DEBUG_MSG = "%s : TimeSeries %s is removed from tag inverted index, ";
+  private static final String TAG_FORMAT =
+      DataNodeSchemaMessages.LOG_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_C1DB5214;
+  private static final String DEBUG_MSG =
+      DataNodeSchemaMessages.LOG_ARG_TIMESERIES_ARG_IS_REMOVED_FROM_TAG_INVERTED_INDEX_01BC0CE1;
   private static final String DEBUG_MSG_1 =
-      "%s: TimeSeries %s's tag info has been removed from tag inverted index ";
+      DataNodeSchemaMessages
+          .LOG_ARG_TIMESERIES_ARG_S_TAG_INFO_HAS_BEEN_REMOVED_FROM_TAG_INVERTED_INDEX_C6DAD2DF;
   private static final String PREVIOUS_CONDITION =
-      "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
+      DataNodeSchemaMessages
+          .LOG_BEFORE_DELETING_IT_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_CONTAINS_KEY_B_BE8C6CBC;
 
   // The tag index memory model adds one int-sized estimated overhead for each indexed key, value,
   // and measurement reference. This is an accounting estimate rather than a specific

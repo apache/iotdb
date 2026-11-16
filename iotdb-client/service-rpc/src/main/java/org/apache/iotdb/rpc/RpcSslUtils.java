@@ -22,17 +22,20 @@ package org.apache.iotdb.rpc;
 import org.apache.iotdb.rpc.i18n.RpcMessages;
 
 import org.apache.thrift.transport.TSSLTransportFactory;
+import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportException;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -42,11 +45,13 @@ import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
 import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public final class RpcSslUtils {
 
   private static final String DEFAULT_PROTOCOL = "TLS";
+  private static final Set<String> GENERIC_PROTOCOLS = Set.of("TLS", "SSL", "TLCP");
   private static final String PKCS12_STORE_TYPE = "PKCS12";
   private static final String JKS_STORE_TYPE = "JKS";
 
@@ -61,6 +66,19 @@ public final class RpcSslUtils {
     protocol = normalizeProtocol(sslProtocol);
   }
 
+  /**
+   * Whether the SSLContext algorithm needs an explicit protocol restriction.
+   *
+   * <p>Generic algorithms retain the provider defaults. TLCPv1.1 contexts already enable only
+   * TLCPv1.1; some Kona versions omit it from supported protocols, so a Jetty inclusion filter
+   * would disable it.
+   */
+  public static boolean requiresProtocolRestriction(String sslProtocol) {
+    String normalizedProtocol = normalizeProtocol(sslProtocol);
+    return !GENERIC_PROTOCOLS.contains(normalizedProtocol.toUpperCase(Locale.ROOT))
+        && !"TLCPv1.1".equalsIgnoreCase(normalizedProtocol);
+  }
+
   public static TSSLTransportFactory.TSSLTransportParameters createTSSLTransportParameters() {
     return createTSSLTransportParameters(protocol);
   }
@@ -68,6 +86,33 @@ public final class RpcSslUtils {
   public static TSSLTransportFactory.TSSLTransportParameters createTSSLTransportParameters(
       String sslProtocol) {
     return new TSSLTransportFactory.TSSLTransportParameters(resolveProtocol(sslProtocol), null);
+  }
+
+  public static TServerSocket createServerSocket(
+      int port,
+      int clientTimeout,
+      InetAddress address,
+      TSSLTransportFactory.TSSLTransportParameters params)
+      throws TTransportException {
+    String sslProtocol = protocol;
+    TServerSocket serverSocket =
+        TSSLTransportFactory.getServerSocket(port, clientTimeout, address, params);
+    try {
+      if (requiresProtocolRestriction(sslProtocol)) {
+        // A version-specific SSLContext does not restrict the server's enabled protocol versions.
+        SSLServerSocket sslServerSocket = (SSLServerSocket) serverSocket.getServerSocket();
+        String enabledProtocol =
+            Stream.of(sslServerSocket.getSupportedProtocols())
+                .filter(sslProtocol::equalsIgnoreCase)
+                .findFirst()
+                .orElse(sslProtocol);
+        sslServerSocket.setEnabledProtocols(new String[] {enabledProtocol});
+      }
+      return serverSocket;
+    } catch (IllegalArgumentException e) {
+      serverSocket.close();
+      throw new TTransportException(e);
+    }
   }
 
   public static void setKeyStore(

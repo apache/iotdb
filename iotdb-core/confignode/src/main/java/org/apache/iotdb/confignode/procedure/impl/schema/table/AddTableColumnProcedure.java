@@ -90,7 +90,7 @@ public class AddTableColumnProcedure
               ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_ADDING_COLUMN,
               database,
               tableName);
-          commitRelease(env);
+          commitReleaseWithHA(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(
@@ -151,7 +151,7 @@ public class AddTableColumnProcedure
 
   @Override
   protected String getActionMessage() {
-    return "add table column";
+    return ProcedureMessages.MESSAGE_ADD_TABLE_COLUMN_DE7718D1;
   }
 
   /**
@@ -194,7 +194,7 @@ public class AddTableColumnProcedure
       }
     } finally {
       LOGGER.info(
-          ProcedureMessages.ROLLBACK_DROPTABLE_COSTS_MS,
+          ProcedureMessages.ROLLBACK_ADDTABLECOLUMN_COSTS_MS,
           state,
           (System.currentTimeMillis() - startTime));
     }
@@ -257,6 +257,10 @@ public class AddTableColumnProcedure
   public boolean equals(final Object o) {
     return super.equals(o)
         && Objects.equals(this.addedColumnList, ((AddTableColumnProcedure) o).addedColumnList);
+  }
+
+  public void setAddedColumnList(List<TsTableColumnSchema> addedColumnList) {
+    this.addedColumnList = addedColumnList;
   }
 
   @Override

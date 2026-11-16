@@ -24,6 +24,7 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -47,6 +48,7 @@ import java.io.Serializable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class CompactionTsFileWriter extends TsFileIOWriter {
   CompactionType type;
@@ -54,6 +56,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   private volatile boolean isWritingAligned = false;
   private boolean isEmptyTargetFile = true;
   private IDeviceID currentDeviceId;
+  private boolean tableModel;
 
   private EncryptParameter firstEncryptParameter;
 
@@ -67,7 +70,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
       File file, long maxMetadataSize, CompactionType type, EncryptParameter encryptParameter)
       throws IOException {
     super(file, maxMetadataSize, encryptParameter);
-    this.firstEncryptParameter = encryptParameter;
+    this.firstEncryptParameter = super.getEncryptParameter();
     this.type = type;
     super.out =
         new CompactionTsFileOutput(
@@ -76,6 +79,22 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   public EncryptParameter getEncryptParameter() {
     return firstEncryptParameter;
+  }
+
+  public static CompactionTsFileWriter create(
+      File file, long maxMetadataSize, CompactionType type, EncryptParameter legacyParameter)
+      throws IOException {
+    EncryptParameter parameter =
+        EncryptDBUtils.createEncryptParameterForNewFile(file, null, legacyParameter);
+    try {
+      return new CompactionTsFileWriter(file, maxMetadataSize, type, parameter);
+    } finally {
+      EncryptDBUtils.closeFileEncryptionParameter(parameter);
+    }
+  }
+
+  public void setTableModel(final boolean tableModel) {
+    this.tableModel = tableModel;
   }
 
   public void markStartingWritingAligned() {
@@ -160,6 +179,11 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   @Override
   public void endFile() throws IOException {
+    // Every table-model TsFile carries the marker, whether or not its TableSchema map keeps an
+    // entry, so readers do not have to infer the model from the schema map.
+    if (tableModel) {
+      TsFileTableSchemaRegistrationUtils.markTableModel(this);
+    }
     removeUnusedTableSchema();
     long beforeSize = this.getPos();
     super.endFile();
@@ -181,15 +205,21 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   }
 
   private void removeUnusedTableSchema() {
-    Map<String, TableSchema> tableSchemaMap = getSchema().getTableSchemaMap();
-    Iterator<Map.Entry<String, TableSchema>> iterator = tableSchemaMap.entrySet().iterator();
+    final Map<String, TableSchema> tableSchemaMap = getSchema().getTableSchemaMap();
+    final Iterator<Map.Entry<String, TableSchema>> iterator = tableSchemaMap.entrySet().iterator();
     while (iterator.hasNext()) {
-      Map.Entry<String, TableSchema> entry = iterator.next();
-      List<ColumnCategory> columnTypes = entry.getValue().getColumnTypes();
-      if (columnTypes.contains(ColumnCategory.FIELD)) {
+      final Map.Entry<String, TableSchema> entry = iterator.next();
+      final List<ColumnCategory> columnTypes = entry.getValue().getColumnTypes();
+      if (hasFieldOrTimeColumn(columnTypes)) {
         continue;
       }
       iterator.remove();
     }
+  }
+
+  private boolean hasFieldOrTimeColumn(final List<ColumnCategory> columnTypes) {
+    return Objects.nonNull(columnTypes)
+        && (columnTypes.contains(ColumnCategory.FIELD)
+            || columnTypes.contains(ColumnCategory.TIME));
   }
 }

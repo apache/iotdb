@@ -50,7 +50,7 @@ public class HyperLogLogStateFactory {
 
     public long getEstimatedSize() {
       // not used
-      return INSTANCE_SIZE + hll.getEstimatedSize();
+      return hll == null ? INSTANCE_SIZE : INSTANCE_SIZE + hll.getEstimatedSize();
     }
 
     public void merge(HyperLogLog other) {

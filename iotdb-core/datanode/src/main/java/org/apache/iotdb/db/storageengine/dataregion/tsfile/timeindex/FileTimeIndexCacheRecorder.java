@@ -104,7 +104,7 @@ public class FileTimeIndexCacheRecorder {
                   writer.write(buffer);
                 } catch (IOException e) {
                   LOGGER.warn(
-                      StorageEngineMessages.ERROR_RECORD_FILE_TIME_INDEX_CACHE, e.getMessage());
+                      StorageEngineMessages.ERROR_RECORD_FILE_TIME_INDEX_CACHE, e.getMessage(), e);
                 }
               });
       if (!result) {
@@ -158,7 +158,7 @@ public class FileTimeIndexCacheRecorder {
                   }
                 } catch (IOException e) {
                   LOGGER.warn(
-                      StorageEngineMessages.ERROR_COMPACT_FILE_TIME_INDEX_CACHE, e.getMessage());
+                      StorageEngineMessages.ERROR_COMPACT_FILE_TIME_INDEX_CACHE, e.getMessage(), e);
                 }
               });
       if (!result) {
@@ -208,7 +208,7 @@ public class FileTimeIndexCacheRecorder {
         writer.close();
         deleteFileOrDirectory(writer.getLogFile(), true);
       } catch (IOException e) {
-        LOGGER.warn(StorageEngineMessages.ERROR_CLOSE_FILE_TIME_INDEX_CACHE, e.getMessage());
+        LOGGER.warn(StorageEngineMessages.ERROR_CLOSE_FILE_TIME_INDEX_CACHE, e.getMessage(), e);
       }
     }
   }

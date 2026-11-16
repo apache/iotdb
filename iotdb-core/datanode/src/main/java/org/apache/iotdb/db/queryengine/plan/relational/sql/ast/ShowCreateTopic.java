@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,7 +38,8 @@ public class ShowCreateTopic extends SubscriptionStatement {
   private final String topicName;
 
   public ShowCreateTopic(final String topicName) {
-    this.topicName = requireNonNull(topicName, "topicName is null");
+    this.topicName =
+        requireNonNull(topicName, DataNodeQueryMessages.EXCEPTION_TOPICNAME_IS_NULL_F3607D9A);
   }
 
   public String getTopicName() {

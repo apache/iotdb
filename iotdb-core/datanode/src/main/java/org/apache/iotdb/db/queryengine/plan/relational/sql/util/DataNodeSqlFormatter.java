@@ -793,7 +793,7 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
     if (node.hasIfNotExistsCondition()) {
       builder.append("IF NOT EXISTS ");
     }
-    builder.append(node.getTopicName());
+    builder.append(ShowCreateTableTask.getIdentifier(node.getTopicName()));
     builder.append(" \n");
 
     if (!node.getTopicAttributes().isEmpty()) {
@@ -805,11 +805,9 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
                   .map(
                       entry ->
                           indentString(1)
-                              + "\""
-                              + entry.getKey()
-                              + "\" = \""
-                              + entry.getValue()
-                              + "\"")
+                              + ShowCreateTableTask.getString(entry.getKey())
+                              + " = "
+                              + ShowCreateTableTask.getString(entry.getValue()))
                   .collect(joining(", " + "\n")))
           .append(")\n");
     }
@@ -820,7 +818,7 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
   @Override
   public Void visitAlterTopic(AlterTopic node, Integer context) {
     builder.append("ALTER TOPIC ");
-    builder.append(node.getTopicName());
+    builder.append(ShowCreateTableTask.getIdentifier(node.getTopicName()));
     builder.append(" \n");
 
     builder
@@ -831,11 +829,9 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
                 .map(
                     entry ->
                         indentString(1)
-                            + "\""
-                            + entry.getKey()
-                            + "\" = \""
-                            + entry.getValue()
-                            + "\"")
+                            + ShowCreateTableTask.getString(entry.getKey())
+                            + " = "
+                            + ShowCreateTableTask.getString(entry.getValue()))
                 .collect(joining(", " + "\n")))
         .append(")\n");
 

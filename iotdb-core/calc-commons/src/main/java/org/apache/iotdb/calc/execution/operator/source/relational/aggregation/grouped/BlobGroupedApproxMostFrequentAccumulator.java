@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.SpaceSaving;
+
 import com.google.gson.Gson;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.utils.Binary;
@@ -32,7 +34,12 @@ public class BlobGroupedApproxMostFrequentAccumulator
     extends BinaryGroupedApproxMostFrequentAccumulator {
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
-    Map<Binary, Long> buckets = state.getSpaceSavings().get(groupId).getBuckets();
+    SpaceSaving<Binary> spaceSaving = state.getSpaceSavings().get(groupId);
+    if (spaceSaving == null || spaceSaving.isEmpty()) {
+      columnBuilder.appendNull();
+      return;
+    }
+    Map<Binary, Long> buckets = spaceSaving.getBuckets();
     Map<String, Long> formatedBuckets =
         buckets.entrySet().stream()
             .collect(

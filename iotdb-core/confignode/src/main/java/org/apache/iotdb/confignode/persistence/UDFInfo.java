@@ -145,8 +145,10 @@ public class UDFInfo implements SnapshotProcessor {
     } catch (Exception e) {
       final String errorMessage =
           String.format(
-              "Failed to add UDF [%s] in UDF_Table on Config Nodes, because of %s",
-              physicalPlan.getUdfInformation().getFunctionName(), e);
+              ConfigNodeMessages
+                  .EXCEPTION_FAILED_TO_ADD_UDF_ARG_IN_UDF_TABLE_ON_CONFIG_NODES_BECAUSE_OF_ARG_2CA26D13,
+              physicalPlan.getUdfInformation().getFunctionName(),
+              e);
       LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);

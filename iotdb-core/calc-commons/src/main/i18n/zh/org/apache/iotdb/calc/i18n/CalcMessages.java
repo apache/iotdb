@@ -558,4 +558,56 @@ public final class CalcMessages {
   public static final String
       EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_ARG_ARGUMENTS_BUT_GOT_ARG_D6249DD2 =
           "聚合函数 [%s] 需要 %d 个参数，但实际传入 %d 个";
+
+  public static final String EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_ARG_AFE3789A = "不支持的目标数据类型：%s";
+
+  public static final String EXCEPTION_MAPPABLE_UDTF_EXECUTION_ERROR_CF878D75 =
+      "执行 Mappable UDTF 时出错";
+
+  public static final String
+      EXCEPTION_IOTDBLOCALFACTORY_MUST_NOT_BE_NULL_FOR_UDF_EXECUTION_97022410 =
+          "执行 UDF 时 IoTDBLocalFactory 不能为空";
+
+  public static final String
+      EXCEPTION_FRAGMENTINSTANCEID_MUST_NOT_BE_NULL_FOR_UDF_EXECUTION_877C90A5 =
+          "执行 UDF 时 fragmentInstanceId 不能为空";
+
+  public static final String EXCEPTION_QUERYID_MUST_NOT_BE_NULL_FOR_UDF_EXECUTION_CF534D6A =
+      "执行 UDF 时 queryId 不能为空";
+
+  public static final String
+      EXCEPTION_OUTERQUERYDEADLINEMS_MUST_BE_POSITIVE_FOR_UDF_EXECUTION_4A7B2F18 =
+          "执行 UDF 时 outerQueryDeadlineMs 必须为正数";
+
+  public static final String
+      EXCEPTION_FAILED_TO_EXECUTE_FUNCTION_ARG_DUE_TO_AN_INVALID_INPUT_FORMAT_PROBLEMATIC_VALUE_ARG_58DDBF95 =
+          "输入格式无效，导致执行函数 '%s' 失败。问题值：%s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_EXECUTE_FUNCTION_ARG_DUE_TO_AN_INVALID_INPUT_FORMAT_THE_VALUE_ARG_CORRESPONDING_TO_A_EMPTY_KEY_THE_EMPTY_KEY_IS_NOT_ALLOWED_IN_HMAC_OPERATION_9F75FE9B =
+          "输入格式无效，导致执行函数 '%s' 失败。值 '%s' 对应的密钥为空，HMAC 操作不允许使用空密钥。";
+
+  public static final String EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_UDAF_CF7EF593 =
+      "执行 UDAF 时 IoTDBLocal 不能为空";
+
+  public static final String EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_TABLE_FUNCTION_5580D0A5 =
+      "执行表函数时 IoTDBLocal 不能为空";
+
+  public static final String EXCEPTION_THE_SYSTEM_CAN_T_ALLOW_MORE_QUERIES_93DD59F0 = "系统无法接受更多查询。";
+
+  public static final String EXCEPTION_UNSUPPORTED_EXPRESSION_ARG_3E55A85A = "不支持的表达式：%s";
+
+  public static final String
+      EXCEPTION_VISIT_NOT_IMPLEMENTED_FOR_ARG_IN_GLOBALTIMEPREDICATEEXTRACT_936A2D52 =
+          "GlobalTimePredicateExtract 中未为 %s 实现 visit()。";
+
+  public static final String
+      EXCEPTION_OBJECT_TYPE_ONLY_SUPPORT_GETSTRING_GETOBJECTFILE_OBJECTLENGTH_AND_READOBJECT_3C0EC792 =
+          "OBJECT 类型仅支持 getString、getObjectFile、objectLength 和 readObject";
+
+  public static final String EXCEPTION_SCALAR_SUB_QUERY_HAS_RETURNED_MULTIPLE_ROWS_0C87D6E6 =
+      "标量子查询返回了多行。";
+
+  public static final String EXCEPTION_SCALAR_SUB_QUERY_DOES_NOT_HAVE_OUTPUT_E64DBE29 =
+      "标量子查询没有输出。";
 }

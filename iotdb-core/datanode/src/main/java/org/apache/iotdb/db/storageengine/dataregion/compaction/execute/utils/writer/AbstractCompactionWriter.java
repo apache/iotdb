@@ -53,6 +53,7 @@ import org.apache.tsfile.write.schema.Schema;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.function.Function;
 
 public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected int subTaskNum = IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
@@ -64,6 +65,10 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   // Each sub task has its own chunk writer.
   // The index of the array corresponds to subTaskId.
   protected IChunkWriter[] chunkWriters = new IChunkWriter[subTaskNum];
+
+  @SuppressWarnings("unchecked")
+  private final Function<EncryptParameter, IChunkWriter>[] chunkWriterFactories =
+      new Function[subTaskNum];
 
   // Each sub task has point count in current measurment, which is used to check size.
   // The index of the array corresponds to subTaskId.
@@ -137,11 +142,36 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   public void startMeasurement(String measurement, IChunkWriter chunkWriter, int subTaskId) {
+    chunkWriterFactories[subTaskId] = null;
     resetChunkWriterStatistics(subTaskId);
     lastTimeSet[subTaskId] = false;
     chunkWriters[subTaskId] = chunkWriter;
     measurementId[subTaskId] = measurement;
     hasVariableLengthTypeArray[subTaskId] = containsVariableLengthType(chunkWriter);
+  }
+
+  public void startMeasurement(
+      String measurement,
+      Function<EncryptParameter, IChunkWriter> chunkWriterFactory,
+      int subTaskId) {
+    // Preserve measurement initialization performed by specialized writers, including repair.
+    startMeasurement(measurement, chunkWriterFactory.apply(getEncryptParameter()), subTaskId);
+    chunkWriterFactories[subTaskId] = chunkWriterFactory;
+  }
+
+  protected void switchChunkWriterEncryptionParameter(
+      EncryptParameter encryptParameter, int subTaskId) {
+    Function<EncryptParameter, IChunkWriter> chunkWriterFactory = chunkWriterFactories[subTaskId];
+    if (chunkWriterFactory == null) {
+      return;
+    }
+    IChunkWriter chunkWriter = chunkWriterFactory.apply(encryptParameter);
+    chunkWriters[subTaskId] = chunkWriter;
+    hasVariableLengthTypeArray[subTaskId] = containsVariableLengthType(chunkWriter);
+  }
+
+  protected void clearChunkWriterFactory(int subTaskId) {
+    chunkWriterFactories[subTaskId] = null;
   }
 
   private boolean containsVariableLengthType(IChunkWriter chunkWriter) {

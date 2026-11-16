@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.tsfile;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.common.OptionsUtil;
@@ -36,6 +37,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -69,7 +71,10 @@ public class ExportTsFile {
       }
     }
     commonParam.getSubscriptionTsFile().doClean();
-    ioTPrinter.println("Export TsFile Count: " + commonParam.getCountFile().get());
+    ioTPrinter.println(
+        String.format(
+            CliMessages.LOG_EXPORT_TSFILE_COUNT_ARG_C216A69B,
+            Objects.toString(commonParam.getCountFile().get())));
   }
 
   private static void parseParams(String[] args, Options options) {

@@ -103,7 +103,7 @@ public class TableHeaderSchemaValidator {
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
-      final boolean allowCreateTable,
+      final boolean allowAutoCreateSchema,
       final boolean isStrictTagColumn,
       final @Nonnull AtomicBoolean needDecode4DifferentTimeColumn)
       throws LoadAnalyzeTableColumnDisorderException {
@@ -124,13 +124,15 @@ public class TableHeaderSchemaValidator {
     final List<ColumnSchema> missingColumnList = new ArrayList<>();
 
     final boolean isAutoCreateSchemaEnabled =
-        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+        allowAutoCreateSchema
+            && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+            && context.getSession().isEnableAutoCreateSchema();
     // first round validate, check existing schema
     if (table == null) {
       // auto create missing table
       // it's ok that many write requests concurrently auto create same table, the thread safety
       // will be guaranteed by ProcedureManager.createTable in CN
-      if (allowCreateTable && isAutoCreateSchemaEnabled) {
+      if (isAutoCreateSchemaEnabled) {
         autoCreateTable(context, database, tableSchema);
         table =
             DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName(), false);
