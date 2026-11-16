@@ -29,7 +29,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
-import org.apache.iotdb.it.env.cluster.config.MppDataNodeConfig;
+import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
@@ -86,9 +86,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeTreeModelSharedClusterIT {
     // Keep a backlog at the oldest end while one file is being sent. Compaction stays disabled
     // for the other source tests; only the concurrent-compaction scenario enables it temporarily.
     final Properties queueProperties = new Properties();
-    queueProperties.setProperty("pipe_realtime_queue_max_waiting_tsfile_size", "1");
+    queueProperties.setProperty("pipe_realTime_queue_max_waiting_tsFile_size", "1");
     queueProperties.setProperty("pipe_realtime_queue_poll_historical_tsfile_threshold", "1000000");
-    ((MppDataNodeConfig) senderEnv.getConfig().getDataNodeConfig())
+    ((MppCommonConfig) senderEnv.getConfig().getDataNodeCommonConfig())
         .updateProperties(queueProperties);
     senderEnv
         .getConfig()
@@ -1194,6 +1194,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTreeModelSharedClusterIT {
       sinkAttributes.put("sink.ip", receiver.getIp());
       sinkAttributes.put("sink.port", Integer.toString(receiver.getPort()));
       sinkAttributes.put("sink.enable-compaction", "true");
+      sinkAttributes.put("sink.parallel.tasks", "1");
       // Keep a send in flight while the remaining historical files are compacted.
       sinkAttributes.put("sink.rate-limit-bytes-per-second", "8192");
       Assert.assertEquals(
