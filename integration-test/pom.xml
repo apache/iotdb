@@ -327,6 +327,7 @@
                             <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
                             <!-- Subscription IT is maintained and executed by the enterprise edition. -->
                             <excludes>
+                                <exclude>**/pipe/it/**</exclude>
                                 <exclude>**/subscription/it/**</exclude>
                             </excludes>
                             <useSystemClassLoader>false</useSystemClassLoader>

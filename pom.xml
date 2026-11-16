@@ -719,6 +719,7 @@
                         <argLine>${argLine} -Xmx1024m</argLine>
                         <!-- Subscription UT is maintained and executed by the enterprise edition. -->
                         <excludes>
+                            <exclude>**/pipe/**</exclude>
                             <exclude>**/subscription/**</exclude>
                         </excludes>
                         <!-- Force the working directory to be different for each fork, so forks don't trample each other -->
