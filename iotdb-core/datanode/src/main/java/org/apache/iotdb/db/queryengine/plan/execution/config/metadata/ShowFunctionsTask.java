@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinScalarFunction;
 import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinTimeSeriesGeneratingFunction;
-import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
@@ -272,14 +272,12 @@ public class ShowFunctionsTask implements IConfigTask {
         } else if (TreeUDFUtils.isUDAF(udfInformation.getFunctionName())) {
           return BINARY_MAP.get(FUNCTION_TYPE_EXTERNAL_UDAF);
         }
-      } else {
-        if (TableUDFUtils.isScalarFunction(udfInformation.getFunctionName())) {
-          return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC);
-        } else if (TableUDFUtils.isAggregateFunction(udfInformation.getFunctionName())) {
-          return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_AGG_FUNC);
-        } else if (TableUDFUtils.isTableFunction(udfInformation.getFunctionName())) {
-          return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC);
-        }
+      } else if (FunctionType.SCALAR.equals(type.getType())) {
+        return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC);
+      } else if (FunctionType.AGGREGATE.equals(type.getType())) {
+        return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_AGG_FUNC);
+      } else if (FunctionType.TABLE.equals(type.getType())) {
+        return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC);
       }
     }
     return BINARY_MAP.get(FUNCTION_TYPE_UNKNOWN);

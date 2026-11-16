@@ -1356,7 +1356,12 @@ public class QueryPlanner {
     long origin = ((LongLiteral) gapFillColumn.getChildren().get(3)).getParsedValue();
     long[] startAndEndTime =
         getStartTimeAndEndTimeOfGapFill(
-            timeColumn, wherePredicate, origin, monthDuration, nonMonthDuration);
+            timeColumn,
+            wherePredicate,
+            origin,
+            monthDuration,
+            nonMonthDuration,
+            subPlan.getTranslations().getPlannerContext());
     return subPlan.withNewRoot(
         new GapFillNode(
             queryIdAllocator.genPlanNodeId(),
@@ -1375,11 +1380,12 @@ public class QueryPlanner {
       Expression wherePredicate,
       long origin,
       int monthDuration,
-      long nonMonthDuration) {
+      long nonMonthDuration,
+      PlannerContext plannerContext) {
     GapFillStartAndEndTimeExtractVisitor.Context context =
         new GapFillStartAndEndTimeExtractVisitor.Context();
     GapFillStartAndEndTimeExtractVisitor visitor =
-        new GapFillStartAndEndTimeExtractVisitor(timeColumn);
+        new GapFillStartAndEndTimeExtractVisitor(timeColumn, plannerContext, session);
     if (!Boolean.TRUE.equals(wherePredicate.accept(visitor, context))) {
       throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
     } else {

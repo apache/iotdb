@@ -24,8 +24,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -45,8 +45,10 @@ public class IoTDBUDFBlockQueryIT {
 
   private static final double E = 0.0001;
 
-  @Before
-  public void setUp() throws Exception {
+  // Queries share read-only input, and the untrusted URI registration must leave the UDFs
+  // unchanged.
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setUdfMemoryBudgetInMB(5);
     EnvFactory.getEnv().initClusterEnvironment();
     createTimeSeries();
@@ -54,8 +56,8 @@ public class IoTDBUDFBlockQueryIT {
     registerUDF();
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  public static void tearDownClass() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

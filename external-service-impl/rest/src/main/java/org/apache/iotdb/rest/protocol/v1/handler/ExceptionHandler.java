@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.rest.protocol.exception.RequestLimitExceededException;
 import org.apache.iotdb.rest.protocol.v1.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -89,7 +90,7 @@ public class ExceptionHandler {
       responseResult.setMessage(e.getMessage());
       responseResult.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    LOGGER.warn(e.getMessage(), e);
+    ErrorHandlingUtils.logQueryException(LOGGER, e.getMessage(), responseResult.getCode(), e);
     return responseResult;
   }
 

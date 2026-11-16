@@ -20,20 +20,28 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+
+import com.google.common.base.VerifyException;
 
 import javax.annotation.Nullable;
 
 import java.time.ZoneId;
+import java.util.OptionalLong;
 
 import static org.apache.iotdb.calc.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.dateBin;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
@@ -55,9 +63,14 @@ public class GapFillStartAndEndTimeExtractVisitor
           .EXCEPTION_OPERATOR_OF_UPDATEENDTIME_SHOULD_ONLY_BE_LESS_THAN_AND_LESS_THAN_OR_EQUAL_NOW_IS_ARG_BF20DCC9;
 
   private final Symbol timeColumn;
+  private final PlannerContext plannerContext;
+  private final SessionInfo session;
 
-  public GapFillStartAndEndTimeExtractVisitor(Symbol timeColumn) {
+  public GapFillStartAndEndTimeExtractVisitor(
+      Symbol timeColumn, PlannerContext plannerContext, SessionInfo session) {
     this.timeColumn = timeColumn;
+    this.plannerContext = plannerContext;
+    this.session = session;
   }
 
   public static final String CAN_NOT_INFER_TIME_RANGE =
@@ -156,8 +169,10 @@ public class GapFillStartAndEndTimeExtractVisitor
       Expression valueExpression,
       ComparisonExpression.Operator operator,
       GapFillStartAndEndTimeExtractVisitor.Context context) {
-    if (isTimeIdentifier(timeExpression) && valueExpression instanceof LongLiteral) {
-      long value = ((LongLiteral) valueExpression).getParsedValue();
+    OptionalLong timeValue =
+        isTimeIdentifier(timeExpression) ? extractTimeValue(valueExpression) : OptionalLong.empty();
+    if (timeValue.isPresent()) {
+      long value = timeValue.getAsLong();
       switch (operator) {
         case EQUAL:
         case NOT_EQUAL:
@@ -174,6 +189,31 @@ public class GapFillStartAndEndTimeExtractVisitor
       }
     }
     return false;
+  }
+
+  private OptionalLong extractTimeValue(Expression expression) {
+    if (expression instanceof LongLiteral) {
+      return OptionalLong.of(((LongLiteral) expression).getParsedValue());
+    }
+    if (expression instanceof GenericLiteral) {
+      return OptionalLong.of(Long.parseLong(((GenericLiteral) expression).getValue()));
+    }
+    if (!SymbolsExtractor.extractUnique(expression).isEmpty()) {
+      return OptionalLong.empty();
+    }
+    try {
+      Object value =
+          IrExpressionInterpreter.evaluateConstantExpression(expression, plannerContext, session);
+      if (value instanceof Byte
+          || value instanceof Short
+          || value instanceof Integer
+          || value instanceof Long) {
+        return OptionalLong.of(((Number) value).longValue());
+      }
+    } catch (VerifyException ignored) {
+      // A non-constant value cannot define the gap-fill range.
+    }
+    return OptionalLong.empty();
   }
 
   public static class Context {

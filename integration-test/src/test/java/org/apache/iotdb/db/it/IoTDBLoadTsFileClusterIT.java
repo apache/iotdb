@@ -142,7 +142,10 @@ public class IoTDBLoadTsFileClusterIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(REPLICATION_FACTOR)
-        .setDataReplicationFactor(REPLICATION_FACTOR);
+        .setDataReplicationFactor(REPLICATION_FACTOR)
+        // Keep this functional fixture's WAL/Region budget independent of the host CPU count.
+        .setDataRegionPerDataNode(1)
+        .setDefaultDataRegionGroupNumPerDatabase(1);
     // Keep every kind of merge off for this class: the restart case hard-links the replicas'
     // TsFiles out of the DataNode directory and compares their points while the restarted DataNode
     // catches up, so compaction must not rewrite those files in the meantime.
@@ -234,7 +237,7 @@ public class IoTDBLoadTsFileClusterIT {
     }
   }
 
-  /** Concurrent LOADs on separate files must not interfere with each other. */
+  /** Four concurrent LOADs on separate time partitions must expose their combined point count. */
   @Test
   public void testLoadConcurrently() throws Exception {
     final int fileCount = 4;
@@ -286,15 +289,11 @@ public class IoTDBLoadTsFileClusterIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       final long expected = expectedPointCount;
-      long actualPointCount = queryPointCount(statement);
-      for (int retry = 0; actualPointCount < expected && retry < 30; retry++) {
-        Thread.sleep(1_000L);
-        actualPointCount = queryPointCount(statement);
-      }
-      Assert.assertEquals(expected, actualPointCount);
+      Assert.assertEquals(expected, awaitPointCountAtLeast(statement, expected));
     }
   }
 
+  /** A load through the remaining DataNodes preserves data while one DataNode is stopped. */
   @Test
   public void testLoadAfterOneDataNodeDown() throws Exception {
     final long firstPointCount = generateTsFile(tmpDir, "load-first.tsfile", 5_000, 1L);
@@ -323,12 +322,8 @@ public class IoTDBLoadTsFileClusterIT {
       statement.execute("load \"" + secondDir.getAbsolutePath() + "\"");
 
       final long expectedPointCount = firstPointCount + secondPointCount;
-      long actualPointCount = queryPointCount(statement);
-      for (int retry = 0; actualPointCount < expectedPointCount && retry < 30; retry++) {
-        Thread.sleep(1_000L);
-        actualPointCount = queryPointCount(statement);
-      }
-      Assert.assertEquals(expectedPointCount, actualPointCount);
+      Assert.assertEquals(
+          expectedPointCount, awaitPointCountAtLeast(statement, expectedPointCount));
     }
   }
 
@@ -1068,6 +1063,17 @@ public class IoTDBLoadTsFileClusterIT {
                 return true;
               }
             });
+  }
+
+  // Keep the JDBC statement on the calling thread while preserving the 30-second retry window.
+  private long awaitPointCountAtLeast(final Statement statement, final long expectedPointCount)
+      throws Exception {
+    return Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(() -> queryPointCount(statement), pointCount -> pointCount >= expectedPointCount);
   }
 
   private static boolean deleteRecursively(final File file) {

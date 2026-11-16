@@ -20,13 +20,11 @@
 package org.apache.iotdb.pipe.it.dual.tablemodel.manual.enhanced;
 
 import org.apache.iotdb.commons.utils.function.CheckedTriConsumer;
-import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
-import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -50,13 +48,10 @@ import org.junit.runner.RunWith;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
@@ -73,8 +68,10 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
     super.setUp();
   }
 
-  private static final int generateDataSize = 1000;
+  // One hundred rows retain every type pair and all thirteen string samples with fewer repeats.
+  private static final int generateDataSize = 100;
 
+  // Convert a 100-row tablet across all 100 type pairs and check every received value and null.
   @Test
   public void insertTablet() {
     prepareTypeConversionTest(
@@ -84,6 +81,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
         false);
   }
 
+  // TsFile delivery should convert the same type pairs when receiver conversion is supported.
   @Test
   @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertTabletReceiveByTsFile() {
@@ -105,7 +103,6 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
     }
 
     sql = sql + param + "time from " + tableName + " ORDER BY time ASC";
-    session.executeNonQueryStatement("use test");
     return session.executeQueryStatement(sql);
   }
 
@@ -115,50 +112,42 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemas();
     Tablet tablet = generateTabletAndMeasurementSchema(measurementSchemas, "test");
-    createDatabaseAndTable(measurementSchemas, true, tablet.getColumnTypes(), senderEnv);
-    createDatabaseAndTable(measurementSchemas, false, tablet.getColumnTypes(), receiverEnv);
     try (ITableSession senderSession = senderEnv.getTableSessionConnection();
         ITableSession receiverSession = receiverEnv.getTableSessionConnection()) {
-      senderSession.executeNonQueryStatement("use test");
-      receiverSession.executeNonQueryStatement("use test");
+      // Reuse these sessions for DDL, both writes, pipe creation, flush and receiver queries.
+      createDatabaseAndTable(measurementSchemas, true, tablet.getColumnTypes(), senderSession);
+      createDatabaseAndTable(measurementSchemas, false, tablet.getColumnTypes(), receiverSession);
       if (isTsFile) {
         // Send TsFile data to receiver
         executeDataWriteOperation.accept(senderSession, receiverSession, tablet);
         senderSession.executeNonQueryStatement("flush");
-        createDataPipe(true);
+        createDataPipe(senderSession, true);
       } else {
         // Send Tablet data to receiver
         // Write once to create data regions, guarantee that no any tsFiles will be sent
         executeDataWriteOperation.accept(senderSession, receiverSession, tablet);
-        createDataPipe(false);
+        createDataPipe(senderSession, false);
         // The actual implementation logic of inserting data
         executeDataWriteOperation.accept(senderSession, receiverSession, tablet);
         senderSession.executeNonQueryStatement("flush");
       }
 
-      final Consumer<String> handleFailure =
-          o -> {
-            TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-            TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-          };
-      // Verify receiver data
+      // The sender was flushed above; bounded queries can observe delivery without flushing either
+      // cluster again or opening additional connections on every failed poll.
       long timeoutSeconds = 600;
       List<List<Object>> expectedValues =
           generateTabletResultSetForTable(tablet, measurementSchemas);
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                try {
-                  validateResultSet(
-                      query(receiverSession, tablet.getSchemas(), tablet.getTableName()),
-                      expectedValues,
-                      tablet.getTimestamps());
-                } catch (Exception | Error e) {
-                  handleFailure.accept(e.getMessage());
+                try (SessionDataSet dataSet =
+                    query(receiverSession, tablet.getSchemas(), tablet.getTableName())) {
+                  validateResultSet(dataSet, expectedValues, tablet.getTimestamps());
+                } catch (Exception e) {
                   fail(e.getMessage());
                 }
               });
@@ -172,7 +161,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
       List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas,
       boolean isLeft,
       List<ColumnCategory> categories,
-      BaseEnv env) {
+      ITableSession session)
+      throws IoTDBConnectionException, StatementExecutionException {
     StringBuilder builder = new StringBuilder();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       final MeasurementSchema measurement =
@@ -185,15 +175,13 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
     builder.deleteCharAt(builder.length() - 1);
     String tableCreation =
         String.format("create table if not exists test (%s)", builder.toString());
-    TestUtils.executeNonQueries(
-        null,
-        "table",
-        env,
-        Arrays.asList("create database if not exists test", "use test", tableCreation),
-        null);
+    session.executeNonQueryStatement("create database if not exists test");
+    session.executeNonQueryStatement("use test");
+    session.executeNonQueryStatement(tableCreation);
   }
 
-  private void createDataPipe(boolean isTSFile) {
+  private void createDataPipe(ITableSession session, boolean isTSFile)
+      throws IoTDBConnectionException, StatementExecutionException {
     String sql =
         String.format(
             "create pipe test"
@@ -205,8 +193,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
             receiverEnv.getIP(),
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");
-    TestUtils.executeNonQueries(
-        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql), null);
+    session.executeNonQueryStatement(sql);
   }
 
   private void validateResultSet(
