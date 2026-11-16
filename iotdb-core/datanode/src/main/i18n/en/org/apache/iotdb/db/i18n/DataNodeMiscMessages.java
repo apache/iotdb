@@ -22,6 +22,9 @@ package org.apache.iotdb.db.i18n;
 /** Compile-time i18n constants for DataNode misc subsystems (English). */
 public final class DataNodeMiscMessages {
   public static final String EXCEPTION_INVALID_IOTCONSENSUS_LOG_COMPRESSION_CODEC_ARG_2B9C27F7 = "Invalid IoTConsensus log compression codec: %s";
+  public static final String LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F =
+      "Failed to authorize CQ {} for user {}: {}";
+
   public static final String MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237 =
       "The requested query does not belong to the current session.";
 
@@ -1642,15 +1645,6 @@ public final class DataNodeMiscMessages {
       EXCEPTION_REQUEST_NAME_TSFASTLASTDATAQUERYFORONEDEVICEREQ_DB_ARG_DEVICEID_ARG_SENSORSIZE_ARG_SENSORS_ARG_D1F9A498 =
           "Request name: TSFastLastDataQueryForOneDeviceReq, db: %s, deviceId: %s, sensorSize: %s,"
               + " sensors: %s";
-
-  public static final String LOG_NODE_TOOL_ARG_076E307A = "node-tool: %s";
-
-  public static final String LOG_SEE_NODE_TOOL_HELP_OR_NODE_TOOL_HELP_COMMAND_BB9F5146 =
-      "See 'node-tool help' or 'node-tool help <command>'.";
-
-  public static final String LOG_ERROR_ARG_76028BAA = "error: %s";
-
-  public static final String LOG_STACKTRACE_131CBB85 = "-- StackTrace --";
 
   public static final String
       EXCEPTION_FAILED_TO_REGISTERED_TRIGGER_ARG_BECAUSE_EXISTED_MD5_OF_JAR_FILE_FOR_TRIGGER_ARG_IS_DIFFERENT_FROM_THE_NEW_JAR_FILE_4069F2F9 =

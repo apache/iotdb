@@ -47,6 +47,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.text.DateFormat;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -61,8 +62,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
@@ -81,6 +85,8 @@ public class TestUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
   private static final int MAX_RESULT_SET_DIFF_ROWS = 20;
+  // Retry promptly while asynchronous data becomes visible, without continuously querying.
+  private static final long DATA_ASSERTION_POLL_INTERVAL_MILLIS = 100;
 
   public static final ZoneId DEFAULT_ZONE_ID = ZoneId.ofOffset("UTC", ZoneOffset.of("Z"));
 
@@ -1740,12 +1746,26 @@ public class TestUtils {
   }
 
   public static void restartCluster(BaseEnv env) {
-    env.shutdownAllDataNodes();
-    env.shutdownAllConfigNodes();
-    env.startAllConfigNodes();
-    env.startAllDataNodes();
+    restartCluster(env, (phase, duration) -> {});
+  }
+
+  public static void restartCluster(BaseEnv env, final BiConsumer<String, Duration> phaseProbe) {
+    final long restartStartedNanos = System.nanoTime();
+    long phaseStartedNanos = restartStartedNanos;
+    // Node wrappers wait up to 30 seconds per process. Stop and start nodes in each phase together
+    // so a cluster restart is bounded by the slowest node instead of the sum of all node waits.
+    runConcurrently(env.getDataNodeWrapperList().stream().map(node -> (Runnable) node::stop));
+    phaseStartedNanos = logRestartPhase("stop DataNodes", phaseStartedNanos, phaseProbe);
+    runConcurrently(env.getConfigNodeWrapperList().stream().map(node -> (Runnable) node::stop));
+    phaseStartedNanos = logRestartPhase("stop ConfigNodes", phaseStartedNanos, phaseProbe);
+    runConcurrently(env.getConfigNodeWrapperList().stream().map(node -> (Runnable) node::start));
+    phaseStartedNanos = logRestartPhase("start ConfigNodes", phaseStartedNanos, phaseProbe);
+    runConcurrently(env.getDataNodeWrapperList().stream().map(node -> (Runnable) node::start));
+    phaseStartedNanos = logRestartPhase("start DataNodes", phaseStartedNanos, phaseProbe);
     ((AbstractEnv) env).checkClusterStatusWithoutUnknown();
     awaitAllRegionsRunning(env);
+    logRestartPhase("await cluster readiness", phaseStartedNanos, phaseProbe);
+    logRestartPhase("total", restartStartedNanos, phaseProbe);
   }
 
   /**
@@ -1786,6 +1806,21 @@ public class TestUtils {
     }
   }
 
+  private static long logRestartPhase(
+      final String phase,
+      final long phaseStartedNanos,
+      final BiConsumer<String, Duration> phaseProbe) {
+    final long phaseEndedNanos = System.nanoTime();
+    phaseProbe.accept(phase, Duration.ofNanos(phaseEndedNanos - phaseStartedNanos));
+    return phaseEndedNanos;
+  }
+
+  private static void runConcurrently(final Stream<Runnable> actions) {
+    CompletableFuture.allOf(
+            actions.map(CompletableFuture::runAsync).toArray(CompletableFuture[]::new))
+        .join();
+  }
+
   public static void assertDataEventuallyOnEnv(
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
     assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600);
@@ -1814,7 +1849,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1858,7 +1893,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1894,7 +1929,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1938,7 +1973,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -2019,7 +2054,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -2094,7 +2129,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -2138,7 +2173,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {

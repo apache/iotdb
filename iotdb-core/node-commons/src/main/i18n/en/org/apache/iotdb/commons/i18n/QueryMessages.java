@@ -202,6 +202,15 @@ public final class QueryMessages {
       "Failed to reflect UDF instance, because UDF %s has not been registered.";
   public static final String UDF_REFLECT_INSTANCE_FAILED =
       "Failed to reflect UDF %s(%s) instance, because %s";
+  public static final String EXCEPTION_UDF_CLASSLOADER_REQUIRES_QUERY_SCOPE_ARG_A39FB39E =
+      "Cannot pin UDF ClassLoader for class %s because no UDF query scope is active.";
+  public static final String
+      EXCEPTION_FAILED_TO_PIN_UDF_CLASSLOADER_QUERY_SCOPE_ARG_CLASS_ARG_275E1E20 =
+          "Failed to pin UDFClassLoader for query scope %s and class %s because the classloader is deprecated or closed.";
+  public static final String EXCEPTION_UDF_QUERY_SCOPE_IS_CLOSED_ARG_7381D949 =
+      "Cannot execute action in query scope %s because the scope has been closed.";
+  public static final String EXCEPTION_UDF_CLASSLOADER_MANAGER_NOT_INITIALIZED_ARG_DF66329C =
+      "Cannot pin UDF ClassLoader for class %s because UDFClassLoaderManager is not initialized.";
   public static final String AI_NODE_SERVICE_NOT_AVAILABLE =
       "Table function AINode service is not available in current node";
   // ======================== UDTF Forecast ========================

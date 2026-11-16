@@ -41,6 +41,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import static org.awaitility.Awaitility.await;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
@@ -81,8 +84,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
 
     senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+    executeOnBothEnvs(env -> env.initClusterEnvironment());
   }
 
   /**
@@ -124,11 +126,23 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.db.d4 (time, s1) values (1, 1), (3, 3)",
               "flush"),
           null);
-      // adding new devices may create a new region, and thus trigger leader re-balancing
-      // the old leader may not have synced data to the new leader, and the result is that
-      // the following deletions performed on the new leader can not delete anything
-      // wait for a while to increase the chance that data has been synced to the new leader
-      Thread.sleep(5000);
+      // Adding devices may create a new region and trigger leader re-balancing. Wait for the
+      // committed schema to be visible through the current leader for a short quiet period rather
+      // than sleeping a fixed five seconds before issuing deletions.
+      await()
+          .pollInSameThread()
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
+          .during(500L, TimeUnit.MILLISECONDS)
+          .atMost(5L, TimeUnit.SECONDS)
+          .untilAsserted(
+              () ->
+                  TestUtils.assertDataEventuallyOnEnv(
+                      senderEnv,
+                      "count timeseries root.db.**",
+                      "count(timeseries),",
+                      Collections.singleton("6,"),
+                      1));
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(

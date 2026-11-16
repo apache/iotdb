@@ -146,6 +146,70 @@ public class PipeMemoryManagerTest {
   }
 
   @Test
+  public void testReleasingParserOnlyFreesItsOwnWorker() {
+    commonConfig.setPipeTsFileParserInFlightMaxNum(4);
+    commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(2);
+    final PipeMemoryManager manager = createTestMemoryManager();
+    final Reservation firstWorker = new Reservation("pipe", 0);
+    final Reservation secondWorker = new Reservation("pipe", 0);
+    final Reservation waitingOnFirstWorker = new Reservation("otherPipe", 1);
+    final Reservation waitingOnSecondWorker = new Reservation("otherPipe", 2);
+    final Runnable firstWakeUp = new AtomicInteger()::incrementAndGet;
+    final Runnable secondWakeUp = new AtomicInteger()::incrementAndGet;
+    firstWorker.key.setWakeUpCallback(firstWakeUp);
+    waitingOnFirstWorker.key.setWakeUpCallback(firstWakeUp);
+    secondWorker.key.setWakeUpCallback(secondWakeUp);
+    waitingOnSecondWorker.key.setWakeUpCallback(secondWakeUp);
+    final List<Reservation> testReservations =
+        List.of(firstWorker, secondWorker, waitingOnFirstWorker, waitingOnSecondWorker);
+    try {
+      Assert.assertTrue(tryAcquire(manager, firstWorker));
+      Assert.assertTrue(tryAcquire(manager, secondWorker));
+      Assert.assertFalse(tryAcquire(manager, waitingOnFirstWorker));
+      Assert.assertFalse(tryAcquire(manager, waitingOnSecondWorker));
+
+      // The two parsers share a pipe/region but finish in reverse order. Releasing the second
+      // reservation must wake only its worker, rather than freeing the first worker's slot.
+      manager.releaseTsFileParserMemory(
+          secondWorker.pipeName,
+          secondWorker.creationTime,
+          secondWorker.dataRegionId,
+          secondWorker.key);
+      secondWorker.acquired = false;
+      Assert.assertTrue(waitingOnFirstWorker.key.isWaitingForSignal());
+      Assert.assertFalse(waitingOnSecondWorker.key.isWaitingForSignal());
+      Assert.assertTrue(tryAcquire(manager, waitingOnSecondWorker));
+      Assert.assertFalse(tryAcquire(manager, waitingOnFirstWorker));
+
+      manager.releaseTsFileParserMemory(
+          firstWorker.pipeName,
+          firstWorker.creationTime,
+          firstWorker.dataRegionId,
+          firstWorker.key);
+      firstWorker.acquired = false;
+      Assert.assertTrue(tryAcquire(manager, waitingOnFirstWorker));
+      Assert.assertEquals(2, manager.getReservedTsFileParserCount());
+    } finally {
+      for (final Reservation reservation : testReservations) {
+        manager.cancelTsFileParserMemoryReservation(
+            reservation.pipeName,
+            reservation.creationTime,
+            reservation.dataRegionId,
+            reservation.key);
+        if (reservation.acquired) {
+          manager.releaseTsFileParserMemory(
+              reservation.pipeName,
+              reservation.creationTime,
+              reservation.dataRegionId,
+              reservation.key);
+        }
+      }
+    }
+    Assert.assertEquals(0, manager.getReservedTsFileParserCount());
+    Assert.assertEquals(0, manager.getWaitingTsFileParserCount());
+  }
+
+  @Test
   public void testAdmissionWindowRespectsPipeFairnessAcrossRegions() {
     commonConfig.setPipeTsFileParserInFlightMaxNum(2);
     commonConfig.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);

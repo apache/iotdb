@@ -37,8 +37,9 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.awaitility.Awaitility;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -64,10 +65,11 @@ import static org.junit.Assert.assertTrue;
 @RunWith(IoTDBTestRunner.class)
 @Category(ClusterIT.class)
 public class SessionSeedNodeFallbackIT {
+  private static final int DATA_NODE_COUNT = 3;
   private static final int RECOVERY_CONNECTION_TIMEOUT_MS = 30_000;
 
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -75,14 +77,36 @@ public class SessionSeedNodeFallbackIT {
         .setDataReplicationFactor(3)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-    EnvFactory.getEnv().initClusterEnvironment(1, 3);
+    EnvFactory.getEnv().initClusterEnvironment(1, DATA_NODE_COUNT);
   }
 
-  @After
-  public void tearDown() {
+  @Before
+  public void restoreDataNodes() {
+    // The omitted-seed case leaves a node stopped. Restore it without restarting healthy nodes,
+    // including when the previous case failed during its rolling restart.
+    List<Integer> restartedNodes = new ArrayList<>();
+    for (int index = 0; index < DATA_NODE_COUNT; index++) {
+      if (!EnvFactory.getEnv().getDataNodeWrapper(index).isAlive()) {
+        EnvFactory.getEnv().startDataNode(index);
+        restartedNodes.add(index);
+      }
+    }
+    for (int index = 0; index < DATA_NODE_COUNT; index++) {
+      awaitStatus(index, NodeStatus.Running);
+    }
+    // A Running heartbeat does not prove that a restarted node can serve the next case's clients.
+    for (int index : restartedNodes) {
+      awaitLogin(index);
+    }
+  }
+
+  @AfterClass
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // With three Ratis replicas, a Session and SessionPool must keep reading the sole stored row
+  // while each DataNode is stopped and restarted, and discover the current Running endpoints.
   @Test
   public void testQueriesDuringRollingRestart() throws Exception {
     SessionPool pool =
@@ -100,7 +124,7 @@ public class SessionSeedNodeFallbackIT {
       NodesSupplier poolSupplier = supplier(pool);
       Set<TEndPoint> runningNodes =
           new HashSet<>(Arrays.asList(endpoint(0), endpoint(1), endpoint(2)));
-      for (int index = 0; index < 3; index++) {
+      for (int index = 0; index < DATA_NODE_COUNT; index++) {
         EnvFactory.getEnv().shutdownDataNode(index);
         awaitStatus(index, EnvUtils.getNodeStatusAfterLocalStop());
         runningNodes.remove(endpoint(index));
@@ -127,6 +151,8 @@ public class SessionSeedNodeFallbackIT {
     }
   }
 
+  // Leave only node 1 in the clients' snapshots, then stop it after omitted seed node 0 recovers;
+  // business reconnection and background discovery must fall back to seed 0 and retain both seeds.
   @Test
   public void testBusinessAndBackgroundRecoveryThroughOmittedSeed() throws Exception {
     EnvFactory.getEnv().shutdownDataNode(0);

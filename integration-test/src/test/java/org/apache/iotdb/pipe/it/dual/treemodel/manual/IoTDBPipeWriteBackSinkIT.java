@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -41,26 +42,28 @@ import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
-public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualTreeModelManualIT {
+public class IoTDBPipeWriteBackSinkIT extends AbstractPipeTreeModelManualSharedClusterIT {
 
+  // Verify write-back routes the source rows to a qualified target database.
   @Test
   public void testWriteBackSinkWithTargetDatabaseForTreeModel() throws Exception {
-    testWriteBackSinkWithTargetDatabaseForTreeModel("root.target.db");
+    testWriteBackSinkWithTargetDatabaseForTreeModel("root.source_target", "root.target.db");
   }
 
+  // Verify write-back preserves the mixed case of the configured target database name.
   @Test
   public void testWriteBackSinkPreservesTreeModelTargetDatabaseCase() throws Exception {
-    testWriteBackSinkWithTargetDatabaseForTreeModel("TargetDB");
+    testWriteBackSinkWithTargetDatabaseForTreeModel("root.source_case", "TargetDB");
   }
 
-  private void testWriteBackSinkWithTargetDatabaseForTreeModel(final String targetDatabase)
-      throws Exception {
+  private void testWriteBackSinkWithTargetDatabaseForTreeModel(
+      final String sourceDatabase, final String targetDatabase) throws Exception {
     final String qualifiedTargetDatabase = PathUtils.qualifyDatabaseName(targetDatabase);
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
-            "create database root.source",
-            "create timeseries root.source.d1.s1 with datatype=INT32,encoding=PLAIN",
+            "create database " + sourceDatabase,
+            "create timeseries " + sourceDatabase + ".d1.s1 with datatype=INT32,encoding=PLAIN",
             "create database " + qualifiedTargetDatabase,
             "create timeseries "
                 + qualifiedTargetDatabase
@@ -75,12 +78,12 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualTreeModelManualIT 
 
       sourceAttributes.put("source.inclusion", "data.insert");
       sourceAttributes.put("source.forwarding-pipe-requests", "false");
-      sourceAttributes.put("source.path", "root.source.**");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("source.path", sourceDatabase + ".**");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       sinkAttributes.put("sink", "write-back-sink");
       sinkAttributes.put("sink.database", targetDatabase);
-      sinkAttributes.put("user", "root");
+      sinkAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       final TSStatus status =
           client.createPipe(
@@ -96,8 +99,8 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualTreeModelManualIT 
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
-            "insert into root.source.d1(time, s1) values (1, 1)",
-            "insert into root.source.d1(time, s1) values (2, 2)",
+            "insert into " + sourceDatabase + ".d1(time, s1) values (1, 1)",
+            "insert into " + sourceDatabase + ".d1(time, s1) values (2, 2)",
             "flush"),
         null);
 

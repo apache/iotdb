@@ -100,11 +100,16 @@ public class MPPQueryContext implements IAuditEntity {
   private SessionInfo session;
   private QueryType queryType = QueryType.READ;
 
+  // Set by analyzers for write statements that persist UDF expressions in schema WAL.
+  private boolean udfForbidden;
+
   /** the max executing time of query in ms. Unit: millisecond */
   private long timeOut;
 
   // time unit is ms
   private long startTime;
+
+  private int queryAttemptId;
 
   private TEndPoint localDataBlockEndpoint;
   private TEndPoint localInternalEndpoint;
@@ -277,6 +282,7 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void prepareForRetry() {
+    queryAttemptId++;
     if (!isInnerTriggeredQuery()) {
       cleanUpCte();
     }
@@ -298,6 +304,10 @@ public class MPPQueryContext implements IAuditEntity {
 
   public QueryId getQueryId() {
     return queryId;
+  }
+
+  public int getQueryAttemptId() {
+    return queryAttemptId;
   }
 
   public ExternalTsFileQueryResource createExternalTsFileQueryResource(
@@ -381,6 +391,14 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void setQueryType(QueryType queryType) {
     this.queryType = queryType;
+  }
+
+  public boolean isUdfForbidden() {
+    return udfForbidden;
+  }
+
+  public void setUdfForbidden(boolean udfForbidden) {
+    this.udfForbidden = udfForbidden;
   }
 
   public ResultNodeContext getResultNodeContext() {
@@ -680,6 +698,35 @@ public class MPPQueryContext implements IAuditEntity {
       }
       throw enrichResultSetColumnMemoryNotEnoughException(e, extractRequestedMemory(e));
     }
+  }
+
+  public void reserveMemoryForTimePartitionSlots(final long bytes) {
+    try {
+      this.memoryReservationManager.reserveMemoryCumulatively(bytes);
+    } catch (MemoryNotEnoughException e) {
+      long requestedBytes = bytes;
+      long freeBytes;
+      if (e instanceof OperatorMemoryNotEnoughException memoryFailure) {
+        requestedBytes = memoryFailure.getRequestedBytes();
+        freeBytes = memoryFailure.getFreeBytes();
+      } else {
+        freeBytes = LocalExecutionPlanner.getInstance().getFreeMemoryForOperators();
+      }
+      throw new MemoryNotEnoughException(
+          String.format(
+              Locale.ROOT,
+              DataNodeQueryMessages
+                  .EXCEPTION_NOT_ENOUGH_MEMORY_WHILE_ANALYZING_TIME_PARTITIONS_NARROW_THE_QUERY_TIME_RANGE_OR_INCREASE_QUERY_MEMORY_MEMORY_DETAILS_REQUESTED_THIS_TIME_ARG_CURRENT_FREE_MEMORY_ARG_ORIGINAL_ERROR_ARG_37676B2A,
+              formatBytes(requestedBytes),
+              formatBytes(freeBytes),
+              e.getMessage()));
+    }
+  }
+
+  public void finishResultSetColumnMemoryTracking() {
+    // Column expansion has finished. Later partition/planning reservations must not be diagnosed
+    // as excessive result columns just because this context still contains column statistics.
+    resultSetColumnMemoryTrackingEnabled = false;
   }
 
   public void releaseAllMemoryReservedForFrontEnd() {

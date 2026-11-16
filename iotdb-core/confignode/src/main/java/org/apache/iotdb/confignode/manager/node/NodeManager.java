@@ -885,6 +885,37 @@ public class NodeManager {
     return nodeInfo.getNodeVersionInfo();
   }
 
+  /** Checks the version and build of every registered ConfigNode. */
+  public boolean isConfigNodeVersionConsistentWith(TNodeVersionInfo expectedVersion) {
+    if (expectedVersion == null
+        || !isKnownVersionValue(expectedVersion.getVersion())
+        || !isKnownVersionValue(expectedVersion.getBuildInfo())) {
+      return false;
+    }
+    List<TConfigNodeLocation> configNodes = getRegisteredConfigNodes();
+    if (configNodes.isEmpty()) {
+      return false;
+    }
+    Map<Integer, TNodeVersionInfo> versions = getNodeVersionInfo();
+    for (TConfigNodeLocation configNode : configNodes) {
+      if (!hasMatchingVersion(expectedVersion, versions.get(configNode.getConfigNodeId()))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean hasMatchingVersion(
+      TNodeVersionInfo expectedVersion, TNodeVersionInfo actualVersion) {
+    return actualVersion != null
+        && expectedVersion.getVersion().equals(actualVersion.getVersion())
+        && expectedVersion.getBuildInfo().equals(actualVersion.getBuildInfo());
+  }
+
+  private static boolean isKnownVersionValue(String value) {
+    return value != null && !value.trim().isEmpty() && !"UNKNOWN".equalsIgnoreCase(value.trim());
+  }
+
   public List<TConfigNodeInfo> getRegisteredConfigNodeInfoList() {
     List<TConfigNodeInfo> configNodeInfoList = new ArrayList<>();
     List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();

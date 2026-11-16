@@ -20,6 +20,11 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_12143E89 = "Query attempt %s is closed.";
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_ADMISSION_EXPIRED_DEADLINE_ARG_NS_NOW_ARG_NS_16A9846C = "Query attempt %s admission expired: deadline=%d ns, now=%d ns.";
+  public static final String EXCEPTION_INVALID_QUERY_ADMISSION_ISSUER_FOR_ATTEMPT_ARG_9D1C4E9C = "Invalid query admission issuer for attempt %s.";
+
+
   public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
       "Fail to insert measurements %s caused by %s";
 
@@ -901,6 +906,9 @@ public final class DataNodeQueryMessages {
   public static final String
       EXCEPTION_CANNOT_REFERENCE_ARG_COLUMN_ARG_IN_AN_UPDATE_VALUE_UPDATE_VALUES_CAN_ONLY_REFERENCE_ATTRIBUTE_OR_TAG_COLUMNS_C01BE71A =
           "Cannot reference %s column '%s' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.";
+  public static final String
+      EXCEPTION_EXTERNAL_USER_DEFINED_FUNCTION_ARG_IS_NOT_SUPPORTED_IN_THIS_WRITE_STATEMENT_8329DC8E =
+          "External user-defined function %s is not supported in this write statement";
   public static final String DROP_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
       "Drop Function statement is not supported yet.";
   public static final String SHOW_FUNCTION_STATEMENT_IS_NOT_SUPPORTED_YET =
@@ -2811,6 +2819,9 @@ public final class DataNodeQueryMessages {
       "Failures happened during running ConfigExecution when executing {}, message: {}, status: {}";
   public static final String FAILURES_HAPPENED_DURING_RUNNING_CONFIGEXECUTION_WHEN_EXECUTING_ARG =
       "Failures happened during running ConfigExecution when executing {}.";
+  public static final String
+      LOG_FAILED_TO_CREATE_THE_TREE_TO_TABLE_VIEW_ARG_ARG_WITH_STATUS_CODE_ARG_ARG_0A3C8F10 =
+          "Failed to create the tree to table view {}.{} with status code {}: {}.";
   public static final String FAILED_TO_EXECUTE_CREATE_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG =
       "Failed to execute create database {} in config node, status is {}.";
   public static final String FAILED_TO_EXECUTE_ALTER_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG =
@@ -4141,6 +4152,39 @@ public final class DataNodeQueryMessages {
   public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TagColumns: %s";
   public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "MemoryThreshold: %s";
 
+
+  public static final String EXCEPTION_DATABASENAME_IS_NULL_A811DE1B =
+      "databaseName is null";
+
+  public static final String EXCEPTION_VALUES_IS_NULL_A580EDAA =
+      "values is null";
+
+  public static final String EXCEPTION_ZONEID_IS_NULL_7DAA5E2C =
+      "zoneId is null";
+
+  public static final String EXCEPTION_INSERT_TARGET_TABLE_DOES_NOT_EXIST_ARG_ARG_78F05787 =
+      "Insert target table does not exist: %s.%s";
+
+  public static final String EXCEPTION_EXPRESSIONS_AND_COLUMNS_DO_NOT_MATCH_EXPRESSIONS_SIZE_ARG_COLUMNS_SIZE_ARG_F933A8C1 =
+      "expressions and columns do not match, expressions size: %s, columns size: %s";
+
+  public static final String EXCEPTION_INSERT_EXPRESSION_MUST_BE_CONSTANT_AFTER_CONSTANT_FOLDING_ARG_FOLDED_TO_ARG_D9EE1433 =
+      "Insert expression must be constant after constant folding: %s (folded to %s)";
+
+  public static final String EXCEPTION_CANNOT_EVALUATE_INSERT_EXPRESSION_AS_A_CONSTANT_ARG_ARG_F478C134 =
+      "Cannot evaluate insert expression as a constant: %s. %s";
+
+  public static final String EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_INT_F8E58471 =
+      "The %s is out of range of int.";
+
+  public static final String EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_LONG_9B1C872A =
+      "The %s is out of range of long.";
+
+  public static final String EXCEPTION_INT_OVERFLOW_ARG_ARG_BB287017 =
+      "int overflow: %s / %s";
+
+  public static final String EXCEPTION_LONG_OVERFLOW_ARG_ARG_46CC95E2 =
+      "long overflow: %s / %s";
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData contains no physical chunk";
   public static final String EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6 = "device cannot be null";
@@ -4930,4 +4974,13 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s: %s ms, %s invocations, %s applications";
+  public static final String EXCEPTION_NOT_ENOUGH_MEMORY_WHILE_ANALYZING_TIME_PARTITIONS_NARROW_THE_QUERY_TIME_RANGE_OR_INCREASE_QUERY_MEMORY_MEMORY_DETAILS_REQUESTED_THIS_TIME_ARG_CURRENT_FREE_MEMORY_ARG_ORIGINAL_ERROR_ARG_37676B2A =
+      "Not enough memory while analyzing time partitions. Narrow the query time range or increase query memory. Memory details: requested this time %s, current free memory %s. Original error: %s";
+
+  public static final String EXCEPTION_QUERY_ARG_CANNOT_RESERVE_ARG_BYTES_PENDING_FRONT_END_MEMORY_RESERVATION_EXCEEDS_LONG_MAX_VALUE_BYTES_D38CD6D8 =
+      "Query %s cannot reserve %s bytes: pending front-end memory reservation exceeds Long.MAX_VALUE bytes.";
+
+  public static final String LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9 =
+      "[QueryFailed] queryId: {}, sql: {}";
+
 }

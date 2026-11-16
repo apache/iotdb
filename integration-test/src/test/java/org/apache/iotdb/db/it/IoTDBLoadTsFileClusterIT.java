@@ -38,6 +38,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -58,9 +59,11 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.junit.runners.MethodSorters;
 
 import java.io.File;
 import java.io.IOException;
@@ -90,6 +93,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 @RunWith(IoTDBTestRunner.class)
+// Keep the cleanup and immediate-reuse cases consecutive at the end of this shared-cluster suite.
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @Category({ClusterIT.class})
 public class IoTDBLoadTsFileClusterIT {
 
@@ -137,7 +142,10 @@ public class IoTDBLoadTsFileClusterIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(REPLICATION_FACTOR)
-        .setDataReplicationFactor(REPLICATION_FACTOR);
+        .setDataReplicationFactor(REPLICATION_FACTOR)
+        // Keep this functional fixture's WAL/Region budget independent of the host CPU count.
+        .setDataRegionPerDataNode(1)
+        .setDefaultDataRegionGroupNumPerDatabase(1);
     // Keep every kind of merge off for this class: the restart case hard-links the replicas'
     // TsFiles out of the DataNode directory and compares their points while the restarted DataNode
     // catches up, so compaction must not rewrite those files in the meantime.
@@ -186,6 +194,7 @@ public class IoTDBLoadTsFileClusterIT {
       statement.execute("delete database " + DATABASE);
     } catch (final Exception ignored) {
     }
+    awaitDatabaseDataRegionsDeleted();
 
     final File[] files = tmpDir.listFiles();
     if (files != null) {
@@ -228,7 +237,7 @@ public class IoTDBLoadTsFileClusterIT {
     }
   }
 
-  /** Concurrent LOADs on separate files must not interfere with each other. */
+  /** Four concurrent LOADs on separate time partitions must expose their combined point count. */
   @Test
   public void testLoadConcurrently() throws Exception {
     final int fileCount = 4;
@@ -280,15 +289,11 @@ public class IoTDBLoadTsFileClusterIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       final long expected = expectedPointCount;
-      long actualPointCount = queryPointCount(statement);
-      for (int retry = 0; actualPointCount < expected && retry < 30; retry++) {
-        Thread.sleep(1_000L);
-        actualPointCount = queryPointCount(statement);
-      }
-      Assert.assertEquals(expected, actualPointCount);
+      Assert.assertEquals(expected, awaitPointCountAtLeast(statement, expected));
     }
   }
 
+  /** A load through the remaining DataNodes preserves data while one DataNode is stopped. */
   @Test
   public void testLoadAfterOneDataNodeDown() throws Exception {
     final long firstPointCount = generateTsFile(tmpDir, "load-first.tsfile", 5_000, 1L);
@@ -317,12 +322,30 @@ public class IoTDBLoadTsFileClusterIT {
       statement.execute("load \"" + secondDir.getAbsolutePath() + "\"");
 
       final long expectedPointCount = firstPointCount + secondPointCount;
-      long actualPointCount = queryPointCount(statement);
-      for (int retry = 0; actualPointCount < expectedPointCount && retry < 30; retry++) {
-        Thread.sleep(1_000L);
-        actualPointCount = queryPointCount(statement);
-      }
-      Assert.assertEquals(expectedPointCount, actualPointCount);
+      Assert.assertEquals(
+          expectedPointCount, awaitPointCountAtLeast(statement, expectedPointCount));
+    }
+  }
+
+  @Test
+  public void testZDatabaseDataRegionsDeletedByTeardown() throws Exception {
+    final long expectedPointCount = generateTsFile(tmpDir, "delete-database.tsfile", 10, 1L);
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      createDatabaseAndSchema(statement);
+      statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
+      awaitPointCount(statement, expectedPointCount);
+    }
+  }
+
+  @Test
+  public void testZZDatabaseNameCanBeReusedAfterTeardown() throws Exception {
+    final long expectedPointCount = generateTsFile(tmpDir, "reuse-database.tsfile", 10, 1L);
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      createDatabaseAndSchema(statement);
+      statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
+      awaitPointCount(statement, expectedPointCount);
     }
   }
 
@@ -479,7 +502,42 @@ public class IoTDBLoadTsFileClusterIT {
     return points.size();
   }
 
-  /** Hard-links the TsFiles below a replica directory into the snapshot directory. */
+  @Test
+  public void testReplicaSnapshotsSkipUnsealedTsFiles() throws Exception {
+    final File regionDir = new File(tmpDir, "region");
+    final File partitionDir = new File(regionDir, "0");
+    Assert.assertTrue(partitionDir.mkdirs());
+    final File sealed = new File(partitionDir, "1-1-0-0.tsfile");
+    final long expectedPointCount = generateTsFile(partitionDir, sealed.getName(), 10, 1L);
+    new TsFileResource(sealed).serialize();
+
+    // An active writer may have no bytes on disk yet, or just an incomplete header.
+    final File empty = new File(partitionDir, "2-1-0-0.tsfile");
+    Assert.assertTrue(empty.createNewFile());
+    final File unsealed = new File(partitionDir, "3-1-0-0.tsfile");
+    Files.write(unsealed.toPath(), TSFileConfig.MAGIC_STRING.getBytes(TSFileConfig.STRING_CHARSET));
+
+    final List<File> snapshots = snapshotTsFiles(regionDir, new File(tmpDir, "snapshots"));
+    Assert.assertEquals(1, snapshots.size());
+    final Set<String> points = new HashSet<>();
+    readPoints(snapshots.get(0), points);
+    Assert.assertEquals(expectedPointCount, points.size());
+
+    // A damaged file advertised as sealed must still be read and rejected, rather than skipped.
+    new TsFileResource(empty).serialize();
+    final List<File> damagedSnapshots =
+        snapshotTsFiles(regionDir, new File(tmpDir, "damaged-snapshots"));
+    Assert.assertEquals(2, damagedSnapshots.size());
+    Assert.assertThrows(
+        NotCompatibleTsFileException.class,
+        () -> {
+          for (final File snapshot : damagedSnapshots) {
+            readPoints(snapshot, new HashSet<>());
+          }
+        });
+  }
+
+  /** Hard-links only sealed TsFiles below a replica directory into the snapshot directory. */
   private static List<File> snapshotTsFiles(final File regionDir, final File snapshotDir)
       throws IOException {
     final List<File> tsFiles = new ArrayList<>();
@@ -490,6 +548,11 @@ public class IoTDBLoadTsFileClusterIT {
     Files.createDirectories(snapshotDir.toPath());
     final List<File> snapshots = new ArrayList<>();
     for (final File tsFile : tsFiles) {
+      // The resource sidecar is published after the writer finishes the file. A hard link to an
+      // unsealed file still shares its writes and may not even contain a readable header yet.
+      if (!new File(tsFile + TsFileResource.RESOURCE_SUFFIX).exists()) {
+        continue;
+      }
       // The time partition directory keeps the names unique inside one replica.
       final File snapshot =
           new File(snapshotDir, tsFile.getParentFile().getName() + "-" + tsFile.getName());
@@ -643,6 +706,34 @@ public class IoTDBLoadTsFileClusterIT {
               })
           .sum();
     }
+  }
+
+  /** Waits for asynchronous region deletion before the next test reuses this database name. */
+  private static void awaitDatabaseDataRegionsDeleted() {
+    Awaitility.await()
+        .atMost(5, TimeUnit.MINUTES)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .ignoreExceptions()
+        .until(IoTDBLoadTsFileClusterIT::areDatabaseDataRegionsDeleted);
+  }
+
+  private static boolean areDatabaseDataRegionsDeleted() throws IOException {
+    for (int dataNodeIndex = 0; dataNodeIndex < DATA_NODE_NUM; dataNodeIndex++) {
+      final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(dataNodeIndex);
+      for (final String order : TSFILE_DIRECTORIES) {
+        final java.nio.file.Path databaseDir =
+            Paths.get(dataNode.getDataNodeDir(), "data", order, DATABASE);
+        if (!Files.isDirectory(databaseDir)) {
+          continue;
+        }
+        try (Stream<java.nio.file.Path> regionDirs = Files.list(databaseDir)) {
+          if (regionDirs.anyMatch(Files::isDirectory)) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
   }
 
   /** The cluster id of the given DataNode, matched by its client RPC endpoint. */
@@ -972,6 +1063,17 @@ public class IoTDBLoadTsFileClusterIT {
                 return true;
               }
             });
+  }
+
+  // Keep the JDBC statement on the calling thread while preserving the 30-second retry window.
+  private long awaitPointCountAtLeast(final Statement statement, final long expectedPointCount)
+      throws Exception {
+    return Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(() -> queryPointCount(statement), pointCount -> pointCount >= expectedPointCount);
   }
 
   private static boolean deleteRecursively(final File file) {
