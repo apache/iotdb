@@ -232,8 +232,12 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   @Override
-  public int findColumn(String columnName) {
-    return ioTDBRpcDataSet.findColumn(columnName);
+  public int findColumn(String columnName) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.findColumn(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
