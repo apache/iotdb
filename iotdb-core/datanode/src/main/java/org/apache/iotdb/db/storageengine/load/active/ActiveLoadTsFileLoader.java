@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -38,6 +39,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
@@ -50,15 +53,24 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -80,6 +92,8 @@ public class ActiveLoadTsFileLoader {
   // Guarded by activeLoadExecutor, including tasks submitted but not yet started.
   private int activeLoadTasks;
   private final AtomicReference<String> failDir = new AtomicReference<>();
+  private final AtomicReference<String> indexedFailDir = new AtomicReference<>();
+  private final Map<String, FailedFileSnapshot> failedFileSnapshots = new ConcurrentHashMap<>();
   private final boolean isVerify = IOTDB_CONFIG.isLoadActiveListeningVerifyEnable();
 
   public int getCurrentAllowedPendingSize() {
@@ -173,6 +187,7 @@ public class ActiveLoadTsFileLoader {
     }
     if (executor == null) {
       pendingQueue.clearPending();
+      clearFailedFileIndex();
       return;
     }
 
@@ -194,6 +209,7 @@ public class ActiveLoadTsFileLoader {
       } else {
         pendingQueue.clearPending();
       }
+      clearFailedFileIndex();
     }
   }
 
@@ -209,6 +225,11 @@ public class ActiveLoadTsFileLoader {
         }
       }
     }
+  }
+
+  private void clearFailedFileIndex() {
+    failedFileSnapshots.clear();
+    indexedFailDir.set(null);
   }
 
   private void tryLoadPendingTsFiles() {
@@ -350,7 +371,7 @@ public class ActiveLoadTsFileLoader {
           entry.getFile(),
           entry.isGeneratedByPipe(),
           status);
-      removeFileAndResourceAndModsToFailDir(entry.getFile());
+      removeFileAndResourceAndModsToFailDir(entry);
     }
   }
 
@@ -361,7 +382,7 @@ public class ActiveLoadTsFileLoader {
         "Failed to auto load tsfile {} (isGeneratedByPipe = {}) due to file not found, will skip this file.",
         entry.getFile(),
         entry.isGeneratedByPipe());
-    removeFileAndResourceAndModsToFailDir(entry.getFile());
+    removeFileAndResourceAndModsToFailDir(entry);
   }
 
   private void handleOtherException(
@@ -380,32 +401,146 @@ public class ActiveLoadTsFileLoader {
           entry.getFile(),
           entry.isGeneratedByPipe(),
           e);
-      removeFileAndResourceAndModsToFailDir(entry.getFile());
+      removeFileAndResourceAndModsToFailDir(entry);
     }
   }
 
-  private void removeFileAndResourceAndModsToFailDir(final String filePath) {
-    removeToFailDir(filePath);
-    removeToFailDir(filePath + ".resource");
-    removeToFailDir(filePath + ".mods");
-  }
-
-  private void removeToFailDir(final String filePath) {
-    final File sourceFile = new File(filePath);
-    // prevent the resource or mods not exist
-    if (!sourceFile.exists()) {
+  private synchronized void removeFileAndResourceAndModsToFailDir(
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
+    final String filePath = entry.getFile();
+    final File tsFile = new File(filePath);
+    final List<File> sourceFiles =
+        List.of(
+            tsFile,
+            new File(filePath + TsFileResource.RESOURCE_SUFFIX),
+            new File(filePath + ModificationFile.FILE_SUFFIX));
+    final boolean hasSourceFiles = sourceFiles.stream().anyMatch(File::exists);
+    if (!hasSourceFiles) {
       return;
     }
 
-    final File targetDir = new File(failDir.get());
+    final File failDirectory = new File(failDir.get());
+    final String failureInfoSuffix = ".load-failure";
+    final String failureInfoFileName =
+        tsFile.getName().getBytes(StandardCharsets.UTF_8).length + failureInfoSuffix.length() > 180
+            ? "active-load-" + UUID.randomUUID() + failureInfoSuffix
+            : tsFile.getName() + failureInfoSuffix;
+    File stagingDirectory = null;
+    final File targetDirectory = new File(failDirectory, "active-load-" + UUID.randomUUID());
     try {
-      RetryUtils.retryOnException(
-          () -> {
-            org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
-            return null;
-          });
+      FileUtils.forceMkdir(failDirectory);
+      stagingDirectory =
+          Files.createTempDirectory(failDirectory.toPath(), ".active-load-staging-").toFile();
+
+      for (final File sourceFile : sourceFiles) {
+        if (!sourceFile.exists()) {
+          continue;
+        }
+        Files.copy(
+            sourceFile.toPath(),
+            new File(stagingDirectory, sourceFile.getName()).toPath(),
+            StandardCopyOption.COPY_ATTRIBUTES);
+      }
+      writeFailureInfo(new File(stagingDirectory, failureInfoFileName), entry, true);
+
+      try {
+        Files.move(
+            stagingDirectory.toPath(), targetDirectory.toPath(), StandardCopyOption.ATOMIC_MOVE);
+      } catch (final AtomicMoveNotSupportedException e) {
+        Files.move(stagingDirectory.toPath(), targetDirectory.toPath());
+      }
+      stagingDirectory = null;
     } catch (final IOException e) {
-      LOGGER.warn("Error occurred during moving file {} to fail directory.", filePath, e);
+      if (targetDirectory.exists()) {
+        try {
+          FileUtils.deleteDirectory(targetDirectory);
+        } catch (final IOException cleanupException) {
+          e.addSuppressed(cleanupException);
+        }
+      }
+      if (stagingDirectory != null && stagingDirectory.exists()) {
+        try {
+          FileUtils.deleteDirectory(stagingDirectory);
+        } catch (final IOException cleanupException) {
+          e.addSuppressed(cleanupException);
+        }
+      }
+      LOGGER.warn(
+          StorageEngineMessages
+              .LOG_ERROR_OCCURRED_DURING_MOVING_FILE_ARG_TO_FAIL_DIRECTORY_F40610CE,
+          filePath,
+          e);
+      return;
+    }
+
+    deletePublishedSourceFiles(filePath, tsFile, sourceFiles, targetDirectory);
+  }
+
+  private void deletePublishedSourceFiles(
+      final String filePath,
+      final File tsFile,
+      final List<File> sourceFiles,
+      final File publishedGroup) {
+    try {
+      Files.deleteIfExists(tsFile.toPath());
+    } catch (final IOException e) {
+      if (tsFile.exists()) {
+        pendingQueue.markFileFailed(filePath);
+        failedFileSnapshots.put(filePath, new FailedFileSnapshot(publishedGroup));
+      }
+      LOGGER.warn(
+          StorageEngineMessages
+              .LOG_ERROR_OCCURRED_DURING_MOVING_FILE_ARG_TO_FAIL_DIRECTORY_F40610CE,
+          filePath,
+          e);
+      return;
+    }
+
+    IOException cleanupException = null;
+    for (final File sourceFile : sourceFiles) {
+      if (sourceFile.equals(tsFile)) {
+        continue;
+      }
+      try {
+        Files.deleteIfExists(sourceFile.toPath());
+      } catch (final IOException e) {
+        if (cleanupException == null) {
+          cleanupException = e;
+        } else {
+          cleanupException.addSuppressed(e);
+        }
+      }
+    }
+    if (cleanupException != null) {
+      LOGGER.warn(
+          StorageEngineMessages
+              .LOG_ERROR_OCCURRED_DURING_MOVING_FILE_ARG_TO_FAIL_DIRECTORY_F40610CE,
+          filePath,
+          cleanupException);
+    }
+  }
+
+  private void writeFailureInfo(
+      final File failureInfoFile,
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry,
+      final boolean hasFiles)
+      throws IOException {
+    if (!hasFiles) {
+      return;
+    }
+
+    final Properties properties = new Properties();
+    properties.setProperty("activeLoadFile", entry.getFile());
+    properties.setProperty("generatedByPipe", Boolean.toString(entry.isGeneratedByPipe()));
+    properties.setProperty("tableModel", "false");
+    if (entry.getConversionTaskId() != null) {
+      properties.setProperty("conversionTaskId", entry.getConversionTaskId());
+    }
+    if (entry.getPendingDir() != null) {
+      properties.setProperty("pendingDir", entry.getPendingDir());
+    }
+    try (final OutputStream outputStream = Files.newOutputStream(failureInfoFile.toPath())) {
+      properties.store(outputStream, "Active LOAD failure source");
     }
   }
 
@@ -436,7 +571,125 @@ public class ActiveLoadTsFileLoader {
   }
 
   public boolean isFilePendingOrLoading(final File file) {
-    return pendingQueue.isFilePendingOrLoading(file.getAbsolutePath());
+    final String filePath = file.getAbsolutePath();
+    if (!file.exists()) {
+      pendingQueue.clearFailedFile(filePath);
+      failedFileSnapshots.remove(filePath);
+    } else {
+      indexPublishedFailedFilesIfNecessary();
+      final FailedFileSnapshot failedFileSnapshot = failedFileSnapshots.get(filePath);
+      if (failedFileSnapshot != null && !failedFileSnapshot.matches(file)) {
+        pendingQueue.clearFailedFile(filePath);
+        failedFileSnapshots.remove(filePath, failedFileSnapshot);
+      }
+    }
+    return pendingQueue.isFilePendingOrLoading(filePath);
+  }
+
+  private void indexPublishedFailedFilesIfNecessary() {
+    final String configuredFailDir = IOTDB_CONFIG.getLoadActiveListeningFailDir();
+    if (configuredFailDir == null || configuredFailDir.isEmpty()) {
+      return;
+    }
+    if (Objects.equals(indexedFailDir.get(), configuredFailDir)) {
+      return;
+    }
+
+    synchronized (indexedFailDir) {
+      if (Objects.equals(indexedFailDir.get(), configuredFailDir)) {
+        return;
+      }
+
+      final File[] failedGroups = new File(configuredFailDir).listFiles(File::isDirectory);
+      if (failedGroups == null) {
+        return;
+      }
+
+      boolean scanCompleted = true;
+      for (final File failedGroup : failedGroups) {
+        if (!failedGroup.getName().startsWith("active-load-")) {
+          continue;
+        }
+        final File[] failureInfoFiles =
+            failedGroup.listFiles((dir, name) -> name.endsWith(".load-failure"));
+        if (failureInfoFiles == null) {
+          scanCompleted = false;
+          continue;
+        }
+        for (final File failureInfoFile : failureInfoFiles) {
+          final Properties failureInfo = new Properties();
+          try (final InputStream inputStream = Files.newInputStream(failureInfoFile.toPath())) {
+            failureInfo.load(inputStream);
+            final String activeLoadFile = failureInfo.getProperty("activeLoadFile");
+            if (activeLoadFile == null) {
+              continue;
+            }
+            final String absoluteSourceFile = new File(activeLoadFile).getAbsolutePath();
+            final File sourceTsFile = new File(absoluteSourceFile);
+            if (sourceTsFile.isFile() && matchesPublishedFileGroup(sourceTsFile, failedGroup)) {
+              pendingQueue.markFileFailed(absoluteSourceFile);
+              failedFileSnapshots.put(absoluteSourceFile, new FailedFileSnapshot(failedGroup));
+            }
+          } catch (final IOException e) {
+            scanCompleted = false;
+            LOGGER.debug(
+                StorageEngineMessages.LOG_FAILED_TO_READ_ACTIVE_LOAD_FAILURE_METADATA_ARG_E152544E,
+                failureInfoFile,
+                e);
+          } catch (final RuntimeException e) {
+            LOGGER.debug(
+                StorageEngineMessages.LOG_FAILED_TO_READ_ACTIVE_LOAD_FAILURE_METADATA_ARG_E152544E,
+                failureInfoFile,
+                e);
+          }
+        }
+      }
+      if (scanCompleted) {
+        indexedFailDir.set(configuredFailDir);
+      }
+    }
+  }
+
+  private static boolean matchesPublishedFileGroup(
+      final File sourceTsFile, final File failedGroup) {
+    for (final File sourceFile : getTsFileGroupFiles(sourceTsFile)) {
+      final File failedFile = new File(failedGroup, sourceFile.getName());
+      if (sourceFile.exists() != failedFile.exists()) {
+        return false;
+      }
+      if (sourceFile.exists()) {
+        try {
+          if (Files.mismatch(sourceFile.toPath(), failedFile.toPath()) != -1) {
+            return false;
+          }
+        } catch (final IOException e) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  private static List<File> getTsFileGroupFiles(final File tsFile) {
+    final String filePath = tsFile.getAbsolutePath();
+    return List.of(
+        tsFile,
+        new File(filePath + TsFileResource.RESOURCE_SUFFIX),
+        new File(filePath + ModificationFile.FILE_SUFFIX));
+  }
+
+  private static class FailedFileSnapshot {
+    private final File publishedGroup;
+
+    private FailedFileSnapshot(final File publishedGroup) {
+      this.publishedGroup = publishedGroup;
+    }
+
+    private boolean matches(final File tsFile) {
+      // A replacement can preserve both size and mtime (for example, a restored sidecar).
+      // Only unchanged contents should remain suppressed.
+      return matchesPublishedFileGroup(tsFile, publishedGroup);
+    }
   }
 
   // Metrics
