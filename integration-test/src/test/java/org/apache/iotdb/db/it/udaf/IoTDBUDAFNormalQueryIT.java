@@ -19,11 +19,17 @@
 
 package org.apache.iotdb.db.it.udaf;
 
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -33,9 +39,8 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Locale;
+import java.util.List;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.*;
 import static org.junit.Assert.assertArrayEquals;
@@ -92,87 +97,81 @@ public class IoTDBUDAFNormalQueryIT {
   private final String d0s1 = "root.vehicle.d0.s1";
   private final String d0s2 = "root.vehicle.d0.s2";
   private final String d0s3 = "root.vehicle.d0.s3";
-  private static final String insertTemplate =
-      "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
 
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setUdfMemoryBudgetInMB(5);
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareData();
-    registerUDAF();
+    // Reuse one session for schema creation, fixture writes, flushes and UDAF registration.
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      prepareData(session);
+      registerUDAF(session);
+    }
   }
 
-  private static void prepareData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+  private static void prepareData(ISession session)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (String sql : creationSqls) {
+      session.executeNonQueryStatement(sql);
+    }
 
-      for (String sql : creationSqls) {
-        statement.execute(sql);
-      }
+    // Batch the fixture without SQL parsing per row; UDAF queries retain all original input points.
+    Tablet tablet =
+        new Tablet(
+            "root.vehicle.d0",
+            List.of(
+                new MeasurementSchema("s0", TSDataType.INT32),
+                new MeasurementSchema("s1", TSDataType.INT64),
+                new MeasurementSchema("s2", TSDataType.FLOAT),
+                new MeasurementSchema("s3", TSDataType.TEXT),
+                new MeasurementSchema("s4", TSDataType.BOOLEAN)),
+            500);
 
-      // prepare BufferWrite file
-      for (int i = 5000; i < 7000; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
-      statement.execute("flush");
+    // prepare BufferWrite file
+    insertRange(session, tablet, 5000, 7000, true);
+    session.executeNonQueryStatement("flush");
 
-      for (int i = 7500; i < 8500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
-      statement.execute("flush");
-      // prepare Unseq-File
-      for (int i = 500; i < 1500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
-      statement.execute("flush");
-      for (int i = 3000; i < 6500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
+    insertRange(session, tablet, 7500, 8500, false);
+    session.executeNonQueryStatement("flush");
+    // prepare Unseq-File
+    insertRange(session, tablet, 500, 1500, true);
+    session.executeNonQueryStatement("flush");
+    insertRange(session, tablet, 3000, 6500, false);
 
-      // prepare BufferWrite cache
-      for (int i = 9000; i < 10000; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
-      // prepare Overflow cache
-      for (int i = 2000; i < 2500; i++) {
-        statement.addBatch(
-            String.format(
-                Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
+    // prepare BufferWrite cache
+    insertRange(session, tablet, 9000, 10000, true);
+    // prepare Overflow cache
+    insertRange(session, tablet, 2000, 2500, false);
 
-      for (String sql : dataSet3) {
-        statement.execute(sql);
-      }
+    for (String sql : dataSet3) {
+      session.executeNonQueryStatement(sql);
+    }
 
-      for (String sql : dataSet2) {
-        statement.execute(sql);
+    for (String sql : dataSet2) {
+      session.executeNonQueryStatement(sql);
+    }
+  }
+
+  private static void insertRange(
+      ISession session, Tablet tablet, int startTime, int endTime, boolean booleanValue)
+      throws IoTDBConnectionException, StatementExecutionException {
+    // Reuse the bounded tablet while preserving write order and the callers' flush boundaries.
+    for (int time = startTime; time < endTime; time++) {
+      int row = tablet.getRowSize();
+      tablet.addTimestamp(row, time);
+      tablet.addValue("s0", row, time);
+      tablet.addValue("s1", row, (long) time);
+      tablet.addValue("s2", row, (float) time);
+      tablet.addValue("s3", row, Integer.toString(time));
+      tablet.addValue("s4", row, booleanValue);
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+    }
+    if (tablet.getRowSize() > 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
     }
   }
 
@@ -181,18 +180,14 @@ public class IoTDBUDAFNormalQueryIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private static void registerUDAF() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "CREATE FUNCTION avg_udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFAvg'");
-      statement.execute(
-          "CREATE FUNCTION count_udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
-      statement.execute(
-          "CREATE FUNCTION sum_udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFSum'");
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
+  private static void registerUDAF(ISession session)
+      throws IoTDBConnectionException, StatementExecutionException {
+    session.executeNonQueryStatement(
+        "CREATE FUNCTION avg_udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFAvg'");
+    session.executeNonQueryStatement(
+        "CREATE FUNCTION count_udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
+    session.executeNonQueryStatement(
+        "CREATE FUNCTION sum_udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFSum'");
   }
 
   @Test

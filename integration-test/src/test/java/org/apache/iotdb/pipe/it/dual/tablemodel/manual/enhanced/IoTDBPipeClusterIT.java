@@ -36,9 +36,11 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.dual.PipeTestUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -51,6 +53,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -70,8 +73,6 @@ import static org.junit.Assert.fail;
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
 public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
-  private static final double SYNC_LAG_DELTA = 0.001;
-
   @Override
   @Before
   public void setUp() {
@@ -84,6 +85,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        // Keep AUTO region expansion tied to the test topology instead of the host CPU count.
+        // Dozens of tiny regions exhaust the IT nodes' WAL/load memory and obscure failover tests.
+        .setDataRegionPerDataNode(2)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -93,13 +97,17 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     senderEnv
         .getConfig()
         .getDataNodeConfig()
-        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
+        // The small test files need little schema-analysis memory. Avoid 4 MiB reservations per
+        // concurrent load competing for the 256 MiB IT node's much smaller query memory pool.
+        .setLoadTsFileAnalyzeSchemaMemorySizeInBytes(256 * 1024L)
+        .setMetricReporterType(Collections.singletonList("JMX"));
 
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        .setDataRegionPerDataNode(2)
         .setDataReplicationFactor(2)
         .setSchemaReplicationFactor(3)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -111,10 +119,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     receiverEnv
         .getConfig()
         .getDataNodeConfig()
-        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
+        .setLoadTsFileAnalyzeSchemaMemorySizeInBytes(256 * 1024L)
+        .setMetricReporterType(Collections.singletonList("JMX"));
 
-    senderEnv.initClusterEnvironment(3, 3, 180);
-    receiverEnv.initClusterEnvironment(3, 3, 180);
+    executeOnBothEnvs(env -> env.initClusterEnvironment(3, 3, 180));
   }
 
   @Test
@@ -261,8 +269,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     }
   }
 
-  // This function has a certain probability of triggering replica asynchrony. To ensure the success
-  // of the test, it will be retried 5 times. The test will be ignored after five retries.
+  // Stopping a DataRegion leader and restarting both clusters must preserve the 300 source rows;
+  // existing and newly created pipes must continue to apply the inclusive timestamp limit of 300.
+  // Read live replication gauges on every replica before flushing/restarting to avoid stale zeros.
+  // Retry replica-asynchrony exceptions up to five times, then report the final failure.
   @Test
   public void testPipeAfterDataRegionLeaderStop() {
     for (int retry = 0; retry < 5; retry++) {
@@ -326,9 +336,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
             fail();
           }
 
-          TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
-
-          TableModelUtils.insertData("test1", "test1", 200, 300, senderEnv);
+          insertDataAfterLeaderRestart("test");
+          insertDataAfterLeaderRestart("test1");
 
           TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
           flushTableDataRegionReplicasAfterReplicationComplete(
@@ -337,13 +346,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
               receiverEnv, Collections.singletonList("test"));
         }
 
-        try {
-          TestUtils.restartCluster(senderEnv);
-          TestUtils.restartCluster(receiverEnv);
-        } catch (final Throwable e) {
-          e.printStackTrace();
-          return;
-        }
+        executeOnBothEnvs(TestUtils::restartCluster);
 
         try (final SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -388,10 +391,42 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         return;
       } catch (final Exception e) {
         if (retry < 4) {
+          IoTDBTestLogger.logger.warn(
+              "Retrying table pipe leader-stop scenario after attempt {}", retry + 1, e);
           this.tearDown();
+        } else {
+          throw new AssertionError("Pipe replication failed after five leader-stop attempts", e);
         }
       }
     }
+  }
+
+  private void insertDataAfterLeaderRestart(final String database) {
+    // A Running node can still have stale internal RPC connections on other DataNodes. Retry only
+    // those transport failures instead of rebuilding both clusters and replaying the whole case.
+    // These inserts use fixed timestamps and values, so retrying a partial batch only overwrites
+    // the same rows; flush is also safe to repeat.
+    await()
+        .pollInSameThread()
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(
+            () -> {
+              try {
+                TableModelUtils.insertData(database, database, 200, 300, senderEnv);
+              } catch (final RuntimeException e) {
+                if (e.getCause() instanceof SQLException sqlException
+                    && sqlException.getMessage() != null
+                    && (sqlException.getMessage().contains("Connection reset by peer")
+                        || sqlException.getMessage().contains("Connection refused"))) {
+                  throw new AssertionError(
+                      "DataNode internal RPC connections have not recovered after leader restart",
+                      e);
+                }
+                throw e;
+              }
+            });
   }
 
   private int restartTableDataRegionLeader(
@@ -454,7 +489,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     // IoTConsensus accepts writes on any replica, including a previous leader during failover.
     // Check every replica's outgoing replication before flushing or restarting the cluster.
     await()
-        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
         .atMost(2, TimeUnit.MINUTES)
         .untilAsserted(
             () -> {
@@ -465,21 +501,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
                     "No table DataRegion found for databases " + databases,
                     regionInfoList.isEmpty());
 
-                for (final TRegionInfo regionInfo : regionInfoList) {
-                  final DataNodeWrapper replicaNode =
-                      findDataNodeWrapperByPort(env, regionInfo.getClientRpcPort());
-                  final String metricsUrl =
-                      "http://"
-                          + replicaNode.getIp()
-                          + ":"
-                          + replicaNode.getMetricPort()
-                          + "/metrics";
-                  final String metricsContent = env.getUrlContent(metricsUrl, null);
-                  Assert.assertNotNull(
-                      "Failed to fetch metrics from replica DataNode at " + metricsUrl,
-                      metricsContent);
-                  assertSyncLagIsZero(metricsContent, buildDataRegionTag(regionInfo), metricsUrl);
-                }
+                PipeTestUtils.assertDataRegionReplicationComplete(env, regionInfoList);
               }
             });
   }
@@ -508,40 +530,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
     return showRegionResp.getRegionInfoList();
   }
 
-  private DataNodeWrapper findDataNodeWrapperByPort(final BaseEnv env, final int port) {
-    for (final DataNodeWrapper dataNodeWrapper : env.getDataNodeWrapperList()) {
-      if (dataNodeWrapper.getPort() == port) {
-        return dataNodeWrapper;
-      }
-    }
-    fail("Failed to find DataNodeWrapper for client rpc port " + port);
-    return null;
-  }
-
-  private String buildDataRegionTag(final TRegionInfo regionInfo) {
-    return "DataRegion[" + regionInfo.getConsensusGroupId().getId() + "]";
-  }
-
-  private void assertSyncLagIsZero(
-      final String metricsContent, final String dataRegionTag, final String metricsUrl) {
-    for (final String line : metricsContent.split("\\R")) {
-      if (!line.startsWith("iot_consensus{")
-          || !line.contains("type=\"syncLag\"")
-          || !line.contains("region=\"" + dataRegionTag + "\"")) {
-        continue;
-      }
-      final int lastSpaceIndex = line.lastIndexOf(' ');
-      Assert.assertTrue("Malformed syncLag metric line: " + line, lastSpaceIndex > 0);
-      Assert.assertEquals(
-          "Expected syncLag of " + dataRegionTag + " to be 0 at " + metricsUrl + " but got " + line,
-          0.0,
-          Double.parseDouble(line.substring(lastSpaceIndex + 1)),
-          SYNC_LAG_DELTA);
-      return;
-    }
-    fail("No syncLag metric found for " + dataRegionTag + " at " + metricsUrl);
-  }
-
+  // After adding a sender DataNode, writes through that node and a restart of both clusters must
+  // preserve replication; the existing and new pipe must deliver all 400 rows in their tables.
   @Test
   public void testPipeAfterRegisterNewDataNode() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -591,12 +581,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
 
-      try {
-        senderEnv.registerNewDataNode(true);
-      } catch (final Throwable e) {
-        e.printStackTrace();
-        return;
-      }
+      senderEnv.registerNewDataNode(true);
 
       final DataNodeWrapper newDataNode =
           senderEnv.getDataNodeWrapper(senderEnv.getDataNodeWrapperList().size() - 1);
@@ -605,13 +590,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
       TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
     }
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (final Throwable e) {
-      e.printStackTrace();
-      return;
-    }
+    executeOnBothEnvs(TestUtils::restartCluster);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {

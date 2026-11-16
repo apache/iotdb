@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -31,6 +32,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.ParameterMetaData;
@@ -45,6 +47,7 @@ import java.time.LocalDate;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
@@ -354,6 +357,131 @@ public class IoTDBTablePreparedStatementJDBCIT {
   }
 
   @Test
+  public void testPreparedStatementBatchFailureAndReuse() throws SQLException {
+    assertPreparedStatementBatchFailureAndReuse(
+        "prepared_batch_failure_test", true, TSStatusCode.SEMANTIC_ERROR);
+  }
+
+  @Test
+  public void testPreparedStatementBatchStatusFailureAndReuse() throws SQLException {
+    assertPreparedStatementBatchFailureAndReuse(
+        "prepared_batch_status_failure_test", false, TSStatusCode.METADATA_ERROR);
+  }
+
+  @Test
+  public void testBatchFailureKeepsDefaultDatabaseInSync() throws SQLException {
+    String database = "prepared_batch_database_sync_test";
+    String table = "prepared_batch_database_sync_table";
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE " + database);
+      statement.execute("USE " + database);
+      statement.execute("CREATE TABLE " + table + "(device_id STRING TAG, reading INT32 FIELD)");
+      statement.execute("USE " + DATABASE_NAME);
+
+      Connection batchConnection =
+          connection instanceof ClusterTestConnection
+              ? ((ClusterTestConnection) connection).writeConnection.getUnderlyingConnection()
+              : connection;
+      assertEquals(DATABASE_NAME, batchConnection.getSchema());
+      try (Statement batchStatement = batchConnection.createStatement()) {
+        batchStatement.addBatch("USE " + database);
+        batchStatement.addBatch(
+            "INSERT INTO "
+                + table
+                + "(time, device_id, reading) VALUES (1, 'rejected', 'not_an_int')");
+
+        BatchUpdateException error =
+            assertThrows(BatchUpdateException.class, batchStatement::executeBatch);
+        int[] updateCounts = error.getUpdateCounts();
+        assertEquals(2, updateCounts.length);
+        assertBatchSuccessStatus(updateCounts[0]);
+        assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), updateCounts[1]);
+        assertEquals(database, batchConnection.getSchema());
+      }
+    }
+  }
+
+  private void assertPreparedStatementBatchFailureAndReuse(
+      String table, boolean invalidTime, TSStatusCode expectedFailureStatus) throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute("CREATE TABLE " + table + "(device_id STRING TAG, reading INT32 FIELD)");
+
+      Connection preparedConnection =
+          connection instanceof ClusterTestConnection
+              ? ((ClusterTestConnection) connection).writeConnection.getUnderlyingConnection()
+              : connection;
+      try (PreparedStatement preparedStatement =
+          preparedConnection.prepareStatement(
+              "INSERT INTO " + table + "(time, device_id, reading) VALUES (?, ?, ?)")) {
+        preparedStatement.setLong(1, 1L);
+        preparedStatement.setString(2, "before_failure");
+        preparedStatement.setInt(3, 11);
+        preparedStatement.addBatch();
+
+        if (invalidTime) {
+          preparedStatement.setString(1, "not_a_timestamp");
+          preparedStatement.setInt(3, 22);
+        } else {
+          preparedStatement.setLong(1, 2L);
+          preparedStatement.setString(3, "not_an_int");
+        }
+        preparedStatement.setString(2, "rejected");
+        preparedStatement.addBatch();
+
+        preparedStatement.setLong(1, 3L);
+        preparedStatement.setString(2, "after_failure");
+        preparedStatement.setInt(3, 33);
+        preparedStatement.addBatch();
+
+        BatchUpdateException error =
+            assertThrows(BatchUpdateException.class, preparedStatement::executeBatch);
+        int[] updateCounts = error.getUpdateCounts();
+        assertEquals(3, updateCounts.length);
+        assertBatchSuccessStatus(updateCounts[0]);
+        assertEquals(expectedFailureStatus.getStatusCode(), updateCounts[1]);
+        assertBatchSuccessStatus(updateCounts[2]);
+
+        preparedStatement.setLong(1, 4L);
+        preparedStatement.setString(2, "after_reuse");
+        preparedStatement.setInt(3, 44);
+        preparedStatement.addBatch();
+        int[] retryCounts = preparedStatement.executeBatch();
+        assertEquals(1, retryCounts.length);
+        assertBatchSuccessStatus(retryCounts[0]);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT time, device_id, reading FROM " + table + " ORDER BY time")) {
+        assertTrue(resultSet.next());
+        assertEquals(1L, resultSet.getLong("time"));
+        assertEquals("before_failure", resultSet.getString("device_id"));
+        assertEquals(11, resultSet.getInt("reading"));
+
+        assertTrue(resultSet.next());
+        assertEquals(3L, resultSet.getLong("time"));
+        assertEquals("after_failure", resultSet.getString("device_id"));
+        assertEquals(33, resultSet.getInt("reading"));
+
+        assertTrue(resultSet.next());
+        assertEquals(4L, resultSet.getLong("time"));
+        assertEquals("after_reuse", resultSet.getString("device_id"));
+        assertEquals(44, resultSet.getInt("reading"));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  private void assertBatchSuccessStatus(int statusCode) {
+    assertTrue(
+        statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || statusCode == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+  }
+
+  @Test
   public void testPreparedStatementAggregation() throws SQLException {
     try (Connection connection = getConnection();
         Statement stmt = connection.createStatement()) {
@@ -490,6 +618,111 @@ public class IoTDBTablePreparedStatementJDBCIT {
               rs.getTimestamp("timestamp_col").getTime());
           assertEquals("2025-06-15", rs.getDate("date_col").toString());
           assertArrayEquals(new byte[] {0x0A, 0x0B, 0x0C}, rs.getBytes("blob_col"));
+          assertFalse(rs.next());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testPreparedStatementWithTimestampProjection() throws SQLException {
+    try (Connection connection = getConnection();
+        Statement stmt = connection.createStatement()) {
+      stmt.execute("USE " + DATABASE_NAME);
+      // Self-contained fixture: the all-types table is created by another test method
+      stmt.execute(
+          "CREATE TABLE IF NOT EXISTS timestamp_projection_table("
+              + "int32_col INT32 FIELD, timestamp_col TIMESTAMP FIELD)");
+      stmt.execute(
+          "INSERT INTO timestamp_projection_table VALUES "
+              + "(2025-06-01T00:00:00, 123, 2025-06-15T10:30:00)");
+
+      // TIMESTAMP is a valid table-model field type and must keep its mapping as well
+      try (PreparedStatement ps =
+          connection.prepareStatement(
+              "SELECT timestamp_col, int32_col FROM timestamp_projection_table "
+                  + "WHERE int32_col = ?")) {
+        ps.setInt(1, 123);
+        try (ResultSet rs = ps.executeQuery()) {
+          assertTrue(rs.next());
+          assertEquals(
+              Timestamp.valueOf("2025-06-15 10:30:00").getTime(), rs.getTimestamp(1).getTime());
+          assertEquals(123, rs.getInt(2));
+          assertEquals(
+              Timestamp.valueOf("2025-06-15 10:30:00").getTime(),
+              rs.getTimestamp("timestamp_col").getTime());
+          assertEquals(123, rs.getInt("int32_col"));
+          assertFalse(rs.next());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testPreparedStatementWithReorderedProjection() throws SQLException {
+    try (Connection connection = getConnection();
+        Statement stmt = connection.createStatement()) {
+      stmt.execute("USE " + DATABASE_NAME);
+
+      // Projection order ("value", "name") differs from the materialized order
+      try (PreparedStatement ps =
+          connection.prepareStatement("SELECT value, name FROM test_table WHERE int_value = ?")) {
+        ps.setInt(1, 20);
+        try (ResultSet rs = ps.executeQuery()) {
+          assertTrue(rs.next());
+          ResultSetMetaData metaData = rs.getMetaData();
+          assertEquals(2, metaData.getColumnCount());
+          assertEquals("value", metaData.getColumnName(1));
+          assertEquals("name", metaData.getColumnName(2));
+          assertEquals(200.3, rs.getDouble(1), 0.001);
+          assertEquals("Bob", rs.getString(2));
+          assertEquals("Bob", rs.getString("name"));
+          assertEquals(200.3, rs.getDouble("value"), 0.001);
+          assertFalse(rs.next());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testPreparedStatementWithRepeatedProjection() throws SQLException {
+    try (Connection connection = getConnection();
+        Statement stmt = connection.createStatement()) {
+      stmt.execute("USE " + DATABASE_NAME);
+
+      // The same physical column is projected twice under different aliases
+      try (PreparedStatement ps =
+          connection.prepareStatement(
+              "SELECT name AS x, name AS y FROM test_table WHERE int_value = ?")) {
+        ps.setInt(1, 20);
+        try (ResultSet rs = ps.executeQuery()) {
+          assertTrue(rs.next());
+          assertEquals("Bob", rs.getString(1));
+          assertEquals("Bob", rs.getString(2));
+          assertEquals("Bob", rs.getString("x"));
+          assertEquals("Bob", rs.getString("y"));
+          assertFalse(rs.next());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testPreparedStatementWithIdentityProjection() throws SQLException {
+    try (Connection connection = getConnection();
+        Statement stmt = connection.createStatement()) {
+      stmt.execute("USE " + DATABASE_NAME);
+
+      // Identity mapping: a regression control for the two cases above
+      try (PreparedStatement ps =
+          connection.prepareStatement("SELECT name, value FROM test_table WHERE int_value = ?")) {
+        ps.setInt(1, 20);
+        try (ResultSet rs = ps.executeQuery()) {
+          assertTrue(rs.next());
+          assertEquals("Bob", rs.getString(1));
+          assertEquals(200.3, rs.getDouble(2), 0.001);
+          assertEquals("Bob", rs.getString("name"));
+          assertEquals(200.3, rs.getDouble("value"), 0.001);
           assertFalse(rs.next());
         }
       }

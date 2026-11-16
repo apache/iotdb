@@ -133,6 +133,7 @@ import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
@@ -187,6 +188,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Delet
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -323,6 +325,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicOwnerLeaseReq;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
@@ -511,6 +514,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TQueryAdmissionToken fetchQueryAdmissionToken(long validityMs) {
+    return FragmentInstanceManager.getInstance().fetchQueryAdmissionToken(validityMs);
+  }
+
+  @Override
   public TSendFragmentInstanceResp sendFragmentInstance(final TSendFragmentInstanceReq req) {
     LOGGER.debug(DataNodeMiscMessages.RECEIVE_FRAGMENT_INSTANCE, req.getConsensusGroupId());
 
@@ -556,6 +564,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       FragmentInstance.deserializeFrom(
                           fragmentInstanceId, req.fragmentInstance.body));
       fragmentInstance.attachUDFQueryScope(queryScope);
+      if (req.isSetQueryAttemptId() && req.isSetAdmissionToken()) {
+        fragmentInstance.setQueryAttempt(req.getQueryAttemptId(), req.getAdmissionToken());
+      }
     } catch (final Exception e) {
       if (classLoaderManager != null && queryScope != null) {
         classLoaderManager.finalizeUDFQuery(queryScope);
@@ -642,6 +653,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TCancelResp cancelQuery(TCancelQueryReq req) {
     try (SetThreadName threadName = new SetThreadName(req.getQueryId())) {
+      if (req.isSetQueryAttemptId() && req.isSetAdmissionToken()) {
+        FragmentInstanceManager.getInstance()
+            .closeQueryAttempt(
+                new QueryId(req.getQueryId()),
+                req.getQueryAttemptId(),
+                req.getAdmissionToken(),
+                req.hasThrowable);
+      }
       List<FragmentInstanceId> taskIds =
           req.getFragmentInstanceIds().stream()
               .map(FragmentInstanceId::fromThrift)
@@ -1875,17 +1894,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     SESSION_MANAGER.registerSession(session);
 
-    SESSION_MANAGER.supplySession(
-        session,
-        // TODO: User the real userId
-        -1,
-        req.getUsername(),
-        ZoneId.of(req.getZoneId()),
-        ClientVersion.V_1_0);
-
     String executedSQL = req.queryBody;
 
     try {
+      SESSION_MANAGER.supplySession(
+          session,
+          AuthorityChecker.getUserId(req.getUsername()).orElse(-1L),
+          req.getUsername(),
+          ZoneId.of(req.getZoneId()),
+          ClientVersion.V_1_0);
+
       QueryStatement s =
           (QueryStatement) StatementGenerator.createStatement(req.queryBody, session.getZoneId());
       if (s == null) {
@@ -1917,6 +1935,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         s.getGroupByTimeComponent().setLeftCRightO(true);
       }
       executedSQL = String.join(" ", s.constructFormattedSQL().split("\n")).replaceAll(" +", " ");
+
+      // Refresh the owner's READ_DATA scope for each CQ execution.
+      TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                      session.getUserId(), session.getUsername(), session.getClientAddress())
+                  .setSqlString(executedSQL));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            DataNodeMiscMessages.LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F,
+            req.getCqId(),
+            req.getUsername(),
+            status);
+        return status;
+      }
 
       long queryId =
           SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));
