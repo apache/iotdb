@@ -729,16 +729,17 @@ public class Session implements ISession {
     }
   }
 
-  private Set<SessionConnection> getSessionConnections() {
-    Set<SessionConnection> connections = Collections.newSetFromMap(new IdentityHashMap<>());
+  private List<SessionConnection> getSessionConnections() {
+    List<SessionConnection> connections = new ArrayList<>();
+    Set<SessionConnection> seen = Collections.newSetFromMap(new IdentityHashMap<>());
     if (endPointToSessionConnection != null) {
       for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
-        if (sessionConnection != null) {
+        if (sessionConnection != null && seen.add(sessionConnection)) {
           connections.add(sessionConnection);
         }
       }
     }
-    if (defaultSessionConnection != null) {
+    if (defaultSessionConnection != null && seen.add(defaultSessionConnection)) {
       connections.add(defaultSessionConnection);
     }
     return connections;

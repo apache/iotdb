@@ -1279,7 +1279,7 @@ public class SessionPoolTest {
     schema.setEncoding(TSEncoding.PLAIN);
     schemas.add(schema);
     long[] timestamp = new long[] {1l, 2l};
-    Object[] values = new Object[] {true, false};
+    Object[] values = new Object[] {new boolean[] {true, false}};
     BitMap[] partBitMap = new BitMap[2];
     Tablet tablet = new Tablet("device", schemas, timestamp, values, partBitMap, 2);
     sessionPool.sortTablet(tablet);
