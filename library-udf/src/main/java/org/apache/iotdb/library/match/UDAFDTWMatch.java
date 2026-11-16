@@ -169,6 +169,7 @@ public class UDAFDTWMatch implements UDAF {
         }
       }
     }
+    rebuildMatches(dtwState);
     return dtwState.getMatchResults();
   }
 

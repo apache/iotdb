@@ -332,7 +332,22 @@ public class UDAFPatternTest {
     patternMatch.outputFinal(state, new ResultValue(resultBuilder));
 
     Assert.assertEquals(1, resultBuilder.getPositionCount());
-    Assert.assertFalse(resultBuilder.build().isNull(0));
+    Assert.assertTrue(resultBuilder.build().isNull(0));
+
+    PatternState interleavedTarget = (PatternState) patternMatch.createState();
+    interleavedTarget.reset();
+    interleavedTarget.updateBuffer(1L, 1.0);
+    interleavedTarget.updateBuffer(3L, 3.0);
+    PatternState interleavedSource = (PatternState) patternMatch.createState();
+    interleavedSource.reset();
+    interleavedSource.updateBuffer(2L, 2.0);
+    patternMatch.combineState(interleavedTarget, interleavedSource);
+
+    BinaryColumnBuilder matchingBuilder = new BinaryColumnBuilder(null, 1);
+    patternMatch.outputFinal(interleavedTarget, new ResultValue(matchingBuilder));
+
+    Assert.assertEquals(1, matchingBuilder.getPositionCount());
+    Assert.assertFalse(matchingBuilder.build().isNull(0));
   }
 
   @Test

@@ -32,6 +32,7 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 
 /** This function calculates moving average of given window length of input series. */
 public class UDTFMvAvg implements UDTF {
@@ -96,9 +97,12 @@ public class UDTFMvAvg implements UDTF {
         exactWindowSum = exactWindowSum.add(new BigDecimal(value));
       }
       if (v.isFull()) {
-        double sum =
-            exactWindowSum == null ? windowSum + windowCompensation : exactWindowSum.doubleValue();
-        double average = sum / windowSize;
+        double average =
+            exactWindowSum == null
+                ? (windowSum + windowCompensation) / windowSize
+                : exactWindowSum
+                    .divide(BigDecimal.valueOf(windowSize), MathContext.DECIMAL128)
+                    .doubleValue();
         if (Double.isFinite(average)) {
           collector.putDouble(row.getTime(), average);
         }

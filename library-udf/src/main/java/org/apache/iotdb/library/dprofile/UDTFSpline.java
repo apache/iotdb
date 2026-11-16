@@ -32,19 +32,16 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
-import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 import org.apache.commons.math3.util.Precision;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class UDTFSpline implements UDTF {
   int samplePoints; // convert to is closest integer
   ArrayList<Long> timestamp = new ArrayList<>();
   ArrayList<Double> yDouble = new ArrayList<>();
-  ArrayList<Double> xDouble = new ArrayList<>();
-  Long minimumTimestamp;
-  PolynomialSplineFunction psf;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -64,10 +61,7 @@ public class UDTFSpline implements UDTF {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     samplePoints = parameters.getInt("points");
     timestamp.clear();
-    xDouble.clear();
     yDouble.clear();
-    minimumTimestamp = null;
-    psf = null;
   }
 
   @Override
@@ -78,9 +72,7 @@ public class UDTFSpline implements UDTF {
     double v = Util.getValueAsDouble(row);
     if (Double.isFinite(v)) {
       Long t = row.getTime();
-      if (minimumTimestamp == null) {
-        minimumTimestamp = t;
-      } else if (t <= timestamp.get(timestamp.size() - 1)) {
+      if (!timestamp.isEmpty() && t <= timestamp.get(timestamp.size() - 1)) {
         return;
       }
       timestamp.add(t);
@@ -95,42 +87,29 @@ public class UDTFSpline implements UDTF {
       BigInteger end = BigInteger.valueOf(timestamp.get(timestamp.size() - 1));
       BigInteger span = end.subtract(start);
       double coordinateScale = span.doubleValue();
-      BigInteger coordinateOrigin = selectCoordinateOrigin(start, end, coordinateScale);
-      ArrayList<Double> interpolationValues = new ArrayList<>();
-      for (int i = 0; i < timestamp.size(); i++) {
-        double coordinate =
-            BigInteger.valueOf(timestamp.get(i)).subtract(coordinateOrigin).doubleValue()
+      double[] y = ArrayUtils.toPrimitive(yDouble.toArray(new Double[0]));
+      double[] widths = new double[timestamp.size() - 1];
+      for (int i = 0; i < widths.length; i++) {
+        widths[i] =
+            BigInteger.valueOf(timestamp.get(i + 1))
+                    .subtract(BigInteger.valueOf(timestamp.get(i)))
+                    .doubleValue()
                 / coordinateScale;
-        if (xDouble.isEmpty() || coordinate > xDouble.get(xDouble.size() - 1)) {
-          xDouble.add(coordinate);
-          interpolationValues.add(yDouble.get(i));
-        } else if (i == timestamp.size() - 1) {
-          // Keep the terminal value when adjacent timestamps share a double coordinate.
-          interpolationValues.set(interpolationValues.size() - 1, yDouble.get(i));
-        }
       }
-      if (xDouble.size() < 5) {
-        return;
-      }
-      double[] x = ArrayUtils.toPrimitive(xDouble.toArray(new Double[0]));
-      double[] y = ArrayUtils.toPrimitive(interpolationValues.toArray(new Double[0]));
-      psf = interpolateAkima(x, y);
+      PolynomialFunction[] polynomials = interpolateAkima(widths, y);
       int outputPoints = samplePoints;
       if (span.compareTo(BigInteger.valueOf(samplePoints - 1L)) < 0) {
         outputPoints = span.intValueExact() + 1;
       }
       for (int i = 0; i < outputPoints; i++) {
         long outputTimestamp = getOutputTimestamp(i, outputPoints);
-        double approximation =
-            BigInteger.valueOf(outputTimestamp).subtract(coordinateOrigin).doubleValue()
-                / coordinateScale;
         double yhead;
         if (i == 0) {
           yhead = y[0];
         } else if (i == outputPoints - 1) {
           yhead = y[y.length - 1];
         } else {
-          yhead = psf.value(approximation);
+          yhead = interpolateAtTimestamp(outputTimestamp, y, polynomials);
         }
         if (Double.isFinite(yhead)) {
           collector.putDouble(outputTimestamp, yhead);
@@ -139,41 +118,12 @@ public class UDTFSpline implements UDTF {
     }
   }
 
-  private BigInteger selectCoordinateOrigin(BigInteger start, BigInteger end, double scale) {
-    BigInteger midpoint = start.add(end).divide(BigInteger.TWO);
-    BigInteger bestOrigin = midpoint;
-    int mostDistinctCoordinates = 0;
-    // A centered origin preserves close interior timestamps, while an endpoint origin can
-    // preserve a dense cluster near that endpoint. Keep the origin that loses the fewest knots.
-    for (BigInteger origin : new BigInteger[] {midpoint, start, end}) {
-      int distinctCoordinates = 0;
-      double previous = Double.NEGATIVE_INFINITY;
-      for (long time : timestamp) {
-        double coordinate = BigInteger.valueOf(time).subtract(origin).doubleValue() / scale;
-        if (coordinate > previous) {
-          previous = coordinate;
-          distinctCoordinates++;
-        }
-      }
-      if (distinctCoordinates > mostDistinctCoordinates) {
-        bestOrigin = origin;
-        mostDistinctCoordinates = distinctCoordinates;
-      }
-      if (distinctCoordinates == timestamp.size()) {
-        break;
-      }
-    }
-    return bestOrigin;
-  }
-
-  private PolynomialSplineFunction interpolateAkima(double[] x, double[] y) {
-    int last = x.length - 1;
-    double[] widths = new double[last];
+  private PolynomialFunction[] interpolateAkima(double[] widths, double[] y) {
+    int last = widths.length;
     double[] slopes = new double[last];
     double[] weights = new double[last];
-    double[] derivatives = new double[x.length];
+    double[] derivatives = new double[y.length];
     for (int i = 0; i < last; i++) {
-      widths[i] = x[i + 1] - x[i];
       slopes[i] = (y[i + 1] - y[i]) / widths[i];
       if (i > 0) {
         weights[i] = Math.abs(slopes[i] - slopes[i - 1]);
@@ -184,39 +134,64 @@ public class UDTFSpline implements UDTF {
       double nextWeight = weights[i + 1];
       if (Precision.equals(previousWeight, 0.0) && Precision.equals(nextWeight, 0.0)) {
         derivatives[i] =
-            (widths[i] * slopes[i - 1] + widths[i - 1] * slopes[i]) / (x[i + 1] - x[i - 1]);
+            (widths[i] * slopes[i - 1] + widths[i - 1] * slopes[i]) / (widths[i] + widths[i - 1]);
       } else {
         derivatives[i] =
             (nextWeight * slopes[i - 1] + previousWeight * slopes[i])
                 / (nextWeight + previousWeight);
       }
     }
-    // Keep the Akima three-point endpoint derivatives, using divided differences. Subtracting
-    // squared distances from the first knot can round to zero for a distant knot and a close pair.
-    double startCurvature = (slopes[1] - slopes[0]) / (x[2] - x[0]);
+    // Use adjacent intervals directly so close timestamps remain distinct at both endpoints.
+    double startCurvature = (slopes[1] - slopes[0]) / (widths[0] + widths[1]);
     derivatives[0] = slopes[0] - startCurvature * widths[0];
     derivatives[1] = slopes[0] + startCurvature * widths[0];
-    double endCurvature = (slopes[last - 1] - slopes[last - 2]) / (x[last] - x[last - 2]);
+    double endCurvature =
+        (slopes[last - 1] - slopes[last - 2]) / (widths[last - 1] + widths[last - 2]);
     derivatives[last - 1] = slopes[last - 2] + endCurvature * widths[last - 2];
     derivatives[last] = slopes[last - 1] + endCurvature * widths[last - 1];
 
     PolynomialFunction[] polynomials = new PolynomialFunction[last];
     for (int i = 0; i < last; i++) {
       double width = widths[i];
+      double delta = y[i + 1] - y[i];
+      double derivativeStart = derivatives[i] * width;
+      double derivativeEnd = derivatives[i + 1] * width;
       polynomials[i] =
           new PolynomialFunction(
               new double[] {
                 y[i],
-                derivatives[i],
-                (3 * slopes[i] - 2 * derivatives[i] - derivatives[i + 1]) / width,
-                (-2 * slopes[i] + derivatives[i] + derivatives[i + 1]) / (width * width)
+                derivativeStart,
+                3 * delta - 2 * derivativeStart - derivativeEnd,
+                -2 * delta + derivativeStart + derivativeEnd
               });
     }
-    return new PolynomialSplineFunction(x, polynomials);
+    return polynomials;
+  }
+
+  private double interpolateAtTimestamp(
+      long outputTimestamp, double[] y, PolynomialFunction[] polynomials) {
+    int position = Collections.binarySearch(timestamp, outputTimestamp);
+    if (position >= 0) {
+      return y[position];
+    }
+    int upper = -position - 1;
+    int lower = upper - 1;
+    BigInteger leftTimestamp = BigInteger.valueOf(timestamp.get(lower));
+    BigInteger interval = BigInteger.valueOf(timestamp.get(upper)).subtract(leftTimestamp);
+    double fraction =
+        BigInteger.valueOf(outputTimestamp).subtract(leftTimestamp).doubleValue()
+            / interval.doubleValue();
+    if (fraction <= 0) {
+      return y[lower];
+    }
+    if (fraction >= 1) {
+      return y[upper];
+    }
+    return polynomials[lower].value(fraction);
   }
 
   private long getOutputTimestamp(int index, int outputPoints) {
-    BigInteger start = BigInteger.valueOf(minimumTimestamp);
+    BigInteger start = BigInteger.valueOf(timestamp.get(0));
     BigInteger span = BigInteger.valueOf(timestamp.get(timestamp.size() - 1)).subtract(start);
     BigInteger denominator = BigInteger.valueOf(outputPoints - 1L);
     BigInteger offset =

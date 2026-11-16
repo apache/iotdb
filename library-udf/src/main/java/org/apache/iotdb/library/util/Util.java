@@ -30,6 +30,8 @@ import org.eclipse.collections.api.tuple.primitive.LongIntPair;
 import org.eclipse.collections.impl.map.mutable.primitive.LongIntHashMap;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.ParseException;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
@@ -314,15 +316,23 @@ public class Util {
     }
 
     double v = Double.parseDouble(s);
-    double duration = unit * v;
-    if (!Double.isFinite(v)
-        || !Double.isFinite(duration)
-        || duration > Long.MAX_VALUE
-        || duration < Long.MIN_VALUE) {
+    if (!Double.isFinite(v)) {
       throw new IllegalArgumentException(
           LibraryUdfMessages.EXCEPTION_TIME_VALUE_SHOULD_BE_FINITE_A661DDB0);
     }
-    return (long) duration;
+    BigDecimal value;
+    try {
+      value = new BigDecimal(s);
+    } catch (NumberFormatException e) {
+      value = new BigDecimal(v);
+    }
+    BigDecimal duration = value.multiply(BigDecimal.valueOf(unit)).setScale(0, RoundingMode.DOWN);
+    if (duration.compareTo(BigDecimal.valueOf(Long.MAX_VALUE)) > 0
+        || duration.compareTo(BigDecimal.valueOf(Long.MIN_VALUE)) < 0) {
+      throw new IllegalArgumentException(
+          LibraryUdfMessages.EXCEPTION_TIME_VALUE_SHOULD_BE_FINITE_A661DDB0);
+    }
+    return duration.longValueExact();
   }
 
   public static boolean isPositiveTime(String s, UDFParameters parameters) {

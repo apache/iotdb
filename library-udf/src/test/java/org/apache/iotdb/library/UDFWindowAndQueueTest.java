@@ -213,8 +213,9 @@ public class UDFWindowAndQueueTest {
     mvAvg.transform(new DoubleRow(4, 2.0), collector);
     mvAvg.transform(new DoubleRow(5, 4.0), collector);
 
-    Assert.assertEquals(Arrays.asList(3L, 4L, 5L), collector.timestamps);
-    Assert.assertEquals(Arrays.asList(Double.MAX_VALUE / 2, 1.0, 3.0), collector.values);
+    Assert.assertEquals(Arrays.asList(2L, 3L, 4L, 5L), collector.timestamps);
+    Assert.assertEquals(
+        Arrays.asList(Double.MAX_VALUE, Double.MAX_VALUE / 2, 1.0, 3.0), collector.values);
   }
 
   @Test
@@ -574,6 +575,12 @@ public class UDFWindowAndQueueTest {
     Assert.assertThrows(IllegalArgumentException.class, () -> Util.parseTime("NaNs", parameters));
     Assert.assertThrows(
         IllegalArgumentException.class, () -> Util.parseTime("1e100ms", parameters));
+    Assert.assertEquals(Long.MAX_VALUE, Util.parseTime("9223372036854775807ms", parameters));
+    Assert.assertThrows(
+        IllegalArgumentException.class, () -> Util.parseTime("9223372036854775808ms", parameters));
+    Assert.assertEquals(Long.MIN_VALUE, Util.parseTime("-9223372036854775808ms", parameters));
+    Assert.assertThrows(
+        IllegalArgumentException.class, () -> Util.parseTime("-9223372036854775809ms", parameters));
   }
 
   @Test
@@ -2452,6 +2459,25 @@ public class UDFWindowAndQueueTest {
               Math.scalb((double) last, -60)),
           collector.values);
     }
+  }
+
+  @Test
+  public void testSplinePreservesDenseTimestampClustersAtBothLongEndpoints() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("points", "3"));
+    UDTFSpline spline = new UDTFSpline();
+    RecordingPointCollector collector = new RecordingPointCollector();
+    long[] times = {Long.MIN_VALUE, Long.MIN_VALUE + 1, 0L, Long.MAX_VALUE - 1, Long.MAX_VALUE};
+    double[] values = {0.0, 10.0, 4.0, 20.0, 30.0};
+
+    spline.validate(new UDFParameterValidator(parameters));
+    spline.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    for (int i = 0; i < times.length; i++) {
+      spline.transform(new DoubleRow(times[i], values[i]), collector);
+    }
+    spline.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(Long.MIN_VALUE, 0L, Long.MAX_VALUE), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(0.0, 4.0, 30.0), collector.values);
   }
 
   @Test
