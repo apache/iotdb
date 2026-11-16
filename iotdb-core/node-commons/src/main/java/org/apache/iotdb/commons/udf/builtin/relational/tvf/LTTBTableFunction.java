@@ -148,7 +148,7 @@ public class LTTBTableFunction implements TableFunction {
   /**
    * Fallback for {@code lttb_buffer_size_in_bytes} when it is not positive. The configured default
    * in {@code iotdb-system.properties.template} is {@code 0}, which {@code IoTDBDescriptor}
-   * resolves to {@code min(32 MiB, operator memory / query_thread_count / 2)}; this constant
+   * resolves to {@code min(32 MiB, operator memory / query_thread_count / 4)}; this constant
    * therefore only matches {@link org.apache.iotdb.commons.conf.CommonConfig}'s initial value and
    * keeps a misconfigured node bounded.
    */

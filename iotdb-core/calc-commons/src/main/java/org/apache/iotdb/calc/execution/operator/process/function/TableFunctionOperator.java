@@ -317,10 +317,12 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    // The buffers survive across next() calls until the partition completes, so they belong to the
-    // retained size as well as the peak. Parents read one or the other (FilterAndProjectOperator
-    // adds the child's retained size, sinks and LimitOperator take the child's peak), so keep both.
-    return inputOperator.calculateRetainedSizeAfterCallingNext() + estimatedMaxBufferedBytes;
+    // The buffer budget is already part of calculateMaxPeekMemory. Parents that add a child's
+    // retained size (FilterAndProjectOperator, SortOperator, MergeSortOperator) also take the
+    // child's peak, so charging the budget here as well reserves it twice. On the 1C1D CI heap
+    // that rejects the fragment with error 719 before the query runs. The budget stays in the
+    // peak, which is the value the fragment estimator reserves.
+    return inputOperator.calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
