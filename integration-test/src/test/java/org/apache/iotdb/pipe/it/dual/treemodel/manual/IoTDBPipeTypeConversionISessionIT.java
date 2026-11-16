@@ -20,13 +20,11 @@
 package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 
 import org.apache.iotdb.commons.utils.function.CheckedTriConsumer;
-import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
-import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -52,7 +50,6 @@ import org.junit.runner.RunWith;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -63,11 +60,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
+/**
+ * Exercises every ISession write form against all source/target type pairs. Each method uses its
+ * own database so this class can reuse one fixed-topology sender/receiver pair without allowing
+ * schemas or data regions from another method to affect the conversion being checked.
+ */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
-public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModelManualIT {
+public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTreeModelManualSharedClusterIT {
   private static final int generateDataSize = 100;
 
+  // Insert 100 rows with insertTablet across all 100 type pairs; realtime delivery must match the
+  // receiver's precreated target types and converted values in this method's database.
   @Test
   public void insertTablet() {
     prepareTypeConversionTest(
@@ -77,6 +81,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         false);
   }
 
+  // Insert 100 rows with insertTablet across all type pairs; TsFile delivery is expected to convert
+  // them to the receiver's target types once that currently disabled behavior is supported.
   @Test
   @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertTabletReceiveByTsFile() {
@@ -87,6 +93,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         true);
   }
 
+  // Insert 100 aligned rows with insertAlignedTablet across all type pairs; realtime delivery must
+  // match the receiver's target types and converted values in an isolated database.
   @Test
   public void insertAlignedTablet() {
     prepareTypeConversionTest(
@@ -96,6 +104,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         false);
   }
 
+  // Insert 100 aligned rows with insertAlignedTablet across all type pairs; TsFile conversion must
+  // match the target schemas when this currently unsupported conversion is enabled.
   @Test
   @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedTabletReceiveByTsFile() {
@@ -106,6 +116,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         true);
   }
 
+  // Insert 100 rows in one insertRecords call across all type pairs; TsFile conversion must match
+  // the target schemas when this currently unsupported conversion is enabled.
   @Test
   @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertRecordsReceiveByTsFile() {
@@ -121,6 +133,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         true);
   }
 
+  // Insert 100 individual rows with insertRecord across all type pairs; realtime delivery must
+  // preserve timestamps and convert every value to the receiver's target type.
   @Test
   public void insertRecord() {
     prepareTypeConversionTest(
@@ -141,6 +155,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         false);
   }
 
+  // Insert 100 individual rows with insertRecord across all type pairs; TsFile conversion must
+  // match the target schemas when this currently unsupported conversion is enabled.
   @Test
   @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertRecordReceiveByTsFile() {
@@ -162,6 +178,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         true);
   }
 
+  // Insert 100 individual aligned rows with insertAlignedRecord across all type pairs; realtime
+  // delivery must preserve timestamps and convert every value to the receiver's target type.
   @Test
   public void insertAlignedRecord() {
     prepareTypeConversionTest(
@@ -182,6 +200,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         false);
   }
 
+  // Insert 100 individual aligned rows with insertAlignedRecord across all type pairs; TsFile
+  // conversion must match the target schemas once this unsupported conversion is enabled.
   @Test
   @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedRecordReceiveByTsFile() {
@@ -203,6 +223,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         true);
   }
 
+  // Insert 100 rows in one insertRecords call across all type pairs; realtime delivery must match
+  // the receiver's target types and converted values in this method's database.
   @Test
   public void insertRecords() {
     prepareTypeConversionTest(
@@ -217,6 +239,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         false);
   }
 
+  // Insert 100 aligned rows in one insertAlignedRecords call across all type pairs; realtime
+  // delivery must match the receiver's target types and converted values in an isolated database.
   @Test
   public void insertAlignedRecords() {
     prepareTypeConversionTest(
@@ -231,6 +255,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         false);
   }
 
+  // Insert 100 aligned rows with insertAlignedRecords across all type pairs; TsFile conversion must
+  // match the target schemas when this currently unsupported conversion is enabled.
   @Test
   @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedRecordsReceiveByTsFile() {
@@ -246,6 +272,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         true);
   }
 
+  // Insert 100 string-encoded rows with insertStringRecordsOfOneDevice across all type pairs;
+  // realtime delivery must parse the inputs and match the converted target values and timestamps.
   @Test
   public void insertStringRecordsOfOneDevice() {
     prepareTypeConversionTest(
@@ -260,6 +288,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         false);
   }
 
+  // Insert 100 string-encoded rows with insertStringRecordsOfOneDevice across all type pairs;
+  // TsFile conversion must match target values once this unsupported conversion is enabled.
   @Test
   @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertStringRecordsOfOneDeviceReceiveByTsFile() {
@@ -275,6 +305,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         true);
   }
 
+  // Insert 100 aligned string-encoded rows with insertAlignedStringRecordsOfOneDevice across all
+  // type pairs; realtime delivery must match the converted target values and timestamps.
   @Test
   public void insertAlignedStringRecordsOfOneDevice() {
     prepareTypeConversionTest(
@@ -289,6 +321,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
         false);
   }
 
+  // Insert 100 aligned string-encoded rows with insertAlignedStringRecordsOfOneDevice across all
+  // type pairs; TsFile conversion must match target values once this unsupported path is enabled.
   @Test
   @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertAlignedStringRecordsOfOneDeviceReceiveByTsFile() {
@@ -323,30 +357,38 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemas();
 
-    // Generate createTimeSeries in sender and receiver
-    String uuid = "bcdedit" + Long.toHexString(System.nanoTime());
-    for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
-      createTimeSeries(uuid, pair.left.getMeasurementName(), pair.left.getType().name(), senderEnv);
-      createTimeSeries(
-          uuid, pair.right.getMeasurementName(), pair.right.getType().name(), receiverEnv);
-    }
-
     try (ISession senderSession = senderEnv.getSessionConnection();
         ISession receiverSession = receiverEnv.getSessionConnection()) {
-      Tablet tablet = generateTabletAndMeasurementSchema(measurementSchemas, "root.test." + uuid);
+      String database = "root.tc" + Long.toHexString(System.nanoTime());
+      String deviceId = database + ".device";
+      senderSession.executeNonQueryStatement("create database " + database);
+      receiverSession.executeNonQueryStatement("create database " + database);
+      // Reuse these sessions for all 200 schemas, writes, pipe creation, flush and receiver
+      // queries.
+      for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
+        createTimeSeries(
+            senderSession, database, pair.left.getMeasurementName(), pair.left.getType().name());
+        createTimeSeries(
+            receiverSession,
+            database,
+            pair.right.getMeasurementName(),
+            pair.right.getType().name());
+      }
+
+      Tablet tablet = generateTabletAndMeasurementSchema(measurementSchemas, deviceId);
       if (isTsFile) {
         // Send TsFile data to receiver
         consumer.accept(senderSession, receiverSession, tablet);
         Thread.sleep(2000);
-        createDataPipe(uuid, true);
+        createDataPipe(senderSession, database, true);
         senderSession.executeNonQueryStatement("flush");
       } else {
-        // Send Tablet data to receiver
-        // Write once to create data regions, guarantee that no any tsFiles will be sent
+        // Create data regions before creating the pipe. History is disabled and realtime mode is
+        // forced-log, so only the second write exercises receiver-side tablet conversion.
         consumer.accept(senderSession, receiverSession, tablet);
-        createDataPipe(uuid, false);
-        Thread.sleep(2000);
-        // The actual implementation logic of inserting data
+        createDataPipe(senderSession, database, false);
+        // CREATE PIPE waits for its procedure to push the running pipe to DataNodes. Write
+        // immediately and let the bounded receiver assertion wait for delivery.
         consumer.accept(senderSession, receiverSession, tablet);
         senderSession.executeNonQueryStatement("flush");
       }
@@ -357,23 +399,19 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
           generateTabletResultSetForTable(tablet, measurementSchemas);
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                try {
-                  validateResultSet(
-                      query(receiverSession, tablet.getSchemas(), tablet.getDeviceId()),
-                      expectedValues,
-                      tablet.getTimestamps());
+                try (SessionDataSet dataSet =
+                    query(receiverSession, tablet.getSchemas(), tablet.getDeviceId())) {
+                  validateResultSet(dataSet, expectedValues, tablet.getTimestamps());
                 } catch (Exception e) {
                   e.printStackTrace();
                   fail(e.getMessage());
                 }
               });
-      senderSession.close();
-      receiverSession.close();
       tablet.reset();
     } catch (Exception e) {
       e.printStackTrace();
@@ -381,29 +419,33 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
     }
   }
 
-  private void createTimeSeries(String diff, String measurementID, String dataType, BaseEnv env) {
+  private void createTimeSeries(
+      ISession session, String database, String measurementID, String dataType)
+      throws IoTDBConnectionException, StatementExecutionException {
     String timeSeriesCreation =
         String.format(
-            "create timeseries root.test.%s.%s with datatype=%s,encoding=PLAIN",
-            diff, measurementID, dataType);
-    TestUtils.executeNonQueries(env, Collections.singletonList(timeSeriesCreation), null);
+            "create timeseries %s.%s with datatype=%s,encoding=PLAIN",
+            database + ".device", measurementID, dataType);
+    session.executeNonQueryStatement(timeSeriesCreation);
   }
 
-  private void createDataPipe(String diff, boolean isTSFile) {
+  private void createDataPipe(ISession senderSession, String database, boolean isTSFile)
+      throws IoTDBConnectionException, StatementExecutionException {
     String sql =
         String.format(
             "create pipe test%s"
-                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='%s','realtime.enable'='%s','history.enable'='%s')"
+                + " with source ('source'='iotdb-source','source.path'='%s.**','realtime.mode'='%s','realtime.enable'='%s','history.enable'='%s')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='%s')",
-            diff,
+            database.substring(database.lastIndexOf('.') + 1),
+            database,
             isTSFile ? "file" : "forced-log",
             !isTSFile,
             isTSFile,
             receiverEnv.getIP(),
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");
-    TestUtils.executeNonQueries(senderEnv, Collections.singletonList(sql), null);
+    senderSession.executeNonQueryStatement(sql);
   }
 
   private void validateResultSet(

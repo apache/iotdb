@@ -286,11 +286,11 @@ public class PipeEventCollector implements EventCollector {
     }
 
     if (event instanceof PipeRawTabletInsertionEvent
-        && ((PipeRawTabletInsertionEvent) event).getSourceEvent()
-            instanceof PipeTsFileInsertionEvent) {
+        && ((PipeRawTabletInsertionEvent) event).getSourceTsFileInsertionEvent() != null) {
       // Register before publishing to the queue so a concurrent queue cleanup can report a
       // generated tablet as discarded instead of racing with registration.
-      ((PipeTsFileInsertionEvent) ((PipeRawTabletInsertionEvent) event).getSourceEvent())
+      ((PipeRawTabletInsertionEvent) event)
+          .getSourceTsFileInsertionEvent()
           .registerGeneratedTabletInsertionEvent((PipeRawTabletInsertionEvent) event);
     }
 

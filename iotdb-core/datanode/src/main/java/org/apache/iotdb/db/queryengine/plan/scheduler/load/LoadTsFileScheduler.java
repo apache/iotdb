@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * LOAD scheduler: {@link LoadTsFileScheduler} is the coordinator of a batch of {@link
@@ -269,6 +270,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * </table>
  */
 public class LoadTsFileScheduler implements IScheduler {
+  private final AtomicBoolean started = new AtomicBoolean();
+  private volatile boolean stopped;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileScheduler.class);
 
@@ -350,12 +353,21 @@ public class LoadTsFileScheduler implements IScheduler {
   /** Starts the batch loading orchestration across all input TsFile nodes. */
   @Override
   public void start() {
+    if (!started.compareAndSet(false, true)) {
+      return;
+    }
     try {
+      if (stopped || stateMachine.getState().isDone()) {
+        return;
+      }
       stateMachine.transitionToRunning();
       boolean allFilesSucceeded = true;
 
       final int totalFiles = tsFileNodeList.size();
       for (int i = 0; i < totalFiles; ++i) {
+        if (stopped) {
+          return;
+        }
         final LoadSingleTsFileNode node = tsFileNodeList.get(i);
         final String filePath = node.getTsFileResource().getTsFilePath();
         final String userName = queryContext.getSession().getUserName();
@@ -586,9 +598,15 @@ public class LoadTsFileScheduler implements IScheduler {
   /** Aborts active dispatchers and transitions the query state machine to failed. */
   @Override
   public void stop(final Throwable t) {
+    stopped = true;
     try {
       dispatcher.abort();
     } finally {
+      // The factory can now publish this scheduler before start. Release constructor-owned
+      // memory when stop wins that race; otherwise start's finally owns teardown.
+      if (started.compareAndSet(false, true)) {
+        teardown();
+      }
       if (t != null) {
         stateMachine.transitionToFailed(t);
       }
