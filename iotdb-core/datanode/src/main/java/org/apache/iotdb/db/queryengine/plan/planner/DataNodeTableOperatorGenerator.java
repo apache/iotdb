@@ -1787,6 +1787,10 @@ public class DataNodeTableOperatorGenerator
             node.getPushDownPredicate());
     seriesScanOptions.setTTLForTableView(tableViewTTL);
     seriesScanOptions.setIsTableViewForTreeModel(node instanceof AggregationTreeDeviceViewScanNode);
+    if (!(node instanceof AggregationTreeDeviceViewScanNode)
+        && !(node instanceof ExternalTsFileAggregationScanNode)) {
+      seriesScanOptions.setTotalFieldColumnCount(computeTotalFieldColumnCount(node));
+    }
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     allSensors.add(""); // for time column

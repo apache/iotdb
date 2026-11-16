@@ -441,13 +441,14 @@ public class FileLoaderUtils {
   static boolean shouldUseDeviceMetadataBatchScan(
       int selectedColumnCount, int totalFieldColumnCount, boolean debug, boolean offsetAddressed) {
     // DEBUG queries keep the per-column cache's diagnostic logs; offset-addressed external
-    // tsfiles cannot be resolved through the table metadata index; and when the device's series
-    // fit in a single measurement leaf group, one per-column lookup already reads them all, so
-    // batching only pays off once the table has more field columns than the index fan-out
+    // tsfiles cannot be resolved through the table metadata index; and a table with at least
+    // max_degree_of_index_node field columns has a dense device of max_degree+1 series (time column
+    // included), which spans more than one measurement leaf group. A sparse device may hold fewer
+    // in-file series; the bloom filter and the cache-aware load keep that case cheap.
     return !debug
         && !offsetAddressed
         && totalFieldColumnCount
-            > TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()
+            >= TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()
         && (double) selectedColumnCount / totalFieldColumnCount >= DEVICE_METADATA_BATCH_SCAN_RATIO;
   }
 

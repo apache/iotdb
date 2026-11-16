@@ -37,12 +37,17 @@ public class FileLoaderUtilsTest {
     // no field count is known (tree model, external tsfiles, or a table missing from the cache)
     assertFalse(FileLoaderUtils.shouldUseDeviceMetadataBatchScan(10, 0, false, false));
 
-    // a device whose series fit in a single measurement leaf group gains nothing from batching
+    // a table with maxDegree - 1 fields has at most maxDegree device series (time included), which
+    // still fit in a single measurement leaf group
     assertFalse(
+        FileLoaderUtils.shouldUseDeviceMetadataBatchScan(
+            maxDegreeOfIndexNode - 1, maxDegreeOfIndexNode - 1, false, false));
+    // maxDegree fields span maxDegree + 1 device series (time included), i.e. two leaf groups
+    assertTrue(
         FileLoaderUtils.shouldUseDeviceMetadataBatchScan(
             maxDegreeOfIndexNode, maxDegreeOfIndexNode, false, false));
 
-    // below, at and above the threshold
+    // below, at and above the ratio threshold on a wider table
     assertFalse(
         FileLoaderUtils.shouldUseDeviceMetadataBatchScan(
             threshold - 1, wideTableFieldCount, false, false));

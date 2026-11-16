@@ -49,7 +49,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -59,7 +58,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongConsumer;
 
@@ -91,11 +89,18 @@ public class TimeSeriesMetadataCache {
 
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 
-  private final Map<String, WeakReference<String>> devices =
-      Collections.synchronizedMap(new WeakHashMap<>());
   private static final String SEPARATOR = "$";
 
-  /** A remainder this small is cheaper to load with per-column leaf-group lookups. */
+  private static final int DEVICE_LOCK_STRIPES = 1024;
+  private static final Object[] DEVICE_LOCKS = new Object[DEVICE_LOCK_STRIPES];
+
+  static {
+    for (int i = 0; i < DEVICE_LOCK_STRIPES; i++) {
+      DEVICE_LOCKS[i] = new Object();
+    }
+  }
+
+  /** A cold-cache remainder this small is cheaper to load with per-column leaf-group lookups. */
   private static final int MAX_PER_COLUMN_FALLBACK = 2;
 
   private final AtomicLong evictedExistingEntryCount = new AtomicLong(0);
@@ -218,9 +223,7 @@ public class TimeSeriesMetadataCache {
         }
         String deviceStringFormat = key.device.toString();
         // allow for the parallelism of different devices
-        synchronized (
-            devices.computeIfAbsent(
-                deviceStringFormat + SEPARATOR + filePath, WeakReference::new)) {
+        synchronized (deviceLock(deviceStringFormat, filePath)) {
           // double check
           timeseriesMetadata = lruCache.getIfPresent(key);
           if (timeseriesMetadata == null) {
@@ -376,8 +379,7 @@ public class TimeSeriesMetadataCache {
         }
         // serialize reads of the same device+file (same lock key as get) so threads don't each
         // deserialize the whole device and race on the shared reader
-        synchronized (
-            devices.computeIfAbsent(device.toString() + SEPARATOR + filePath, WeakReference::new)) {
+        synchronized (deviceLock(device.toString(), filePath)) {
           List<String> stillMissing = new ArrayList<>(missing.size());
           collectCachedMetadata(tsFileID, device, missing, result, stillMissing);
           missing = stillMissing;
@@ -410,12 +412,18 @@ public class TimeSeriesMetadataCache {
           // column means the file will be skipped anyway; a bloom-filter false positive on a field
           // must not force a device read and a possible absent-device error
           if (allSensors.contains("") && result.get("") == null && !possiblyPresent.contains("")) {
+            for (String measurement : possiblyPresent) {
+              result.put(measurement, null);
+            }
             return result;
           }
 
-          // for a small remainder, a per-column lookup reads one leaf group instead of the whole
-          // device; those lookups record their own statistics
-          if (possiblyPresent.size() <= MAX_PER_COLUMN_FALLBACK) {
+          // when the cache already holds most of the request, the remaining misses are likely
+          // evicted present columns; loading them through get() touches only their leaf groups
+          // (later misses in the same group hit the cache) instead of re-reading the whole device.
+          // Those lookups record their own statistics.
+          if (possiblyPresent.size() <= MAX_PER_COLUMN_FALLBACK
+              || (cacheHitCount > 0 && possiblyPresent.size() <= cacheHitCount)) {
             delegated = true;
             diskLookupCount = missing.size() - possiblyPresent.size();
             for (String measurement : possiblyPresent) {
@@ -450,6 +458,9 @@ public class TimeSeriesMetadataCache {
                   new HashSet<>(possiblyPresent),
                   true,
                   ignoreNotExists));
+          for (String measurement : possiblyPresent) {
+            result.putIfAbsent(measurement, null);
+          }
           return result;
         }
       }
@@ -471,8 +482,13 @@ public class TimeSeriesMetadataCache {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
               .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, externalTsFile);
-      return readDeviceTimeSeriesMetadata(
-          reader, filePath, tsFileID, device, allSensors, false, ignoreNotExists);
+      result.putAll(
+          readDeviceTimeSeriesMetadata(
+              reader, filePath, tsFileID, device, allSensors, false, ignoreNotExists));
+      for (String measurement : allSensors) {
+        result.putIfAbsent(measurement, null);
+      }
+      return result;
     } finally {
       long endTime = System.nanoTime();
       long cacheLookupTime;
@@ -628,6 +644,15 @@ public class TimeSeriesMetadataCache {
       }
     }
     return result;
+  }
+
+  /**
+   * Striped, strongly referenced monitor for one device+file. A WeakHashMap entry can be reclaimed
+   * by GC between calls, which would let two threads hold "the same" lock simultaneously.
+   */
+  private static Object deviceLock(String deviceString, String filePath) {
+    return DEVICE_LOCKS[
+        Math.floorMod((deviceString + SEPARATOR + filePath).hashCode(), DEVICE_LOCK_STRIPES)];
   }
 
   public double calculateTimeSeriesMetadataHitRatio() {

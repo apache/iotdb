@@ -36,6 +36,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -76,12 +77,19 @@ public class AlignedSeriesScanBatchTest {
 
   @Test
   public void testBatchScanReadsWideAlignedDevice() throws Exception {
+    Assert.assertTrue(
+        "the fixture must span more than one measurement leaf group",
+        COLUMN_COUNT + 1 > TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
     File file = newFile(1);
     TsFileResource resource = writeWideDevice(file, COLUMN_COUNT);
     TimeSeriesMetadataCache metadataCache = TimeSeriesMetadataCache.getInstance();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     metadataCache.clear();
     bloomFilterCache.clear();
+    boolean previousIgnoreAllNullRows =
+        EnvironmentUtils.TEST_QUERY_FI_CONTEXT.isIgnoreAllNullRows();
+    // the batch path is only reachable from table dialect, which forces this flag to false
+    EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(false);
     try {
       long cacheHitsBefore =
           EnvironmentUtils.TEST_QUERY_FI_CONTEXT
@@ -125,6 +133,7 @@ public class AlignedSeriesScanBatchTest {
               .getLoadTimeSeriesMetadataFromDiskCount()
               .get());
     } finally {
+      EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(previousIgnoreAllNullRows);
       cleanup(file, resource, metadataCache, bloomFilterCache);
     }
   }
@@ -136,6 +145,9 @@ public class AlignedSeriesScanBatchTest {
     TimeSeriesMetadataCache metadataCache = TimeSeriesMetadataCache.getInstance();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     AlignedFullPath scanPath = alignedPath(columnNames(COLUMN_COUNT));
+    boolean previousIgnoreAllNullRows =
+        EnvironmentUtils.TEST_QUERY_FI_CONTEXT.isIgnoreAllNullRows();
+    EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(false);
     try {
       metadataCache.clear();
       bloomFilterCache.clear();
@@ -193,23 +205,52 @@ public class AlignedSeriesScanBatchTest {
       Assert.assertEquals(0, batchedCacheHits);
       Assert.assertTrue(perColumnCacheHits > 0);
     } finally {
+      EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(previousIgnoreAllNullRows);
       cleanup(file, resource, metadataCache, bloomFilterCache);
     }
   }
 
   @Test
-  public void testBatchScanSkipsAllNullRows() throws Exception {
+  public void testAllNullProjectionMatchesPerColumn() throws Exception {
     File file = newFile(3);
     TsFileResource resource = writeWideDevice(file, PRESENT_COLUMN_COUNT);
     TimeSeriesMetadataCache metadataCache = TimeSeriesMetadataCache.getInstance();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
-    // every selected field is absent from the file: with ignoreAllNullRows the file must be
-    // skipped by both paths
+    // every selected field is absent from the file
     AlignedFullPath absentPath = alignedPath(absentColumnNames(COLUMN_COUNT));
     boolean previousIgnoreAllNullRows =
         EnvironmentUtils.TEST_QUERY_FI_CONTEXT.isIgnoreAllNullRows();
-    EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(true);
     try {
+      // table dialect (the only dialect that reaches the batch path): all-null rows are kept
+      EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(false);
+      metadataCache.clear();
+      bloomFilterCache.clear();
+      TsBlock batched = scan(absentPath, COLUMN_COUNT, resource);
+      Assert.assertEquals(ROW_COUNT, batched.getPositionCount());
+      Assert.assertEquals(COLUMN_COUNT, batched.getValueColumnCount());
+      for (int column = 0; column < COLUMN_COUNT; column++) {
+        for (int row = 0; row < ROW_COUNT; row++) {
+          Assert.assertTrue(
+              "absent" + column + " row " + row, batched.getColumn(column).isNull(row));
+        }
+      }
+
+      metadataCache.clear();
+      TsBlock perColumn = scan(absentPath, 0, resource);
+      Assert.assertEquals(perColumn.getPositionCount(), batched.getPositionCount());
+      Assert.assertEquals(perColumn.getValueColumnCount(), batched.getValueColumnCount());
+      for (int row = 0; row < ROW_COUNT; row++) {
+        Assert.assertEquals(perColumn.getTimeByIndex(row), batched.getTimeByIndex(row));
+      }
+      for (int column = 0; column < COLUMN_COUNT; column++) {
+        for (int row = 0; row < ROW_COUNT; row++) {
+          Assert.assertEquals(
+              perColumn.getColumn(column).isNull(row), batched.getColumn(column).isNull(row));
+        }
+      }
+
+      // tree dialect: an all-null projection skips the file in both paths
+      EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(true);
       metadataCache.clear();
       bloomFilterCache.clear();
       Assert.assertFalse(hasFile(absentPath, COLUMN_COUNT, resource));

@@ -60,6 +60,7 @@ import java.util.concurrent.Future;
 import java.util.function.LongConsumer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -372,6 +373,19 @@ public class TimeSeriesMetadataCacheTest {
               new QueryContext(false, false));
       assertNotNull(cached);
       assertEquals("s1", cached.getMeasurementId());
+
+      // the cache hands out copies: mutating a returned entry must not poison later reads
+      result.get("s1").setModified(true);
+      TimeseriesMetadata cachedAgain =
+          cache.get(
+              filePath,
+              new TimeSeriesMetadataCacheKey(tsFileID, deviceID, "s1"),
+              Collections.singleton("s1"),
+              true,
+              false,
+              new QueryContext(false, false));
+      assertNotNull(cachedAgain);
+      assertFalse(cachedAgain.isModified());
     } finally {
       cache.clear();
       bloomFilterCache.clear();
@@ -443,11 +457,12 @@ public class TimeSeriesMetadataCacheTest {
               cache.getDeviceTimeSeriesMetadata(
                   filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false));
 
-      assertTrue(
-          cache
-              .getDeviceTimeSeriesMetadata(
-                  filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), true)
-              .isEmpty());
+      Map<String, TimeseriesMetadata> ignored =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), true);
+      assertNull(ignored.get(""));
+      assertNull(ignored.get("s1"));
+      assertNull(ignored.get("s2"));
     } finally {
       cache.clear();
       bloomFilterCache.clear();
@@ -532,6 +547,22 @@ public class TimeSeriesMetadataCacheTest {
             measurement,
             expected.getChunkMetadataList().size(),
             actual.getChunkMetadataList().size());
+        for (int i = 0; i < expected.getChunkMetadataList().size(); i++) {
+          ChunkMetadata expectedChunk = (ChunkMetadata) expected.getChunkMetadataList().get(i);
+          ChunkMetadata actualChunk = (ChunkMetadata) actual.getChunkMetadataList().get(i);
+          assertEquals(
+              measurement,
+              expectedChunk.getOffsetOfChunkHeader(),
+              actualChunk.getOffsetOfChunkHeader());
+          assertEquals(
+              measurement,
+              expectedChunk.getStatistics().getStartTime(),
+              actualChunk.getStatistics().getStartTime());
+          assertEquals(
+              measurement,
+              expectedChunk.getStatistics().getEndTime(),
+              actualChunk.getStatistics().getEndTime());
+        }
       }
     } finally {
       cache.clear();
@@ -652,6 +683,115 @@ public class TimeSeriesMetadataCacheTest {
               Mockito.eq(deviceID),
               Mockito.<long[]>isNull(),
               Mockito.eq("s2"),
+              Mockito.eq(allSensors),
+              Mockito.eq(false),
+              Mockito.any(LongConsumer.class));
+    } finally {
+      cache.clear();
+      bloomFilterCache.clear();
+      fileReaderManager.closeFileAndRemoveReader(tsFileID);
+    }
+  }
+
+  @Test
+  public void testBatchIgnoreNotExistsDoesNotCachePlaceholders() throws Exception {
+    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
+    FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    TsFileID tsFileID = new TsFileID();
+    cache.clear();
+    bloomFilterCache.clear();
+    try {
+      String filePath = "target/batch-ignore-not-exists.tsfile";
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
+      Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
+
+      TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
+      fileReaderManager.setReaderForTest(tsFileID, true, reader);
+      Mockito.when(reader.getDeviceTimeseriesMetadata(deviceID))
+          .thenReturn(Collections.emptyList());
+
+      Map<String, TimeseriesMetadata> ignored =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), true);
+      assertNull(ignored.get(""));
+      assertNull(ignored.get("s1"));
+
+      // ignoreNotExists must not write NULL placeholders: a normal query still has to read
+      assertThrows(
+          IOException.class,
+          () ->
+              cache.getDeviceTimeSeriesMetadata(
+                  filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false));
+      Mockito.verify(reader, Mockito.times(2)).getDeviceTimeseriesMetadata(deviceID);
+    } finally {
+      cache.clear();
+      bloomFilterCache.clear();
+      fileReaderManager.closeFileAndRemoveReader(tsFileID);
+    }
+  }
+
+  @Test
+  public void testFewMissingMeasurementsUsePerColumnFallbackAfterEviction() throws Exception {
+    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
+    FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    TsFileID tsFileID = new TsFileID();
+    cache.clear();
+    bloomFilterCache.clear();
+    try {
+      String filePath = "target/batch-few-missing.tsfile";
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.device");
+      Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2", "s3", "s4", "s5"));
+
+      List<TimeseriesMetadata> deviceMetadata = new ArrayList<>();
+      for (String measurement : allSensors) {
+        TSDataType dataType = measurement.isEmpty() ? TSDataType.INT64 : TSDataType.INT32;
+        Statistics<?> statistics = Statistics.getStatsByType(dataType);
+        statistics.setCount(1);
+        statistics.setStartTime(0);
+        statistics.setEndTime(10);
+        deviceMetadata.add(
+            new TimeseriesMetadata(
+                (byte) 0, 0, measurement, dataType, statistics, new PublicBAOS()));
+      }
+
+      TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
+      fileReaderManager.setReaderForTest(tsFileID, true, reader);
+      Mockito.when(reader.getDeviceTimeseriesMetadata(deviceID)).thenReturn(deviceMetadata);
+
+      Map<String, TimeseriesMetadata> first =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false);
+      assertNotNull(first.get("s5"));
+
+      // evict three measurements: the cache still holds the majority, so the remaining misses
+      // must be loaded per column instead of re-reading the whole device
+      for (String measurement : Arrays.asList("s2", "s3", "s4")) {
+        cache.remove(new TimeSeriesMetadataCacheKey(tsFileID, deviceID, measurement));
+      }
+      Mockito.when(
+              reader.readTimeseriesMetadata(
+                  Mockito.any(),
+                  Mockito.<long[]>isNull(),
+                  Mockito.anyString(),
+                  Mockito.eq(allSensors),
+                  Mockito.eq(false),
+                  Mockito.any(LongConsumer.class)))
+          .thenReturn(deviceMetadata);
+
+      Map<String, TimeseriesMetadata> second =
+          cache.getDeviceTimeSeriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, new QueryContext(false, false), false);
+      assertNotNull(second.get("s2"));
+      assertNotNull(second.get("s3"));
+      assertNotNull(second.get("s4"));
+      Mockito.verify(reader, Mockito.times(1)).getDeviceTimeseriesMetadata(deviceID);
+      Mockito.verify(reader, Mockito.times(1))
+          .readTimeseriesMetadata(
+              Mockito.any(),
+              Mockito.<long[]>isNull(),
+              Mockito.anyString(),
               Mockito.eq(allSensors),
               Mockito.eq(false),
               Mockito.any(LongConsumer.class));
