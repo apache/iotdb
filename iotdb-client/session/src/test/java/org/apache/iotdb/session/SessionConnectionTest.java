@@ -372,7 +372,7 @@ public class SessionConnectionTest {
 
   @Test
   public void testInsertDatabaseScopedTabletRequiresServerSupport()
-      throws IoTDBConnectionException {
+      throws IoTDBConnectionException, TException {
     TSInsertTabletReq request = new TSInsertTabletReq();
     request.setDatabase("db1");
 
@@ -387,7 +387,7 @@ public class SessionConnectionTest {
 
   @Test
   public void testInsertDatabaseScopedTabletWithServerSupport()
-      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException, TException {
     Whitebox.setInternalState(sessionConnection, "supportsDatabaseScopedTablet", true);
     TSInsertTabletReq request = new TSInsertTabletReq();
     request.setDatabase("db1");
