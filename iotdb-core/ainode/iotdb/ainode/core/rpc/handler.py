@@ -143,9 +143,11 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def _ensure_model_is_downloaded(self, model_id: str) -> TSStatus:
         model_info = self._model_manager.get_model_info(model_id)
         if not model_info.download_on_start and model_info.state != ModelStates.ACTIVE:
+            message = f"Model [{model_id}] is not downloaded at start. Use 'LOAD MODEL {model_id} TO DEVICES ...' to download and load it; 'SHOW MODELS' shows it as active once it is downloaded."
+            if model_info.weights_license_notice:
+                message = f"{message} {model_info.weights_license_notice}"
             return TSStatus(
-                code=TSStatusCode.MODEL_NOT_EXIST_ERROR.value,
-                message=f"Model [{model_id}] is not downloaded at start. Use 'LOAD MODEL {model_id} TO DEVICES ...' to download and load it; 'SHOW MODELS' shows it as active once it is downloaded.",
+                code=TSStatusCode.MODEL_NOT_EXIST_ERROR.value, message=message
             )
         return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)
 

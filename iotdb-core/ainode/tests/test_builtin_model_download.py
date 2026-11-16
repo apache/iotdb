@@ -135,6 +135,10 @@ class BuiltinModelDownloadTest(unittest.TestCase):
         )
         self.assertEqual(status.code, TSStatusCode.MODEL_NOT_EXIST_ERROR.value)
         self.assertIn("LOAD MODEL timestral", status.message)
+        self.assertIn(
+            "https://huggingface.co/mistralai/Timestral-209M/blob/main/LICENSE",
+            status.message,
+        )
         for model_id in ("sundial", "arima"):
             status = AINodeRPCServiceHandler._ensure_model_is_downloaded(
                 handler, model_id

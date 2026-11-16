@@ -39,8 +39,16 @@ class BuiltinModelLoadTest(unittest.TestCase):
         self.download_succeeds = True
         self.events = []
         self.models = {
-            "timestral": mock.Mock(download_on_start=False, state=ModelStates.INACTIVE),
-            "sundial": mock.Mock(download_on_start=True, state=ModelStates.ACTIVE),
+            "timestral": mock.Mock(
+                download_on_start=False,
+                state=ModelStates.INACTIVE,
+                weights_license_notice="Check the weights licence.",
+            ),
+            "sundial": mock.Mock(
+                download_on_start=True,
+                state=ModelStates.ACTIVE,
+                weights_license_notice=None,
+            ),
         }
         self.controller = self._controller()
 
@@ -152,6 +160,17 @@ class BuiltinModelLoadTest(unittest.TestCase):
         ):
             time.sleep(0.01)
         self.assertFalse(self.controller.is_loading("timestral", cpu))
+
+    def test_load_logs_the_weights_license_notice(self):
+        self.addCleanup(self._stop)
+        with mock.patch("iotdb.ainode.core.inference.pool_controller.logger") as logger:
+            self.controller.load_model("timestral", [torch.device("cpu")])
+            self.controller.load_model("sundial", [torch.device("cpu")])
+            self._wait_for(1)
+        warnings = [call.args[0] for call in logger.warning.call_args_list]
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("timestral", warnings[0])
+        self.assertIn("Check the weights licence.", warnings[0])
 
     def test_stop_does_not_wait_for_a_download(self):
         self.controller.load_model("timestral", [torch.device("cpu")])
