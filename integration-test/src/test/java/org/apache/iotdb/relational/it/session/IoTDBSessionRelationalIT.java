@@ -198,7 +198,6 @@ public class IoTDBSessionRelationalIT {
         tablet.addValue("m1", row, row * 1.0);
       }
 
-      // The distinct tag values exercise the grouped multi-device write path.
       session.insert(tablet, "db1");
       session.executeNonQueryStatement("USE db1");
       session.insert(tablet, "db2");

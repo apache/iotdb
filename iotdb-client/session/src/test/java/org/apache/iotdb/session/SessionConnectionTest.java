@@ -371,6 +371,35 @@ public class SessionConnectionTest {
   }
 
   @Test
+  public void testInsertDatabaseScopedTabletRequiresServerSupport()
+      throws IoTDBConnectionException {
+    TSInsertTabletReq request = new TSInsertTabletReq();
+    request.setDatabase("db1");
+
+    StatementExecutionException exception =
+        Assert.assertThrows(
+            StatementExecutionException.class, () -> sessionConnection.insertTablet(request));
+
+    Assert.assertEquals(
+        TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(), exception.getStatusCode());
+    Mockito.verify(client, Mockito.never()).insertTablet(any());
+  }
+
+  @Test
+  public void testInsertDatabaseScopedTabletWithServerSupport()
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    Whitebox.setInternalState(sessionConnection, "supportsDatabaseScopedTablet", true);
+    TSInsertTabletReq request = new TSInsertTabletReq();
+    request.setDatabase("db1");
+    Mockito.when(client.insertTablet(request))
+        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+
+    sessionConnection.insertTablet(request);
+
+    Mockito.verify(client).insertTablet(request);
+  }
+
+  @Test
   public void testDeleteEmptyTimeseries()
       throws IoTDBConnectionException, StatementExecutionException, TException {
     sessionConnection.deleteTimeseries(Collections.emptyList());

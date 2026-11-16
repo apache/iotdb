@@ -52,6 +52,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -767,6 +768,62 @@ public class SessionCacheLeaderTest {
         db1Endpoint, session.tableModelDeviceIdToEndpoint.get("db1").get(tablet.getDeviceID(0)));
     assertEquals(
         db2Endpoint, session.tableModelDeviceIdToEndpoint.get("db2").get(tablet.getDeviceID(0)));
+    session.close();
+  }
+
+  @Test
+  public void testGroupedRelationalTabletWithExplicitDatabase() throws Exception {
+    final TEndPoint leader1 = endpoints.get(1);
+    final TEndPoint leader2 = endpoints.get(2);
+    final Map<TEndPoint, TSInsertTabletReq> groupedRequests = new ConcurrentHashMap<>();
+    final AtomicBoolean redirectCacheSeeded = new AtomicBoolean();
+    session =
+        new MockSession("127.0.0.1", 55560, true, "table") {
+          @Override
+          public SessionConnection constructSessionConnection(
+              Session owner, TEndPoint endpoint, ZoneId zoneId) {
+            final TEndPoint connectionEndpoint = endpoint;
+            return new MockSessionConnection(owner, endpoint, zoneId) {
+              @Override
+              protected void insertTablet(TSInsertTabletReq request) throws RedirectException {
+                if (connectionEndpoint.equals(endpoints.get(0))
+                    && redirectCacheSeeded.compareAndSet(false, true)) {
+                  throw new RedirectException(Arrays.asList(leader1, leader2));
+                }
+                groupedRequests.put(connectionEndpoint, request);
+              }
+            };
+          }
+        };
+    session.database = "session_db";
+    session.open();
+
+    Tablet tablet =
+        new Tablet(
+            "table1",
+            Arrays.asList("id", "field"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            2);
+    tablet.addTimestamp(0, 1);
+    tablet.addValue("id", 0, "id1");
+    tablet.addValue("field", 0, 1L);
+    tablet.addTimestamp(1, 2);
+    tablet.addValue("id", 1, "id2");
+    tablet.addValue("field", 1, 2L);
+
+    // Seed the database-scoped route cache with two leaders.
+    session.insertRelationalTablet(tablet, "db1");
+    // The second write splits the multi-device tablet and uses the grouped path.
+    session.insertRelationalTablet(tablet, "db1");
+
+    assertEquals(2, groupedRequests.size());
+    for (Map.Entry<TEndPoint, TSInsertTabletReq> entry : groupedRequests.entrySet()) {
+      assertTrue(entry.getKey().equals(leader1) || entry.getKey().equals(leader2));
+      assertEquals("db1", entry.getValue().getDatabase());
+      assertEquals(1, entry.getValue().getSize());
+    }
+    assertEquals("session_db", session.database);
     session.close();
   }
 
