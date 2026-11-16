@@ -659,7 +659,7 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select s from %s where time=1000", device))) {
         Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(expectedValue, resultSet.getLong(1));
+        Assert.assertEquals(expectedValue, resultSet.getLong(2));
         Assert.assertFalse(resultSet.next());
       }
     }
