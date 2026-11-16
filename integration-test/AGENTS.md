@@ -203,6 +203,18 @@ test; it may be omitted for the default `SimpleIT` profile.
 - Report the tested revision, edition, profile, and result accurately. Passing an upstream build
   does not establish that the corresponding downstream edition was tested.
 
+### Startup diagnostics
+
+- ConfigNode leader discovery, cluster readiness, and JDBC readiness retry every 100ms. The existing
+  retry count still determines a time budget in seconds (leader discovery allows that budget per
+  ConfigNode); socket/RPC timeouts remain separate. Cluster status checks share their deadline with
+  leader discovery rather than restarting a nested wait.
+- Add `-DintegrationTest.configNodeStartupTrace=true` to a targeted IT command to record JVM startup
+  and class initialization before ConfigNode's first application log. The default is disabled to
+  avoid tracing overhead. Each ConfigNode writes `<node-log>.startup-<pid>.log` alongside its normal
+  log. JVM startup events include nested phases; class initialization events mark their start and
+  do not measure exclusive class execution time.
+
 ### Node templates and IDE runs
 
 Build the node templates before an IDE run or a direct Failsafe invocation, and rebuild them after

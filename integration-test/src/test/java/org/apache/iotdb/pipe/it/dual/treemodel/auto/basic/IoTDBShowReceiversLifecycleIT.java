@@ -29,7 +29,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
-import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.awaitility.Awaitility;
@@ -50,7 +50,7 @@ import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
-public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAutoIT {
+public class IoTDBShowReceiversLifecycleIT extends AbstractPipeTreeModelSharedClusterIT {
 
   @Override
   protected void setupConfig() {
@@ -59,6 +59,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
     receiverEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
   }
 
+  // Verify SHOW RECEIVERS removes the pipe ID after an active thrift pipe is dropped.
   @Test
   public void testShowReceiversPipeIdsDisappearAfterDropPipe() throws Exception {
     final String database = "root.show_receivers_lifecycle";
@@ -74,6 +75,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
     assertShowReceiversDoesNotContainPipe("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
   }
 
+  // Verify SHOW RECEIVERS removes the pipe ID after an active thrift pipe is stopped.
   @Test
   public void testShowReceiversPipeIdsDisappearAfterStopPipe() throws Exception {
     final String database = "root.show_receivers_lifecycle_stop";
@@ -89,6 +91,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
     assertShowReceiversDoesNotContainPipe("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
   }
 
+  // Verify a pipe capturing data and schema exposes both DataNode and ConfigNode receivers.
   @Test
   public void testShowReceiversIncludesDataNodeAndConfigNodeReceivers() throws Exception {
     final String database = "root.show_receivers_config_node";
@@ -119,6 +122,7 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
         "show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
   }
 
+  // Verify the air-gap protocol is reported after rows reach its DataNode receiver.
   @Test
   public void testShowReceiversShowsAirGapProtocol() throws Exception {
     final String database = "root.show_receivers_air_gap";
@@ -143,6 +147,13 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
   private void createThriftPipe(
       final String database, final String pipeName, final String sourceInclusion) throws Exception {
     createPipe(database, pipeName, sourceInclusion, "iotdb-thrift-sink", false);
+    // Registration precedes data transfer. Wait for the initial row before stopping/dropping the
+    // pipe so catalog cleanup cannot race with an unfinished receiver schema creation.
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select count(s1) from " + database + ".d1",
+        "count(" + database + ".d1.s1),",
+        Collections.singleton("1,"));
   }
 
   private void createAirGapPipe(final String database, final String pipeName) throws Exception {
@@ -201,10 +212,11 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
 
   private void assertShowReceivers(
       final String sql, final String sqlDialect, final String pipeName) {
+    // Query immediately; registration can already be visible when pipe creation returns.
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(() -> Assert.assertTrue(hasExpectedReceiver(sql, sqlDialect, pipeName)));
@@ -250,8 +262,8 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
     // Pipe connections close asynchronously, so DataNodes may observe different snapshots.
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(() -> Assert.assertFalse(containsPipe(sql, sqlDialect, pipeName)));
@@ -278,8 +290,8 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
       final String sql, final String sqlDialect, final String pipeName) {
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(
@@ -317,8 +329,8 @@ public class IoTDBShowReceiversLifecycleIT extends AbstractPipeDualTreeModelAuto
       final String sql, final String sqlDialect, final String pipeName, final String protocol) {
     Awaitility.await()
         .pollInSameThread()
-        .pollDelay(1L, TimeUnit.SECONDS)
-        .pollInterval(1L, TimeUnit.SECONDS)
+        .pollDelay(0L, TimeUnit.MILLISECONDS)
+        .pollInterval(100L, TimeUnit.MILLISECONDS)
         .atMost(60L, TimeUnit.SECONDS)
         .ignoreExceptionsMatching(e -> e instanceof InconsistentDataException)
         .untilAsserted(

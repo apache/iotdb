@@ -848,6 +848,10 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return portList;
   }
 
+  public int getJmxPort() {
+    return jmxPort;
+  }
+
   public void clearLogContent() throws IOException {
     Files.newOutputStream(Paths.get(getLogPath()), StandardOpenOption.TRUNCATE_EXISTING).close();
   }

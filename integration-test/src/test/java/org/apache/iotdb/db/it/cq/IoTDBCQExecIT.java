@@ -28,9 +28,11 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -55,6 +57,9 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCQExecIT {
 
+  private static final long CQ_RESULT_POLL_INTERVAL_IN_MS = 100;
+  private static final long CQ_RESULT_TIMEOUT_IN_SECONDS = 30;
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
@@ -65,21 +70,25 @@ public class IoTDBCQExecIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // A wildcard CQ copies only readable fields, observes revoke/grant, and rejects a deleted owner.
   @Test
   public void testCQExecutionWithReadDataPermission() throws Exception {
     testCQExecutionWithReadDataPermission(false, false);
   }
 
+  // An aligned wildcard CQ filters unreadable fields and rechecks owner permissions per window.
   @Test
   public void testCQExecutionWithReadDataPermissionAlignByDevice() throws Exception {
     testCQExecutionWithReadDataPermission(true, false);
   }
 
+  // Explicit CQ targets reject missing source access and succeed when that access is restored.
   @Test
   public void testCQExecutionWithExplicitTargetReadDataPermission() throws Exception {
     testCQExecutionWithReadDataPermission(false, true);
   }
 
+  // Aligned explicit CQ targets retain positional mapping across permission revoke/grant retries.
   @Test
   public void testCQExecutionWithExplicitTargetReadDataPermissionAlignByDevice() throws Exception {
     testCQExecutionWithReadDataPermission(true, true);
@@ -264,6 +273,8 @@ public class IoTDBCQExecIT {
     }
   }
 
+  // A 2s resampling CQ must write the expected maximum for every 1s window after its future
+  // boundary.
   @Test
   public void testCQExecution1() {
     String insertTemplate =
@@ -322,25 +333,22 @@ public class IoTDBCQExecIT {
         return;
       }
 
-      long targetTime = firstExecutionTime + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime + 1_000, startTime + 2_000, startTime + 3_000, startTime + 4_000
       };
       long[] expectedValue = {4, 6, 8, 10};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d1.s1_max"));
-          cnt++;
+      try {
+        awaitCQResultCount(statement, "select s1_max from root.sg.d1", expectedTime.length);
+        try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d1")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
+            assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d1.s1_max"));
+            cnt++;
+          }
+          assertEquals(expectedTime.length, cnt);
         }
-        assertEquals(expectedTime.length, cnt);
       } finally {
         statement.execute("DROP CQ cq1");
       }
@@ -351,6 +359,7 @@ public class IoTDBCQExecIT {
     }
   }
 
+  // A CQ without EVERY and with a 4s range must produce the five expected 1s-window maxima.
   @Test
   public void testCQExecution2() {
     String insertTemplate =
@@ -410,25 +419,22 @@ public class IoTDBCQExecIT {
         return;
       }
 
-      long targetTime = firstExecutionTime + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime, startTime + 1_000, startTime + 2_000, startTime + 3_000, startTime + 4_000
       };
       long[] expectedValue = {2, 4, 6, 8, 10};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d2")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d2.s1_max"));
-          cnt++;
+      try {
+        awaitCQResultCount(statement, "select s1_max from root.sg.d2", expectedTime.length);
+        try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d2")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
+            assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d2.s1_max"));
+            cnt++;
+          }
+          assertEquals(expectedTime.length, cnt);
         }
-        assertEquals(expectedTime.length, cnt);
       } finally {
         statement.execute("DROP CQ cq2");
       }
@@ -439,6 +445,7 @@ public class IoTDBCQExecIT {
     }
   }
 
+  // A 4s range with FILL must materialize the missing leading 1s window and retain later maxima.
   @Test
   public void testCQExecution3() {
     String insertTemplate =
@@ -499,12 +506,6 @@ public class IoTDBCQExecIT {
         return;
       }
 
-      long targetTime = firstExecutionTime + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime - 1_000,
         startTime,
@@ -515,19 +516,22 @@ public class IoTDBCQExecIT {
       };
       long[] expectedValue = {100, 2, 4, 6, 8, 10};
 
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select s1_max from root.sg.d3 where time between "
-                  + (startTime - 1_000)
-                  + " and "
-                  + (startTime + 4_000))) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d3.s1_max"));
-          cnt++;
+      String query =
+          "select s1_max from root.sg.d3 where time between "
+              + (startTime - 1_000)
+              + " and "
+              + (startTime + 4_000);
+      try {
+        awaitCQResultCount(statement, query, expectedTime.length);
+        try (ResultSet resultSet = statement.executeQuery(query)) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
+            assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d3.s1_max"));
+            cnt++;
+          }
+          assertEquals(expectedTime.length, cnt);
         }
-        assertEquals(expectedTime.length, cnt);
       } finally {
         statement.execute("DROP CQ cq3");
       }
@@ -538,6 +542,7 @@ public class IoTDBCQExecIT {
     }
   }
 
+  // RANGE 2s, 1s must select two separated 1s windows as resampling advances.
   @Test
   public void testCQExecution4() {
     String insertTemplate =
@@ -597,23 +602,20 @@ public class IoTDBCQExecIT {
         return;
       }
 
-      long targetTime = firstExecutionTime + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {startTime + 1_000, startTime + 3_000};
       long[] expectedValue = {4, 8};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d4")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d4.s1_max"));
-          cnt++;
+      try {
+        awaitCQResultCount(statement, "select s1_max from root.sg.d4", expectedTime.length);
+        try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d4")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
+            assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d4.s1_max"));
+            cnt++;
+          }
+          assertEquals(expectedTime.length, cnt);
         }
-        assertEquals(expectedTime.length, cnt);
       } finally {
         statement.execute("DROP CQ cq4");
       }
@@ -624,6 +626,7 @@ public class IoTDBCQExecIT {
     }
   }
 
+  // An aligned-by-device CQ must write the expression result for each of the ten input timestamps.
   @Test
   public void testCQExecution5() {
     String insertTemplate =
@@ -683,12 +686,6 @@ public class IoTDBCQExecIT {
         return;
       }
 
-      long targetTime = firstExecutionTime + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime,
         startTime + 500,
@@ -703,20 +700,23 @@ public class IoTDBCQExecIT {
       };
       double[] expectedValue = {2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0};
 
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select precalculated_s1 from root.sg.d5 where time between "
-                  + startTime
-                  + " and "
-                  + (startTime + 4_500))) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(
-              expectedValue[cnt], resultSet.getDouble("root.sg.d5.precalculated_s1"), 0.00001);
-          cnt++;
+      String query =
+          "select precalculated_s1 from root.sg.d5 where time between "
+              + startTime
+              + " and "
+              + (startTime + 4_500);
+      try {
+        awaitCQResultCount(statement, query, expectedTime.length);
+        try (ResultSet resultSet = statement.executeQuery(query)) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
+            assertEquals(
+                expectedValue[cnt], resultSet.getDouble("root.sg.d5.precalculated_s1"), 0.00001);
+            cnt++;
+          }
+          assertEquals(expectedTime.length, cnt);
         }
-        assertEquals(expectedTime.length, cnt);
       } finally {
         statement.execute("DROP CQ cq5");
       }
@@ -725,5 +725,31 @@ public class IoTDBCQExecIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  private static void awaitCQResultCount(Statement statement, String query, int expectedRowCount)
+      throws Exception {
+    // CQ writes can fall between DataNode query snapshots. Count each snapshot independently
+    // while waiting; the caller then compares all timestamps and values through the cluster
+    // wrapper. Query and transport errors still propagate immediately.
+    Awaitility.await("continuous query output row count")
+        .atMost(CQ_RESULT_TIMEOUT_IN_SECONDS, TimeUnit.SECONDS)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(CQ_RESULT_POLL_INTERVAL_IN_MS, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              try (ResultSet resultSet = statement.executeQuery(query)) {
+                for (ResultSet nodeResultSet : ClusterTestResultSet.getNodeResultSets(resultSet)) {
+                  int rowCount = 0;
+                  while (nodeResultSet.next()) {
+                    rowCount++;
+                  }
+                  if (rowCount < expectedRowCount) {
+                    return false;
+                  }
+                }
+                return true;
+              }
+            });
   }
 }

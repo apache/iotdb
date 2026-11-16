@@ -54,6 +54,9 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
+    // Keep automatic region allocation without scaling these tiny protocol workloads by host CPU.
+    senderEnv.getConfig().getCommonConfig().setDataRegionPerDataNode(2);
+    receiverEnv.getConfig().getCommonConfig().setDataRegionPerDataNode(2);
   }
 
   private void innerSetUp(
@@ -96,10 +99,11 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
-    senderEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
-    receiverEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
+    executeOnBothEnvs(env -> env.initClusterEnvironment(configNodesNum, dataNodesNum));
   }
 
+  // Replicate historical and realtime rows between two Ratis/Ratis/IoT 1C1D clusters;
+  // stopping the pipe must prevent the third row from reaching the receiver.
   @Test
   public void test1C1DWithRatisRatisIot() throws Exception {
     innerSetUp(
@@ -113,6 +117,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     doTest();
   }
 
+  // Use Simple consensus for the 1C1D receiver's ConfigNode and SchemaRegion and IoT for data;
+  // replication must deliver the first two rows and exclude the row written after stopping.
   @Test
   public void test1C1DWithSimpleSimpleIot() throws Exception {
     innerSetUp(
@@ -126,6 +132,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     doTest();
   }
 
+  // Use Simple data consensus on both 1C1D clusters with Ratis for schema/config; the receiver
+  // must contain two rows and remain unchanged after the pipe is stopped.
   @Test
   public void test1C1DWithRatisRatisSimple() throws Exception {
     innerSetUp(
@@ -139,6 +147,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     doTest();
   }
 
+  // Replicate history and realtime data between two 3C3D clusters with three schema/data replicas;
+  // stopping the pipe must prevent the next row from reaching the receiver.
   @Test
   public void test3C3DWith3SchemaRegionFactor3DataRegionFactor() throws Exception {
     innerSetUp(
@@ -152,6 +162,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     doTest();
   }
 
+  // Replicate historical and realtime rows between 3C3D clusters with three schema replicas
+  // and two data replicas; stopping the pipe must prevent the third row from being transferred.
   @Test
   public void test3C3DWith3SchemaRegionFactor2DataRegionFactor() throws Exception {
     innerSetUp(
@@ -165,6 +177,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     doTest();
   }
 
+  // Replicate one row from 3C3D to 1C1D, stop that pipe, then send a second row back through a
+  // pipe on the smaller cluster; the original sender must contain both rows.
   @Test
   public void testPipeOnBothSenderAndReceiver() throws Exception {
     senderEnv
@@ -196,8 +210,11 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
-    senderEnv.initClusterEnvironment(3, 3);
-    receiverEnv.initClusterEnvironment(1, 1);
+    executeOnBothEnvs(
+        env -> {
+          final int nodeCount = env == senderEnv ? 3 : 1;
+          env.initClusterEnvironment(nodeCount, nodeCount);
+        });
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
@@ -343,16 +360,22 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
+  // A synchronous sink using three receiver node URLs must transfer historical mods, realtime
+  // rows and metadata, then transfer the third surviving row through a file-mode pipe.
   @Test
   public void testSyncConnectorUseNodeUrls() throws Exception {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName());
   }
 
+  // An asynchronous sink using three receiver node URLs must transfer historical mods, realtime
+  // rows and metadata, ending with three surviving rows after file-mode replication.
   @Test
   public void testAsyncConnectorUseNodeUrls() throws Exception {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName());
   }
 
+  // An air-gap sink using the three receiver ports must transfer historical mods, realtime rows
+  // and metadata, ending with three surviving rows after file-mode replication.
   @Test
   public void testAirGapConnectorUseNodeUrls() throws Exception {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName());
@@ -393,8 +416,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
-    senderEnv.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 3);
+    executeOnBothEnvs(env -> env.initClusterEnvironment(1, env == senderEnv ? 1 : 3));
 
     final StringBuilder nodeUrlsBuilder = new StringBuilder();
     for (final DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {

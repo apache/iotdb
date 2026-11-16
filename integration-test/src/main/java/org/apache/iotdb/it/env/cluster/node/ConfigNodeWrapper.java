@@ -26,6 +26,7 @@ import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
@@ -131,6 +132,20 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   protected void addStartCmdParams(final List<String> params) {
     final String workDir = getNodePath();
     final String confDir = workDir + File.separator + "conf";
+    if (Boolean.getBoolean("integrationTest.configNodeStartupTrace")) {
+      // Capture JVM/management-agent and static class initialization before ConfigNode's logger
+      // exists. Keep this opt-in: class tracing adds I/O and should not affect normal IT timings.
+      // A relative path avoids the Windows drive colon being parsed as an -Xlog option separator.
+      final String tracePath =
+          Paths.get(System.getProperty(USER_DIR))
+              .relativize(Paths.get(getLogPath() + ".startup-%p.log"))
+              .toString()
+              .replace(File.separatorChar, '/');
+      params.add(
+          "-Xlog:startuptime=debug,class+init=info:file="
+              + tracePath
+              + ":time,uptimemillis,level,tags:filecount=0");
+    }
     params.addAll(
         Arrays.asList(
             "-Dlogback.configurationFile=" + confDir + File.separator + "logback-confignode.xml",

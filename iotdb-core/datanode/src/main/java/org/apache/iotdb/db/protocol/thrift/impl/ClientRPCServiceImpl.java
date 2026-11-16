@@ -2311,6 +2311,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             }
           }
 
+          if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && result.status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            isAllSuccessful = false;
+          }
           results.add(result.status);
         } catch (Exception e) {
           LOGGER.warn(DataNodeMiscMessages.ERROR_EXECUTING_BATCH_STATEMENT, e);
@@ -2345,6 +2349,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
       return res;
     } else {
+      if (useDatabase || isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
+        // Keep the JDBC connection's cached database synchronized after a partially failed batch.
+        results.add(
+            RpcUtils.getStatus(TSStatusCode.USE_OR_DROP_DB, clientSession.getDatabaseName()));
+      }
       return RpcUtils.getStatus(results);
     }
   }

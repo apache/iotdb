@@ -307,6 +307,8 @@ public class ConsensusPrefetchingQueue {
 
   private final Object prefetchBindingLock = new Object();
 
+  private volatile long lastPrefetchReplicatedWalVersion;
+
   private volatile ConsensusPrefetchSubtask prefetchSubtask;
 
   private volatile ConsensusSubscriptionPrefetchExecutor prefetchExecutor;
@@ -943,7 +945,7 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private boolean shouldRecoverPrefetchBindingAfterEmptyPoll() {
+  private boolean shouldWakePrefetchAfterEmptyPoll() {
     if (!prefetchInitialized || isClosed || closeRequested || pendingSeekRequest != null) {
       return false;
     }
@@ -962,15 +964,24 @@ public class ConsensusPrefetchingQueue {
             || prefetchExecutor.isShutdown()
             || prefetchExecutor != currentExecutor;
     if (!bindingMissing) {
-      return false;
+      // Replicated WAL entries do not update the local search index or enter the realtime queue.
+      // Wake only when another replicated batch has become readable since the last round began.
+      return !currentSubtask.isScheduledOrRunning() && hasUnobservedReplicatedWalEntries();
     }
 
-    return hasImmediatePrefetchableWork()
+    return hasUnobservedReplicatedWalEntries()
+        || hasImmediatePrefetchableWork()
         || !orderedWriterReplay.isEmpty()
         || hasHistoricalWalLag()
         || !lingerBatch.isEmpty()
         || !inFlightEvents.isEmpty()
         || computeWatermarkDelayMs() > 0L;
+  }
+
+  private boolean hasUnobservedReplicatedWalEntries() {
+    return consensusReqReader instanceof WALNode
+        && ((WALNode) consensusReqReader).getReplicatedWalVersion()
+            != lastPrefetchReplicatedWalVersion;
   }
 
   // ======================== Poll ========================
@@ -1025,7 +1036,7 @@ public class ConsensusPrefetchingQueue {
       final SubscriptionEvent event = pollInternal(consumerId, timer);
       if (Objects.nonNull(event) && !hasReachedPrefetchLimit()) {
         requestPrefetch();
-      } else if (Objects.isNull(event) && shouldRecoverPrefetchBindingAfterEmptyPoll()) {
+      } else if (Objects.isNull(event) && shouldWakePrefetchAfterEmptyPoll()) {
         requestPrefetch();
       }
       // Deliver reserved events first so ACK can drain memory. An entry that cannot fit even in an
@@ -1854,6 +1865,12 @@ public class ConsensusPrefetchingQueue {
       final ProgressWALIterator.ScanBudget walScanBudget = newWalScanBudget();
       if (isClosed || closeRequested || !prefetchInitialized) {
         return PrefetchRoundResult.dormant();
+      }
+
+      // Capture before scanning: replication published during this round must remain observable
+      // even if it arrives after the final iterator check and the worker goes dormant.
+      if (consensusReqReader instanceof WALNode) {
+        lastPrefetchReplicatedWalVersion = ((WALNode) consensusReqReader).getReplicatedWalVersion();
       }
 
       if (LOGGER.isDebugEnabled()) {
