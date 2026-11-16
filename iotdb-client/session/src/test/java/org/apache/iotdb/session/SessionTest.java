@@ -175,7 +175,7 @@ public class SessionTest {
   }
 
   @Test
-  public void testForceCloseDoesNotWaitForCloseSessionRpc() {
+  public void testForceCloseDoesNotWaitForCloseSessionRpc() throws IoTDBConnectionException {
     Whitebox.setInternalState(session, "isClosed", false);
 
     ((Session) session).forceClose();
