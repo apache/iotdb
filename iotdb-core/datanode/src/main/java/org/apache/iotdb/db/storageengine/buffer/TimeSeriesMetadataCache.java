@@ -494,9 +494,16 @@ public class TimeSeriesMetadataCache {
       long cacheLookupTime;
       long diskLookupTime;
       if (delegated) {
-        // the per-column fallbacks recorded their own disk time
-        cacheLookupTime = cachePhaseEndTime == 0 ? 0 : cachePhaseEndTime - startTime;
-        diskLookupTime = 0;
+        // the per-column fallbacks recorded their own time and counts; the pre-fallback phase
+        // (cache probes, lock wait) is cache time when it produced hits and disk time on a cold
+        // call, where no cache hit would otherwise report it
+        if (cacheHitCount > 0) {
+          cacheLookupTime = cachePhaseEndTime == 0 ? 0 : cachePhaseEndTime - startTime;
+          diskLookupTime = 0;
+        } else {
+          cacheLookupTime = 0;
+          diskLookupTime = cachePhaseEndTime == 0 ? 0 : cachePhaseEndTime - startTime;
+        }
       } else if (cacheHitCount == 0 || cachePhaseEndTime == 0) {
         // cold or cache-disabled call: cache probes and the lock wait belong to the disk lookup
         cacheLookupTime = 0;
@@ -555,7 +562,7 @@ public class TimeSeriesMetadataCache {
       statistics.getLoadTimeSeriesMetadataFromCacheCount().getAndAdd(cacheHitCount);
       statistics.getLoadTimeSeriesMetadataFromCacheTime().getAndAdd(cacheLookupTime);
     }
-    if (diskLookupCount > 0) {
+    if (diskLookupCount > 0 || diskLookupTime > 0) {
       statistics.getLoadTimeSeriesMetadataFromDiskCount().getAndAdd(diskLookupCount);
       statistics.getLoadTimeSeriesMetadataFromDiskTime().getAndAdd(diskLookupTime);
     }
