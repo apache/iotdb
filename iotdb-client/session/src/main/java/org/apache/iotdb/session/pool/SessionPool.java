@@ -534,7 +534,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  private Session constructNewSession() {
+  Session constructNewSession() {
     Session session;
     if (nodeUrls == null) {
       // Construct custom Session
@@ -724,16 +724,20 @@ public class SessionPool implements ISessionPool {
 
   @SuppressWarnings({"squid:S2446"})
   private void putBack(ISession session) {
-    queue.push(session);
     synchronized (this) {
-      // we do not need to notifyAll as any waited thread can continue to work after waked up.
-      this.notify();
-      // comment the following codes as putBack is too frequently called.
-      //      if (logger.isTraceEnabled()) {
-      //        logger.trace("put a session back and notify others..., queue.size = {}",
-      // queue.size());
-      //      }
+      if (!closed) {
+        queue.push(session);
+        // we do not need to notifyAll as any waited thread can continue to work after waked up.
+        this.notify();
+        // comment the following codes as putBack is too frequently called.
+        //      if (logger.isTraceEnabled()) {
+        //        logger.trace("put a session back and notify others..., queue.size = {}",
+        // queue.size());
+        //      }
+        return;
+      }
     }
+    closeSession(session);
   }
 
   private void occupy(ISession session) {
@@ -775,22 +779,42 @@ public class SessionPool implements ISessionPool {
 
   @Override
   public void closeResultSet(SessionDataSetWrapper wrapper) {
+    ISession session;
+    synchronized (wrapper) {
+      session = wrapper.getSession();
+      if (session == null) {
+        return;
+      }
+      // Detach before returning the session, so closing an old wrapper cannot release a new query.
+      wrapper.setSession(null);
+      session = occupied.remove(session);
+    }
+    if (session == null) {
+      return;
+    }
     boolean putback = true;
     try {
       wrapper.getSessionDataSet().closeOperationHandle();
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      tryConstructNewSession();
       putback = false;
+      closeSession(session);
+      tryConstructNewSession();
     } finally {
-      ISession session = occupied.remove(wrapper.getSession());
-      if (putback && session != null) {
-        putBack(wrapper.getSession());
+      if (putback) {
+        putBack(session);
       }
     }
   }
 
   @SuppressWarnings({"squid:S2446"})
   private void tryConstructNewSession() {
+    synchronized (this) {
+      if (closed) {
+        size--;
+        this.notify();
+        return;
+      }
+    }
     Session session = constructNewSession();
     try {
       session.open(enableCompression, connectionTimeoutInMs, deviceIdToEndpoint, availableNodes);
