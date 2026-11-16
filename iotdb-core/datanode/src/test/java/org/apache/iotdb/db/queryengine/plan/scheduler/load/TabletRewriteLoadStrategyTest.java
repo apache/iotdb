@@ -139,7 +139,7 @@ public class TabletRewriteLoadStrategyTest {
     when(converter.convertForTreeModel(any()))
         .thenReturn(Optional.of(status(TSStatusCode.SUCCESS_STATUS)));
 
-    LoadFallbackHandler.convertTsFileToTablets(converter, node, false, true);
+    LoadFallbackHandler.convertTsFileToTablets(converter, node, false, true, true);
 
     final ArgumentCaptor<LoadTsFileStatement> statement =
         ArgumentCaptor.forClass(LoadTsFileStatement.class);
@@ -148,7 +148,7 @@ public class TabletRewriteLoadStrategyTest {
   }
 
   private TabletRewriteLoadStrategy strategy(final boolean isGeneratedByPipe) {
-    return new TabletRewriteLoadStrategy(converter, isGeneratedByPipe, costMetrics);
+    return new TabletRewriteLoadStrategy(converter, isGeneratedByPipe, true, costMetrics);
   }
 
   @Test

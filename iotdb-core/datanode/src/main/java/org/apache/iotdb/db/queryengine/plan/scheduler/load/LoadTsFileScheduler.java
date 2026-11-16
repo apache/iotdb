@@ -286,6 +286,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final List<Integer> failedTsFileNodeIndexes;
   private final PlanFragmentId fragmentId;
   private final boolean isGeneratedByPipe;
+  private final boolean preferLocalNode;
   private final LoadTsFileDataCacheMemoryBlock memoryBlock;
   private final LoadConsensusSubmitter consensusSubmitter;
 
@@ -309,6 +310,8 @@ public class LoadTsFileScheduler implements IScheduler {
    * @param clientManager RPC client manager for remote DataNode communication
    * @param partitionFetcher cluster partition fetcher
    * @param isGeneratedByPipe whether this load operation is initiated by the Pipe subsystem
+   * @param preferLocalNode whether the DataRegions created by this LOAD pin the local DataNode as a
+   *     replica, which follows the {@code prefer-local-node} LOAD attribute
    */
   public LoadTsFileScheduler(
       final DistributedQueryPlan distributedQueryPlan,
@@ -316,7 +319,8 @@ public class LoadTsFileScheduler implements IScheduler {
       final QueryStateMachine stateMachine,
       final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager,
       final IPartitionFetcher partitionFetcher,
-      final boolean isGeneratedByPipe) {
+      final boolean isGeneratedByPipe,
+      final boolean preferLocalNode) {
     Objects.requireNonNull(
         distributedQueryPlan,
         DataNodeQueryMessages.EXCEPTION_DISTRIBUTEDQUERYPLAN_CANNOT_BE_NULL_A54D99CB);
@@ -335,8 +339,9 @@ public class LoadTsFileScheduler implements IScheduler {
     this.failedTsFileNodeIndexes = new ArrayList<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
     this.dispatcher = new LoadTsFileDispatcherImpl(clientManager, isGeneratedByPipe);
-    this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
+    this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher, preferLocalNode);
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.preferLocalNode = preferLocalNode;
     this.memoryBlock = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
     this.consensusSubmitter = new LoadConsensusSubmitter(clientManager);
 
@@ -390,6 +395,7 @@ public class LoadTsFileScheduler implements IScheduler {
         new LoadFallbackHandler(
                 queryContext,
                 isGeneratedByPipe,
+                preferLocalNode,
                 tsFileNodeList,
                 failedTsFileNodeIndexes,
                 stateMachine)
@@ -472,7 +478,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private TsFileLoadStrategy resolveStrategy(final LoadSingleTsFileNode node, final String userName)
       throws Exception {
     if (EncryptDBUtils.requiresFileRewrite()) {
-      return new TabletRewriteLoadStrategy(queryContext, isGeneratedByPipe);
+      return new TabletRewriteLoadStrategy(queryContext, isGeneratedByPipe, preferLocalNode);
     }
     // The judgement resolves the partitions of the devices anyway, so the routing reuses them.
     final DataPartitionResolver partitionResolver =

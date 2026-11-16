@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class GreedyRegionGroupAllocatorTest {
 
@@ -216,5 +217,85 @@ public class GreedyRegionGroupAllocatorTest {
     Assert.assertTrue(dataNodeIdSet.contains(0));
     Assert.assertTrue(dataNodeIdSet.contains(1));
     Assert.assertTrue(dataNodeIdSet.contains(2));
+  }
+
+  @Test
+  public void testPreferredDataNode() {
+    final int dataNodeNum = 6;
+    final int preferredDataNodeId = 3;
+    final Map<Integer, TDataNodeConfiguration> availableDataNodeMap = new ConcurrentHashMap<>();
+    final Map<Integer, Double> freeSpaceMap = new ConcurrentHashMap<>();
+    for (int i = 1; i <= dataNodeNum; i++) {
+      availableDataNodeMap.put(
+          i, new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(i)));
+      freeSpaceMap.put(i, (double) dataNodeNum - i);
+    }
+
+    final List<TRegionReplicaSet> allocatedRegionGroups = new ArrayList<>();
+    for (int index = 0; index < dataNodeNum; index++) {
+      final TRegionReplicaSet newRegionGroup =
+          ALLOCATOR.generateOptimalRegionReplicasDistribution(
+              availableDataNodeMap,
+              freeSpaceMap,
+              allocatedRegionGroups,
+              allocatedRegionGroups,
+              TEST_REPLICATION_FACTOR,
+              new TConsensusGroupId(TConsensusGroupType.DataRegion, index),
+              preferredDataNodeId);
+      Assert.assertEquals(TEST_REPLICATION_FACTOR, newRegionGroup.getDataNodeLocationsSize());
+      Assert.assertEquals(
+          preferredDataNodeId, newRegionGroup.getDataNodeLocations().get(0).getDataNodeId());
+      Assert.assertEquals(
+          TEST_REPLICATION_FACTOR,
+          newRegionGroup.getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toSet())
+              .size());
+      allocatedRegionGroups.add(newRegionGroup);
+    }
+
+    final Map<Integer, Integer> replicaCounter = new HashMap<>();
+    allocatedRegionGroups.forEach(
+        regionReplicaSet ->
+            regionReplicaSet
+                .getDataNodeLocations()
+                .forEach(
+                    location -> replicaCounter.merge(location.getDataNodeId(), 1, Integer::sum)));
+    // The pinned DataNode hosts all the new Regions; the remaining replicas keep the weight order
+    Assert.assertEquals(dataNodeNum, replicaCounter.get(preferredDataNodeId).intValue());
+    for (int dataNodeId = 1; dataNodeId <= dataNodeNum; dataNodeId++) {
+      if (dataNodeId == preferredDataNodeId) {
+        continue;
+      }
+      final int regionCount = replicaCounter.getOrDefault(dataNodeId, 0);
+      Assert.assertTrue(
+          "DataNode " + dataNodeId + " has " + regionCount + " replicas",
+          regionCount >= 2 && regionCount <= 3);
+    }
+  }
+
+  @Test
+  public void testPreferredDataNodeNotAvailable() {
+    final Map<Integer, TDataNodeConfiguration> availableDataNodeMap = new ConcurrentHashMap<>();
+    final Map<Integer, Double> freeSpaceMap = new ConcurrentHashMap<>();
+    for (int i = 1; i <= 4; i++) {
+      availableDataNodeMap.put(
+          i, new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(i)));
+      freeSpaceMap.put(i, 1d);
+    }
+
+    final TRegionReplicaSet newRegionGroup =
+        ALLOCATOR.generateOptimalRegionReplicasDistribution(
+            availableDataNodeMap,
+            freeSpaceMap,
+            new ArrayList<>(),
+            new ArrayList<>(),
+            TEST_REPLICATION_FACTOR,
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 0),
+            5);
+    Assert.assertEquals(TEST_REPLICATION_FACTOR, newRegionGroup.getDataNodeLocationsSize());
+    Assert.assertFalse(
+        newRegionGroup.getDataNodeLocations().stream()
+            .anyMatch(location -> location.getDataNodeId() == 5));
   }
 }

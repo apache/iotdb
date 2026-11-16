@@ -76,6 +76,29 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  /**
+   * The DataNode preference of the LOAD execution on the current thread.
+   *
+   * <p>The LOAD analysis path reaches this fetcher through statement visitors, so the
+   * request-scoped hint is carried by a thread-local instead of being passed through every visitor.
+   * It is only set by the LOAD conversion path and cleared in a finally block, so requests that do
+   * not create DataRegions on behalf of a LOAD are never affected.
+   */
+  private static final ThreadLocal<Integer> LOAD_PREFERRED_DATA_NODE_ID = new ThreadLocal<>();
+
+  public static void setLoadPreferredDataNodeId(final int preferredDataNodeId) {
+    LOAD_PREFERRED_DATA_NODE_ID.set(preferredDataNodeId);
+  }
+
+  public static void clearLoadPreferredDataNodeId() {
+    LOAD_PREFERRED_DATA_NODE_ID.remove();
+  }
+
+  private static int currentLoadPreferredDataNodeId() {
+    final Integer preferredDataNodeId = LOAD_PREFERRED_DATA_NODE_ID.get();
+    return preferredDataNodeId == null ? -1 : preferredDataNodeId;
+  }
+
   private final SeriesPartitionExecutor partitionExecutor;
 
   private final PartitionCache partitionCache;
@@ -319,6 +342,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
+    return getOrCreateDataPartition(
+        dataPartitionQueryParams, userName, currentLoadPreferredDataNodeId());
+  }
+
+  @Override
+  public DataPartition getOrCreateDataPartition(
+      final List<DataPartitionQueryParam> dataPartitionQueryParams,
+      final String userName,
+      final int preferredDataNodeId) {
     final Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
         splitDataPartitionQueryParam(
             dataPartitionQueryParams, config.isAutoCreateSchemaEnabled(), userName);
@@ -330,6 +362,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TDataPartitionReq req = constructDataPartitionReq(splitDataPartitionQueryParams);
+      if (preferredDataNodeId >= 0) {
+        req.setPreferredDataNodeId(preferredDataNodeId);
+      }
       final TDataPartitionTableResp dataPartitionTableResp =
           client.getOrCreateDataPartitionTable(req);
 

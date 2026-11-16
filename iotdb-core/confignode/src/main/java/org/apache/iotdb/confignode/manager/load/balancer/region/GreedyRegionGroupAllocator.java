@@ -80,7 +80,8 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
       List<TRegionReplicaSet> allocatedRegionGroups,
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
-      TConsensusGroupId consensusGroupId) {
+      TConsensusGroupId consensusGroupId,
+      int preferredDataNodeId) {
     // Build weightList ordered by (regionCount asc, databaseRegionCount asc, freeDiskSpace desc)
     List<TDataNodeLocation> weightList =
         buildWeightList(
@@ -88,9 +89,26 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
             freeDiskSpaceMap,
             allocatedRegionGroups,
             databaseAllocatedRegionGroups);
-    return new TRegionReplicaSet(
-        consensusGroupId,
-        weightList.stream().limit(replicationFactor).collect(Collectors.toList()));
+
+    // Pin the preferred DataNode as the first replica (the write entry point of the new
+    // RegionGroup) and keep the rest in the original weight order, so the other balancing keys
+    // still decide the remaining replicas.
+    final TDataNodeConfiguration preferredDataNode =
+        preferredDataNodeId >= 0 ? availableDataNodeMap.get(preferredDataNodeId) : null;
+    final List<TDataNodeLocation> replicaLocations = new ArrayList<>(replicationFactor);
+    if (preferredDataNode != null) {
+      replicaLocations.add(preferredDataNode.getLocation());
+    }
+    for (final TDataNodeLocation location : weightList) {
+      if (replicaLocations.size() >= replicationFactor) {
+        break;
+      }
+      if (location.getDataNodeId() == preferredDataNodeId) {
+        continue;
+      }
+      replicaLocations.add(location);
+    }
+    return new TRegionReplicaSet(consensusGroupId, replicaLocations);
   }
 
   @Override

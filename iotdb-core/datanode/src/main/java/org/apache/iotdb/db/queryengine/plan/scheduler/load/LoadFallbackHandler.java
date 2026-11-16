@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +43,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.PREFER_LOCAL_NODE_KEY;
 
 /**
  * Fallback execution handler for the LOAD scheduler. When direct chunk staging fails, converts
@@ -58,6 +59,7 @@ public class LoadFallbackHandler {
 
   private final MPPQueryContext queryContext;
   private final boolean isGeneratedByPipe;
+  private final boolean preferLocalNode;
   private final List<LoadSingleTsFileNode> tsFileNodeList;
   private final List<Integer> failedTsFileNodeIndexes;
   private final QueryStateMachine stateMachine;
@@ -65,6 +67,7 @@ public class LoadFallbackHandler {
   public LoadFallbackHandler(
       final MPPQueryContext queryContext,
       final boolean isGeneratedByPipe,
+      final boolean preferLocalNode,
       final List<LoadSingleTsFileNode> tsFileNodeList,
       final List<Integer> failedTsFileNodeIndexes,
       final QueryStateMachine stateMachine) {
@@ -72,6 +75,7 @@ public class LoadFallbackHandler {
         Objects.requireNonNull(
             queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_CANNOT_BE_NULL_C2B25B22);
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.preferLocalNode = preferLocalNode;
     this.tsFileNodeList =
         Objects.requireNonNull(
             tsFileNodeList, DataNodeQueryMessages.EXCEPTION_TSFILENODELIST_CANNOT_BE_NULL_7562FDB4);
@@ -136,7 +140,11 @@ public class LoadFallbackHandler {
       try {
         final TSStatus status =
             convertTsFileToTablets(
-                converter, failedNode, isGeneratedByPipe, failedNode.isDeleteAfterLoad());
+                converter,
+                failedNode,
+                isGeneratedByPipe,
+                preferLocalNode,
+                failedNode.isDeleteAfterLoad());
 
         if (converter.isSuccessful(status)) {
           iterator.remove();
@@ -179,12 +187,15 @@ public class LoadFallbackHandler {
       final LoadTsFileDataTypeConverter converter,
       final LoadSingleTsFileNode node,
       final boolean isGeneratedByPipe,
+      final boolean preferLocalNode,
       final boolean deleteAfterLoad)
       throws FileNotFoundException {
     final String filePath = node.getTsFileResource().getTsFilePath();
     return node.isTableModel()
-        ? executeTableModelConversion(converter, node, filePath, isGeneratedByPipe, deleteAfterLoad)
-        : executeTreeModelConversion(converter, node, filePath, isGeneratedByPipe, deleteAfterLoad);
+        ? executeTableModelConversion(
+            converter, node, filePath, isGeneratedByPipe, preferLocalNode, deleteAfterLoad)
+        : executeTreeModelConversion(
+            converter, node, filePath, isGeneratedByPipe, preferLocalNode, deleteAfterLoad);
   }
 
   private static TSStatus executeTableModelConversion(
@@ -192,9 +203,11 @@ public class LoadFallbackHandler {
       final LoadSingleTsFileNode node,
       final String filePath,
       final boolean isGeneratedByPipe,
+      final boolean preferLocalNode,
       final boolean deleteAfterLoad) {
-    final Map<String, String> attributes =
-        Collections.singletonMap(AUTO_CREATE_SCHEMA_KEY, String.valueOf(node.isAutoCreateSchema()));
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(AUTO_CREATE_SCHEMA_KEY, String.valueOf(node.isAutoCreateSchema()));
+    attributes.put(PREFER_LOCAL_NODE_KEY, String.valueOf(preferLocalNode));
     final LoadTsFile statement =
         (isGeneratedByPipe
                 ? LoadTsFile.createForPipe(null, filePath, attributes)
@@ -214,11 +227,13 @@ public class LoadFallbackHandler {
       final LoadSingleTsFileNode node,
       final String filePath,
       final boolean isGeneratedByPipe,
+      final boolean preferLocalNode,
       final boolean deleteAfterLoad)
       throws FileNotFoundException {
     final String database = LoadTsFileScheduler.getPartitionQueryDatabase(node, isGeneratedByPipe);
     final LoadTsFileStatement statement =
-        buildRetryTreeLoadStatement(filePath, deleteAfterLoad, database, isGeneratedByPipe);
+        buildRetryTreeLoadStatement(
+            filePath, deleteAfterLoad, database, isGeneratedByPipe, preferLocalNode);
     statement.setAutoCreateSchema(node.isAutoCreateSchema());
 
     return converter.convertForTreeModel(statement).orElse(null);
@@ -254,21 +269,24 @@ public class LoadFallbackHandler {
   private LoadTsFileStatement buildRetryTreeLoadStatement(
       final String filePath, final boolean deleteAfterLoad, final String database)
       throws FileNotFoundException {
-    return buildRetryTreeLoadStatement(filePath, deleteAfterLoad, database, isGeneratedByPipe);
+    return buildRetryTreeLoadStatement(
+        filePath, deleteAfterLoad, database, isGeneratedByPipe, preferLocalNode);
   }
 
   private static LoadTsFileStatement buildRetryTreeLoadStatement(
       final String filePath,
       final boolean deleteAfterLoad,
       final String database,
-      final boolean isGeneratedByPipe)
+      final boolean isGeneratedByPipe,
+      final boolean preferLocalNode)
       throws FileNotFoundException {
     final LoadTsFileStatement statement =
         (isGeneratedByPipe
                 ? LoadTsFileStatement.createForPipe(filePath)
                 : LoadTsFileStatement.createUnchecked(filePath))
             .setDeleteAfterLoad(deleteAfterLoad)
-            .setConvertOnTypeMismatch(true);
+            .setConvertOnTypeMismatch(true)
+            .setPreferLocalNode(preferLocalNode);
 
     if (database != null) {
       statement.setDatabase(database);

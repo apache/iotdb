@@ -109,7 +109,8 @@ public class LoadFallbackHandlerTest {
     final List<Integer> failedIndexes = new ArrayList<>(Arrays.asList(0, 1, 2, 3));
     final QueryStateMachine stateMachine = newStateMachine();
 
-    new LoadFallbackHandler(mock(MPPQueryContext.class), false, nodes, failedIndexes, stateMachine)
+    new LoadFallbackHandler(
+            mock(MPPQueryContext.class), false, true, nodes, failedIndexes, stateMachine)
         .convertFailedTsFilesToTablets();
 
     Assert.assertEquals(QueryState.FAILED, stateMachine.getState());
@@ -138,7 +139,8 @@ public class LoadFallbackHandlerTest {
     final List<Integer> failedIndexes = new ArrayList<>(Arrays.asList(0, 1));
     final QueryStateMachine stateMachine = newStateMachine();
 
-    new LoadFallbackHandler(mock(MPPQueryContext.class), false, nodes, failedIndexes, stateMachine)
+    new LoadFallbackHandler(
+            mock(MPPQueryContext.class), false, true, nodes, failedIndexes, stateMachine)
         .convertFailedTsFilesToTablets();
 
     Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
@@ -170,6 +172,7 @@ public class LoadFallbackHandlerTest {
           new LoadFallbackHandler(
                   mock(MPPQueryContext.class),
                   generatedByPipe,
+                  true,
                   Collections.singletonList(node),
                   failedIndexes,
                   stateMachine)
@@ -181,6 +184,7 @@ public class LoadFallbackHandlerTest {
           verify(converter).convertForTreeModel(statement.capture());
           Assert.assertEquals(requested, statement.getValue().isAutoCreateSchema());
           Assert.assertEquals(generatedByPipe, statement.getValue().isGeneratedByPipe());
+          Assert.assertTrue(statement.getValue().isPreferLocalNode());
           Assert.assertTrue(statement.getValue().isDeleteAfterLoad());
           Assert.assertEquals(Collections.singletonList(file), statement.getValue().getTsFiles());
           Assert.assertTrue(file.exists());
@@ -202,7 +206,7 @@ public class LoadFallbackHandlerTest {
           if (rewrite) {
             Assert.assertTrue(
                 new TabletRewriteLoadStrategy(
-                        converter, generatedByPipe, mock(LoadTsFileCostMetricsSet.class))
+                        converter, generatedByPipe, true, mock(LoadTsFileCostMetricsSet.class))
                     .execute(node));
           } else {
             final List<Integer> failedIndexes = new ArrayList<>(Collections.singletonList(0));
@@ -210,6 +214,7 @@ public class LoadFallbackHandlerTest {
             new LoadFallbackHandler(
                     mock(MPPQueryContext.class),
                     generatedByPipe,
+                    true,
                     Collections.singletonList(node),
                     failedIndexes,
                     stateMachine)
@@ -222,6 +227,7 @@ public class LoadFallbackHandlerTest {
           Assert.assertEquals(requested, statement.getValue().isAutoCreateSchema());
           Assert.assertEquals("test", statement.getValue().getDatabase());
           Assert.assertEquals(generatedByPipe, statement.getValue().isGeneratedByPipe());
+          Assert.assertTrue(statement.getValue().isPreferLocalNode());
           Assert.assertEquals(!rewrite, statement.getValue().isDeleteAfterLoad());
           Assert.assertTrue(file.exists());
         }

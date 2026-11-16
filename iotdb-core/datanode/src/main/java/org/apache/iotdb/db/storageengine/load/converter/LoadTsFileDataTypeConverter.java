@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -170,12 +171,18 @@ public class LoadTsFileDataTypeConverter {
     try {
       getTabletConversionSemaphore().acquire();
       isPermitAcquired = true;
-      return loadTsFileTableStatement.accept(
-          new LoadTableStatementDataTypeConvertExecutionVisitor(
-              (statement, databaseName) ->
-                  executeForTableModel(
-                      statement, databaseName, loadTsFileTableStatement.isAutoCreateSchema())),
-          loadTsFileTableStatement.getDatabase());
+      ClusterPartitionFetcher.setLoadPreferredDataNodeId(
+          getPreferredDataNodeIdForLoad(loadTsFileTableStatement.isPreferLocalNode()));
+      try {
+        return loadTsFileTableStatement.accept(
+            new LoadTableStatementDataTypeConvertExecutionVisitor(
+                (statement, databaseName) ->
+                    executeForTableModel(
+                        statement, databaseName, loadTsFileTableStatement.isAutoCreateSchema())),
+            loadTsFileTableStatement.getDatabase());
+      } finally {
+        ClusterPartitionFetcher.clearLoadPreferredDataNodeId();
+      }
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {
@@ -291,11 +298,17 @@ public class LoadTsFileDataTypeConverter {
     try {
       getTabletConversionSemaphore().acquire();
       isPermitAcquired = true;
-      return loadTsFileTreeStatement.accept(
-          new LoadTreeStatementDataTypeConvertExecutionVisitor(
-              statement ->
-                  executeForTreeModel(statement, loadTsFileTreeStatement.isAutoCreateSchema())),
-          null);
+      ClusterPartitionFetcher.setLoadPreferredDataNodeId(
+          getPreferredDataNodeIdForLoad(loadTsFileTreeStatement.isPreferLocalNode()));
+      try {
+        return loadTsFileTreeStatement.accept(
+            new LoadTreeStatementDataTypeConvertExecutionVisitor(
+                statement ->
+                    executeForTreeModel(statement, loadTsFileTreeStatement.isAutoCreateSchema())),
+            null);
+      } finally {
+        ClusterPartitionFetcher.clearLoadPreferredDataNodeId();
+      }
     } catch (final InterruptedException e) {
       return getInterruptedConversionStatus(e);
     } catch (Exception e) {
@@ -363,6 +376,17 @@ public class LoadTsFileDataTypeConverter {
         SESSION_MANAGER.removeCurrSession();
       }
     }
+  }
+
+  /**
+   * The DataNode preference for the DataRegions created by the conversion.
+   *
+   * @param preferLocalNode whether the LOAD statement asks for the preference, which is disabled
+   *     unless the <code>prefer-local-node</code> attribute enables it
+   */
+  private static int getPreferredDataNodeIdForLoad(final boolean preferLocalNode) {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    return preferLocalNode ? config.getDataNodeId() : -1;
   }
 
   public boolean isSuccessful(final TSStatus status) {

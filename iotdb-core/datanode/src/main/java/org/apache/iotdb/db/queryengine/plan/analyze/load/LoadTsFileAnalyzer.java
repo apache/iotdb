@@ -78,6 +78,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -85,6 +86,7 @@ import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.PREFER_LOCAL_NODE_KEY;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS_ASYNC_MOVE;
 
@@ -123,6 +125,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final boolean isAsyncLoad;
   private final boolean isVerifySchema;
   private final boolean isAutoCreateSchemaRequested;
+  private final boolean isPreferLocalNode;
   private final boolean isAutoCreateSchemaEnabled;
   private final boolean isAutoCreateDatabase;
   private final boolean isDeleteAfterLoad;
@@ -160,6 +163,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 || context.getSession().isEnableAutoCreateSchema());
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
+    this.isPreferLocalNode = loadTsFileStatement.isPreferLocalNode();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
     this.tabletConversionThresholdBytes = loadTsFileStatement.getTabletConversionThresholdBytes();
   }
@@ -183,6 +187,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAsyncLoad = loadTsFileTableStatement.isAsyncLoad();
     this.isVerifySchema = loadTsFileTableStatement.isVerifySchema();
     this.isAutoCreateSchemaRequested = loadTsFileTableStatement.isAutoCreateSchema();
+    this.isPreferLocalNode = loadTsFileTableStatement.isPreferLocalNode();
     this.isAutoCreateSchemaEnabled =
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
             && isAutoCreateSchemaRequested
@@ -336,6 +341,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               isAutoCreateSchemaEnabled,
               tabletConversionThresholdBytes,
               isGeneratedByPipe,
+              isPreferLocalNode,
               Objects.nonNull(context) && Objects.nonNull(context.getSession())
                   ? context.getUsername()
                   : null);
@@ -892,15 +898,16 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 ? LoadTsFileStatement.createForPipe(tsFile.getPath())
                 : LoadTsFileStatement.createUnchecked(tsFile.getPath()))
             .setDeleteAfterLoad(isDeleteAfterLoad)
-            .setConvertOnTypeMismatch(isConvertOnTypeMismatch);
+            .setConvertOnTypeMismatch(isConvertOnTypeMismatch)
+            .setPreferLocalNode(isPreferLocalNode);
     statement.setAutoCreateSchema(isAutoCreateSchemaRequested);
     return statement;
   }
 
   private LoadTsFile createTableConversionStatement(final File tsFile) {
-    final Map<String, String> attributes =
-        Collections.singletonMap(
-            AUTO_CREATE_SCHEMA_KEY, String.valueOf(isAutoCreateSchemaRequested));
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(AUTO_CREATE_SCHEMA_KEY, String.valueOf(isAutoCreateSchemaRequested));
+    attributes.put(PREFER_LOCAL_NODE_KEY, String.valueOf(isPreferLocalNode));
     return (isGeneratedByPipe
             ? LoadTsFile.createForPipe(null, tsFile.getPath(), attributes)
             : LoadTsFile.createUnchecked(null, tsFile.getPath(), attributes))

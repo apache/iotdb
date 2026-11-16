@@ -100,6 +100,21 @@ public interface IPartitionFetcher {
   DataPartition getOrCreateDataPartition(
       final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName);
 
+  /**
+   * Get or create data partition with an optional placement hint.
+   *
+   * @param dataPartitionQueryParams the list of DataPartitionQueryParams
+   * @param userName the name of the user that issues the request
+   * @param preferredDataNodeId the DataNode that prefers to host the first replica of the
+   *     DataRegions created for the request, or -1 for no preference
+   */
+  default DataPartition getOrCreateDataPartition(
+      final List<DataPartitionQueryParam> dataPartitionQueryParams,
+      final String userName,
+      final int preferredDataNodeId) {
+    return getOrCreateDataPartition(dataPartitionQueryParams, userName);
+  }
+
   /** Get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
       PathPatternTree patternTree, PathPatternTree scope, boolean needAuditDB) {

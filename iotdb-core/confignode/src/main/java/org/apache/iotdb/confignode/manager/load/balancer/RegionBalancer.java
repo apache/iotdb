@@ -82,6 +82,39 @@ public class RegionBalancer {
   public CreateRegionGroupsPlan genRegionGroupsAllocationPlan(
       final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
+    return genRegionGroupsAllocationPlan(allotmentMap, consensusGroupType, -1);
+  }
+
+  /**
+   * Generate a RegionGroups' allocation plan with an optional placement preference.
+   *
+   * <p>The preferred DataNode is pinned as the first replica of every DataRegion created by this
+   * plan, which is also the DataNode that the write path routes the RegionGroup to, and the
+   * remaining replicas are still selected by the configured {@link IRegionGroupAllocator}, so the
+   * usual balancing keys (the number of replicas on a DataNode, the number of replicas of the same
+   * Database on a DataNode, the scatter of 2-Region combinations, the free disk space and the
+   * random tie-breaker) keep guiding the placement. The preference never changes an existing
+   * RegionGroup.
+   *
+   * <p>The preference is best-effort and health first: it is silently ignored unless the preferred
+   * DataNode is Running and still a placement candidate at allocation time, so a hint can neither
+   * place a replica on a DataNode that cannot serve it nor turn a servable request into a {@link
+   * NotEnoughDataNodeException}. A DataNode that fails while the RegionGroups are being created is
+   * repaired by the Region creation procedure with a regular replica re-allocation.
+   *
+   * @param allotmentMap Map<DatabaseName, RegionGroup allotment>
+   * @param consensusGroupType {@link TConsensusGroupType} of the new RegionGroups
+   * @param preferredDataNodeId the DataNode to pin as the first replica of every new DataRegion, or
+   *     -1 for no preference
+   * @return CreateRegionGroupsPlan
+   * @throws NotEnoughDataNodeException When the number of DataNodes is not enough for allocation
+   * @throws DatabaseNotExistsException When some Databases don't exist
+   */
+  public CreateRegionGroupsPlan genRegionGroupsAllocationPlan(
+      final Map<String, Integer> allotmentMap,
+      final TConsensusGroupType consensusGroupType,
+      final int preferredDataNodeId)
+      throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
     // Some new RegionGroups will have to occupy unknown DataNodes if the number of online
     // DataNodes is insufficient (Unknown and Stopped DataNodes are intentionally kept as
@@ -96,6 +129,26 @@ public class RegionBalancer {
             .filter(
                 dataNode -> !removingDataNodeIds.contains(dataNode.getLocation().getDataNodeId()))
             .collect(Collectors.toList());
+
+    // The preference only applies to newly created DataRegions, and it is honoured only while the
+    // preferred DataNode is Running and still a placement candidate. Region candidates normally
+    // include Unknown and Stopped DataNodes so that RegionGroups can be created with too few online
+    // DataNodes, but a placement hint must not do that: pinning a replica on a DataNode that cannot
+    // serve it would leave the new RegionGroup with a dead replica, and with replication factor 1
+    // without any working replica at all. The hint is silently dropped instead, so the request
+    // still succeeds with a regular balanced allocation.
+    final Set<Integer> runningDataNodeIds =
+        getNodeManager().filterDataNodeThroughStatus(NodeStatus::isNormalStatus).stream()
+            .map(dataNode -> dataNode.getLocation().getDataNodeId())
+            .collect(Collectors.toSet());
+    final int dataRegionPreference =
+        TConsensusGroupType.DataRegion.equals(consensusGroupType)
+                && runningDataNodeIds.contains(preferredDataNodeId)
+                && availableDataNodes.stream()
+                    .anyMatch(
+                        dataNode -> dataNode.getLocation().getDataNodeId() == preferredDataNodeId)
+            ? preferredDataNodeId
+            : -1;
 
     // Make sure the number of available DataNodes is enough for allocating new RegionGroups
     for (final String database : allotmentMap.keySet()) {
@@ -141,7 +194,8 @@ public class RegionBalancer {
                 databaseAllocatedRegionGroups,
                 replicationFactor,
                 new TConsensusGroupId(
-                    consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
+                    consensusGroupType, getPartitionManager().generateNextRegionGroupId()),
+                dataRegionPreference);
         createRegionGroupsPlan.addRegionGroup(database, newRegionGroup);
 
         // Mark the new RegionGroup as allocated

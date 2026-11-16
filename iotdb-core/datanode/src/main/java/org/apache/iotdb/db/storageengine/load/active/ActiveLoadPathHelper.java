@@ -70,7 +70,8 @@ public final class ActiveLoadPathHelper {
               LoadTsFileConfigurator.VERIFY_KEY,
               LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY,
               LoadTsFileConfigurator.DATABASE_KEY,
-              LoadTsFileConfigurator.PIPE_GENERATED_KEY));
+              LoadTsFileConfigurator.PIPE_GENERATED_KEY,
+              LoadTsFileConfigurator.PREFER_LOCAL_NODE_KEY));
 
   private ActiveLoadPathHelper() {
     throw new IllegalStateException(StorageEngineMessages.UTILITY_CLASS);
@@ -84,6 +85,7 @@ public final class ActiveLoadPathHelper {
       final Boolean autoCreateSchema,
       final Long tabletConversionThresholdBytes,
       final Boolean pipeGenerated,
+      final Boolean preferLocalNode,
       final String userName) {
     final Map<String, String> attributes = new LinkedHashMap<>();
     if (Objects.nonNull(userName) && !userName.isEmpty()) {
@@ -122,6 +124,11 @@ public final class ActiveLoadPathHelper {
     if (Objects.nonNull(pipeGenerated) && pipeGenerated) {
       attributes.put(LoadTsFileConfigurator.PIPE_GENERATED_KEY, Boolean.TRUE.toString());
     }
+
+    if (Objects.nonNull(preferLocalNode)) {
+      attributes.put(
+          LoadTsFileConfigurator.PREFER_LOCAL_NODE_KEY, Boolean.toString(preferLocalNode));
+    }
     return attributes;
   }
 
@@ -133,6 +140,7 @@ public final class ActiveLoadPathHelper {
       final Boolean autoCreateSchema,
       final Long tabletConversionThresholdBytes,
       final Boolean pipeGenerated,
+      final Boolean preferLocalNode,
       final String userName,
       final String conversionTaskId) {
     final Map<String, String> attributes =
@@ -144,6 +152,7 @@ public final class ActiveLoadPathHelper {
             autoCreateSchema,
             tabletConversionThresholdBytes,
             pipeGenerated,
+            preferLocalNode,
             userName);
     if (conversionTaskId != null && !conversionTaskId.isEmpty()) {
       attributes.put(PIPE_CONVERSION_TASK_ID_KEY, conversionTaskId);
@@ -304,6 +313,9 @@ public final class ActiveLoadPathHelper {
 
     Optional.ofNullable(attributes.get(LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY))
         .ifPresent(value -> statement.setAutoCreateSchema(Boolean.parseBoolean(value)));
+
+    Optional.ofNullable(attributes.get(LoadTsFileConfigurator.PREFER_LOCAL_NODE_KEY))
+        .ifPresent(value -> statement.setPreferLocalNode(Boolean.parseBoolean(value)));
 
     if (attributes.containsKey(LoadTsFileConfigurator.PIPE_GENERATED_KEY)
         && Boolean.parseBoolean(attributes.get(LoadTsFileConfigurator.PIPE_GENERATED_KEY))) {

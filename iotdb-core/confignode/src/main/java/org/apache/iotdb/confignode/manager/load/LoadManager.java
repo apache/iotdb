@@ -133,6 +133,19 @@ public class LoadManager {
   }
 
   /**
+   * Allocate RegionGroups with a hint that prefers the DataNode that issued the request as a
+   * replica of the newly created DataRegions.
+   */
+  public CreateRegionGroupsPlan allocateRegionGroups(
+      final Map<String, Integer> allotmentMap,
+      final TConsensusGroupType consensusGroupType,
+      final int preferredDataNodeId)
+      throws NotEnoughDataNodeException, DatabaseNotExistsException {
+    return regionBalancer.genRegionGroupsAllocationPlan(
+        allotmentMap, consensusGroupType, preferredDataNodeId);
+  }
+
+  /**
    * Allocate SchemaPartitions.
    *
    * @param unassignedSchemaPartitionSlotsMap SchemaPartitionSlots that should be assigned

@@ -63,6 +63,8 @@ public class LoadTsFile extends Statement {
   private boolean verify;
   private boolean autoCreateSchema;
   private boolean isAsyncLoad = false;
+  // Whether the DataRegions created by this LOAD pin the local DataNode as a replica
+  private boolean preferLocalNode = false;
 
   private boolean isGeneratedByPipe = false;
 
@@ -195,6 +197,10 @@ public class LoadTsFile extends Statement {
     return isGeneratedByPipe;
   }
 
+  public boolean isPreferLocalNode() {
+    return preferLocalNode;
+  }
+
   public List<Boolean> getIsTableModel() {
     return isTableModel;
   }
@@ -243,6 +249,7 @@ public class LoadTsFile extends Statement {
     this.autoCreateSchema =
         LoadTsFileConfigurator.parseOrGetDefaultAutoCreateSchema(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
+    this.preferLocalNode = LoadTsFileConfigurator.parseOrGetDefaultPreferLocalNode(loadAttributes);
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {

@@ -23,7 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -37,10 +39,15 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentMatchers;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -140,5 +147,151 @@ public class RegionBalancerTest {
           "Removing node should be excluded: " + e.getMessage(),
           e.getMessage().contains("dataNodeId:" + REMOVING_DATA_NODE_ID));
     }
+  }
+
+  @Test
+  public void testPreferredDataNodeIsPinnedForDataRegions() throws Exception {
+    mockDataNodeCandidates(1, 2, 3, 4, 5);
+    when(partitionManager.getAllReplicaSets(TConsensusGroupType.DataRegion))
+        .thenReturn(new ArrayList<>());
+    when(partitionManager.getAllReplicaSets(eq("db1"), eq(TConsensusGroupType.DataRegion)))
+        .thenReturn(new ArrayList<>());
+    when(clusterSchemaManager.getReplicationFactor(eq("db1"), eq(TConsensusGroupType.DataRegion)))
+        .thenReturn(3);
+    when(partitionManager.generateNextRegionGroupId()).thenReturn(0, 1, 2);
+
+    final CreateRegionGroupsPlan plan =
+        regionBalancer.genRegionGroupsAllocationPlan(
+            Collections.singletonMap("db1", 3), TConsensusGroupType.DataRegion, 4);
+
+    final List<TRegionReplicaSet> regionGroups = plan.getRegionGroupMap().get("db1");
+    Assert.assertEquals(3, regionGroups.size());
+    for (final TRegionReplicaSet regionGroup : regionGroups) {
+      Assert.assertEquals(3, regionGroup.getDataNodeLocationsSize());
+      // The preferred DataNode is pinned as the first replica
+      Assert.assertEquals(4, regionGroup.getDataNodeLocations().get(0).getDataNodeId());
+      // The remaining replicas are still chosen by the allocator, without duplicates
+      Assert.assertEquals(
+          3,
+          regionGroup.getDataNodeLocations().stream()
+              .map(location -> location.getDataNodeId())
+              .collect(Collectors.toSet())
+              .size());
+    }
+  }
+
+  @Test
+  public void testPreferredDataNodeOutsideCandidatesIsIgnored() throws Exception {
+    mockDataNodeCandidates(1, 2, 3);
+    when(partitionManager.getAllReplicaSets(TConsensusGroupType.DataRegion))
+        .thenReturn(new ArrayList<>());
+    when(partitionManager.getAllReplicaSets(eq("db1"), eq(TConsensusGroupType.DataRegion)))
+        .thenReturn(new ArrayList<>());
+    when(clusterSchemaManager.getReplicationFactor(eq("db1"), eq(TConsensusGroupType.DataRegion)))
+        .thenReturn(3);
+    when(partitionManager.generateNextRegionGroupId()).thenReturn(0);
+
+    // The preferred DataNode is not a placement candidate, so the allocation must still succeed
+    // without placing a replica on it
+    final CreateRegionGroupsPlan plan =
+        regionBalancer.genRegionGroupsAllocationPlan(
+            Collections.singletonMap("db1", 1), TConsensusGroupType.DataRegion, 9);
+    final TRegionReplicaSet regionGroup = plan.getRegionGroupMap().get("db1").get(0);
+    Assert.assertEquals(3, regionGroup.getDataNodeLocationsSize());
+    Assert.assertEquals(
+        new HashSet<>(Arrays.asList(1, 2, 3)),
+        regionGroup.getDataNodeLocations().stream()
+            .map(location -> location.getDataNodeId())
+            .collect(Collectors.toSet()));
+  }
+
+  @Test
+  public void testPreferredDataNodeThatIsNotRunningIsIgnored() throws Exception {
+    // DataNode 4 is stopped. It stays a Region candidate -- RegionGroups are still created while
+    // too few DataNodes are online -- but it must never be pinned: with replication factor 1 the
+    // new RegionGroup would otherwise be created without any working replica.
+    when(procedureManager.getRemovingDataNodeIds()).thenReturn(Collections.emptySet());
+    when(nodeManager.filterDataNodeThroughStatus(
+            ArgumentMatchers.<Function<NodeStatus, Boolean>>any()))
+        .thenAnswer(
+            invocation -> {
+              final Function<NodeStatus, Boolean> predicate = invocation.getArgument(0);
+              final boolean runningOnly = !predicate.apply(NodeStatus.Stopped);
+              final List<Integer> dataNodeIds =
+                  runningOnly ? Arrays.asList(1, 2, 3, 5) : Arrays.asList(1, 2, 3, 4, 5);
+              return dataNodeIds.stream()
+                  .map(
+                      dataNodeId ->
+                          new TDataNodeConfiguration()
+                              .setLocation(new TDataNodeLocation().setDataNodeId(dataNodeId)))
+                  .collect(Collectors.toList());
+            });
+    when(partitionManager.getAllReplicaSets(TConsensusGroupType.DataRegion))
+        .thenReturn(new ArrayList<>());
+    when(partitionManager.getAllReplicaSets(eq("db1"), eq(TConsensusGroupType.DataRegion)))
+        .thenReturn(new ArrayList<>());
+    when(clusterSchemaManager.getReplicationFactor(eq("db1"), eq(TConsensusGroupType.DataRegion)))
+        .thenReturn(1);
+
+    final int allotment = 20;
+    final AtomicInteger nextRegionGroupId = new AtomicInteger();
+    when(partitionManager.generateNextRegionGroupId())
+        .thenAnswer(invocation -> nextRegionGroupId.getAndIncrement());
+
+    final CreateRegionGroupsPlan plan =
+        regionBalancer.genRegionGroupsAllocationPlan(
+            Collections.singletonMap("db1", allotment), TConsensusGroupType.DataRegion, 4);
+
+    final List<TRegionReplicaSet> regionGroups = plan.getRegionGroupMap().get("db1");
+    Assert.assertEquals(allotment, regionGroups.size());
+    // With replication factor 1 the preference would select DataNode 4 for every RegionGroup if it
+    // were applied, so at least one RegionGroup must land elsewhere
+    final long pinnedCount =
+        regionGroups.stream()
+            .filter(regionGroup -> regionGroup.getDataNodeLocations().get(0).getDataNodeId() == 4)
+            .count();
+    Assert.assertTrue(
+        "The preference of a stopped DataNode must be dropped, but all RegionGroups were pinned",
+        pinnedCount < allotment);
+  }
+
+  @Test
+  public void testPreferredDataNodeIsIgnoredForSchemaRegions() throws Exception {
+    mockDataNodeCandidates(1, 2, 3, 4, 5);
+    when(partitionManager.getAllReplicaSets(TConsensusGroupType.SchemaRegion))
+        .thenReturn(new ArrayList<>());
+    when(partitionManager.getAllReplicaSets(eq("db1"), eq(TConsensusGroupType.SchemaRegion)))
+        .thenReturn(new ArrayList<>());
+    when(clusterSchemaManager.getReplicationFactor(eq("db1"), eq(TConsensusGroupType.SchemaRegion)))
+        .thenReturn(1);
+    when(partitionManager.generateNextRegionGroupId()).thenReturn(0);
+
+    // With replication factor 1 the preference would always select DataNode 5 if it were applied.
+    // SchemaRegions must ignore it, so the selected DataNode varies with the random tie-breaker.
+    final Set<Integer> selectedDataNodes = new HashSet<>();
+    for (int i = 0; i < 50; i++) {
+      final CreateRegionGroupsPlan plan =
+          regionBalancer.genRegionGroupsAllocationPlan(
+              Collections.singletonMap("db1", 1), TConsensusGroupType.SchemaRegion, 5);
+      final TRegionReplicaSet regionGroup = plan.getRegionGroupMap().get("db1").get(0);
+      Assert.assertEquals(1, regionGroup.getDataNodeLocationsSize());
+      selectedDataNodes.add(regionGroup.getDataNodeLocations().get(0).getDataNodeId());
+    }
+    Assert.assertTrue(
+        "SchemaRegion allocation should ignore the DataRegion preference: " + selectedDataNodes,
+        selectedDataNodes.size() > 1);
+  }
+
+  private void mockDataNodeCandidates(int... dataNodeIds) {
+    when(procedureManager.getRemovingDataNodeIds()).thenReturn(Collections.emptySet());
+    when(nodeManager.filterDataNodeThroughStatus(
+            ArgumentMatchers.<Function<NodeStatus, Boolean>>any()))
+        .thenReturn(
+            Arrays.stream(dataNodeIds)
+                .mapToObj(
+                    dataNodeId ->
+                        new TDataNodeConfiguration()
+                            .setLocation(new TDataNodeLocation().setDataNodeId(dataNodeId)))
+                .collect(Collectors.toList()));
   }
 }

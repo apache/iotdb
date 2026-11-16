@@ -279,6 +279,12 @@ struct TTimeSlotList {
 struct TDataPartitionReq {
   // map<DatabaseName, map<TSeriesPartitionSlot, TTimePartionSlotList>>
   1: required map<string, map<common.TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap
+  // Optional best-effort hint: the DataNode that issues the request prefers to host the first
+  // replica of the DataRegions that have to be created for this request. The first replica is the
+  // one the write path routes the RegionGroup to, so this also steers the write entry point. The
+  // hint never moves existing DataRegions and the ConfigNode ignores it while the DataNode is not
+  // Running, so it can neither place a replica on a dead node nor fail the request.
+  2: optional i32 preferredDataNodeId
 }
 
 struct TDataPartitionTableResp {

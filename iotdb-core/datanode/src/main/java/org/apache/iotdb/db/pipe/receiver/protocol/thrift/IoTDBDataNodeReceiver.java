@@ -954,6 +954,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         !shouldWaitForSchemaBeforeLoad,
         null,
         shouldMarkAsPipeRequest,
+        // Pipe-generated loads must not pin the receiving DataNode: the sink DataNode is not the
+        // owner of the forwarded data and pinning it would concentrate the replicas there.
+        false,
         // The user executing the asynchronous load. It must always be the authenticated sender: a
         // privileged default here would let any authenticated account load data as that user.
         userName,

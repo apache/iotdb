@@ -191,6 +191,10 @@ public class TableModelPlanner implements IPlanner {
         statement instanceof PipeEnriched
             && ((PipeEnriched) statement).getInnerStatement() instanceof LoadTsFile;
     if (statement instanceof LoadTsFile || isPipeEnrichedTsFileLoad) {
+      final LoadTsFile loadStatement =
+          isPipeEnrichedTsFileLoad
+              ? (LoadTsFile) ((PipeEnriched) statement).getInnerStatement()
+              : (LoadTsFile) statement;
       scheduler =
           new LoadTsFileScheduler(
               distributedPlan,
@@ -198,7 +202,8 @@ public class TableModelPlanner implements IPlanner {
               stateMachine,
               syncInternalServiceClientManager,
               ClusterPartitionFetcher.getInstance(),
-              isPipeEnrichedTsFileLoad);
+              isPipeEnrichedTsFileLoad,
+              loadStatement.isPreferLocalNode());
     } else {
       scheduler =
           new ClusterScheduler(
