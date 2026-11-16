@@ -178,7 +178,7 @@ public class SessionTest {
   public void testForceCloseDoesNotWaitForCloseSessionRpc() {
     Whitebox.setInternalState(session, "isClosed", false);
 
-    session.forceClose();
+    ((Session) session).forceClose();
 
     Mockito.verify(sessionConnection).forceCloseTransport();
     Mockito.verify(sessionConnection, Mockito.never()).close();
