@@ -364,6 +364,26 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   /**
+   * The last element being a fragment means the block just starts, so it is charged by {@code
+   * totalLength}: its tails sent by the following responses are not charged again.
+   */
+  private static long chargedResultBytes(TSExecuteStatementResp resp) {
+    List<ByteBuffer> blocks = resp.getQueryResult();
+    if (blocks == null) {
+      return 0L;
+    }
+    long size = 0L;
+    for (int i = 0, last = blocks.size() - 1; i <= last; i++) {
+      if (resp.isSetOffset() && i == last) {
+        size += resp.isSetTotalLength() ? resp.getTotalLength() : 0L;
+      } else {
+        size += blocks.get(i).remaining();
+      }
+    }
+    return size;
+  }
+
+  /**
    * Returns the maximum payload size of one response carrying query results, or 0 if the session's
    * client cannot assemble fragmented results. The payload bound is shared with the MPP data
    * exchange RPC response, see mpp_data_exchange_max_payload_size_in_bytes.
@@ -555,7 +575,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
           if (quota != null) {
-            quota.addReadResult(resp.getQueryResult());
+            quota.addReadResult(chargedResultBytes(resp));
           }
           // Should return SUCCESS_MESSAGE for insert into query
           if (queryExecution.getQueryType() == QueryType.READ_WRITE) {
@@ -829,7 +849,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               setResult.apply(
                   resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -927,7 +947,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               setResult.apply(
                   resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -1027,7 +1047,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               setResult.apply(
                   resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -1522,7 +1542,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SELECT_RESULT.apply(
                   resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }

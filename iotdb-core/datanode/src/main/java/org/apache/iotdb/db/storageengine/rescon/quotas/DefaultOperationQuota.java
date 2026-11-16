@@ -36,9 +36,6 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.BitMap;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-
 public class DefaultOperationQuota implements OperationQuota {
   protected final QuotaLimiter limiter;
   // the available read/write quota size in bytes
@@ -76,15 +73,8 @@ public class DefaultOperationQuota implements OperationQuota {
   }
 
   @Override
-  public void addReadResult(List<ByteBuffer> queryResult) {
-    if (queryResult == null) {
-      return;
-    }
-    long size = 0;
-    for (ByteBuffer buffer : queryResult) {
-      size += buffer.limit();
-    }
-    operationSize[OperationType.READ.ordinal()] += size;
+  public void addReadResult(long bytes) {
+    operationSize[OperationType.READ.ordinal()] += bytes;
   }
 
   /**
