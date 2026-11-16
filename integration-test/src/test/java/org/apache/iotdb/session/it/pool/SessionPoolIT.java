@@ -290,7 +290,7 @@ public class SessionPoolIT {
     BaseNodeWrapper node = EnvFactory.getEnv().getDataNodeWrapper(0);
     try {
       wrapper = pool.executeQueryStatement("select * from " + database + ".d1 where time > 1");
-      node.stop();
+      EnvFactory.getEnv().shutdownDataNode(0);
       EnvFactory.getEnv()
           .ensureNodeStatus(
               // A gracefully stopped DataNode is reported as Stopped by its shutdown hook (on
@@ -304,7 +304,7 @@ public class SessionPoolIT {
     } catch (IoTDBConnectionException e) {
       pool.closeResultSet(wrapper);
       pool.close();
-      node.stop();
+      EnvFactory.getEnv().shutdownDataNode(0);
       EnvFactory.getEnv()
           .ensureNodeStatus(
               // A gracefully stopped DataNode is reported as Stopped by its shutdown hook (on
@@ -333,7 +333,7 @@ public class SessionPoolIT {
       } catch (IoTDBConnectionException ec) {
         pool.closeResultSet(wrapper);
         pool.close();
-        node.stop();
+        EnvFactory.getEnv().shutdownDataNode(0);
         EnvFactory.getEnv()
             .ensureNodeStatus(
                 // A gracefully stopped DataNode is reported as Stopped by its shutdown hook (on
@@ -394,7 +394,7 @@ public class SessionPoolIT {
     // stop the server.
     pool.close();
     BaseNodeWrapper node = EnvFactory.getEnv().getDataNodeWrapper(0);
-    node.stop();
+    EnvFactory.getEnv().shutdownDataNode(0);
     EnvFactory.getEnv()
         .ensureNodeStatus(
             // A gracefully stopped DataNode is reported as Stopped by its shutdown hook (on

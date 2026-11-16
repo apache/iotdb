@@ -119,4 +119,26 @@ public final class RpcMessages {
   public static final String
       EXCEPTION_CHUNKED_RESULT_ASSEMBLED_LENGTH_ARG_DOES_NOT_MATCH_TOTAL_LENGTH_ARG_925DCB15 =
           "拼装后的分片长度 %d 与 totalLength %d 不一致";
+
+  public static final String EXCEPTION_INVALID_BUFFER_SIZE_ARG_5131C6CA =
+      "无效的缓冲区大小：%d";
+
+  public static final String EXCEPTION_WRITE_BUFFER_SIZE_ARG_LARGER_THAN_MAXIMUM_BUFFER_SIZE_ARG_C0A47F3D =
+      "写缓冲区大小（%d）超过最大缓冲区大小（%d）！";
+
+  public static final String EXCEPTION_INVALID_COMPRESSION_BUFFER_SIZE_ARG_D677543D =
+      "无效的压缩缓冲区大小：%d";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_E21E05CA =
+      "序列化帧大小至少为 %d 字节，超过 Java 数组最大大小 %d 字节。";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_1CDD4BB9 =
+      "序列化帧大小至少为 %d 字节，超过配置的 Thrift 最大帧大小 %d 字节。";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_TO_ARG_6F166F0C =
+      "序列化帧大小至少为 %d 字节，超过 Java 数组最大大小 %d 字节，目标地址为 %s。";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_TO_ARG_7EF64898 =
+      "序列化帧大小至少为 %d 字节，超过配置的 Thrift 最大帧大小 %d 字节，目标地址为 %s。";
+
 }

@@ -97,6 +97,8 @@ import static org.apache.iotdb.jdbc.Config.VERSION;
 public abstract class AbstractEnv implements BaseEnv {
   private static final Logger logger = IoTDBTestLogger.logger;
   private static final int DEFAULT_CLUSTER_READY_RETRY_COUNT = 30;
+  // Shutdown hooks may wait for Pipe events, progress persistence, and Ratis snapshots.
+  private static final int DATA_NODE_SHUTDOWN_TIMEOUT_SECONDS = 60;
   private static final long READINESS_RETRY_INTERVAL_NANOS = TimeUnit.MILLISECONDS.toNanos(100);
   private static final String CLUSTER_READY_RETRY_COUNT_PROPERTY =
       "integrationTest.clusterReadyRetryCount";
@@ -1660,12 +1662,14 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public void shutdownDataNode(final int index) {
-    dataNodeWrapperList.get(index).stop();
+    dataNodeWrapperList.get(index).stop(DATA_NODE_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
   @Override
   public void shutdownAllDataNodes() {
-    dataNodeWrapperList.forEach(AbstractNodeWrapper::stop);
+    dataNodeWrapperList.forEach(
+        dataNodeWrapper ->
+            dataNodeWrapper.stop(DATA_NODE_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS));
   }
 
   @Override

@@ -3266,6 +3266,10 @@ public final class DataNodeQueryMessages {
   public static final String FAILURES_HAPPENED_DURING_RUNNING_CONFIGEXECUTION_WHEN_EXECUTING_ARG =
 
       "执行 {} 的 ConfigExecution 期间发生失败。";
+  public static final String
+      LOG_FAILED_TO_CREATE_THE_TREE_TO_TABLE_VIEW_ARG_ARG_WITH_STATUS_CODE_ARG_ARG_0A3C8F10 =
+
+      "创建树转表视图 {}.{} 失败，状态码为 {}：{}。";
   public static final String FAILED_TO_EXECUTE_CREATE_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG =
 
       "在 config node 中执行 create database {} 失败，状态为 {}。";
@@ -5678,4 +5682,14 @@ public final class DataNodeQueryMessages {
   public static final String
       EXCEPTION_RESULT_FRAGMENT_REQUEST_OFFSET_ARG_IS_INVALID_WITHOUT_PENDING_FRAGMENT_C403454F =
           "请求 offset %d 无效：当前没有待发送的结果分片";
+
+  public static final String EXCEPTION_NOT_ENOUGH_MEMORY_WHILE_ANALYZING_TIME_PARTITIONS_NARROW_THE_QUERY_TIME_RANGE_OR_INCREASE_QUERY_MEMORY_MEMORY_DETAILS_REQUESTED_THIS_TIME_ARG_CURRENT_FREE_MEMORY_ARG_ORIGINAL_ERROR_ARG_37676B2A =
+      "分析时间分区时内存不足。请缩小查询时间范围或增加查询内存。内存详情：本次请求 %s，当前空闲内存 %s。原始错误：%s";
+
+  public static final String EXCEPTION_QUERY_ARG_CANNOT_RESERVE_ARG_BYTES_PENDING_FRONT_END_MEMORY_RESERVATION_EXCEEDS_LONG_MAX_VALUE_BYTES_D38CD6D8 =
+      "查询 %s 无法预留 %s 字节：待预留的前端内存超过 Long.MAX_VALUE 字节。";
+
+  public static final String LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9 =
+      "[QueryFailed] queryId: {}, SQL：{}";
+
 }
