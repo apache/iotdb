@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
@@ -243,14 +244,16 @@ public class ParallelizeGrouping implements PlanOptimizer {
      * below it, so only a surviving group can satisfy an ancestor's claim. The child is processed
      * first to learn whether its group survives.
      */
-    private PlanNode visitRanking(PlanNode node, Context context, List<Symbol> partitionBy) {
+    private PlanNode visitRanking(
+        SingleChildProcessNode node, Context context, List<Symbol> partitionBy) {
       if (context.canSkip()) {
         return visitPlan(node, context);
       }
       context.canOptimized = TO_SORT;
-      PlanNode result = visitPlan(node, context);
-      if (!result.getChildren().isEmpty()
-          && result.getChildren().get(0) instanceof GroupNode
+      PlanNode child = node.getChild().accept(this, context);
+      PlanNode result = node.clone();
+      result.addChild(child);
+      if (child instanceof GroupNode
           && sameKeys(
               context.sortKey.getOrderBy().subList(0, context.partitionKeyCount), partitionBy)) {
         context.canOptimized = ENABLE_PARALLEL;
