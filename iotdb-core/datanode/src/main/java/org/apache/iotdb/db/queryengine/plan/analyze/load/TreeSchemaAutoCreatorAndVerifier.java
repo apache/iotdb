@@ -605,15 +605,19 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
         // check datatype
         if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
-          throw new LoadAnalyzeTypeMismatchException(
-              String.format(
-                  DataNodeQueryMessages
-                      .EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD,
-                  device,
-                  TsFileConstant.PATH_SEPARATOR,
-                  iotdbSchema.getMeasurementName(),
-                  tsFileSchema.getType(),
-                  iotdbSchema.getType()));
+          if (iotdbSchema.getType().isCompatible(tsFileSchema.getType())) {
+            loadTsFileAnalyzer.markCompatibleDataTypeMismatch();
+          } else {
+            throw new LoadAnalyzeTypeMismatchException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_DATA_TYPE_MISMATCH_FOR_MEASUREMENT_ARGARGARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_C5BA7DBD,
+                    device,
+                    TsFileConstant.PATH_SEPARATOR,
+                    iotdbSchema.getMeasurementName(),
+                    tsFileSchema.getType(),
+                    iotdbSchema.getType()));
+          }
         }
 
         // check encoding

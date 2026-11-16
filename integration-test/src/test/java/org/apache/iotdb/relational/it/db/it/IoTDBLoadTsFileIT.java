@@ -67,6 +67,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -284,6 +285,43 @@ public class IoTDBLoadTsFileIT {
         } else {
           Assert.fail("This ResultSet is empty.");
         }
+      }
+    }
+  }
+
+  @Test
+  public void testLoadWithCompatibleDataType() throws Exception {
+    final String tableName = "load_compatible_type";
+    final MeasurementSchema fileSchema = new MeasurementSchema("f", TSDataType.INT32);
+    final MeasurementSchema targetSchema = new MeasurementSchema("f", TSDataType.INT64);
+    final List<ColumnCategory> columnCategories = Collections.singletonList(ColumnCategory.FIELD);
+    final long seed = 42L;
+    final long expectedValue = new Random(seed).nextInt();
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(tableName, Collections.singletonList(fileSchema), columnCategories);
+      generator.resetRandom(seed);
+      generator.generateData(tableName, 1, 1000L);
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create database if not exists %s", database));
+      statement.execute(String.format("use %s", database));
+      statement.execute(
+          convert2TableSQL(tableName, Collections.singletonList(targetSchema), columnCategories));
+      statement.execute(
+          String.format(
+              "load '%s' with ('database'='%s', 'tablet-conversion-threshold'='-1')",
+              file.getAbsolutePath(), database));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("select f from %s order by time", tableName))) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(expectedValue, resultSet.getLong(1));
+        Assert.assertFalse(resultSet.next());
       }
     }
   }

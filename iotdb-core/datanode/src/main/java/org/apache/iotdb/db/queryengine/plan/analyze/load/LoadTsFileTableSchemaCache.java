@@ -58,6 +58,7 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
@@ -110,6 +111,7 @@ public class LoadTsFileTableSchemaCache {
   private final MPPQueryContext context;
   private final boolean shouldVerifyDataType;
   private final boolean allowAutoCreateSchema;
+  private boolean hasCompatibleDataTypeMismatch;
 
   private Map<String, Set<IDeviceID>> currentBatchTable2Devices;
 
@@ -418,6 +420,10 @@ public class LoadTsFileTableSchemaCache {
     return needDecode4DifferentTimeColumn.get();
   }
 
+  boolean hasCompatibleDataTypeMismatch() {
+    return hasCompatibleDataTypeMismatch;
+  }
+
   private org.apache.tsfile.file.metadata.TableSchema resolveTableSchemaFromCache(
       final String tableName) {
     final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName, false);
@@ -504,19 +510,27 @@ public class LoadTsFileTableSchemaCache {
       } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
         ColumnSchema realColumn = fieldColumnNameToSchema.get(fileColumn.getName());
         if (realColumn != null && !fileColumn.getType().equals(realColumn.getType())) {
-          final String message =
-              String.format(
-                  DataNodeQueryMessages
-                      .MESSAGE_DATA_TYPE_MISMATCH_FOR_COLUMN_ARG_IN_TABLE_ARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_ECAD0C63,
-                  fileColumn.getName(),
-                  realSchema.getTableName(),
-                  fileColumn.getType(),
-                  realColumn.getType());
-          if (shouldVerifyDataType) {
-            throw new LoadAnalyzeTypeMismatchException(message);
-          }
-          if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(message);
+          final TSDataType realDataType =
+              TSDataType.valueOf(realColumn.getType().getTypeEnum().name());
+          final TSDataType fileDataType =
+              TSDataType.valueOf(fileColumn.getType().getTypeEnum().name());
+          if (realDataType.isCompatible(fileDataType)) {
+            hasCompatibleDataTypeMismatch |= shouldVerifyDataType;
+          } else {
+            final String message =
+                String.format(
+                    DataNodeQueryMessages
+                        .MESSAGE_DATA_TYPE_MISMATCH_FOR_COLUMN_ARG_IN_TABLE_ARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_ECAD0C63,
+                    fileColumn.getName(),
+                    realSchema.getTableName(),
+                    fileColumn.getType(),
+                    realColumn.getType());
+            if (shouldVerifyDataType) {
+              throw new LoadAnalyzeTypeMismatchException(message);
+            }
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(message);
+            }
           }
         } else if (LOGGER.isDebugEnabled() && realColumn == null) {
           LOGGER.debug(
