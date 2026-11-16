@@ -755,10 +755,10 @@ public class SessionCacheLeaderTest {
     tablet.addValue("id", 0, "id0");
     tablet.addValue("field", 0, 1L);
 
-    session.insertRelationalTablet(tablet, "db1");
+    session.insertRelationalTablet(tablet, "DB1");
     session.insertRelationalTablet(tablet, "db2");
     session.insertRelationalTablet(tablet, "db1");
-    session.insertRelationalTablet(tablet, "db2");
+    session.insertRelationalTablet(tablet, "DB2");
 
     assertEquals(1, db1AcceptedWrites.get());
     assertEquals(1, db2AcceptedWrites.get());

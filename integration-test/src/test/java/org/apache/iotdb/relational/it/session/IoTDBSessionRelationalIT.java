@@ -197,6 +197,7 @@ public class IoTDBSessionRelationalIT {
         tablet.addValue("m1", row, row * 1.0);
       }
 
+      // The distinct tag values exercise the grouped multi-device write path.
       session.insert(tablet, "db1");
       session.executeNonQueryStatement("USE db1");
       session.insert(tablet, "db2");
@@ -230,7 +231,14 @@ public class IoTDBSessionRelationalIT {
         assertEquals("db1", dataSet.next().getField(0).getStringValue());
       }
 
-      assertThrows(StatementExecutionException.class, () -> session.insert(tablet, ""));
+      for (String invalidDatabase :
+          Arrays.asList("", " ", "a.b", "root.treedb", "ROOT.treedb")) {
+        StatementExecutionException exception =
+            assertThrows(
+                StatementExecutionException.class,
+                () -> session.insert(tablet, invalidDatabase));
+        assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), exception.getStatusCode());
+      }
     }
   }
 
