@@ -22,6 +22,7 @@ package org.apache.iotdb.relational.it.session;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -29,7 +30,10 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.write.record.Tablet;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -40,10 +44,13 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.apache.iotdb.itbase.env.BaseEnv.TABLE_SQL_DIALECT;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -68,6 +75,57 @@ public class IoTDBTableModelSessionIT {
   @AfterClass
   public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testInsertWithoutWriting() throws Exception {
+    Tablet tablet =
+        new Tablet(
+            "test_insert",
+            Arrays.asList("device", "model", "value"),
+            Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD),
+            2);
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("create database test1");
+      session.executeNonQueryStatement("use test1");
+      session.executeNonQueryStatement(
+          "create table test_insert (device string tag, model string attribute, value int64 field)");
+      session.testInsert(tablet);
+      for (int row = 0; row < 2; row++) {
+        long time = 2 - row;
+        tablet.addTimestamp(row, time);
+        tablet.addValue("device", row, "d" + time);
+        tablet.addValue("model", row, "m" + time);
+        tablet.addValue("value", row, time * 10);
+      }
+      session.testInsert(tablet);
+      try (SessionDataSet dataSet = session.executeQueryStatement("select * from test_insert")) {
+        assertFalse(dataSet.hasNext());
+      }
+    }
+    try (ITableSessionPool pool = EnvFactory.getEnv().getTableSessionPool(1);
+        ITableSession session = pool.getSession()) {
+      session.executeNonQueryStatement("use test1");
+      session.testInsert(tablet);
+      try (SessionDataSet dataSet = session.executeQueryStatement("select * from test_insert")) {
+        assertFalse(dataSet.hasNext());
+      }
+      session.insert(tablet);
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select time, device, model, value from test_insert order by time")) {
+        for (long time = 1; time <= 2; time++) {
+          assertTrue(dataSet.hasNext());
+          RowRecord row = dataSet.next();
+          assertEquals(time, row.getFields().get(0).getLongV());
+          assertEquals("d" + time, row.getFields().get(1).getStringValue());
+          assertEquals("m" + time, row.getFields().get(2).getStringValue());
+          assertEquals(time * 10, row.getFields().get(3).getLongV());
+        }
+        assertFalse(dataSet.hasNext());
+      }
+    }
   }
 
   @Test

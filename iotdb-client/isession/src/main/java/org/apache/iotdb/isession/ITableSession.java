@@ -47,6 +47,19 @@ public interface ITableSession extends AutoCloseable {
   void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException;
 
   /**
+   * Sends a {@link Tablet} to measure client processing and RPC time without inserting data. The
+   * server returns after receiving the request without validating the table schema or data.
+   *
+   * <p>The tablet may be sorted in place. Empty tablets are ignored. The request is sent through
+   * the default connection without device-based routing or leader-cache updates.
+   *
+   * @param tablet the tablet to serialize and send.
+   * @throws StatementExecutionException if the server returns an unsuccessful status.
+   * @throws IoTDBConnectionException if there is an issue with the IoTDB connection.
+   */
+  void testInsert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException;
+
+  /**
    * Executes a non-query SQL statement, such as a DDL or DML command.
    *
    * @param sql the SQL statement to execute.

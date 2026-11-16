@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.template.Template;
@@ -2928,6 +2929,26 @@ public class Session implements ISession {
       } catch (RedirectException ignored) {
       }
     }
+  }
+
+  /**
+   * Sends a relational tablet without inserting data or validating it on the server.
+   *
+   * <p>This method is for internal use only; use {@link ITableSession#testInsert(Tablet)} instead.
+   *
+   * @param tablet data batch
+   */
+  public void testInsertRelationalTablet(Tablet tablet)
+      throws IoTDBConnectionException, StatementExecutionException {
+    if (tablet.getRowSize() == 0) {
+      return;
+    }
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+    if (request == null) {
+      return;
+    }
+    request.setWriteToTable(true);
+    getDefaultSessionConnection().testInsertTablet(request);
   }
 
   private void insertRelationalTabletWithLeaderCache(Tablet tablet)

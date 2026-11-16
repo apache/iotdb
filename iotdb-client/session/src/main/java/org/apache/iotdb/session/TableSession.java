@@ -40,6 +40,12 @@ public class TableSession implements ITableSession {
   }
 
   @Override
+  public void testInsert(Tablet tablet)
+      throws StatementExecutionException, IoTDBConnectionException {
+    session.testInsertRelationalTablet(tablet);
+  }
+
+  @Override
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     session.executeNonQueryStatement(sql);
