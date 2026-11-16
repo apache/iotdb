@@ -135,6 +135,18 @@ Windows: extract the release, then run `install.bat "C:\Program Files\Apache IoT
 from an administrator command prompt. Use the **64-bit** ODBC administrator to
 configure a DSN. `uninstall.bat` unregisters the driver, preserving DSNs and files.
 
+Unattended deployment also supports `Add-OdbcDsn` and `Set-OdbcDsn` in 64-bit
+PowerShell. For example, after installation:
+
+```powershell
+Add-OdbcDsn -Name 'IoTDB' -DriverName 'Apache IoTDB ODBC Driver' -DsnType User -Platform '64-bit' -SetPropertyValue @('SERVER=127.0.0.1', 'PORT=6667', 'DATABASE=information_schema', 'ISTABLEMODEL=1')
+```
+
+Supply credentials through the consuming application's connection settings.
+Silent configuration preserves unspecified attributes and does not persist
+implicit user/password defaults. Its regression test redirects registry hives
+only within the test process; it does not install a driver on the host.
+
 Linux: install unixODBC, extract the release, update `Driver` in `conf/odbcinst.ini`
 to the absolute library path, then register with `odbcinst -i -d -f conf/odbcinst.ini`.
 Copy the example DSN into your user `odbc.ini` and provide your credentials.

@@ -27,6 +27,8 @@
 #include <string>
 #include <sstream>
 #include <odbcinst.h>
+#include <map>
+#include <set>
 
 #include <Session.h>
 #include <SessionBuilder.h>
@@ -68,6 +70,54 @@ static std::string ReadOdbcIniString(const std::string& dsn, const char* key, co
   char buf[1024] = {};
   SQLGetPrivateProfileString(dsn.c_str(), key, def, buf, sizeof(buf), "ODBC.INI");
   return buf;
+}
+
+static BOOL ConfigureDsnSilently(WORD request, LPCSTR driver, LPCSTR attributes) {
+  const std::set<std::string> allowed = {
+      "DSN",          "DESCRIPTION", "SERVER",           "PORT",      "UID", "PWD",   "DATABASE",
+      "ISTABLEMODEL", "LOGLEVEL",    "SESSIONTIMEOUTMS", "BATCHSIZE", "SSL", "SSLCA", "SSLCERT",
+      "SSLKEY",       "RESTFUL"};
+  std::map<std::string, std::string> values;
+  if (attributes) {
+    for (const char* p = attributes; *p;) {
+      std::string entry(p);
+      p += entry.size() + 1;
+      const auto equal = entry.find('=');
+      std::string key = entry.substr(0, equal);
+      for (auto& c : key)
+        c = static_cast<char>(toupper(static_cast<unsigned char>(c)));
+      if (equal == std::string::npos || allowed.count(key) == 0) {
+        SQLPostInstallerError(ODBC_ERROR_INVALID_KEYWORD_VALUE, "Invalid DSN attribute");
+        return FALSE;
+      }
+      values[key] = entry.substr(equal + 1);
+    }
+  }
+  const std::string dsn = values["DSN"];
+  if (dsn.empty() || !SQLValidDSN(dsn.c_str())) {
+    SQLPostInstallerError(ODBC_ERROR_INVALID_DSN, "A valid DSN name is required");
+    return FALSE;
+  }
+  if (!driver || !*driver) {
+    SQLPostInstallerError(ODBC_ERROR_INVALID_NAME, "A driver name is required");
+    return FALSE;
+  }
+  if (request == ODBC_CONFIG_DSN) {
+    if (ReadOdbcIniString("ODBC Data Sources", dsn.c_str(), "") != driver) {
+      SQLPostInstallerError(ODBC_ERROR_INVALID_DSN, "DSN does not exist for this driver");
+      return FALSE;
+    }
+  } else if (!SQLWriteDSNToIni(dsn.c_str(), driver)) {
+    return FALSE;
+  }
+  // Preserve unspecified attributes on CONFIG, and never persist implicit
+  // credential defaults when provisioning a DSN without a dialog.
+  for (const auto& value : values) {
+    if (value.first != "DSN" && !SQLWritePrivateProfileString(dsn.c_str(), value.first.c_str(),
+                                                              value.second.c_str(), "ODBC.INI"))
+      return FALSE;
+  }
+  return TRUE;
 }
 
 // ─── DSN read / write via ODBC Installer API ───────────────────────────────
@@ -374,8 +424,7 @@ BOOL ShowDSNDialog(HWND hwndParent, WORD fRequest, LPCSTR lpszDriver, LPCSTR lps
     logMessage(nullptr, "ShowDSNDialog: ODBC_ADD_DSN", LOG_LEVEL_INFO);
 
     if (!hwndParent) {
-      logMessage(nullptr, "ShowDSNDialog: No parent window for ADD, aborting", LOG_LEVEL_WARN);
-      return FALSE;
+      return ConfigureDsnSilently(fRequest, lpszDriver, lpszAttributes);
     }
 
     DialogContext ctx;
@@ -410,8 +459,7 @@ BOOL ShowDSNDialog(HWND hwndParent, WORD fRequest, LPCSTR lpszDriver, LPCSTR lps
     logMessage(nullptr, "ShowDSNDialog: ODBC_CONFIG_DSN, DSN='" + dsnName + "'", LOG_LEVEL_INFO);
 
     if (!hwndParent) {
-      logMessage(nullptr, "ShowDSNDialog: No parent window for CONFIG, aborting", LOG_LEVEL_WARN);
-      return FALSE;
+      return ConfigureDsnSilently(fRequest, lpszDriver, lpszAttributes);
     }
 
     DialogContext ctx;

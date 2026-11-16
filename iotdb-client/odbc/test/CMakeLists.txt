@@ -40,6 +40,11 @@ add_test(NAME odbc_manager_load COMMAND odbc_manager $<TARGET_FILE:apache_iotdb_
 set_tests_properties(odbc_unit odbc_manager_load PROPERTIES TIMEOUT 30)
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
+    if(WIN32)
+        add_test(NAME odbc_windows_setup COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/windows_setup.py" $<TARGET_FILE:apache_iotdb_odbc>)
+        set_tests_properties(odbc_windows_setup PROPERTIES TIMEOUT 30)
+    endif()
     add_test(NAME odbc_parameters COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/parameters.py" $<TARGET_FILE:apache_iotdb_odbc>)
     set_tests_properties(odbc_parameters PROPERTIES TIMEOUT 30)
