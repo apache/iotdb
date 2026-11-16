@@ -117,9 +117,11 @@ class InferenceManager:
         devices_to_be_processed = []
         devices_not_to_be_processed = []
         for device_id in device_id_list:
+            # A load that is still pending, e.g. while the model downloads, counts as loaded:
+            # the unload is queued after it.
             if self._pool_controller.has_request_pools(
                 model_id=model_id, device_id=device_id
-            ):
+            ) or self._pool_controller.is_loading(model_id, device_id):
                 devices_to_be_processed.append(device_id)
             else:
                 devices_not_to_be_processed.append(device_id)

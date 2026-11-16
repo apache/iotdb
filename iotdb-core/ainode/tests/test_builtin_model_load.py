@@ -20,11 +20,14 @@ import queue
 import threading
 import time
 import unittest
+from collections import Counter
 from unittest import mock
 
 import torch
 
+from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.inference.pool_controller import PoolController
+from iotdb.ainode.core.manager.inference_manager import InferenceManager
 from iotdb.ainode.core.model.model_constants import ModelStates
 
 
@@ -46,6 +49,8 @@ class BuiltinModelLoadTest(unittest.TestCase):
         controller._stop_event = threading.Event()
         controller._task_queue = queue.Queue()
         controller._tasks_waiting_for_download = {}
+        controller._pending_loads = Counter()
+        controller._pending_loads_lock = threading.Lock()
         controller._executor = mock.Mock()
         controller._request_pool_map = {}
         controller._model_manager = mock.Mock()
@@ -113,6 +118,40 @@ class BuiltinModelLoadTest(unittest.TestCase):
         self.release_download.set()
         self._wait_for(1)
         self.assertEqual(self.events, [("unload", "timestral")])
+
+    def test_unload_through_inference_manager_runs_after_a_pending_download(self):
+        # UNLOAD MODEL while the model downloads must not be skipped because the model has no
+        # pool yet: it runs after the load, and nothing is left pending.
+        self.addCleanup(self._stop)
+        manager = object.__new__(InferenceManager)
+        manager._pool_controller = self.controller
+        cpu = torch.device("cpu")
+        self.assertEqual(
+            manager.load_model("timestral", [cpu]).code,
+            TSStatusCode.SUCCESS_STATUS.value,
+        )
+        self.assertTrue(self.controller.is_loading("timestral", cpu))
+        self.assertEqual(
+            manager.unload_model("timestral", [cpu]).code,
+            TSStatusCode.SUCCESS_STATUS.value,
+        )
+        self.release_download.set()
+        self._wait_for(2)
+        self.assertEqual(self.events, [("load", "timestral"), ("unload", "timestral")])
+        self.assertFalse(self.controller.is_loading("timestral", cpu))
+
+    def test_failed_download_finishes_the_pending_load(self):
+        self.addCleanup(self._stop)
+        self.download_succeeds = False
+        cpu = torch.device("cpu")
+        self.controller.load_model("timestral", [cpu])
+        self.release_download.set()
+        deadline = time.monotonic() + 5
+        while self.controller.is_loading("timestral", cpu) and (
+            time.monotonic() < deadline
+        ):
+            time.sleep(0.01)
+        self.assertFalse(self.controller.is_loading("timestral", cpu))
 
     def test_stop_does_not_wait_for_a_download(self):
         self.controller.load_model("timestral", [torch.device("cpu")])
