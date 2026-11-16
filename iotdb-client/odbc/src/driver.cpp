@@ -642,10 +642,12 @@ SQLRETURN getColumnSize(SQLSMALLINT odbcType, SQLULEN* columnSize) {
   }
 
   switch (odbcType) {
-  case SQL_CHAR:
   case SQL_WCHAR:
   case SQL_WVARCHAR:
   case SQL_WLONGVARCHAR:
+    *columnSize = WIDE_COLUMN_SIZE;
+    break;
+  case SQL_CHAR:
   case SQL_VARCHAR:
   case SQL_LONGVARCHAR:
     *columnSize = 2147483647; // IoTDB places no length limit on strings
@@ -739,7 +741,9 @@ SQLRETURN getNullable(StatementHandle* stmt, const SQLUSMALLINT columnNumber,
   logMessage(cnct, "getNullable: Checking nullability for column " + std::to_string(columnNumber),
              LOG_LEVEL_DEBUG);
 
-  *nullable = SQL_NULLABLE_UNKNOWN;
+  // IoTDB query projections can contain NULL (including expressions and
+  // sparse fields). Consumers such as .NET interpret UNKNOWN as non-nullable.
+  *nullable = SQL_NULLABLE;
 
   logMessage(cnct, "getNullable: Exiting successfully", LOG_LEVEL_TRACE);
   return SQL_SUCCESS;
@@ -1107,13 +1111,14 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
       SQLLEN displaySize = 0;
       switch (columnType) {
       case SQL_CHAR:
+      case SQL_VARCHAR:
+      case SQL_LONGVARCHAR:
+        displaySize = 2147483647;
+        break;
       case SQL_WCHAR:
       case SQL_WVARCHAR:
       case SQL_WLONGVARCHAR:
-      case SQL_VARCHAR:
-      case SQL_LONGVARCHAR:
-        // For string types, use the actual length if available, otherwise default
-        displaySize = 255; // Default for string types
+        displaySize = WIDE_COLUMN_SIZE;
         break;
 
       case SQL_DECIMAL:
@@ -1233,6 +1238,7 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
     break;
   }
 
+  case SQL_COLUMN_LENGTH:
   case SQL_DESC_OCTET_LENGTH: // Byte length
     logMessage(cnct,
                "SQLColAttribute: Processing SQL_DESC_OCTET_LENGTH for column " +
@@ -1280,6 +1286,21 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
       break;
     case SQL_TYPE_TIMESTAMP:
       octetLength = 16; // Size of TIMESTAMP_STRUCT
+      break;
+    case SQL_WCHAR:
+    case SQL_WVARCHAR:
+    case SQL_WLONGVARCHAR:
+      // Match SQLDescribeCol's character capacity in UTF-16 bytes. A small
+      // placeholder makes table importers impose a false MaxLength constraint.
+      octetLength = static_cast<SQLLEN>(WIDE_COLUMN_SIZE) * sizeof(SQLWCHAR);
+      break;
+    case SQL_CHAR:
+    case SQL_VARCHAR:
+    case SQL_LONGVARCHAR:
+    case SQL_BINARY:
+    case SQL_VARBINARY:
+    case SQL_LONGVARBINARY:
+      octetLength = 2147483647;
       break;
     default:
       // For string types, use a reasonable default or calculate based on data
@@ -1378,6 +1399,7 @@ SQLRETURN SQL_API SQLColAttribute(const SQLHSTMT statementHandle, const SQLUSMAL
     }
     break;
 
+  case SQL_COLUMN_NULLABLE:
   case SQL_DESC_NULLABLE: {
     logMessage(cnct,
                "SQLColAttribute: Processing SQL_DESC_NULLABLE for column " +
@@ -2078,10 +2100,13 @@ static void PopulateImplementationRowDescriptor(StatementHandle* stmt) {
       record.octetLength = sizeof(DATE_STRUCT);
     } else if (type == "BLOB") {
       record.type = record.conciseType = SQL_LONGVARBINARY;
+      record.length = record.octetLength = 2147483647;
     } else {
       record.type = record.conciseType = SQL_WVARCHAR;
+      record.length = WIDE_COLUMN_SIZE;
+      record.octetLength = static_cast<SQLLEN>(record.length) * sizeof(SQLWCHAR);
     }
-    record.nullable = SQL_NULLABLE_UNKNOWN;
+    record.nullable = SQL_NULLABLE;
   }
 }
 

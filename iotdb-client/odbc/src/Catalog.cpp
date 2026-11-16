@@ -182,6 +182,10 @@ Row column(const std::string& catalog, const std::string& table, const std::stri
     sub = ODBCField(SQL_CODE_DATE);
   } else {
     sqlType = type == "BLOB" ? SQL_LONGVARBINARY : type == "TEXT" ? SQL_WLONGVARCHAR : SQL_WVARCHAR;
+    if (type != "BLOB") {
+      size = static_cast<int>(WIDE_COLUMN_SIZE);
+      bytes = size * sizeof(SQLWCHAR);
+    }
     octets = ODBCField(bytes);
   }
   return {ODBCField(catalog),

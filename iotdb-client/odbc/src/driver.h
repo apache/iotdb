@@ -38,6 +38,10 @@ struct BindColInfo;
 #include "ConnectionHandle.h"
 #include "StatementHandle.h"
 
+// Keep the advertised UTF-16 byte capacity within a signed 32-bit length:
+// .NET/Office importers convert SQL_DESC_OCTET_LENGTH to Int32 before using it.
+static constexpr SQLULEN WIDE_COLUMN_SIZE = 2147483647 / sizeof(SQLWCHAR);
+
 extern "C" {
 SQLRETURN SQL_API SQLAllocConnect(SQLHENV environmentHandle, SQLHDBC* connectionHandle);
 SQLRETURN SQL_API SQLAllocEnv(SQLHENV* environmentHandle);

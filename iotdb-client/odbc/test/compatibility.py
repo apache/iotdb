@@ -232,6 +232,33 @@ def main():
         assert direct(stmt, wide("SELECT reviewed"), -3) == 0
         describe_a = api("SQLDescribeCol", *describe.argtypes)
         attribute = api("SQLColAttribute", h, ushort, ushort, h, short, h, h)
+        # Keep all three result-metadata paths consistent for table importers.
+        nullable = short()
+        assert (
+            describe_a(stmt, 1, None, 0, None, None, None, None, c.byref(nullable)) == 0
+        )
+        assert nullable.value == 1  # SQL_NULLABLE
+        for field in (7, 1008):  # SQL_COLUMN_NULLABLE / SQL_DESC_NULLABLE
+            value = length()
+            assert attribute(stmt, 1, field, None, 0, None, c.byref(value)) == 0
+            assert value.value == 1
+        implementation_row = h()
+        get_stmt_attr = api("SQLGetStmtAttr", h, integer, h, integer, h)
+        get_desc_field = api("SQLGetDescField", h, short, short, h, integer, h)
+        assert get_stmt_attr(stmt, 10012, c.byref(implementation_row), 0, None) == 0
+        assert (
+            get_desc_field(implementation_row, 1, 1008, c.byref(nullable), 0, None) == 0
+        )
+        assert nullable.value == 1
+        for field in (3, 1013):  # SQL_COLUMN_LENGTH / SQL_DESC_OCTET_LENGTH
+            octets = length()
+            assert attribute(stmt, 1, field, None, 0, None, c.byref(octets)) == 0
+            assert octets.value == 2147483646
+        octets = length()
+        assert (
+            get_desc_field(implementation_row, 1, 1013, c.byref(octets), 0, None) == 0
+        )
+        assert octets.value == 2147483646
         diagnostic = api("SQLGetDiagRec", short, h, short, h, h, h, short, h)
 
         def state():
@@ -244,7 +271,7 @@ def main():
             describe_a(stmt, 1, None, 0, None, None, c.byref(column_size), None, None)
             == 0
         )
-        assert column_size.value == 2147483647
+        assert column_size.value == 1073741823
         for col, expected in ((1, -9), (2, -7), (3, -5)):
             numeric = length(0x12345678)
             assert attribute(stmt, col, 2, None, 0, None, c.byref(numeric)) == 0
@@ -269,7 +296,7 @@ def main():
             == 1
         )
         assert sentinel.value == b"lon" and name_length.value == 10
-        assert column_size.value == 2147483647 and state() == "01004"
+        assert column_size.value == 1073741823 and state() == "01004"
         assert attribute(stmt, 1, 18, sentinel, 1, None, None) == 1
         assert state() == "01004"
         assert fetch(stmt) == 0

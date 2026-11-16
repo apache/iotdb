@@ -137,7 +137,7 @@ static void checkReviewedMetadata() {
   SQLULEN size = 0;
   check(SQLDescribeCol(&statement, 1, nullptr, 0, nullptr, nullptr, &size, nullptr, nullptr) ==
             SQL_SUCCESS &&
-        size == 2147483647);
+        size == 1073741823);
   const SQLSMALLINT types[] = {SQL_WVARCHAR, SQL_BIT, SQL_BIGINT};
   for (SQLUSMALLINT col = 1; col <= 3; ++col) {
     SQLLEN type = 0x12345678;
@@ -168,7 +168,7 @@ static void checkReviewedMetadata() {
   check(SQLDescribeCol(&statement, 1, reinterpret_cast<SQLCHAR*>(sentinel), 4, &length, &type,
                        &size, nullptr, nullptr) == SQL_SUCCESS_WITH_INFO &&
         std::string(sentinel) == "lon" && length == 10 && type == SQL_WVARCHAR &&
-        size == 2147483647 && hasState(statement, "01004"));
+        size == 1073741823 && hasState(statement, "01004"));
   check(SQLColAttribute(&statement, 1, SQL_DESC_LABEL, sentinel, 1, &length, nullptr) ==
             SQL_SUCCESS_WITH_INFO &&
         sentinel[0] == 0 && length == 10 && hasState(statement, "01004"));
@@ -178,7 +178,7 @@ static void checkReviewedMetadata() {
   SQLWCHAR wide[3]{};
   check(SQLDescribeColW(&statement, 1, wide, 3, &length, nullptr, &size, nullptr, nullptr) ==
             SQL_SUCCESS_WITH_INFO &&
-        wide[0] == 'l' && wide[1] == 'o' && wide[2] == 0 && size == 2147483647 && length == 10 &&
+        wide[0] == 'l' && wide[1] == 'o' && wide[2] == 0 && size == 1073741823 && length == 10 &&
         hasState(statement, "01004"));
   check(SQLColAttributeW(&statement, 1, SQL_DESC_LABEL, nullptr, 0, &length, nullptr) ==
             SQL_SUCCESS &&

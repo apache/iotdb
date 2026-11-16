@@ -209,6 +209,11 @@ user DSNs and disposable databases, then removes them. CTest additionally runs
 public-ABI regressions against a local HTTP fixture for catalog schemas,
 enumeration, patterns, Unicode lengths and REST type conversion.
 
+Windows consumer checks also materialize complete `DataTable` results, so NULL
+and long Unicode text must satisfy the reported column metadata. Query result
+columns report nullable values; Unicode capacities use consistent character and
+byte units within the signed 32-bit byte range used by Windows importers.
+
 ## Excel and other Unicode applications
 
 Use **64-bit Microsoft Excel** with the Windows x64 package and a 64-bit user or

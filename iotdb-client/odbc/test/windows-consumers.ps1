@@ -88,6 +88,18 @@ try {
             }
             Assert-True ($count -eq 5) 'Rows were lost across Session batches'
         } finally { $reader.Dispose() }
+        # Materializing a table applies schema constraints, unlike Read().
+        # Reporting unknown nullability makes .NET reject actual NULL fields.
+        $reader = $command.ExecuteReader()
+        $loaded = New-Object System.Data.DataTable
+        try {
+            $loaded.Load($reader)
+            Assert-True ($loaded.Rows.Count -eq 5) 'DataTable import lost rows'
+            Assert-True ($loaded.Columns['txt'].AllowDBNull) 'NULL metadata rejected nullable data'
+            Assert-True ($loaded.Rows[1].IsNull('txt')) 'DataTable import lost NULL'
+            Assert-True ($loaded.Rows[2]['txt'] -eq '') 'DataTable import lost empty string'
+            Assert-True ($loaded.Rows[4]['txt'] -eq $longText) 'DataTable import truncated long Unicode text'
+        } finally { $reader.Dispose(); $loaded.Dispose() }
         $command.CommandText = 'SELECT txt FROM samples WHERE val < 0'
         $reader = $command.ExecuteReader()
         try { Assert-True (-not $reader.Read()) 'Empty query returned a row' }
