@@ -45,6 +45,11 @@ abstract class AbstractPipeSingleIT {
 
   @After
   public final void tearDown() {
+    cleanEnvironment();
+  }
+
+  // A shared-cluster subclass can reset its scenario without stopping the class-owned nodes.
+  protected void cleanEnvironment() {
     env.cleanClusterEnvironment();
   }
 }

@@ -36,7 +36,9 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -71,12 +73,16 @@ import static org.junit.Assert.assertTrue;
 @Category(LocalStandaloneIT.class)
 public class IoTDBWriteMemoryLifecycleIT {
   private static final String DATABASE = "root.write_memory";
+  private static final String TABLE_DATABASE = "write_memory_table";
   private static final String[] DEVICES = {DATABASE + ".plain", DATABASE + ".aligned"};
   private static final String OVERSIZED_TEXT = "x".repeat(32 * 1024);
   private final Map<Long, String> expected = new TreeMap<>();
+  // Tree-mode DELETE DATABASE requires an existing database created by this fixture.
+  private boolean treeDatabaseCreated;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpClass() throws Exception {
+    // Node settings are shared by all scenarios; each test resets its databases in @Before.
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -112,8 +118,14 @@ public class IoTDBWriteMemoryLifecycleIT {
         .getDataNodeConfig()
         .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
     EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    cleanTestDatabases();
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
+      treeDatabaseCreated = true;
       session.executeNonQueryStatement("CREATE TIMESERIES " + DEVICES[0] + ".n INT64");
       session.executeNonQueryStatement("CREATE TIMESERIES " + DEVICES[0] + ".t TEXT");
       session.executeNonQueryStatement(
@@ -123,7 +135,26 @@ public class IoTDBWriteMemoryLifecycleIT {
 
   @After
   public void tearDown() throws Exception {
+    cleanTestDatabases();
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  private void cleanTestDatabases() throws Exception {
+    if (treeDatabaseCreated) {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement("DELETE DATABASE " + DATABASE);
+      }
+      treeDatabaseCreated = false;
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS " + TABLE_DATABASE);
+      statement.execute("DROP DATABASE IF EXISTS wal_recovery_table");
+    }
   }
 
   @Test
@@ -399,13 +430,14 @@ public class IoTDBWriteMemoryLifecycleIT {
     }
   }
 
+  // Two-device writes cross a partition boundary; overwrites retain values and flush releases
+  // memory.
   @Test
   public void testTableTabletSplitAcrossDevicesAndTimePartitions() throws Exception {
-    String database = "write_memory_table";
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE " + database);
-      statement.execute("USE " + database);
+      statement.execute("CREATE DATABASE " + TABLE_DATABASE);
+      statement.execute("USE " + TABLE_DATABASE);
       statement.execute("CREATE TABLE readings(device STRING TAG, n INT64 FIELD, t STRING FIELD)");
       // Each request contains two devices and spans the 1000 ms partition boundary.
       for (int cycle = 0; cycle < 2; cycle++) {
@@ -427,7 +459,8 @@ public class IoTDBWriteMemoryLifecycleIT {
           }
         }
         statement.execute(sql.toString());
-        assertTrue("All split processors must account for live writes", memoryUsage(database) > 0);
+        assertTrue(
+            "All split processors must account for live writes", memoryUsage(TABLE_DATABASE) > 0);
         // The second cycle overwrites flushed data, exercising unsequence ranges in both
         // partitions.
         for (int phase = 0; phase < 2; phase++) {
@@ -449,7 +482,7 @@ public class IoTDBWriteMemoryLifecycleIT {
             statement.execute("FLUSH");
             await()
                 .atMost(30, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertEquals(0, memoryUsage(database)));
+                .untilAsserted(() -> assertEquals(0, memoryUsage(TABLE_DATABASE)));
           }
         }
       }

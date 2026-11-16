@@ -67,6 +67,9 @@ public class ClusterScheduler implements IScheduler {
   private IQueryTerminator queryTerminator;
   // Set when the dispatch of the fragment instances failed (see start()).
   private volatile boolean dispatchFailed = false;
+  private boolean started;
+  private boolean stopped;
+  private boolean dispatchComplete;
 
   private static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
       QueryExecutionMetricSet.getInstance();
@@ -84,12 +87,13 @@ public class ClusterScheduler implements IScheduler {
     this.rootSubPlan = distributedQueryPlan.getRootSubPlan();
     this.instances = distributedQueryPlan.getInstances();
     this.queryType = queryType;
-    this.dispatcher =
+    FragmentInstanceDispatcherImpl fragmentDispatcher =
         new FragmentInstanceDispatcherImpl(
             queryType,
             queryContext,
             syncInternalServiceClientManager,
             asyncInternalServiceClientManager);
+    this.dispatcher = fragmentDispatcher;
     if (isQuery()) {
       this.stateTracker =
           new FixedRateFragInsStateTracker(
@@ -100,8 +104,23 @@ public class ClusterScheduler implements IScheduler {
               queryContext,
               instances,
               syncInternalServiceClientManager,
-              stateTracker);
+              stateTracker,
+              fragmentDispatcher::getIssuedAdmissionTokens);
     }
+  }
+
+  ClusterScheduler(
+      QueryStateMachine stateMachine,
+      IFragInstanceDispatcher dispatcher,
+      IFragInstanceStateTracker stateTracker,
+      IQueryTerminator queryTerminator) {
+    this.stateMachine = stateMachine;
+    this.queryType = QueryType.READ;
+    this.rootSubPlan = null;
+    this.instances = java.util.Collections.emptyList();
+    this.dispatcher = dispatcher;
+    this.stateTracker = stateTracker;
+    this.queryTerminator = queryTerminator;
   }
 
   private boolean needRetry(TSStatus failureStatus) {
@@ -114,17 +133,29 @@ public class ClusterScheduler implements IScheduler {
 
   @Override
   public void start() {
+    synchronized (this) {
+      if (started || stopped) {
+        return;
+      }
+      started = true;
+    }
     stateMachine.transitionToDispatching();
     long startTime = System.nanoTime();
-    Future<FragInstanceDispatchResult> dispatchResultFuture =
-        dispatcher.dispatch(rootSubPlan, instances);
 
     // NOTICE: the FragmentInstance may be dispatched to another Host due to consensus redirect.
     // So we need to start the state fetcher after the dispatching stage.
     try {
+      Future<FragInstanceDispatchResult> dispatchResultFuture =
+          dispatcher.dispatch(rootSubPlan, instances);
       FragInstanceDispatchResult result = dispatchResultFuture.get();
+      synchronized (this) {
+        if (stopped) {
+          return;
+        }
+        dispatchComplete = true;
+        dispatchFailed = !result.isSuccessful();
+      }
       if (!result.isSuccessful()) {
-        dispatchFailed = true;
         if (needRetry(result.getFailureStatus())) {
           stateMachine.transitionToPendingRetry(result.getFailureStatus());
         } else {
@@ -133,7 +164,7 @@ public class ClusterScheduler implements IScheduler {
         }
         return;
       }
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (InterruptedException | ExecutionException | RuntimeException e) {
       // If the dispatch request cannot be sent or TException is caught, we will retry this query.
       dispatchFailed = true;
       if (e instanceof InterruptedException) {
@@ -161,14 +192,22 @@ public class ClusterScheduler implements IScheduler {
 
   @Override
   public void stop(Throwable t) {
+    boolean terminateImmediately;
+    synchronized (this) {
+      if (stopped) {
+        return;
+      }
+      stopped = true;
+      terminateImmediately = dispatchFailed || !dispatchComplete;
+    }
     dispatcher.abort();
     if (stateTracker != null) {
       stateTracker.abort();
     }
     if (queryTerminator != null) {
-      if (dispatchFailed) {
-        // The FragmentInstances dispatched before the failure can't finish on their own and hold
-        // operator memory until they are cancelled, so don't wait for the grace period.
+      if (terminateImmediately) {
+        // Dispatch failed, or stop arrived before dispatch completed. The FIs already sent may
+        // depend on unsent FIs and hold operator memory, so do not wait for the grace period.
         queryTerminator.terminateImmediately(t);
       } else {
         queryTerminator.terminate(t);

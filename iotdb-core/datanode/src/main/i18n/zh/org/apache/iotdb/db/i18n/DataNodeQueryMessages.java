@@ -20,6 +20,11 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_12143E89 = "查询执行轮次 %s 已关闭。";
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_ADMISSION_EXPIRED_DEADLINE_ARG_NS_NOW_ARG_NS_16A9846C = "查询执行轮次 %s 的接收凭证已过期：截止时间=%d ns，当前时间=%d ns。";
+  public static final String EXCEPTION_INVALID_QUERY_ADMISSION_ISSUER_FOR_ATTEMPT_ARG_9D1C4E9C = "查询执行轮次 %s 的接收凭证签发节点进程不匹配。";
+
+
   public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
       "测点 %s 插入失败，原因：%s";
 
@@ -3261,6 +3266,10 @@ public final class DataNodeQueryMessages {
   public static final String FAILURES_HAPPENED_DURING_RUNNING_CONFIGEXECUTION_WHEN_EXECUTING_ARG =
 
       "执行 {} 的 ConfigExecution 期间发生失败。";
+  public static final String
+      LOG_FAILED_TO_CREATE_THE_TREE_TO_TABLE_VIEW_ARG_ARG_WITH_STATUS_CODE_ARG_ARG_0A3C8F10 =
+
+      "创建树转表视图 {}.{} 失败，状态码为 {}：{}。";
   public static final String FAILED_TO_EXECUTE_CREATE_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG =
 
       "在 config node 中执行 create database {} 失败，状态为 {}。";
@@ -5666,4 +5675,13 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s：%s ms，调用 %s 次，应用 %s 次";
+  public static final String EXCEPTION_NOT_ENOUGH_MEMORY_WHILE_ANALYZING_TIME_PARTITIONS_NARROW_THE_QUERY_TIME_RANGE_OR_INCREASE_QUERY_MEMORY_MEMORY_DETAILS_REQUESTED_THIS_TIME_ARG_CURRENT_FREE_MEMORY_ARG_ORIGINAL_ERROR_ARG_37676B2A =
+      "分析时间分区时内存不足。请缩小查询时间范围或增加查询内存。内存详情：本次请求 %s，当前空闲内存 %s。原始错误：%s";
+
+  public static final String EXCEPTION_QUERY_ARG_CANNOT_RESERVE_ARG_BYTES_PENDING_FRONT_END_MEMORY_RESERVATION_EXCEEDS_LONG_MAX_VALUE_BYTES_D38CD6D8 =
+      "查询 %s 无法预留 %s 字节：待预留的前端内存超过 Long.MAX_VALUE 字节。";
+
+  public static final String LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9 =
+      "[QueryFailed] queryId: {}, SQL：{}";
+
 }

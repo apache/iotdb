@@ -44,8 +44,6 @@ public class IoTDBComplexQueryTableViewIT {
       new String[] {
         "CREATE DATABASE " + TREE_DB_NAME,
         "create aligned timeseries root.test.employees.D001(name TEXT,Gender TEXT,Status BOOLEAN,employee_id INT32,salary DOUBLE,date_of_birth DATE,Contac_info string)",
-        "create aligned timeseries root.test.employees.D001(name TEXT,Gender TEXT,Status BOOLEAN,employee_id INT32,salary DOUBLE,date_of_birth DATE,Contac_info string)",
-        "create aligned timeseries root.test.employees.D002(name TEXT,Gender TEXT,Status BOOLEAN,employee_id INT32,salary DOUBLE,date_of_birth DATE,Contac_info string)",
         "create aligned timeseries root.test.employees.D002(name TEXT,Gender TEXT,Status BOOLEAN,employee_id INT32,salary DOUBLE,date_of_birth DATE,Contac_info string)",
         "create aligned timeseries root.test.employees.D003(name TEXT,Gender TEXT,Status BOOLEAN,employee_id INT32,salary DOUBLE,date_of_birth DATE,Contac_info string)",
         "create aligned timeseries root.test.departments.D001(`1department_id` STRING,dep_name TEXT,dep_phone TEXT,dep_status BOOLEAN,dep_member INT32,employee_id INT32)",

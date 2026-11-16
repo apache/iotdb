@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.udf.service;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -30,9 +31,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.IdentityHashMap;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 public class UDFClassLoaderManager implements IService {
 
@@ -40,8 +46,7 @@ public class UDFClassLoaderManager implements IService {
 
   private final String libRoot;
 
-  /** The keys in the map are the query IDs of the UDF queries being executed. */
-  private final Map<String, UDFClassLoader> queryIdToUDFClassLoaderMap;
+  private final ThreadLocal<Deque<QueryScope>> queryScopeStack;
 
   /**
    * activeClassLoader is used to load all classes under libRoot. libRoot may be updated before the
@@ -50,30 +55,135 @@ public class UDFClassLoaderManager implements IService {
    */
   private final AtomicReference<UDFClassLoader> activeClassLoader = new AtomicReference<>();
 
+  public static final class QueryScope {
+    private final String queryId;
+    private final Set<UDFClassLoader> pinnedClassLoaders =
+        Collections.newSetFromMap(new IdentityHashMap<>());
+    private int activeActions;
+    private boolean finalizeRequested;
+    private boolean finalized;
+
+    private QueryScope(String queryId) {
+      this.queryId = queryId;
+    }
+  }
+
   private UDFClassLoaderManager(String libRoot) {
     this.libRoot = libRoot;
     LOGGER.info(CommonMessages.UDF_LIB_ROOT, libRoot);
-    queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
+    queryScopeStack = ThreadLocal.withInitial(ArrayDeque::new);
   }
 
   @TestOnly
   private UDFClassLoaderManager() throws IOException {
     this.libRoot = null;
-    queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
+    queryScopeStack = ThreadLocal.withInitial(ArrayDeque::new);
     activeClassLoader.set(new UDFClassLoader(""));
   }
 
-  public void initializeUDFQuery(String queryId) {
-    activeClassLoader.get().acquire();
-    queryIdToUDFClassLoaderMap.put(queryId, activeClassLoader.get());
+  public QueryScope openQueryScope(String queryId) {
+    return new QueryScope(Objects.requireNonNull(queryId));
   }
 
-  public void finalizeUDFQuery(String queryId) {
-    UDFClassLoader classLoader = queryIdToUDFClassLoaderMap.remove(queryId);
-    try {
-      if (classLoader != null) {
-        classLoader.release();
+  /**
+   * Bind an existing logical query scope to the current thread. Pins acquired by reflect() remain
+   * owned by the scope after this method returns and must be released by finalizeUDFQuery().
+   */
+  public <T> T withQueryScope(QueryScope queryScope, Supplier<T> action) {
+    Objects.requireNonNull(queryScope);
+    Objects.requireNonNull(action);
+    synchronized (this) {
+      if (queryScope.finalizeRequested || queryScope.finalized) {
+        throw new IllegalStateException(
+            String.format(
+                QueryMessages.EXCEPTION_UDF_QUERY_SCOPE_IS_CLOSED_ARG_7381D949,
+                queryScope.queryId));
       }
+      queryScope.activeActions++;
+    }
+
+    Deque<QueryScope> scopeStack = queryScopeStack.get();
+    scopeStack.push(queryScope);
+    try {
+      return action.get();
+    } finally {
+      scopeStack.pop();
+      if (scopeStack.isEmpty()) {
+        queryScopeStack.remove();
+      }
+      synchronized (this) {
+        queryScope.activeActions--;
+        closeScopeIfPossible(queryScope);
+      }
+    }
+  }
+
+  /**
+   * Pin the exact class loader that defined the reflected UDF class. Built-in functions loaded by
+   * the parent class loader do not create a pin.
+   */
+  public void pinClassLoaderForCurrentQuery(Class<?> udfClass) {
+    ClassLoader classLoader = udfClass.getClassLoader();
+    if (!(classLoader instanceof UDFClassLoader)) {
+      return;
+    }
+
+    Deque<QueryScope> scopeStack = queryScopeStack.get();
+    QueryScope queryScope = scopeStack.peek();
+    if (queryScope == null) {
+      throw new IllegalStateException(
+          String.format(
+              QueryMessages.EXCEPTION_UDF_CLASSLOADER_REQUIRES_QUERY_SCOPE_ARG_A39FB39E,
+              udfClass.getName()));
+    }
+
+    UDFClassLoader udfClassLoader = (UDFClassLoader) classLoader;
+    synchronized (this) {
+      if (queryScope.finalizeRequested || queryScope.finalized) {
+        throw new IllegalStateException(
+            String.format(
+                QueryMessages
+                    .EXCEPTION_FAILED_TO_PIN_UDF_CLASSLOADER_QUERY_SCOPE_ARG_CLASS_ARG_275E1E20,
+                queryScope.queryId,
+                udfClass.getName()));
+      }
+      if (queryScope.pinnedClassLoaders.contains(udfClassLoader)) {
+        return;
+      }
+      if (!udfClassLoader.tryAcquire()) {
+        throw new IllegalStateException(
+            String.format(
+                QueryMessages
+                    .EXCEPTION_FAILED_TO_PIN_UDF_CLASSLOADER_QUERY_SCOPE_ARG_CLASS_ARG_275E1E20,
+                queryScope.queryId,
+                udfClass.getName()));
+      }
+      queryScope.pinnedClassLoaders.add(udfClassLoader);
+    }
+  }
+
+  public synchronized void finalizeUDFQuery(QueryScope queryScope) {
+    if (queryScope == null || queryScope.finalized) {
+      return;
+    }
+    queryScope.finalizeRequested = true;
+    closeScopeIfPossible(queryScope);
+  }
+
+  private void closeScopeIfPossible(QueryScope queryScope) {
+    if (!queryScope.finalizeRequested || queryScope.activeActions > 0 || queryScope.finalized) {
+      return;
+    }
+    for (UDFClassLoader classLoader : queryScope.pinnedClassLoaders) {
+      releaseClassLoaderPin(queryScope.queryId, classLoader);
+    }
+    queryScope.pinnedClassLoaders.clear();
+    queryScope.finalized = true;
+  }
+
+  private void releaseClassLoaderPin(Object queryId, UDFClassLoader classLoader) {
+    try {
+      classLoader.release();
     } catch (IOException e) {
       LOGGER.warn(
           CommonMessages.LOG_FAILED_CLOSE_UDFCLASSLOADER_QUERYID_ARG_BECAUSE_ARG_8B1C3739,
@@ -82,13 +192,36 @@ public class UDFClassLoaderManager implements IService {
     }
   }
 
-  public UDFClassLoader updateAndGetActiveClassLoader() throws IOException {
-    UDFClassLoader deprecatedClassLoader = activeClassLoader.get();
-    activeClassLoader.set(new UDFClassLoader(libRoot));
-    if (deprecatedClassLoader != null) {
-      deprecatedClassLoader.markAsDeprecated();
+  public UDFClassLoader createUDFClassLoader() throws IOException {
+    return new UDFClassLoader(libRoot);
+  }
+
+  public void discardUDFClassLoader(UDFClassLoader classLoader) {
+    try {
+      classLoader.close();
+    } catch (IOException e) {
+      LOGGER.warn(
+          CommonMessages.LOG_FAILED_CLOSE_UDFCLASSLOADER_QUERYID_ARG_BECAUSE_ARG_8B1C3739,
+          System.identityHashCode(classLoader),
+          e.toString());
     }
-    return activeClassLoader.get();
+  }
+
+  public synchronized void publishUDFClassLoader(
+      UDFClassLoader newClassLoader, Runnable publishCatalog) {
+    UDFClassLoader deprecatedClassLoader = activeClassLoader.get();
+    publishCatalog.run();
+    activeClassLoader.set(newClassLoader);
+    if (deprecatedClassLoader != null) {
+      try {
+        deprecatedClassLoader.markAsDeprecated();
+      } catch (IOException e) {
+        LOGGER.warn(
+            CommonMessages.LOG_FAILED_CLOSE_UDFCLASSLOADER_QUERYID_ARG_BECAUSE_ARG_8B1C3739,
+            System.identityHashCode(deprecatedClassLoader),
+            e.toString());
+      }
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +232,17 @@ public class UDFClassLoaderManager implements IService {
   public void start() throws StartupException {
     try {
       SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
-      activeClassLoader.set(new UDFClassLoader(libRoot));
+      if (activeClassLoader.get() != null) {
+        return;
+      }
+      UDFClassLoader newClassLoader = createUDFClassLoader();
+      synchronized (this) {
+        if (activeClassLoader.get() == null) {
+          activeClassLoader.set(newClassLoader);
+        } else {
+          newClassLoader.close();
+        }
+      }
     } catch (IOException e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }

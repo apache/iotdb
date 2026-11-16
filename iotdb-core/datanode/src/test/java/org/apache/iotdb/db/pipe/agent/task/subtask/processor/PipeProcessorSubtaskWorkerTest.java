@@ -609,7 +609,11 @@ public class PipeProcessorSubtaskWorkerTest {
       Assert.assertEquals(0, executor.getPoolSize());
 
       final AtomicInteger calls = new AtomicInteger();
+      final AtomicBoolean subtaskClosed = new AtomicBoolean();
       final PipeProcessorSubtask subtask = createRunnableSubtask("subtask");
+      // Configure the mock before scheduling; restubbing while the worker calls it can race with
+      // Mockito's invocation tracking. Change only the atomic state once the worker is running.
+      when(subtask.isClosed()).thenAnswer(ignored -> subtaskClosed.get());
       doAnswer(
               invocation -> {
                 calls.incrementAndGet();
@@ -625,13 +629,15 @@ public class PipeProcessorSubtaskWorkerTest {
 
       // Close the only subtask of this worker. Both the worker and its thread should be released
       // instead of being kept alive until the whole subtask executor is shut down.
-      when(subtask.isClosed()).thenReturn(true);
+      subtaskClosed.set(true);
       await().atMost(10, TimeUnit.SECONDS).until(() -> !worker.isRunning());
       await().atMost(10, TimeUnit.SECONDS).until(() -> executor.getPoolSize() == 0);
 
       // A newly scheduled subtask must start a new worker thread.
       final AtomicInteger restartedCalls = new AtomicInteger();
+      final AtomicBoolean restartedSubtaskClosed = new AtomicBoolean();
       final PipeProcessorSubtask restartedSubtask = createRunnableSubtask("restartedSubtask");
+      when(restartedSubtask.isClosed()).thenAnswer(ignored -> restartedSubtaskClosed.get());
       doAnswer(
               invocation -> {
                 restartedCalls.incrementAndGet();
@@ -645,7 +651,7 @@ public class PipeProcessorSubtaskWorkerTest {
       await().atMost(10, TimeUnit.SECONDS).until(() -> restartedCalls.get() > 0);
       Assert.assertEquals(1, executor.getPoolSize());
 
-      when(restartedSubtask.isClosed()).thenReturn(true);
+      restartedSubtaskClosed.set(true);
       await().atMost(10, TimeUnit.SECONDS).until(() -> !worker.isRunning());
       await().atMost(10, TimeUnit.SECONDS).until(() -> executor.getPoolSize() == 0);
     } finally {

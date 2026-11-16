@@ -183,7 +183,8 @@ public class IoTDBLoadTsFileLifecycleIT {
                             source ->
                                 name.equals(source)
                                     || name.equals(source + TsFileResource.RESOURCE_SUFFIX)
-                                    || name.equals(source + ModificationFile.FILE_SUFFIX));
+                                    || name.equals(source + ModificationFile.FILE_SUFFIX)
+                                    || name.equals(source + ".load-failure"));
                   })
               .forEach(remaining::add);
         }
@@ -1058,19 +1059,41 @@ public class IoTDBLoadTsFileLifecycleIT {
     Awaitility.await().atMost(60, TimeUnit.SECONDS).untilAsserted(() -> assertFailedSource(source));
   }
 
-  private static void assertFailedSource(File source) {
-    final File failed = new File(node().getNodePath(), "ext/load/failed");
+  private static void assertFailedSource(File source) throws IOException {
+    final File failed = findFailedSource(source);
+    Assert.assertNotNull("Failed LOAD group must retain its TsFile", failed);
     for (String suffix :
         new String[] {"", TsFileResource.RESOURCE_SUFFIX, ModificationFile.FILE_SUFFIX}) {
-      Assert.assertTrue(new File(failed, source.getName() + suffix).isFile());
+      Assert.assertTrue(new File(failed + suffix).isFile());
     }
   }
 
   private static void deleteFailedSource(File source) throws IOException {
-    final File failed = new File(node().getNodePath(), "ext/load/failed");
+    final File failed = findFailedSource(source);
+    if (failed == null) {
+      return;
+    }
     for (String suffix :
-        new String[] {"", TsFileResource.RESOURCE_SUFFIX, ModificationFile.FILE_SUFFIX}) {
-      Files.deleteIfExists(new File(failed, source.getName() + suffix).toPath());
+        new String[] {
+          "", TsFileResource.RESOURCE_SUFFIX, ModificationFile.FILE_SUFFIX, ".load-failure"
+        }) {
+      Files.deleteIfExists(new File(failed + suffix).toPath());
+    }
+    Files.deleteIfExists(failed.getParentFile().toPath());
+  }
+
+  private static File findFailedSource(File source) throws IOException {
+    final Path failed = new File(node().getNodePath(), "ext/load/failed").toPath();
+    if (!Files.isDirectory(failed)) {
+      return null;
+    }
+    try (Stream<Path> files = Files.walk(failed)) {
+      return files
+          .filter(Files::isRegularFile)
+          .filter(file -> source.getName().equals(file.getFileName().toString()))
+          .map(Path::toFile)
+          .findFirst()
+          .orElse(null);
     }
   }
 

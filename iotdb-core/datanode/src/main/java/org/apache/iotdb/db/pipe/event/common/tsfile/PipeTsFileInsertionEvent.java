@@ -593,6 +593,18 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
+  public synchronized boolean decreaseReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
+    final boolean decreased = super.decreaseReferenceCount(holderMessage, shouldReport);
+    if (decreased && isReleased() && Objects.isNull(getCommitterKey())) {
+      // A split TsFile may only commit its generated tablets. Releasing that original event ends
+      // its processing, but the transfer hook must still wait for parsing and all tablet commits.
+      markAsTransferredIfGeneratedTabletEventsCompleted();
+    }
+    return decreased;
+  }
+
+  @Override
   public boolean clearReferenceCount(final String holderMessage) {
     final boolean cleared = super.clearReferenceCount(holderMessage);
     // clearReferenceCount intentionally bypasses the commit queue. Notify the realtime source even
@@ -698,14 +710,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     final boolean generationBoundaryReached =
         !generatedTabletInsertionEventsParsingStarted.get()
             || generatedTabletInsertionEventsParsingCompleted.get();
-    // The normal processor path does not retain a tablet iterable unless parsing has explicitly
-    // been marked as started.  In that path, registering the generated tablets and reaching the
-    // generation boundary is sufficient to establish the transfer boundary (the source TsFile
-    // commit may be reported separately or may be intentionally skipped).  Once an iterable has
-    // been retained, however, the source TsFile commit must also be observed before the generated
-    // tablet counts can release the TsFile.  This distinction keeps deferred parsing safe without
-    // delaying the established non-deferred path.
-    if ((isTsFileEventCommitted.get() || !generatedTabletInsertionEventsParsingStarted.get())
+    // The collector only assigns commit ids to the generated tablets when it splits a TsFile.
+    // The original event then finishes processing without entering the commit queue. If the
+    // original event does enter that queue, resource release alone must not bypass its commit.
+    if ((isTsFileEventCommitted.get()
+            || (isReleased() && Objects.isNull(getCommitterKey()))
+            || !generatedTabletInsertionEventsParsingStarted.get())
         && generationBoundaryReached
         && transferredGeneratedTabletInsertionEventCount.get()
                 + discardedGeneratedTabletInsertionEventCount.get()

@@ -20,6 +20,11 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_12143E89 = "Query attempt %s is closed.";
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_ADMISSION_EXPIRED_DEADLINE_ARG_NS_NOW_ARG_NS_16A9846C = "Query attempt %s admission expired: deadline=%d ns, now=%d ns.";
+  public static final String EXCEPTION_INVALID_QUERY_ADMISSION_ISSUER_FOR_ATTEMPT_ARG_9D1C4E9C = "Invalid query admission issuer for attempt %s.";
+
+
   public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
       "Fail to insert measurements %s caused by %s";
 
@@ -2814,6 +2819,9 @@ public final class DataNodeQueryMessages {
       "Failures happened during running ConfigExecution when executing {}, message: {}, status: {}";
   public static final String FAILURES_HAPPENED_DURING_RUNNING_CONFIGEXECUTION_WHEN_EXECUTING_ARG =
       "Failures happened during running ConfigExecution when executing {}.";
+  public static final String
+      LOG_FAILED_TO_CREATE_THE_TREE_TO_TABLE_VIEW_ARG_ARG_WITH_STATUS_CODE_ARG_ARG_0A3C8F10 =
+          "Failed to create the tree to table view {}.{} with status code {}: {}.";
   public static final String FAILED_TO_EXECUTE_CREATE_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG =
       "Failed to execute create database {} in config node, status is {}.";
   public static final String FAILED_TO_EXECUTE_ALTER_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG =
@@ -4966,4 +4974,13 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s: %s ms, %s invocations, %s applications";
+  public static final String EXCEPTION_NOT_ENOUGH_MEMORY_WHILE_ANALYZING_TIME_PARTITIONS_NARROW_THE_QUERY_TIME_RANGE_OR_INCREASE_QUERY_MEMORY_MEMORY_DETAILS_REQUESTED_THIS_TIME_ARG_CURRENT_FREE_MEMORY_ARG_ORIGINAL_ERROR_ARG_37676B2A =
+      "Not enough memory while analyzing time partitions. Narrow the query time range or increase query memory. Memory details: requested this time %s, current free memory %s. Original error: %s";
+
+  public static final String EXCEPTION_QUERY_ARG_CANNOT_RESERVE_ARG_BYTES_PENDING_FRONT_END_MEMORY_RESERVATION_EXCEEDS_LONG_MAX_VALUE_BYTES_D38CD6D8 =
+      "Query %s cannot reserve %s bytes: pending front-end memory reservation exceeds Long.MAX_VALUE bytes.";
+
+  public static final String LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9 =
+      "[QueryFailed] queryId: {}, sql: {}";
+
 }

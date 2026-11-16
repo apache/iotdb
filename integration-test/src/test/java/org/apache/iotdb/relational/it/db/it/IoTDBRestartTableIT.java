@@ -38,7 +38,8 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -70,8 +71,9 @@ public class IoTDBRestartTableIT {
 
   private final Logger logger = LoggerFactory.getLogger(IoTDBRestartTableIT.class);
 
-  @Before
-  public void setUp() throws Exception {
+  // Reuse the fixed WAL/schema configuration while retaining every scenario's recovery restarts.
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -91,8 +93,8 @@ public class IoTDBRestartTableIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
     EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("ASYNC");
     EnvFactory.getEnv()
@@ -101,6 +103,18 @@ public class IoTDBRestartTableIT {
         .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus");
   }
 
+  @After
+  public void cleanDatabase() throws SQLException {
+    // Recreate each scenario's tables without retaining data or schema from the preceding test.
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("drop database if exists \"test\"");
+    }
+  }
+
+  /**
+   * Write flushed and unflushed table rows across two restarts, then verify all three timestamps.
+   */
   @Test
   public void testPartialAndRejectedFieldsSurviveCrash() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -254,6 +268,10 @@ public class IoTDBRestartTableIT {
     }
   }
 
+  /**
+   * Recover three points and verify the remaining values after two range deletions, with a flush
+   * between them.
+   */
   @Test
   public void testRestartDelete() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -370,6 +388,7 @@ public class IoTDBRestartTableIT {
     }
   }
 
+  /** Write rows across two restarts and verify the time filter returns only the row at time 4. */
   @Test
   public void testRestartQueryLargerThanEndTime() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -422,6 +441,9 @@ public class IoTDBRestartTableIT {
     }
   }
 
+  /**
+   * Add another field at earlier timestamps after recovery and verify both values survive restart.
+   */
   @Test
   public void testRestartEndTime() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -471,6 +493,10 @@ public class IoTDBRestartTableIT {
     }
   }
 
+  /**
+   * Retain the disabled column-deletion scenario: recreate a series with a different type and
+   * verify recovery discards its incompatible WAL value while preserving the other series.
+   */
   @Ignore // delete column
   @Test
   public void testRecoverWALMismatchDataType() throws Exception {
@@ -504,6 +530,10 @@ public class IoTDBRestartTableIT {
     }
   }
 
+  /**
+   * Retain the disabled column-deletion scenario: delete one series before restart and verify that
+   * only the remaining series and its value recover.
+   */
   @Ignore // delete column
   @Test
   public void testRecoverWALDeleteSchema() throws Exception {
@@ -534,6 +564,7 @@ public class IoTDBRestartTableIT {
     }
   }
 
+  /** Write fields at different times, restart DataNodes, and verify both values before time 3. */
   @Test
   public void testRecoverWALDeleteSchemaCheckResourceTime() throws Exception {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -576,6 +607,9 @@ public class IoTDBRestartTableIT {
     config.setUnSeqTsFileSize(unFsFileSize);
   }
 
+  /**
+   * Restart after writing an unflushed table row and verify its timestamp and both field values.
+   */
   @Test
   public void testRecoverFromFlushMemTableError() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
