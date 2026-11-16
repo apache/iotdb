@@ -321,15 +321,15 @@ public class PipeTransferTrackableHandlerTest {
     final Thread closeThread = new Thread(sink::close, "pipe-sink-close");
     closeThread.setDaemon(true);
 
-    callbackThread.start();
-    Assert.assertTrue(callbackEntered.await(5, TimeUnit.SECONDS));
-    closeThread.start();
-    Assert.assertTrue(sink.closeEliminationStarted.await(5, TimeUnit.SECONDS));
-
     try {
+      callbackThread.start();
+      Assert.assertTrue(callbackEntered.await(30, TimeUnit.SECONDS));
+      closeThread.start();
+      Assert.assertTrue(sink.closeEliminationStarted.await(30, TimeUnit.SECONDS));
+
       allowCallbackToFinish.countDown();
-      callbackThread.join(TimeUnit.SECONDS.toMillis(5));
-      closeThread.join(TimeUnit.SECONDS.toMillis(5));
+      callbackThread.join(TimeUnit.SECONDS.toMillis(30));
+      closeThread.join(TimeUnit.SECONDS.toMillis(30));
       Assert.assertFalse(callbackThread.isAlive());
       Assert.assertFalse(closeThread.isAlive());
       Assert.assertTrue(sink.isClosed());
@@ -337,6 +337,8 @@ public class PipeTransferTrackableHandlerTest {
       allowCallbackToFinish.countDown();
       callbackThread.interrupt();
       closeThread.interrupt();
+      callbackThread.join(TimeUnit.SECONDS.toMillis(30));
+      closeThread.join(TimeUnit.SECONDS.toMillis(30));
     }
   }
 

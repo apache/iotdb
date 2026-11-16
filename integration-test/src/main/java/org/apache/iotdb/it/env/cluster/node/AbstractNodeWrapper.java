@@ -488,13 +488,20 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public void stop() {
+    stop(20, TimeUnit.SECONDS);
+  }
+
+  public void stop(final long timeout, final TimeUnit unit) {
     if (this.instance == null) {
       return;
     }
     this.instance.destroy();
     try {
-      if (!this.instance.waitFor(20, TimeUnit.SECONDS)) {
-        this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
+      if (!this.instance.waitFor(timeout, unit)) {
+        logger.warn("Node {} does not exit within {} {}, killing it", getId(), timeout, unit);
+        if (!this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS)) {
+          logger.error("Cannot forcibly stop node {}", getId());
+        }
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
