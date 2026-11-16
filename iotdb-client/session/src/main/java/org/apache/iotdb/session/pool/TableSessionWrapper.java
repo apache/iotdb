@@ -57,12 +57,13 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
+  public synchronized void insert(Tablet tablet)
+      throws StatementExecutionException, IoTDBConnectionException {
     insert(tablet, null);
   }
 
   @Override
-  public void insert(Tablet tablet, String database)
+  public synchronized void insert(Tablet tablet, String database)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       session.insertRelationalTablet(tablet, database);
@@ -75,7 +76,7 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public SessionDataSet executeQueryStatement(String sql)
+  public synchronized SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       return session.executeQueryStatement(sql);
@@ -88,7 +89,7 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+  public synchronized SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       return session.executeQueryStatement(sql, timeoutInMs);
@@ -101,7 +102,7 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public void executeNonQueryStatement(String sql)
+  public synchronized void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
       session.executeNonQueryStatement(sql);
@@ -114,40 +115,46 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public void close() throws IoTDBConnectionException {
-    if (!Objects.equals(session.getSqlDialect(), sessionPool.sqlDialect)) {
-      try {
-        session.executeNonQueryStatement("set sql_dialect=" + sessionPool.sqlDialect);
-      } catch (StatementExecutionException e) {
-        LOGGER.warn(
-            SessionMessages
-                .LOG_FAILED_CHANGE_BACK_SQL_DIALECT_EXECUTING_SET_SQL_DIALECT_ARG_947F35E7,
-            sessionPool.sqlDialect,
-            e);
-        session.close();
-        session = null;
-        return;
-      }
+  public synchronized void close() throws IoTDBConnectionException {
+    if (!closed.compareAndSet(false, true)) {
+      return;
     }
 
-    if (closed.compareAndSet(false, true)) {
-      if (!Objects.equals(session.getDatabase(), sessionPool.database)
+    Session closingSession = session;
+    session = null;
+    try {
+      if (!Objects.equals(closingSession.getSqlDialect(), sessionPool.sqlDialect)) {
+        try {
+          closingSession.executeNonQueryStatement("set sql_dialect=" + sessionPool.sqlDialect);
+        } catch (StatementExecutionException e) {
+          LOGGER.warn(
+              SessionMessages
+                  .LOG_FAILED_CHANGE_BACK_SQL_DIALECT_EXECUTING_SET_SQL_DIALECT_ARG_947F35E7,
+              sessionPool.sqlDialect,
+              e);
+          sessionPool.cleanSessionAndMayThrowConnectionException(closingSession);
+          return;
+        }
+      }
+
+      if (!Objects.equals(closingSession.getDatabase(), sessionPool.database)
           && sessionPool.database != null) {
         try {
-          session.executeNonQueryStatement("use " + sessionPool.database);
+          closingSession.executeNonQueryStatement("use " + sessionPool.database);
         } catch (StatementExecutionException e) {
           LOGGER.warn(
               SessionMessages.LOG_FAILED_CHANGE_BACK_DATABASE_EXECUTING_USE_ARG_274541CA,
               sessionPool.database,
               e);
-          session.close();
-          session = null;
+          sessionPool.cleanSessionAndMayThrowConnectionException(closingSession);
           return;
         }
       }
 
-      sessionPool.putBack(session);
-      session = null;
+      sessionPool.putBack(closingSession);
+    } catch (IoTDBConnectionException e) {
+      sessionPool.cleanSessionAndMayThrowConnectionException(closingSession);
+      throw e;
     }
   }
 }

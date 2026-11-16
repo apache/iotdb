@@ -32,9 +32,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.when;
 
 public class PipeDataRegionSinkMetricsTest {
@@ -52,7 +53,7 @@ public class PipeDataRegionSinkMetricsTest {
             invocation -> {
               if (blockBindOnce.compareAndSet(true, false)) {
                 bindEntered.countDown();
-                Assert.assertTrue(continueBind.await(5, TimeUnit.SECONDS));
+                continueBind.await();
               }
               return "pipe";
             });
@@ -71,28 +72,35 @@ public class PipeDataRegionSinkMetricsTest {
 
     final ExecutorService executor = Executors.newFixedThreadPool(2);
     final Future<?> bindFuture = executor.submit(() -> metrics.bindTo(metricService));
-    Future<?> deregisterFuture = null;
     try {
-      Assert.assertTrue(bindEntered.await(5, TimeUnit.SECONDS));
-      deregisterFuture = executor.submit(() -> metrics.deregister(taskId));
+      Assert.assertTrue(bindEntered.await(30, TimeUnit.SECONDS));
+      final AtomicReference<Thread> deregisterThread = new AtomicReference<>();
+      final Future<?> deregisterFuture =
+          executor.submit(
+              () -> {
+                deregisterThread.set(Thread.currentThread());
+                metrics.deregister(taskId);
+              });
       try {
-        try {
-          deregisterFuture.get(200, TimeUnit.MILLISECONDS);
-          Assert.fail("Deregistration must wait until metric binding completes");
-        } catch (final TimeoutException expected) {
-          // Expected: bindTo holds the lifecycle lock until all metrics are created.
-        }
+        await()
+            .atMost(30, TimeUnit.SECONDS)
+            .until(
+                () ->
+                    deregisterFuture.isDone()
+                        || (deregisterThread.get() != null
+                            && deregisterThread.get().getState() == Thread.State.BLOCKED));
+        Assert.assertFalse(
+            "Deregistration must wait until metric binding completes", deregisterFuture.isDone());
       } finally {
         continueBind.countDown();
       }
 
-      bindFuture.get(5, TimeUnit.SECONDS);
-      Assert.assertNotNull(deregisterFuture);
-      deregisterFuture.get(5, TimeUnit.SECONDS);
+      bindFuture.get(30, TimeUnit.SECONDS);
+      deregisterFuture.get(30, TimeUnit.SECONDS);
     } finally {
       continueBind.countDown();
       executor.shutdownNow();
-      Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      Assert.assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
     }
   }
 }
