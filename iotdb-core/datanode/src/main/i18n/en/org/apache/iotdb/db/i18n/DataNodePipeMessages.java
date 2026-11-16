@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
+  public static final String EXCEPTION_THE_PARAMETER_ARG_CANNOT_BE_SET_TO_FALSE_111C3408 =
+      "The parameter %s cannot be set to false.";
+
   public static final String LOG_SUBSCRIPTION_REPLAY_STALLED_FOR_ARG_MS_ARG_DIAGNOSTICS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_CB012F98 =
       "Subscription replay stalled for {} ms: {}; diagnostics={}. Inspect prefetch worker stacks and WAL I/O.";
 
