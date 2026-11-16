@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeCompactedTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeCompactionManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -357,6 +358,105 @@ public class PipeRealtimePriorityBlockingQueueTest {
   }
 
   @Test
+  public void testEmitCompactionResultSkipsDeletedTargets() throws Exception {
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
+    final PipeCompactionManager compactionManager = createCompactionManager(queue);
+    final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
+    final File sourceFile0 = newTsFile("source0.tsfile");
+    final File sourceFile1 = newTsFile("source1.tsfile");
+    final File targetFile0 = newTsFile("target0.tsfile");
+    final File targetFile1 = newTsFile("target1.tsfile");
+    final TsFileResource deletedTarget0 =
+        new TsFileResource(new File(targetFile0.getParentFile(), "unused0.inner"));
+    final TsFileResource deletedTarget1 =
+        new TsFileResource(new File(targetFile0.getParentFile(), "unused1.inner"));
+    deletedTarget0.forceMarkDeleted();
+    deletedTarget1.forceMarkDeleted();
+    final PipeTsFileInsertionEvent sourceEvent0 = createEvent(sourceFile0, committerKey, 1L);
+    final PipeTsFileInsertionEvent sourceEvent1 = createEvent(sourceFile1, committerKey, 2L);
+    queue.offer(sourceEvent0);
+    queue.offer(sourceEvent1);
+
+    compactionManager.emitResult(
+        "root.db",
+        "1",
+        0,
+        Arrays.asList(new TsFileResource(sourceFile0), new TsFileResource(sourceFile1)),
+        Collections.emptyList(),
+        Arrays.asList(
+            deletedTarget0,
+            new TsFileResource(targetFile0),
+            new TsFileResource(targetFile1),
+            deletedTarget1));
+
+    final List<Event> queuedEvents = new ArrayList<>();
+    queue.forEach(queuedEvents::add);
+    Assert.assertEquals(2, queuedEvents.size());
+    Assert.assertTrue(queuedEvents.get(0) instanceof PipeCompactedTsFileInsertionEvent);
+    Assert.assertTrue(queuedEvents.get(1) instanceof PipeCompactedTsFileInsertionEvent);
+    final PipeCompactedTsFileInsertionEvent compactedEvent0 =
+        (PipeCompactedTsFileInsertionEvent) queuedEvents.get(0);
+    final PipeCompactedTsFileInsertionEvent compactedEvent1 =
+        (PipeCompactedTsFileInsertionEvent) queuedEvents.get(1);
+    try {
+      Assert.assertEquals(
+          targetFile0.getAbsoluteFile(), compactedEvent0.getSourceTsFile().getAbsoluteFile());
+      Assert.assertEquals(
+          targetFile1.getAbsoluteFile(), compactedEvent1.getSourceTsFile().getAbsoluteFile());
+      Assert.assertTrue(
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(targetFile0, "pipe_1")
+              .exists());
+      Assert.assertTrue(
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(targetFile1, "pipe_1")
+              .exists());
+      Assert.assertEquals(
+          new HashSet<>(Arrays.asList(1L, 2L)), new HashSet<>(compactedEvent1.getCommitIds()));
+      Assert.assertFalse(compactedEvent0.isShouldReportOnCommit());
+      Assert.assertTrue(compactedEvent1.isShouldReportOnCommit());
+      verify(sourceEvent0)
+          .decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
+      verify(sourceEvent1)
+          .decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
+    } finally {
+      compactedEvent0.decreaseReferenceCount(
+          PipeRealtimePriorityBlockingQueue.class.getName(), false);
+      compactedEvent1.decreaseReferenceCount(
+          PipeRealtimePriorityBlockingQueue.class.getName(), false);
+      queue.clear();
+    }
+  }
+
+  @Test
+  public void testEmitCompactionResultKeepsSourcesWithoutSurvivingTargets() throws Exception {
+    final File sourceFile = newTsFile("source.tsfile");
+    final TsFileResource deletedTarget =
+        new TsFileResource(new File(sourceFile.getParentFile(), "unused.inner"));
+    deletedTarget.forceMarkDeleted();
+    final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
+    for (final List<TsFileResource> targets :
+        Arrays.asList(
+            Collections.<TsFileResource>emptyList(), Collections.singletonList(deletedTarget))) {
+      final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
+      final PipeCompactionManager compactionManager = createCompactionManager(queue);
+      final PipeTsFileInsertionEvent sourceEvent = createEvent(sourceFile, committerKey, 1L);
+      queue.offer(sourceEvent);
+
+      compactionManager.emitResult(
+          "root.db",
+          "1",
+          0,
+          Collections.singletonList(new TsFileResource(sourceFile)),
+          Collections.emptyList(),
+          targets);
+
+      Assert.assertSame(sourceEvent, queue.directPoll());
+      Assert.assertNull(queue.directPoll());
+      Assert.assertTrue(sourceEvent.isShouldReportOnCommit());
+      verify(sourceEvent, never()).decreaseReferenceCount(anyString(), anyBoolean());
+    }
+  }
+
+  @Test
   public void testReplaceOnlyRemovesEventsForCompactionSourceFiles() throws Exception {
     final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
     final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, 0);
@@ -544,6 +644,15 @@ public class PipeRealtimePriorityBlockingQueueTest {
     Assert.assertNull(queue.directPoll());
     verify(sourceEvent, never())
         .decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
+  }
+
+  private PipeCompactionManager createCompactionManager(
+      final PipeRealtimePriorityBlockingQueue queue) {
+    final PipeSinkSubtaskLifeCycle lifeCycle = Mockito.mock(PipeSinkSubtaskLifeCycle.class);
+    doReturn(queue).when(lifeCycle).getPendingQueue();
+    final PipeCompactionManager compactionManager = new PipeCompactionManager();
+    compactionManager.registerPipeConnectorSubtaskLifeCycle(lifeCycle);
+    return compactionManager;
   }
 
   private PipeTsFileInsertionEvent createEvent(
