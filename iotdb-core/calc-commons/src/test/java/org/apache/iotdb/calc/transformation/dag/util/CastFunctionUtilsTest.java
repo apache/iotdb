@@ -74,9 +74,40 @@ public class CastFunctionUtilsTest {
     Assert.assertEquals(2, CastFunctionUtils.castDoubleToInt(1.5));
   }
 
+  @Test
+  public void castDoubleToIntKeepsDoublePrecision() {
+    Assert.assertEquals(16777217, CastFunctionUtils.castDoubleToInt(16777217.0));
+    Assert.assertEquals(123456789, CastFunctionUtils.castDoubleToInt(123456789.0));
+    Assert.assertEquals(-123456789, CastFunctionUtils.castDoubleToInt(-123456789.0));
+    Assert.assertEquals(2147483000, CastFunctionUtils.castDoubleToInt(2147483000.0));
+    Assert.assertEquals(2147483646, CastFunctionUtils.castDoubleToInt(2147483646.0));
+    Assert.assertEquals(-2147483647, CastFunctionUtils.castDoubleToInt(-2147483647.0));
+    Assert.assertEquals(Integer.MAX_VALUE, CastFunctionUtils.castDoubleToInt(2147483647.0));
+    Assert.assertEquals(Integer.MIN_VALUE, CastFunctionUtils.castDoubleToInt(-2147483648.0));
+    Assert.assertEquals(2, CastFunctionUtils.castDoubleToInt(2.4999999999));
+    Assert.assertEquals(100000002, CastFunctionUtils.castDoubleToInt(100000001.5));
+  }
+
+  @Test
+  public void castDoubleToIntRoundsHalfUp() {
+    Assert.assertEquals(3, CastFunctionUtils.castDoubleToInt(2.5));
+    Assert.assertEquals(-1, CastFunctionUtils.castDoubleToInt(-1.5));
+    Assert.assertEquals(-2, CastFunctionUtils.castDoubleToInt(-2.5));
+  }
+
   @Test(expected = SemanticException.class)
   public void castDoubleToIntOverflow() {
     CastFunctionUtils.castDoubleToInt(Double.MAX_VALUE);
+  }
+
+  @Test(expected = SemanticException.class)
+  public void castDoubleToIntJustAboveMax() {
+    CastFunctionUtils.castDoubleToInt(2147483648.0);
+  }
+
+  @Test(expected = SemanticException.class)
+  public void castDoubleToIntJustBelowMin() {
+    CastFunctionUtils.castDoubleToInt(-2147483649.0);
   }
 
   // ---- castDoubleToLong ----

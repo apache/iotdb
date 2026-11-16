@@ -49,7 +49,8 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
+  public synchronized void insert(Tablet tablet)
+      throws StatementExecutionException, IoTDBConnectionException {
     Session currentSession = getOpenSession();
     try {
       currentSession.insertRelationalTablet(tablet);
@@ -59,7 +60,7 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public SessionDataSet executeQueryStatement(String sql)
+  public synchronized SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
     Session currentSession = getOpenSession();
     try {
@@ -70,7 +71,7 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+  public synchronized SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     Session currentSession = getOpenSession();
     try {
@@ -81,7 +82,7 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public void executeNonQueryStatement(String sql)
+  public synchronized void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     Session currentSession = getOpenSession();
     try {
@@ -92,16 +93,13 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public void close() throws IoTDBConnectionException {
-    final Session sessionToRelease;
-    synchronized (this) {
-      if (closed) {
-        return;
-      }
-      closed = true;
-      sessionToRelease = session;
-      session = null;
+  public synchronized void close() throws IoTDBConnectionException {
+    if (closed) {
+      return;
     }
+    closed = true;
+    final Session sessionToRelease = session;
+    session = null;
 
     if (sessionPool.isPoolClosed()) {
       sessionPool.releaseSession(sessionToRelease, false);
@@ -144,22 +142,17 @@ public class TableSessionWrapper implements ITableSession {
     sessionPool.releaseSession(sessionToRelease, reusable);
   }
 
-  private Session getOpenSession() throws IoTDBConnectionException {
-    synchronized (this) {
-      if (closed || session == null) {
-        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
-      }
-      return session;
+  private synchronized Session getOpenSession() throws IoTDBConnectionException {
+    if (closed || session == null) {
+      throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
     }
+    return session;
   }
 
   private IoTDBConnectionException releaseOnConnectionFailure(IoTDBConnectionException exception) {
-    final Session failedSession;
-    synchronized (this) {
-      closed = true;
-      failedSession = session;
-      session = null;
-    }
+    closed = true;
+    final Session failedSession = session;
+    session = null;
     if (failedSession != null) {
       sessionPool.releaseSession(failedSession, false);
     }

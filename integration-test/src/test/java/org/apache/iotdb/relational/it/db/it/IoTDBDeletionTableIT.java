@@ -2826,8 +2826,11 @@ public class IoTDBDeletionTableIT {
           int finalI = i;
           Awaitility.await()
               .atMost(5, TimeUnit.MINUTES)
-              .pollDelay(2, TimeUnit.SECONDS)
-              .pollInterval(2, TimeUnit.SECONDS)
+              // Most counts already match after the synchronous delete. Avoid paying two seconds
+              // for every deleted range while retaining retries for asynchronous visibility.
+              .pollInSameThread()
+              .pollDelay(0, TimeUnit.MILLISECONDS)
+              .pollInterval(100, TimeUnit.MILLISECONDS)
               .until(
                   () -> {
                     ResultSet set =
@@ -3023,6 +3026,8 @@ public class IoTDBDeletionTableIT {
     }
   }
 
+  // Concurrently write 100 files with 100 timestamps on each of four devices, randomly delete
+  // device-specific ranges, and check every range against its expected remaining point count.
   @Test
   public void testConcurrentFlushAndRandomDeviceDeletion()
       throws InterruptedException, ExecutionException, SQLException {

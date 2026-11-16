@@ -838,6 +838,11 @@ public class SessionPool implements ISessionPool {
         queue.push(session);
         // we do not need to notifyAll as any waited thread can continue to work after waked up.
         this.notify();
+        // comment the following codes as putBack is too frequently called.
+        //      if (logger.isTraceEnabled()) {
+        //        logger.trace("put a session back and notify others..., queue.size = {}",
+        // queue.size());
+        //      }
         return;
       }
     }
@@ -859,8 +864,7 @@ public class SessionPool implements ISessionPool {
         if (!wasOccupied) {
           return false;
         }
-        queue.push(session);
-        this.notify();
+        putBack(session);
         return true;
       }
       replenish = !closed;
@@ -927,13 +931,22 @@ public class SessionPool implements ISessionPool {
 
   @Override
   public void closeResultSet(SessionDataSetWrapper wrapper) {
+    ISession session;
+    synchronized (wrapper) {
+      session = wrapper.getSession();
+      if (session == null) {
+        return;
+      }
+      // Detach before returning the session, so closing an old wrapper cannot release a new query.
+      wrapper.setSession(null);
+    }
     boolean putback = true;
     try {
       wrapper.getSessionDataSet().closeOperationHandle();
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       putback = false;
     } finally {
-      releaseSession(wrapper.getSession(), putback);
+      releaseSession(session, putback);
     }
   }
 
@@ -941,10 +954,11 @@ public class SessionPool implements ISessionPool {
   private void tryConstructNewSession() {
     synchronized (this) {
       if (closed) {
+        size--;
+        this.notify();
         return;
       }
     }
-
     Session session = constructNewSession();
     try {
       session.open(
