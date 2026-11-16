@@ -145,6 +145,10 @@ public class DateBinFunctionTest {
     long origin = getTimestamp("2024-03-15 00:00:00.500");
     assertEquals(origin, dateBin(origin, origin, 1, 0, zoneId));
     assertEquals(origin, dateBin(origin + MILLIS_IN_DAY, origin, 1, 0, zoneId));
+    // before 1970, getEpochSecond() rounds toward negative infinity and getNano() stays
+    // non-negative, so the sub-second origin is preserved on both sides of the epoch
+    assertEquals(-500L, dateBin(-500L, -500L, 1, 0, zoneId));
+    assertEquals(-2678400500L, dateBin(-2678399500L, -500L, 1, 0, zoneId));
   }
 
   @Test
@@ -161,11 +165,22 @@ public class DateBinFunctionTest {
   }
 
   @Test
+  public void testMonthBinPastLongRangeSaturates() {
+    DateBinFunctionColumnTransformer transformer =
+        new DateBinFunctionColumnTransformer(TimestampType.TIMESTAMP, 1, 0, null, 500, zoneId);
+    long[] startEnd = transformer.dateBinStartEnd(Long.MAX_VALUE - 1000);
+    assertEquals(9223372035446400500L, startEnd[0]);
+    assertEquals(Long.MAX_VALUE, startEnd[1]);
+    assertEquals(Long.MAX_VALUE, nextDateBin(1, zoneId, startEnd[0]));
+  }
+
+  @Test
   public void testMonthIntervalWithSubSecondOriginInMicrosecondPrecision() {
     setTimestampPrecision("us");
     assertEquals(1500, dateBin(1500, 1500, 1, 0, zoneId));
     // 2678400000000 us is one month after the epoch
     assertEquals(2678400001500L, dateBin(2678400001500L, 1500, 1, 0, zoneId));
+    assertEquals(-1500L, dateBin(-1500L, -1500L, 1, 0, zoneId));
   }
 
   @Test
