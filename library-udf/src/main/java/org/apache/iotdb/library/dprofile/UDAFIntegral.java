@@ -30,6 +30,9 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+
 /**
  * calculate the integral or the area under the curve of input series $unit$ is the time scale for
  * the area calculation, chosen from 1s(second, default), 1m(minute), 1h(hour), 1d(day).
@@ -43,7 +46,7 @@ public class UDAFIntegral implements UDTF {
   long lastTime = -1;
   boolean hasLastValue;
   double lastValue;
-  double integralValue = 0;
+  BigDecimal integralValue = BigDecimal.ZERO;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -66,7 +69,7 @@ public class UDAFIntegral implements UDTF {
     lastTime = -1;
     hasLastValue = false;
     lastValue = 0;
-    integralValue = 0;
+    integralValue = BigDecimal.ZERO;
   }
 
   @Override
@@ -80,8 +83,14 @@ public class UDAFIntegral implements UDTF {
       // calculate the ladder-shaped area between last point and this one
       // skip and initialize the memory if no existing previous point is available
       if (hasLastValue) {
-        integralValue +=
-            (lastValue + nowValue) * timeDifference(nowTime, lastTime) / 2.0 / unitTime;
+        // Retain the area before scaling: even a finite final result may have a huge numerator.
+        BigDecimal timeSpan = BigDecimal.valueOf(nowTime).subtract(BigDecimal.valueOf(lastTime));
+        BigDecimal area =
+            new BigDecimal(lastValue)
+                .add(new BigDecimal(nowValue))
+                .multiply(timeSpan)
+                .divide(BigDecimal.valueOf(2));
+        integralValue = integralValue.add(area);
       }
       lastTime = nowTime;
       lastValue = nowValue;
@@ -89,16 +98,10 @@ public class UDAFIntegral implements UDTF {
     }
   }
 
-  private double timeDifference(long endTime, long startTime) {
-    try {
-      return Math.subtractExact(endTime, startTime);
-    } catch (ArithmeticException ignored) {
-      return (double) endTime - (double) startTime;
-    }
-  }
-
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    collector.putDouble(0, integralValue); // default: 0
+    collector.putDouble(
+        0,
+        integralValue.divide(BigDecimal.valueOf(unitTime), MathContext.DECIMAL128).doubleValue());
   }
 }

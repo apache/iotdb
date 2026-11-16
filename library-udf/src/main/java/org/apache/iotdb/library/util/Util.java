@@ -307,10 +307,10 @@ public class Util {
         unit = 60 * 1000 * 1000 * 1000L;
         s = s.substring(0, s.length() - 1);
       } else if (s.endsWith("h")) {
-        unit = 60 * 60 * 1000 * 1000 * 1000L;
+        unit = 60L * 60 * 1000 * 1000 * 1000;
         s = s.substring(0, s.length() - 1);
       } else if (s.endsWith("d")) {
-        unit = 24 * 60 * 60 * 1000 * 1000 * 1000L;
+        unit = 24L * 60 * 60 * 1000 * 1000 * 1000;
         s = s.substring(0, s.length() - 1);
       }
     }

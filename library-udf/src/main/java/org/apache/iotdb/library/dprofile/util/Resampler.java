@@ -193,15 +193,24 @@ public class Resampler {
         }
         break;
       case "linear":
+        // Subtract timestamps before conversion, and scale before multiplying the values.
+        double span = timeDifference(source.get(1).time, source.get(0).time);
         ret =
-            source.get(0).value * (source.get(1).time - t)
-                + source.get(1).value * (t - source.get(0).time);
-        ret = ret / (source.get(1).time - source.get(0).time);
+            source.get(0).value * (timeDifference(source.get(1).time, t) / span)
+                + source.get(1).value * (timeDifference(t, source.get(0).time) / span);
         break;
       default:
         throw new IllegalArgumentException(LibraryUdfMessages.ILLEGAL_INTERPOLATION_ALGORITHM);
     }
     return ret;
+  }
+
+  private double timeDifference(long endTime, long startTime) {
+    try {
+      return Math.subtractExact(endTime, startTime);
+    } catch (ArithmeticException ignored) {
+      return (double) endTime - (double) startTime;
+    }
   }
 
   /** judge if there is a next point in the buffer. */

@@ -29,6 +29,9 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+
 /**
  * calculate the integral or the area under the curve of input series $unit$ is the time scale for
  * the area calculation, chosen from 1s(second, default), 1m(minute), 1h(hour), 1d(day).
@@ -39,7 +42,7 @@ public class UDAFIntegralAvg implements UDTF {
   long lastTime = -1;
   boolean hasValue;
   double lastValue = 0;
-  double integralValue = 0;
+  BigDecimal integralValue = BigDecimal.ZERO;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -56,7 +59,7 @@ public class UDAFIntegralAvg implements UDTF {
     lastTime = -1;
     hasValue = false;
     lastValue = 0;
-    integralValue = 0;
+    integralValue = BigDecimal.ZERO;
   }
 
   @Override
@@ -71,19 +74,18 @@ public class UDAFIntegralAvg implements UDTF {
         startTime = nowTime;
       } else {
         // calculate the ladder-shaped area between last point and this one
-        integralValue += (lastValue + nowValue) * timeDifference(nowTime, lastTime) / 2.0;
+        // Normalize before conversion to double so extreme areas retain a finite average.
+        BigDecimal timeSpan = BigDecimal.valueOf(nowTime).subtract(BigDecimal.valueOf(lastTime));
+        BigDecimal area =
+            new BigDecimal(lastValue)
+                .add(new BigDecimal(nowValue))
+                .multiply(timeSpan)
+                .divide(BigDecimal.valueOf(2));
+        integralValue = integralValue.add(area);
       }
       lastTime = nowTime;
       lastValue = nowValue;
       hasValue = true;
-    }
-  }
-
-  private double timeDifference(long endTime, long startTime) {
-    try {
-      return Math.subtractExact(endTime, startTime);
-    } catch (ArithmeticException ignored) {
-      return (double) endTime - (double) startTime;
     }
   }
 
@@ -96,8 +98,8 @@ public class UDAFIntegralAvg implements UDTF {
       // one single point
       collector.putDouble(0, lastValue);
     } else {
-      collector.putDouble(
-          0, integralValue / timeDifference(lastTime, startTime)); // 所有UDAF函数的时间戳都默认为0
+      BigDecimal timeSpan = BigDecimal.valueOf(lastTime).subtract(BigDecimal.valueOf(startTime));
+      collector.putDouble(0, integralValue.divide(timeSpan, MathContext.DECIMAL128).doubleValue());
     }
   }
 }

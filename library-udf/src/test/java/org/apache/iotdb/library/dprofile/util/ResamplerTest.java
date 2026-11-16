@@ -52,6 +52,24 @@ public class ResamplerTest {
     Assert.assertEquals(List.of(firstTime, firstTime + 10, firstTime + 20), drainTimes(resampler));
   }
 
+  @Test
+  public void linearInterpolationHandlesTimeSpanAcrossLongRange() {
+    Resampler resampler = new Resampler(Long.MAX_VALUE, "last", "linear");
+    resampler.insert(Long.MIN_VALUE, 0.0);
+    resampler.insert(Long.MAX_VALUE, 2.0);
+    resampler.flush();
+
+    List<Long> times = new ArrayList<>();
+    List<Double> values = new ArrayList<>();
+    while (resampler.hasNext()) {
+      times.add(resampler.getOutTime());
+      values.add(resampler.getOutValue());
+      resampler.next();
+    }
+    Assert.assertEquals(List.of(Long.MIN_VALUE, -1L, Long.MAX_VALUE - 1), times);
+    Assert.assertEquals(List.of(0.0, 1.0, 2.0), values);
+  }
+
   private List<Long> drainTimes(Resampler resampler) {
     List<Long> times = new ArrayList<>();
     while (resampler.hasNext()) {
