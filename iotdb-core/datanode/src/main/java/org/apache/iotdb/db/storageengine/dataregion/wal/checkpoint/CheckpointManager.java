@@ -39,7 +39,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -79,6 +78,8 @@ public class CheckpointManager implements AutoCloseable {
   private ILogWriter currentLogWriter;
   // size of the file before any incremental checkpoints are appended
   private long initialCheckpointSize;
+  // Both names may survive after a failed publication and rollback. Stop appending until recovery.
+  private volatile IOException checkpointPublicationFailure;
 
   // endregion
 
@@ -139,7 +140,7 @@ public class CheckpointManager implements AutoCloseable {
     long start = System.nanoTime();
     try {
       MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
-      if (memTableInfo == null) {
+      if (memTableInfo == null || checkpointPublicationFailure != null) {
         return;
       }
       Checkpoint checkpoint =
@@ -159,7 +160,7 @@ public class CheckpointManager implements AutoCloseable {
     long start = System.nanoTime();
     try {
       MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
-      if (memTableInfo == null) {
+      if (memTableInfo == null || checkpointPublicationFailure != null) {
         return;
       }
       memTableInfo.setFlushed();
@@ -198,11 +199,21 @@ public class CheckpointManager implements AutoCloseable {
     }
   }
 
+  public void checkCheckpointPublication() throws IOException {
+    IOException failure = checkpointPublicationFailure;
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
   // region Task to fsync checkpoint file
   /** Fsync checkpoints to the disk. */
   public void fsyncCheckpointFile() {
     infoLock.lock();
     try {
+      if (checkpointPublicationFailure != null) {
+        return;
+      }
       try {
         currentLogWriter.force();
       } catch (IOException e) {
@@ -251,18 +262,13 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   private CheckpointWriter initializeLogWriter(File file, boolean append) throws IOException {
-    // The .tmp suffix keeps a candidate out of checkpoint recovery, even after a crash.
-    Path candidate =
-        append
-            ? null
-            : Files.createTempFile(
-                file.toPath().toAbsolutePath().getParent(), file.getName(), ".tmp");
+    File candidate = append ? null : CheckpointFileUtils.createCheckpointCandidate(file);
     CheckpointWriter writer = null;
     try {
-      writer = openCheckpointWriter(candidate == null ? file : candidate.toFile());
+      writer = openCheckpointWriter(candidate == null ? file : candidate);
       writeInitialCheckpoint(writer);
       if (candidate != null) {
-        writer.publish(file);
+        publishCheckpoint(writer, file, candidate);
       }
       return writer;
     } catch (IOException | RuntimeException | Error e) {
@@ -277,12 +283,34 @@ public class CheckpointManager implements AutoCloseable {
       }
       if (candidate != null) {
         try {
-          Files.deleteIfExists(candidate);
+          Files.deleteIfExists(candidate.toPath());
         } catch (IOException | RuntimeException | Error deleteException) {
           e.addSuppressed(deleteException);
         }
       }
       throw e;
+    }
+  }
+
+  private void publishCheckpoint(CheckpointWriter writer, File file, File candidate)
+      throws IOException {
+    try {
+      writer.publish(file);
+    } catch (IOException | RuntimeException | Error failure) {
+      if (file.equals(writer.getLogFile())) {
+        // The final name became visible before synchronization failed. Make its removal durable
+        // before accepting any more writes through the old checkpoint.
+        try {
+          writer.publish(candidate);
+        } catch (IOException | RuntimeException | Error rollbackFailure) {
+          if (rollbackFailure != failure) {
+            failure.addSuppressed(rollbackFailure);
+          }
+          checkpointPublicationFailure =
+              failure instanceof IOException ioFailure ? ioFailure : new IOException(failure);
+        }
+      }
+      throw failure;
     }
   }
 

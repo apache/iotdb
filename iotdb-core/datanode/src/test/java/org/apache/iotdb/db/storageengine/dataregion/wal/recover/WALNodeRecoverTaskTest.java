@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.CheckpointFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
@@ -197,6 +198,10 @@ public class WALNodeRecoverTaskTest {
     }
     byte[] walBefore = Files.readAllBytes(wal.toPath());
     byte[] checkpointBefore = Files.readAllBytes(checkpointFile.toPath());
+    File candidate = CheckpointFileUtils.createCheckpointCandidate(new File(node, "_1.checkpoint"));
+    Files.writeString(candidate.toPath(), "V99-WAL");
+    File unrelatedTemp = new File(node, "_1.checkpoint.backup.tmp");
+    Files.createFile(unrelatedTemp.toPath());
     UnsealedTsFileRecoverPerformer failed = performers.get(0);
     when(failed.canWrite()).thenReturn(true);
     if (finalization) {
@@ -222,6 +227,7 @@ public class WALNodeRecoverTaskTest {
     verify(healthy).endRecovery();
     assertArrayEquals(walBefore, Files.readAllBytes(wal.toPath()));
     assertArrayEquals(checkpointBefore, Files.readAllBytes(checkpointFile.toPath()));
+    assertTrue(candidate.exists());
     if (stableNode) {
       WALManager manager = WALManager.getInstance();
       for (int i = 0; i < 3; i++) {
@@ -262,6 +268,10 @@ public class WALNodeRecoverTaskTest {
       CountDownLatch retryLatch = new CountDownLatch(1);
       new WALNodeRecoverTask(node, retryLatch).run();
       assertEquals(0, retryLatch.getCount());
+      assertFalse(candidate.exists());
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+        assertTrue(unrelatedTemp.exists());
+      }
       for (UnsealedTsFileRecoverPerformer performer : retried) {
         assertEquals(
             WALRecoverListener.Status.SUCCESS, performer.getRecoverListener().waitForResult());

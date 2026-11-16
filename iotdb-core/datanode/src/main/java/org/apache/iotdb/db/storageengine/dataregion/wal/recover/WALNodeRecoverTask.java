@@ -151,16 +151,10 @@ public class WALNodeRecoverTask implements Runnable {
           logDirectory);
       return;
     }
+    deleteRecoveredCheckpoints(CheckpointFileUtils.listCheckpointCandidates(logDirectory));
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       // delete checkpoint info to avoid repeated recover
-      File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
-      for (File checkpointFile : checkpointFiles) {
-        try {
-          Files.delete(checkpointFile.toPath());
-        } catch (IOException e) {
-          logger.error(StorageEngineMessages.ERROR_DELETE_CHECKPOINT_FILE, checkpointFile, e);
-        }
-      }
+      deleteRecoveredCheckpoints(CheckpointFileUtils.listAllCheckpointFiles(logDirectory));
       // register wal node
       WALManager.getInstance()
           .registerWALNode(
@@ -194,6 +188,19 @@ public class WALNodeRecoverTask implements Runnable {
           StorageEngineMessages
               .STORAGE_LOG_SUCCESSFULLY_RECOVER_WAL_NODE_IN_THE_DIRECTORY_ADD_THIS_FA6ADE22,
           logDirectory);
+    }
+  }
+
+  private static void deleteRecoveredCheckpoints(File[] checkpointFiles) {
+    if (checkpointFiles == null) {
+      return;
+    }
+    for (File checkpointFile : checkpointFiles) {
+      try {
+        Files.deleteIfExists(checkpointFile.toPath());
+      } catch (IOException e) {
+        logger.error(StorageEngineMessages.ERROR_DELETE_CHECKPOINT_FILE, checkpointFile, e);
+      }
     }
   }
 

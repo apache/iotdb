@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALBuffer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointWriter;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManage
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.CheckpointFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 
 import org.junit.After;
@@ -52,7 +54,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
@@ -60,6 +64,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.wal.WALTestUtils.getI
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -131,6 +136,11 @@ public class CheckpointRollRecoveryTest {
     assertFailedRollKeepsCheckpoint(FailedOperation.PUBLISH);
   }
 
+  @Test
+  public void testDirectorySyncFailureRollsBackAndKeepsCheckpointForReplay() throws Exception {
+    assertFailedRollKeepsCheckpoint(FailedOperation.SYNC_DIRECTORY);
+  }
+
   private void assertFailedRollKeepsCheckpoint(FailedOperation operation) throws Exception {
     File oldFile = checkpointFile(0);
     MemTableInfo table = memTable(1);
@@ -166,7 +176,11 @@ public class CheckpointRollRecoveryTest {
               if (operation == FailedOperation.OPEN) {
                 throw failure;
               }
-              CheckpointWriter candidate = spy(new CheckpointWriter(invocation.getArgument(0)));
+              File file = invocation.getArgument(0);
+              if (operation == FailedOperation.SYNC_DIRECTORY) {
+                return writerWithDirectorySyncFailure(file, failure, null);
+              }
+              CheckpointWriter candidate = spy(new CheckpointWriter(file));
               switch (operation) {
                 case WRITE_MAX_ID:
                   doThrow(failure).when(candidate).write(any(ByteBuffer.class));
@@ -187,6 +201,74 @@ public class CheckpointRollRecoveryTest {
             })
         .when(manager)
         .openCheckpointWriter(any(File.class));
+  }
+
+  @Test(timeout = 30000)
+  public void testFailedPublicationRollbackStopsWalWrites() throws Exception {
+    File oldFile = checkpointFile(0);
+    File nextFile = checkpointFile(1);
+    MemTableInfo table = memTable(1);
+    IOException syncFailure = new IOException("injected directory sync failure");
+    IOException rollbackFailure = new IOException("injected rollback rename failure");
+    try (CheckpointManager manager =
+            spy(new CheckpointManager("checkpoint-roll", directory.getPath()));
+        WALBuffer buffer = new WALBuffer("checkpoint-roll", directory.getPath(), manager, 0, 0)) {
+      addCheckpoint(manager, table);
+      manager.fsyncCheckpointFile();
+      WALInfoEntry first = new WALInfoEntry(1, getInsertRowNode(DEVICE, 10), true);
+      buffer.write(first);
+      assertEquals(WALFlushListener.Status.SUCCESS, first.getWalFlushListener().waitForResult());
+      long walSize = buffer.getCurrentWALOriginalFileSize();
+      byte[] oldBytes = Files.readAllBytes(oldFile.toPath());
+
+      doAnswer(
+              invocation ->
+                  writerWithDirectorySyncFailure(
+                      invocation.getArgument(0), syncFailure, rollbackFailure))
+          .when(manager)
+          .openCheckpointWriter(any(File.class));
+      config.setCheckpointFileSizeThresholdInByte(oldBytes.length);
+      manager.fsyncCheckpointFile();
+      assertEquals(NodeStatus.ReadOnly, commonConfig.getNodeStatus());
+      assertTrue(nextFile.exists());
+      byte[] nextBytes = Files.readAllBytes(nextFile.toPath());
+
+      commonConfig.setNodeStatus(NodeStatus.Running);
+      addCheckpoint(manager, memTable(2));
+      WALInfoEntry second = new WALInfoEntry(2, getInsertRowNode(DEVICE, 20), true);
+      buffer.write(second);
+      WALFlushListener listener = second.getWalFlushListener();
+      assertEquals(WALFlushListener.Status.FAILURE, listener.waitForResult());
+      assertSame(syncFailure, listener.getCause());
+      assertArrayEquals(new Throwable[] {rollbackFailure}, syncFailure.getSuppressed());
+      assertEquals(walSize, buffer.getCurrentWALOriginalFileSize());
+      assertArrayEquals(oldBytes, Files.readAllBytes(oldFile.toPath()));
+      assertArrayEquals(nextBytes, Files.readAllBytes(nextFile.toPath()));
+    }
+    assertReplay(table, 10);
+  }
+
+  private CheckpointWriter writerWithDirectorySyncFailure(
+      File candidate, IOException syncFailure, IOException rollbackFailure) throws IOException {
+    return new CheckpointWriter(candidate) {
+      @Override
+      public void publish(File target) throws IOException {
+        if (target.equals(candidate) && rollbackFailure != null) {
+          throw rollbackFailure;
+        }
+        super.publish(target);
+      }
+
+      @Override
+      protected void forceParentDirectory(Path parent) throws IOException {
+        if (getLogFile().equals(checkpointFile(1))) {
+          assertTrue(checkpointFile(0).isFile());
+          assertTrue(checkpointFile(1).isFile());
+          throw syncFailure;
+        }
+        super.forceParentDirectory(parent);
+      }
+    };
   }
 
   @Test
@@ -218,25 +300,53 @@ public class CheckpointRollRecoveryTest {
   }
 
   @Test
-  public void testRecoverySkipsUnpublishedCandidateAndIncompleteLegacyCheckpoint()
-      throws Exception {
-    MemTableInfo table = memTable(1);
-    try (CheckpointManager manager =
-        new CheckpointManager("checkpoint-roll", directory.getPath())) {
-      addCheckpoint(manager, table);
-      manager.fsyncCheckpointFile();
-    }
-    writeWalEntry(table, 10);
-    // An older writer could append incremental records after failing to write its snapshot.
+  public void testRecoveryReplaysLegacyIncrementsAfterSnapshotAndSkipsCandidate() throws Exception {
+    MemTableInfo first = memTable(1);
+    MemTableInfo flushed = memTable(2);
+    MemTableInfo latest = memTable(3);
+    writeCheckpointFile(
+        checkpointFile(0),
+        2,
+        new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, List.of(first, flushed)));
+    // A legacy roll can contain a create or flush record even if its snapshot write failed.
     writeCheckpointFile(
         checkpointFile(1),
-        new Checkpoint(CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(memTable(2))));
+        2,
+        new Checkpoint(CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(latest)));
+    writeCheckpointFile(
+        checkpointFile(2),
+        3,
+        new Checkpoint(CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(flushed)));
     // Simulate interruption before publishing a candidate with an empty global snapshot.
     writeCheckpointFile(
-        new File(directory, checkpointFile(2).getName() + ".tmp"),
+        CheckpointFileUtils.createCheckpointCandidate(checkpointFile(3)),
+        100,
         new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, Collections.emptyList()));
-    assertEquals(1, CheckpointRecoverUtils.recoverMemTableInfo(directory).getMaxMemTableId());
-    assertReplay(table, 10);
+    writeWalEntry(latest, 30);
+    CheckpointRecoverUtils.CheckpointInfo recovered =
+        CheckpointRecoverUtils.recoverMemTableInfo(directory);
+    assertEquals(3, recovered.getMaxMemTableId());
+    assertEquals(Set.of(1L, 3L), recovered.getMemTableId2Info().keySet());
+    assertReplay(latest, 30);
+  }
+
+  @Test
+  public void testRecoveryReplaysLegacyIncrementsWithoutSnapshot() throws Exception {
+    MemTableInfo first = memTable(1);
+    writeCheckpointFile(
+        checkpointFile(1),
+        0,
+        new Checkpoint(CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(first)));
+    writeCheckpointFile(
+        checkpointFile(2),
+        1,
+        new Checkpoint(CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(memTable(2))));
+    writeWalEntry(first, 10);
+    CheckpointRecoverUtils.CheckpointInfo recovered =
+        CheckpointRecoverUtils.recoverMemTableInfo(directory);
+    assertEquals(2, recovered.getMaxMemTableId());
+    assertEquals(Set.of(1L, 2L), recovered.getMemTableId2Info().keySet());
+    assertReplay(first, 10);
   }
 
   private File checkpointFile(long version) {
@@ -256,10 +366,11 @@ public class CheckpointRollRecoveryTest {
     manager.makeCreateMemTableCPOnDisk(table.getMemTableId());
   }
 
-  private void writeCheckpointFile(File file, Checkpoint checkpoint) throws IOException {
+  private void writeCheckpointFile(File file, long maxMemTableId, Checkpoint checkpoint)
+      throws IOException {
     try (CheckpointWriter writer = new CheckpointWriter(file)) {
       ByteBuffer data = ByteBuffer.allocate(Long.BYTES + checkpoint.serializedSize());
-      data.putLong(100);
+      data.putLong(maxMemTableId);
       checkpoint.serialize(data);
       writer.write(data);
     }
@@ -299,6 +410,7 @@ public class CheckpointRollRecoveryTest {
     WRITE_MAX_ID,
     WRITE_SNAPSHOT,
     FORCE,
-    PUBLISH
+    PUBLISH,
+    SYNC_DIRECTORY
   }
 }

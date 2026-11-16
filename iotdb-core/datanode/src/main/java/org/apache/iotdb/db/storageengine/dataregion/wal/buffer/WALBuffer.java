@@ -661,8 +661,6 @@ public class WALBuffer extends AbstractWALBuffer {
         return;
       }
 
-      makeMemTableCheckpoints();
-
       long walFileVersionId = currentWALFileVersion;
       currentWALFileWriter.updateFileStatus(fileStatus);
 
@@ -679,6 +677,8 @@ public class WALBuffer extends AbstractWALBuffer {
       // flush buffer to os
       double compressionRatio = 1.0;
       try {
+        makeMemTableCheckpoints();
+        checkpointManager.checkCheckpointPublication();
         compressionRatio = currentWALFileWriter.write(syncingBuffer, info.metaData);
       } catch (Throwable e) {
         logger.error(

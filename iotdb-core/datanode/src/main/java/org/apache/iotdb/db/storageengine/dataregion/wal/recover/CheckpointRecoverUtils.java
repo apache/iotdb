@@ -26,7 +26,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.CheckpointFileUtils;
 
 import java.io.File;
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,39 +45,35 @@ public class CheckpointRecoverUtils {
     }
     // desc sort by version id
     CheckpointFileUtils.descSortByVersionId(checkpointFiles);
-    // find last valid .checkpoint file and load checkpoints from it
+    // Read back to the latest complete snapshot. Legacy rolls can have readable incremental
+    // checkpoints even if writing their snapshot failed.
+    Deque<CheckpointReader> readers = new ArrayDeque<>();
     for (File checkpointFile : checkpointFiles) {
       CheckpointReader reader = new CheckpointReader(checkpointFile);
       List<Checkpoint> checkpoints = reader.getCheckpoints();
-      // A file left by an older failed roll may have incremental records without a snapshot.
-      if (!checkpoints.isEmpty()
-          && checkpoints.get(0).getType() == CheckpointType.GLOBAL_MEMORY_TABLE_INFO) {
-        return recoverMemTableInfo(reader.getMaxMemTableId(), checkpoints);
+      if (checkpoints.isEmpty()) {
+        continue;
+      }
+      readers.addFirst(reader);
+      if (checkpoints.get(0).getType() == CheckpointType.GLOBAL_MEMORY_TABLE_INFO) {
+        break;
       }
     }
-    return new CheckpointInfo(0, Collections.emptyMap());
-  }
 
-  private static CheckpointInfo recoverMemTableInfo(
-      long maxMemTableId, List<Checkpoint> checkpoints) {
-    // recover memTables information by checkpoints
+    // Apply the snapshot and the readable incremental checkpoints in version order.
+    long maxMemTableId = 0;
     Map<Long, MemTableInfo> memTableId2Info = new HashMap<>();
-    for (Checkpoint checkpoint : checkpoints) {
-      switch (checkpoint.getType()) {
-        case GLOBAL_MEMORY_TABLE_INFO:
-        case CREATE_MEMORY_TABLE:
-          for (MemTableInfo memTableInfo : checkpoint.getMemTableInfos()) {
+    for (CheckpointReader reader : readers) {
+      maxMemTableId = Math.max(maxMemTableId, reader.getMaxMemTableId());
+      for (Checkpoint checkpoint : reader.getCheckpoints()) {
+        for (MemTableInfo memTableInfo : checkpoint.getMemTableInfos()) {
+          if (checkpoint.getType() == CheckpointType.FLUSH_MEMORY_TABLE) {
+            memTableId2Info.remove(memTableInfo.getMemTableId());
+          } else {
             maxMemTableId = Math.max(maxMemTableId, memTableInfo.getMemTableId());
             memTableId2Info.put(memTableInfo.getMemTableId(), memTableInfo);
           }
-          break;
-        case FLUSH_MEMORY_TABLE:
-          for (MemTableInfo memTableInfo : checkpoint.getMemTableInfos()) {
-            memTableId2Info.remove(memTableInfo.getMemTableId());
-          }
-          break;
-        default:
-          break;
+        }
       }
     }
     return new CheckpointInfo(maxMemTableId, memTableId2Info);
