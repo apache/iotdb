@@ -142,6 +142,7 @@ import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.db.utils.TypeServices;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
@@ -1639,6 +1640,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     Map<String, String> configuration = new HashMap<>();
     configuration.put(
         TIME_PRECISION, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    configuration.put(SessionConfig.SUPPORTS_DATABASE_SCOPED_TABLET, Boolean.TRUE.toString());
     return resp.setSessionId(openSessionResp.getSessionId()).setConfiguration(configuration);
   }
 
