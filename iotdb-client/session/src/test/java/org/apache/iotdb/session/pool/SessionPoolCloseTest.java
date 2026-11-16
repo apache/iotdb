@@ -32,12 +32,21 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_SELF;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -85,6 +94,55 @@ public class SessionPoolCloseTest {
     assertEquals(1, pool.currentAvailableSize());
     verify(pool, times(1)).putBack(session);
     verify(session, never()).close();
+  }
+
+  @Test
+  public void testConcurrentCloseAndConnectionFailureReplaceSessionOnce() throws Exception {
+    ITableSession borrowed = pool.getPooledTableSession();
+    IoTDBConnectionException failure = new IoTDBConnectionException("statement failed");
+    CountDownLatch operationStarted = new CountDownLatch(1);
+    CountDownLatch continueOperation = new CountDownLatch(1);
+    CountDownLatch closeStarted = new CountDownLatch(1);
+    doAnswer(
+            invocation -> {
+              operationStarted.countDown();
+              continueOperation.await();
+              throw failure;
+            })
+        .when(session)
+        .executeNonQueryStatement("flush");
+
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Future<IoTDBConnectionException> operation =
+          executor.submit(
+              () -> {
+                try {
+                  borrowed.executeNonQueryStatement("flush");
+                  return null;
+                } catch (IoTDBConnectionException e) {
+                  return e;
+                }
+              });
+      assertTrue(operationStarted.await(5, TimeUnit.SECONDS));
+      Future<?> closing =
+          executor.submit(
+              () -> {
+                closeStarted.countDown();
+                borrowed.close();
+                return null;
+              });
+      assertTrue(closeStarted.await(5, TimeUnit.SECONDS));
+      assertThrows(TimeoutException.class, () -> closing.get(1, TimeUnit.SECONDS));
+      continueOperation.countDown();
+
+      assertSame(failure, operation.get(5, TimeUnit.SECONDS));
+      closing.get(5, TimeUnit.SECONDS);
+      assertReplacementAvailable();
+    } finally {
+      continueOperation.countDown();
+      executor.shutdownNow();
+    }
   }
 
   @Test

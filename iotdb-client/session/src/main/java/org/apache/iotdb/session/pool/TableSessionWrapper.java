@@ -57,7 +57,8 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException {
+  public synchronized void insert(Tablet tablet)
+      throws StatementExecutionException, IoTDBConnectionException {
     try {
       session.insertRelationalTablet(tablet);
     } catch (IoTDBConnectionException e) {
@@ -69,7 +70,7 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public SessionDataSet executeQueryStatement(String sql)
+  public synchronized SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       return session.executeQueryStatement(sql);
@@ -82,7 +83,7 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+  public synchronized SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
       return session.executeQueryStatement(sql, timeoutInMs);
@@ -95,7 +96,7 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public void executeNonQueryStatement(String sql)
+  public synchronized void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
       session.executeNonQueryStatement(sql);
@@ -108,7 +109,7 @@ public class TableSessionWrapper implements ITableSession {
   }
 
   @Override
-  public void close() throws IoTDBConnectionException {
+  public synchronized void close() throws IoTDBConnectionException {
     if (!closed.compareAndSet(false, true)) {
       return;
     }
