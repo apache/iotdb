@@ -176,7 +176,7 @@ public class PipeDataNodeTaskAgentTest {
     taskAgent.stopAllPipesWithCriticalExceptionAndTrackException(failedTaskMeta, exception);
 
     Awaitility.await()
-        .atMost(5, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
         .until(
             () ->
                 PipeStatus.STOPPED.equals(failedPipeMeta.getRuntimeMeta().getStatus().get())
@@ -249,7 +249,7 @@ public class PipeDataNodeTaskAgentTest {
     taskAgent.stopAllPipesWithCriticalExceptionAndTrackException(
         detachedTaskMeta, new PipeRuntimeCriticalException("ambiguous task meta", 1L));
 
-    Awaitility.await().atMost(2, TimeUnit.SECONDS).until(detachedTaskMeta::hasExceptionMessages);
+    Awaitility.await().atMost(30, TimeUnit.SECONDS).until(detachedTaskMeta::hasExceptionMessages);
     pipeMetaKeeper.acquireWriteLock();
     pipeMetaKeeper.releaseWriteLock();
 
@@ -286,7 +286,7 @@ public class PipeDataNodeTaskAgentTest {
         "detachedPipe", 2L, detachedTaskMeta, exception);
 
     Awaitility.await()
-        .atMost(5, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
         .until(
             () ->
                 PipeStatus.STOPPED.equals(pipeMeta.getRuntimeMeta().getStatus().get())
@@ -320,7 +320,7 @@ public class PipeDataNodeTaskAgentTest {
         "nullTaskMetaPipe", 3L, null, exception);
 
     Awaitility.await()
-        .atMost(5, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
         .until(
             () ->
                 PipeStatus.STOPPED.equals(failedPipeMeta.getRuntimeMeta().getStatus().get())

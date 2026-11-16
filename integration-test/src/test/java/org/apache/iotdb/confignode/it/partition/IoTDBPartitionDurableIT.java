@@ -274,10 +274,11 @@ public class IoTDBPartitionDurableIT {
   @Test
   public void testUnknownDataNode() throws Exception {
     // Shutdown a DataNode, the ConfigNode should still be able to create RegionGroup
+    DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(testDataNodeId);
     EnvFactory.getEnv().shutdownDataNode(testDataNodeId);
     EnvFactory.getEnv()
         .ensureNodeStatus(
-            Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(testDataNodeId)),
+            Collections.singletonList(dataNodeWrapper),
             Collections.singletonList(NodeStatus.Unknown));
 
     try (SyncConfigNodeIServiceClient client =

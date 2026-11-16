@@ -248,7 +248,7 @@ public class SessionPoolIT {
     BaseNodeWrapper node = EnvFactory.getEnv().getDataNodeWrapper(0);
     try {
       wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
-      node.stop();
+      EnvFactory.getEnv().shutdownDataNode(0);
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
@@ -259,7 +259,7 @@ public class SessionPoolIT {
     } catch (IoTDBConnectionException e) {
       pool.closeResultSet(wrapper);
       pool.close();
-      node.stop();
+      EnvFactory.getEnv().shutdownDataNode(0);
       EnvFactory.getEnv()
           .ensureNodeStatus(
               Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
@@ -285,7 +285,7 @@ public class SessionPoolIT {
       } catch (IoTDBConnectionException ec) {
         pool.closeResultSet(wrapper);
         pool.close();
-        node.stop();
+        EnvFactory.getEnv().shutdownDataNode(0);
         EnvFactory.getEnv()
             .ensureNodeStatus(
                 Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
@@ -341,7 +341,7 @@ public class SessionPoolIT {
     // stop the server.
     pool.close();
     BaseNodeWrapper node = EnvFactory.getEnv().getDataNodeWrapper(0);
-    node.stop();
+    EnvFactory.getEnv().shutdownDataNode(0);
     EnvFactory.getEnv()
         .ensureNodeStatus(
             Collections.singletonList(node), Collections.singletonList(NodeStatus.Unknown));
