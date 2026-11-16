@@ -81,7 +81,7 @@ public class TransformOperatorResourceTest {
     constructor.setAccessible(true);
     UDFClassLoaderManager manager = constructor.newInstance(libRoot.getAbsolutePath());
     manager.start();
-    UDFClassLoader firstLoader = manager.updateAndGetActiveClassLoader();
+    UDFClassLoader firstLoader = createAndPublishClassLoader(manager);
     UDFClassLoader secondLoader = firstLoader;
     UDFClassLoader activeLoader = null;
     Field instance = UDFClassLoaderManager.class.getDeclaredField("INSTANCE");
@@ -97,11 +97,11 @@ public class TransformOperatorResourceTest {
               new FragmentInstanceId(new PlanFragmentId(new QueryId("udf_resources"), 0), "0"), 0));
       first = newTransform(driverContext, 1);
       if (replaceBetweenOperators) {
-        secondLoader = manager.updateAndGetActiveClassLoader();
+        secondLoader = createAndPublishClassLoader(manager);
       }
       second = newTransform(driverContext, 2);
       // CREATE FUNCTION retires the active loader while both operators are still alive.
-      activeLoader = manager.updateAndGetActiveClassLoader();
+      activeLoader = createAndPublishClassLoader(manager);
       assertNotNull(firstLoader.findResource("udf-resource.txt"));
       assertNotNull(secondLoader.findResource("udf-resource.txt"));
 
@@ -133,6 +133,13 @@ public class TransformOperatorResourceTest {
         }
       }
     }
+  }
+
+  private UDFClassLoader createAndPublishClassLoader(UDFClassLoaderManager manager)
+      throws Exception {
+    UDFClassLoader classLoader = manager.createUDFClassLoader();
+    manager.publishUDFClassLoader(classLoader, () -> {});
+    return classLoader;
   }
 
   private TransformOperator newTransform(DriverContext driverContext, int operatorId)
