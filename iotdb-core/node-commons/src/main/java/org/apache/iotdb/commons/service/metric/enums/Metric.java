@@ -183,6 +183,7 @@ public enum Metric {
   PIPE_EXTRACTOR_TSFILE_EPOCH_STATE("pipe_extractor_tsfile_epoch_state"),
   PIPE_MEM("pipe_mem"),
   PIPE_TSFILE_PARSER_ADMISSION_REJECT("pipe_tsfile_parser_admission_reject"),
+  PIPE_TSFILE_PARSER_ADMISSION_REJECT_REASON("pipe_tsfile_parser_admission_reject_reason"),
   PIPE_TSFILE_PARSER_ADMISSION_YIELD("pipe_tsfile_parser_admission_yield"),
   PIPE_TSFILE_PARSER_ADMISSION_WAIT("pipe_tsfile_parser_admission_wait"),
   PIPE_TSFILE_PARSER_IN_FLIGHT("pipe_tsfile_parser_in_flight"),

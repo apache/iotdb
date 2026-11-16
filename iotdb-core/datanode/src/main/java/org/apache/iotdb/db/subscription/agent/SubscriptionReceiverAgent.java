@@ -22,9 +22,11 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiverV1;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -63,6 +65,15 @@ public class SubscriptionReceiverAgent {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
+  private static final TPipeSubscribeResp SUBSCRIPTION_DISABLED_BY_RATIS_RESP =
+      new TPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION,
+              PipeMessages
+                  .MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
   private static final TPipeSubscribeResp SUBSCRIPTION_CONSUMER_FENCED_RESP =
       new TPipeSubscribeResp(
           RpcUtils.getStatus(
@@ -90,8 +101,13 @@ public class SubscriptionReceiverAgent {
   SubscriptionReceiverAgent() {
     this(
         SubscriptionReceiverV1::new,
-        SubscriptionConfig.getInstance().getSubscriptionEnabled(),
-        () -> SubscriptionConfig.getInstance().getSubscriptionEnabled());
+        isSubscriptionEnabled(),
+        SubscriptionReceiverAgent::isSubscriptionEnabled);
+  }
+
+  private static boolean isSubscriptionEnabled() {
+    return SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        && PipeDataNodeAgent.isSubscriptionFeatureEnabled();
   }
 
   SubscriptionReceiverAgent(
@@ -129,6 +145,9 @@ public class SubscriptionReceiverAgent {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
     }
+    if (!PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
+      return SUBSCRIPTION_DISABLED_BY_RATIS_RESP;
+    }
     if (!subscriptionEnabledSupplier.getAsBoolean()) {
       return SUBSCRIPTION_NOT_ENABLED_ERROR_RESP;
     }
@@ -163,7 +182,8 @@ public class SubscriptionReceiverAgent {
                   if (currentReceiver != null && currentReceiver != receiver) {
                     releaseInFlightEventsOnNewInstanceTakeover(
                         currentReceiver, receiver.getConsumerInstanceId());
-                    invalidateReplacedReceiver(currentReceiver, identity);
+                    invalidateReplacedReceiver(
+                        currentReceiver, identity, receiver.getConsumerInstanceId());
                   }
                   return receiver;
                 }
@@ -302,7 +322,8 @@ public class SubscriptionReceiverAgent {
       final TPipeSubscribeReq req,
       final SubscriptionReceiver currentReceiver) {
     if (!isHandshake(req) && currentReceiver != null && currentReceiver != receiver) {
-      receiver.invalidateConsumer();
+      invalidateReplacedReceiver(
+          receiver, getConsumerIdentity(receiver), currentReceiver.getConsumerInstanceId());
     }
     return receiver.handle(req);
   }
@@ -325,14 +346,14 @@ public class SubscriptionReceiverAgent {
               && !shouldKeepCurrentReceiver(currentReceiver, receiver.getConsumerInstanceId())) {
             releaseInFlightEventsOnNewInstanceTakeover(
                 currentReceiver, receiver.getConsumerInstanceId());
-            invalidateReplacedReceiver(currentReceiver, key);
+            invalidateReplacedReceiver(currentReceiver, key, receiver.getConsumerInstanceId());
             registered.set(true);
             return receiver;
           }
           // The receiver completed its handshake after another receiver had already claimed the
           // identity. Keep the current owner and fence this late receiver instead of allowing an
           // old connection to take the consumer back.
-          invalidateReplacedReceiver(receiver, key);
+          invalidateReplacedReceiver(receiver, key, currentReceiver.getConsumerInstanceId());
           return currentReceiver;
         });
     if (registered.get()) {
@@ -358,7 +379,14 @@ public class SubscriptionReceiverAgent {
   }
 
   private void invalidateReplacedReceiver(
-      final SubscriptionReceiver receiver, final ConsumerIdentity identity) {
+      final SubscriptionReceiver receiver,
+      final ConsumerIdentity identity,
+      final String incomingConsumerInstanceId) {
+    if (incomingConsumerInstanceId != null
+        && incomingConsumerInstanceId.equals(receiver.getConsumerInstanceId())) {
+      receiver.invalidateConnection();
+      return;
+    }
     LOGGER.info(
         DataNodePipeMessages
             .LOG_SUBSCRIPTION_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_WAS_TAKEN_OVER_BY_A_NEWER_CONNECTION_FENCED_THE_PREVIOUS_CONNECTION_4E72DBD9,

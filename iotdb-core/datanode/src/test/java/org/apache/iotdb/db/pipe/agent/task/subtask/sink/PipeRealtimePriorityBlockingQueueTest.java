@@ -76,6 +76,20 @@ public class PipeRealtimePriorityBlockingQueueTest {
   }
 
   @Test
+  public void testHeartbeatAfterCompletionBarrierIsNotDropped() {
+    final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue();
+    final PipeHeartbeatEvent completionBarrier = new PipeHeartbeatEvent(1, false, true);
+    final PipeHeartbeatEvent heartbeat = new PipeHeartbeatEvent(1, false);
+
+    Assert.assertTrue(queue.offer(completionBarrier));
+    Assert.assertTrue(queue.offer(heartbeat));
+    Assert.assertFalse(queue.offer(new PipeHeartbeatEvent(1, false)));
+    Assert.assertSame(completionBarrier, queue.directPoll());
+    Assert.assertSame(heartbeat, queue.directPoll());
+    Assert.assertNull(queue.directPoll());
+  }
+
+  @Test
   public void testWaitedPollRetainsTsFilesUntilAsyncSendCapacityIsAvailable() throws Exception {
     final PipeRealtimePriorityBlockingQueue queue = new PipeRealtimePriorityBlockingQueue(true);
     final int maxWaitingTsFiles =
@@ -596,6 +610,8 @@ public class PipeRealtimePriorityBlockingQueueTest {
     final CountDownLatch sourcePathRead = new CountDownLatch(1);
     final CountDownLatch allowReplacementToContinue = new CountDownLatch(1);
     final ExecutorService executor = Executors.newFixedThreadPool(2);
+    final File targetFile = newTsFile("target.tsfile");
+    PipeCompactedTsFileInsertionEvent replacement = null;
 
     try {
       doAnswer(
@@ -614,7 +630,7 @@ public class PipeRealtimePriorityBlockingQueueTest {
                   queue.replace(
                       "1",
                       Collections.singleton(new TsFileResource(sourceFile)),
-                      Collections.emptyList()));
+                      Collections.singletonList(new TsFileResource(targetFile))));
       Assert.assertTrue(sourcePathRead.await(5, TimeUnit.SECONDS));
       final Future<Event> pollFuture = executor.submit(queue::directPoll);
       Assert.assertSame(event, pollFuture.get(5, TimeUnit.SECONDS));
@@ -623,9 +639,24 @@ public class PipeRealtimePriorityBlockingQueueTest {
       replacementFuture.get(5, TimeUnit.SECONDS);
       verify(event, never())
           .decreaseReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName(), false);
+      Assert.assertEquals(1, queue.getTsFileInsertionEventCount());
+      final Event queuedEvent = queue.directPoll();
+      Assert.assertTrue(queuedEvent instanceof PipeCompactedTsFileInsertionEvent);
+      replacement = (PipeCompactedTsFileInsertionEvent) queuedEvent;
+      Assert.assertEquals(
+          targetFile.getAbsoluteFile(), replacement.getSourceTsFile().getAbsoluteFile());
+      Assert.assertEquals(Collections.singletonList(1L), replacement.getCommitIds());
+      Assert.assertEquals(1L, replacement.getCommitId());
+      Assert.assertNull(queue.directPoll());
     } finally {
       allowReplacementToContinue.countDown();
       executor.shutdownNow();
+      executor.awaitTermination(5, TimeUnit.SECONDS);
+      if (replacement != null) {
+        replacement.decreaseReferenceCount(
+            PipeRealtimePriorityBlockingQueue.class.getName(), false);
+      }
+      queue.discardAllEvents();
     }
   }
 

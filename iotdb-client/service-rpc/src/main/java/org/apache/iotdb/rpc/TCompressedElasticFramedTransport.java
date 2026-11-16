@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.layered.TFramedTransport;
@@ -36,10 +38,28 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       int thriftMaxFrameSize,
       boolean copyBinary)
       throws TTransportException {
-    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
+    this(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, Integer.MAX_VALUE);
+  }
+
+  /**
+   * @param maxReusableBufferSize requests larger than this number of bytes use temporary arrays in
+   *     all four buffers and reset their reusable storage to {@code thriftDefaultBufferSize};
+   *     {@link Integer#MAX_VALUE} preserves the original resizing policy
+   */
+  protected TCompressedElasticFramedTransport(
+      TTransport underlying,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean copyBinary,
+      int maxReusableBufferSize)
+      throws TTransportException {
+    super(
+        underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, maxReusableBufferSize);
     try {
-      writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
-      readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
+      writeCompressBuffer =
+          new AutoScalingBufferWriteTransport(thriftDefaultBufferSize, maxReusableBufferSize);
+      readCompressBuffer =
+          new AutoScalingBufferReadTransport(thriftDefaultBufferSize, maxReusableBufferSize);
     } catch (IOException e) {
       closeAllocatedBuffers();
       throw new TTransportException(e);
@@ -58,6 +78,13 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   }
 
   @Override
+  protected int getMaxWriteBufferSize() {
+    // Preserve the wire-size limit: a compressible payload may exceed thriftMaxFrameSize before
+    // compression. Incremental writes still must fit in a Java array.
+    return AutoResizingBuffer.MAX_ARRAY_SIZE;
+  }
+
+  @Override
   protected void readFrame() throws TTransportException {
     // Discard the previous frame's budget before reading the next frame header and payload.
     resetMessageSizeAndConsumedBytes();
@@ -70,6 +97,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     RpcStat.readCompressedBytes.addAndGet(size);
     try {
       int uncompressedLength = uncompressedLength(readBuffer.getBuffer(), 0, size);
+      checkBufferSize(uncompressedLength);
       RpcStat.readBytes.addAndGet(uncompressedLength);
       readCompressBuffer.resizeIfNecessary(uncompressedLength);
       uncompress(readBuffer.getBuffer(), 0, size, readCompressBuffer.getBuffer(), 0);
@@ -87,6 +115,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     RpcStat.writeBytes.addAndGet(length);
     try {
       int maxCompressedLength = maxCompressedLength(length);
+      checkBufferSize(maxCompressedLength);
       writeCompressBuffer.resizeIfNecessary(maxCompressedLength);
       int compressedLength =
           compress(writeBuffer.getBuffer(), 0, length, writeCompressBuffer.getBuffer(), 0);
@@ -97,15 +126,28 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       underlying.write(writeCompressBuffer.getBuffer(), 0, compressedLength);
     } catch (IOException e) {
       throw new TTransportException(e);
+    } finally {
+      // The compressed output has been handed to the underlying transport, so do not retain it.
+      writeCompressBuffer.reset();
     }
 
-    writeBuffer.reset();
     try {
-      writeBuffer.resizeIfNecessary(length);
+      writeBuffer.resetAndResize();
     } catch (IOException e) {
       throw new TTransportException(e);
     }
     underlying.flush();
+  }
+
+  private void checkBufferSize(int size) throws TTransportException {
+    if (size < 0 || size > AutoResizingBuffer.MAX_ARRAY_SIZE) {
+      // Compression bounds can overflow int even when the input fits in a Java array. Reject
+      // before resizing and invalidate the transport, just as for an oversized wire frame.
+      close();
+      throw new TTransportException(
+          TTransportException.CORRUPTED_DATA,
+          String.format(RpcMessages.EXCEPTION_INVALID_COMPRESSION_BUFFER_SIZE_ARG_D677543D, size));
+    }
   }
 
   protected abstract int uncompressedLength(byte[] but, int off, int len) throws IOException;

@@ -20,14 +20,17 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
+import org.apache.iotdb.db.queryengine.common.QueryAttemptId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.BeforeClass;
@@ -64,6 +67,103 @@ public class FragmentInstanceManagerTest {
   @Test
   public void testSchemaQueryFailureInfoAfterConcurrentContextRemoval() throws Exception {
     assertFailureInfoAfterConcurrentContextRemoval(false);
+  }
+
+  @Test
+  public void testPartialDispatchReleasesAttemptContextAndRejectsLateFragment() {
+    QueryId queryId = new QueryId("partial_attempt_dispatch");
+    FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
+    TQueryAdmissionToken token = manager.fetchQueryAdmissionToken(TimeUnit.MINUTES.toMillis(1));
+    org.apache.iotdb.db.queryengine.common.QueryAttemptId key =
+        new org.apache.iotdb.db.queryengine.common.QueryAttemptId(queryId, 0);
+    try {
+      for (int i = 0; i < 2; i++) {
+        FragmentInstance instance = mock(FragmentInstance.class);
+        PlanFragment fragment = mock(PlanFragment.class);
+        FragmentInstanceId id = new FragmentInstanceId(new PlanFragmentId(queryId, i), "0");
+        when(instance.getId()).thenReturn(id);
+        when(instance.getFragment()).thenReturn(fragment);
+        when(instance.hasQueryAttempt()).thenReturn(true);
+        when(instance.getQueryAttemptId()).thenReturn(0);
+        when(instance.getAdmissionToken()).thenReturn(token);
+        when(instance.getDataNodeFINum()).thenReturn(3);
+        when(instance.getTimeOut()).thenReturn(TimeUnit.MINUTES.toMillis(1));
+        when(fragment.getPlanNodeTree())
+            .thenThrow(new MetadataLeaseFencedException(FAILURE_MESSAGE, RETRY_UNTIL_SUCCESS));
+        FragmentInstanceInfo result =
+            manager.execDataQueryFragmentInstance(instance, mock(IDataRegionForQuery.class));
+        assertTrue(result.getState().isFailed());
+      }
+      assertTrue(manager.getQueryAttempts().hasSharedContext(key));
+      manager.closeQueryAttempt(queryId, 0, token, true);
+      org.junit.Assert.assertFalse(manager.getQueryAttempts().hasSharedContext(key));
+      FragmentInstance late = mock(FragmentInstance.class);
+      when(late.getId()).thenReturn(new FragmentInstanceId(new PlanFragmentId(queryId, 2), "0"));
+      when(late.hasQueryAttempt()).thenReturn(true);
+      when(late.getQueryAttemptId()).thenReturn(0);
+      when(late.getAdmissionToken()).thenReturn(token);
+      org.junit.Assert.assertThrows(
+          org.apache.iotdb.commons.exception.IoTDBRuntimeException.class,
+          () -> manager.execDataQueryFragmentInstance(late, mock(IDataRegionForQuery.class)));
+    } finally {
+      manager.closeQueryAttempt(queryId, 0, token, true);
+      for (int i = 0; i < 3; i++) {
+        manager.cancelTask(new FragmentInstanceId(new PlanFragmentId(queryId, i), "0"), true);
+      }
+    }
+  }
+
+  @Test
+  public void testCancelledDataAdmissionReleasesTransferredUdfScope() throws Exception {
+    assertCancelledAdmissionReleasesUdfScope(true);
+  }
+
+  @Test
+  public void testCancelledSchemaAdmissionReleasesTransferredUdfScope() throws Exception {
+    assertCancelledAdmissionReleasesUdfScope(false);
+  }
+
+  private void assertCancelledAdmissionReleasesUdfScope(boolean dataQuery) throws Exception {
+    UDFClassLoaderManager classLoaders = UDFClassLoaderManager.getInstance();
+    if (classLoaders == null) {
+      classLoaders = UDFClassLoaderManager.setupAndGetInstance();
+    }
+    UDFClassLoaderManager loader = classLoaders;
+    QueryId queryId = new QueryId("cancelled_admission_" + dataQuery);
+    FragmentInstanceId id = new FragmentInstanceId(new PlanFragmentId(queryId, 0), "0");
+    UDFClassLoaderManager.QueryScope scope = loader.openQueryScope(id.getFullId());
+    FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
+    TQueryAdmissionToken token = manager.fetchQueryAdmissionToken(30000);
+    FragmentInstance instance = mock(FragmentInstance.class);
+    when(instance.getId()).thenReturn(id);
+    when(instance.hasQueryAttempt()).thenReturn(true);
+    when(instance.getQueryAttemptId()).thenReturn(0);
+    when(instance.getAdmissionToken()).thenReturn(token);
+    when(instance.getTimeOut()).thenReturn(30000L);
+    when(instance.getDataNodeFINum()).thenReturn(3);
+    when(instance.claimUDFQueryScope()).thenReturn(scope);
+    // The attempt closes after registration, before the newly created FI context adopts the
+    // deserializer's scope. No execution listener will exist to perform its cleanup.
+    when(instance.getSessionInfo())
+        .thenAnswer(
+            ignored -> {
+              manager.closeQueryAttempt(queryId, 0, token, true);
+              return null;
+            });
+    try {
+      FragmentInstanceInfo info =
+          dataQuery
+              ? manager.execDataQueryFragmentInstance(instance, mock(IDataRegionForQuery.class))
+              : manager.execSchemaQueryFragmentInstance(instance, mock(ISchemaRegion.class));
+      assertEquals(FragmentInstanceState.CANCELLED, info.getState());
+      org.junit.Assert.assertThrows(
+          IllegalStateException.class, () -> loader.withQueryScope(scope, () -> null));
+      org.junit.Assert.assertFalse(
+          manager.getQueryAttempts().hasSharedContext(new QueryAttemptId(queryId, 0)));
+    } finally {
+      manager.cancelTask(id, true);
+      loader.finalizeUDFQuery(scope);
+    }
   }
 
   private void assertFailureInfoAfterConcurrentContextRemoval(boolean dataQuery) throws Exception {

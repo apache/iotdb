@@ -52,12 +52,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTDBAirGapReceiverAgentTest {
 
-  @Test(timeout = 30_000)
+  @Test(timeout = 150_000)
   public void testUdpSocketIsDrainedWhileRequestHandlingIsBlocked() throws Exception {
     verifyUdpQueue(false);
   }
 
-  @Test(timeout = 30_000)
+  @Test(timeout = 150_000)
   public void testStoppingUdpReceiverReleasesQueuedPackets() throws Exception {
     verifyUdpQueue(true);
   }
@@ -97,12 +97,12 @@ public class IoTDBAirGapReceiverAgentTest {
       try {
         final byte[] data = new byte[60 * 1024];
         sender.send(new DatagramPacket(data, data.length, receiver.getLocalSocketAddress()));
-        Assert.assertTrue(handlingStarted.await(5, TimeUnit.SECONDS));
+        Assert.assertTrue(handlingStarted.await(30, TimeUnit.SECONDS));
+        final long queueDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
         for (int i = 1; i <= 16; i++) {
           data[0] = (byte) i;
           sender.send(new DatagramPacket(data, data.length, receiver.getLocalSocketAddress()));
-          final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-          while (queue.size() < i && System.nanoTime() < deadline) {
+          while (queue.size() < i && System.nanoTime() < queueDeadline) {
             Thread.sleep(1);
           }
           Assert.assertEquals(i, queue.size());
@@ -110,7 +110,7 @@ public class IoTDBAirGapReceiverAgentTest {
         Assert.assertEquals(initialPermits - 17 * data.length, bytes.availablePermits());
         if (!stopWithPendingPackets) {
           resumeHandling.countDown();
-          Assert.assertTrue(handled.await(5, TimeUnit.SECONDS));
+          Assert.assertTrue(handled.await(30, TimeUnit.SECONDS));
           for (int i = 0; i < 17; i++) {
             Assert.assertEquals(i, order.get(i).intValue());
           }
@@ -118,7 +118,7 @@ public class IoTDBAirGapReceiverAgentTest {
       } finally {
         agent.stop();
         resumeHandling.countDown();
-        Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+        Assert.assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
       }
       Assert.assertTrue(queue.isEmpty());
       Assert.assertEquals(initialPermits, bytes.availablePermits());

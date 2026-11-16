@@ -25,15 +25,17 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
-import org.apache.iotdb.it.env.MultiEnvFactory;
+import org.apache.iotdb.it.env.cluster.config.MppDataNodeConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+import org.apache.iotdb.pipe.it.dual.PipeTestUtils;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -41,34 +43,53 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
-public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
+public class IoTDBPipeSourceIT extends AbstractPipeTreeModelSharedClusterIT {
 
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
+    senderEnv
+        .getConfig()
+        .getDataNodeConfig()
+        .setMetricReporterType(Collections.singletonList("JMX"))
+        .setCompactionScheduleInterval(100);
+    // Keep a backlog at the oldest end while one file is being sent. Compaction stays disabled
+    // for the other source tests; only the concurrent-compaction scenario enables it temporarily.
+    final Properties queueProperties = new Properties();
+    queueProperties.setProperty("pipe_realtime_queue_max_waiting_tsfile_size", "1");
+    queueProperties.setProperty("pipe_realtime_queue_poll_historical_tsfile_threshold", "1000000");
+    ((MppDataNodeConfig) senderEnv.getConfig().getDataNodeConfig())
+        .updateProperties(queueProperties);
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -80,6 +101,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
+        .setTimePartitionInterval(TimeUnit.DAYS.toMillis(7))
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
@@ -99,11 +121,10 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
   }
 
+  // Each valid history/realtime time-boundary parameter creates a pipe successfully; reuse one
+  // tree-model JDBC connection for all ten CREATE PIPE statements and retain count checkpoints.
   @Test
   public void testExtractorValidParameter() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -111,225 +132,182 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    // ---------------------------------------------------------- //
-    // Scenario 1: when 'source.history.enable' is set to true //
-    // ---------------------------------------------------------- //
-
-    // Scenario 1.1: test when 'source.history.start-time' and 'source.history.end-time' are
-    // not set
-    final String p1_1 =
-        String.format(
-            "create pipe p1_1"
-                + " with source ("
-                + "'source.history.enable'='true')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
+      // ---------------------------------------------------------- //
+      // Scenario 1: when 'source.history.enable' is set to true //
+      // ---------------------------------------------------------- //
+
+      // Scenario 1.1: test when 'source.history.start-time' and 'source.history.end-time' are
+      // not set
+      final String p1_1 =
+          String.format(
+              "create pipe p1_1"
+                  + " with source ("
+                  + "'source.history.enable'='true')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p1_1);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Scenario 1.2: test when only 'source.history.start-time' is set
-    final String p1_2 =
-        String.format(
-            "create pipe p1_2"
-                + " with source ("
-                + "'source.history.enable'='true',"
-                + "'source.history.start-time'='2000.01.01T08:00:00')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Scenario 1.2: test when only 'source.history.start-time' is set
+      final String p1_2 =
+          String.format(
+              "create pipe p1_2"
+                  + " with source ("
+                  + "'source.history.enable'='true',"
+                  + "'source.history.start-time'='2000.01.01T08:00:00')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p1_2);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Scenario 1.3: test when only 'source.history.end-time' is set
-    final String p1_3 =
-        String.format(
-            "create pipe p1_3"
-                + " with source ("
-                + "'source.history.enable'='true',"
-                + "'source.history.end-time'='2000.01.01T08:00:00')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Scenario 1.3: test when only 'source.history.end-time' is set
+      final String p1_3 =
+          String.format(
+              "create pipe p1_3"
+                  + " with source ("
+                  + "'source.history.enable'='true',"
+                  + "'source.history.end-time'='2000.01.01T08:00:00')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p1_3);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Scenario 1.4: test when 'source.history.start-time' equals 'source.history.end-time'
-    final String p1_4 =
-        String.format(
-            "create pipe p1_4"
-                + " with source ("
-                + "'source.history.enable'='true',"
-                + "'source.history.start-time'='2000.01.01T08:00:00',"
-                + "'source.history.end-time'='2000.01.01T08:00:00')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Scenario 1.4: test when 'source.history.start-time' equals 'source.history.end-time'
+      final String p1_4 =
+          String.format(
+              "create pipe p1_4"
+                  + " with source ("
+                  + "'source.history.enable'='true',"
+                  + "'source.history.start-time'='2000.01.01T08:00:00',"
+                  + "'source.history.end-time'='2000.01.01T08:00:00')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p1_4);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Scenario 1.5: test when 'source.history.end-time' is future time
-    final String p1_5 =
-        String.format(
-            "create pipe p1_5"
-                + " with source ("
-                + "'source.history.enable'='true',"
-                + "'source.history.start-time'='2000.01.01T08:00:00',"
-                + "'source.history.end-time'='2100.01.01T08:00:00')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Scenario 1.5: test when 'source.history.end-time' is future time
+      final String p1_5 =
+          String.format(
+              "create pipe p1_5"
+                  + " with source ("
+                  + "'source.history.enable'='true',"
+                  + "'source.history.start-time'='2000.01.01T08:00:00',"
+                  + "'source.history.end-time'='2100.01.01T08:00:00')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p1_5);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    assertPipeCount(5);
+      assertPipeCount(5);
 
-    // ---------------------------------------------------------------------- //
-    // Scenario 2: when 'source.start-time' or 'source.end-time' is specified //
-    // ---------------------------------------------------------------------- //
+      // ---------------------------------------------------------------------- //
+      // Scenario 2: when 'source.start-time' or 'source.end-time' is specified //
+      // ---------------------------------------------------------------------- //
 
-    // Scenario 2.1: test when only 'source.start-time' is set
-    final String p2_1 =
-        String.format(
-            "create pipe p2_1"
-                + " with source ("
-                + "'source.start-time'='2000.01.01T08:00:00')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Scenario 2.1: test when only 'source.start-time' is set
+      final String p2_1 =
+          String.format(
+              "create pipe p2_1"
+                  + " with source ("
+                  + "'source.start-time'='2000.01.01T08:00:00')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p2_1);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Scenario 2.2: test when only 'source.end-time' is set
-    final String p2_2 =
-        String.format(
-            "create pipe p2_2"
-                + " with source ("
-                + "'source.end-time'='2000.01.01T08:00:00')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Scenario 2.2: test when only 'source.end-time' is set
+      final String p2_2 =
+          String.format(
+              "create pipe p2_2"
+                  + " with source ("
+                  + "'source.end-time'='2000.01.01T08:00:00')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p2_2);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Scenario 2.3: test when 'source.start-time' equals 'source.end-time'
-    final String p2_3 =
-        String.format(
-            "create pipe p2_3"
-                + " with source ("
-                + "'source.start-time'='2000.01.01T08:00:00',"
-                + "'source.end-time'='2000.01.01T08:00:00')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Scenario 2.3: test when 'source.start-time' equals 'source.end-time'
+      final String p2_3 =
+          String.format(
+              "create pipe p2_3"
+                  + " with source ("
+                  + "'source.start-time'='2000.01.01T08:00:00',"
+                  + "'source.end-time'='2000.01.01T08:00:00')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p2_3);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Scenario 2.4: test when only when 'source.start-time' is less than 'source.end-time'
-    final String p2_4 =
-        String.format(
-            "create pipe p2_4"
-                + " with source ("
-                + "'source.start-time'='2000.01.01T08:00:00',"
-                + "'source.end-time'='2100.01.01T08:00:00')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Scenario 2.4: test when only when 'source.start-time' is less than 'source.end-time'
+      final String p2_4 =
+          String.format(
+              "create pipe p2_4"
+                  + " with source ("
+                  + "'source.start-time'='2000.01.01T08:00:00',"
+                  + "'source.end-time'='2100.01.01T08:00:00')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p2_4);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    assertPipeCount(9);
+      assertPipeCount(9);
 
-    // ---------------------------------------------------------------------- //
-    // Scenario 3: when 'source.start-time' or 'source.end-time' is timestamp //
-    // ---------------------------------------------------------------------- //
+      // ---------------------------------------------------------------------- //
+      // Scenario 3: when 'source.start-time' or 'source.end-time' is timestamp //
+      // ---------------------------------------------------------------------- //
 
-    // Scenario 3.1: test when 'source.start-time' is timestamp string
-    final String p3_1 =
-        String.format(
-            "create pipe p3_1"
-                + " with source ("
-                + "'source.start-time'='1000',"
-                + "'source.end-time'='2000.01.01T08:00:00')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+      // Scenario 3.1: test when 'source.start-time' is timestamp string
+      final String p3_1 =
+          String.format(
+              "create pipe p3_1"
+                  + " with source ("
+                  + "'source.start-time'='1000',"
+                  + "'source.end-time'='2000.01.01T08:00:00')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p3_1);
+
+      assertPipeCount(10);
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
-
-    assertPipeCount(10);
   }
 
+  // Invalid time bounds and mutually disabled history/realtime options must be rejected without
+  // leaving any pipe behind; expected failures share one connection across all parameter checks.
   @Test
   public void testExtractorInvalidParameter() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -337,97 +315,98 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    // Scenario 1: invalid 'source.history.start-time'
-    final String formatString =
-        String.format(
-            "create pipe p1"
-                + " with source ("
-                + "'source.history.enable'='true',"
-                + "'source.history.start-time'=%s)"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            "%s", receiverIp, receiverPort);
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      // Scenario 1: invalid 'source.history.start-time'
+      final String formatString =
+          String.format(
+              "create pipe p1"
+                  + " with source ("
+                  + "'source.history.enable'='true',"
+                  + "'source.history.start-time'=%s)"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              "%s", receiverIp, receiverPort);
 
-    final List<String> invalidStartTimes =
-        Arrays.asList("''", "null", "'null'", "'-1000-01-01T00:00:00'", "'2000-01-01T00:00:0'");
-    for (final String invalidStartTime : invalidStartTimes) {
-      try (final Connection connection = senderEnv.getConnection();
-          final Statement statement = connection.createStatement()) {
-        statement.execute(String.format(formatString, invalidStartTime));
+      final List<String> invalidStartTimes =
+          Arrays.asList("''", "null", "'null'", "'-1000-01-01T00:00:00'", "'2000-01-01T00:00:0'");
+      for (final String invalidStartTime : invalidStartTimes) {
+        try {
+          statement.execute(String.format(formatString, invalidStartTime));
+          fail();
+        } catch (final SQLException ignored) {
+        }
+      }
+      assertPipeCount(0);
+
+      // Scenario 2: can not set 'source.history.enable' and 'source.realtime.enable' both to
+      // false
+      final String p2 =
+          String.format(
+              "create pipe p2"
+                  + " with source ("
+                  + "'source.history.enable'='false',"
+                  + "'source.realtime.enable'='false')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
+      try {
+        statement.execute(p2);
         fail();
       } catch (final SQLException ignored) {
       }
-    }
-    assertPipeCount(0);
+      assertPipeCount(0);
 
-    // Scenario 2: can not set 'source.history.enable' and 'source.realtime.enable' both to
-    // false
-    final String p2 =
-        String.format(
-            "create pipe p2"
-                + " with source ("
-                + "'source.history.enable'='false',"
-                + "'source.realtime.enable'='false')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
-      statement.execute(p2);
-      fail();
-    } catch (final SQLException ignored) {
-    }
-    assertPipeCount(0);
+      // Scenario 3: test when 'source.history.start-time' is greater than
+      // 'source.history.end-time'
+      final String p3 =
+          String.format(
+              "create pipe p3"
+                  + " with source ("
+                  + "'source.history.enable'='true',"
+                  + "'source.history.start-time'='2001.01.01T08:00:00',"
+                  + "'source.history.end-time'='2000.01.01T08:00:00')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
+      try {
+        statement.execute(p3);
+        fail();
+      } catch (final SQLException ignored) {
+      }
+      assertPipeCount(0);
 
-    // Scenario 3: test when 'source.history.start-time' is greater than
-    // 'source.history.end-time'
-    final String p3 =
-        String.format(
-            "create pipe p3"
-                + " with source ("
-                + "'source.history.enable'='true',"
-                + "'source.history.start-time'='2001.01.01T08:00:00',"
-                + "'source.history.end-time'='2000.01.01T08:00:00')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
-      statement.execute(p3);
-      fail();
-    } catch (final SQLException ignored) {
+      // Scenario 4: test when 'source.start-time' is greater than 'source.end-time'
+      final String p4 =
+          String.format(
+              "create pipe p4"
+                  + " with source ("
+                  + "'source.start-time'='2001.01.01T08:00:00',"
+                  + "'source.end-time'='2000.01.01T08:00:00')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
+      try {
+        statement.execute(p4);
+        fail();
+      } catch (final SQLException ignored) {
+      }
+      assertPipeCount(0);
+    } catch (final SQLException e) {
+      fail(e.getMessage());
     }
-    assertPipeCount(0);
-
-    // Scenario 4: test when 'source.start-time' is greater than 'source.end-time'
-    final String p4 =
-        String.format(
-            "create pipe p4"
-                + " with source ("
-                + "'source.start-time'='2001.01.01T08:00:00',"
-                + "'source.end-time'='2000.01.01T08:00:00')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
-      statement.execute(p4);
-      fail();
-    } catch (final SQLException ignored) {
-    }
-    assertPipeCount(0);
   }
 
   @Test
@@ -773,6 +752,9 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
+  // Replicate only timestamps in [2000, 4000] from history and realtime events, including a Tablet
+  // with unused tail slots. After data completion, out-of-range devices must have no receiver
+  // series.
   @Test
   public void testExtractorTimeRangeMatch() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -875,26 +857,28 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
               "flush"),
           null);
 
-      TestUtils.assertDataAlwaysOnEnv(
+      // Check the updated value as well as absence of excluded devices after every DataRegion has
+      // committed its flush barrier. Align by device because schema-region column order can vary.
+      TestUtils.executeNonQuery(
+          senderEnv, "insert into root.db.d5 (time, at1) values (3000, 30)", null);
+      PipeTestUtils.awaitDataPipeCompletion(senderEnv, "p1");
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(at1) from root.db.d1, root.db.d3, root.db.d5",
-          "count(root.db.d1.at1),count(root.db.d3.at1),count(root.db.d5.at1),",
-          Collections.singleton("3,3,3,"),
-          600,
+          "select at1 from root.db.d5 where time = 3000",
+          "Time,root.db.d5.at1,",
+          Collections.singleton("3000,30,"),
           handleFailure);
-      TestUtils.assertDataAlwaysOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "show timeseries root.db.d2.**",
-          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
-          Collections.emptySet());
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv,
-          "show timeseries root.db.d4.**",
-          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
-          Collections.emptySet());
+          "select count(at1) from root.db.** align by device",
+          "Device,count(at1),",
+          new HashSet<>(Arrays.asList("root.db.d1,3,", "root.db.d3,3,", "root.db.d5,3,")),
+          handleFailure);
     }
   }
 
+  // A start-time bound must not re-enable history: historical series stay absent after initial
+  // completion and after realtime events, while timestamps at and above 2000 are transferred.
   @Test
   public void testSourceTimeRangeRespectsHistoryDisable() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -929,7 +913,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
               new TCreatePipeReq("p1", sinkAttributes).setExtractorAttributes(sourceAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      TestUtils.assertDataAlwaysOnEnv(
+      PipeTestUtils.awaitDataPipeCompletion(senderEnv, "p1");
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show timeseries root.db.history.**",
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
@@ -942,12 +927,13 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                   + " values (1000, 1), (2000, 2), (3000, 3)"),
           null);
 
+      PipeTestUtils.awaitDataPipeCompletion(senderEnv, "p1");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(at1) from root.db.realtime",
           "count(root.db.realtime.at1),",
           Collections.singleton("2,"));
-      TestUtils.assertDataAlwaysOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show timeseries root.db.history.**",
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
@@ -1148,6 +1134,135 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
             }
           });
     }
+  }
+
+  @Test
+  public void testConcurrentSendingAndCompaction() throws Exception {
+    final String pipeName = "compaction_correctness";
+    final String device = "root.compaction_correctness.d1";
+    final String query = "select s1 from " + device;
+    final String header = "Time," + device + ".s1,";
+    final Set<String> expectedRows = new HashSet<>();
+    final DataNodeWrapper receiver = receiverEnv.getDataNodeWrapper(0);
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement();
+        final SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      statement.execute("create timeseries " + device + ".s1 with datatype=INT64,encoding=RLE");
+      for (int file = 0; file < 24; file++) {
+        final StringBuilder insert =
+            new StringBuilder("insert into " + device + "(time,s1) values ");
+        for (int point = 0; point < 64; point++) {
+          final int value = file * 64 + point;
+          if (point > 0) {
+            insert.append(',');
+          }
+          insert.append('(').append(value).append(',').append(value).append(')');
+          expectedRows.add(value + "," + value + ",");
+        }
+        statement.execute(insert.toString());
+        statement.execute("flush");
+      }
+
+      // The newest files occupy the send slot in a separate time partition. This leaves every
+      // source of the older compaction queued, including while the first send finishes.
+      final long blockerTime = TimeUnit.DAYS.toMillis(7);
+      statement.execute(
+          "create timeseries " + device + ".payload with datatype=TEXT,encoding=PLAIN");
+      final byte[] payload = new byte[65536];
+      final Random random = new Random(0);
+      for (int blocker = 0; blocker < 2; blocker++) {
+        random.nextBytes(payload);
+        final long time = blockerTime + blocker;
+        final int value = 1536 + blocker;
+        statement.execute(
+            "insert into "
+                + device
+                + "(time,s1,payload) values ("
+                + time
+                + ","
+                + value
+                + ",'"
+                + Base64.getEncoder().encodeToString(payload)
+                + "')");
+        statement.execute("flush");
+        expectedRows.add(time + "," + value + ",");
+      }
+
+      final Map<String, String> sinkAttributes = new HashMap<>();
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiver.getIp());
+      sinkAttributes.put("sink.port", Integer.toString(receiver.getPort()));
+      sinkAttributes.put("sink.enable-compaction", "true");
+      // Keep a send in flight while the remaining historical files are compacted.
+      sinkAttributes.put("sink.rate-limit-bytes-per-second", "8192");
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .createPipe(
+                  new TCreatePipeReq(pipeName, sinkAttributes)
+                      .setExtractorAttributes(
+                          Map.of(
+                              "source.path", "root.compaction_correctness.**",
+                              "source.inclusion", "data.insert",
+                              "source.realtime.mode", "batch")))
+              .getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe(pipeName).getCode());
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          query + " where time = " + (blockerTime + 1),
+          header,
+          Collections.singleton((blockerTime + 1) + ",1537,"));
+
+      try {
+        statement.execute("set configuration 'enable_seq_space_compaction'='true'");
+        final Pattern replacementMessage =
+            Pattern.compile(
+                Pattern.quote(DataNodePipeMessages.REGION_REPLACED_TSFILEINSERTIONEVENTS_WITH)
+                    .replace("{}", "\\E.*\\Q"));
+        await()
+            .alias("A real queued compaction replacement for " + pipeName)
+            .atMost(60, TimeUnit.SECONDS)
+            .until(() -> hasCompactionReplacement(pipeName, replacementMessage));
+
+        PipeTestUtils.awaitDataPipeCompletion(senderEnv, pipeName);
+        TestUtils.assertDataEventuallyOnEnv(senderEnv, query, header, expectedRows);
+        TestUtils.assertDataEventuallyOnEnv(receiverEnv, query, header, expectedRows);
+
+        // A later overwrite must also arrive and commit after the compacted backlog is drained.
+        statement.execute("insert into " + device + "(time,s1) values (0,-1),(1536,1536)");
+        statement.execute("flush");
+        expectedRows.remove("0,0,");
+        expectedRows.add("0,-1,");
+        expectedRows.add("1536,1536,");
+        PipeTestUtils.awaitDataPipeCompletion(senderEnv, pipeName);
+        TestUtils.assertDataEventuallyOnEnv(senderEnv, query, header, expectedRows);
+        TestUtils.assertDataEventuallyOnEnv(receiverEnv, query, header, expectedRows);
+      } finally {
+        statement.execute("set configuration 'enable_seq_space_compaction'='false'");
+      }
+    }
+  }
+
+  private boolean hasCompactionReplacement(final String pipeName, final Pattern replacementMessage)
+      throws Exception {
+    for (final DataNodeWrapper node : senderEnv.getDataNodeWrapperList()) {
+      try (final Stream<Path> logs = Files.walk(Path.of(node.getLogDirPath()))) {
+        for (final Path log :
+            logs.filter(Files::isRegularFile)
+                .filter(path -> path.toString().endsWith(".log"))
+                .collect(Collectors.toList())) {
+          try (final Stream<String> lines = Files.lines(log)) {
+            if (lines.anyMatch(
+                line -> line.contains(pipeName) && replacementMessage.matcher(line).find())) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
   }
 
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {

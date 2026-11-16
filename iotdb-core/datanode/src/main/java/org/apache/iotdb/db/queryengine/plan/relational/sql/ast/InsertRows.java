@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Constants;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,6 +45,9 @@ import java.util.Map;
 import java.util.Objects;
 
 public class InsertRows extends WrappedInsertStatement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InsertRows.class);
 
   // Only InsertRows constructed by Pipe will be set to true
   private boolean allowCreateTable = false;
@@ -59,6 +64,46 @@ public class InsertRows extends WrappedInsertStatement {
   @Override
   public InsertRowsStatement getInnerTreeStatement() {
     return ((InsertRowsStatement) super.getInnerTreeStatement());
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + getInnerTreeStatement().ramBytesUsed();
+  }
+
+  /** Copy the parsed VALUES payload so analysis cannot mutate the prepared statement. */
+  public InsertRows copyForPreparedExecution() {
+    InsertRowsStatement original = getInnerTreeStatement();
+    List<InsertRowStatement> rows = new ArrayList<>(original.getInsertRowStatementList().size());
+    for (InsertRowStatement row : original.getInsertRowStatementList()) {
+      InsertRowStatement copy = new InsertRowStatement();
+      copy.setDevicePath(new PartialPath(row.getDevicePath().getNodes().clone()));
+      copy.setTime(row.getTime());
+      copy.setMeasurements(copyArray(row.getMeasurements()));
+      copy.setMeasurementSchemas(copyArray(row.getMeasurementSchemas()));
+      copy.setDataTypes(copyArray(row.getDataTypes()));
+      copy.setColumnCategories(copyArray(row.getColumnCategories()));
+      copy.setValues(copyArray(row.getValues()));
+      copy.setNeedInferType(row.isNeedInferType());
+      copy.setAligned(row.isAligned());
+      copy.setWriteToTable(row.isWriteToTable());
+      if (row.getFailedMeasurementInfoMap() != null) {
+        copy.setFailedMeasurementIndex2Info(new HashMap<>(row.getFailedMeasurementInfoMap()));
+      }
+      row.getDatabaseName().ifPresent(copy::setDatabaseName);
+      rows.add(copy);
+    }
+    InsertRowsStatement copy = new InsertRowsStatement();
+    copy.setInsertRowStatementList(rows);
+    copy.setUniformTargets(original.isUniformTargets());
+    copy.setWriteToTable(original.isWriteToTable());
+    InsertRows result = new InsertRows(copy, null);
+    result.setAllowCreateTable(allowCreateTable);
+    return result;
+  }
+
+  private static <T> T[] copyArray(T[] array) {
+    return array == null ? null : array.clone();
   }
 
   @Override

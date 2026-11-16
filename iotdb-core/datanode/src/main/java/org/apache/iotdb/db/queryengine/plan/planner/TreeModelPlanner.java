@@ -136,7 +136,7 @@ public class TreeModelPlanner implements IPlanner {
   }
 
   @Override
-  public IScheduler doSchedule(
+  public IScheduler createScheduler(
       IAnalysis analysis,
       DistributedQueryPlan distributedPlan,
       MPPQueryContext context,
@@ -168,7 +168,6 @@ public class TreeModelPlanner implements IPlanner {
               asyncInternalServiceClientManager);
     }
 
-    scheduler.start();
     return scheduler;
   }
 

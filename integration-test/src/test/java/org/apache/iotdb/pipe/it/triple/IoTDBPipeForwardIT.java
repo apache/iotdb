@@ -125,6 +125,8 @@ public class IoTDBPipeForwardIT extends AbstractPipeTripleManualIT {
     }
   }
 
+  // Mark the first hop as a local request so the middle cluster forwards schema and one row
+  // to the third cluster even with forwarding-pipe-requests disabled on the second hop.
   @Test
   public void testForwardingPipeRequests() throws Exception {
     final DataNodeWrapper env2DataNode = env2.getDataNodeWrapper(0);

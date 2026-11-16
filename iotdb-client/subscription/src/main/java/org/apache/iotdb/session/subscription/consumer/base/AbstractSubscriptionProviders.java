@@ -394,7 +394,7 @@ final class AbstractSubscriptionProviders {
     }
   }
 
-  private boolean containsProvider(final AbstractSubscriptionProvider provider) {
+  boolean containsProvider(final AbstractSubscriptionProvider provider) {
     return subscriptionProviders.get(provider.getDataNodeId()) == provider;
   }
 

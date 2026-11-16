@@ -660,7 +660,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
 
     LocalExecutionPlanContext localExecutionPlanContext =
         new LocalExecutionPlanContext(
-            typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
+            typeProvider, fragmentInstanceContext, new DataNodeQueryContext());
     Operator operator =
         tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
     ((DataDriverContext) localExecutionPlanContext.getDriverContext())

@@ -216,9 +216,9 @@ public class DataNodeMemoryConfig {
           pipeMemorySize =
               (maxMemoryAvailable
                       - storageEngineMemorySize
-                      + queryEngineMemorySize
-                      + schemaEngineMemorySize
-                      + consensusMemorySize)
+                      - queryEngineMemorySize
+                      - schemaEngineMemorySize
+                      - consensusMemorySize)
                   / 2;
         }
       }

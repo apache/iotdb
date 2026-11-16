@@ -1136,7 +1136,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           .setMessage(getReservedDatabaseNameErrorMsg(TREE_MODEL_AUDIT_DATABASE));
     }
     // The system database is created by the database itself, not through SQL.
-    if (!context.isInternal()
+    if (!context.isInternalDatabaseSession()
         && InternalDatabaseUtils.isSystemDatabasePath(statement.getDatabasePath())) {
       context
           .setDatabase(statement.getDatabasePath().getFullPath())
@@ -1209,7 +1209,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     context
         .setAuditLogOperation(AuditLogOperation.DDL)
         .setDatabase(statement.getPrefixPath().toString());
-    if (!context.isInternal()
+    if (!context.isInternalDatabaseSession()
         && SchemaConstant.SYSTEM_DATABASE.equals(String.join(".", statement.getPrefixPath()))) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setPrivilegeType(PrivilegeType.MANAGE_DATABASE).setResult(false),
@@ -1291,7 +1291,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
    */
   public static TSStatus checkSystemDatabaseWrite(
       final IAuditEntity context, final Collection<? extends PartialPath> checkedPaths) {
-    if (context.isInternal()) {
+    if (context.isInternalDatabaseSession()) {
       return null;
     }
     for (PartialPath path : checkedPaths) {
@@ -1395,7 +1395,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(false),
           () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
-      return new TSStatus(e.getCode().getStatusCode());
+      return new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage());
     }
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         context.setResult(true),

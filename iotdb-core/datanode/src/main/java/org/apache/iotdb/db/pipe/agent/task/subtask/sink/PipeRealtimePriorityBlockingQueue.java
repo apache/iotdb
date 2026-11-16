@@ -55,6 +55,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQueue<Event> {
@@ -106,9 +107,11 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       return false;
     }
 
+    final Event lastEvent = super.peekLast();
     if (event instanceof PipeHeartbeatEvent
         && !((PipeHeartbeatEvent) event).isCompletionBarrier()
-        && super.peekLast() instanceof PipeHeartbeatEvent) {
+        && lastEvent instanceof PipeHeartbeatEvent
+        && !((PipeHeartbeatEvent) lastEvent).isCompletionBarrier()) {
       // We can NOT keep too many PipeHeartbeatEvent in bufferQueue because they may cause OOM.
       ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
       return false;
@@ -536,8 +539,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     }
   }
 
-  private void clearTsFileStartupReservations(
-      final java.util.function.Predicate<TsFileInsertionEvent> predicate) {
+  private void clearTsFileStartupReservations(final Predicate<TsFileInsertionEvent> predicate) {
     synchronized (offerTsFileCounter) {
       final int sizeBefore = reservedTsFileStartupEvents.size();
       reservedTsFileStartupEvents.removeIf(predicate);

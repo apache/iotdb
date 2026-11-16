@@ -154,9 +154,9 @@ public final class CliMessages {
       MESSAGE_THE_DATABASE_PARAM_IS_REQUIRED_WHEN_SQL_DIALECT_IS_TABLE_1EFE6DAF =
           "The database param is required when sql_dialect is table ";
   public static final String
-      MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIBABA_DATATYPE_ENCODING_COMPRESSION_C429E7C6 =
+      MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIAS_DATATYPE_ENCODING_COMPRESSION_FB573E37 =
           "The header of the CSV file to be imported is illegal. The correct format is"
-              + " \"Timeseries, Alibaba, DataType, Encoding, Compression\"!";
+              + " \"Timeseries, Alias, DataType, Encoding, Compression\"!";
 
   private CliMessages() {}
 

@@ -27,7 +27,7 @@ public class TableSessionPool implements ITableSessionPool {
 
   private final SessionPool sessionPool;
 
-  TableSessionPool(SessionPool sessionPool) {
+  protected TableSessionPool(SessionPool sessionPool) {
     this.sessionPool = sessionPool;
   }
 

@@ -38,8 +38,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.AUTO_CREATE_SCHEMA_KEY;
 
 /**
  * Fallback execution handler for the LOAD scheduler. When direct chunk staging fails, converts
@@ -190,10 +193,12 @@ public class LoadFallbackHandler {
       final String filePath,
       final boolean isGeneratedByPipe,
       final boolean deleteAfterLoad) {
+    final Map<String, String> attributes =
+        Collections.singletonMap(AUTO_CREATE_SCHEMA_KEY, String.valueOf(node.isAutoCreateSchema()));
     final LoadTsFile statement =
         (isGeneratedByPipe
-                ? LoadTsFile.createForPipe(null, filePath, Collections.emptyMap())
-                : LoadTsFile.createUnchecked(null, filePath, Collections.emptyMap()))
+                ? LoadTsFile.createForPipe(null, filePath, attributes)
+                : LoadTsFile.createUnchecked(null, filePath, attributes))
             .setDatabase(node.getDatabase())
             .setDeleteAfterLoad(deleteAfterLoad)
             .setConvertOnTypeMismatch(true);
@@ -214,6 +219,7 @@ public class LoadFallbackHandler {
     final String database = LoadTsFileScheduler.getPartitionQueryDatabase(node, isGeneratedByPipe);
     final LoadTsFileStatement statement =
         buildRetryTreeLoadStatement(filePath, deleteAfterLoad, database, isGeneratedByPipe);
+    statement.setAutoCreateSchema(node.isAutoCreateSchema());
 
     return converter.convertForTreeModel(statement).orElse(null);
   }

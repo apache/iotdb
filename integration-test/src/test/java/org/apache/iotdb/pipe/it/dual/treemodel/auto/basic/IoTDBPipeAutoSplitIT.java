@@ -30,6 +30,7 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 
 import org.junit.Assert;
@@ -80,10 +81,11 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(true); // set auto split to true
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+    executeOnBothEnvs(BaseEnv::initClusterEnvironment);
   }
 
+  // Only full-sync pipes split; preserve sink options and replicate the row remaining after
+  // deletion.
   @Test
   public void testWriteBackSinkWithTargetDatabase() throws Exception {
     TestUtils.executeNonQueries(

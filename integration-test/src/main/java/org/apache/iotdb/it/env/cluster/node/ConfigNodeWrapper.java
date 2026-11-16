@@ -26,6 +26,7 @@ import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
@@ -40,6 +41,8 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_MAX_DI
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_MAX_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_PER_DATANODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_PER_DATA_NODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_COMMON_PROPERTIES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_PROPERTIES;
@@ -55,6 +58,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   private final boolean isSeed;
   private final String defaultNodePropertiesFile;
   private final String defaultCommonPropertiesFile;
+  private final int regionPerDataNode;
 
   public ConfigNodeWrapper(
       final boolean isSeed,
@@ -72,6 +76,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
         EnvUtils.getFilePathFromSysVar(DEFAULT_CONFIG_NODE_PROPERTIES, clusterIndex);
     this.defaultCommonPropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_CONFIG_NODE_COMMON_PROPERTIES, clusterIndex);
+    this.regionPerDataNode = EnvUtils.getIntFromSysVar(DATA_REGION_PER_DATANODE, 0, clusterIndex);
 
     // initialize mutable properties
     reloadMutableFields();
@@ -127,6 +132,20 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   protected void addStartCmdParams(final List<String> params) {
     final String workDir = getNodePath();
     final String confDir = workDir + File.separator + "conf";
+    if (Boolean.getBoolean("integrationTest.configNodeStartupTrace")) {
+      // Capture JVM/management-agent and static class initialization before ConfigNode's logger
+      // exists. Keep this opt-in: class tracing adds I/O and should not affect normal IT timings.
+      // A relative path avoids the Windows drive colon being parsed as an -Xlog option separator.
+      final String tracePath =
+          Paths.get(System.getProperty(USER_DIR))
+              .relativize(Paths.get(getLogPath() + ".startup-%p.log"))
+              .toString()
+              .replace(File.separatorChar, '/');
+      params.add(
+          "-Xlog:startuptime=debug,class+init=info:file="
+              + tracePath
+              + ":time,uptimemillis,level,tags:filecount=0");
+    }
     params.addAll(
         Arrays.asList(
             "-Dlogback.configurationFile=" + confDir + File.separator + "logback-confignode.xml",
@@ -152,6 +171,10 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
     mutableCommonProperties.setProperty(SCHEMA_REPLICATION_FACTOR, "1");
     mutableCommonProperties.setProperty(DATA_REPLICATION_FACTOR, "1");
+    // Only ConfigNode reads this. Keep it a common property so that a value set by a test through
+    // CommonConfig still takes precedence: node properties are written after common ones.
+    mutableCommonProperties.setProperty(
+        DATA_REGION_PER_DATA_NODE, String.valueOf(regionPerDataNode));
 
     mutableNodeProperties.put(CN_CONNECTION_TIMEOUT_MS, "30000");
 

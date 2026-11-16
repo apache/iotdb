@@ -175,12 +175,15 @@ public class EnvUtils {
   /**
    * List occupied port and the associated pid on Unix.
    *
+   * <p>A line of the lsof output splits into 10 columns, e.g. {@code java 1234 user 77u IPv6 0x1a2b
+   * 0t0 TCP 127.0.0.1:6667 (LISTEN)}. The address is in column 8 and the state in column 9.
+   *
    * @param ports ports to be checked
    * @return (occupiedPort, pid) pairs
    */
   public static Map<Integer, Long> listPortOccupationUnix(final List<Integer> ports)
       throws IOException {
-    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN,TIME_WAIT -P -n", 10, 9, 1);
+    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN,TIME_WAIT -P -n", 10, 8, 1);
   }
 
   private static Pair<Integer, Integer> getClusterNodesNum(final int index) {

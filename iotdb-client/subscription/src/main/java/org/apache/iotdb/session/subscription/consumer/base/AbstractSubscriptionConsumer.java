@@ -147,6 +147,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private final int connectionTimeoutInMs;
   private final int maxPollParallelism;
 
+  private final boolean useSSL;
+  private final String trustStore;
+  private final String trustStorePwd;
+  private final String keyStore;
+  private final String keyStorePwd;
+  private final String sslProtocol;
+
   /**
    * The latest watermark timestamp received from the server. Updated when WATERMARK events are
    * processed and stripped. Consumer users can query this to check timestamp progress.
@@ -251,6 +258,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
     this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.maxPollParallelism = builder.maxPollParallelism;
+
+    this.useSSL = builder.useSSL;
+    this.trustStore = builder.trustStore;
+    this.trustStorePwd = builder.trustStorePwd;
+    this.keyStore = builder.keyStore;
+    this.keyStorePwd = builder.keyStorePwd;
+    this.sslProtocol = builder.sslProtocol;
   }
 
   protected AbstractSubscriptionConsumer(
@@ -269,6 +283,18 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                     properties.getOrDefault(
                         ConsumerConstant.PASSWORD_KEY, SessionConfig.DEFAULT_PASSWORD))
             .encryptedPassword((String) properties.get(ConsumerConstant.ENCRYPTED_PASSWORD_KEY))
+            .useSSL(
+                Boolean.parseBoolean(
+                    String.valueOf(
+                        properties.getOrDefault(ConsumerConstant.USE_SSL_KEY, Boolean.FALSE))))
+            .trustStore((String) properties.get(ConsumerConstant.TRUST_STORE_KEY))
+            .trustStorePwd((String) properties.get(ConsumerConstant.TRUST_STORE_PWD_KEY))
+            .keyStore((String) properties.get(ConsumerConstant.KEY_STORE_KEY))
+            .keyStorePwd((String) properties.get(ConsumerConstant.KEY_STORE_PWD_KEY))
+            .sslProtocol(
+                (String)
+                    properties.getOrDefault(
+                        ConsumerConstant.SSL_PROTOCOL_KEY, SessionConfig.DEFAULT_SSL_PROTOCOL))
             .consumerId((String) properties.get(ConsumerConstant.CONSUMER_ID_KEY))
             .consumerGroupId((String) properties.get(ConsumerConstant.CONSUMER_GROUP_ID_KEY))
             .ownerId((String) properties.get(ConsumerConstant.OWNER_ID_KEY))
@@ -572,6 +598,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// subscription provider ///////////////////////////////
 
+  /** Returns the multiplexed client RPC service name for internal providers. */
+  protected String getRpcServiceName() {
+    return null;
+  }
+
   protected abstract AbstractSubscriptionProvider constructSubscriptionProvider(
       final TEndPoint endPoint,
       final String username,
@@ -601,6 +632,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             this.heartbeatIntervalMs,
             this.connectionTimeoutInMs);
     provider.setConsumerInstanceId(consumerInstanceId);
+    provider.setRpcServiceName(getRpcServiceName());
+    provider.setSslConfig(useSSL, trustStore, trustStorePwd, keyStore, keyStorePwd, sslProtocol);
     try {
       provider.handshake();
     } catch (final Exception e) {
@@ -1639,15 +1672,15 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       checkIfFenced();
       AbstractSubscriptionProvider.CommitResult result =
           AbstractSubscriptionProvider.CommitResult.empty();
-      SubscriptionConnectionException connectionFailure = null;
+      SubscriptionException connectionFailure = null;
       SubscriptionException failure = null;
       try {
         result = commitInternal(dataNodeId, remainingCommitContexts, nack);
       } catch (final SubscriptionException e) {
         failure = getCommitFailure(e);
         result = getCompletedCommitResult(e);
-        if (failure instanceof SubscriptionConnectionException) {
-          connectionFailure = (SubscriptionConnectionException) failure;
+        if (isRetryableCommitFailure(failure)) {
+          connectionFailure = failure;
         }
       }
 
@@ -1701,6 +1734,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     return e instanceof AbstractSubscriptionProvider.CommitException
         ? ((AbstractSubscriptionProvider.CommitException) e).getFailure()
         : e;
+  }
+
+  private boolean isRetryableCommitFailure(final SubscriptionException failure) {
+    return failure instanceof SubscriptionConnectionException
+        || (failure instanceof SubscriptionConsumerFencedException && !isFenced());
   }
 
   private AbstractSubscriptionProvider.CommitResult getCompletedCommitResult(
@@ -1763,7 +1801,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         final Set<SubscriptionCommitContext> acceptedBeforeFailure =
             new HashSet<>(completedResult.getAcceptedCommitContexts());
         removableCommitContexts.addAll(acceptedBeforeFailure);
-        if (!(failure instanceof SubscriptionConnectionException)) {
+        if (!isRetryableCommitFailure(failure)) {
           // The caller cannot receive the removable set when an error propagates. Remove confirmed
           // contexts from every completed group before leaving the automatic/close-time ACK path.
           onAckedCommitContexts(removableCommitContexts);
@@ -1858,9 +1896,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         return provider.commit(subscriptionCommitContexts, nack);
       } catch (final SubscriptionException e) {
         final SubscriptionException failure = getCommitFailure(e);
-        if (failure instanceof SubscriptionConsumerFencedException) {
+        if (failure instanceof SubscriptionConsumerFencedException
+            && providers.containsProvider(provider)) {
           fence((SubscriptionConsumerFencedException) failure);
-        } else if (failure instanceof SubscriptionConnectionException) {
+        } else if (isRetryableCommitFailure(failure)) {
           providers.syncIfUnavailable(this);
         }
         throw e;

@@ -265,4 +265,6 @@ public final class UtilMessages {
           "在 Windows 系统中，路径不能包含 %s 或 ASCII 控制字符，不能与 %s 中任一名称相同（无论是否带扩展名），也不能以 '.' 或 ' ' 结尾。";
 
   public static final String EXCEPTION_FROM_ARG_TO_ARG_D2758D41 = "从 %s 到 %s";
+  public static final String EXCEPTION_FILE_CHANNEL_WRITE_MADE_NO_PROGRESS_B0F24ACD =
+      "文件通道写入未取得进展";
 }

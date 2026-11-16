@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -49,6 +50,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
+import static org.apache.iotdb.consensus.ConsensusFactory.LEGACY_IOT_CONSENSUS_V2;
+import static org.apache.iotdb.consensus.ConsensusFactory.REAL_IOT_CONSENSUS_V2;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -177,6 +180,47 @@ public class RegionMaintainHandlerConsensusPipeTest {
     verify(procedureManager, times(2)).createConsensusPipeAsync(any(TCreatePipeReq.class));
     verify(procedureManager, never()).dropConsensusPipeAsync(any());
     verify(procedureManager, never()).startConsensusPipe(any());
+  }
+
+  @Test
+  public void testCreatesMissingPipesWhenLegacyConsensusProtocolAliasConfigured() {
+    // The pre-rename class name must create pipes exactly like the canonical name.
+    ConfigNodeDescriptor.getInstance()
+        .getConf()
+        .setDataRegionConsensusProtocolClass(LEGACY_IOT_CONSENSUS_V2);
+
+    TDataNodeLocation loc1 = makeLocation(1, "127.0.0.1", 40010);
+    TDataNodeLocation loc2 = makeLocation(2, "127.0.0.2", 40010);
+    TRegionReplicaSet replicaSet = makeReplicaSet(100, loc1, loc2);
+
+    TConsensusGroupId groupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 100);
+    Map<TConsensusGroupId, TRegionReplicaSet> replicaSets = new HashMap<>();
+    replicaSets.put(groupId, replicaSet);
+    when(partitionManager.getAllReplicaSetsMap(TConsensusGroupType.DataRegion))
+        .thenReturn(replicaSets);
+    when(pipeTaskCoordinator.getConsensusPipeStatusMap()).thenReturn(Collections.emptyMap());
+
+    handler.checkAndRepairConsensusPipes();
+
+    verify(procedureManager, times(2)).createConsensusPipeAsync(any(TCreatePipeReq.class));
+  }
+
+  @Test
+  public void testCreatesInitialPipesWhenImplementationClassNameConfigured() {
+    // Selecting V2 by its implementation class name must also create the initial pipes.
+    ConfigNodeDescriptor.getInstance()
+        .getConf()
+        .setDataRegionConsensusProtocolClass(REAL_IOT_CONSENSUS_V2);
+
+    TDataNodeLocation loc1 = makeLocation(1, "127.0.0.1", 40010);
+    TDataNodeLocation loc2 = makeLocation(2, "127.0.0.2", 40010);
+    TRegionReplicaSet replicaSet = makeReplicaSet(100, loc1, loc2);
+    CreateRegionGroupsPlan plan = new CreateRegionGroupsPlan();
+    plan.addRegionGroup("root.test", replicaSet);
+
+    handler.createInitialConsensusPipes(plan);
+
+    verify(procedureManager, times(2)).createConsensusPipeAsync(any(TCreatePipeReq.class));
   }
 
   @Test
@@ -324,6 +368,45 @@ public class RegionMaintainHandlerConsensusPipeTest {
     verify(procedureManager, never()).createConsensusPipeAsync(any());
     verify(procedureManager, never()).dropConsensusPipeAsync(any());
     verify(procedureManager, never()).startConsensusPipe(any());
+  }
+
+  @Test
+  public void testConsensusPipeCountMismatchWhenRegionHasNoPipe() {
+    // A 2-replica region requires 2 pipes; having none is the degradation the probe must detect.
+    when(partitionManager.getReplicaPairCount(TConsensusGroupType.DataRegion)).thenReturn(2L);
+    when(pipeTaskCoordinator.getConsensusPipeCount()).thenReturn(0);
+
+    assertTrue(handler.hasConsensusPipeCountMismatch());
+  }
+
+  @Test
+  public void testNoConsensusPipeCountMismatchWhenAllPipesExist() {
+    // 2 required, 2 present.
+    when(partitionManager.getReplicaPairCount(TConsensusGroupType.DataRegion)).thenReturn(2L);
+    when(pipeTaskCoordinator.getConsensusPipeCount()).thenReturn(2);
+
+    assertFalse(handler.hasConsensusPipeCountMismatch());
+  }
+
+  @Test
+  public void testNoConsensusPipeCountMismatchForSingleReplicaRegion() {
+    // A single-replica region has no follower and expects no pipe, so it is never degraded.
+    when(partitionManager.getReplicaPairCount(TConsensusGroupType.DataRegion)).thenReturn(0L);
+    when(pipeTaskCoordinator.getConsensusPipeCount()).thenReturn(0);
+
+    assertFalse(handler.hasConsensusPipeCountMismatch());
+  }
+
+  @Test
+  public void testConsensusPipeCountProbeIsSkippedWhenNotIoTConsensusV2() {
+    // A non-V2 cluster must not even pay for the probe.
+    ConfigNodeDescriptor.getInstance()
+        .getConf()
+        .setDataRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
+
+    assertFalse(handler.hasConsensusPipeCountMismatch());
+
+    verify(partitionManager, never()).getReplicaPairCount(any());
   }
 
   private static class TestRegionMaintainHandler extends RegionMaintainHandler {
