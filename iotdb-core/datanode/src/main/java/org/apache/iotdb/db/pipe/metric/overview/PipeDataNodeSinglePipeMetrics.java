@@ -234,7 +234,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   }
 
   private boolean isPipeAlive(final String pipeName, final long creationTime) {
-    return PipeDataNodeAgent.task().isPipeExisted(pipeName, creationTime);
+    return PipeDataNodeAgent.task().isPipeAlive(pipeName, creationTime);
   }
 
   private PipeDataNodeRemainingEventAndTimeOperator getOrCreateOperatorIfPipeAlive(

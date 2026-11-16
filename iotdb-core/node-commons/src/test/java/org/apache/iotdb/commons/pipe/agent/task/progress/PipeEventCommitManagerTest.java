@@ -36,8 +36,14 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -139,6 +145,48 @@ public class PipeEventCommitManagerTest {
   }
 
   @Test
+  public void testLateCommitterCheckAfterClearDoesNotRestoreRestartState() throws Exception {
+    final CommitterKey key = manager.getCommitterKey(PIPE_NAME, CREATION_TIME, REGION_ID);
+    final Field eventCommitterMapField =
+        PipeEventCommitManager.class.getDeclaredField("eventCommitterMap");
+    eventCommitterMapField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    final Map<CommitterKey, PipeEventCommitter> originalEventCommitterMap =
+        (Map<CommitterKey, PipeEventCommitter>) eventCommitterMapField.get(manager);
+    final BlockingCommitterMap blockingMap = new BlockingCommitterMap(originalEventCommitterMap);
+    eventCommitterMapField.set(manager, blockingMap);
+
+    final AtomicReference<Boolean> result = new AtomicReference<>();
+    final AtomicReference<Throwable> backgroundFailure = new AtomicReference<>();
+    final Thread checkThread =
+        new Thread(
+            () -> {
+              try {
+                result.set(manager.isCurrentCommitterKey(key));
+              } catch (final Throwable e) {
+                backgroundFailure.compareAndSet(null, e);
+              }
+            });
+
+    try {
+      blockingMap.pauseNextLookup();
+      checkThread.start();
+      assertTrue(blockingMap.lookupPaused.await(10, TimeUnit.SECONDS));
+
+      manager.clear(PIPE_NAME, CREATION_TIME);
+    } finally {
+      blockingMap.resumeLookup.countDown();
+      checkThread.join(TimeUnit.SECONDS.toMillis(10));
+      eventCommitterMapField.set(manager, originalEventCommitterMap);
+    }
+
+    assertFalse(checkThread.isAlive());
+    assertTrue(backgroundFailure.get() == null);
+    assertFalse(result.get());
+    assertTrue(getManagerMap("eventCommitterRestartTimesMap").isEmpty());
+  }
+
+  @Test
   public void testRestartRejectsStaleCommitAndAcceptsCurrentCommit() throws Exception {
     final CommitterKey oldKey = manager.getCommitterKey(PIPE_NAME, CREATION_TIME, REGION_ID);
     final Runnable oldOnCommitted = mock(Runnable.class);
@@ -190,5 +238,40 @@ public class PipeEventCommitManagerTest {
     final Field field = PipeEventCommitManager.class.getDeclaredField(fieldName);
     field.setAccessible(true);
     return (Map<?, ?>) field.get(manager);
+  }
+
+  private static class BlockingCommitterMap
+      extends ConcurrentHashMap<CommitterKey, PipeEventCommitter> {
+
+    private static final long serialVersionUID = 1L;
+
+    private final AtomicBoolean shouldPause = new AtomicBoolean();
+    private final CountDownLatch lookupPaused = new CountDownLatch(1);
+    private final CountDownLatch resumeLookup = new CountDownLatch(1);
+
+    private BlockingCommitterMap(final Map<CommitterKey, PipeEventCommitter> originalMap) {
+      putAll(originalMap);
+    }
+
+    private void pauseNextLookup() {
+      shouldPause.set(true);
+    }
+
+    @Override
+    public PipeEventCommitter get(final Object key) {
+      final PipeEventCommitter committer = super.get(key);
+      if (committer != null && shouldPause.compareAndSet(true, false)) {
+        lookupPaused.countDown();
+        try {
+          if (!resumeLookup.await(10, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Timed out waiting to resume committer lookup");
+          }
+        } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new IllegalStateException(e);
+        }
+      }
+      return committer;
+    }
   }
 }

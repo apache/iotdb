@@ -1301,10 +1301,12 @@ public abstract class PipeTaskAgent {
 
   private AtomicLong cleanupFloatingMemoryUsageCounterIfUnused(
       final String pipeName, final long creationTime, final AtomicLong counter) {
-    if (counter.get() != 0 || isPipeExisted(pipeName, creationTime)) {
+    if (counter.get() != 0) {
       return counter;
     }
 
+    // A missing counter also reports zero; a later acquisition recreates it without scanning all
+    // pipe metadata on the event-release path.
     pipeName2CreationTimeSetMap.computeIfPresent(
         pipeName,
         (key, creationTimes) -> {
@@ -1334,6 +1336,11 @@ public abstract class PipeTaskAgent {
 
   public boolean isPipeExisted(final String pipeName, final long creationTime) {
     return pipeMetaKeeper.getPipeMeta(pipeName, creationTime) != null;
+  }
+
+  public boolean isPipeAlive(final String pipeName, final long creationTime) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, creationTime);
+    return pipeMeta != null && pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.DROPPED;
   }
 
   public String getPipeNameWithCreationTime(final String pipeName, final long creationTime) {

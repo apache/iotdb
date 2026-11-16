@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.sink.protocol;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
 
 import org.apache.tsfile.utils.Pair;
@@ -31,6 +33,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class IoTDBSinkRateLimiterTest {
 
@@ -54,6 +57,35 @@ public class IoTDBSinkRateLimiterTest {
       assertFalse(limiters.containsKey(pipeKey));
     } finally {
       IoTDBSink.clearPipeRateLimiter(pipeName, creationTime);
+    }
+  }
+
+  @Test
+  public void testLateTransferDoesNotRecreateRateLimiterAfterDrop() throws Exception {
+    final String pipeName = "late_rate_limiter_lifecycle_test";
+    final long creationTime = System.nanoTime();
+    final Pair<String, Long> pipeKey = new Pair<>(pipeName, creationTime);
+    final Map<Pair<String, Long>, PipeEndPointRateLimiter> limiters = getRateLimiterMap();
+    final IoTDBSink sink = mock(IoTDBSink.class, CALLS_REAL_METHODS);
+    final PipeTaskAgent taskAgent = mock(PipeTaskAgent.class);
+    when(taskAgent.isPipeAlive(pipeName, creationTime)).thenReturn(false);
+
+    final Field taskAgentField = PipeEndPointRateLimiter.class.getDeclaredField("taskAgent");
+    taskAgentField.setAccessible(true);
+    final PipeTaskAgent originalTaskAgent = (PipeTaskAgent) taskAgentField.get(null);
+    final Field rateLimitField =
+        IoTDBSink.class.getDeclaredField("endPointRateLimitBytesPerSecond");
+    rateLimitField.setAccessible(true);
+    rateLimitField.setDouble(sink, 1.0);
+
+    PipeEndPointRateLimiter.setTaskAgent(taskAgent);
+    try {
+      sink.rateLimitIfNeeded(pipeName, creationTime, new TEndPoint("localhost", 1), 0);
+
+      assertFalse(limiters.containsKey(pipeKey));
+    } finally {
+      IoTDBSink.clearPipeRateLimiter(pipeName, creationTime);
+      PipeEndPointRateLimiter.setTaskAgent(originalTaskAgent);
     }
   }
 

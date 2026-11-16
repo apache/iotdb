@@ -677,13 +677,17 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
       final TEndPoint endPoint,
       final long bytesLength) {
     if (pipeName != null && endPointRateLimitBytesPerSecond > 0) {
-      PIPE_END_POINT_RATE_LIMITER_MAP
-          .computeIfAbsent(
+      final PipeEndPointRateLimiter limiter =
+          PIPE_END_POINT_RATE_LIMITER_MAP.computeIfAbsent(
               new Pair<>(pipeName, creationTime),
               endpoint ->
-                  new PipeEndPointRateLimiter(
-                      pipeName, creationTime, endPointRateLimitBytesPerSecond))
-          .acquire(endPoint, bytesLength);
+                  PipeEndPointRateLimiter.isPipeAlive(pipeName, creationTime)
+                      ? new PipeEndPointRateLimiter(
+                          pipeName, creationTime, endPointRateLimitBytesPerSecond)
+                      : null);
+      if (limiter != null) {
+        limiter.acquire(endPoint, bytesLength);
+      }
     }
 
     GLOBAL_RATE_LIMITER.acquire(bytesLength);

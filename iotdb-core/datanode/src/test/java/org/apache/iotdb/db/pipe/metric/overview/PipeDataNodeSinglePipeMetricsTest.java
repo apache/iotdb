@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -274,6 +275,40 @@ public class PipeDataNodeSinglePipeMetricsTest {
     } finally {
       pipeMetaKeeper.removePipeMeta(pipeMeta.getStaticMeta());
       pipeMetaMapField.set(pipeMetaKeeper, originalPipeMetaMap);
+      metrics.deregister(pipeID);
+      reset(metrics, metricServiceField);
+    }
+  }
+
+  @Test
+  public void testLateMetricUpdateAfterDropDeregisterDoesNotRecreateOperator() throws Exception {
+    final PipeDataNodeSinglePipeMetrics metrics = PipeDataNodeSinglePipeMetrics.getInstance();
+    final Field metricServiceField =
+        PipeDataNodeSinglePipeMetrics.class.getDeclaredField("metricService");
+    metricServiceField.setAccessible(true);
+    reset(metrics, metricServiceField);
+
+    final String pipeName = "metric_late_update_after_drop_" + System.nanoTime();
+    final long creationTime = System.nanoTime();
+    final String pipeID = pipeName + "_" + creationTime;
+    final PipeMeta pipeMeta =
+        createPipeMeta(pipeName, creationTime, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    final PipeMetaKeeper pipeMetaKeeper = getPipeMetaKeeper();
+
+    try {
+      pipeMetaKeeper.addPipeMeta(pipeMeta);
+      metrics.increaseTsFileEventCount(pipeName, creationTime);
+      assertTrue(metrics.remainingEventAndTimeOperatorMap.containsKey(pipeID));
+
+      // dropPipe marks the metadata dropped before task deregistration and removes it afterward.
+      pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+      metrics.deregister(pipeID);
+
+      metrics.increaseTsFileEventCount(pipeName, creationTime);
+
+      assertFalse(metrics.remainingEventAndTimeOperatorMap.containsKey(pipeID));
+    } finally {
+      pipeMetaKeeper.removePipeMeta(pipeMeta.getStaticMeta());
       metrics.deregister(pipeID);
       reset(metrics, metricServiceField);
     }

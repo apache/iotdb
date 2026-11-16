@@ -194,13 +194,25 @@ public class PipeEventCommitManager {
    * older committer after the same Pipe/DataRegion task has been restarted.
    */
   public boolean isCurrentCommitterKey(final CommitterKey committerKey) {
-    return committerKey != null
-        && eventCommitterMap.containsKey(committerKey)
-        && committerKey.equals(
-            generateCommitterKey(
+    if (committerKey == null) {
+      return false;
+    }
+
+    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
+    if (committer == null) {
+      return false;
+    }
+
+    final int restartTimes =
+        eventCommitterRestartTimesMap.getOrDefault(
+            generateCommitterRestartTimesKey(committerKey), 0);
+    return committerKey.equals(
+            taskAgent.getCommitterKey(
                 committerKey.getPipeName(),
                 committerKey.getCreationTime(),
-                committerKey.getRegionId()));
+                committerKey.getRegionId(),
+                restartTimes))
+        && eventCommitterMap.get(committerKey) == committer;
   }
 
   private CommitterKey generateCommitterKey(

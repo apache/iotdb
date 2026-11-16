@@ -92,6 +92,11 @@ public class PipeTaskAgentTest {
     agent.createPipeForTest(generatePipeMeta("pipe", 1L));
     agent.addFloatingMemoryUsageInByte("pipe", 1L, 100L);
     agent.decreaseFloatingMemoryUsageInByte("pipe", 1L, 100L);
+
+    Assert.assertTrue(
+        getMapField(agent, "pipeNameWithCreationTime2FloatingMemoryUsageInByteMap").isEmpty());
+    Assert.assertTrue(getMapField(agent, "pipeName2CreationTimeSetMap").isEmpty());
+
     agent.dropPipeForTest("pipe", 1L);
 
     Assert.assertTrue(
@@ -173,27 +178,30 @@ public class PipeTaskAgentTest {
                     () -> agent.dropPipeForTest("concurrent-pipe", 1L), backgroundFailure));
 
     try {
-      blockingCounterMap.pauseNextUpdate();
-      increaseThread.start();
-      Assert.assertTrue(blockingCounterMap.updatePaused.await(10, TimeUnit.SECONDS));
-      dropThread.start();
-      Assert.assertTrue(waitForDrop(agent, "concurrent-pipe", 1L));
+      try {
+        blockingCounterMap.pauseNextUpdate();
+        increaseThread.start();
+        Assert.assertTrue(blockingCounterMap.updatePaused.await(10, TimeUnit.SECONDS));
+        dropThread.start();
+        Assert.assertTrue(waitForDrop(agent, "concurrent-pipe", 1L));
+      } finally {
+        blockingCounterMap.resumeUpdate.countDown();
+        increaseThread.join(TimeUnit.SECONDS.toMillis(10));
+        dropThread.join(TimeUnit.SECONDS.toMillis(10));
+      }
+
+      Assert.assertFalse(increaseThread.isAlive());
+      Assert.assertFalse(dropThread.isAlive());
+      Assert.assertNull(backgroundFailure.get());
+      Assert.assertEquals(100L, agent.getAllFloatingMemoryUsageInByte());
+      Assert.assertEquals(100L, agent.getFloatingMemoryUsageInByte("concurrent-pipe"));
+
+      agent.decreaseFloatingMemoryUsageInByte("concurrent-pipe", 1L, 100L);
+      Assert.assertEquals(0L, agent.getAllFloatingMemoryUsageInByte());
+      Assert.assertEquals(0L, agent.getFloatingMemoryUsageInByte("concurrent-pipe"));
     } finally {
-      blockingCounterMap.resumeUpdate.countDown();
-      increaseThread.join(TimeUnit.SECONDS.toMillis(10));
-      dropThread.join(TimeUnit.SECONDS.toMillis(10));
       counterMapField.set(agent, originalCounterMap);
     }
-
-    Assert.assertFalse(increaseThread.isAlive());
-    Assert.assertFalse(dropThread.isAlive());
-    Assert.assertNull(backgroundFailure.get());
-    Assert.assertEquals(100L, agent.getAllFloatingMemoryUsageInByte());
-    Assert.assertEquals(100L, agent.getFloatingMemoryUsageInByte("concurrent-pipe"));
-
-    agent.decreaseFloatingMemoryUsageInByte("concurrent-pipe", 1L, 100L);
-    Assert.assertEquals(0L, agent.getAllFloatingMemoryUsageInByte());
-    Assert.assertEquals(0L, agent.getFloatingMemoryUsageInByte("concurrent-pipe"));
   }
 
   @Test
