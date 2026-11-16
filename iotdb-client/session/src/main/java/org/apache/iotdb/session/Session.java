@@ -179,8 +179,6 @@ public class Session implements ISession {
   private static final int MIN_RECORDS_SIZE = 40;
   private static final int MAX_TABLE_MODEL_DATABASE_NAME_LENGTH = 64;
   private static final String UNSPECIFIED_DATABASE_KEY = "";
-  private static final Map<IDeviceID, TEndPoint> EMPTY_TABLE_MODEL_DATABASE_ROUTES =
-      Collections.emptyMap();
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
@@ -1452,7 +1450,7 @@ public class Session implements ISession {
 
   private Map<IDeviceID, TEndPoint> getTableModelDatabaseRoutes(String routeDatabase) {
     Map<IDeviceID, TEndPoint> databaseToEndpoint = tableModelDeviceIdToEndpoint.get(routeDatabase);
-    return databaseToEndpoint == null ? EMPTY_TABLE_MODEL_DATABASE_ROUTES : databaseToEndpoint;
+    return databaseToEndpoint == null ? Collections.emptyMap() : databaseToEndpoint;
   }
 
   private SessionConnection getSessionConnection(
@@ -1539,10 +1537,7 @@ public class Session implements ISession {
     }
   }
 
-  private void handleRedirection(
-      String routeDatabase,
-      IDeviceID deviceId,
-      TEndPoint endpoint) {
+  private void handleRedirection(String routeDatabase, IDeviceID deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
       // no need to redirection
       if (UrlUtils.isWildcardAddress(endpoint.ip)) {
