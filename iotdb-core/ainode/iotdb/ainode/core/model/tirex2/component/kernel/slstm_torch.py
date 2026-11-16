@@ -126,7 +126,9 @@ def slstm_torch_pointwise(
     fgate = torch.exp(logfplusm - mnew).clamp(max=1)  # eq 17
     zgate = torch.tanh(zraw)  # eq 11
     cnew = fgate * c + igate * zgate  # eq 8
-    # TODO: Why do wee need the maximum here?
+    # mnew is the larger of iraw and logfplusm, so igate or fgate is 1, and n stays at
+    # least 1 once the first step sets it. The clamp keeps rounding from taking it below
+    # 1, which bounds the division in eq 10.
     nnew = (fgate * n + igate).clamp(min=1)  # eq 9
     hnew = ogate * cnew / nnew  # eq 10
 
