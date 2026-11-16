@@ -88,6 +88,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.MaterializedResultExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementHelper;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
@@ -392,6 +393,49 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return clientSession.isEnableResultChunking()
         ? config.getMppDataExchangeMaxPayloadSizeInBytes()
         : 0;
+  }
+
+  private static boolean canFitInOneResponse(
+      ByteBuffer cachedResult, IClientSession clientSession) {
+    if (cachedResult == null) {
+      return true;
+    }
+    int maxPayloadSize = getMaxResultPayloadSize(clientSession);
+    return maxPayloadSize <= 0 || cachedResult.remaining() <= maxPayloadSize;
+  }
+
+  /**
+   * Transfers an oversized materialized result in fragments. The execution is registered so that
+   * {@code fetchResultsV2} can continue from the pending fragment, and it is cleaned up once the
+   * last fragment is sent or the query is closed.
+   */
+  private TSExecuteStatementResp respondWithFragmentedResult(
+      long queryId,
+      ByteBuffer cachedResult,
+      int fetchSize,
+      long timeout,
+      IClientSession clientSession)
+      throws IoTDBException, IOException {
+    MaterializedResultExecution execution =
+        new MaterializedResultExecution(
+            queryId,
+            cachedResult,
+            DatasetHeaderFactory.getLastQueryHeader(),
+            StatementType.FAST_LAST_QUERY.name(),
+            timeout,
+            clientSession.getUsername(),
+            clientSession.getClientAddress());
+    COORDINATOR.registerQueryExecution(queryId, execution);
+    TSExecuteStatementResp resp =
+        createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
+    resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
+    boolean finished =
+        SELECT_RESULT.apply(resp, execution, fetchSize, getMaxResultPayloadSize(clientSession));
+    resp.setMoreData(!finished);
+    if (finished) {
+      COORDINATOR.cleanupQueryExecution(queryId);
+    }
+    return resp;
   }
 
   public ClientRPCServiceImpl() {
@@ -1312,14 +1356,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
       }
 
+      ByteBuffer cachedResult = builder.isEmpty() ? null : serde.serialize(builder.build());
+      if (!canFitInOneResponse(cachedResult, clientSession)) {
+        return respondWithFragmentedResult(
+            queryId,
+            cachedResult,
+            req.isSetFetchSize() ? req.getFetchSize() : -1,
+            req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold(),
+            clientSession);
+      }
+
       final TSExecuteStatementResp resp =
           createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
-      if (builder.isEmpty()) {
-        resp.setQueryResult(Collections.emptyList());
-      } else {
-        resp.setQueryResult(Collections.singletonList(serde.serialize(builder.build())));
-      }
+      resp.setQueryResult(
+          cachedResult == null ? Collections.emptyList() : Collections.singletonList(cachedResult));
 
       resp.setMoreData(false);
 
@@ -1489,14 +1540,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
         // cache hit
         if (allCached) {
+          ByteBuffer cachedResult = builder.isEmpty() ? null : serde.serialize(builder.build());
+          if (!canFitInOneResponse(cachedResult, clientSession)) {
+            return respondWithFragmentedResult(
+                queryId,
+                cachedResult,
+                req.isSetFetchSize() ? req.getFetchSize() : -1,
+                req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold(),
+                clientSession);
+          }
           TSExecuteStatementResp resp =
               createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
           resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
-          if (builder.isEmpty()) {
-            resp.setQueryResult(Collections.emptyList());
-          } else {
-            resp.setQueryResult(Collections.singletonList(serde.serialize(builder.build())));
-          }
+          resp.setQueryResult(
+              cachedResult == null
+                  ? Collections.emptyList()
+                  : Collections.singletonList(cachedResult));
           finished = true;
           resp.setMoreData(false);
           sampleForCacheHitFastLastDataQueryForOneDevice(req);

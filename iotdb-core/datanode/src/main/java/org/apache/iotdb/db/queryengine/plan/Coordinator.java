@@ -1037,6 +1037,11 @@ public class Coordinator {
         });
   }
 
+  /** Registers an already materialized execution, e.g. an oversized Fast LAST cache hit. */
+  public void registerQueryExecution(Long queryId, IQueryExecution queryExecution) {
+    queryExecutionMap.put(queryId, queryExecution);
+  }
+
   public void cleanupQueryExecution(Long queryId) {
     cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, null);
   }
