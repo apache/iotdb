@@ -879,7 +879,11 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  private void occupy(ISession session) {
+  private synchronized void occupy(ISession session) throws IoTDBConnectionException {
+    if (closed) {
+      closeSession(session);
+      throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
+    }
     occupied.put(session, session);
   }
 
