@@ -243,6 +243,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
@@ -431,10 +432,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
     boolean finished =
         SELECT_RESULT.apply(resp, execution, fetchSize, getMaxResultPayloadSize(clientSession));
-    resp.setMoreData(!finished);
-    if (finished) {
-      COORDINATOR.cleanupQueryExecution(queryId);
-    }
+    // the cached result exceeds the payload bound, so the first response is always a fragment
+    checkState(
+        !finished,
+        DataNodeMiscMessages
+            .EXCEPTION_THE_FIRST_RESPONSE_OF_A_FRAGMENTED_FAST_LAST_RESULT_MUST_NOT_BE_COMPLETE_DEF121D5);
+    resp.setMoreData(true);
     return resp;
   }
 
