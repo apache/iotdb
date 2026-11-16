@@ -24,6 +24,7 @@ import org.apache.iotdb.db.utils.BitMapUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -31,6 +32,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -168,6 +170,57 @@ public final class PipeTabletUtils {
       final Object value) {
     Type type = Type.fromTsDataType(dataType);
     type.addValue(rowIndex, value, tablet.getValues()[columnIndex]);
+    unmarkNullValue(tablet, rowIndex, columnIndex);
+  }
+
+  /** Copy a query field without boxing primitive values on the way to the tablet. */
+  public static void putFieldValue(
+      final Tablet tablet,
+      final int rowIndex,
+      final int columnIndex,
+      final TSDataType dataType,
+      final Field field) {
+    if (field.getDataType() == null) {
+      putValue(tablet, rowIndex, columnIndex, dataType, null);
+      return;
+    }
+
+    final Object column = tablet.getValues()[columnIndex];
+    switch (dataType) {
+      case BOOLEAN:
+        ((boolean[]) column)[rowIndex] = field.getBoolV();
+        break;
+      case INT32:
+        ((int[]) column)[rowIndex] = field.getIntV();
+        break;
+      case INT64:
+      case TIMESTAMP:
+        ((long[]) column)[rowIndex] = field.getLongV();
+        break;
+      case FLOAT:
+        ((float[]) column)[rowIndex] = field.getFloatV();
+        break;
+      case DOUBLE:
+        ((double[]) column)[rowIndex] = field.getDoubleV();
+        break;
+      case DATE:
+        if (!(column instanceof LocalDate[])) {
+          putValue(tablet, rowIndex, columnIndex, dataType, field.getObjectValue(dataType));
+          return;
+        }
+        ((LocalDate[]) column)[rowIndex] = field.getDateV();
+        break;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        final Binary value = field.getBinaryV();
+        ((Binary[]) column)[rowIndex] = value == null ? Binary.EMPTY_VALUE : value;
+        break;
+      default:
+        putValue(tablet, rowIndex, columnIndex, dataType, field.getObjectValue(dataType));
+        return;
+    }
+    // A row discarded after applying mods may have marked this slot before it is reused.
     unmarkNullValue(tablet, rowIndex, columnIndex);
   }
 
