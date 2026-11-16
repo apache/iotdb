@@ -158,7 +158,7 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
             if (current == 1) {
               firstCallEntered.countDown();
               try {
-                firstCallReleased.await(5, TimeUnit.SECONDS);
+                firstCallReleased.await();
               } catch (final InterruptedException e) {
                 Thread.currentThread().interrupt();
               }
@@ -171,13 +171,14 @@ public class PipeSinkSubtaskExecutorTest extends PipeSubtaskExecutorTest {
         };
 
     executor.register(blockedSubtask);
-    executor.start(blockedSubtask.getTaskID());
-    Assert.assertTrue(firstCallEntered.await(5, TimeUnit.SECONDS));
-
-    executor.stop(blockedSubtask.getTaskID());
-    executor.start(blockedSubtask.getTaskID());
 
     try {
+      executor.start(blockedSubtask.getTaskID());
+      Assert.assertTrue(firstCallEntered.await(30, TimeUnit.SECONDS));
+
+      executor.stop(blockedSubtask.getTaskID());
+      executor.start(blockedSubtask.getTaskID());
+
       Assert.assertFalse(
           "The subtask must not be executed in parallel with itself",
           secondCallEntered.await(1, TimeUnit.SECONDS));

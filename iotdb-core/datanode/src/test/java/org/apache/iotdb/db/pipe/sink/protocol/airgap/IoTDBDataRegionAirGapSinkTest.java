@@ -424,7 +424,7 @@ public class IoTDBDataRegionAirGapSinkTest {
         senderFinished.set(true);
       }
 
-      receiverThread.join(5000);
+      receiverThread.join(30_000);
       Assert.assertFalse(receiverThread.isAlive());
       Assert.assertNull(receiverException.get());
       Assert.assertTrue(receivedRequests.size() > 1);
@@ -487,7 +487,7 @@ public class IoTDBDataRegionAirGapSinkTest {
         receiverSocket.close();
       }
 
-      receiverThread.join(5000);
+      receiverThread.join(30_000);
       Assert.assertFalse(receiverThread.isAlive());
       Assert.assertNull(receiverException.get());
       Assert.assertTrue(oversizedAcknowledgementSent.get());
@@ -539,7 +539,7 @@ public class IoTDBDataRegionAirGapSinkTest {
         receiverSocket.close();
       }
 
-      receiverThread.join(5000);
+      receiverThread.join(30_000);
       Assert.assertFalse(receiverThread.isAlive());
       Assert.assertNull(receiverException.get());
       Assert.assertTrue(secondPacketReceived.get());

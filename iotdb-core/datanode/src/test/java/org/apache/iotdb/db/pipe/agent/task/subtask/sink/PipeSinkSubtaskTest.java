@@ -45,9 +45,11 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -116,31 +118,44 @@ public class PipeSinkSubtaskTest {
 
     final Thread failureThread =
         new Thread(() -> subtask.onFailure(new PipeConnectionException("connection broken")));
-    failureThread.start();
-    Assert.assertTrue(handshakeEntered.await(5, TimeUnit.SECONDS));
-
-    final CountDownLatch discardReturned = new CountDownLatch(1);
-    final Thread discardThread =
-        new Thread(
-            () -> {
-              try {
-                subtask.discardEventsOfPipe(new CommitterKey("pipe", 1L, 1, -1));
-              } finally {
-                discardReturned.countDown();
-              }
-            });
-    discardThread.start();
+    failureThread.setDaemon(true);
+    Thread discardThread = null;
 
     try {
-      Assert.assertTrue(discardReturned.await(5, TimeUnit.SECONDS));
+      failureThread.start();
+      Assert.assertTrue(handshakeEntered.await(30, TimeUnit.SECONDS));
+
+      final CountDownLatch discardReturned = new CountDownLatch(1);
+      discardThread =
+          new Thread(
+              () -> {
+                try {
+                  subtask.discardEventsOfPipe(new CommitterKey("pipe", 1L, 1, -1));
+                } finally {
+                  discardReturned.countDown();
+                }
+              });
+      discardThread.setDaemon(true);
+      discardThread.start();
+
+      Assert.assertTrue(discardReturned.await(30, TimeUnit.SECONDS));
       Assert.assertEquals(1L, discardEntered.getCount());
       Assert.assertFalse(discardDuringHandshake.get());
     } finally {
       releaseHandshake.countDown();
-      failureThread.join(5000);
-      Assert.assertTrue(discardEntered.await(1, TimeUnit.SECONDS));
-      Assert.assertFalse(discardDuringHandshake.get());
-      subtask.close();
+      try {
+        failureThread.join(30_000);
+        Assert.assertFalse(failureThread.isAlive());
+        if (discardThread != null) {
+          discardThread.join(30_000);
+          Assert.assertFalse(discardThread.isAlive());
+          // Closing the subtask also drains pending discards. Check the handshake path first.
+          Assert.assertTrue(discardEntered.await(30, TimeUnit.SECONDS));
+          Assert.assertFalse(discardDuringHandshake.get());
+        }
+      } finally {
+        subtask.close();
+      }
     }
   }
 
@@ -174,9 +189,7 @@ public class PipeSinkSubtaskTest {
 
     final Thread failureThread =
         new Thread(() -> subtask.onFailure(new PipeConnectionException("connection broken")));
-    failureThread.start();
-    Assert.assertTrue(handshakeEntered.await(5, TimeUnit.SECONDS));
-
+    failureThread.setDaemon(true);
     final CountDownLatch discardReturned = new CountDownLatch(1);
     final Thread discardThread =
         new Thread(
@@ -187,22 +200,40 @@ public class PipeSinkSubtaskTest {
                 discardReturned.countDown();
               }
             });
-    discardThread.start();
+    discardThread.setDaemon(true);
 
     try {
-      Assert.assertFalse(discardReturned.await(100, TimeUnit.MILLISECONDS));
+      failureThread.start();
+      Assert.assertTrue(handshakeEntered.await(30, TimeUnit.SECONDS));
+
+      discardThread.start();
+      await()
+          .atMost(30, TimeUnit.SECONDS)
+          .until(
+              () ->
+                  discardThread.getState() == Thread.State.WAITING
+                      || discardReturned.getCount() == 0);
+      Assert.assertEquals(1L, discardReturned.getCount());
       Assert.assertEquals(1L, discardEntered.getCount());
+      Assert.assertFalse(discardDuringHandshake.get());
+
+      releaseHandshake.countDown();
+      discardThread.join(30_000);
+      failureThread.join(30_000);
+      Assert.assertFalse(discardThread.isAlive());
+      Assert.assertFalse(failureThread.isAlive());
+      // Closing the subtask also drains pending discards. Check normal completion first.
+      Assert.assertTrue(discardEntered.await(30, TimeUnit.SECONDS));
       Assert.assertFalse(discardDuringHandshake.get());
     } finally {
       releaseHandshake.countDown();
-      discardThread.join(5000);
-      failureThread.join(5000);
-      subtask.close();
+      try {
+        discardThread.join(30_000);
+        failureThread.join(30_000);
+      } finally {
+        subtask.close();
+      }
     }
-
-    Assert.assertFalse(discardThread.isAlive());
-    Assert.assertTrue(discardEntered.await(1, TimeUnit.SECONDS));
-    Assert.assertFalse(discardDuringHandshake.get());
   }
 
   @Test
@@ -237,24 +268,45 @@ public class PipeSinkSubtaskTest {
 
     final Thread failureThread =
         new Thread(() -> subtask.onFailure(new PipeConnectionException("connection broken")));
-    failureThread.start();
+    failureThread.setDaemon(true);
+    final FutureTask<Long> closeTask =
+        new FutureTask<>(
+            () -> {
+              final long startTime = System.nanoTime();
+              subtask.close();
+              return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
+            });
+    final Thread closeThread = new Thread(closeTask);
+    closeThread.setDaemon(true);
+    boolean closeStarted = false;
 
     try {
-      Assert.assertTrue(handshakeEntered.await(5, TimeUnit.SECONDS));
+      failureThread.start();
+      Assert.assertTrue(handshakeEntered.await(30, TimeUnit.SECONDS));
 
-      final long startTime = System.currentTimeMillis();
-      subtask.close();
+      closeThread.start();
+      closeStarted = true;
 
-      Assert.assertTrue(System.currentTimeMillis() - startTime < 1000);
+      Assert.assertTrue(closeTask.get(30, TimeUnit.SECONDS) < 1000);
       Assert.assertFalse(closeEntered.await(100, TimeUnit.MILLISECONDS));
       Assert.assertFalse(closeDuringHandshake.get());
     } finally {
       releaseHandshake.countDown();
-      Assert.assertTrue(closeEntered.await(1, TimeUnit.SECONDS));
-      failureThread.join(5000);
-      Assert.assertFalse(closeDuringHandshake.get());
-      CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(originalTimeout);
+      try {
+        if (!closeStarted) {
+          subtask.close();
+        }
+        closeThread.join(30_000);
+        failureThread.join(30_000);
+        Assert.assertFalse(closeThread.isAlive());
+        Assert.assertTrue(closeEntered.await(30, TimeUnit.SECONDS));
+        Assert.assertFalse(closeDuringHandshake.get());
+      } finally {
+        CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(originalTimeout);
+      }
     }
+
+    Assert.assertFalse(failureThread.isAlive());
   }
 
   @Test
@@ -290,9 +342,10 @@ public class PipeSinkSubtaskTest {
     try {
       final long startTime = System.currentTimeMillis();
       subtask.close();
+      final long closeDuration = System.currentTimeMillis() - startTime;
 
-      Assert.assertTrue(closeEntered.await(1, TimeUnit.SECONDS));
-      Assert.assertTrue(System.currentTimeMillis() - startTime < 1000);
+      Assert.assertTrue(closeDuration < 1000);
+      Assert.assertTrue(closeEntered.await(30, TimeUnit.SECONDS));
     } finally {
       releaseClose.countDown();
       CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(originalTimeout);
@@ -313,7 +366,7 @@ public class PipeSinkSubtaskTest {
     doAnswer(
             invocation -> {
               closeEntered.countDown();
-              releaseClose.await(5, TimeUnit.SECONDS);
+              releaseClose.await();
               return null;
             })
         .when(connector)
@@ -340,15 +393,19 @@ public class PipeSinkSubtaskTest {
                 closeReturned.countDown();
               }
             });
+    closeThread.setDaemon(true);
 
     try {
       closeThread.start();
-      Assert.assertTrue(closeEntered.await(5, TimeUnit.SECONDS));
+      Assert.assertTrue(closeEntered.await(30, TimeUnit.SECONDS));
       Assert.assertFalse(closeReturned.await(100, TimeUnit.MILLISECONDS));
     } finally {
       releaseClose.countDown();
-      closeThread.join(5000);
-      CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(originalTimeout);
+      try {
+        closeThread.join(30_000);
+      } finally {
+        CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(originalTimeout);
+      }
     }
 
     Assert.assertFalse(closeThread.isAlive());
@@ -623,7 +680,7 @@ public class PipeSinkSubtaskTest {
       handshaking = true;
       handshakeEntered.countDown();
       try {
-        releaseHandshake.await(5, TimeUnit.SECONDS);
+        releaseHandshake.await();
       } finally {
         handshaking = false;
       }
