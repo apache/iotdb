@@ -232,12 +232,10 @@ public class IoTDBSessionRelationalIT {
         assertEquals("db1", dataSet.next().getField(0).getStringValue());
       }
 
-      for (String invalidDatabase :
-          Arrays.asList("", " ", "a.b", "root.treedb", "ROOT.treedb")) {
+      for (String invalidDatabase : Arrays.asList("", " ", "a.b", "root.treedb", "ROOT.treedb")) {
         StatementExecutionException exception =
             assertThrows(
-                StatementExecutionException.class,
-                () -> session.insert(tablet, invalidDatabase));
+                StatementExecutionException.class, () -> session.insert(tablet, invalidDatabase));
         assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), exception.getStatusCode());
       }
     }
