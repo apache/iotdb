@@ -312,6 +312,10 @@ public final class SessionMessages {
   public static final String EXCEPTION_SESSION_CAN_NOT_CONNECT_TO_ARG_226FBA66 =
       "Session can not connect to {}";
 
+  public static final String EXCEPTION_INVALID_TABLE_MODEL_DATABASE_NAME_ARG_30813145 =
+      "Invalid table-model database name \"%s\". Expected an identifier of at most 64 characters"
+          + " using letters, numbers, Chinese characters, backticks, underscores, or hyphens.";
+
   public static final String
       EXCEPTION_SERVER_DOES_NOT_SUPPORT_DATABASE_SCOPED_TABLET_INSERTION_01CFFAF8 =
           "The connected server does not support database-scoped Tablet insertion. Upgrade the"

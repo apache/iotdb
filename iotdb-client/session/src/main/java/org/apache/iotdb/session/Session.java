@@ -21,17 +21,20 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.template.Template;
+import org.apache.iotdb.isession.util.TableModelDatabaseUtils;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
@@ -174,6 +177,7 @@ public class Session implements ISession {
   private static final double CONVERT_THRESHOLD = 0.5;
   private static final double SAMPLE_PROPORTION = 0.05;
   private static final int MIN_RECORDS_SIZE = 40;
+  private static final int MAX_TABLE_MODEL_DATABASE_NAME_LENGTH = 64;
   private static final String UNSPECIFIED_DATABASE_KEY = "";
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
@@ -1572,8 +1576,22 @@ public class Session implements ISession {
         : routeDatabase.toLowerCase(Locale.ENGLISH);
   }
 
-  private static String normalizeTableModelDatabaseName(String database) {
-    return database == null ? null : database.toLowerCase(Locale.ENGLISH);
+  private static String normalizeTableModelDatabaseName(String database)
+      throws StatementExecutionException {
+    if (database == null) {
+      return null;
+    }
+    String normalizedDatabase = database.toLowerCase(Locale.ENGLISH);
+    if (!TableModelDatabaseUtils.isValidDatabaseName(
+        normalizedDatabase, MAX_TABLE_MODEL_DATABASE_NAME_LENGTH)) {
+      throw new StatementExecutionException(
+          new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode())
+              .setMessage(
+                  String.format(
+                      SessionMessages.EXCEPTION_INVALID_TABLE_MODEL_DATABASE_NAME_ARG_30813145,
+                      database)));
+    }
+    return normalizedDatabase;
   }
 
   private void handleQueryRedirection(TEndPoint endPoint) throws IoTDBConnectionException {

@@ -236,7 +236,7 @@ public class IoTDBSessionRelationalIT {
         StatementExecutionException exception =
             assertThrows(
                 StatementExecutionException.class, () -> session.insert(tablet, invalidDatabase));
-        assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), exception.getStatusCode());
+        assertEquals(TSStatusCode.ILLEGAL_PATH.getStatusCode(), exception.getStatusCode());
       }
     }
   }

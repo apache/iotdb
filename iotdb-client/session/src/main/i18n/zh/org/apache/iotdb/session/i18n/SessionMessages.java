@@ -309,6 +309,9 @@ public final class SessionMessages {
 
   public static final String EXCEPTION_SESSION_CAN_NOT_CONNECT_TO_ARG_226FBA66 = "Session 无法连接到 {}";
 
+  public static final String EXCEPTION_INVALID_TABLE_MODEL_DATABASE_NAME_ARG_30813145 =
+      "表模型数据库名称“%s”无效。名称长度不得超过 64 个字符，且只能包含字母、数字、中文字符、反引号、下划线或连字符。";
+
   public static final String
       EXCEPTION_SERVER_DOES_NOT_SUPPORT_DATABASE_SCOPED_TABLET_INSERTION_01CFFAF8 =
           "连接的服务器不支持按 database 写入 Tablet。请升级服务器后使用 insert(Tablet, String database)。";
