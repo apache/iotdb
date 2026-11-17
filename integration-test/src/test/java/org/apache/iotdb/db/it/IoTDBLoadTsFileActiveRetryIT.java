@@ -111,8 +111,11 @@ public class IoTDBLoadTsFileActiveRetryIT {
     final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     final File retryTsFile = new File(tmpDir, "1-0-0-0.tsfile");
     final File permanentFailureTsFile = new File(tmpDir, "2-0-0-0.tsfile");
-    generateTsFile(retryTsFile);
-    generateTsFile(permanentFailureTsFile);
+    generateTsFile(retryTsFile, TSFILE_SCHEMA);
+    // BOOLEAN -> INT64 stays incompatible when type-mismatch conversion is disabled.
+    generateTsFile(
+        permanentFailureTsFile,
+        new MeasurementSchema(MEASUREMENT, TSDataType.BOOLEAN, TSEncoding.RLE));
 
     try (final Connection connection =
             EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
@@ -192,7 +195,7 @@ public class IoTDBLoadTsFileActiveRetryIT {
       statement.execute(
           String.format(
               "create timeseries %s.%s %s",
-              COLLISION_DEVICE, MEASUREMENT, TSDataType.INT64.name()));
+              COLLISION_DEVICE, MEASUREMENT, TSDataType.BOOLEAN.name()));
       for (final File tsFile : sourceTsFiles) {
         statement.execute(
             String.format(
@@ -567,9 +570,10 @@ public class IoTDBLoadTsFileActiveRetryIT {
     }
   }
 
-  private void generateTsFile(final File tsFile) throws Exception {
+  private void generateTsFile(final File tsFile, final IMeasurementSchema measurementSchema)
+      throws Exception {
     try (final TsFileGenerator generator = new TsFileGenerator(tsFile)) {
-      generator.registerTimeseries(DEVICE, Collections.singletonList(TSFILE_SCHEMA));
+      generator.registerTimeseries(DEVICE, Collections.singletonList(measurementSchema));
       generator.generateData(DEVICE, 10, 1, false);
     }
   }
