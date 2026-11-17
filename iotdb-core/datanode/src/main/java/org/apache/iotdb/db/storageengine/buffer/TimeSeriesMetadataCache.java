@@ -257,7 +257,7 @@ public class TimeSeriesMetadataCache {
                 loadBloomFilter(filePath, tsFileID, queryContext, bloomFilterIoSizeRecorder, false);
             loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
           }
-          if (timeColumnAbsent(requested, result, pending, bloomFilter, devicePrefix)) {
+          if (timeColumnAbsent(requested, result, bloomFilter, devicePrefix)) {
             fillMissingWithNull(requested, result);
             return result;
           }
@@ -265,7 +265,7 @@ public class TimeSeriesMetadataCache {
             TsFileSequenceReader reader =
                 FileReaderManager.getInstance()
                     .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, false);
-            LeafLoadStatistics loaded =
+            cacheHitCount +=
                 loadLeafGroups(
                     reader,
                     tsFileID,
@@ -282,7 +282,6 @@ public class TimeSeriesMetadataCache {
                     debug,
                     result,
                     timeSeriesMetadataIoSizeRecorder);
-            cacheHitCount += loaded.cacheHits;
             // per-series counters: every requested measurement that was not resolved from the
             // cache is a disk lookup, including the ones the bloom filter excluded (as before)
             diskLookupCount = requested.size() - cacheHitCount;
@@ -302,7 +301,7 @@ public class TimeSeriesMetadataCache {
                 filePath, tsFileID, queryContext, bloomFilterIoSizeRecorder, externalTsFile);
         loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
       }
-      if (timeColumnAbsent(requested, result, pending, bloomFilter, devicePrefix)) {
+      if (timeColumnAbsent(requested, result, bloomFilter, devicePrefix)) {
         fillMissingWithNull(requested, result);
         return result;
       }
@@ -310,7 +309,7 @@ public class TimeSeriesMetadataCache {
         TsFileSequenceReader reader =
             FileReaderManager.getInstance()
                 .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, externalTsFile);
-        LeafLoadStatistics loaded =
+        cacheHitCount +=
             loadLeafGroups(
                 reader,
                 tsFileID,
@@ -327,7 +326,6 @@ public class TimeSeriesMetadataCache {
                 debug,
                 result,
                 timeSeriesMetadataIoSizeRecorder);
-        cacheHitCount += loaded.cacheHits;
         diskLookupCount = requested.size() - cacheHitCount;
       }
       return result;
@@ -360,7 +358,7 @@ public class TimeSeriesMetadataCache {
    * {@code readTimeseriesMetadata} contains every {@code allSensors} entry of the group, so all
    * pending measurements it covers are resolved without relying on the LRU retaining the group.
    */
-  private LeafLoadStatistics loadLeafGroups(
+  private int loadLeafGroups(
       TsFileSequenceReader reader,
       TsFileID tsFileID,
       IDeviceID device,
@@ -377,19 +375,23 @@ public class TimeSeriesMetadataCache {
       Map<String, TimeseriesMetadata> result,
       LongConsumer ioSizeRecorder)
       throws IOException {
-    LeafLoadStatistics statistics = new LeafLoadStatistics();
+    int cacheHits = 0;
     // without a cache to warm, only the measurements this call needs are worth deserializing;
     // with the cache enabled the siblings keep the group warm for later single-column gets
     Set<String> groupFilter = cacheEnabled ? allSensors : requested;
     // probe the time column first: when it is absent, no selected series of this device can be
     // read from this file, and the per-column path returned without touching any other column
-    if (whereFirst(pending, requested)) {
-      pending = withFirst(pending, "");
+    if (requested.contains("") && pending.contains("")) {
+      Set<String> ordered = new LinkedHashSet<>(pending.size());
+      ordered.add("");
+      ordered.addAll(pending);
+      pending = ordered;
     }
     while (!pending.isEmpty()) {
-      if (timeColumnResolvedToNull(requested, result)) {
+      // an empty time column means no selected series of this device is readable from this file
+      if (requested.contains("") && result.containsKey("") && result.get("") == null) {
         fillMissingWithNull(requested, result);
-        return statistics;
+        return cacheHits;
       }
       String probe = pending.iterator().next();
       // another thread may have loaded this probe's group while we waited for the lock; checking
@@ -400,7 +402,7 @@ public class TimeSeriesMetadataCache {
               : null;
       if (cachedProbe != null) {
         pending.remove(probe);
-        statistics.cacheHits++;
+        cacheHits++;
         if (cachedProbe == NULL_EXISTS_CACHE_PLACE_HOLDER) {
           if (debug) {
             DEBUG_LOGGER.info(
@@ -424,7 +426,8 @@ public class TimeSeriesMetadataCache {
       }
       // bloom-probe only the probe: the group read resolves the other selected measurements of
       // that group, so probing each of them up front would add a per-column cost to every call
-      if (bloomFilter != null && !bloomFilterMayContain(bloomFilter, devicePrefix, probe)) {
+      // a null filter cannot rule the measurement out
+      if (bloomFilter != null && !bloomFilter.contains(devicePrefix + probe)) {
         pending.remove(probe);
         if (requested.contains(probe)) {
           if (debug) {
@@ -482,11 +485,7 @@ public class TimeSeriesMetadataCache {
     for (String measurement : requested) {
       result.putIfAbsent(measurement, null);
     }
-    return statistics;
-  }
-
-  private static final class LeafLoadStatistics {
-    private int cacheHits;
+    return cacheHits;
   }
 
   /**
@@ -497,7 +496,6 @@ public class TimeSeriesMetadataCache {
   private static boolean timeColumnAbsent(
       Set<String> requested,
       Map<String, TimeseriesMetadata> result,
-      Set<String> pending,
       BloomFilter bloomFilter,
       String devicePrefix) {
     if (!requested.contains("")) {
@@ -506,27 +504,11 @@ public class TimeSeriesMetadataCache {
     if (result.containsKey("")) {
       return result.get("") == null;
     }
-    if (bloomFilter != null && !bloomFilterMayContain(bloomFilter, devicePrefix, "")) {
+    if (bloomFilter != null && !bloomFilter.contains(devicePrefix)) {
       result.put("", null);
       return true;
     }
     return false;
-  }
-
-  private static boolean timeColumnResolvedToNull(
-      Set<String> requested, Map<String, TimeseriesMetadata> result) {
-    return requested.contains("") && result.containsKey("") && result.get("") == null;
-  }
-
-  private static boolean whereFirst(Set<String> pending, Set<String> requested) {
-    return requested.contains("") && pending.contains("");
-  }
-
-  private static Set<String> withFirst(Set<String> pending, String first) {
-    Set<String> ordered = new LinkedHashSet<>(pending.size());
-    ordered.add(first);
-    ordered.addAll(pending);
-    return ordered;
   }
 
   private static void fillMissingWithNull(
@@ -564,12 +546,6 @@ public class TimeSeriesMetadataCache {
             queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()::addAndGet,
             queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()::addAndGet,
             externalTsFile);
-  }
-
-  /** A null filter cannot rule the measurement out. */
-  private static boolean bloomFilterMayContain(
-      BloomFilter bloomFilter, String devicePrefix, String measurement) {
-    return bloomFilter == null || bloomFilter.contains(devicePrefix + measurement);
   }
 
   private static void recordLoadStatistics(
