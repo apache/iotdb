@@ -128,7 +128,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final boolean isDeleteAfterLoad;
   private final boolean isConvertOnTypeMismatch;
   private final long tabletConversionThresholdBytes;
-  private boolean hasCompatibleDataTypeMismatch;
 
   // Schema creators for tree and table
   private TreeSchemaAutoCreatorAndVerifier treeSchemaAutoCreatorAndVerifier;
@@ -225,15 +224,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     return isConvertOnTypeMismatch;
   }
 
-  void markCompatibleDataTypeMismatch() {
-    hasCompatibleDataTypeMismatch = true;
-  }
-
-  boolean hasCompatibleDataTypeMismatch() {
-    return hasCompatibleDataTypeMismatch
-        || (tableSchemaCache != null && tableSchemaCache.hasCompatibleDataTypeMismatch());
-  }
-
   public IAnalysis analyzeFileByFile(IAnalysis analysis) {
     if (!checkBeforeAnalyzeFileByFile(analysis)) {
       return analysis;
@@ -277,11 +267,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       LOGGER.warn(exceptionMessage, e);
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
-      return analysis;
-    }
-
-    if (hasCompatibleDataTypeMismatch()) {
-      executeTabletConversion(analysis);
       return analysis;
     }
 
@@ -686,9 +671,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     getOrCreateTableSchemaCache().flush();
-    if (getOrCreateTableSchemaCache().hasCompatibleDataTypeMismatch()) {
-      markCompatibleDataTypeMismatch();
-    }
     if (getOrCreateTableSchemaCache().isNeedDecode4DifferentTimeColumn()) {
       if (isTableModelStatement) {
         loadTsFileTableStatement.enableNeedDecode4TimeColumn();

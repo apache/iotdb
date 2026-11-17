@@ -111,7 +111,6 @@ public class LoadTsFileTableSchemaCache {
   private final MPPQueryContext context;
   private final boolean shouldVerifyDataType;
   private final boolean allowAutoCreateSchema;
-  private boolean hasCompatibleDataTypeMismatch;
 
   private Map<String, Set<IDeviceID>> currentBatchTable2Devices;
 
@@ -420,10 +419,6 @@ public class LoadTsFileTableSchemaCache {
     return needDecode4DifferentTimeColumn.get();
   }
 
-  boolean hasCompatibleDataTypeMismatch() {
-    return hasCompatibleDataTypeMismatch;
-  }
-
   private org.apache.tsfile.file.metadata.TableSchema resolveTableSchemaFromCache(
       final String tableName) {
     final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName, false);
@@ -514,9 +509,7 @@ public class LoadTsFileTableSchemaCache {
               TSDataType.valueOf(realColumn.getType().getTypeEnum().name());
           final TSDataType fileDataType =
               TSDataType.valueOf(fileColumn.getType().getTypeEnum().name());
-          if (realDataType.isCompatible(fileDataType)) {
-            hasCompatibleDataTypeMismatch |= shouldVerifyDataType;
-          } else {
+          if (!realDataType.isCompatible(fileDataType)) {
             final String message =
                 String.format(
                     DataNodeQueryMessages

@@ -605,9 +605,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
         // check datatype
         if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
-          if (iotdbSchema.getType().isCompatible(tsFileSchema.getType())) {
-            loadTsFileAnalyzer.markCompatibleDataTypeMismatch();
-          } else {
+          if (!iotdbSchema.getType().isCompatible(tsFileSchema.getType())) {
             throw new LoadAnalyzeTypeMismatchException(
                 String.format(
                     DataNodeQueryMessages

@@ -497,7 +497,7 @@ public class LoadTsFileAnalyzerTest {
   }
 
   @Test
-  public void testTableSchemaCacheShouldAllowCompatibleDataType() throws Exception {
+  public void testTableSchemaCacheAllowsCompatibleDataType() throws Exception {
     final LoadTsFileTableSchemaCache schemaCache = createTableSchemaCache(true);
     try {
       getVerifyTableDataTypeMethod()
@@ -505,7 +505,6 @@ public class LoadTsFileAnalyzerTest {
               schemaCache,
               createTableSchema(TSDataType.INT32),
               createTableSchema(TSDataType.INT64));
-      Assert.assertTrue(schemaCache.hasCompatibleDataTypeMismatch());
     } finally {
       schemaCache.close();
     }
@@ -521,7 +520,6 @@ public class LoadTsFileAnalyzerTest {
               schemaCache,
               createTableSchema(TSDataType.INT32),
               createTableSchema(TSDataType.BOOLEAN));
-      Assert.assertFalse(schemaCache.hasCompatibleDataTypeMismatch());
     } finally {
       schemaCache.close();
     }
@@ -573,7 +571,7 @@ public class LoadTsFileAnalyzerTest {
   }
 
   @Test
-  public void testTreeSchemaVerifierShouldAllowCompatibleDataType() throws Exception {
+  public void testTreeSchemaVerifierAllowsCompatibleDataType() throws Exception {
     final File tsFile = File.createTempFile("load-tree-compatible-type", ".tsfile");
 
     try (final LoadTsFileAnalyzer analyzer =
@@ -599,7 +597,6 @@ public class LoadTsFileAnalyzerTest {
             true);
 
         getVerifyTreeSchemaMethod().invoke(verifier, schemaTree);
-        Assert.assertTrue(analyzer.hasCompatibleDataTypeMismatch());
       } finally {
         verifier.close();
       }
