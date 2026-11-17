@@ -2501,10 +2501,9 @@ public class UDFWindowAndQueueTest {
 
     Assert.assertEquals(
         Arrays.asList(0L, 5L, 10L, 15L, 20L, 25L, 30L, 35L, 40L), collector.timestamps);
-    Assert.assertArrayEquals(
-        new double[] {-1e308, -7.5e307, -5e307, -2.5e307, 0.0, 2.5e307, 5e307, 7.5e307, 1e308},
-        collector.values.stream().mapToDouble(Double::doubleValue).toArray(),
-        1e292);
+    assertSplineValues(
+        collector,
+        new double[] {-1e308, -7.5e307, -5e307, -2.5e307, 0.0, 2.5e307, 5e307, 7.5e307, 1e308});
   }
 
   @Test
@@ -2523,10 +2522,7 @@ public class UDFWindowAndQueueTest {
 
     Assert.assertEquals(
         Arrays.asList(0L, 5L, 10L, 15L, 20L, 25L, 30L, 35L, 40L), collector.timestamps);
-    Assert.assertArrayEquals(
-        new double[] {1e308, 5e307, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0},
-        collector.values.stream().mapToDouble(Double::doubleValue).toArray(),
-        1e292);
+    assertSplineValues(collector, new double[] {1e308, 5e307, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0});
   }
 
   @Test
@@ -3302,6 +3298,14 @@ public class UDFWindowAndQueueTest {
   private static void assertAllValuesFinite(RecordingPointCollector collector) {
     for (double value : collector.values) {
       Assert.assertTrue(Double.isFinite(value));
+    }
+  }
+
+  private static void assertSplineValues(RecordingPointCollector collector, double[] expected) {
+    Assert.assertEquals(expected.length, collector.values.size());
+    for (int i = 0; i < expected.length; i++) {
+      double tolerance = Math.max(1e-12, Math.abs(expected[i]) * 1e-15);
+      Assert.assertEquals(expected[i], collector.values.get(i), tolerance);
     }
   }
 
