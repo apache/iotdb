@@ -59,6 +59,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -344,6 +345,11 @@ public class FileLoaderUtils {
     // group that holds one of them once and answers the whole group from that read, so a wide
     // projection does not walk the device metadata index once per column
     Set<String> allSensors = alignedPath.getAllSensors();
+    if (!allSensors.contains("")) {
+      // the aligned loader always needs the time column, even if the caller's set omits it
+      allSensors = new HashSet<>(allSensors);
+      allSensors.add("");
+    }
 
     // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
     // we should not ignore the non-exist of device in TsFileMetadata

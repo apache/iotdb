@@ -260,17 +260,17 @@ public class TimeSeriesMetadataCacheTest {
               reader.readTimeseriesMetadata(
                   Mockito.eq(deviceID),
                   Mockito.<long[]>isNull(),
-                  Mockito.eq(measurement),
-                  Mockito.eq(allSensors),
+                  Mockito.anyCollection(),
+                  Mockito.anySet(),
                   Mockito.eq(true),
                   Mockito.any(LongConsumer.class)))
-          .thenReturn(Collections.emptyList());
+          .thenReturn(Collections.emptyMap());
       Mockito.when(
               reader.readTimeseriesMetadata(
                   Mockito.eq(deviceID),
                   Mockito.<long[]>isNull(),
-                  Mockito.eq(measurement),
-                  Mockito.eq(allSensors),
+                  Mockito.anyCollection(),
+                  Mockito.anySet(),
                   Mockito.eq(false),
                   Mockito.any(LongConsumer.class)))
           .thenThrow(new IOException("missing device"));
@@ -283,8 +283,8 @@ public class TimeSeriesMetadataCacheTest {
           .readTimeseriesMetadata(
               Mockito.eq(deviceID),
               Mockito.<long[]>isNull(),
-              Mockito.eq(measurement),
-              Mockito.eq(allSensors),
+              Mockito.anyCollection(),
+              Mockito.anySet(),
               Mockito.eq(false),
               Mockito.any(LongConsumer.class));
     } finally {
@@ -320,19 +320,22 @@ public class TimeSeriesMetadataCacheTest {
   private static void stubGroupRead(
       TsFileSequenceReader reader,
       IDeviceID deviceID,
-      Set<String> allSensors,
       boolean ignoreNotExists,
       List<TimeseriesMetadata> group)
       throws IOException {
+    Map<String, TimeseriesMetadata> loaded = new HashMap<>();
+    for (TimeseriesMetadata metadata : group) {
+      loaded.put(metadata.getMeasurementId(), metadata);
+    }
     Mockito.when(
             reader.readTimeseriesMetadata(
                 Mockito.eq(deviceID),
                 Mockito.<long[]>isNull(),
-                Mockito.anyString(),
-                Mockito.eq(allSensors),
+                Mockito.anyCollection(),
+                Mockito.anySet(),
                 Mockito.eq(ignoreNotExists),
                 Mockito.any(LongConsumer.class)))
-        .thenReturn(group);
+        .thenReturn(loaded);
   }
 
   @Test
@@ -383,7 +386,7 @@ public class TimeSeriesMetadataCacheTest {
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
       fileReaderManager.setReaderForTest(tsFileID, true, reader);
-      stubGroupRead(reader, deviceID, allSensors, false, group);
+      stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> result =
           getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
@@ -405,8 +408,8 @@ public class TimeSeriesMetadataCacheTest {
           .readTimeseriesMetadata(
               Mockito.any(),
               Mockito.<long[]>any(),
-              Mockito.anyString(),
-              Mockito.any(),
+              Mockito.anyCollection(),
+              Mockito.anySet(),
               Mockito.anyBoolean(),
               Mockito.any(LongConsumer.class));
 
@@ -467,8 +470,8 @@ public class TimeSeriesMetadataCacheTest {
           .readTimeseriesMetadata(
               Mockito.any(),
               Mockito.<long[]>any(),
-              Mockito.anyString(),
-              Mockito.any(),
+              Mockito.anyCollection(),
+              Mockito.anySet(),
               Mockito.anyBoolean(),
               Mockito.any(LongConsumer.class));
     } finally {
@@ -493,13 +496,13 @@ public class TimeSeriesMetadataCacheTest {
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
       fileReaderManager.setReaderForTest(tsFileID, true, reader);
-      stubGroupRead(reader, deviceID, allSensors, true, Collections.emptyList());
+      stubGroupRead(reader, deviceID, true, Collections.emptyList());
       Mockito.when(
               reader.readTimeseriesMetadata(
                   Mockito.eq(deviceID),
                   Mockito.<long[]>isNull(),
-                  Mockito.anyString(),
-                  Mockito.eq(allSensors),
+                  Mockito.anyCollection(),
+                  Mockito.anySet(),
                   Mockito.eq(false),
                   Mockito.any(LongConsumer.class)))
           .thenThrow(new IOException("device absent"));
@@ -656,8 +659,8 @@ public class TimeSeriesMetadataCacheTest {
           .readTimeseriesMetadata(
               Mockito.any(),
               Mockito.<long[]>any(),
-              Mockito.anyString(),
-              Mockito.any(),
+              Mockito.anyCollection(),
+              Mockito.anySet(),
               Mockito.anyBoolean(),
               Mockito.any(LongConsumer.class));
     } finally {
@@ -706,7 +709,7 @@ public class TimeSeriesMetadataCacheTest {
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
       fileReaderManager.setReaderForTest(tsFileID, true, reader);
-      stubGroupRead(reader, deviceID, allSensors, false, group);
+      stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> first =
           getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
@@ -723,8 +726,8 @@ public class TimeSeriesMetadataCacheTest {
           .readTimeseriesMetadata(
               Mockito.eq(deviceID),
               Mockito.<long[]>isNull(),
-              Mockito.anyString(),
-              Mockito.eq(allSensors),
+              Mockito.anyCollection(),
+              Mockito.anySet(),
               Mockito.eq(false),
               Mockito.any(LongConsumer.class));
     } finally {
@@ -749,13 +752,13 @@ public class TimeSeriesMetadataCacheTest {
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
       fileReaderManager.setReaderForTest(tsFileID, true, reader);
-      stubGroupRead(reader, deviceID, allSensors, true, Collections.emptyList());
+      stubGroupRead(reader, deviceID, true, Collections.emptyList());
       Mockito.when(
               reader.readTimeseriesMetadata(
                   Mockito.eq(deviceID),
                   Mockito.<long[]>isNull(),
-                  Mockito.anyString(),
-                  Mockito.eq(allSensors),
+                  Mockito.anyCollection(),
+                  Mockito.anySet(),
                   Mockito.eq(false),
                   Mockito.any(LongConsumer.class)))
           .thenThrow(new IOException("device absent"));
@@ -775,8 +778,8 @@ public class TimeSeriesMetadataCacheTest {
           .readTimeseriesMetadata(
               Mockito.eq(deviceID),
               Mockito.<long[]>isNull(),
-              Mockito.anyString(),
-              Mockito.eq(allSensors),
+              Mockito.anyCollection(),
+              Mockito.anySet(),
               Mockito.anyBoolean(),
               Mockito.any(LongConsumer.class));
     } finally {
@@ -813,7 +816,7 @@ public class TimeSeriesMetadataCacheTest {
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
       fileReaderManager.setReaderForTest(tsFileID, true, reader);
-      stubGroupRead(reader, deviceID, allSensors, false, group);
+      stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> first =
           getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
@@ -833,8 +836,8 @@ public class TimeSeriesMetadataCacheTest {
           .readTimeseriesMetadata(
               Mockito.eq(deviceID),
               Mockito.<long[]>isNull(),
-              Mockito.anyString(),
-              Mockito.eq(allSensors),
+              Mockito.anyCollection(),
+              Mockito.anySet(),
               Mockito.eq(false),
               Mockito.any(LongConsumer.class));
     } finally {
