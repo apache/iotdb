@@ -349,4 +349,15 @@ public final class IoTConsensusMessages {
 
   public static final String
       EXCEPTION_FAILED_TO_LOAD_SNAPSHOT_ARG_FOR_CONSENSUS_GROUP_ARG_F876AE5C = "加载快照 %s 失败，共识组：%s";
+
+  public static final String EXCEPTION_NO_REPLICATION_CHANNEL_TO_ARG_F99CF90B =
+      "不存在到 %s 的复制通道";
+  public static final String EXCEPTION_REPLICATION_CHANNEL_TO_ARG_FAILED_402B2EC5 =
+      "到 %s 的复制通道失败";
+  public static final String EXCEPTION_TIMED_OUT_WAITING_FOR_ARG_TO_APPLY_INDEX_ARG_ECAC0A5A =
+      "等待 %s 应用索引 %d 超时";
+  public static final String EXCEPTION_INTERRUPTED_WAITING_FOR_REPLICATION_TO_ARG_64450D09 =
+      "等待向 %s 复制时被中断";
+  public static final String EXCEPTION_MISSING_WAL_ENTRIES_FOR_ARG_EXPECTED_ARG_FOUND_ARG_A9D194A5 =
+      "向 %s 复制所需的 WAL 条目缺失：预期索引 %d，实际索引 %d";
 }
