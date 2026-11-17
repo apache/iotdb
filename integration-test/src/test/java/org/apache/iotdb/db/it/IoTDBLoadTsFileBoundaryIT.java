@@ -486,7 +486,7 @@ public class IoTDBLoadTsFileBoundaryIT {
               Assert.assertTrue(
                   "Mini conversion must retain the successfully converted valid prefix",
                   resultSet.next());
-              Assert.assertEquals(1, resultSet.getLong("time"));
+              Assert.assertEquals(1, resultSet.getLong(1));
               Assert.assertEquals(7, resultSet.getInt("quality"));
               Assert.assertNull(
                   "Source mods must also apply to a visible valid prefix",
@@ -592,10 +592,10 @@ public class IoTDBLoadTsFileBoundaryIT {
     try (ResultSet resultSet =
         statement.executeQuery("select value from " + device + " order by time")) {
       Assert.assertTrue(resultSet.next());
-      Assert.assertEquals(10000, resultSet.getLong("time"));
+      Assert.assertEquals(10000, resultSet.getLong(1));
       Assert.assertEquals(10, resultSet.getLong("value"));
       Assert.assertTrue(resultSet.next());
-      Assert.assertEquals(20000, resultSet.getLong("time"));
+      Assert.assertEquals(20000, resultSet.getLong(1));
       Assert.assertEquals(20, resultSet.getLong("value"));
       Assert.assertFalse(resultSet.next());
     }
@@ -612,7 +612,7 @@ public class IoTDBLoadTsFileBoundaryIT {
       for (int i = 0; i < expectedCount; i++) {
         Assert.assertTrue(
             "A normal-path row was lost during statement reconstruction", resultSet.next());
-        Assert.assertEquals(100L * (i + 1), resultSet.getLong("time"));
+        Assert.assertEquals(100L * (i + 1), resultSet.getLong(1));
         Assert.assertEquals(startValue + i, resultSet.getLong("value"));
       }
       Assert.assertFalse(resultSet.next());
@@ -637,7 +637,7 @@ public class IoTDBLoadTsFileBoundaryIT {
     try (ResultSet resultSet =
         statement.executeQuery("select value from " + device + " order by time")) {
       Assert.assertTrue(resultSet.next());
-      Assert.assertEquals(expectedTime, resultSet.getLong("time"));
+      Assert.assertEquals(expectedTime, resultSet.getLong(1));
       Assert.assertEquals(expectedValue, resultSet.getLong("value"));
       Assert.assertFalse(resultSet.next());
     }
