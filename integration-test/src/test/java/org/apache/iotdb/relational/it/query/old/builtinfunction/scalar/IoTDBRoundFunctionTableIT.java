@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -41,7 +40,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBRoundFunctionTableIT {
+public class IoTDBRoundFunctionTableIT extends IoTDBDiffFunctionTableBase {
 
   private static final String DATABASE_NAME = "db";
 
@@ -64,10 +63,11 @@ public class IoTDBRoundFunctionTableIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
-    insertData();
+    IoTDBDiffFunctionTableBase.insertData();
+    insertRoundData();
   }
 
-  protected static void insertData() {
+  protected static void insertRoundData() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
@@ -80,11 +80,8 @@ public class IoTDBRoundFunctionTableIT {
     }
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
+  // Verifies ROUND on integer and floating-point columns, including null values and a large
+  // timestamp.
   @Test
   public void testRound() {
     String[] expectedHeader = new String[] {"time", "_col1"};
@@ -141,6 +138,7 @@ public class IoTDBRoundFunctionTableIT {
         "select time, round(s4) from table1", expectedHeader, intRetArray, DATABASE_NAME);
   }
 
+  // Verifies positive precision rounding across integer and floating-point input columns.
   @Test
   public void testRoundWithPlaces() {
     String[] expectedHeader = new String[] {"time", "_col1"};
@@ -249,6 +247,7 @@ public class IoTDBRoundFunctionTableIT {
         "select time, round(s4, 1) from table1", expectedHeader, intRetArray, DATABASE_NAME);
   }
 
+  // Verifies negative precision rounds values to tens across numeric input columns.
   @Test
   public void testRoundWithNegativePlaces() {
 
@@ -306,6 +305,7 @@ public class IoTDBRoundFunctionTableIT {
         "select time, round(s4, -1) from table1", expectedHeader, intRetArray, DATABASE_NAME);
   }
 
+  // Verifies ROUND rejects boolean, string, and timestamp inputs.
   @Test
   public void testRoundBooleanAndText() {
     tableAssertTestFail(

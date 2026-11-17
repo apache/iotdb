@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.relational.it.query.view.old.aligned.IoTDBPredicatePushDownTableViewBase;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -35,9 +36,10 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBPredicatePushDownTableIT {
+public class IoTDBPredicatePushDownTableIT extends IoTDBPredicatePushDownTableViewBase {
 
-  private final String database = "db";
+  private static final String TABLE_DATABASE_NAME = "db_table";
+  private final String database = TABLE_DATABASE_NAME;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -49,7 +51,13 @@ public class IoTDBPredicatePushDownTableIT {
         .setEnableCrossSpaceCompaction(false)
         .setMaxTsBlockLineNumber(3);
     EnvFactory.getEnv().initClusterEnvironment();
-    TableUtils.insertData();
+    prepareTestData();
+  }
+
+  // All page-size and parallelism variants need both fixtures in separate databases.
+  protected static void prepareTestData() {
+    TableUtils.insertData(TABLE_DATABASE_NAME);
+    prepareViewData();
   }
 
   @AfterClass

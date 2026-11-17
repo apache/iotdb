@@ -44,6 +44,7 @@ public class IoTDBAlignedSeriesQueryTable2IT extends IoTDBAlignedSeriesQueryTabl
         .setMaxNumberOfPointsInPage(2);
     EnvFactory.getEnv().initClusterEnvironment();
     TableUtils.insertData();
+    prepareViewData();
   }
 
   @AfterClass

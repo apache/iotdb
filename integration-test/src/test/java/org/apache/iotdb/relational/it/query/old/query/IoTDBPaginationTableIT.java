@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.relational.it.query.view.old.query.IoTDBPaginationTableViewBase;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -39,7 +40,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBPaginationTableIT {
+public class IoTDBPaginationTableIT extends IoTDBPaginationTableViewBase {
   private static final String DATABASE_NAME = "test";
 
   private static final String[] SQLs =
@@ -106,6 +107,8 @@ public class IoTDBPaginationTableIT {
         .setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(SQLs);
+    // The view fixture uses its own database and the same pagination cluster configuration.
+    insertViewData();
   }
 
   @AfterClass

@@ -20,16 +20,10 @@
 package org.apache.iotdb.relational.it.query.old.query;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.relational.it.db.it.IoTDBPatternFftPreparedStatementIT;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
@@ -37,9 +31,7 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBGreatestLeastTableIT {
+public abstract class IoTDBGreatestLeastTableIT extends IoTDBPatternFftPreparedStatementIT {
 
   private static final String DATABASE_NAME = "db";
 
@@ -64,9 +56,7 @@ public class IoTDBGreatestLeastTableIT {
         "INSERT INTO any_null_table(time, device_id, string2, int2, double2, timestamp2) VALUES(10, 'd1', 'test', 10, 10.0, 10)",
       };
 
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+  public static void prepareGreatestLeastFixture() {
     insertData();
   }
 
@@ -80,11 +70,6 @@ public class IoTDBGreatestLeastTableIT {
     } catch (Exception e) {
       e.printStackTrace();
     }
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

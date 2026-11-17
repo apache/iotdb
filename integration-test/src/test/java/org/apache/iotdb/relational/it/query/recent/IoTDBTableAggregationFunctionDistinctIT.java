@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.relational.it.query.view.recent.IoTDBTableViewAggregationFunctionDistinctBase;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -39,7 +40,8 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBTableAggregationFunctionDistinctIT {
+public class IoTDBTableAggregationFunctionDistinctIT
+    extends IoTDBTableViewAggregationFunctionDistinctBase {
 
   private static final String DATABASE_NAME = "test";
   private static final String[] createSqls =
@@ -61,6 +63,7 @@ public class IoTDBTableAggregationFunctionDistinctIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
+    prepareViewData();
     prepareTableData(createSqls);
   }
 

@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.relational.it.query.view.old.alignbydevice.IoTDBOrderByLimitOffsetAlignByDeviceTableViewBase;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -38,12 +39,14 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBOrderByLimitOffsetAlignByDeviceTableIT {
+public class IoTDBOrderByLimitOffsetAlignByDeviceTableIT
+    extends IoTDBOrderByLimitOffsetAlignByDeviceTableViewBase {
 
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData3();
+    insertViewData3();
   }
 
   @AfterClass

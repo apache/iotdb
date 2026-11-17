@@ -38,6 +38,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceTable2IT
     EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData3();
+    insertViewData3();
   }
 
   @AfterClass

@@ -24,8 +24,10 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.relational.it.query.view.old.IoTDBFilterTableViewBase;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -38,6 +40,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
@@ -45,7 +48,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBFilterTableIT {
+public class IoTDBFilterTableIT extends IoTDBFilterTableViewBase {
   protected static final int ITERATION_TIMES = 10;
   private static final String DATABASE_NAME = "test";
 
@@ -61,6 +64,8 @@ public class IoTDBFilterTableIT {
     EnvFactory.getEnv().initClusterEnvironment();
     createTimeSeries();
     generateData();
+    // Table views use a separate database while reusing this cluster's topology and configuration.
+    insertViewData();
   }
 
   @AfterClass
@@ -79,6 +84,10 @@ public class IoTDBFilterTableIT {
           "CREATE TABLE testTimeSeries(device STRING TAG, s1 BOOLEAN FIELD, s2 BOOLEAN FIELD)");
       statement.execute("CREATE TABLE testUDTF(device STRING TAG, s1 TEXT FIELD, s2 DOUBLE FIELD)");
       statement.execute("CREATE TABLE sg1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD)");
+      statement.execute(
+          "CREATE TABLE testNullFilter(device STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 DOUBLE FIELD)");
+      statement.execute(
+          "CREATE TABLE betweenTable (device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 TEXT FIELD)");
 
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -116,6 +125,16 @@ public class IoTDBFilterTableIT {
       statement.execute(" insert into sg1(time, device, s1, s2) values (2,'d1',2,'2')");
       statement.execute(" insert into testUDTF(time, device, s1, s2) values (1,'d1','ss',0)");
       statement.execute(" insert into testUDTF(time, device, s1, s2) values (2,'d1','d',3)");
+      statement.execute(
+          "insert into testNullFilter(time,device,s2,s3) values(1, 'd1', false, 11.1)");
+      statement.execute("insert into testNullFilter(time,device,s1,s2) values(2, 'd1', 22, true)");
+      statement.execute("insert into testNullFilter(time,device,s1,s3) values(3, 'd1', 23, 33.3)");
+      for (int i = 1; i <= ITERATION_TIMES; ++i) {
+        statement.execute(
+            String.format(
+                "insert into betweenTable(device,time,s1,s2,s3) values('d1',%d,%d,%d,%s)",
+                i, i, i, i));
+      }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -260,5 +279,134 @@ public class IoTDBFilterTableIT {
         new String[] {"_col0"},
         new String[] {"null,", "null,"},
         DATABASE_NAME);
+  }
+
+  // Checks BETWEEN and NOT BETWEEN bounds on fields and time, including literal expression bounds.
+  @Test
+  public void testBetweenExpression() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      int start = 1;
+      int end = 5;
+      String query = "SELECT * FROM betweenTable WHERE s1 BETWEEN " + start + " AND " + end;
+      assertBetweenQuery(statement, query, start, end);
+
+      query =
+          "SELECT * FROM betweenTable WHERE s1 NOT BETWEEN "
+              + (end + 1)
+              + " AND "
+              + ITERATION_TIMES;
+      assertBetweenQuery(statement, query, start, end);
+
+      query = "SELECT * FROM betweenTable WHERE time BETWEEN " + start + " AND " + end;
+      assertBetweenQuery(statement, query, start, end);
+
+      query =
+          "SELECT * FROM betweenTable WHERE time NOT BETWEEN "
+              + (end + 1)
+              + " AND "
+              + ITERATION_TIMES;
+      assertBetweenQuery(statement, query, start, end);
+
+      query = "SELECT * FROM betweenTable WHERE " + start + " BETWEEN time AND " + end;
+      try (ResultSet resultSet = statement.executeQuery(query)) {
+        Assert.assertTrue(resultSet.next());
+        assertBetweenRow(resultSet, 1);
+        Assert.assertFalse(resultSet.next());
+      }
+
+      query = "SELECT * FROM betweenTable WHERE " + start + " NOT BETWEEN time AND " + end;
+      try (ResultSet resultSet = statement.executeQuery(query)) {
+        for (int row = start + 1; row <= ITERATION_TIMES; row++) {
+          Assert.assertTrue(resultSet.next());
+          assertBetweenRow(resultSet, row);
+        }
+        Assert.assertFalse(resultSet.next());
+      }
+
+      String[] expectedHeader = {"_col0", "_col1"};
+      String[] expectedRows = {"true,true,", "true,false,", "false,false,"};
+      tableResultSetEqualTest(
+          "select s1 between 1 and 2, time between 0 and 1 from betweenTable where time between 1 and 3",
+          expectedHeader,
+          expectedRows,
+          DATABASE_NAME);
+      tableResultSetEqualTest(
+          "select s1 between 1 and 2 as r1, time between 0 and 1 as r2 from betweenTable where time between 1 and 3",
+          new String[] {"r1", "r2"},
+          expectedRows,
+          DATABASE_NAME);
+      tableResultSetEqualTest(
+          "select s1 between 1 and 2, time between 0 and 1 from betweenTable where time between 1 and 3 order by device",
+          expectedHeader,
+          expectedRows,
+          DATABASE_NAME);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  private static void assertBetweenQuery(Statement statement, String query, int start, int end)
+      throws SQLException {
+    try (ResultSet resultSet = statement.executeQuery(query)) {
+      for (int row = start; row <= end; row++) {
+        Assert.assertTrue(resultSet.next());
+        assertBetweenRow(resultSet, row);
+      }
+      Assert.assertFalse(resultSet.next());
+    }
+  }
+
+  private static void assertBetweenRow(ResultSet resultSet, int row) throws SQLException {
+    Assert.assertEquals(defaultFormatDataTime(row), resultSet.getString("time"));
+    Assert.assertEquals(String.valueOf(row), resultSet.getString("s1"));
+    Assert.assertEquals(String.valueOf(row), resultSet.getString("s2"));
+    Assert.assertEquals(String.valueOf(row), resultSet.getString("s3"));
+  }
+
+  // Checks IS NULL and IS NOT NULL partition rows with null values across several columns.
+  @Test
+  public void nullFilterTest() {
+    String[] expectedRows = {
+      defaultFormatDataTime(1) + ",null,false,11.1",
+      defaultFormatDataTime(2) + ",22,true,null",
+      defaultFormatDataTime(3) + ",23,null,33.3"
+    };
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      int rowCount = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from testNullFilter where s1 is null")) {
+        while (resultSet.next()) {
+          assertNullFilterRow(resultSet, expectedRows[rowCount++]);
+        }
+      }
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from testNullFilter where s1 is not null")) {
+        while (resultSet.next()) {
+          assertNullFilterRow(resultSet, expectedRows[rowCount++]);
+        }
+      }
+      assertEquals(expectedRows.length, rowCount);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private static void assertNullFilterRow(ResultSet resultSet, String expectedRow)
+      throws SQLException {
+    String actualRow =
+        resultSet.getString("time")
+            + ","
+            + resultSet.getString("s1")
+            + ","
+            + resultSet.getString("s2")
+            + ","
+            + resultSet.getString("s3");
+    assertEquals(expectedRow, actualRow);
   }
 }

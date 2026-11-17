@@ -38,6 +38,7 @@ public class IoTDBAlignByDeviceWithTemplateTable2IT extends IoTDBAlignByDeviceWi
     EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
+    insertViewData();
   }
 
   @AfterClass

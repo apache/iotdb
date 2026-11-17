@@ -19,17 +19,10 @@
 package org.apache.iotdb.relational.it.query.old.query;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -38,10 +31,13 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBQueryWithComplexValueFilterTableIT {
-  private static final String DATABASE_NAME = "test";
+public abstract class IoTDBQueryWithComplexValueFilterTableIT
+    extends IoTDBNoSelectExpressionAfterAnalyzedTableIT {
+  public static void prepareQueryWithComplexValueFilterTableFixture() {
+    prepareTableData(SQLs);
+  }
+
+  private static final String DATABASE_NAME = "test_complex_value_filter";
   private static final String[] SQLs =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -58,17 +54,6 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
         "insert into sg1(time,device,s1,s2) values(8,'d1',8,8)",
         "insert into sg1(time,device,s1,s2) values(9,'d1',9,9)"
       };
-
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-    prepareTableData(SQLs);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
 
   @Test
   public void testRawQuery1() {

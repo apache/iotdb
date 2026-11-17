@@ -19,23 +19,15 @@
 
 package org.apache.iotdb.relational.it.query.recent;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBPredicateConversionTableIT {
+public abstract class IoTDBPredicateConversionTableIT extends IoTDBGroupByAllTableIT {
+  public static void preparePredicateConversionTableFixture() {
+    prepareTableData(createSqls);
+  }
 
   private static final String DATABASE_NAME = "test_predicate_conversion";
 
@@ -55,17 +47,6 @@ public class IoTDBPredicateConversionTableIT {
         "INSERT INTO PredicateTestTable(time, int32_col, int64_col) VALUES(9, -29, -29)",
         "INSERT INTO PredicateTestTable(time, int32_col, int64_col) VALUES(10, -30, -30)"
       };
-
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-    prepareTableData(createSqls);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
 
   @Test
   public void testDoubleLiteralAndInt32Column() {

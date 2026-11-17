@@ -138,13 +138,20 @@ public class TableViewUtils {
         "insert into root.sg1.d2(time, s2, s5) values(39, 39, 'non_aligned_test39')",
         "insert into root.sg1.d2(time, s2, s5) values(40, 40, 'non_aligned_test40')",
       };
-  private static final String[] createTableViewSqls = {
-    "CREATE DATABASE db",
-    "USE db",
-    "CREATE VIEW table0 (device string tag, s1 FLOAT field, s2 INT32 field, s3 INT64 field, s4 BOOLEAN field, s5 TEXT field) as root.sg1.**",
-  };
+
+  private static String[] createTableViewSqls(String databaseName) {
+    return new String[] {
+      "CREATE DATABASE " + databaseName,
+      "USE " + databaseName,
+      "CREATE VIEW table0 (device string tag, s1 FLOAT field, s2 INT32 field, s3 INT64 field, s4 BOOLEAN field, s5 TEXT field) as root.sg1.**",
+    };
+  }
 
   public static void insertData() {
+    insertData("db");
+  }
+
+  public static void insertData(String databaseName) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -159,7 +166,7 @@ public class TableViewUtils {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
 
-      for (String sql : createTableViewSqls) {
+      for (String sql : createTableViewSqls(databaseName)) {
         statement.addBatch(sql);
       }
       statement.executeBatch();

@@ -25,6 +25,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.relational.it.query.view.recent.IoTDBComplexQueryTableViewBase;
 
 import org.apache.ratis.thirdparty.com.google.gson.JsonElement;
 import org.apache.ratis.thirdparty.com.google.gson.JsonObject;
@@ -45,7 +46,7 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBComplexQueryIT {
+public class IoTDBComplexQueryIT extends IoTDBComplexQueryTableViewBase {
   protected static final String DATABASE_NAME = "test_db";
   protected static final String[] createSqls =
       new String[] {
@@ -72,6 +73,7 @@ public class IoTDBComplexQueryIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
+    prepareViewData();
   }
 
   @AfterClass

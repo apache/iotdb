@@ -23,6 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.relational.it.query.view.recent.IoTDBGapFillTableViewBase;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
@@ -39,7 +40,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBGapFillTableIT {
+public class IoTDBGapFillTableIT extends IoTDBGapFillTableViewBase {
   private static final String DATABASE_NAME = "test";
   protected static final String[] createSqls =
       new String[] {
@@ -63,11 +64,12 @@ public class IoTDBGapFillTableIT {
           + ": could not infer startTime or endTime from WHERE clause";
 
   @BeforeClass
-  public static void setUp() {
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
+    prepareViewData();
   }
 
   @AfterClass

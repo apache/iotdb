@@ -19,17 +19,10 @@
 
 package org.apache.iotdb.relational.it.query.view.recent;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
@@ -38,94 +31,92 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.relational.it.db.it.IoTDBMultiTAGsWithAttributesTableIT.buildHeaders;
 import static org.apache.iotdb.relational.it.db.it.IoTDBMultiTAGsWithAttributesTableIT.repeatTest;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBTableViewAggregationNonStreamIT {
-  protected static final String TREE_DB_NAME = "root.test";
-  protected static final String DATABASE_NAME = "test";
+public abstract class IoTDBTableViewAggregationNonStreamIT extends IoTDBTableViewAggregationIT {
+  protected static final String TREE_DB_NAME = "root.test_nonstream";
+  protected static final String DATABASE_NAME = "test_nonstream";
   protected static final String[] createSqls =
       new String[] {
         "CREATE DATABASE " + TREE_DB_NAME,
-        "CREATE ALIGNED TIMESERIES root.test.table1.d01(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d02(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d03(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d04(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d05(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d06(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d07(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d08(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d09(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d10(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d11(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d12(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d13(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d14(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d15(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "CREATE ALIGNED TIMESERIES root.test.table1.d16(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
-        "INSERT INTO root.test.table1.d01(time,province,city,region1,s1,s3,s6,s8,s9) values (2024-09-24T06:15:30.000+00:00,'shanghai','shanghai','huangpu',30,30.0,'shanghai_huangpu_red_A_d01_30', X'cafebabe30',2024-09-24T06:15:30.000+00:00)",
-        "INSERT INTO root.test.table1.d01(time,province,city,region1,s2,s3,s4,s6,s7,s9,s10) values (2024-09-24T06:15:35.000+00:00,'shanghai','shanghai','huangpu',35000,35.0,35.0,'shanghai_huangpu_red_A_d01_35','shanghai_huangpu_red_A_d01_35',2024-09-24T06:15:35.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d01(time,province,city,region1,s1,s3,s5,s7,s9) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','huangpu',40,40.0,true,'shanghai_huangpu_red_A_d01_40',2024-09-24T06:15:40.000+00:00)",
-        "INSERT INTO root.test.table1.d01(time,province,city,region1,s2,s5,s9,s10) values (2024-09-24T06:15:50.000+00:00,'shanghai','shanghai','huangpu',50000,false,2024-09-24T06:15:50.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d01(time,province,city,region1,s1,s4,s8,s9) values (2024-09-24T06:15:55.000+00:00,'shanghai','shanghai','huangpu',55,55.0,X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
-        "INSERT INTO root.test.table1.d02(time,province,city,region1,s1,s5,s6,s7,s9) values (2024-09-24T06:15:36.000+00:00,'shanghai','shanghai','huangpu',36,true,'shanghai_huangpu_red_B_d02_36','shanghai_huangpu_red_B_d02_36',2024-09-24T06:15:36.000+00:00)",
-        "INSERT INTO root.test.table1.d02(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','huangpu',40,40.0,'shanghai_huangpu_red_B_d02_40',2024-09-24T06:15:40.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d02(time,province,city,region1,s2,s7,s8,s9) values (2024-09-24T06:15:50.000+00:00,'shanghai','shanghai','huangpu',50000,'shanghai_huangpu_red_B_d02_50',X'cafebabe50',2024-09-24T06:15:50.000+00:00)",
-        "INSERT INTO root.test.table1.d03(time,province,city,region1,s2,s8,s9) values (2024-09-24T06:15:31.000+00:00,'shanghai','shanghai','huangpu',31000,X'cafebabe31',2024-09-24T06:15:31.000+00:00)",
-        "INSERT INTO root.test.table1.d03(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:36.000+00:00,'shanghai','shanghai','huangpu',36,36.0,'shanghai_huangpu_yellow_A_d03_36',2024-09-24T06:15:36.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d03(time,province,city,region1,s1,s3,s5,s6,s8,s9) values (2024-09-24T06:15:41.000+00:00,'shanghai','shanghai','huangpu',41,41.0,false,'shanghai_huangpu_yellow_A_d03_41',X'cafebabe41',2024-09-24T06:15:41.000+00:00)",
-        "INSERT INTO root.test.table1.d03(time,province,city,region1,s2,s4,s7,s9) values (2024-09-24T06:15:46.000+00:00,'shanghai','shanghai','huangpu',46000,46.0,'shanghai_huangpu_yellow_A_d03_46',2024-09-24T06:15:46.000+00:00)",
-        "INSERT INTO root.test.table1.d03(time,province,city,region1,s3,s6,s9) values (2024-09-24T06:15:51.000+00:00,'shanghai','shanghai','huangpu',51.0,'shanghai_huangpu_yellow_A_d03_51',2024-09-24T06:15:51.000+00:00)",
-        "INSERT INTO root.test.table1.d04(time,province,city,region1,s3,s5,s7,s9,s10) values (2024-09-24T06:15:30.000+00:00,'shanghai','shanghai','huangpu',30.0,true,'shanghai_huangpu_yellow_B_d04_30',2024-09-24T06:15:30.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d04(time,province,city,region1,s2,s9) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','huangpu',40000,2024-09-24T06:15:40.000+00:00)",
-        "INSERT INTO root.test.table1.d04(time,province,city,region1,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'shanghai','shanghai','huangpu',55,55.0,'shanghai_huangpu_yellow_B_d04_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
-        "INSERT INTO root.test.table1.d05(time,province,city,region1,s1,s3,s6,s8,s9) values (2024-09-24T06:15:30.000+00:00,'shanghai','shanghai','pudong',30,30.0,'shanghai_pudong_red_A_d05_30', X'cafebabe30',2024-09-24T06:15:30.000+00:00)",
-        "INSERT INTO root.test.table1.d05(time,province,city,region1,s2,s3,s4,s6,s7,s9,s10) values (2024-09-24T06:15:35.000+00:00,'shanghai','shanghai','pudong',35000,35.0,35.0,'shanghai_pudong_red_A_d05_35','shanghai_pudong_red_A_d05_35',2024-09-24T06:15:35.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d05(time,province,city,region1,s1,s3,s5,s7,s9) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','pudong',40,40.0,true,'shanghai_pudong_red_A_d05_40',2024-09-24T06:15:40.000+00:00)",
-        "INSERT INTO root.test.table1.d05(time,province,city,region1,s2,s5,s9,s10) values (2024-09-24T06:15:50.000+00:00,'shanghai','shanghai','pudong',50000,false,2024-09-24T06:15:50.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d05(time,province,city,region1,s1,s4,s8,s9) values (2024-09-24T06:15:55.000+00:00,'shanghai','shanghai','pudong',55,55.0,X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
-        "INSERT INTO root.test.table1.d06(time,province,city,region1,s1,s5,s6,s7,s9) values (2024-09-24T06:15:36.000+00:00,'shanghai','shanghai','pudong',36,true,'shanghai_pudong_red_B_d06_36','shanghai_pudong_red_B_d06_36',2024-09-24T06:15:36.000+00:00)",
-        "INSERT INTO root.test.table1.d06(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','pudong',40,40.0,'shanghai_pudong_red_B_d06_40',2024-09-24T06:15:40.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d06(time,province,city,region1,s2,s7,s8,s9) values (2024-09-24T06:15:50.000+00:00,'shanghai','shanghai','pudong',50000,'shanghai_pudong_red_B_d06_50',X'cafebabe50',2024-09-24T06:15:50.000+00:00)",
-        "INSERT INTO root.test.table1.d07(time,province,city,region1,s2,s8,s9) values (2024-09-24T06:15:31.000+00:00,'shanghai','shanghai','pudong',31000,X'cafebabe31',2024-09-24T06:15:31.000+00:00)",
-        "INSERT INTO root.test.table1.d07(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:36.000+00:00,'shanghai','shanghai','pudong',36,36.0,'shanghai_pudong_yellow_A_d07_36',2024-09-24T06:15:36.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d07(time,province,city,region1,s1,s3,s5,s6,s8,s9) values (2024-09-24T06:15:41.000+00:00,'shanghai','shanghai','pudong',41,41.0,false,'shanghai_pudong_yellow_A_d07_41',X'cafebabe41',2024-09-24T06:15:41.000+00:00)",
-        "INSERT INTO root.test.table1.d07(time,province,city,region1,s2,s4,s7,s9) values (2024-09-24T06:15:46.000+00:00,'shanghai','shanghai','pudong',46000,46.0,'shanghai_pudong_yellow_A_d07_46',2024-09-24T06:15:46.000+00:00)",
-        "INSERT INTO root.test.table1.d07(time,province,city,region1,s3,s6,s9) values (2024-09-24T06:15:51.000+00:00,'shanghai','shanghai','pudong',51.0,'shanghai_pudong_yellow_A_d07_51',2024-09-24T06:15:51.000+00:00)",
-        "INSERT INTO root.test.table1.d08(time,province,city,region1,s3,s5,s7,s9,s10) values (2024-09-24T06:15:30.000+00:00,'shanghai','shanghai','pudong',30.0,true,'shanghai_pudong_yellow_B_d08_30',2024-09-24T06:15:30.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d08(time,province,city,region1,s2,s9) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','pudong',40000,2024-09-24T06:15:40.000+00:00)",
-        "INSERT INTO root.test.table1.d08(time,province,city,region1,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'shanghai','shanghai','pudong',55,55.0,'shanghai_pudong_yellow_B_d08_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
-        "INSERT INTO root.test.table1.d09(time,province,city,region1,s1,s3,s6,s8,s9) values (2024-09-24T06:15:30.000+00:00,'beijing','beijing','chaoyang',30,30.0,'beijing_chaoyang_red_A_d09_30', X'cafebabe30',2024-09-24T06:15:30.000+00:00)",
-        "INSERT INTO root.test.table1.d09(time,province,city,region1,s2,s3,s4,s6,s7,s9,s10) values (2024-09-24T06:15:35.000+00:00,'beijing','beijing','chaoyang',35000,35.0,35.0,'beijing_chaoyang_red_A_d09_35','beijing_chaoyang_red_A_d09_35',2024-09-24T06:15:35.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d09(time,province,city,region1,s1,s3,s5,s7,s9) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','chaoyang',40,40.0,true,'beijing_chaoyang_red_A_d09_40',2024-09-24T06:15:40.000+00:00)",
-        "INSERT INTO root.test.table1.d09(time,province,city,region1,s2,s5,s9,s10) values (2024-09-24T06:15:50.000+00:00,'beijing','beijing','chaoyang',50000,false,2024-09-24T06:15:50.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d09(time,province,city,region1,s1,s4,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','chaoyang',55,55.0,X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
-        "INSERT INTO root.test.table1.d10(time,province,city,region1,s1,s5,s6,s7,s9) values (2024-09-24T06:15:36.000+00:00,'beijing','beijing','chaoyang',36,true,'beijing_chaoyang_red_B_d10_36','beijing_chaoyang_red_B_d10_36',2024-09-24T06:15:36.000+00:00)",
-        "INSERT INTO root.test.table1.d10(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','chaoyang',40,40.0,'beijing_chaoyang_red_B_d10_40',2024-09-24T06:15:40.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d10(time,province,city,region1,s2,s7,s8,s9) values (2024-09-24T06:15:50.000+00:00,'beijing','beijing','chaoyang',50000,'beijing_chaoyang_red_B_d10_50',X'cafebabe50',2024-09-24T06:15:50.000+00:00)",
-        "INSERT INTO root.test.table1.d11(time,province,city,region1,s2,s8,s9) values (2024-09-24T06:15:31.000+00:00,'beijing','beijing','chaoyang',31000,X'cafebabe31',2024-09-24T06:15:31.000+00:00)",
-        "INSERT INTO root.test.table1.d11(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:36.000+00:00,'beijing','beijing','chaoyang',36,36.0,'beijing_chaoyang_yellow_A_d11_36',2024-09-24T06:15:36.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d11(time,province,city,region1,s1,s3,s5,s6,s8,s9) values (2024-09-24T06:15:41.000+00:00,'beijing','beijing','chaoyang',41,41.0,false,'beijing_chaoyang_yellow_A_d11_41',X'cafebabe41',2024-09-24T06:15:41.000+00:00)",
-        "INSERT INTO root.test.table1.d11(time,province,city,region1,s2,s4,s7,s9) values (2024-09-24T06:15:46.000+00:00,'beijing','beijing','chaoyang',46000,46.0,'beijing_chaoyang_yellow_A_d11_46',2024-09-24T06:15:46.000+00:00)",
-        "INSERT INTO root.test.table1.d11(time,province,city,region1,s3,s6,s9) values (2024-09-24T06:15:51.000+00:00,'beijing','beijing','chaoyang',51.0,'beijing_chaoyang_yellow_A_d11_51',2024-09-24T06:15:51.000+00:00)",
-        "INSERT INTO root.test.table1.d12(time,province,city,region1,s3,s5,s7,s9,s10) values (2024-09-24T06:15:30.000+00:00,'beijing','beijing','chaoyang',30.0,true,'beijing_chaoyang_yellow_B_d12_30',2024-09-24T06:15:30.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d12(time,province,city,region1,s2,s9) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','chaoyang',40000,2024-09-24T06:15:40.000+00:00)",
-        "INSERT INTO root.test.table1.d12(time,province,city,region1,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','chaoyang',55,55.0,'beijing_chaoyang_yellow_B_d12_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
-        "INSERT INTO root.test.table1.d13(time,province,city,region1,s1,s3,s6,s8,s9) values (2024-09-24T06:15:30.000+00:00,'beijing','beijing','haidian',30,30.0,'beijing_haidian_red_A_d13_30', X'cafebabe30',2024-09-24T06:15:30.000+00:00)",
-        "INSERT INTO root.test.table1.d13(time,province,city,region1,s2,s3,s4,s6,s7,s9,s10) values (2024-09-24T06:15:35.000+00:00,'beijing','beijing','haidian',35000,35.0,35.0,'beijing_haidian_red_A_d13_35','beijing_haidian_red_A_d13_35',2024-09-24T06:15:35.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d13(time,province,city,region1,s1,s3,s5,s7,s9) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','haidian',40,40.0,true,'beijing_haidian_red_A_d13_40',2024-09-24T06:15:40.000+00:00)",
-        "INSERT INTO root.test.table1.d13(time,province,city,region1,s2,s5,s9,s10) values (2024-09-24T06:15:50.000+00:00,'beijing','beijing','haidian',50000,false,2024-09-24T06:15:50.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d13(time,province,city,region1,s1,s4,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','haidian',55,55.0,X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
-        "INSERT INTO root.test.table1.d14(time,province,city,region1,s1,s5,s6,s7,s9) values (2024-09-24T06:15:36.000+00:00,'beijing','beijing','haidian',36,true,'beijing_haidian_red_B_d14_36','beijing_haidian_red_B_d14_36',2024-09-24T06:15:36.000+00:00)",
-        "INSERT INTO root.test.table1.d14(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','haidian',40,40.0,'beijing_haidian_red_B_d14_40',2024-09-24T06:15:40.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d14(time,province,city,region1,s2,s7,s8,s9) values (2024-09-24T06:15:50.000+00:00,'beijing','beijing','haidian',50000,'beijing_haidian_red_B_d14_50',X'cafebabe50',2024-09-24T06:15:50.000+00:00)",
-        "INSERT INTO root.test.table1.d15(time,province,city,region1,s2,s8,s9) values (2024-09-24T06:15:31.000+00:00,'beijing','beijing','haidian',31000,X'cafebabe31',2024-09-24T06:15:31.000+00:00)",
-        "INSERT INTO root.test.table1.d15(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:36.000+00:00,'beijing','beijing','haidian',36,36.0,'beijing_haidian_yellow_A_d15_36',2024-09-24T06:15:36.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d15(time,province,city,region1,s1,s3,s5,s6,s8,s9) values (2024-09-24T06:15:41.000+00:00,'beijing','beijing','haidian',41,41.0,false,'beijing_haidian_yellow_A_d15_41',X'cafebabe41',2024-09-24T06:15:41.000+00:00)",
-        "INSERT INTO root.test.table1.d15(time,province,city,region1,s2,s4,s7,s9) values (2024-09-24T06:15:46.000+00:00,'beijing','beijing','haidian',46000,46.0,'beijing_haidian_yellow_A_d15_46',2024-09-24T06:15:46.000+00:00)",
-        "INSERT INTO root.test.table1.d15(time,province,city,region1,s3,s6,s9) values (2024-09-24T06:15:51.000+00:00,'beijing','beijing','haidian',51.0,'beijing_haidian_yellow_A_d15_51',2024-09-24T06:15:51.000+00:00)",
-        "INSERT INTO root.test.table1.d16(time,province,city,region1,s3,s5,s7,s9,s10) values (2024-09-24T06:15:30.000+00:00,'beijing','beijing','haidian',30.0,true,'beijing_haidian_yellow_B_d16_30',2024-09-24T06:15:30.000+00:00,'2024-09-24')",
-        "INSERT INTO root.test.table1.d16(time,province,city,region1,s2,s9) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','haidian',40000,2024-09-24T06:15:40.000+00:00)",
-        "INSERT INTO root.test.table1.d16(time,province,city,region1,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','haidian',55,55.0,'beijing_haidian_yellow_B_d16_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d01(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d02(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d03(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d04(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d05(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d06(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d07(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d08(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d09(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d10(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d11(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d12(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d13(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d14(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d15(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "CREATE ALIGNED TIMESERIES root.test_nonstream.table1.d16(province STRING, city STRING, region1 STRING, s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT, s7 STRING, s8 BLOB, s9 TIMESTAMP, s10 DATE)",
+        "INSERT INTO root.test_nonstream.table1.d01(time,province,city,region1,s1,s3,s6,s8,s9) values (2024-09-24T06:15:30.000+00:00,'shanghai','shanghai','huangpu',30,30.0,'shanghai_huangpu_red_A_d01_30', X'cafebabe30',2024-09-24T06:15:30.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d01(time,province,city,region1,s2,s3,s4,s6,s7,s9,s10) values (2024-09-24T06:15:35.000+00:00,'shanghai','shanghai','huangpu',35000,35.0,35.0,'shanghai_huangpu_red_A_d01_35','shanghai_huangpu_red_A_d01_35',2024-09-24T06:15:35.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d01(time,province,city,region1,s1,s3,s5,s7,s9) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','huangpu',40,40.0,true,'shanghai_huangpu_red_A_d01_40',2024-09-24T06:15:40.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d01(time,province,city,region1,s2,s5,s9,s10) values (2024-09-24T06:15:50.000+00:00,'shanghai','shanghai','huangpu',50000,false,2024-09-24T06:15:50.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d01(time,province,city,region1,s1,s4,s8,s9) values (2024-09-24T06:15:55.000+00:00,'shanghai','shanghai','huangpu',55,55.0,X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d02(time,province,city,region1,s1,s5,s6,s7,s9) values (2024-09-24T06:15:36.000+00:00,'shanghai','shanghai','huangpu',36,true,'shanghai_huangpu_red_B_d02_36','shanghai_huangpu_red_B_d02_36',2024-09-24T06:15:36.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d02(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','huangpu',40,40.0,'shanghai_huangpu_red_B_d02_40',2024-09-24T06:15:40.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d02(time,province,city,region1,s2,s7,s8,s9) values (2024-09-24T06:15:50.000+00:00,'shanghai','shanghai','huangpu',50000,'shanghai_huangpu_red_B_d02_50',X'cafebabe50',2024-09-24T06:15:50.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d03(time,province,city,region1,s2,s8,s9) values (2024-09-24T06:15:31.000+00:00,'shanghai','shanghai','huangpu',31000,X'cafebabe31',2024-09-24T06:15:31.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d03(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:36.000+00:00,'shanghai','shanghai','huangpu',36,36.0,'shanghai_huangpu_yellow_A_d03_36',2024-09-24T06:15:36.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d03(time,province,city,region1,s1,s3,s5,s6,s8,s9) values (2024-09-24T06:15:41.000+00:00,'shanghai','shanghai','huangpu',41,41.0,false,'shanghai_huangpu_yellow_A_d03_41',X'cafebabe41',2024-09-24T06:15:41.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d03(time,province,city,region1,s2,s4,s7,s9) values (2024-09-24T06:15:46.000+00:00,'shanghai','shanghai','huangpu',46000,46.0,'shanghai_huangpu_yellow_A_d03_46',2024-09-24T06:15:46.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d03(time,province,city,region1,s3,s6,s9) values (2024-09-24T06:15:51.000+00:00,'shanghai','shanghai','huangpu',51.0,'shanghai_huangpu_yellow_A_d03_51',2024-09-24T06:15:51.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d04(time,province,city,region1,s3,s5,s7,s9,s10) values (2024-09-24T06:15:30.000+00:00,'shanghai','shanghai','huangpu',30.0,true,'shanghai_huangpu_yellow_B_d04_30',2024-09-24T06:15:30.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d04(time,province,city,region1,s2,s9) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','huangpu',40000,2024-09-24T06:15:40.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d04(time,province,city,region1,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'shanghai','shanghai','huangpu',55,55.0,'shanghai_huangpu_yellow_B_d04_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d05(time,province,city,region1,s1,s3,s6,s8,s9) values (2024-09-24T06:15:30.000+00:00,'shanghai','shanghai','pudong',30,30.0,'shanghai_pudong_red_A_d05_30', X'cafebabe30',2024-09-24T06:15:30.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d05(time,province,city,region1,s2,s3,s4,s6,s7,s9,s10) values (2024-09-24T06:15:35.000+00:00,'shanghai','shanghai','pudong',35000,35.0,35.0,'shanghai_pudong_red_A_d05_35','shanghai_pudong_red_A_d05_35',2024-09-24T06:15:35.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d05(time,province,city,region1,s1,s3,s5,s7,s9) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','pudong',40,40.0,true,'shanghai_pudong_red_A_d05_40',2024-09-24T06:15:40.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d05(time,province,city,region1,s2,s5,s9,s10) values (2024-09-24T06:15:50.000+00:00,'shanghai','shanghai','pudong',50000,false,2024-09-24T06:15:50.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d05(time,province,city,region1,s1,s4,s8,s9) values (2024-09-24T06:15:55.000+00:00,'shanghai','shanghai','pudong',55,55.0,X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d06(time,province,city,region1,s1,s5,s6,s7,s9) values (2024-09-24T06:15:36.000+00:00,'shanghai','shanghai','pudong',36,true,'shanghai_pudong_red_B_d06_36','shanghai_pudong_red_B_d06_36',2024-09-24T06:15:36.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d06(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','pudong',40,40.0,'shanghai_pudong_red_B_d06_40',2024-09-24T06:15:40.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d06(time,province,city,region1,s2,s7,s8,s9) values (2024-09-24T06:15:50.000+00:00,'shanghai','shanghai','pudong',50000,'shanghai_pudong_red_B_d06_50',X'cafebabe50',2024-09-24T06:15:50.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d07(time,province,city,region1,s2,s8,s9) values (2024-09-24T06:15:31.000+00:00,'shanghai','shanghai','pudong',31000,X'cafebabe31',2024-09-24T06:15:31.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d07(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:36.000+00:00,'shanghai','shanghai','pudong',36,36.0,'shanghai_pudong_yellow_A_d07_36',2024-09-24T06:15:36.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d07(time,province,city,region1,s1,s3,s5,s6,s8,s9) values (2024-09-24T06:15:41.000+00:00,'shanghai','shanghai','pudong',41,41.0,false,'shanghai_pudong_yellow_A_d07_41',X'cafebabe41',2024-09-24T06:15:41.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d07(time,province,city,region1,s2,s4,s7,s9) values (2024-09-24T06:15:46.000+00:00,'shanghai','shanghai','pudong',46000,46.0,'shanghai_pudong_yellow_A_d07_46',2024-09-24T06:15:46.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d07(time,province,city,region1,s3,s6,s9) values (2024-09-24T06:15:51.000+00:00,'shanghai','shanghai','pudong',51.0,'shanghai_pudong_yellow_A_d07_51',2024-09-24T06:15:51.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d08(time,province,city,region1,s3,s5,s7,s9,s10) values (2024-09-24T06:15:30.000+00:00,'shanghai','shanghai','pudong',30.0,true,'shanghai_pudong_yellow_B_d08_30',2024-09-24T06:15:30.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d08(time,province,city,region1,s2,s9) values (2024-09-24T06:15:40.000+00:00,'shanghai','shanghai','pudong',40000,2024-09-24T06:15:40.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d08(time,province,city,region1,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'shanghai','shanghai','pudong',55,55.0,'shanghai_pudong_yellow_B_d08_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d09(time,province,city,region1,s1,s3,s6,s8,s9) values (2024-09-24T06:15:30.000+00:00,'beijing','beijing','chaoyang',30,30.0,'beijing_chaoyang_red_A_d09_30', X'cafebabe30',2024-09-24T06:15:30.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d09(time,province,city,region1,s2,s3,s4,s6,s7,s9,s10) values (2024-09-24T06:15:35.000+00:00,'beijing','beijing','chaoyang',35000,35.0,35.0,'beijing_chaoyang_red_A_d09_35','beijing_chaoyang_red_A_d09_35',2024-09-24T06:15:35.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d09(time,province,city,region1,s1,s3,s5,s7,s9) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','chaoyang',40,40.0,true,'beijing_chaoyang_red_A_d09_40',2024-09-24T06:15:40.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d09(time,province,city,region1,s2,s5,s9,s10) values (2024-09-24T06:15:50.000+00:00,'beijing','beijing','chaoyang',50000,false,2024-09-24T06:15:50.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d09(time,province,city,region1,s1,s4,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','chaoyang',55,55.0,X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d10(time,province,city,region1,s1,s5,s6,s7,s9) values (2024-09-24T06:15:36.000+00:00,'beijing','beijing','chaoyang',36,true,'beijing_chaoyang_red_B_d10_36','beijing_chaoyang_red_B_d10_36',2024-09-24T06:15:36.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d10(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','chaoyang',40,40.0,'beijing_chaoyang_red_B_d10_40',2024-09-24T06:15:40.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d10(time,province,city,region1,s2,s7,s8,s9) values (2024-09-24T06:15:50.000+00:00,'beijing','beijing','chaoyang',50000,'beijing_chaoyang_red_B_d10_50',X'cafebabe50',2024-09-24T06:15:50.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d11(time,province,city,region1,s2,s8,s9) values (2024-09-24T06:15:31.000+00:00,'beijing','beijing','chaoyang',31000,X'cafebabe31',2024-09-24T06:15:31.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d11(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:36.000+00:00,'beijing','beijing','chaoyang',36,36.0,'beijing_chaoyang_yellow_A_d11_36',2024-09-24T06:15:36.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d11(time,province,city,region1,s1,s3,s5,s6,s8,s9) values (2024-09-24T06:15:41.000+00:00,'beijing','beijing','chaoyang',41,41.0,false,'beijing_chaoyang_yellow_A_d11_41',X'cafebabe41',2024-09-24T06:15:41.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d11(time,province,city,region1,s2,s4,s7,s9) values (2024-09-24T06:15:46.000+00:00,'beijing','beijing','chaoyang',46000,46.0,'beijing_chaoyang_yellow_A_d11_46',2024-09-24T06:15:46.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d11(time,province,city,region1,s3,s6,s9) values (2024-09-24T06:15:51.000+00:00,'beijing','beijing','chaoyang',51.0,'beijing_chaoyang_yellow_A_d11_51',2024-09-24T06:15:51.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d12(time,province,city,region1,s3,s5,s7,s9,s10) values (2024-09-24T06:15:30.000+00:00,'beijing','beijing','chaoyang',30.0,true,'beijing_chaoyang_yellow_B_d12_30',2024-09-24T06:15:30.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d12(time,province,city,region1,s2,s9) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','chaoyang',40000,2024-09-24T06:15:40.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d12(time,province,city,region1,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','chaoyang',55,55.0,'beijing_chaoyang_yellow_B_d12_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d13(time,province,city,region1,s1,s3,s6,s8,s9) values (2024-09-24T06:15:30.000+00:00,'beijing','beijing','haidian',30,30.0,'beijing_haidian_red_A_d13_30', X'cafebabe30',2024-09-24T06:15:30.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d13(time,province,city,region1,s2,s3,s4,s6,s7,s9,s10) values (2024-09-24T06:15:35.000+00:00,'beijing','beijing','haidian',35000,35.0,35.0,'beijing_haidian_red_A_d13_35','beijing_haidian_red_A_d13_35',2024-09-24T06:15:35.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d13(time,province,city,region1,s1,s3,s5,s7,s9) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','haidian',40,40.0,true,'beijing_haidian_red_A_d13_40',2024-09-24T06:15:40.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d13(time,province,city,region1,s2,s5,s9,s10) values (2024-09-24T06:15:50.000+00:00,'beijing','beijing','haidian',50000,false,2024-09-24T06:15:50.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d13(time,province,city,region1,s1,s4,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','haidian',55,55.0,X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d14(time,province,city,region1,s1,s5,s6,s7,s9) values (2024-09-24T06:15:36.000+00:00,'beijing','beijing','haidian',36,true,'beijing_haidian_red_B_d14_36','beijing_haidian_red_B_d14_36',2024-09-24T06:15:36.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d14(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','haidian',40,40.0,'beijing_haidian_red_B_d14_40',2024-09-24T06:15:40.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d14(time,province,city,region1,s2,s7,s8,s9) values (2024-09-24T06:15:50.000+00:00,'beijing','beijing','haidian',50000,'beijing_haidian_red_B_d14_50',X'cafebabe50',2024-09-24T06:15:50.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d15(time,province,city,region1,s2,s8,s9) values (2024-09-24T06:15:31.000+00:00,'beijing','beijing','haidian',31000,X'cafebabe31',2024-09-24T06:15:31.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d15(time,province,city,region1,s1,s4,s7,s9,s10) values (2024-09-24T06:15:36.000+00:00,'beijing','beijing','haidian',36,36.0,'beijing_haidian_yellow_A_d15_36',2024-09-24T06:15:36.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d15(time,province,city,region1,s1,s3,s5,s6,s8,s9) values (2024-09-24T06:15:41.000+00:00,'beijing','beijing','haidian',41,41.0,false,'beijing_haidian_yellow_A_d15_41',X'cafebabe41',2024-09-24T06:15:41.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d15(time,province,city,region1,s2,s4,s7,s9) values (2024-09-24T06:15:46.000+00:00,'beijing','beijing','haidian',46000,46.0,'beijing_haidian_yellow_A_d15_46',2024-09-24T06:15:46.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d15(time,province,city,region1,s3,s6,s9) values (2024-09-24T06:15:51.000+00:00,'beijing','beijing','haidian',51.0,'beijing_haidian_yellow_A_d15_51',2024-09-24T06:15:51.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d16(time,province,city,region1,s3,s5,s7,s9,s10) values (2024-09-24T06:15:30.000+00:00,'beijing','beijing','haidian',30.0,true,'beijing_haidian_yellow_B_d16_30',2024-09-24T06:15:30.000+00:00,'2024-09-24')",
+        "INSERT INTO root.test_nonstream.table1.d16(time,province,city,region1,s2,s9) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','haidian',40000,2024-09-24T06:15:40.000+00:00)",
+        "INSERT INTO root.test_nonstream.table1.d16(time,province,city,region1,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','haidian',55,55.0,'beijing_haidian_yellow_B_d16_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
         "FLUSH",
       };
 
@@ -133,28 +124,23 @@ public class IoTDBTableViewAggregationNonStreamIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE VIEW table1(province STRING FIELD, city STRING FIELD, region STRING FIELD FROM region1, device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD) as root.test.table1.**",
+        "CREATE VIEW table1(province STRING FIELD, city STRING FIELD, region STRING FIELD FROM region1, device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD) as root.test_nonstream.table1.**",
       };
 
   @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
-    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
-    EnvFactory.getEnv().initClusterEnvironment();
+  public static void setUpNonStreamData() throws Exception {
+    // Keep this fixture in separate tree and table databases from the tag-mapped tests.
     prepareData(createSqls);
     prepareTableData(createTableViewSqls);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   // ==================================================================
   // ==================== Normal Aggregation Test =====================
   // ==================================================================
+  // Checks row and non-null counts when province, city, and region are view fields; results must
+  // match the tag-mapped fixture.
   @Test
-  public void countTest() {
+  public void countTestNonStream() {
     String[] expectedHeader = new String[] {"_col0"};
     String[] retArray =
         new String[] {
@@ -494,8 +480,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
     tableResultSetEqualTest("select count(1) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
+  // Checks COUNT_IF predicates over the field-mapped fixture return the same conditional counts as
+  // the tag-mapped view.
   @Test
-  public void countIfTest() {
+  public void countIfTestNonStream() {
     String[] expectedHeader = new String[] {"_col0"};
     String[] retArray =
         new String[] {
@@ -751,8 +739,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks global and grouped averages over sparse field-mapped measurements preserve the expected
+  // values.
   @Test
-  public void avgTest() {
+  public void avgTestNonStream() {
     String[] expectedHeader = new String[] {"device_id", "_col1"};
     String[] retArray =
         new String[] {
@@ -931,8 +921,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
     tableResultSetEqualTest("select avg(s4) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
+  // Checks global and grouped sums over field-mapped measurements preserve the expected values.
   @Test
-  public void sumTest() {
+  public void sumTestNonStream() {
     String[] expectedHeader = new String[] {"device_id", "_col1"};
     String[] retArray =
         new String[] {
@@ -1111,8 +1102,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
     tableResultSetEqualTest("select sum(s3) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
+  // Checks global and grouped minimum values over field-mapped measurements preserve the expected
+  // values.
   @Test
-  public void minTest() {
+  public void minTestNonStream() {
     String[] expectedHeader = new String[] {"device_id", "_col1", "_col2", "_col3", "_col4"};
     String[] retArray =
         new String[] {
@@ -1369,8 +1362,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         "select min(time),min(s3) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
+  // Checks MIN_BY selects the value associated with the minimum key in the field-mapped fixture.
   @Test
-  public void minByTest() {
+  public void minByTestNonStream() {
     String[] expectedHeader = new String[] {"device_id", "_col1", "_col2"};
     String[] retArray =
         new String[] {
@@ -1594,8 +1588,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         "select min_by(s1, s10) from table1 where s1=40", expectedHeader, retArray, DATABASE_NAME);
   }
 
+  // Checks global and grouped maximum values over field-mapped measurements preserve the expected
+  // values.
   @Test
-  public void maxTest() {
+  public void maxTestNonStream() {
     String[] expectedHeader = new String[] {"device_id", "_col1", "_col2", "_col3", "_col4"};
     String[] retArray =
         new String[] {
@@ -1852,8 +1848,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         "select max(time),max(s3) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
+  // Checks MAX_BY selects the value associated with the maximum key in the field-mapped fixture.
   @Test
-  public void maxByTest() {
+  public void maxByTestNonStream() {
     String[] expectedHeader = new String[] {"device_id", "_col1", "_col2"};
     String[] retArray =
         new String[] {
@@ -2077,8 +2074,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         "select max_by(s1, s10) from table1 where s1=40", expectedHeader, retArray, DATABASE_NAME);
   }
 
+  // Checks FIRST_VALUE results over field-mapped measurements preserve timestamp ordering and null
+  // handling.
   @Test
-  public void firstTest() {
+  public void firstTestNonStream() {
     String[] expectedHeader =
         new String[] {
           "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
@@ -2260,8 +2259,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks FIRST_BY selects values by the earliest key in the field-mapped fixture.
   @Test
-  public void firstByTest() {
+  public void firstByTestNonStream() {
     String[] expectedHeader = new String[] {"_col0", "_col1"};
     String[] retArray =
         new String[] {
@@ -2427,8 +2427,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks LAST_VALUE results over field-mapped measurements preserve timestamp ordering and null
+  // handling.
   @Test
-  public void lastTest() {
+  public void lastTestNonStream() {
     String[] expectedHeader =
         new String[] {
           "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
@@ -2610,8 +2612,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks LAST_BY selects values by the latest key in the field-mapped fixture.
   @Test
-  public void lastByTest() {
+  public void lastByTestNonStream() {
     String[] expectedHeader = new String[] {"_col0", "_col1"};
     String[] retArray =
         new String[] {
@@ -2782,8 +2785,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         2);
   }
 
+  // Checks EXTREME results over field-mapped numeric measurements preserve the expected bounds.
   @Test
-  public void extremeTest() {
+  public void extremeTestNonStream() {
     String[] expectedHeader = new String[] {"device_id", "_col1", "_col2", "_col3"};
     String[] retArray = new String[] {"d01,55,50000,55.0,"};
 
@@ -3036,8 +3040,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         "select extreme(s3) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
+  // Checks grouping by measurement values produces the expected aggregate groups in the
+  // field-mapped fixture.
   @Test
-  public void groupByValueTest() {
+  public void groupByValueTestNonStream() {
 
     String[] expectedHeader = new String[] {"s1", "_col1"};
     String[] retArray =
@@ -3580,8 +3586,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks last-query aggregation results for the field-mapped view preserve the expected latest
+  // values.
   @Test
-  public void lastQueryTest() {
+  public void lastQueryTestNonStream() {
 
     String[] expectedHeader =
         new String[] {
@@ -3866,8 +3874,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks aggregation edge cases and null-valued rows in the field-mapped fixture.
   @Test
-  public void specialCasesTest() {
+  public void specialCasesTestNonStream() {
     String[] expectedHeader = new String[] {"device_id"};
     String[] retArray =
         new String[] {
@@ -3901,8 +3910,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks MODE chooses the expected most frequent values from field-mapped measurements.
   @Test
-  public void modeTest() {
+  public void modeTestNonStream() {
     // AggTableScan + Agg mixed test
     String[] expectedHeader = buildHeaders(10);
     String[] retArray =
@@ -3917,8 +3927,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks approximate distinct counts for the field-mapped dimensions and measurements.
   @Test
-  public void approxCountDistinctTest() {
+  public void approxCountDistinctTestNonStream() {
     String[] expectedHeader = buildHeaders(15);
     String[] retArray = new String[] {"10,2,2,4,16,5,5,5,5,2,24,32,5,10,1,"};
     tableResultSetEqualTest(
@@ -3970,8 +3981,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks invalid aggregate expressions on the field-mapped view return the expected SQL errors.
   @Test
-  public void exceptionTest() {
+  public void exceptionTestNonStream() {
     tableAssertTestFail(
         "select avg() from table1",
         "701: Aggregate functions [avg] should only have one argument",
@@ -4025,8 +4037,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
   // Select distinct is a special kind of aggregate query in actual, so we put ITs here to reuse the
   // test data.
 
+  // Checks representative aggregate queries over the field-mapped fixture return their expected
+  // results.
   @Test
-  public void simpleTest() {
+  public void simpleTestNonStream() {
     String[] expectedHeader = new String[] {"s1"};
     String[] retArray = new String[] {"30,", "36,", "40,", "41,", "55,", "null,"};
     tableResultSetEqualTest(
@@ -4102,8 +4116,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks aggregate results grouped by field-mapped dimensions match the expected rows.
   @Test
-  public void withGroupByTest() {
+  public void withGroupByTestNonStream() {
     String[] expectedHeader = new String[] {"s1"};
     String[] retArray = new String[] {"30,", "36,", "40,", "41,", "55,", "null,"};
     tableResultSetEqualTest(
@@ -4144,8 +4159,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks grouped aggregate inputs rejected by the field-mapped view return the expected SQL
+  // errors.
   @Test
-  public void exceptionTest1() {
+  public void exceptionTest1NonStream() {
     tableAssertTestFail(
         "select distinct s1 from table1 order by s2",
         "701: For SELECT DISTINCT, ORDER BY expressions must appear in select list",
@@ -4155,8 +4172,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
   // ==================================================================
   // ================== Agg-Function Distinct Test ====================
   // ==================================================================
+  // Checks COUNT(DISTINCT) across full-scan and grouped queries on the field-mapped fixture.
   @Test
-  public void countDistinctTest() {
+  public void countDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader =
         new String[] {
@@ -4224,8 +4242,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks distinct conditional counts across full-scan and grouped queries on the field-mapped
+  // fixture.
   @Test
-  public void countIfDistinctTest() {
+  public void countIfDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader =
         new String[] {
@@ -4295,8 +4315,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks AVG(DISTINCT) across full-scan and grouped queries on the field-mapped fixture.
   @Test
-  public void avgDistinctTest() {
+  public void avgDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3"};
     String[] retArray =
@@ -4342,8 +4363,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks SUM(DISTINCT) across full-scan and grouped queries on the field-mapped fixture.
   @Test
-  public void sumDistinctTest() {
+  public void sumDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3"};
     String[] retArray =
@@ -4389,8 +4411,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks MIN(DISTINCT) across full-scan and grouped queries on the field-mapped fixture.
   @Test
-  public void minDistinctTest() {
+  public void minDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader =
         new String[] {
@@ -4459,8 +4482,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks MIN_BY with distinct inputs across full-scan and grouped queries on the field-mapped
+  // fixture.
   @Test
-  public void minByDistinctTest() {
+  public void minByDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader =
         new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7"};
@@ -4494,8 +4519,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks MAX(DISTINCT) across full-scan and grouped queries on the field-mapped fixture.
   @Test
-  public void maxDistinctTest() {
+  public void maxDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader =
         new String[] {
@@ -4564,8 +4590,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks MAX_BY with distinct inputs across full-scan and grouped queries on the field-mapped
+  // fixture.
   @Test
-  public void maxByDistinctTest() {
+  public void maxByDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader =
         new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7"};
@@ -4599,8 +4627,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks FIRST_VALUE with distinct inputs across full-scan and grouped queries on the
+  // field-mapped fixture.
   @Test
-  public void firstDistinctTest() {
+  public void firstDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader =
         new String[] {
@@ -4666,8 +4696,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks FIRST_BY with distinct inputs across full-scan and grouped queries on the field-mapped
+  // fixture.
   @Test
-  public void firstByDistinctTest() {
+  public void firstByDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader =
         new String[] {
@@ -4733,8 +4765,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks LAST_VALUE with distinct inputs across full-scan and grouped queries on the field-mapped
+  // fixture.
   @Test
-  public void lastDistinctTest() {
+  public void lastDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader =
         new String[] {
@@ -4800,8 +4834,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks LAST_BY with distinct inputs across full-scan and grouped queries on the field-mapped
+  // fixture.
   @Test
-  public void lastByDistinctTest() {
+  public void lastByDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader =
         new String[] {
@@ -4867,8 +4903,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks EXTREME with distinct inputs across full-scan and grouped queries on the field-mapped
+  // fixture.
   @Test
-  public void extremeDistinctTest() {
+  public void extremeDistinctTestNonStream() {
     // test MarkDistinct
     String[] expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3"};
     String[] retArray =
@@ -4914,8 +4952,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks variance aggregation with distinct inputs across full-scan and grouped queries on the
+  // field-mapped fixture.
   @Test
-  public void varianceDistinctTest() {
+  public void varianceDistinctTestNonStream() {
     // The addInput logic of all variance functions are the same, so test any one function is ok.
     String[] expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3"};
     String[] retArray =
@@ -4959,8 +4999,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks mixed aggregate expressions on the field-mapped fixture return the expected combined
+  // row.
   @Test
-  public void mixedTest() {
+  public void mixedTestNonStream() {
     String[] expectedHeader = new String[] {"_col0", "_col1"};
     String[] retArray =
         new String[] {
@@ -5000,8 +5042,9 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks single-input distinct aggregates preserve expected results on the field-mapped fixture.
   @Test
-  public void singleInputDistinctAggregationTest() {
+  public void singleInputDistinctAggregationTestNonStream() {
     String[] expectedHeader = new String[] {"_col0", "_col1"};
     String[] retArray =
         new String[] {
@@ -5037,8 +5080,10 @@ public class IoTDBTableViewAggregationNonStreamIT {
         DATABASE_NAME);
   }
 
+  // Checks unsupported distinct aggregate inputs on the field-mapped view return the expected SQL
+  // errors.
   @Test
-  public void exceptionTest2() {
+  public void exceptionTest2NonStream() {
     tableAssertTestFail(
         "select count(distinct *) from table1",
         "mismatched input '*'. Expecting: <expression>",

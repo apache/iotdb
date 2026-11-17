@@ -34,9 +34,12 @@ import org.junit.runner.RunWith;
 public class IoTDBAlignByDeviceTable3IT extends IoTDBAlignByDeviceTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
+    // Combine the constrained query-parallelism and series-slot settings for table and view cases.
     EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDegreeOfParallelism(1);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
+    insertViewData();
   }
 
   @AfterClass

@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.relational.it.query.view.old.IoTDBNestedQueryTableViewBase;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -43,7 +44,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBNestedQueryTableIT {
+public class IoTDBNestedQueryTableIT extends IoTDBNestedQueryTableViewBase {
 
   private static final String DATABASE_NAME = "db";
 
@@ -62,6 +63,7 @@ public class IoTDBNestedQueryTableIT {
     EnvFactory.getEnv().initClusterEnvironment();
     createTable();
     generateData();
+    prepareViewData();
   }
 
   @AfterClass

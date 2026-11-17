@@ -21,16 +21,9 @@ package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -41,9 +34,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBTableWithDefinedTimeIT {
+public abstract class IoTDBTableWithDefinedTimeIT {
 
   private static final String TABLE_DATABASE = "user_defined_time";
   private static final String VIEW_DATABASE = "user_defined_time_for_view";
@@ -51,15 +42,8 @@ public class IoTDBTableWithDefinedTimeIT {
       new String[] {"CREATE DATABASE " + TABLE_DATABASE, "CREATE DATABASE " + VIEW_DATABASE};
   private final String header = "ColumnName,DataType,Category,";
 
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+  static void prepareDefinedTimeFixture() throws Exception {
     prepareTableData(SQLS);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

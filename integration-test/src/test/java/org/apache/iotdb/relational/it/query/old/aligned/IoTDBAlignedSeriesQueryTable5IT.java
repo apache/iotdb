@@ -46,6 +46,7 @@ public class IoTDBAlignedSeriesQueryTable5IT extends IoTDBAlignedSeriesQueryTabl
 
     EnvFactory.getEnv().initClusterEnvironment();
     TableUtils.insertData();
+    prepareViewData();
   }
 
   @AfterClass

@@ -19,40 +19,17 @@
 
 package org.apache.iotdb.relational.it.query.recent.subquery.correlated;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.relational.it.query.recent.subquery.IoTDBSubqueryITBase;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.CREATE_SQLS;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.DATABASE_NAME;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.NUMERIC_MEASUREMENTS;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBCorrelatedExistsSubqueryIT {
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
-    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
-    EnvFactory.getEnv().initClusterEnvironment();
-    prepareTableData(CREATE_SQLS);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
+public abstract class IoTDBCorrelatedExistsSubqueryIT extends IoTDBSubqueryITBase {
 
   @Test
   public void testCorrelatedExistsSubqueryInWhereClause() {

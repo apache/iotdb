@@ -37,6 +37,7 @@ public class IoTDBAlignByDeviceTable2IT extends IoTDBAlignByDeviceTableIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setDegreeOfParallelism(4);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
+    insertViewData();
   }
 
   @AfterClass

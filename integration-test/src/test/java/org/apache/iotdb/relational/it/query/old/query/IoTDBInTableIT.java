@@ -20,18 +20,11 @@
 package org.apache.iotdb.relational.it.query.old.query;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -50,10 +43,12 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBInTableIT {
-  private static final String DATABASE_NAME = "test";
+public abstract class IoTDBInTableIT extends IoTDBOldQueryITBase {
+  public static void prepareInTableFixture() {
+    prepareTableData(sqls);
+  }
+
+  private static final String DATABASE_NAME = "test_in_table";
   private static String[] sqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -73,18 +68,6 @@ public class IoTDBInTableIT {
         "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465960000,'d2','s1','qrcode005', '2024-08-12', X'abcb',1509465960000)",
         "CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD)",
       };
-
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-
-    prepareTableData(sqls);
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
 
   @Test
   public void testCastException() {

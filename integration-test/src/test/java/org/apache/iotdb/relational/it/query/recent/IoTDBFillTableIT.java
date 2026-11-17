@@ -20,17 +20,11 @@
 package org.apache.iotdb.relational.it.query.recent;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.relational.it.query.view.recent.IoTDBFillTableViewBase;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -43,10 +37,8 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqual;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBFillTableIT {
-  private static final String DATABASE_NAME = "test";
+public abstract class IoTDBFillTableIT extends IoTDBColumnsMatchTableIT {
+  private static final String DATABASE_NAME = "fill_table";
   protected static final String[] createSqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
@@ -91,16 +83,9 @@ public class IoTDBFillTableIT {
         "INSERT INTO table3(time,city,device_id,s2) values(4, 'beijing', 'd2', 01044)",
       };
 
-  @BeforeClass
-  public static void setUp() {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
-    EnvFactory.getEnv().initClusterEnvironment();
+  static void prepareFillFixture() throws Exception {
     prepareTableData(createSqls);
-  }
-
-  @AfterClass
-  public static void tearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    IoTDBFillTableViewBase.prepareViewData();
   }
 
   @Test
