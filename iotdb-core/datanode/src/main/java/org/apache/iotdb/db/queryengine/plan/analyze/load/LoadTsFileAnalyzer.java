@@ -807,6 +807,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return;
     }
 
+    executeTabletConversion(analysis);
+  }
+
+  private void executeTabletConversion(final IAnalysis analysis) {
     if (isTableModelTsFileReliableIndex < tsFiles.size() - 1) {
       try {
         getFileModelInfoBeforeTabletConversion();
