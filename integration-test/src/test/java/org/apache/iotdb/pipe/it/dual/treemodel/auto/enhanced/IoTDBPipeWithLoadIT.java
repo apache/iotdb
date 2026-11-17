@@ -49,6 +49,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -190,6 +191,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
     final String localDatabase = "root.load_p119_local";
     final String localDevice = localDatabase + ".receiver_device";
     final File inputFile = new File(tmpDir, "1-0-0-0.tsfile");
+    final Set<String> stoppedPipeNames = new HashSet<>();
     try {
       try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
@@ -213,6 +215,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
           Set.of("1,11,", "3,33,"));
 
       stopPipe(senderEnv, "bootstrapPipe");
+      stoppedPipeNames.add("bootstrapPipe");
       final File pipeGeneratedFile = findPipeGeneratedTsFile(receiverEnv);
       Assert.assertNotNull("Pipe receive did not persist a Pipe-marked TsFile", pipeGeneratedFile);
       final TsFileResource pipeGeneratedResource = new TsFileResource(pipeGeneratedFile);
@@ -256,6 +259,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
             "A Pipe-generated historical LOAD was forwarded to its source", resultSet.next());
       }
       stopPipe(receiverEnv, "doNotForwardPipeLoad");
+      stoppedPipeNames.add("doNotForwardPipeLoad");
 
       deleteDatabase(senderEnv, loadedDatabase);
       deleteDatabase(receiverEnv, loadedDatabase);
@@ -285,6 +289,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
       }
 
       stopPipe(senderEnv, "loadToReceiver");
+      stoppedPipeNames.add("loadToReceiver");
 
       deleteDatabase(receiverEnv, loadedDatabase);
       deleteDatabase(senderEnv, localDatabase);
@@ -310,11 +315,20 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
       }
 
       stopPipe(senderEnv, "historicalLoadToReceiver");
+      stoppedPipeNames.add("historicalLoadToReceiver");
     } finally {
-      stopPipeIfPresent(receiverEnv, "doNotForwardPipeLoad");
-      stopPipeIfPresent(senderEnv, "loadToReceiver");
-      stopPipeIfPresent(senderEnv, "historicalLoadToReceiver");
-      stopPipeIfPresent(senderEnv, "bootstrapPipe");
+      if (!stoppedPipeNames.contains("doNotForwardPipeLoad")) {
+        stopPipeIfPresent(receiverEnv, "doNotForwardPipeLoad");
+      }
+      if (!stoppedPipeNames.contains("loadToReceiver")) {
+        stopPipeIfPresent(senderEnv, "loadToReceiver");
+      }
+      if (!stoppedPipeNames.contains("historicalLoadToReceiver")) {
+        stopPipeIfPresent(senderEnv, "historicalLoadToReceiver");
+      }
+      if (!stoppedPipeNames.contains("bootstrapPipe")) {
+        stopPipeIfPresent(senderEnv, "bootstrapPipe");
+      }
       deleteDatabase(senderEnv, loadedDatabase);
       deleteDatabase(receiverEnv, loadedDatabase);
       deleteDatabase(senderEnv, localDatabase);

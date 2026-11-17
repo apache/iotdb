@@ -58,7 +58,10 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
@@ -287,16 +290,23 @@ public class IoTDBLoadTsFileBoundaryIT {
     final File failingNormal = new File(loadDir, "02-normal-failure.tsfile");
     final File tailMini = new File(loadDir, "03-tail-mini.tsfile");
     writeTreeFile(firstMini, smallDevice, new long[] {1}, new long[] {11});
-    final long[] failingTimes = buildTimes(64, 10);
+    final long[] failingTimes = buildTimes(256, 10);
     final Object[] failingValues = new Object[failingTimes.length];
-    Arrays.fill(failingValues, 1.5D);
+    final Random random = new Random(0);
+    for (int i = 0; i < failingValues.length; i++) {
+      failingValues[i] = random.nextDouble();
+    }
     writeTypedTreeFile(
         failingNormal, failingDevice, TSDataType.DOUBLE, failingTimes, failingValues);
     writeTreeFile(tailMini, unprocessedDevice, new long[] {2}, new long[] {22});
     assertTsFileOrder(loadDir, "01-mini.tsfile", "02-normal-failure.tsfile", "03-tail-mini.tsfile");
 
     final long threshold = Math.max(firstMini.length(), tailMini.length());
-    Assert.assertTrue(failingNormal.length() > threshold);
+    Assert.assertTrue(
+        String.format(
+            "Normal failure file (%d bytes) must exceed mini threshold (%d bytes)",
+            failingNormal.length(), threshold),
+        failingNormal.length() > threshold);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create database " + MIXED_DATABASE);
@@ -457,12 +467,17 @@ public class IoTDBLoadTsFileBoundaryIT {
               new File(inputFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists());
           try (ResultSet resultSet =
               statement.executeQuery("show timeseries " + INVALID_DATABASE + ".**")) {
-            Assert.assertTrue(resultSet.next());
-            Assert.assertEquals(INVALID_DATABASE + ".valid_device.quality", resultSet.getString(1));
-            Assert.assertTrue(resultSet.next());
-            Assert.assertEquals(INVALID_DATABASE + ".valid_device.value", resultSet.getString(1));
-            Assert.assertFalse(
-                "Invalid device path created a visible timeseries", resultSet.next());
+            final Set<String> actualTimeseries = new HashSet<>();
+            while (resultSet.next()) {
+              Assert.assertTrue(
+                  "SHOW TIMESERIES returned a duplicate path",
+                  actualTimeseries.add(resultSet.getString(1)));
+            }
+            Assert.assertEquals(
+                Set.of(
+                    INVALID_DATABASE + ".valid_device.quality",
+                    INVALID_DATABASE + ".valid_device.value"),
+                actualTimeseries);
           }
           try (ResultSet resultSet =
               statement.executeQuery(
