@@ -29,11 +29,11 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerMetrics;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
-import org.apache.iotdb.consensus.iot.thrift.TLogCompressionType;
 import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
@@ -76,16 +76,16 @@ public class LogCompressionTest {
   @Parameterized.Parameters(name = "{0}")
   public static Object[][] codecs() {
     return new Object[][] {
-      {CompressionType.LZ4, TLogCompressionType.LZ4},
-      {CompressionType.SNAPPY, TLogCompressionType.SNAPPY},
-      {CompressionType.ZSTD, TLogCompressionType.ZSTD}
+      {CompressionType.LZ4, (byte) 7},
+      {CompressionType.SNAPPY, (byte) 1},
+      {CompressionType.ZSTD, (byte) 8}
     };
   }
 
   @Parameterized.Parameter public CompressionType codec;
 
   @Parameterized.Parameter(1)
-  public TLogCompressionType expectedWireCodec;
+  public byte expectedWireCodec;
 
   private IMemoryBlock previous;
   private final IoTConsensusMemoryManager memory = IoTConsensusMemoryManager.getInstance();
@@ -159,7 +159,7 @@ public class LogCompressionTest {
             expectedWireCodec,
             encoded.getRequest().getLogEntries().get(0).getCompressionInfo().get(0).getCodec());
         assertEquals(
-            TLogCompressionType.NONE,
+            (byte) 0,
             encoded.getRequest().getLogEntries().get(0).getCompressionInfo().get(2).getCodec());
         TSyncLogEntriesReq received = new TSyncLogEntriesReq();
         new TDeserializer()
@@ -288,11 +288,40 @@ public class LogCompressionTest {
       negative.getLogEntries().get(0).getCompressionInfo().get(0).setUncompressedSize(-1);
       assertThrows(IOException.class, () -> LogCompression.decompress(negative, LIMIT));
       TSyncLogEntriesReq unknown = encoded.getRequest().deepCopy();
-      unknown.getLogEntries().get(0).getCompressionInfo().get(0).setCodec(null);
+      unknown.getLogEntries().get(0).getCompressionInfo().get(0).setCodec((byte) 127);
       assertThrows(IOException.class, () -> LogCompression.decompress(unknown, LIMIT));
       TSyncLogEntriesReq corrupt = encoded.getRequest().deepCopy();
       corrupt.getLogEntries().get(0).getData().set(0, ByteBuffer.wrap(new byte[] {0, 1, 2}));
       assertThrows(IOException.class, () -> LogCompression.decompress(corrupt, LIMIT));
+    }
+  }
+
+  @Test
+  public void testRejectsUnsupportedCodecBeforeDecodingAnyEntry() throws Exception {
+    try (LogCompression.EncodedRequest encoded = LogCompression.compress(request(), codec, LIMIT)) {
+      for (byte unsupported :
+          new byte[] {
+            127, -1, CompressionType.GZIP.serialize(), CompressionType.LZMA2.serialize()
+          }) {
+        TSyncLogEntriesReq bad = encoded.getRequest().deepCopy();
+        // The later unsupported codec must be rejected before the earlier corrupt body is decoded.
+        bad.getLogEntries().get(0).getData().set(0, ByteBuffer.wrap(new byte[] {0, 1, 2}));
+        bad.getLogEntries().get(1).getCompressionInfo().get(0).setCodec(unsupported);
+        TSyncLogEntriesReq received = new TSyncLogEntriesReq();
+        new TDeserializer().deserialize(received, new TSerializer().serialize(bad));
+        TSyncLogEntriesReq snapshot = received.deepCopy();
+        IOException failure =
+            assertThrows(IOException.class, () -> LogCompression.decompress(received, LIMIT));
+        assertEquals(
+            String.format(
+                IoTConsensusMessages
+                    .EXCEPTION_INVALID_IOTCONSENSUS_COMPRESSED_LOG_ARG_EXPECTED_ARG_ACTUAL_ARG_4986175E,
+                "CODEC",
+                0,
+                (long) unsupported),
+            failure.getMessage());
+        assertEquals(snapshot, received);
+      }
     }
   }
 
@@ -335,6 +364,14 @@ public class LogCompressionTest {
       TSyncLogEntriesReq shortOutput = encoded.getRequest().deepCopy();
       shortOutput.getLogEntries().get(0).getCompressionInfo().get(0).setUncompressedSize(1);
       assertTrue(processor.syncLogEntries(shortOutput).isSetLogCompressionError());
+      for (byte unsupported :
+          new byte[] {127, CompressionType.GZIP.serialize(), CompressionType.LZMA2.serialize()}) {
+        TSyncLogEntriesReq badCodec = encoded.getRequest().deepCopy();
+        badCodec.getLogEntries().get(0).getCompressionInfo().get(0).setCodec(unsupported);
+        TSyncLogEntriesReq received = new TSyncLogEntriesReq();
+        new TDeserializer().deserialize(received, new TSerializer().serialize(badCodec));
+        assertTrue(processor.syncLogEntries(received).isSetLogCompressionError());
+      }
       verify(impl, never()).getStateMachine();
       verify(impl, never()).syncLog(anyInt(), any());
       verify(impl, never())
@@ -399,7 +436,7 @@ public class LogCompressionTest {
           expectedWireCodec,
           encoded.getRequest().getLogEntries().get(0).getCompressionInfo().get(0).getCodec());
       assertEquals(
-          TLogCompressionType.NONE,
+          (byte) 0,
           encoded.getRequest().getLogEntries().get(0).getCompressionInfo().get(1).getCodec());
       assertEquals(
           expectedWireCodec,

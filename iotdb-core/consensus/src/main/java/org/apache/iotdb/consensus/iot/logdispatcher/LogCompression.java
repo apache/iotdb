@@ -21,7 +21,6 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.thrift.TLogBufferCompression;
-import org.apache.iotdb.consensus.iot.thrift.TLogCompressionType;
 import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
 
@@ -105,7 +104,6 @@ public final class LogCompression {
 
   public static EncodedRequest compress(
       TSyncLogEntriesReq original, CompressionType codec, int maxDecodedBytes) throws IOException {
-    TLogCompressionType wireCodec = toWireCodec(codec);
     long buffers = 0;
     long rawSize = 0;
     boolean hasEligibleBuffer = false;
@@ -145,7 +143,7 @@ public final class LogCompression {
           int uncompressedLength = buffer.remaining();
           raw += uncompressedLength;
           ByteBuffer encoded = buffer;
-          TLogCompressionType actualCodec = TLogCompressionType.NONE;
+          CompressionType actualCodec = CompressionType.UNCOMPRESSED;
           if (uncompressedLength >= MIN_COMPRESSION_SIZE) {
             // Includes an optional input copy, codec-bound output and compact output, with
             // allowance for array headers and codec bounds on very small buffers.
@@ -165,19 +163,19 @@ public final class LogCompression {
               }
               if ((long) compressedLength + DESCRIPTOR_BYTES < uncompressedLength) {
                 encoded = ByteBuffer.wrap(Arrays.copyOf(output, compressedLength));
-                actualCodec = wireCodec;
+                actualCodec = codec;
                 arrays += compressedLength;
                 compressed = true;
               }
               result.retain(
-                  before + (actualCodec == TLogCompressionType.NONE ? 0 : encoded.remaining()));
+                  before + (actualCodec == CompressionType.UNCOMPRESSED ? 0 : encoded.remaining()));
             } else {
               // Keep this block raw; other smaller blocks in the entry may still fit.
               result.memoryLimited = true;
             }
           }
           data.add(encoded);
-          info.add(new TLogBufferCompression(actualCodec, uncompressedLength));
+          info.add(new TLogBufferCompression(actualCodec.serialize(), uncompressedLength));
           wire += encoded.remaining();
         }
         // Raw descriptors in a mixed WAL entry cost space too.
@@ -220,12 +218,13 @@ public final class LogCompression {
           if (size < 0) {
             throw invalid(Failure.LENGTH, 0, size);
           }
-          if (info.getCodec() == null) {
-            throw invalid(Failure.CODEC, 0, -1);
-          }
-          if (info.getCodec() == TLogCompressionType.NONE
-              && size != entry.getData().get(i).remaining()) {
-            throw invalid(Failure.LENGTH, size, entry.getData().get(i).remaining());
+          if (info.getCodec() == CompressionType.UNCOMPRESSED.serialize()) {
+            if (size != entry.getData().get(i).remaining()) {
+              throw invalid(Failure.LENGTH, size, entry.getData().get(i).remaining());
+            }
+          } else {
+            // Reject unsupported codecs before allocating or decoding any output buffers.
+            decoder(info.getCodec());
           }
           total += size;
           if (total > maxDecodedBytes) {
@@ -254,7 +253,7 @@ public final class LogCompression {
       for (int i = 0; i < entry.getDataSize(); i++) {
         TLogBufferCompression info = entry.getCompressionInfo().get(i);
         ByteBuffer buffer = entry.getData().get(i);
-        if (info.getCodec() != TLogCompressionType.NONE) {
+        if (info.getCodec() != CompressionType.UNCOMPRESSED.serialize()) {
           byte[] input = buffer.hasArray() ? buffer.array() : bytes(buffer);
           int offset = buffer.hasArray() ? buffer.arrayOffset() + buffer.position() : 0;
           byte[] output = new byte[info.getUncompressedSize()];
@@ -301,21 +300,6 @@ public final class LogCompression {
     return bytes;
   }
 
-  private static TLogCompressionType toWireCodec(CompressionType codec) throws IOException {
-    switch (codec) {
-      case UNCOMPRESSED:
-        return TLogCompressionType.NONE;
-      case LZ4:
-        return TLogCompressionType.LZ4;
-      case SNAPPY:
-        return TLogCompressionType.SNAPPY;
-      case ZSTD:
-        return TLogCompressionType.ZSTD;
-      default:
-        throw invalid(Failure.CODEC, 0, codec.serialize());
-    }
-  }
-
   private static ICompressor compressor(CompressionType codec) throws IOException {
     switch (codec) {
       case LZ4:
@@ -329,8 +313,14 @@ public final class LogCompression {
     }
   }
 
-  private static IUnCompressor decoder(TLogCompressionType codec) throws IOException {
-    switch (codec) {
+  private static IUnCompressor decoder(byte codec) throws IOException {
+    CompressionType type;
+    try {
+      type = CompressionType.deserialize(codec);
+    } catch (IllegalArgumentException e) {
+      throw invalid(Failure.CODEC, 0, codec);
+    }
+    switch (type) {
       case LZ4:
         return LZ4_DECODER;
       case SNAPPY:
@@ -338,7 +328,7 @@ public final class LogCompression {
       case ZSTD:
         return ZSTD_DECODER;
       default:
-        throw invalid(Failure.CODEC, 0, codec.getValue());
+        throw invalid(Failure.CODEC, 0, codec);
     }
   }
 

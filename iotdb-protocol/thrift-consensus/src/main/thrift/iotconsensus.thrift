@@ -20,16 +20,9 @@
 include "common.thrift"
 namespace java org.apache.iotdb.consensus.iot.thrift
 
-// Codec identifiers are wire values, independent of TsFile compression identifiers.
-enum TLogCompressionType {
-  NONE = 0,
-  LZ4 = 1,
-  SNAPPY = 2,
-  ZSTD = 3
-}
-
 struct TLogBufferCompression {
-  1: required TLogCompressionType codec
+  // Value returned by TsFile CompressionType.serialize().
+  1: required byte codec
   2: required i32 uncompressedSize
 }
 
