@@ -551,6 +551,18 @@ public class ProcedureManager {
         .anyMatch(procedure -> procedure.deletesDatabase(database));
   }
 
+  private boolean hasOtherPendingFullDatabaseTimeSeriesDeletion(
+      final String database, final String queryId, final ProcedureType thisType) {
+    return executor.getProcedures().values().stream()
+        .filter(DeleteTimeSeriesProcedure.class::isInstance)
+        .map(DeleteTimeSeriesProcedure.class::cast)
+        .anyMatch(
+            procedure ->
+                procedure.deletesDatabase(database)
+                    && !(thisType == ProcedureType.DELETE_DATABASE_PROCEDURE
+                        && Objects.equals(queryId, procedure.getQueryId())));
+  }
+
   public TSStatus deleteLogicalView(TDeleteLogicalViewReq req) {
     String queryId = req.getQueryId();
     PathPatternTree patternTree =
@@ -3133,6 +3145,9 @@ public class ProcedureManager {
       final String newName,
       final String queryId,
       final ProcedureType thisType) {
+    if (hasOtherPendingFullDatabaseTimeSeriesDeletion(database, queryId, thisType)) {
+      return new Pair<>(-1L, true);
+    }
     ProcedureType type;
     for (final Procedure<?> procedure : executor.getProcedures().values()) {
       type = ProcedureFactory.getProcedureType(procedure);

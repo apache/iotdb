@@ -167,7 +167,13 @@ public class AsyncTimeSeriesDeletionTest {
     when(procedure.getPatternTree()).thenReturn(pattern("root.async.**"));
     when(procedure.getQueryId()).thenReturn("first");
     when(procedure.isFinished()).thenReturn(true);
+    when(procedure.deletesDatabase("root.async")).thenReturn(true);
     running.put(1L, procedure);
+    assertTrue(
+        manager
+            .checkDuplicateTableTask(
+                "root.async", null, "t", null, "table-query", ProcedureType.CREATE_TABLE_PROCEDURE)
+            .getRight());
     assertEquals(
         TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode(),
         manager.deleteTimeSeries("another", pattern("root.async.d.s"), false, false).getCode());
@@ -193,10 +199,15 @@ public class AsyncTimeSeriesDeletionTest {
             .checkDuplicateTableTask(
                 "root.other", null, "t", null, "other-query", ProcedureType.CREATE_TABLE_PROCEDURE)
             .getRight());
-    assertTrue(
-        !manager
+    assertFalse(
+        manager
             .checkDuplicateTableTask(
                 "root.async", null, null, null, "query", ProcedureType.DELETE_DATABASE_PROCEDURE)
+            .getRight());
+    assertTrue(
+        manager
+            .checkDuplicateTableTask(
+                "root.async", null, "t", null, "query", ProcedureType.CREATE_TABLE_PROCEDURE)
             .getRight());
     assertEquals(
         TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode(),
