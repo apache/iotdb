@@ -157,6 +157,7 @@ public class ColumnHeaderConstant {
   public static final String LAST_CONSUMER_ID = "LastConsumerId";
   public static final String SEEK_GENERATION = "SeekGeneration";
   public static final String READY_ON_DNS = "ready_on_dns";
+  public static final String QUEUES_BOUND_ON_DNS = "queues_bound_on_dns";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -740,7 +741,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(LAST_POLL_TIME, TSDataType.INT64),
           new ColumnHeader(LAST_CONSUMER_ID, TSDataType.TEXT),
           new ColumnHeader(SEEK_GENERATION, TSDataType.INT64),
-          new ColumnHeader(READY_ON_DNS, TSDataType.TEXT));
+          new ColumnHeader(READY_ON_DNS, TSDataType.TEXT),
+          new ColumnHeader(QUEUES_BOUND_ON_DNS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
       ImmutableList.of(

@@ -274,6 +274,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TConsensusSubscriptionQueueReadiness;
 import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -310,6 +311,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -2828,11 +2830,28 @@ public class ConfigManager implements IManager {
                       info.getTopicName() + "\u0000" + info.getConsumerGroupId()));
     }
     final List<TSubscriptionProgressInfo> progressInfoList = new ArrayList<>();
+    final Map<String, Set<Integer>> queuesBoundDataNodeIds = new HashMap<>();
     final Map<Integer, TPullCommitProgressResp> dataNodeResponses =
-        getProcedureManager().getEnv().pullCommitProgressFromDataNodesBestEffort();
+        getProcedureManager().getEnv().pullCommitProgressFromDataNodesBestEffort(true);
     for (final Map.Entry<Integer, TPullCommitProgressResp> dataNodeEntry :
         dataNodeResponses.entrySet()) {
       final TPullCommitProgressResp dataNodeResponse = dataNodeEntry.getValue();
+      if (dataNodeResponse.isSetStatus()
+          && dataNodeResponse.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && dataNodeResponse.isSetConsensusQueueReadiness()) {
+        for (final TConsensusSubscriptionQueueReadiness readiness :
+            dataNodeResponse.getConsensusQueueReadiness()) {
+          if (readiness.isTableModel() != (req.isSetIsTableModel() && req.isIsTableModel())) {
+            continue;
+          }
+          final String key = readiness.getTopicName() + "\u0000" + readiness.getConsumerGroupId();
+          if (visibleSubscriptions.contains(key)) {
+            queuesBoundDataNodeIds
+                .computeIfAbsent(key, ignored -> new HashSet<>())
+                .add(dataNodeEntry.getKey());
+          }
+        }
+      }
       if (!dataNodeResponse.isSetSubscriptionProgress()) {
         continue;
       }
@@ -2917,6 +2936,13 @@ public class ConfigManager implements IManager {
                   progressInfo.getConsumerGroupId(),
                   tableModel,
                   registeredDataNodeIds));
+      final Set<Integer> queuesBoundIds =
+          new TreeSet<>(
+              queuesBoundDataNodeIds.getOrDefault(
+                  progressInfo.getTopicName() + "\u0000" + progressInfo.getConsumerGroupId(),
+                  Collections.emptySet()));
+      queuesBoundIds.retainAll(registeredDataNodeIds);
+      progressInfo.setQueuesBoundOnDns(new ArrayList<>(queuesBoundIds));
     }
     progressInfoList.sort(
         Comparator.comparing(TSubscriptionProgressInfo::getTopicName)

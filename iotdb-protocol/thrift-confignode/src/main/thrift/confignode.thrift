@@ -1116,6 +1116,7 @@ struct TSubscriptionProgressInfo {
     18: required string lastConsumerId
     19: required i64 seekGeneration
     20: optional list<i32> readyOnDns
+    21: optional list<i32> queuesBoundOnDns // DataNodes reporting all matching local queues bound.
 }
 
 struct TDropSubscriptionReq {
