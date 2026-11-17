@@ -254,6 +254,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TConsensusSubscriptionQueueReadiness;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
@@ -1736,9 +1737,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           SubscriptionAgent.broker().collectAllRegionCommitProgress(dataNodeId);
       final Map<String, ByteBuffer> subscriptionProgress =
           SubscriptionAgent.broker().collectAllProgressSnapshots();
-      return new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
-          .setCommitRegionProgress(regionProgress)
-          .setSubscriptionProgress(subscriptionProgress);
+      final TPullCommitProgressResp response =
+          new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+              .setCommitRegionProgress(regionProgress)
+              .setSubscriptionProgress(subscriptionProgress);
+      if (req.isSetIncludeConsensusQueueReadiness() && req.isIncludeConsensusQueueReadiness()) {
+        final List<TConsensusSubscriptionQueueReadiness> consensusQueueReadiness =
+            new ArrayList<>();
+        for (final ConsensusSubscriptionSetupHandler.QueueReadiness readiness :
+            ConsensusSubscriptionSetupHandler.getQueueReadiness()) {
+          consensusQueueReadiness.add(
+              new TConsensusSubscriptionQueueReadiness(
+                  readiness.topicName(), readiness.consumerGroupId(), readiness.tableModel()));
+        }
+        response.setConsensusQueueReadiness(consensusQueueReadiness);
+      }
+      return response;
     } catch (Exception e) {
       LOGGER.warn(
           DataNodeMiscMessages.MISC_LOG_ERROR_OCCURRED_WHEN_PULLING_COMMIT_PROGRESS_48C12E4B, e);
