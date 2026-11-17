@@ -825,10 +825,7 @@ public class ConfigNodeConfig {
   }
 
   public void setTimeseriesDeletionExecutionIntervalMs(long intervalMs) {
-    if (intervalMs <= 0) {
-      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
-    }
-    timeseriesDeletionExecutionIntervalMs = intervalMs;
+    timeseriesDeletionExecutionIntervalMs = Math.max(0L, intervalMs);
   }
 
   public int getTimeseriesDeletionMaxConcurrentTasks() {

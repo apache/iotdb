@@ -3139,15 +3139,8 @@ public class ProcedureManager {
       if (type == null
           || (procedure.isFinished()
               && !(procedure instanceof DropTableColumnProcedure
-                  && !(procedure instanceof DropViewColumnProcedure))
-              && !(procedure instanceof DeleteTimeSeriesProcedure))) {
+                  && !(procedure instanceof DropViewColumnProcedure)))) {
         continue;
-      }
-      if (procedure instanceof DeleteTimeSeriesProcedure
-          && (queryId == null
-              || !queryId.equals(((DeleteTimeSeriesProcedure) procedure).getQueryId()))
-          && ((DeleteTimeSeriesProcedure) procedure).deletesDatabase(database)) {
-        return new Pair<>(-1L, true);
       }
       // A table shall not be concurrently operated or else the dataNode cache
       // may record fake values

@@ -125,16 +125,17 @@ public class ConfigManagerTimeseriesDeletionIntervalReloadTest {
   }
 
   @Test
-  public void testNonPositiveIntervalsAreRejected() {
-    for (final String invalid : new String[] {"0", "-1"}) {
+  public void testNonPositiveIntervalsDisableThrottling() {
+    for (final String interval : new String[] {"0", "-1"}) {
       assertEquals(
-          TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           configManager
               .setConfiguration(
-                  request(Map.of("timeseries_deletion_execution_interval_ms", invalid)))
+                  request(Map.of("timeseries_deletion_execution_interval_ms", interval)))
               .getCode());
-      assertEquals(originalIntervalMs, CONF.getTimeseriesDeletionExecutionIntervalMs());
+      assertEquals(0L, CONF.getTimeseriesDeletionExecutionIntervalMs());
     }
+    verify(procedureManager, times(2)).updateTimeseriesDeletionExecutionIntervalMs(0L);
   }
 
   private static TSetConfigurationReq request(final Map<String, String> configs) {

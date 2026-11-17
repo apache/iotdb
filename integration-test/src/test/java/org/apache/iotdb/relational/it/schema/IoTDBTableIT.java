@@ -1430,18 +1430,17 @@ public class IoTDBTableIT {
   @Test
   public void testAsyncDropColumn() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement();
-        Statement progress = TestUtils.createSingleNodeStatement(connection)) {
+        Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE async_drop_column_db");
       try {
         statement.execute("USE async_drop_column_db");
         statement.execute(
-            "CREATE TABLE t (device STRING TAG, attr STRING ATTRIBUTE, removed INT32, kept INT32)");
+            "CREATE TABLE t (device STRING TAG, attr STRING ATTRIBUTE, removed INT32, kept INT32, "
+                + "\"removed\"\"column\" INT32)");
         statement.execute("INSERT INTO t(time,device,attr,removed,kept) VALUES(1,'d','a',11,21)");
         statement.execute("FLUSH");
         statement.execute("INSERT INTO t(time,device,attr,removed,kept) VALUES(2,'d','a',12,22)");
-        statement.execute("ALTER TABLE t DROP COLUMN removed");
-        TestUtils.waitForColumnDeletion(progress, "async_drop_column_db.t", "removed");
+        TestUtils.dropColumn(statement, "ALTER TABLE t DROP COLUMN removed");
         statement.execute("ALTER TABLE t ADD COLUMN removed STRING");
         try (ResultSet result =
             statement.executeQuery("SELECT removed,kept,attr FROM t ORDER BY time")) {
@@ -1449,13 +1448,13 @@ public class IoTDBTableIT {
               result, "removed,kept,attr,", new String[] {"null,21,a,", "null,22,a,"});
         }
         // Attribute deletion has a different region/cache path from field deletion.
-        statement.execute("ALTER TABLE t DROP COLUMN attr");
-        TestUtils.waitForColumnDeletion(progress, "async_drop_column_db.t", "attr");
+        TestUtils.dropColumn(statement, "ALTER TABLE t DROP COLUMN attr");
         statement.execute("ALTER TABLE t ADD COLUMN attr STRING ATTRIBUTE");
         try (ResultSet result = statement.executeQuery("SELECT attr,kept FROM t ORDER BY time")) {
           TestUtils.assertResultSetEqual(
               result, "attr,kept,", new String[] {"null,21,", "null,22,"});
         }
+        TestUtils.dropColumn(statement, "ALTER TABLE t DROP COLUMN \"removed\"\"column\"");
       } finally {
         statement.execute("DROP DATABASE async_drop_column_db");
       }

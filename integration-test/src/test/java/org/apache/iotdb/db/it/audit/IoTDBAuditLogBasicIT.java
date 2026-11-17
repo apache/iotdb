@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.audit.AbstractAuditLogger;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.PrivilegeLevel;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesProcedureInfo;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -43,7 +44,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
@@ -2438,13 +2441,11 @@ public class IoTDBAuditLogBasicIT {
               .pollInterval(20, TimeUnit.MILLISECONDS)
               .until(
                   () -> {
-                    final java.util.Optional<
-                            org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesProcedureInfo>
-                        procedure =
-                            client.showDeleteTimeSeriesProcedures().getProcedureInfoList().stream()
-                                .filter(p -> paths.equals(p.getPathPatterns()))
-                                .filter(p -> p.getProcedureId() > previousProcedureId)
-                                .max(java.util.Comparator.comparingLong(p -> p.getProcedureId()));
+                    final Optional<TDeleteTimeSeriesProcedureInfo> procedure =
+                        client.showDeleteTimeSeriesProcedures().getProcedureInfoList().stream()
+                            .filter(p -> paths.equals(p.getPathPatterns()))
+                            .filter(p -> p.getProcedureId() > previousProcedureId)
+                            .max(Comparator.comparingLong(p -> p.getProcedureId()));
                     if (!procedure.isPresent()) {
                       return false;
                     }

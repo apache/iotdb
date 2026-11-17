@@ -90,6 +90,26 @@ public class DeleteTimeSeriesProcedureSchedulerTest {
   }
 
   @Test
+  public void testNonPositiveExecutionIntervalDoesNotThrottleStarts() {
+    for (final long intervalMs : new long[] {0, -1}) {
+      final DeleteTimeSeriesProcedureScheduler scheduler =
+          new DeleteTimeSeriesProcedureScheduler(1, intervalMs);
+      final Procedure first = procedure(1);
+      final Procedure second = procedure(2);
+      scheduler.start();
+      try {
+        scheduler.addBack(first);
+        scheduler.addBack(second);
+        assertSame(first, scheduler.poll(0, TimeUnit.MILLISECONDS));
+        scheduler.completionCleanup(first);
+        assertSame(second, scheduler.poll(0, TimeUnit.MILLISECONDS));
+      } finally {
+        scheduler.stop();
+      }
+    }
+  }
+
+  @Test
   public void testExecutionIntervalCanBeReloadedWhileWorkerWaits() throws Exception {
     final DeleteTimeSeriesProcedureScheduler scheduler =
         new DeleteTimeSeriesProcedureScheduler(2, TimeUnit.HOURS.toMillis(1));

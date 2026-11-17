@@ -107,8 +107,10 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
         || procedure instanceof DeleteDatabaseProcedure
         || (procedure instanceof DropTableColumnProcedure
             && !(procedure instanceof DropViewColumnProcedure))) {
-      // Consensus may apply the original plan on the leader. Keep both newly submitted and
-      // recovered executions separate from the last confirmed record in ProcedureInfo.
+      // ProcedureInfo retains the last consensus-applied instance while ProcedureExecutor mutates
+      // its working procedure before persisting each transition. Sharing the instance would make
+      // an uncommitted state appear durable when a consensus write fails, corrupting retries and
+      // recovery. Round-trip through the update plan to isolate the stored and running copies.
       return ((UpdateProcedurePlan)
               ConfigPhysicalPlan.Factory.create(
                   new UpdateProcedurePlan(procedure).serializeToByteBuffer()))
