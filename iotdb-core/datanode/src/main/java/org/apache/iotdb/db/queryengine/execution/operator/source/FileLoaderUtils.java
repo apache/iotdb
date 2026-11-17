@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskChunkLoader;
@@ -43,12 +42,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.TableDeviceTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -73,12 +70,6 @@ public class FileLoaderUtils {
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
-
-  /**
-   * Fraction of a table's field columns that a scan must select for it to use the batch
-   * device-metadata read instead of the per-column path.
-   */
-  private static final double DEVICE_METADATA_BATCH_SCAN_RATIO = 0.6;
 
   private FileLoaderUtils() {
     // util class
@@ -230,8 +221,7 @@ public class FileLoaderUtils {
       Filter globalTimeFilter,
       boolean isSeq,
       boolean ignoreAllNullRows,
-      long[] rootMeasurementMetadataIndexNodeOffset,
-      int totalFieldColumnCount)
+      long[] rootMeasurementMetadataIndexNodeOffset)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -250,8 +240,7 @@ public class FileLoaderUtils {
                 context,
                 globalTimeFilter,
                 ignoreAllNullRows,
-                rootMeasurementMetadataIndexNodeOffset,
-                totalFieldColumnCount);
+                rootMeasurementMetadataIndexNodeOffset);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
@@ -343,8 +332,7 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean ignoreAllNullRows,
-      long[] rootMeasurementMetadataIndexNodeOffset,
-      int totalFieldColumnCount)
+      long[] rootMeasurementMetadataIndexNodeOffset)
       throws IOException {
     AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
@@ -352,10 +340,10 @@ public class FileLoaderUtils {
     // the order of timeSeriesMetadata list is same as subSensorList's order
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     List<String> valueMeasurementList = alignedPath.getMeasurementList();
+    // resolves the time column and every selected sensor in one call: the cache reads each leaf
+    // group that holds one of them once and answers the whole group from that read, so a wide
+    // projection does not walk the device metadata index once per column
     Set<String> allSensors = alignedPath.getAllSensors();
-    boolean isDebug = context.isDebug();
-    String filePath = resource.getTsFilePath();
-    IDeviceID deviceId = alignedPath.getDeviceId();
 
     // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
     // we should not ignore the non-exist of device in TsFileMetadata
@@ -363,39 +351,19 @@ public class FileLoaderUtils {
         context.ignoreNotExistsDevice()
             || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
 
-    // For a wide device (a table scan that selects almost all field columns), deserialize the
-    // whole device's TimeSeriesMetadata in a single batch read instead of walking the device
-    // metadata index once per column. External tsfiles address metadata by offset, so they must
-    // stay on the per-column path; DEBUG queries also stay there so the per-column cache's
-    // diagnostic logs are preserved.
-    if (shouldUseDeviceMetadataBatchScan(
-        valueMeasurementList.size(),
-        totalFieldColumnCount,
-        isDebug,
-        rootMeasurementMetadataIndexNodeOffset != null)) {
-      return loadAlignedTimeSeriesMetadataBatch(
-          resource,
-          alignedPath,
-          valueMeasurementList,
-          allSensors,
-          context,
-          globalTimeFilter,
-          ignoreAllNullRows,
-          ignoreNotExists,
-          cache,
-          filePath,
-          deviceId);
-    }
-
-    TimeseriesMetadata timeColumn =
-        cache.get(
-            filePath,
-            new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
+    Map<String, TimeseriesMetadata> metadata =
+        cache.getTimeseriesMetadata(
+            resource.getTsFilePath(),
+            resource.getTsFileID(),
+            alignedPath.getDeviceId(),
+            allSensors,
             allSensors,
             ignoreNotExists,
-            isDebug,
+            context.isDebug(),
             context,
             rootMeasurementMetadataIndexNodeOffset);
+
+    TimeseriesMetadata timeColumn = metadata.get("");
     if (timeColumn != null) {
       // only need time column, like count_time aggregation
       if (valueMeasurementList.isEmpty()) {
@@ -414,15 +382,7 @@ public class FileLoaderUtils {
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             new ArrayList<>(valueMeasurementList.size());
         for (String measurement : valueMeasurementList) {
-          valueTimeSeriesMetadataList.add(
-              cache.get(
-                  filePath,
-                  new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, measurement),
-                  allSensors,
-                  ignoreNotExists,
-                  isDebug,
-                  context,
-                  rootMeasurementMetadataIndexNodeOffset));
+          valueTimeSeriesMetadataList.add(metadata.get(measurement));
         }
         alignedTimeSeriesMetadata =
             buildAlignedTimeSeriesMetadata(
@@ -436,60 +396,6 @@ public class FileLoaderUtils {
       }
     }
     return alignedTimeSeriesMetadata;
-  }
-
-  static boolean shouldUseDeviceMetadataBatchScan(
-      int selectedColumnCount, int totalFieldColumnCount, boolean debug, boolean offsetAddressed) {
-    // DEBUG queries keep the per-column cache's diagnostic logs; offset-addressed external
-    // tsfiles cannot be resolved through the table metadata index; and a table with at least
-    // max_degree_of_index_node field columns has a dense device of max_degree+1 series (time column
-    // included), which spans more than one measurement leaf group. A sparse device may hold fewer
-    // in-file series; the bloom filter and the cache-aware load keep that case cheap.
-    return !debug
-        && !offsetAddressed
-        && totalFieldColumnCount
-            >= TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()
-        && (double) selectedColumnCount / totalFieldColumnCount >= DEVICE_METADATA_BATCH_SCAN_RATIO;
-  }
-
-  private static AbstractAlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadataBatch(
-      TsFileResource resource,
-      AlignedFullPath alignedPath,
-      List<String> valueMeasurementList,
-      Set<String> allSensors,
-      FragmentInstanceContext context,
-      Filter globalTimeFilter,
-      boolean ignoreAllNullRows,
-      boolean ignoreNotExists,
-      TimeSeriesMetadataCache cache,
-      String filePath,
-      IDeviceID deviceId)
-      throws IOException {
-    Map<String, TimeseriesMetadata> deviceMetadata =
-        cache.getDeviceTimeSeriesMetadata(
-            filePath, resource.getTsFileID(), deviceId, allSensors, context, ignoreNotExists);
-    if (deviceMetadata.isEmpty()) {
-      // the cache applies the same bloom-filter / ignoreNotExists rules as the per-column get(),
-      // so an empty map means the device is expected to be absent from this file
-      return null;
-    }
-    TimeseriesMetadata timeColumn = deviceMetadata.get("");
-    if (timeColumn == null) {
-      return null;
-    }
-    List<TimeseriesMetadata> valueTimeSeriesMetadataList =
-        new ArrayList<>(valueMeasurementList.size());
-    for (String measurement : valueMeasurementList) {
-      valueTimeSeriesMetadataList.add(deviceMetadata.get(measurement));
-    }
-    return buildAlignedTimeSeriesMetadata(
-        resource,
-        alignedPath,
-        timeColumn,
-        valueTimeSeriesMetadataList,
-        context,
-        globalTimeFilter,
-        ignoreAllNullRows);
   }
 
   private static AbstractAlignedTimeSeriesMetadata buildAlignedTimeSeriesMetadata(

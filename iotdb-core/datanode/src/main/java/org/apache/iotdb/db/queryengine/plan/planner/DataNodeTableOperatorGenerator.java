@@ -1185,9 +1185,6 @@ public class DataNodeTableOperatorGenerator
             topKRuntimeFilter);
     seriesScanOptions.setTTLForTableView(viewTTL);
     seriesScanOptions.setIsTableViewForTreeModel(node instanceof TreeDeviceViewScanNode);
-    if (!(node instanceof TreeDeviceViewScanNode) && !(node instanceof ExternalTsFileScanNode)) {
-      seriesScanOptions.setTotalFieldColumnCount(computeTotalFieldColumnCount(node));
-    }
 
     OperatorContext operatorContext = addOperatorContext(context, node.getPlanNodeId(), className);
 
@@ -1223,17 +1220,6 @@ public class DataNodeTableOperatorGenerator
     return node.getDeviceEntryDataSetHandle()
         .<BatchDeviceEntrySource>map(SegmentDeviceEntrySource::create)
         .orElseGet(() -> new InMemoryDeviceEntrySource(node.getDeviceEntries()));
-  }
-
-  private int computeTotalFieldColumnCount(DeviceTableScanNode node) {
-    QualifiedObjectName qualifiedObjectName = node.getQualifiedObjectName();
-    TsTable tsTable =
-        DataNodeTableCache.getInstance()
-            .getTableInCache(
-                qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
-    // the numerator only contains FIELD columns, so the denominator must be the field count too;
-    // getColumnNum() would also count tag, attribute and time columns
-    return tsTable == null ? 0 : tsTable.getFieldNum();
   }
 
   private BatchDeviceEntrySource createAggregationDeviceEntrySource(AggregationTableScanNode node) {
@@ -1787,10 +1773,6 @@ public class DataNodeTableOperatorGenerator
             node.getPushDownPredicate());
     seriesScanOptions.setTTLForTableView(tableViewTTL);
     seriesScanOptions.setIsTableViewForTreeModel(node instanceof AggregationTreeDeviceViewScanNode);
-    if (!(node instanceof AggregationTreeDeviceViewScanNode)
-        && !(node instanceof ExternalTsFileAggregationScanNode)) {
-      seriesScanOptions.setTotalFieldColumnCount(computeTotalFieldColumnCount(node));
-    }
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     allSensors.add(""); // for time column

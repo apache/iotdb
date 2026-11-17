@@ -63,8 +63,9 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFi
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeAlignedChunk;
 
 /**
- * Verifies the batch metadata path on a real device wider than one measurement leaf group, and that
- * it matches the per-column path for dense, sparse and all-null projections.
+ * Verifies metadata loading on a real device wider than one measurement leaf group: each selected
+ * column is resolved from the leaf group that holds it, and one group read serves every selected
+ * column of that group.
  */
 public class AlignedSeriesScanBatchTest {
 
@@ -76,7 +77,7 @@ public class AlignedSeriesScanBatchTest {
   private static final int ROW_COUNT = 10;
 
   @Test
-  public void testBatchScanReadsWideAlignedDevice() throws Exception {
+  public void testScanReadsWideAlignedDevice() throws Exception {
     Assert.assertTrue(
         "the fixture must span more than one measurement leaf group",
         COLUMN_COUNT + 1 > TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
@@ -88,7 +89,7 @@ public class AlignedSeriesScanBatchTest {
     bloomFilterCache.clear();
     boolean previousIgnoreAllNullRows =
         EnvironmentUtils.TEST_QUERY_FI_CONTEXT.isIgnoreAllNullRows();
-    // the batch path is only reachable from table dialect, which forces this flag to false
+    // the unified path is only reachable from table dialect, which forces this flag to false
     EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(false);
     try {
       long cacheHitsBefore =
@@ -102,7 +103,7 @@ public class AlignedSeriesScanBatchTest {
               .getLoadTimeSeriesMetadataFromDiskCount()
               .get();
 
-      TsBlock block = scan(alignedPath(columnNames(COLUMN_COUNT)), COLUMN_COUNT, resource);
+      TsBlock block = scan(alignedPath(columnNames(COLUMN_COUNT)), resource);
 
       Assert.assertEquals(COLUMN_COUNT, block.getValueColumnCount());
       Assert.assertEquals(ROW_COUNT, block.getPositionCount());
@@ -117,21 +118,23 @@ public class AlignedSeriesScanBatchTest {
         }
       }
 
-      // one batch read per device and file: no per-column cache lookups happened
+      // a cold cache: every selected series is a disk lookup, counted per series
       Assert.assertEquals(
-          "the batch path must not fall back to per-column cache loads",
           cacheHitsBefore,
           EnvironmentUtils.TEST_QUERY_FI_CONTEXT
               .getQueryStatistics()
               .getLoadTimeSeriesMetadataFromCacheCount()
               .get());
-      // statistics are counted per series, like the per-column path (time column + all fields)
-      Assert.assertEquals(
-          diskReadsBefore + COLUMN_COUNT + 1,
+      // one read serves a whole leaf group, so a cold scan issues far fewer metadata reads than
+      // the number of selected series
+      long diskReads =
           EnvironmentUtils.TEST_QUERY_FI_CONTEXT
-              .getQueryStatistics()
-              .getLoadTimeSeriesMetadataFromDiskCount()
-              .get());
+                  .getQueryStatistics()
+                  .getLoadTimeSeriesMetadataFromDiskCount()
+                  .get()
+              - diskReadsBefore;
+      Assert.assertTrue("disk lookups: " + diskReads, diskReads >= 1);
+      Assert.assertTrue("disk lookups: " + diskReads, diskReads <= COLUMN_COUNT + 1);
     } finally {
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(previousIgnoreAllNullRows);
       cleanup(file, resource, metadataCache, bloomFilterCache);
@@ -139,7 +142,7 @@ public class AlignedSeriesScanBatchTest {
   }
 
   @Test
-  public void testSparseBatchScanMatchesPerColumn() throws Exception {
+  public void testSparseProjectionFiltersAbsentColumns() throws Exception {
     File file = newFile(2);
     TsFileResource resource = writeWideDevice(file, PRESENT_COLUMN_COUNT);
     TimeSeriesMetadataCache metadataCache = TimeSeriesMetadataCache.getInstance();
@@ -151,59 +154,43 @@ public class AlignedSeriesScanBatchTest {
     try {
       metadataCache.clear();
       bloomFilterCache.clear();
-      long cacheHitsBefore =
+      long diskReadsBefore =
           EnvironmentUtils.TEST_QUERY_FI_CONTEXT
               .getQueryStatistics()
-              .getLoadTimeSeriesMetadataFromCacheCount()
+              .getLoadTimeSeriesMetadataFromDiskCount()
               .get();
-      TsBlock batched = scan(scanPath, COLUMN_COUNT, resource);
-      long batchedCacheHits =
-          EnvironmentUtils.TEST_QUERY_FI_CONTEXT
-                  .getQueryStatistics()
-                  .getLoadTimeSeriesMetadataFromCacheCount()
-                  .get()
-              - cacheHitsBefore;
 
-      metadataCache.clear();
-      long perColumnCacheHitsBefore =
-          EnvironmentUtils.TEST_QUERY_FI_CONTEXT
-              .getQueryStatistics()
-              .getLoadTimeSeriesMetadataFromCacheCount()
-              .get();
-      TsBlock perColumn = scan(scanPath, 0, resource);
-      long perColumnCacheHits =
-          EnvironmentUtils.TEST_QUERY_FI_CONTEXT
-                  .getQueryStatistics()
-                  .getLoadTimeSeriesMetadataFromCacheCount()
-                  .get()
-              - perColumnCacheHitsBefore;
+      TsBlock block = scan(scanPath, resource);
 
-      // the sparse projection is identical to the per-column scan, including every null field
-      Assert.assertEquals(perColumn.getPositionCount(), batched.getPositionCount());
-      Assert.assertEquals(perColumn.getValueColumnCount(), batched.getValueColumnCount());
-      for (int row = 0; row < batched.getPositionCount(); row++) {
-        Assert.assertEquals(perColumn.getTimeByIndex(row), batched.getTimeByIndex(row));
+      Assert.assertEquals(ROW_COUNT, block.getPositionCount());
+      Assert.assertEquals(COLUMN_COUNT, block.getValueColumnCount());
+      for (int row = 0; row < ROW_COUNT; row++) {
+        Assert.assertEquals(row, block.getTimeByIndex(row));
       }
-      for (int column = 0; column < batched.getValueColumnCount(); column++) {
-        Column batchedColumn = batched.getColumn(column);
-        Column perColumnColumn = perColumn.getColumn(column);
+      for (int column = 0; column < COLUMN_COUNT; column++) {
+        Column valueColumn = block.getColumn(column);
         boolean present = column < PRESENT_COLUMN_COUNT;
-        for (int row = 0; row < batched.getPositionCount(); row++) {
-          Assert.assertEquals(
-              "s" + column + " row " + row, perColumnColumn.isNull(row), batchedColumn.isNull(row));
+        for (int row = 0; row < ROW_COUNT; row++) {
           if (present) {
-            Assert.assertFalse(batchedColumn.isNull(row));
-            Assert.assertEquals(row, batchedColumn.getInt(row));
-            Assert.assertEquals(perColumnColumn.getInt(row), batchedColumn.getInt(row));
+            Assert.assertFalse(valueColumn.isNull(row));
+            Assert.assertEquals(row, valueColumn.getInt(row));
           } else {
-            Assert.assertTrue(batchedColumn.isNull(row));
+            Assert.assertTrue("s" + column + " row " + row, valueColumn.isNull(row));
           }
         }
       }
 
-      // the batch scan resolved everything from disk, the per-column scan reused leaf groups
-      Assert.assertEquals(0, batchedCacheHits);
-      Assert.assertTrue(perColumnCacheHits > 0);
+      // the bloom filter excludes the 270 absent columns; a few may survive as false positives,
+      // but the sparse projection must still look up far fewer series than it selects
+      long diskReads =
+          EnvironmentUtils.TEST_QUERY_FI_CONTEXT
+                  .getQueryStatistics()
+                  .getLoadTimeSeriesMetadataFromDiskCount()
+                  .get()
+              - diskReadsBefore;
+      // at most one group read per present series plus the time column
+      Assert.assertTrue("disk lookups: " + diskReads, diskReads >= 1);
+      Assert.assertTrue("disk lookups: " + diskReads, diskReads <= PRESENT_COLUMN_COUNT + 1);
     } finally {
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(previousIgnoreAllNullRows);
       cleanup(file, resource, metadataCache, bloomFilterCache);
@@ -211,7 +198,7 @@ public class AlignedSeriesScanBatchTest {
   }
 
   @Test
-  public void testAllNullProjectionMatchesPerColumn() throws Exception {
+  public void testAllNullProjection() throws Exception {
     File file = newFile(3);
     TsFileResource resource = writeWideDevice(file, PRESENT_COLUMN_COUNT);
     TimeSeriesMetadataCache metadataCache = TimeSeriesMetadataCache.getInstance();
@@ -221,62 +208,42 @@ public class AlignedSeriesScanBatchTest {
     boolean previousIgnoreAllNullRows =
         EnvironmentUtils.TEST_QUERY_FI_CONTEXT.isIgnoreAllNullRows();
     try {
-      // table dialect (the only dialect that reaches the batch path): all-null rows are kept
+      // table dialect: all-null rows are kept
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(false);
       metadataCache.clear();
       bloomFilterCache.clear();
-      TsBlock batched = scan(absentPath, COLUMN_COUNT, resource);
-      Assert.assertEquals(ROW_COUNT, batched.getPositionCount());
-      Assert.assertEquals(COLUMN_COUNT, batched.getValueColumnCount());
+      TsBlock block = scan(absentPath, resource);
+      Assert.assertEquals(ROW_COUNT, block.getPositionCount());
+      Assert.assertEquals(COLUMN_COUNT, block.getValueColumnCount());
       for (int column = 0; column < COLUMN_COUNT; column++) {
         for (int row = 0; row < ROW_COUNT; row++) {
-          Assert.assertTrue(
-              "absent" + column + " row " + row, batched.getColumn(column).isNull(row));
+          Assert.assertTrue("absent" + column + " row " + row, block.getColumn(column).isNull(row));
         }
       }
 
-      metadataCache.clear();
-      TsBlock perColumn = scan(absentPath, 0, resource);
-      Assert.assertEquals(perColumn.getPositionCount(), batched.getPositionCount());
-      Assert.assertEquals(perColumn.getValueColumnCount(), batched.getValueColumnCount());
-      for (int row = 0; row < ROW_COUNT; row++) {
-        Assert.assertEquals(perColumn.getTimeByIndex(row), batched.getTimeByIndex(row));
-      }
-      for (int column = 0; column < COLUMN_COUNT; column++) {
-        for (int row = 0; row < ROW_COUNT; row++) {
-          Assert.assertEquals(
-              perColumn.getColumn(column).isNull(row), batched.getColumn(column).isNull(row));
-        }
-      }
-
-      // tree dialect: an all-null projection skips the file in both paths
+      // tree dialect: an all-null projection skips the file
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(true);
       metadataCache.clear();
       bloomFilterCache.clear();
-      Assert.assertFalse(hasFile(absentPath, COLUMN_COUNT, resource));
-
-      metadataCache.clear();
-      Assert.assertFalse(hasFile(absentPath, 0, resource));
+      Assert.assertFalse(hasFile(absentPath, resource));
     } finally {
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(previousIgnoreAllNullRows);
       cleanup(file, resource, metadataCache, bloomFilterCache);
     }
   }
 
-  private static TsBlock scan(
-      AlignedFullPath scanPath, int totalFieldColumnCount, TsFileResource resource)
+  private static TsBlock scan(AlignedFullPath scanPath, TsFileResource resource)
       throws IOException {
-    AlignedSeriesScanUtil seriesScanUtil = newScanUtil(scanPath, totalFieldColumnCount, resource);
+    AlignedSeriesScanUtil seriesScanUtil = newScanUtil(scanPath, resource);
     SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
     SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     return seriesScanUtil.nextPage();
   }
 
-  private static boolean hasFile(
-      AlignedFullPath scanPath, int totalFieldColumnCount, TsFileResource resource)
+  private static boolean hasFile(AlignedFullPath scanPath, TsFileResource resource)
       throws IOException {
-    AlignedSeriesScanUtil seriesScanUtil = newScanUtil(scanPath, totalFieldColumnCount, resource);
+    AlignedSeriesScanUtil seriesScanUtil = newScanUtil(scanPath, resource);
     while (true) {
       Optional<Boolean> hasNextFile = seriesScanUtil.hasNextFile();
       if (hasNextFile.isPresent()) {
@@ -286,12 +253,10 @@ public class AlignedSeriesScanBatchTest {
   }
 
   private static AlignedSeriesScanUtil newScanUtil(
-      AlignedFullPath scanPath, int totalFieldColumnCount, TsFileResource resource)
-      throws IOException {
+      AlignedFullPath scanPath, TsFileResource resource) throws IOException {
     SeriesScanOptions.Builder builder = new SeriesScanOptions.Builder();
     builder.withAllSensors(new HashSet<>(scanPath.getMeasurementList()));
     SeriesScanOptions scanOptions = builder.build();
-    scanOptions.setTotalFieldColumnCount(totalFieldColumnCount);
     AlignedSeriesScanUtil seriesScanUtil =
         new AlignedSeriesScanUtil(
             scanPath, Ordering.ASC, scanOptions, EnvironmentUtils.TEST_QUERY_FI_CONTEXT);
