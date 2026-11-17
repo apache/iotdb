@@ -52,6 +52,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -553,12 +554,13 @@ public class ProcedureManager {
 
   private boolean hasOtherPendingFullDatabaseTimeSeriesDeletion(
       final String database, final String queryId, final ProcedureType thisType) {
+    final String qualifiedDatabase = PathUtils.qualifyDatabaseName(database);
     return executor.getProcedures().values().stream()
         .filter(DeleteTimeSeriesProcedure.class::isInstance)
         .map(DeleteTimeSeriesProcedure.class::cast)
         .anyMatch(
             procedure ->
-                procedure.deletesDatabase(database)
+                procedure.deletesDatabase(qualifiedDatabase)
                     && !(thisType == ProcedureType.DELETE_DATABASE_PROCEDURE
                         && Objects.equals(queryId, procedure.getQueryId())));
   }

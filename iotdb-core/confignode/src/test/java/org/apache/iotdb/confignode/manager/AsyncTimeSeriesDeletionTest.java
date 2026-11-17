@@ -172,7 +172,7 @@ public class AsyncTimeSeriesDeletionTest {
     assertTrue(
         manager
             .checkDuplicateTableTask(
-                "root.async", null, "t", null, "table-query", ProcedureType.CREATE_TABLE_PROCEDURE)
+                "async", null, "t", null, "table-query", ProcedureType.CREATE_TABLE_PROCEDURE)
             .getRight());
     assertEquals(
         TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode(),
@@ -197,7 +197,7 @@ public class AsyncTimeSeriesDeletionTest {
     assertTrue(
         !manager
             .checkDuplicateTableTask(
-                "root.other", null, "t", null, "other-query", ProcedureType.CREATE_TABLE_PROCEDURE)
+                "other", null, "t", null, "other-query", ProcedureType.CREATE_TABLE_PROCEDURE)
             .getRight());
     assertFalse(
         manager
@@ -207,7 +207,7 @@ public class AsyncTimeSeriesDeletionTest {
     assertTrue(
         manager
             .checkDuplicateTableTask(
-                "root.async", null, "t", null, "query", ProcedureType.CREATE_TABLE_PROCEDURE)
+                "async", null, "t", null, "query", ProcedureType.CREATE_TABLE_PROCEDURE)
             .getRight());
     assertEquals(
         TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode(),
@@ -221,13 +221,22 @@ public class AsyncTimeSeriesDeletionTest {
   }
 
   @Test
-  public void testTreeDeletionDoesNotReserveTableModelDatabase() throws Exception {
+  public void testTreeDeletionReservesMatchingTableModelDatabase() throws Exception {
     manager.deleteTimeSeries("query", pattern("root.async.**"), false, false);
-    assertTrue(!manager.hasPendingFullDatabaseTimeSeriesDeletion("async"));
     assertTrue(
-        !manager
+        manager
             .checkDuplicateTableTask(
                 "async", null, "t", null, "table-query", ProcedureType.CREATE_TABLE_PROCEDURE)
+            .getRight());
+    assertFalse(
+        manager
+            .checkDuplicateTableTask(
+                "other_table_database",
+                null,
+                "t",
+                null,
+                "other-query",
+                ProcedureType.CREATE_TABLE_PROCEDURE)
             .getRight());
     assertTrue(manager.hasPendingFullDatabaseTimeSeriesDeletion("root.async"));
 
