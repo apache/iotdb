@@ -26,12 +26,17 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.config.UserDataTransferAuditClassifier;
+import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher;
+import org.apache.iotdb.consensus.iot.util.FakeConsensusReqReader;
 import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -53,11 +58,17 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class IoTConsensusServerImplTest {
 
@@ -66,6 +77,90 @@ public class IoTConsensusServerImplTest {
   private static final int PEERS_PER_WRITER = 1_000;
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testNewPeerImmediatelyProtectsWALAndCatchupTimesOut() throws Exception {
+    FakeConsensusReqReader reader = mock(FakeConsensusReqReader.class);
+    AtomicLong boundary = new AtomicLong();
+    doAnswer(
+            invocation -> {
+              boundary.set(invocation.getArgument(0));
+              return null;
+            })
+        .when(reader)
+        .setSafelyDeletedSearchIndex(anyLong());
+    ScheduledExecutorService background = Executors.newSingleThreadScheduledExecutor();
+    Peer self = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    Peer peer = new Peer(new DataRegionId(1), 1, new TEndPoint("127.0.0.1", 6668));
+    IoTConsensusServerImpl server = newRetentionTestServer(self, reader, background);
+    try {
+      server.getIndexObject().set(10);
+      server.checkAndUpdateSafeDeletedSearchIndex();
+      assertEquals(Long.MAX_VALUE, boundary.get());
+      server.buildSyncLogChannel(peer, false);
+      assertEquals(10, boundary.get());
+      server.getLogDispatcher().waitUntilSyncLogCompleted(peer, 10, 100);
+      assertThrows(
+          ConsensusGroupModifyPeerException.class,
+          () -> server.getLogDispatcher().waitUntilSyncLogCompleted(peer, 11, 1));
+    } finally {
+      server.stop();
+      background.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testMissingWALCannotProduceAnAcknowledgableBatch() throws Exception {
+    FakeConsensusReqReader reader = mock(FakeConsensusReqReader.class);
+    ConsensusReqReader.ReqIterator iterator = mock(ConsensusReqReader.ReqIterator.class);
+    when(reader.getReqIterator(anyLong())).thenReturn(iterator);
+    when(iterator.next()).thenReturn(new IndexedConsensusRequest(4, Collections.emptyList()));
+    ScheduledExecutorService background = Executors.newSingleThreadScheduledExecutor();
+    Peer self = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    Peer peer = new Peer(new DataRegionId(1), 1, new TEndPoint("127.0.0.1", 6668));
+    IoTConsensusServerImpl server = newRetentionTestServer(self, reader, background);
+    try {
+      server.getIndexObject().set(4);
+      server.buildSyncLogChannel(peer, 0, false);
+      Field threadsField = LogDispatcher.class.getDeclaredField("threads");
+      threadsField.setAccessible(true);
+      @SuppressWarnings("unchecked")
+      List<LogDispatcher.LogDispatcherThread> threads =
+          (List<LogDispatcher.LogDispatcherThread>) threadsField.get(server.getLogDispatcher());
+      LogDispatcher.LogDispatcherThread thread = threads.get(0);
+      assertThrows(IllegalStateException.class, thread::getBatch);
+      assertEquals(0, thread.getCurrentSyncIndex());
+      // The real dispatcher loop must expose the failure to the add-peer waiter as well.
+      thread.run();
+      assertThrows(
+          ConsensusGroupModifyPeerException.class,
+          () -> server.getLogDispatcher().waitUntilSyncLogCompleted(peer, 4, 100));
+    } finally {
+      server.stop();
+      background.shutdownNow();
+    }
+  }
+
+  private IoTConsensusServerImpl newRetentionTestServer(
+      Peer self, FakeConsensusReqReader reader, ScheduledExecutorService background)
+      throws Exception {
+    return new IoTConsensusServerImpl(
+        temporaryFolder.getRoot().getAbsolutePath(),
+        null,
+        DirectoryStrategyType.SEQUENCE_STRATEGY,
+        self,
+        Collections.singletonList(self),
+        new TestStateMachine() {
+          @Override
+          public synchronized DataSet read(IConsensusRequest request) {
+            return reader;
+          }
+        },
+        background,
+        null,
+        null,
+        IoTConsensusConfig.newBuilder().build());
+  }
 
   @Test
   public void testSyncLogBecomesReadOnlyWhileWaiting() throws Exception {
