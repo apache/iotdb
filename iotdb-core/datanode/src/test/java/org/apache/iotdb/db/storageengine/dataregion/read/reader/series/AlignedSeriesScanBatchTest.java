@@ -125,8 +125,7 @@ public class AlignedSeriesScanBatchTest {
               .getQueryStatistics()
               .getLoadTimeSeriesMetadataFromCacheCount()
               .get());
-      // one read serves a whole leaf group, so a cold scan issues far fewer metadata reads than
-      // the number of selected series
+      // per-series counters: a cold scan counts one disk lookup per selected measurement
       long diskReads =
           EnvironmentUtils.TEST_QUERY_FI_CONTEXT
                   .getQueryStatistics()
@@ -188,9 +187,10 @@ public class AlignedSeriesScanBatchTest {
                   .getLoadTimeSeriesMetadataFromDiskCount()
                   .get()
               - diskReadsBefore;
-      // at most one group read per present series plus the time column
+      // per-series counters: bloom-excluded measurements count as disk lookups, as they did on the
+      // per-column path
       Assert.assertTrue("disk lookups: " + diskReads, diskReads >= 1);
-      Assert.assertTrue("disk lookups: " + diskReads, diskReads <= PRESENT_COLUMN_COUNT + 1);
+      Assert.assertTrue("disk lookups: " + diskReads, diskReads <= COLUMN_COUNT + 1);
     } finally {
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(previousIgnoreAllNullRows);
       cleanup(file, resource, metadataCache, bloomFilterCache);

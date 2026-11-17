@@ -184,9 +184,11 @@ public class TimeSeriesMetadataCache {
    * <p>Cached measurements are returned directly. The remaining ones are checked against the file's
    * bloom filter and then loaded leaf group by leaf group: one pending measurement locates the
    * group it belongs to, that whole group is read and deserialized once, and every requested
-   * measurement found in it is resolved. Each group is therefore read at most once per call,
-   * independent of LRU cache pressure, and groups that contain no requested measurement are never
-   * read.
+   * measurement found in it is resolved. For files that expose a bloom filter, each group is read
+   * at most once per call, independent of LRU cache pressure, and groups that contain no requested
+   * measurement are never read. Without one (external tsfiles), a measurement the bloom filter
+   * cannot rule out is read from its leaf, so a definitively absent measurement may read the leaf
+   * that holds its floor entry again; this matches the previous per-column loader.
    *
    * <p>{@code allSensors} is the full selected set; it filters each group read and warms the cache,
    * so a later single-measurement {@link #get} can reuse the group. {@code requested} must be a
@@ -280,8 +282,10 @@ public class TimeSeriesMetadataCache {
                     debug,
                     result,
                     timeSeriesMetadataIoSizeRecorder);
-            diskLookupCount = loaded.diskLookups;
             cacheHitCount += loaded.cacheHits;
+            // per-series counters: every requested measurement that was not resolved from the
+            // cache is a disk lookup, including the ones the bloom filter excluded (as before)
+            diskLookupCount = requested.size() - cacheHitCount;
           }
           return result;
         }
@@ -323,8 +327,8 @@ public class TimeSeriesMetadataCache {
                 debug,
                 result,
                 timeSeriesMetadataIoSizeRecorder);
-        diskLookupCount = loaded.diskLookups;
         cacheHitCount += loaded.cacheHits;
+        diskLookupCount = requested.size() - cacheHitCount;
       }
       return result;
     } finally {
@@ -374,6 +378,9 @@ public class TimeSeriesMetadataCache {
       LongConsumer ioSizeRecorder)
       throws IOException {
     LeafLoadStatistics statistics = new LeafLoadStatistics();
+    // without a cache to warm, only the measurements this call needs are worth deserializing;
+    // with the cache enabled the siblings keep the group warm for later single-column gets
+    Set<String> groupFilter = cacheEnabled ? allSensors : requested;
     // probe the time column first: when it is absent, no selected series of this device can be
     // read from this file, and the per-column path returned without touching any other column
     if (whereFirst(pending, requested)) {
@@ -429,13 +436,12 @@ public class TimeSeriesMetadataCache {
         }
         continue;
       }
-      statistics.diskLookups++;
       List<TimeseriesMetadata> group =
           reader.readTimeseriesMetadata(
               device,
               deviceMetadataIndexNodeOffset,
               probe,
-              allSensors,
+              groupFilter,
               ignoreNotExists,
               ioSizeRecorder);
       boolean probeFound = false;
@@ -480,7 +486,6 @@ public class TimeSeriesMetadataCache {
   }
 
   private static final class LeafLoadStatistics {
-    private int diskLookups;
     private int cacheHits;
   }
 

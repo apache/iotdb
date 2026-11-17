@@ -897,6 +897,8 @@ public class TimeSeriesMetadataCacheTest {
         assertEquals(measurement, result.get(measurement).getMeasurementId());
       }
     } finally {
+      EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setQueryDataSourceType(
+          QueryDataSourceType.SERIES_SCAN);
       cache.clear();
       bloomFilterCache.clear();
     }
