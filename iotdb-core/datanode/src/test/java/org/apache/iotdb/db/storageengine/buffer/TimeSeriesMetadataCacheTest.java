@@ -22,8 +22,12 @@ package org.apache.iotdb.db.storageengine.buffer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -32,6 +36,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.LazyTsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -836,6 +841,64 @@ public class TimeSeriesMetadataCacheTest {
       cache.clear();
       bloomFilterCache.clear();
       fileReaderManager.closeFileAndRemoveReader(tsFileID);
+    }
+  }
+
+  @Test
+  public void testExternalTsFileReadsAllRequestedMeasurements() throws Exception {
+    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
+    File file = new File("target/external-cache-disabled.tsfile");
+    file.delete();
+    IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.external.d1");
+    try (TsFileWriter writer = new TsFileWriter(file)) {
+      writer.registerAlignedTimeseries(
+          deviceID,
+          Arrays.asList(
+              new MeasurementSchema("s1", TSDataType.INT32),
+              new MeasurementSchema("s2", TSDataType.INT32)));
+      for (int time = 0; time < 3; time++) {
+        TSRecord record = new TSRecord(deviceID, time);
+        record.addPoint("s1", time);
+        record.addPoint("s2", time);
+        writer.writeRecord(record);
+      }
+    }
+    cache.clear();
+    bloomFilterCache.clear();
+    long[] offset;
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
+      LazyTsFileDeviceIterator iterator = new LazyTsFileDeviceIterator(reader);
+      assertTrue(iterator.hasNext());
+      iterator.next();
+      offset = iterator.getCurrentDeviceMeasurementNodeOffset();
+    }
+    // external tsfiles bypass the metadata cache: every requested measurement must still be read
+    EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setQueryDataSourceType(
+        QueryDataSourceType.EXTERNAL_TSFILE_SCAN);
+    try {
+      Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
+      TsFileResource resource = new TsFileResource(file);
+      resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+      Map<String, TimeseriesMetadata> result =
+          cache.getTimeseriesMetadata(
+              file.getAbsolutePath(),
+              resource.getTsFileID(),
+              deviceID,
+              allSensors,
+              allSensors,
+              false,
+              false,
+              EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
+              offset);
+      assertEquals(allSensors.size(), result.size());
+      for (String measurement : allSensors) {
+        assertNotNull(measurement, result.get(measurement));
+        assertEquals(measurement, result.get(measurement).getMeasurementId());
+      }
+    } finally {
+      cache.clear();
+      bloomFilterCache.clear();
     }
   }
 }

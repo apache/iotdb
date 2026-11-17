@@ -287,7 +287,9 @@ public class TimeSeriesMetadataCache {
         }
       }
 
-      // cache disabled or external tsfiles
+      // cache disabled or external tsfiles: nothing was resolved from the cache, so every
+      // requested measurement is still pending
+      pending.addAll(requested);
       BloomFilter bloomFilter = null;
       if (deviceMetadataIndexNodeOffset == null) {
         long bloomFilterStartTime = System.nanoTime();
