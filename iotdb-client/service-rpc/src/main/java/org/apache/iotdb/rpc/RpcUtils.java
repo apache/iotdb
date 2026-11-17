@@ -21,9 +21,11 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +71,31 @@ public class RpcUtils {
 
   public static final TSStatus SUCCESS_STATUS =
       new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+  public static int getTimeFactor(TSOpenSessionResp openResp) {
+    if (openResp.isSetConfiguration()) {
+      String precision = openResp.getConfiguration().get("timestamp_precision");
+      if (precision != null) {
+        switch (precision) {
+          case "ms":
+            return 1_000;
+          case "us":
+            return 1_000_000;
+          case "ns":
+            return 1_000_000_000;
+          default:
+            throw new IllegalArgumentException(
+                String.format(
+                    RpcMessages.EXCEPTION_UNKNOWN_TIME_PRECISION_ARG_F550A691, precision));
+        }
+      }
+    }
+    return 1_000;
+  }
+
+  public static long getMilliSecond(long time, int timeFactor) {
+    return Math.floorDiv(time, timeFactor) * 1_000;
+  }
 
   public static IClientRPCService.Iface newSynchronizedClient(IClientRPCService.Iface client) {
     return (IClientRPCService.Iface)

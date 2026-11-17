@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
@@ -302,7 +303,8 @@ public class IoTDBRpcDataSet {
 
   public boolean next() throws StatementExecutionException, IoTDBConnectionException {
     if (explicitlyClosed) {
-      throw new IoTDBConnectionException(RpcMessages.DATASET_ALREADY_CLOSED);
+      throw new IoTDBConnectionException(
+          RpcMessages.EXCEPTION_THIS_DATASET_IS_ALREADY_CLOSED_826EDCDB);
     }
     if (hasCachedBlock()) {
       lastReadWasNull = false;
@@ -638,7 +640,8 @@ public class IoTDBRpcDataSet {
 
   public void checkRecord() throws StatementExecutionException {
     if (explicitlyClosed) {
-      throw new StatementExecutionException(RpcMessages.DATASET_ALREADY_CLOSED);
+      throw new StatementExecutionException(
+          RpcMessages.EXCEPTION_THIS_DATASET_IS_ALREADY_CLOSED_826EDCDB);
     }
     if (queryResultIndex > queryResultSize
         || tsBlockIndex >= tsBlockSize

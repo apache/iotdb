@@ -99,7 +99,10 @@ public class Utils {
       }
     }
     if (!isUrlLegal) {
-      throw new IoTDBURLException(JdbcMessages.EXCEPTION_ERROR_URL_FORMAT + url);
+      throw new IoTDBURLException(
+          JdbcMessages
+                  .EXCEPTION_ERROR_URL_FORMAT_URL_SHOULD_JDBC_IOTDB_ANYTHING_PORT_DATABASE_17D1DCFB
+              + url);
     }
 
     if (properties.containsKey(Config.AUTH_USER)) {

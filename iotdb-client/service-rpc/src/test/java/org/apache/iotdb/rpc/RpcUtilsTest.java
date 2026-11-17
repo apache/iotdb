@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -67,6 +68,41 @@ public class RpcUtilsTest {
     Assert.assertEquals(
         "1970-01-01T07:59:59.999+08:00",
         RpcUtils.parseLongToDateWithPrecision(formatter, -1, zoneId, "ms"));
+  }
+
+  @Test
+  public void testGetTimeFactor() {
+    Assert.assertEquals(1_000, RpcUtils.getTimeFactor(new TSOpenSessionResp()));
+    Assert.assertEquals(
+        1_000,
+        RpcUtils.getTimeFactor(
+            new TSOpenSessionResp()
+                .setConfiguration(Collections.singletonMap("timestamp_precision", "ms"))));
+    Assert.assertEquals(
+        1_000_000,
+        RpcUtils.getTimeFactor(
+            new TSOpenSessionResp()
+                .setConfiguration(Collections.singletonMap("timestamp_precision", "us"))));
+    Assert.assertEquals(
+        1_000_000_000,
+        RpcUtils.getTimeFactor(
+            new TSOpenSessionResp()
+                .setConfiguration(Collections.singletonMap("timestamp_precision", "ns"))));
+    IllegalArgumentException exception =
+        Assert.assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                RpcUtils.getTimeFactor(
+                    new TSOpenSessionResp()
+                        .setConfiguration(
+                            Collections.singletonMap("timestamp_precision", "invalid"))));
+    Assert.assertEquals("Unknown time precision: invalid", exception.getMessage());
+  }
+
+  @Test
+  public void testGetMilliSecond() {
+    Assert.assertEquals(-2_000L, RpcUtils.getMilliSecond(-1_500L, 1_000));
+    Assert.assertEquals(1_000L, RpcUtils.getMilliSecond(1_500L, 1_000));
   }
 
   @Test

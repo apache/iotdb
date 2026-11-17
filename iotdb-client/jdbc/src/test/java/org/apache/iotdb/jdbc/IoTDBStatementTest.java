@@ -39,6 +39,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -216,13 +217,13 @@ public class IoTDBStatementTest {
     IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L);
     ResultSet resultSet = mock(ResultSet.class);
     doThrow(new SQLException("result set close failed")).when(resultSet).close();
-    statement.resultSet = resultSet;
+    setResultSet(statement, resultSet);
 
     SQLException closeException = assertThrows(SQLException.class, statement::close);
 
     assertEquals("result set close failed", closeException.getMessage());
     assertTrue(statement.isClosed());
-    assertNull(statement.resultSet);
+    assertNull(getResultSet(statement));
     verify(client).closeOperation(any());
   }
 
@@ -241,7 +242,7 @@ public class IoTDBStatementTest {
     verify(client).closeOperation(closeReq.capture());
     assertEquals(1L, closeReq.getValue().getStatementId());
     assertEquals(queryId, closeReq.getValue().getQueryId());
-    assertNull(statement.resultSet);
+    assertNull(getResultSet(statement));
   }
 
   @Test
@@ -259,7 +260,7 @@ public class IoTDBStatementTest {
     verify(client).closeOperation(closeReq.capture());
     assertEquals(2L, closeReq.getValue().getStatementId());
     assertEquals(queryId, closeReq.getValue().getQueryId());
-    assertNull(statement.resultSet);
+    assertNull(getResultSet(statement));
   }
 
   @Test
@@ -341,6 +342,18 @@ public class IoTDBStatementTest {
   @Test(expected = SQLException.class)
   public void testUnwrapRejectsUnsupportedClass() throws SQLException {
     new IoTDBStatement(connection, client, sessionId, zoneID).unwrap(String.class);
+  }
+
+  private void setResultSet(IoTDBStatement statement, ResultSet resultSet) throws Exception {
+    Field resultSetField = IoTDBStatement.class.getDeclaredField("resultSet");
+    resultSetField.setAccessible(true);
+    resultSetField.set(statement, resultSet);
+  }
+
+  private ResultSet getResultSet(IoTDBStatement statement) throws Exception {
+    Field resultSetField = IoTDBStatement.class.getDeclaredField("resultSet");
+    resultSetField.setAccessible(true);
+    return (ResultSet) resultSetField.get(statement);
   }
 
   private TSExecuteStatementResp malformedQueryResponse(long queryId) {

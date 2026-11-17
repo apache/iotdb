@@ -445,7 +445,7 @@ public class IoTDBConnectionTest {
 
     IoTDBStatement statement = (IoTDBStatement) connection.createStatement();
     ResultSet resultSet = mock(ResultSet.class);
-    statement.resultSet = resultSet;
+    setResultSet(statement, resultSet);
 
     connection.close();
 
@@ -481,6 +481,12 @@ public class IoTDBConnectionTest {
     } catch (ReflectiveOperationException e) {
       throw new AssertionError(e);
     }
+  }
+
+  private void setResultSet(IoTDBStatement statement, ResultSet resultSet) throws Exception {
+    Field resultSetField = IoTDBStatement.class.getDeclaredField("resultSet");
+    resultSetField.setAccessible(true);
+    resultSetField.set(statement, resultSet);
   }
 
   private void setTransport(IoTDBConnection target, TTransport transport) {

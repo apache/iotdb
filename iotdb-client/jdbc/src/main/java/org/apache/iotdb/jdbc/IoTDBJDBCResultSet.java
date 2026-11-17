@@ -36,6 +36,8 @@ import org.apache.tsfile.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.sql.rowset.serial.SerialBlob;
+
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
@@ -55,7 +57,6 @@ import java.sql.RowId;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
-import java.sql.SerialBlob;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -270,7 +271,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public void close() throws SQLException {
-    if (explicitlyClosed && ioTDBRpcDataSet.isClosed()) {
+    if (explicitlyClosed && ioTDBRpcDataSet.isClosed) {
       return;
     }
     try {
@@ -293,7 +294,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public int findColumn(String columnName) throws SQLException {
     checkOpen();
-    if (!ioTDBRpcDataSet.getColumnNameList().contains(columnName)) {
+    if (!ioTDBRpcDataSet.columnNameList.contains(columnName)) {
       throw new SQLException(
           String.format(JdbcMessages.EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278, columnName));
     }
@@ -386,10 +387,6 @@ public class IoTDBJDBCResultSet implements ResultSet {
         return null;
       }
 
-      if (dataType.equals(TSDataType.OBJECT)) {
-        throw new SQLException(OBJECT_ERR_MSG);
-      }
-
       Binary binary = ioTDBRpcDataSet.getBinary(arg0);
       if (ObjectUtils.isNotEmpty(binary)) {
         return new SerialBlob(binary.getValues());
@@ -407,10 +404,6 @@ public class IoTDBJDBCResultSet implements ResultSet {
       final TSDataType dataType = ioTDBRpcDataSet.getDataType(arg0);
       if (dataType == null) {
         return null;
-      }
-
-      if (dataType.equals(TSDataType.OBJECT)) {
-        throw new SQLException(OBJECT_ERR_MSG);
       }
 
       Binary binary = ioTDBRpcDataSet.getBinary(arg0);
@@ -593,7 +586,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public int getFetchSize() throws SQLException {
     checkOpen();
-    return ioTDBRpcDataSet.getFetchSize();
+    return ioTDBRpcDataSet.fetchSize;
   }
 
   @Override
@@ -603,7 +596,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
       throw new SQLException(
           String.format(JdbcMessages.FETCH_SIZE_MUST_BE_NON_NEGATIVE, fetchSize));
     }
-    ioTDBRpcDataSet.setFetchSize(fetchSize == 0 ? Config.DEFAULT_FETCH_SIZE : fetchSize);
+    ioTDBRpcDataSet.fetchSize = fetchSize == 0 ? Config.DEFAULT_FETCH_SIZE : fetchSize;
   }
 
   @Override
@@ -799,7 +792,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   // The primitive getters return a default value such as 0 for SQL NULL
   private Object nullIfLastReadWasNull(Object value) {
-    return ioTDBRpcDataSet.isLastReadWasNull() ? null : value;
+    return ioTDBRpcDataSet.lastReadWasNull ? null : value;
   }
 
   @Override
@@ -810,7 +803,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   // findColumn() fails with an unchecked exception for an unknown label
   private int findColumnIndex(String columnLabel) throws SQLException {
-    int index = ioTDBRpcDataSet.getColumnNameList().indexOf(columnLabel);
+    int index = ioTDBRpcDataSet.columnNameList.indexOf(columnLabel);
     if (index < 0) {
       throw new SQLException(
           String.format(JdbcMessages.EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278, columnLabel));
@@ -1483,7 +1476,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public boolean wasNull() throws SQLException {
     checkOpen();
-    return ioTDBRpcDataSet.isLastReadWasNull();
+    return ioTDBRpcDataSet.lastReadWasNull;
   }
 
   protected String getValueByName(String columnName) throws SQLException {
@@ -1532,7 +1525,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   public boolean isIgnoreTimeStamp() throws SQLException {
     checkOpen();
-    return ioTDBRpcDataSet.isIgnoreTimeStamp();
+    return ioTDBRpcDataSet.ignoreTimeStamp;
   }
 
   public String getOperationType() throws SQLException {
@@ -1554,7 +1547,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
     checkOpen();
     try {
       return ioTDBRpcDataSet.getDataType(columnIndex);
-    } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }

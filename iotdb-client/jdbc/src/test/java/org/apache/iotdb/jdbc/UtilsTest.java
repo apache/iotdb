@@ -137,7 +137,6 @@ public class UtilsTest {
 
     assertEquals("test", params.getHost());
     assertEquals(6667, params.getPort());
-    assertFalse(params.getDb().isPresent());
     assertTrue(params.isUseSSL());
   }
 

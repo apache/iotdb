@@ -108,6 +108,7 @@ public class IoTDBConnection implements Connection {
 
   private ZoneId zoneId;
   private Charset charset;
+  private int timeFactor = 1_000;
 
   private boolean autoCommit = true;
   private boolean readOnly;
@@ -562,6 +563,10 @@ public class IoTDBConnection implements Connection {
     return sessionId;
   }
 
+  public int getTimeFactor() {
+    return timeFactor;
+  }
+
   public void setClient(IClientRPCService.Iface client) {
     this.client = client;
   }
@@ -630,6 +635,7 @@ public class IoTDBConnection implements Connection {
       sessionId = openResp.getSessionId();
       // validate connection
       RpcUtils.verifySuccess(openResp.getStatus());
+      timeFactor = RpcUtils.getTimeFactor(openResp);
 
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
@@ -647,7 +653,10 @@ public class IoTDBConnection implements Connection {
       String expirationDateStr =
           getPasswordExpirationDateToWarn(openResp.getStatus().getMessage(), LocalDateTime.now());
       if (expirationDateStr != null) {
-        logger.warn(JdbcMessages.LOG_PASSWORD_EXPIRY, expirationDateStr);
+        logger.warn(
+            JdbcMessages.LOG_ARG_ARG_PLEASE_CHANGE_IT_TIME_VIA_ALTER_USER_STATEMENT_6B67087C,
+            JdbcMessages.EXCEPTION_YOUR_PASSWORD_WILL_EXPIRE_AT_49098220,
+            expirationDateStr);
       }
     } catch (TException e) {
       transport.close();

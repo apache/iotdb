@@ -25,9 +25,11 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
@@ -1011,6 +1013,10 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     } else {
       setParameter(parameterIndex, "'" + escapeSingleQuotes(x) + "'");
     }
+  }
+
+  private String escapeSingleQuotes(String value) {
+    return value.replace("'", "''");
   }
 
   @Override

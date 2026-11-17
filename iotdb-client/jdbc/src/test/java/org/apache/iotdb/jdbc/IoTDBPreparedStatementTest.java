@@ -32,6 +32,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayInputStream;
+import java.lang.reflect.Field;
 import java.sql.ParameterMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -219,16 +220,22 @@ public class IoTDBPreparedStatementTest {
 
   @SuppressWarnings("resource")
   @Test
-  public void executeWithUnsetParameterClosesPreviousResultSet() throws SQLException {
+  public void executeWithUnsetParameterClosesPreviousResultSet() throws Exception {
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
     ResultSet previousResultSet = mock(ResultSet.class);
-    ps.resultSet = previousResultSet;
+    setResultSet(ps, previousResultSet);
 
     assertThrows(SQLException.class, ps::execute);
 
     verify(previousResultSet).close();
-    assertNull(ps.resultSet);
+    assertNull(ps.getResultSet());
+  }
+
+  private void setResultSet(IoTDBStatement statement, ResultSet resultSet) throws Exception {
+    Field resultSetField = IoTDBStatement.class.getDeclaredField("resultSet");
+    resultSetField.setAccessible(true);
+    resultSetField.set(statement, resultSet);
   }
 
   @SuppressWarnings("resource")

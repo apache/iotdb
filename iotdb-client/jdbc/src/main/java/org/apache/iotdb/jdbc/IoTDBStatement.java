@@ -761,6 +761,10 @@ public class IoTDBStatement implements Statement {
     return fetchSize;
   }
 
+  public long getMilliSecond(long time) {
+    return RpcUtils.getMilliSecond(time, connection.getTimeFactor());
+  }
+
   int getFetchSizeInternal() {
     return fetchSize;
   }
