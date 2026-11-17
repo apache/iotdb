@@ -255,6 +255,10 @@ public class TimeSeriesMetadataCache {
                 loadBloomFilter(filePath, tsFileID, queryContext, bloomFilterIoSizeRecorder, false);
             loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
           }
+          if (timeColumnAbsent(requested, result, pending, bloomFilter, devicePrefix)) {
+            fillMissingWithNull(requested, result);
+            return result;
+          }
           if (!pending.isEmpty()) {
             TsFileSequenceReader reader =
                 FileReaderManager.getInstance()
@@ -291,6 +295,10 @@ public class TimeSeriesMetadataCache {
             loadBloomFilter(
                 filePath, tsFileID, queryContext, bloomFilterIoSizeRecorder, externalTsFile);
         loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
+      }
+      if (timeColumnAbsent(requested, result, pending, bloomFilter, devicePrefix)) {
+        fillMissingWithNull(requested, result);
+        return result;
       }
       if (!pending.isEmpty()) {
         TsFileSequenceReader reader =
@@ -364,7 +372,16 @@ public class TimeSeriesMetadataCache {
       LongConsumer ioSizeRecorder)
       throws IOException {
     LeafLoadStatistics statistics = new LeafLoadStatistics();
+    // probe the time column first: when it is absent, no selected series of this device can be
+    // read from this file, and the per-column path returned without touching any other column
+    if (whereFirst(pending, requested)) {
+      pending = withFirst(pending, "");
+    }
     while (!pending.isEmpty()) {
+      if (timeColumnResolvedToNull(requested, result)) {
+        fillMissingWithNull(requested, result);
+        return statistics;
+      }
       String probe = pending.iterator().next();
       // another thread may have loaded this probe's group while we waited for the lock; checking
       // only the probe keeps the cold path free of a per-column cache pass
@@ -463,6 +480,53 @@ public class TimeSeriesMetadataCache {
   private static final class LeafLoadStatistics {
     private int diskLookups;
     private int cacheHits;
+  }
+
+  /**
+   * An aligned device always has its time column. When the requested set contains it and the cache
+   * or the bloom filter proves it absent, every selected series of the device is absent from this
+   * file, so the per-column loader returned null without reading any other column.
+   */
+  private static boolean timeColumnAbsent(
+      Set<String> requested,
+      Map<String, TimeseriesMetadata> result,
+      Set<String> pending,
+      BloomFilter bloomFilter,
+      String devicePrefix) {
+    if (!requested.contains("")) {
+      return false;
+    }
+    if (result.containsKey("")) {
+      return result.get("") == null;
+    }
+    if (bloomFilter != null && !bloomFilterMayContain(bloomFilter, devicePrefix, "")) {
+      result.put("", null);
+      return true;
+    }
+    return false;
+  }
+
+  private static boolean timeColumnResolvedToNull(
+      Set<String> requested, Map<String, TimeseriesMetadata> result) {
+    return requested.contains("") && result.containsKey("") && result.get("") == null;
+  }
+
+  private static boolean whereFirst(Set<String> pending, Set<String> requested) {
+    return requested.contains("") && pending.contains("");
+  }
+
+  private static Set<String> withFirst(Set<String> pending, String first) {
+    Set<String> ordered = new LinkedHashSet<>(pending.size());
+    ordered.add(first);
+    ordered.addAll(pending);
+    return ordered;
+  }
+
+  private static void fillMissingWithNull(
+      Set<String> requested, Map<String, TimeseriesMetadata> result) {
+    for (String measurement : requested) {
+      result.putIfAbsent(measurement, null);
+    }
   }
 
   private void cacheNonExistenceIfNeeded(

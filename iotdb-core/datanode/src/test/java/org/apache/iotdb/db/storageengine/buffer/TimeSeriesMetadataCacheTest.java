@@ -764,9 +764,9 @@ public class TimeSeriesMetadataCacheTest {
       assertThrows(
           IOException.class,
           () -> getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
-      // one group read per pending measurement when the group comes back empty, plus the failing
-      // normal query
-      Mockito.verify(reader, Mockito.times(4))
+      // the empty group read resolves the time column as absent, which ends the load for the
+      // device, plus the failing normal query
+      Mockito.verify(reader, Mockito.times(2))
           .readTimeseriesMetadata(
               Mockito.eq(deviceID),
               Mockito.<long[]>isNull(),
