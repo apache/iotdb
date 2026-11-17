@@ -109,7 +109,15 @@ public class UDTFSpline implements UDTF {
         } else if (i == outputPoints - 1) {
           yhead = y[y.length - 1];
         } else {
-          yhead = interpolateAtTimestamp(outputTimestamp, y, polynomials);
+          int position = Collections.binarySearch(timestamp, outputTimestamp);
+          if (position >= 0) {
+            yhead = y[position];
+          } else {
+            yhead = interpolateAtTimestamp(outputTimestamp, y, polynomials);
+            if (!Double.isFinite(yhead)) {
+              yhead = interpolateLinearlyAtTimestamp(outputTimestamp, y);
+            }
+          }
         }
         if (Double.isFinite(yhead)) {
           collector.putDouble(outputTimestamp, yhead);
@@ -188,6 +196,21 @@ public class UDTFSpline implements UDTF {
       return y[upper];
     }
     return polynomials[lower].value(fraction);
+  }
+
+  private double interpolateLinearlyAtTimestamp(long outputTimestamp, double[] y) {
+    int position = Collections.binarySearch(timestamp, outputTimestamp);
+    if (position >= 0) {
+      return y[position];
+    }
+    int upper = -position - 1;
+    int lower = upper - 1;
+    BigInteger leftTimestamp = BigInteger.valueOf(timestamp.get(lower));
+    BigInteger interval = BigInteger.valueOf(timestamp.get(upper)).subtract(leftTimestamp);
+    double fraction =
+        BigInteger.valueOf(outputTimestamp).subtract(leftTimestamp).doubleValue()
+            / interval.doubleValue();
+    return Math.fma(y[upper], fraction, y[lower] * (1 - fraction));
   }
 
   private long getOutputTimestamp(int index, int outputPoints) {

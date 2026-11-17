@@ -434,6 +434,10 @@ public class UDFWindowAndQueueTest {
     for (double value : collector.values) {
       Assert.assertTrue(Double.isFinite(value));
     }
+
+    lof.transform(new SimpleRowWindow(new DoubleRow(10001, 10001.0)), collector);
+    Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L, 4L), collector.timestamps);
+    assertAllValuesFinite(collector);
   }
 
   @Test
@@ -911,6 +915,42 @@ public class UDFWindowAndQueueTest {
 
     Assert.assertTrue(collector.timestamps.isEmpty());
     Assert.assertTrue(collector.values.isEmpty());
+  }
+
+  @Test
+  public void testZScoreHandlesFiniteValuesAcrossDoubleRange() throws Exception {
+    UDFParameters batchParameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
+    UDTFZScore batch = new UDTFZScore();
+    RecordingPointCollector batchCollector = new RecordingPointCollector();
+    batch.validate(new UDFParameterValidator(batchParameters));
+    batch.beforeStart(batchParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    batch.transform(new DoubleRow(1, 1e200), batchCollector);
+    batch.transform(new DoubleRow(2, 2e200), batchCollector);
+    batch.transform(new DoubleRow(3, 3e200), batchCollector);
+    batch.terminate(batchCollector);
+
+    Assert.assertEquals(Arrays.asList(1L, 2L, 3L), batchCollector.timestamps);
+    Assert.assertEquals(-Math.sqrt(1.5), batchCollector.values.get(0), 1e-12);
+    Assert.assertEquals(0.0, batchCollector.values.get(1), 1e-12);
+    Assert.assertEquals(Math.sqrt(1.5), batchCollector.values.get(2), 1e-12);
+
+    UDFParameters streamParameters =
+        createSingleDoubleSeriesParameters(
+            Map.of(
+                "compute",
+                "stream",
+                "avg",
+                "-1.7976931348623157E308",
+                "sd",
+                "1.7976931348623157E308"));
+    UDTFZScore stream = new UDTFZScore();
+    RecordingPointCollector streamCollector = new RecordingPointCollector();
+    stream.validate(new UDFParameterValidator(streamParameters));
+    stream.beforeStart(streamParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    stream.transform(new DoubleRow(1, Double.MAX_VALUE), streamCollector);
+
+    Assert.assertEquals(Collections.singletonList(1L), streamCollector.timestamps);
+    Assert.assertEquals(2.0, streamCollector.values.get(0), 0.0);
   }
 
   @Test
@@ -2443,6 +2483,50 @@ public class UDFWindowAndQueueTest {
     Assert.assertEquals(0.0, collector.values.get(0), 1e-9);
     Assert.assertEquals(2.0, collector.values.get(1), 1e-9);
     Assert.assertEquals(4.0, collector.values.get(2), 1e-9);
+  }
+
+  @Test
+  public void testSplineHandlesFiniteValuesAcrossDoubleRange() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("points", "9"));
+    UDTFSpline spline = new UDTFSpline();
+    RecordingPointCollector collector = new RecordingPointCollector();
+    double[] values = {-1e308, -5e307, 0.0, 5e307, 1e308};
+
+    spline.validate(new UDFParameterValidator(parameters));
+    spline.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    for (int i = 0; i < values.length; i++) {
+      spline.transform(new DoubleRow(i * 10L, values[i]), collector);
+    }
+    spline.terminate(collector);
+
+    Assert.assertEquals(
+        Arrays.asList(0L, 5L, 10L, 15L, 20L, 25L, 30L, 35L, 40L), collector.timestamps);
+    Assert.assertArrayEquals(
+        new double[] {-1e308, -7.5e307, -5e307, -2.5e307, 0.0, 2.5e307, 5e307, 7.5e307, 1e308},
+        collector.values.stream().mapToDouble(Double::doubleValue).toArray(),
+        1e292);
+  }
+
+  @Test
+  public void testSplinePreservesSmallLocalValuesBesideExtremeValues() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Map.of("points", "9"));
+    UDTFSpline spline = new UDTFSpline();
+    RecordingPointCollector collector = new RecordingPointCollector();
+    double[] values = {1e308, 1.0, 2.0, 3.0, 4.0};
+
+    spline.validate(new UDFParameterValidator(parameters));
+    spline.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    for (int i = 0; i < values.length; i++) {
+      spline.transform(new DoubleRow(i * 10L, values[i]), collector);
+    }
+    spline.terminate(collector);
+
+    Assert.assertEquals(
+        Arrays.asList(0L, 5L, 10L, 15L, 20L, 25L, 30L, 35L, 40L), collector.timestamps);
+    Assert.assertArrayEquals(
+        new double[] {1e308, 5e307, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0},
+        collector.values.stream().mapToDouble(Double::doubleValue).toArray(),
+        1e292);
   }
 
   @Test

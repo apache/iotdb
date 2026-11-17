@@ -44,6 +44,12 @@ public class UDTFLOF implements UDTF {
   private static final int DEFAULT_SERIES_WINDOW_SIZE = 5;
   private String method = DEFAULT_METHOD;
   private int window;
+  private final List<Long> seriesContextTimestamps = new ArrayList<>();
+  private final List<Double> seriesContextValues = new ArrayList<>();
+  private final List<SeriesVector> seriesNeighbors = new ArrayList<>();
+  private final List<SeriesVector> pendingSeriesVectors = new ArrayList<>();
+  private boolean hasProcessedSeriesVector;
+  private long lastProcessedSeriesTimestamp;
 
   int partition(Double[][] a, int left, int right) {
     Double key = a[left][1];
@@ -160,6 +166,12 @@ public class UDTFLOF implements UDTF {
     this.multipleK = parameters.getIntOrDefault("k", 3);
     this.dim = parameters.getChildExpressionsSize();
     this.window = parameters.getIntOrDefault("window", DEFAULT_SERIES_WINDOW_SIZE);
+    seriesContextTimestamps.clear();
+    seriesContextValues.clear();
+    seriesNeighbors.clear();
+    pendingSeriesVectors.clear();
+    hasProcessedSeriesVector = false;
+    lastProcessedSeriesTimestamp = 0;
     long seriesAccessWindowSize = (long) this.window + this.multipleK;
     int accessWindowSize =
         this.method.equalsIgnoreCase(METHOD_SERIES)
@@ -213,40 +225,73 @@ public class UDTFLOF implements UDTF {
         }
       }
     } else if (this.method.equalsIgnoreCase(METHOD_SERIES)) {
-      int size = rowWindow.windowSize() - window + 1;
-      if (size > 0) {
-        List<Long> timestamp = new ArrayList<>();
-        List<Double> values = new ArrayList<>();
-        int row = 0;
-        while (row < rowWindow.windowSize()) {
-          if (!rowWindow.getRow(row).isNull(0)) {
-            double value = Util.getValueAsDouble(rowWindow.getRow(row), 0);
-            if (Double.isFinite(value)) {
-              timestamp.add(rowWindow.getRow(row).getTime());
-              values.add(value);
-            }
-          }
-          row++;
-        }
-        size = values.size() - window + 1;
-        if (size > multipleK) {
-          Double[][] knn = new Double[size][window];
-          for (int i = 0; i < size; i++) {
-            for (int p = 0; p < window; p++) {
-              knn[i][p] = values.get(i + p);
-            }
-          }
-          double[] lof = new double[size];
-          for (int m = 0; m < size; m++) {
-            try {
-              lof[m] = getLOF(knn, knn[m], size);
-              collector.putDouble(timestamp.get(m), lof[m]);
-            } catch (Exception e) {
-              throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + m, e);
-            }
+      List<Long> timestamps = new ArrayList<>(seriesContextTimestamps);
+      List<Double> values = new ArrayList<>(seriesContextValues);
+      for (int row = 0; row < rowWindow.windowSize(); row++) {
+        if (!rowWindow.getRow(row).isNull(0)) {
+          double value = Util.getValueAsDouble(rowWindow.getRow(row), 0);
+          if (Double.isFinite(value)) {
+            timestamps.add(rowWindow.getRow(row).getTime());
+            values.add(value);
           }
         }
       }
+
+      int vectorCount = values.size() - window + 1;
+      for (int i = 0; i < vectorCount; i++) {
+        long timestamp = timestamps.get(i);
+        if (!hasProcessedSeriesVector || timestamp > lastProcessedSeriesTimestamp) {
+          Double[] vector = new Double[window];
+          for (int p = 0; p < window; p++) {
+            vector[p] = values.get(i + p);
+          }
+          pendingSeriesVectors.add(new SeriesVector(timestamp, vector));
+          hasProcessedSeriesVector = true;
+          lastProcessedSeriesTimestamp = timestamp;
+        }
+      }
+
+      if (seriesNeighbors.size() + pendingSeriesVectors.size() > multipleK) {
+        List<SeriesVector> candidates = new ArrayList<>(seriesNeighbors);
+        candidates.addAll(pendingSeriesVectors);
+        Double[][] knn = new Double[candidates.size()][window];
+        for (int i = 0; i < candidates.size(); i++) {
+          knn[i] = candidates.get(i).values;
+        }
+        for (SeriesVector vector : pendingSeriesVectors) {
+          try {
+            double lof = getLOF(knn, vector.values, candidates.size());
+            collector.putDouble(vector.timestamp, lof);
+          } catch (Exception e) {
+            throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + vector.timestamp, e);
+          }
+        }
+
+        seriesNeighbors.clear();
+        int neighborCount = Math.min(multipleK, candidates.size());
+        for (int i = candidates.size() - neighborCount; i < candidates.size(); i++) {
+          seriesNeighbors.add(candidates.get(i));
+        }
+        pendingSeriesVectors.clear();
+      }
+
+      seriesContextTimestamps.clear();
+      seriesContextValues.clear();
+      int contextStart = Math.max(0, values.size() - (window - 1));
+      for (int i = contextStart; i < values.size(); i++) {
+        seriesContextTimestamps.add(timestamps.get(i));
+        seriesContextValues.add(values.get(i));
+      }
+    }
+  }
+
+  private static class SeriesVector {
+    private final long timestamp;
+    private final Double[] values;
+
+    private SeriesVector(long timestamp, Double[] values) {
+      this.timestamp = timestamp;
+      this.values = values;
     }
   }
 

@@ -44,8 +44,6 @@ public class UDTFZScore implements UDTF {
   String compute = BATCH_COMPUTE;
   double avg = 0.0d;
   double sd = 0.0d;
-  double sum = 0.0d;
-  double squareSum = 0.0d;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -81,8 +79,6 @@ public class UDTFZScore implements UDTF {
       throws Exception {
     value.clear();
     timestamp.clear();
-    sum = 0.0d;
-    squareSum = 0.0d;
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     compute = parameters.getStringOrDefault("compute", BATCH_COMPUTE);
     if (compute.equalsIgnoreCase(STREAM_COMPUTE)) {
@@ -99,15 +95,20 @@ public class UDTFZScore implements UDTF {
     if (compute.equalsIgnoreCase(STREAM_COMPUTE) && sd > 0) {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
-        collector.putDouble(row.getTime(), (v - avg) / sd);
+        double zScore = (v - avg) / sd;
+        if (!Double.isFinite(zScore)) {
+          double scale = Math.max(Math.max(Math.abs(v), Math.abs(avg)), sd);
+          zScore = (v / scale - avg / scale) / (sd / scale);
+        }
+        if (Double.isFinite(zScore)) {
+          collector.putDouble(row.getTime(), zScore);
+        }
       }
     } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
         value.add(v);
         timestamp.add(row.getTime());
-        sum += v;
-        squareSum += v * v;
       }
     }
   }
@@ -118,17 +119,31 @@ public class UDTFZScore implements UDTF {
       if (value.isEmpty()) {
         return;
       }
-      avg = sum / value.size();
-      double variance = squareSum / value.size() - avg * avg;
+      double scale = 0;
+      for (double v : value) {
+        scale = Math.max(scale, Math.abs(v));
+      }
+      if (scale == 0) {
+        return;
+      }
+
+      double mean = 0;
+      double squaredDeviationSum = 0;
+      int count = 0;
+      for (double v : value) {
+        double scaledValue = v / scale;
+        count++;
+        double delta = scaledValue - mean;
+        mean += delta / count;
+        squaredDeviationSum += delta * (scaledValue - mean);
+      }
+      double variance = squaredDeviationSum / count;
       if (!Double.isFinite(variance) || variance <= 0) {
         return;
       }
-      sd = Math.sqrt(variance);
-      if (!Double.isFinite(sd) || sd <= 0) {
-        return;
-      }
+      double standardDeviation = Math.sqrt(variance);
       for (int i = 0; i < value.size(); i++) {
-        double zScore = (value.get(i) - avg) / sd;
+        double zScore = (value.get(i) / scale - mean) / standardDeviation;
         if (Double.isFinite(zScore)) {
           collector.putDouble(timestamp.get(i), zScore);
         }
