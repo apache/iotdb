@@ -952,45 +952,44 @@ public class IoTDBSimpleQueryIT {
   public void testUseSameStatement() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      try {
+        statement.execute("CREATE DATABASE root.sg1");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d1.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
 
-      statement.execute("insert into root.sg1.d0(timestamp,s0,s1) values(1,1,1)");
-      statement.execute("insert into root.sg1.d1(timestamp,s0,s1) values(1000,1000,1000)");
-      statement.execute("insert into root.sg1.d0(timestamp,s0,s1) values(10,10,10)");
+        statement.execute("insert into root.sg1.d0(timestamp,s0,s1) values(1,1,1)");
+        statement.execute("insert into root.sg1.d1(timestamp,s0,s1) values(1000,1000,1000)");
+        statement.execute("insert into root.sg1.d0(timestamp,s0,s1) values(10,10,10)");
 
-      List<ResultSet> resultSetList = new ArrayList<>();
+        try (ResultSet r1 = statement.executeQuery("select * from root.sg1.d0 where time <= 1")) {
+          Assert.assertTrue(r1.next());
+          Assert.assertEquals(r1.getLong(1), 1L);
+          Assert.assertEquals(r1.getLong(2), 1L);
+          Assert.assertEquals(r1.getLong(3), 1L);
+        }
 
-      ResultSet r1 = statement.executeQuery("select * from root.sg1.d0 where time <= 1");
-      resultSetList.add(r1);
+        try (ResultSet r2 = statement.executeQuery("select * from root.sg1.d1 where s0 == 1000")) {
+          Assert.assertTrue(r2.next());
+          Assert.assertEquals(r2.getLong(1), 1000L);
+          Assert.assertEquals(r2.getLong(2), 1000L);
+          Assert.assertEquals(r2.getLong(3), 1000L);
+        }
 
-      ResultSet r2 = statement.executeQuery("select * from root.sg1.d1 where s0 == 1000");
-      resultSetList.add(r2);
-
-      ResultSet r3 = statement.executeQuery("select * from root.sg1.d0 where s1 == 10");
-      resultSetList.add(r3);
-
-      r1.next();
-      Assert.assertEquals(r1.getLong(1), 1L);
-      Assert.assertEquals(r1.getLong(2), 1L);
-      Assert.assertEquals(r1.getLong(3), 1L);
-
-      r2.next();
-      Assert.assertEquals(r2.getLong(1), 1000L);
-      Assert.assertEquals(r2.getLong(2), 1000L);
-      Assert.assertEquals(r2.getLong(3), 1000L);
-
-      r3.next();
-      Assert.assertEquals(r3.getLong(1), 10L);
-      Assert.assertEquals(r3.getLong(2), 10L);
-      Assert.assertEquals(r3.getLong(3), 10L);
+        try (ResultSet r3 = statement.executeQuery("select * from root.sg1.d0 where s1 == 10")) {
+          Assert.assertTrue(r3.next());
+          Assert.assertEquals(r3.getLong(1), 10L);
+          Assert.assertEquals(r3.getLong(2), 10L);
+          Assert.assertEquals(r3.getLong(3), 10L);
+        }
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.sg1");
+      }
     }
   }
 

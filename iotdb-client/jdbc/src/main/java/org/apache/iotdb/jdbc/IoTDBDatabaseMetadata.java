@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -567,12 +568,14 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    checkConnectionOpen();
+    return JdbcWrapperUtils.isWrapperFor(this, arg0);
   }
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    checkConnectionOpen();
+    return JdbcWrapperUtils.unwrap(this, iface);
   }
 
   @Override
@@ -1024,7 +1027,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public Connection getConnection() {
+  public Connection getConnection() throws SQLException {
+    checkConnectionOpen();
     return connection;
   }
 
@@ -1080,7 +1084,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public int getDatabaseMajorVersion() {
+  public int getDatabaseMajorVersion() throws SQLException {
+    checkConnectionOpen();
     int majorVersion = 0;
     try {
       String version = client.getProperties().getVersion();
@@ -1095,7 +1100,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public int getDatabaseMinorVersion() {
+  public int getDatabaseMinorVersion() throws SQLException {
+    checkConnectionOpen();
     int minorVersion = 0;
     try {
       String version = client.getProperties().getVersion();
@@ -1115,7 +1121,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public String getDatabaseProductVersion() {
+  public String getDatabaseProductVersion() throws SQLException {
+    checkConnectionOpen();
     return getDriverVersion();
   }
 
@@ -1545,7 +1552,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public int getMaxConnections() {
+  public int getMaxConnections() throws SQLException {
+    checkConnectionOpen();
     int maxcount = 0;
     try {
       maxcount = client.getProperties().getMaxConcurrentClientNum();
@@ -1583,7 +1591,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public int getMaxStatementLength() {
+  public int getMaxStatementLength() throws SQLException {
+    checkConnectionOpen();
     try {
       return client.getProperties().getThriftMaxFrameSize();
     } catch (TException e) {
@@ -1978,7 +1987,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public String getStringFunctions() {
+  public String getStringFunctions() throws SQLException {
     return getSystemFunctions();
   }
 
@@ -2065,7 +2074,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public String getSystemFunctions() {
+  public String getSystemFunctions() throws SQLException {
+    checkConnectionOpen();
     String result = "";
     Statement statement = null;
     ResultSet resultSet = null;
@@ -2892,13 +2902,15 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public String getURL() {
+  public String getURL() throws SQLException {
+    checkConnectionOpen();
     // TODO: Return the URL for this DBMS or null if it cannot be generated
     return this.connection.getUrl();
   }
 
   @Override
   public String getUserName() throws SQLException {
+    checkConnectionOpen();
     return connection.getUserName();
   }
 
@@ -2958,6 +2970,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public boolean isReadOnly() throws SQLException {
+    checkConnectionOpen();
     try {
       return client.getProperties().isReadOnly;
     } catch (TException e) {
@@ -3414,9 +3427,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public String toString() {
     try {
+      checkConnectionOpen();
       return getMetadataInJsonFunc();
     } catch (IoTDBSQLException e) {
-      LOGGER.error("Failed to fetch metadata in json because: ", e);
+      LOGGER.error(JdbcMessages.FAILED_TO_FETCH_METADATA_JSON, e);
+    } catch (SQLException e) {
+      LOGGER.error(JdbcMessages.FAILED_TO_FETCH_METADATA_JSON, e);
     } catch (TException e) {
       boolean flag = connection.reconnect();
       this.client = connection.getClient();
@@ -3445,6 +3461,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
    * recommend using getMetadataInJson() instead of toString()
    */
   public String getMetadataInJson() throws SQLException {
+    checkConnectionOpen();
     try {
       return getMetadataInJsonFunc();
     } catch (TException e) {
@@ -3463,6 +3480,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             "Failed to reconnect to the server "
                 + "when fetching all metadata in json. Please check the server status.");
       }
+    }
+  }
+
+  private void checkConnectionOpen() throws SQLException {
+    if (connection == null || connection.isClosed()) {
+      throw new SQLException(
+          String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, "get metadata"));
     }
   }
 
