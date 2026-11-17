@@ -35,9 +35,6 @@ import javax.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -47,8 +44,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PipeTsFileResourceManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResourceManager.class);
-
-  private static final String UNFINISHED_FILE_SUFFIX = ".unfinished";
 
   // This is used to hold the assigner pinned tsFiles.
   // Also, it is used to provide metadata cache of the tsFile, and is shared by all the pipe's
@@ -122,7 +117,7 @@ public class PipeTsFileResourceManager {
         resultFile =
             isTsFile
                 ? createHardLinkOrCopy(source, hardlinkOrCopiedFile, resource)
-                : copyFileAtomically(source, hardlinkOrCopiedFile);
+                : FileUtils.copyFileAtomically(source, hardlinkOrCopiedFile);
 
         // Track the new pipe file, and record its directory so that dropping the pipe cleans up.
         if (Objects.nonNull(pipeName)) {
@@ -452,23 +447,24 @@ public class PipeTsFileResourceManager {
       final File hardlinkOrCopiedFile,
       final @Nullable TsFileResource resource)
       throws IOException {
-    if (sourceFile.getAbsoluteFile().equals(hardlinkOrCopiedFile.getAbsoluteFile())) {
-      // A pipe file left by a previous process: never link it onto itself, and never delete the
-      // target of a failed link, because that target is the source here.
-      if (!hardlinkOrCopiedFile.isFile()) {
-        throw new IOException(
-            String.format(
-                DataNodePipeMessages
-                    .EXCEPTION_FAILED_TO_PIN_THE_PIPE_FILE_ARG_BECAUSE_IT_DOES_NOT_EXIST_1741B8E4,
-                hardlinkOrCopiedFile.getPath()));
-      }
-      return hardlinkOrCopiedFile;
+    if (sourceFile.getAbsoluteFile().equals(hardlinkOrCopiedFile.getAbsoluteFile())
+        && !hardlinkOrCopiedFile.isFile()) {
+      // The pipe file of this scope is gone, e.g. after drop pipe moved its directory aside.
+      throw new IOException(
+          String.format(
+              DataNodePipeMessages
+                  .EXCEPTION_FAILED_TO_PIN_THE_PIPE_FILE_ARG_BECAUSE_IT_DOES_NOT_EXIST_1741B8E4,
+              hardlinkOrCopiedFile.getPath()));
     }
 
-    try {
-      return FileUtils.createHardLink(sourceFile, hardlinkOrCopiedFile);
-    } catch (final IOException | UnsupportedOperationException linkFailure) {
-      if (Objects.nonNull(resource) && !resource.isClosed()) {
+    // An unclosed TsFile may still be flushing. Copying it would pin a truncated file, so only a
+    // hardlink is acceptable. The same path is an existing pipe file and is returned as is.
+    if (Objects.nonNull(resource)
+        && !resource.isClosed()
+        && !sourceFile.getAbsoluteFile().equals(hardlinkOrCopiedFile.getAbsoluteFile())) {
+      try {
+        return FileUtils.createHardLink(sourceFile, hardlinkOrCopiedFile);
+      } catch (final IOException | UnsupportedOperationException linkFailure) {
         final IOException unclosedException =
             new IOException(
                 String.format(
@@ -478,50 +474,9 @@ public class PipeTsFileResourceManager {
         unclosedException.addSuppressed(linkFailure);
         throw unclosedException;
       }
-
-      LOGGER.warn(
-          DataNodePipeMessages
-              .LOG_FAILED_TO_CREATE_THE_HARDLINK_OF_THE_FILE_ARG_TO_ARG_FALLING_BACK_TO_COPYING_THE_FILE_89FED96B,
-          sourceFile.getAbsolutePath(),
-          hardlinkOrCopiedFile.getAbsolutePath(),
-          linkFailure);
-      try {
-        return copyFileAtomically(sourceFile, hardlinkOrCopiedFile);
-      } catch (final IOException | UnsupportedOperationException copyFailure) {
-        copyFailure.addSuppressed(linkFailure);
-        throw copyFailure;
-      }
     }
-  }
 
-  /**
-   * Copies the file to a temporary name first, so that a crash or a full disk can never leave a
-   * truncated file under the final pipe file name. A copy replaces the target, so that a partial
-   * copy left by a previous failure does not block every later pin.
-   */
-  @TestOnly
-  public static File copyFileAtomically(final File sourceFile, final File targetFile)
-      throws IOException {
-    final File unfinishedFile = new File(targetFile.getPath() + UNFINISHED_FILE_SUFFIX);
-    try {
-      // A temporary file left by a killed process would fail the copy the same way.
-      FileUtils.deleteFileIfExist(unfinishedFile);
-      FileUtils.copyFile(sourceFile, unfinishedFile);
-      try {
-        Files.move(
-            unfinishedFile.toPath(),
-            targetFile.toPath(),
-            StandardCopyOption.ATOMIC_MOVE,
-            StandardCopyOption.REPLACE_EXISTING);
-      } catch (final AtomicMoveNotSupportedException e) {
-        Files.move(
-            unfinishedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-      }
-      return targetFile;
-    } catch (final IOException | RuntimeException e) {
-      FileUtils.deleteFileIfExist(unfinishedFile);
-      throw e;
-    }
+    return FileUtils.createHardLinkOrCopy(sourceFile, hardlinkOrCopiedFile);
   }
 
   public int getLinkedTsFileCount(final @Nonnull String pipeName) {

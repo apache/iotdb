@@ -577,7 +577,7 @@ public class PipeTsFileResourceManagerTest {
         PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
             new File(MODS_FILE_NAME), PIPE_NAME);
     try {
-      PipeTsFileResourceManager.copyFileAtomically(new File(ROOT_DIR, "missing.mod"), targetFile);
+      FileUtils.copyFileAtomically(new File(ROOT_DIR, "missing.mod"), targetFile);
       Assert.fail("Copying a missing file should fail");
     } catch (final IOException e) {
       Assert.assertFalse(targetFile.exists());
