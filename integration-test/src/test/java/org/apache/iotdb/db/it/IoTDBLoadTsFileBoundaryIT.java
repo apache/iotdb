@@ -593,10 +593,10 @@ public class IoTDBLoadTsFileBoundaryIT {
         statement.executeQuery("select value from " + device + " order by time")) {
       Assert.assertTrue(resultSet.next());
       Assert.assertEquals(10000, resultSet.getLong(1));
-      Assert.assertEquals(10, resultSet.getLong("value"));
+      Assert.assertEquals(10, resultSet.getLong(2));
       Assert.assertTrue(resultSet.next());
       Assert.assertEquals(20000, resultSet.getLong(1));
-      Assert.assertEquals(20, resultSet.getLong("value"));
+      Assert.assertEquals(20, resultSet.getLong(2));
       Assert.assertFalse(resultSet.next());
     }
   }
@@ -613,7 +613,7 @@ public class IoTDBLoadTsFileBoundaryIT {
         Assert.assertTrue(
             "A normal-path row was lost during statement reconstruction", resultSet.next());
         Assert.assertEquals(100L * (i + 1), resultSet.getLong(1));
-        Assert.assertEquals(startValue + i, resultSet.getLong("value"));
+        Assert.assertEquals(startValue + i, resultSet.getLong(2));
       }
       Assert.assertFalse(resultSet.next());
     }
@@ -638,7 +638,7 @@ public class IoTDBLoadTsFileBoundaryIT {
         statement.executeQuery("select value from " + device + " order by time")) {
       Assert.assertTrue(resultSet.next());
       Assert.assertEquals(expectedTime, resultSet.getLong(1));
-      Assert.assertEquals(expectedValue, resultSet.getLong("value"));
+      Assert.assertEquals(expectedValue, resultSet.getLong(2));
       Assert.assertFalse(resultSet.next());
     }
   }

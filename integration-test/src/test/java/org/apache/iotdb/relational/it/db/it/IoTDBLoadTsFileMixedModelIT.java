@@ -840,7 +840,7 @@ public class IoTDBLoadTsFileMixedModelIT {
             statement.executeQuery("select value from " + device + " order by time")) {
       Assert.assertTrue(resultSet.next());
       Assert.assertEquals(expectedTime, resultSet.getLong(1));
-      Assert.assertEquals(expectedValue, resultSet.getLong("value"));
+      Assert.assertEquals(expectedValue, resultSet.getLong(2));
       Assert.assertFalse(resultSet.next());
     }
   }
