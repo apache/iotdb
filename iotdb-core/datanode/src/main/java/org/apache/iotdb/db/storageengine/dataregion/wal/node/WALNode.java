@@ -120,6 +120,7 @@ public class WALNode implements IWALNode {
   // used to avoid write amplification caused by frequent snapshot
   private final Map<Long, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
   // insert nodes whose search index are before this value can be deleted safely
+  private final Object walRetentionLock = new Object();
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
   // notified whenever the value above advances, see setSafeDeletedSearchIndexListener
   private volatile LongConsumer safeDeletedSearchIndexListener;
@@ -364,13 +365,14 @@ public class WALNode implements IWALNode {
     private File[] sortedWalFilesExcludingLast;
 
     private List<MemTableInfo> activeOrPinnedMemTables;
+    private long cachedSafelyDeletedSearchIndex;
+    private int fileIndexAfterFilterSafelyDeleteIndex;
 
     private static final int MAX_RECURSION_TIME = 5;
 
     // the effective information ratio
     private double effectiveInfoRatio = 1.0d;
 
-    private int fileIndexAfterFilterSafelyDeleteIndex = Integer.MAX_VALUE;
     private List<Long> successfullyDeleted;
     private long deleteFileSize;
 
@@ -395,7 +397,7 @@ public class WALNode implements IWALNode {
       this.sortedWalFilesExcludingLast =
           Arrays.copyOfRange(allWalFilesOfOneNode, 0, allWalFilesOfOneNode.length - 1);
       this.activeOrPinnedMemTables = checkpointManager.activeOrPinnedMemTables();
-      this.fileIndexAfterFilterSafelyDeleteIndex = initFileIndexAfterFilterSafelyDeleteIndex();
+      updateFileIndexAfterFilterSafelyDeleteIndex();
       this.successfullyDeleted = new ArrayList<>();
       this.deleteFileSize = 0;
       return true;
@@ -486,18 +488,22 @@ public class WALNode implements IWALNode {
         File currentWal = sortedWalFilesExcludingLast[fileArrIdx];
         WALFileStatus walFileStatus = WALFileUtils.parseStatusCode(currentWal.getName());
         long versionId = WALFileUtils.parseVersionId(currentWal.getName());
-        if (canDeleteFile(fileArrIdx, walFileStatus, versionId)) {
-          long fileSize = currentWal.length();
-          if (org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(currentWal)) {
-            deleteFileSize += fileSize;
-            buffer.removeMemTableIdsOfWal(versionId);
-            successfullyDeleted.add(versionId);
-          } else {
-            logger.info(
-                StorageEngineMessages
-                    .STORAGE_LOG_FAIL_TO_DELETE_OUTDATED_WAL_FILE_OF_WAL_NODE_1B1F2AF2,
-                currentWal,
-                identifier);
+        // A newly registered replica may lower the boundary while this cleanup is running.
+        // Check and delete under the same lock as boundary publication.
+        synchronized (walRetentionLock) {
+          if (canDeleteFile(fileArrIdx, walFileStatus, versionId)) {
+            long fileSize = currentWal.length();
+            if (org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(currentWal)) {
+              deleteFileSize += fileSize;
+              buffer.removeMemTableIdsOfWal(versionId);
+              successfullyDeleted.add(versionId);
+            } else {
+              logger.info(
+                  StorageEngineMessages
+                      .STORAGE_LOG_FAIL_TO_DELETE_OUTDATED_WAL_FILE_OF_WAL_NODE_1B1F2AF2,
+                  currentWal,
+                  identifier);
+            }
           }
         }
       }
@@ -506,11 +512,13 @@ public class WALNode implements IWALNode {
       removeDeletedWalFilesFromCache(successfullyDeleted);
     }
 
-    private int initFileIndexAfterFilterSafelyDeleteIndex() {
-      return safelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
-          ? sortedWalFilesExcludingLast.length
-          : WALFileUtils.binarySearchFileBySearchIndex(
-              sortedWalFilesExcludingLast, safelyDeletedSearchIndex + 1);
+    private void updateFileIndexAfterFilterSafelyDeleteIndex() {
+      cachedSafelyDeletedSearchIndex = safelyDeletedSearchIndex;
+      fileIndexAfterFilterSafelyDeleteIndex =
+          cachedSafelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
+              ? sortedWalFilesExcludingLast.length
+              : WALFileUtils.binarySearchFileBySearchIndex(
+                  sortedWalFilesExcludingLast, cachedSafelyDeletedSearchIndex + 1);
     }
 
     /** Return true iff effective information ratio is too small or disk usage is too large. */
@@ -683,6 +691,10 @@ public class WALNode implements IWALNode {
     }
 
     private boolean canDeleteFile(long fileArrIdx, WALFileStatus walFileStatus, long versionId) {
+      // Called under walRetentionLock: a cached result is reusable only for this boundary.
+      if (cachedSafelyDeletedSearchIndex != safelyDeletedSearchIndex) {
+        updateFileIndexAfterFilterSafelyDeleteIndex();
+      }
       return (fileArrIdx < fileIndexAfterFilterSafelyDeleteIndex
               || walFileStatus == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)
           && versionId < subscriptionRetainedMinVersionId
@@ -695,9 +707,15 @@ public class WALNode implements IWALNode {
   // region Search interfaces for consensus group
   @Override
   public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
-    this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+    final boolean advanced;
+    synchronized (walRetentionLock) {
+      advanced = safelyDeletedSearchIndex > this.safelyDeletedSearchIndex;
+      this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+    }
+    // Lowering retention for a new peer cannot make any additional LOAD directory reclaimable.
+    // In particular, do not run cleanup callbacks while its registration holds the write lock.
     final LongConsumer listener = this.safeDeletedSearchIndexListener;
-    if (listener != null) {
+    if (advanced && listener != null) {
       listener.accept(safelyDeletedSearchIndex);
     }
   }

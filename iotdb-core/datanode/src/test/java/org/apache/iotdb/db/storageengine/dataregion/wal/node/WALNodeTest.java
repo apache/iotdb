@@ -54,6 +54,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -66,6 +68,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -329,6 +332,67 @@ public class WALNodeTest {
     Map<Long, MemTableInfo> actualMemTableId2Info =
         CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();
     assertEquals(expectedMemTableId2Info, actualMemTableId2Info);
+  }
+
+  @Test
+  public void testRetentionListenerOnlyRunsWhenBoundaryAdvances() {
+    AtomicInteger notifications = new AtomicInteger();
+    walNode.setSafeDeletedSearchIndexListener(index -> notifications.incrementAndGet());
+    walNode.setSafelyDeletedSearchIndex(0);
+    walNode.setSafelyDeletedSearchIndex(0);
+    assertEquals(0, notifications.get());
+    walNode.setSafelyDeletedSearchIndex(1);
+    assertEquals(1, notifications.get());
+    walNode.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+    assertEquals(2, notifications.get());
+    walNode.setSafelyDeletedSearchIndex(0);
+    assertEquals(2, notifications.get());
+  }
+
+  @Test
+  public void testCleanupRechecksLoweredReplicationBoundary() throws Exception {
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode.onMemTableCreated(memTable, tsFilePathInLatestPartition(memTable));
+    for (int index = 1; index <= 3; index++) {
+      InsertTabletNode node = getInsertTabletNode(devicePath, new long[] {index});
+      node.setSearchIndex(index);
+      assertEquals(
+          WALFlushListener.Status.SUCCESS,
+          walNode
+              .log(
+                  memTable.getMemTableId(),
+                  node,
+                  Collections.singletonList(new int[] {0, node.getRowCount()}))
+              .waitForResult());
+      walNode.rollWALFile();
+    }
+    walNode.onMemTableFlushed(memTable);
+    Awaitility.await().until(walNode::isAllWALEntriesConsumed);
+    walNode.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+    // Stop a real cleanup between its file-list snapshot and deletion, then register the lower
+    // replication boundary. No clock or scheduler timing is involved.
+    Class<?> taskClass = Class.forName(WALNode.class.getName() + "$DeleteOutdatedFileTask");
+    Constructor<?> constructor = taskClass.getDeclaredConstructor(WALNode.class);
+    constructor.setAccessible(true);
+    Object task = constructor.newInstance(walNode);
+    Method initialize = taskClass.getDeclaredMethod("initAndCheckIfNeedContinue");
+    initialize.setAccessible(true);
+    assertEquals(true, initialize.invoke(task));
+    walNode.setSafelyDeletedSearchIndex(0);
+    Method delete = taskClass.getDeclaredMethod("deleteOutdatedFilesAndUpdateMetric");
+    delete.setAccessible(true);
+    delete.invoke(task);
+    int retained = 0;
+    for (File file : WALFileUtils.listAllWALFiles(new File(logDirectory))) {
+      try (WALReader reader = new WALReader(file)) {
+        while (reader.hasNext()) {
+          if (reader.next().getValue() instanceof InsertTabletNode) {
+            retained++;
+          }
+        }
+      }
+    }
+    assertEquals(3, retained);
   }
 
   @Test
