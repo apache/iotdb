@@ -44,7 +44,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 
 public class JoinUtils {
   public static final String UNSUPPORTED_JOIN_CRITERIA =
-      "Unsupported Join creteria [%s] after predicate push down";
+      DataNodeQueryMessages
+          .EXCEPTION_UNSUPPORTED_JOIN_CRETERIA_ARG_AFTER_PREDICATE_PUSH_DOWN_92BDB23B;
 
   private JoinUtils() {}
 

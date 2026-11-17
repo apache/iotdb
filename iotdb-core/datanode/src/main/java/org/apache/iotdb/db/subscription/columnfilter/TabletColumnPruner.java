@@ -45,7 +45,9 @@ public class TabletColumnPruner {
     }
 
     final ColumnFilterMatcher effectiveMatcher =
-        Objects.nonNull(matcher) ? matcher : ColumnFilterMatcher.matchAll();
+        Objects.nonNull(matcher)
+            ? matcher.forTable(databaseName, tablet.getTableName())
+            : ColumnFilterMatcher.matchAll();
     if (effectiveMatcher.isMatchAll()) {
       return tablet;
     }
@@ -67,6 +69,9 @@ public class TabletColumnPruner {
       }
       final IMeasurementSchema schema = schemas.get(i);
       final ColumnCategory category = categories.get(i);
+      // TAGs identify the device, including TAGs added after a cached plan was compiled. They are
+      // retained only if the table has a match; otherwise the entire Tablet is discarded below.
+      selectedColumns[i] = category == ColumnCategory.TAG && hasValueArray(values, i);
       if (effectiveMatcher.match(
           databaseName,
           tablet.getTableName(),
@@ -82,16 +87,6 @@ public class TabletColumnPruner {
 
     if (!hasMatchedColumn) {
       return null;
-    }
-
-    if (effectiveMatcher.shouldAutoRetainTagsAtRuntime()) {
-      for (int i = 0; i < schemas.size(); i++) {
-        if (isValidColumn(schemas, values, i)
-            && categories.get(i) == ColumnCategory.TAG
-            && hasValueArray(values, i)) {
-          selectedColumns[i] = true;
-        }
-      }
     }
 
     final List<Integer> selectedIndices = getSelectedIndices(selectedColumns);

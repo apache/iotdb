@@ -26,7 +26,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.LongSupplier;
 import java.util.function.LongUnaryOperator;
 
 public class MemoryManager {
@@ -101,12 +103,27 @@ public class MemoryManager {
    */
   public synchronized IMemoryBlock exactAllocate(
       String name, long sizeInBytes, MemoryBlockType type) {
+    return exactAllocate(name, sizeInBytes, type, null);
+  }
+
+  /** Reserves the remaining budget for an owner that supplies an exact, read-only usage view. */
+  public synchronized IMemoryBlock exactAllocateReadOnly(
+      String name, MemoryBlockType type, LongSupplier usedMemory) {
+    return exactAllocate(
+        name,
+        totalMemorySizeInBytes - allocatedMemorySizeInBytes,
+        type,
+        Objects.requireNonNull(usedMemory));
+  }
+
+  private IMemoryBlock exactAllocate(
+      String name, long sizeInBytes, MemoryBlockType type, LongSupplier usedMemory) {
     if (!enabled) {
-      return getOrRegisterMemoryBlock(name, sizeInBytes, type);
+      return getOrRegisterMemoryBlock(name, sizeInBytes, type, usedMemory);
     }
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes) {
-        return getOrRegisterMemoryBlock(name, sizeInBytes, type);
+        return getOrRegisterMemoryBlock(name, sizeInBytes, type, usedMemory);
       }
 
       try {
@@ -241,6 +258,11 @@ public class MemoryManager {
    */
   private IMemoryBlock getOrRegisterMemoryBlock(
       String name, long sizeInBytes, MemoryBlockType type) {
+    return getOrRegisterMemoryBlock(name, sizeInBytes, type, null);
+  }
+
+  private IMemoryBlock getOrRegisterMemoryBlock(
+      String name, long sizeInBytes, MemoryBlockType type, LongSupplier usedMemory) {
     if (sizeInBytes < 0) {
       throw new MemoryException(
           String.format(
@@ -252,6 +274,13 @@ public class MemoryManager {
         name,
         (blockName, block) -> {
           if (block != null) {
+            if (usedMemory != null && !(block instanceof ReadOnlyMemoryBlock)) {
+              throw new MemoryException(
+                  String.format(
+                      CommonMessages
+                          .EXCEPTION_MEMORY_BLOCK_ARG_ALREADY_USES_MUTABLE_ACCOUNTING_6F7DCB3F,
+                      name));
+            }
             if (block.getTotalMemorySizeInBytes() != sizeInBytes) {
               LOGGER.warn(
                   CommonMessages
@@ -264,7 +293,9 @@ public class MemoryManager {
             return block;
           } else {
             allocatedMemorySizeInBytes += sizeInBytes;
-            return new AtomicLongMemoryBlock(name, this, sizeInBytes, type);
+            return usedMemory == null
+                ? new AtomicLongMemoryBlock(name, this, sizeInBytes, type)
+                : new ReadOnlyMemoryBlock(name, this, sizeInBytes, type, usedMemory);
           }
         });
   }

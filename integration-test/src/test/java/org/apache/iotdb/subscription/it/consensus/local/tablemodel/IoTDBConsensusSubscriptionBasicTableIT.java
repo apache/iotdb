@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.subscription.it.consensus.local.tablemodel;
 
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
+import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumer;
 import org.apache.iotdb.subscription.it.consensus.local.AbstractSubscriptionConsensusLocalIT;
 
@@ -31,11 +35,67 @@ import org.junit.runner.RunWith;
 
 import java.time.Duration;
 import java.util.LinkedHashSet;
+import java.util.Properties;
 import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
 public class IoTDBConsensusSubscriptionBasicTableIT extends AbstractSubscriptionConsensusLocalIT {
+
+  @Test
+  public void testLastConsumerCloseRetainsProgress() throws Exception {
+    for (final boolean unsubscribeFirst : new boolean[] {false, true}) {
+      final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
+          ConsensusSubscriptionTableITSupport.newIdentifiers("retained_last_close");
+      SubscriptionTablePullConsumer consumer = null;
+      try {
+        ConsensusSubscriptionTableITSupport.bootstrapDatabaseAndTable(
+            ids.getDatabase(), "t1", ConsensusSubscriptionTableITSupport.DEFAULT_TABLE_SCHEMA);
+        ConsensusSubscriptionTableITSupport.createConsensusTopic(
+            ids.getTopic(), ids.getDatabase(), "t1");
+        try (final ISubscriptionTableSession session =
+            new SubscriptionTableSessionBuilder()
+                .host(EnvFactory.getEnv().getIP())
+                .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
+                .build()) {
+          session.open();
+          final Properties config = new Properties();
+          config.setProperty(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, "true");
+          session.alterTopic(ids.getTopic(), config);
+        }
+        consumer =
+            ConsensusSubscriptionTableITSupport.createConsumer(
+                ids.getConsumerId(), ids.getConsumerGroupId());
+        consumer.subscribe(ids.getTopic());
+        final Set<String> firstRows =
+            ConsensusSubscriptionTableITSupport.insertRows(ids.getDatabase(), "t1", 100L, 10, true);
+        ConsensusSubscriptionTableITSupport.assertExactRowKeys(
+            firstRows,
+            ConsensusSubscriptionTableITSupport.pollAndCommitUntilAtLeast(
+                consumer, firstRows.size(), 40));
+        if (unsubscribeFirst) {
+          consumer.unsubscribe(ids.getTopic());
+        }
+        consumer.close();
+        consumer = null;
+
+        final Set<String> offlineRows =
+            ConsensusSubscriptionTableITSupport.insertRows(ids.getDatabase(), "t1", 200L, 10, true);
+        consumer =
+            ConsensusSubscriptionTableITSupport.createConsumer(
+                ids.consumer("replacement"), ids.getConsumerGroupId());
+        consumer.subscribe(ids.getTopic());
+        ConsensusSubscriptionTableITSupport.assertExactRowKeys(
+            offlineRows,
+            ConsensusSubscriptionTableITSupport.pollAndCommitUntilAtLeast(
+                consumer, offlineRows.size(), 40));
+        ConsensusSubscriptionTableITSupport.assertNoMoreMessages(
+            consumer, 3, Duration.ofMillis(500));
+      } finally {
+        ConsensusSubscriptionTableITSupport.cleanup(consumer, ids.getTopic(), ids.getDatabase());
+      }
+    }
+  }
 
   @Test
   public void testRealtimeOnlyAfterSubscribe() throws Exception {

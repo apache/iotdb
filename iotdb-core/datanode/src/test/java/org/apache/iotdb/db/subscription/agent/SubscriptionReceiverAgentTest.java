@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -53,6 +55,34 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public class SubscriptionReceiverAgentTest {
+
+  @Test
+  public void testRatisRejectsSubscriptionBeforeCreatingReceiver() throws IOException {
+    final String originalConsensus =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    try {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+      final SubscriptionReceiverAgent agent =
+          new SubscriptionReceiverAgent(
+              () -> {
+                throw new AssertionError("Receiver must not be created when Ratis is enabled");
+              },
+              false,
+              () -> {
+                throw new AssertionError("Subscription supplier must not be called");
+              });
+
+      Assert.assertEquals(
+          TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+          agent.handle(createHandshakeRequest("group", "consumer"), "root").getStatus().getCode());
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setDataRegionConsensusProtocolClass(originalConsensus);
+    }
+  }
 
   @Test
   public void testDisabledSubscriptionRejectsRequest() throws IOException {
@@ -374,6 +404,20 @@ public class SubscriptionReceiverAgentTest {
     Assert.assertEquals(2, receivers.size());
     Assert.assertEquals(0, receivers.get(0).releaseCount.get());
     Assert.assertTrue(receivers.get(0).invalidated);
+    Assert.assertTrue(receivers.get(0).connectionReplaced);
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED.getStatusCode(),
+        agent.handle(SubscriptionHeartbeatReq.toThriftReq(), "root").getStatus().getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED.getStatusCode(),
+        agent
+            .handle(createHandshakeRequest("group", "consumer", "instance-1"), "root")
+            .getStatus()
+            .getCode());
+    Assert.assertFalse(receivers.get(1).invalidated);
+    agent.checkReceiverTimeouts();
+    Assert.assertEquals(0, receivers.get(0).timeoutCount.get());
+    Assert.assertEquals(1, receivers.get(1).timeoutCount.get());
   }
 
   @Test
@@ -613,6 +657,7 @@ public class SubscriptionReceiverAgentTest {
     private final AtomicInteger releaseCount = new AtomicInteger();
     private volatile ConsumerConfig consumerConfig;
     private volatile boolean invalidated;
+    private volatile boolean connectionReplaced;
 
     private FakeSubscriptionReceiver(final boolean closeOnTimeout) {
       this(closeOnTimeout, false, null, null);
@@ -631,6 +676,9 @@ public class SubscriptionReceiverAgentTest {
 
     @Override
     public TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
+      if (connectionReplaced) {
+        return response(TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED);
+      }
       if (req.getType() == PipeSubscribeRequestType.HANDSHAKE.getType()) {
         consumerConfig = ConsumerConfig.deserialize(req.bufferForBody());
         if (assignDefaultIdentity) {
@@ -706,6 +754,12 @@ public class SubscriptionReceiverAgentTest {
     public void invalidateConsumer() {
       consumerConfig = null;
       invalidated = true;
+    }
+
+    @Override
+    public void invalidateConnection() {
+      invalidateConsumer();
+      connectionReplaced = true;
     }
 
     @Override

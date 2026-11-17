@@ -53,6 +53,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -243,7 +244,9 @@ public class ClusterManager {
   private List<TTestConnectionResult> badNodeConnectionResult(
       TSStatus badStatus, TNodeLocations nodeLocations, TSender sender) {
     final String errorMessage =
-        "ConfigNode leader cannot connect to the sender: " + badStatus.getMessage();
+        String.format(
+            ManagerMessages.EXCEPTION_CONFIGNODE_LEADER_CANNOT_CONNECT_TO_THE_SENDER_ARG_3A20DE7B,
+            Objects.toString(badStatus.getMessage()));
     List<TTestConnectionResult> results = new ArrayList<>();
     nodeLocations
         .getConfigNodeLocations()

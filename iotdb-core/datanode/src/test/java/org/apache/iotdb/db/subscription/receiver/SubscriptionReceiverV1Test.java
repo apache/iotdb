@@ -19,17 +19,28 @@
 
 package org.apache.iotdb.db.subscription.receiver;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.protocol.thrift.impl.DataNodeInternalRPCServiceImpl;
+import org.apache.iotdb.db.service.DataNode.DataNodeContext;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSliceReqBuilder;
 import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -37,9 +48,11 @@ import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -60,6 +73,250 @@ public class SubscriptionReceiverV1Test {
 
     Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
     Assert.assertFalse((boolean) getField(receiver, "consumerInvalidated"));
+  }
+
+  @Test
+  public void testHandleTimeoutKeepsConsumerOnRemovingNode() throws Exception {
+    assertRetiringNodeKeepsConsumer(NodeStatus.Removing, false);
+  }
+
+  @Test
+  public void testHandleTimeoutKeepsConsumerOnStoppingNode() throws Exception {
+    assertRetiringNodeKeepsConsumer(NodeStatus.ReadOnly, true);
+  }
+
+  private void assertRetiringNodeKeepsConsumer(final NodeStatus status, final boolean stopping)
+      throws Exception {
+    final AtomicLong closeAttemptCount = new AtomicLong();
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          void closeConsumer(final ConsumerConfig consumerConfig) {
+            closeAttemptCount.incrementAndGet();
+          }
+        };
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+    final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+    setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final NodeStatus originalStatus = commonConfig.getNodeStatus();
+    final String originalReason = commonConfig.getStatusReason();
+    final boolean originalStopping = commonConfig.isStopping();
+    try {
+      commonConfig.setNodeStatus(status);
+      commonConfig.setStopping(stopping);
+      receiver.handleTimeout();
+
+      Assert.assertEquals(
+          "Retiring a node must not unsubscribe a live consumer", 0L, closeAttemptCount.get());
+      Assert.assertSame(consumerConfig, getField(receiver, "sharedConsumerConfig"));
+      Assert.assertTrue(receiver.hasActiveConsumer());
+
+      // A failed removal can restore this node. Normal inactivity cleanup must still work then,
+      // including on a read-only node that is not stopping.
+      commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+      commonConfig.setStopping(false);
+      receiver.handleTimeout();
+      Assert.assertEquals(0L, closeAttemptCount.get());
+      Assert.assertTrue(receiver.hasActiveConsumer());
+
+      // Endpoint discovery may lag behind rollback. Only a new request can establish a fresh
+      // inactivity deadline on this node.
+      final ConsumerGroupMeta consumerGroupMeta =
+          new ConsumerGroupMeta(
+              consumerConfig.getConsumerGroupId(),
+              System.currentTimeMillis(),
+              new ConsumerMeta(
+                  consumerConfig.getConsumerId(),
+                  System.currentTimeMillis(),
+                  consumerConfig.getAttribute()));
+      Assert.assertNull(
+          SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(consumerGroupMeta));
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          receiver
+              .handle(PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig))
+              .getStatus()
+              .getCode());
+      receiver.handleTimeout();
+      Assert.assertEquals(0L, closeAttemptCount.get());
+
+      setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+      receiver.handleTimeout();
+      Assert.assertEquals(1L, closeAttemptCount.get());
+      Assert.assertFalse(receiver.hasActiveConsumer());
+    } finally {
+      SubscriptionAgent.consumer().handleDropConsumerGroup(consumerConfig.getConsumerGroupId());
+      commonConfig.setNodeStatusWithReason(originalStatus, originalReason);
+      commonConfig.setStopping(originalStopping);
+    }
+  }
+
+  @Test
+  public void testHandleExitRetiresTimeoutStateOnRetiringNode() throws Exception {
+    assertExitRetiresTimeoutState(false, false);
+  }
+
+  @Test
+  public void testHandleTimeoutRetiresPreviouslyDisconnectedConsumer() throws Exception {
+    assertExitRetiresTimeoutState(true, false);
+  }
+
+  @Test
+  public void testHandleExitRetiresTimeoutStateAfterRemovalRollback() throws Exception {
+    assertExitRetiresTimeoutState(false, true);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testRemovalRollbackRetiresConsumerWithoutTimeoutTick() throws Exception {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final NodeStatus originalStatus = commonConfig.getNodeStatus();
+    final String originalReason = commonConfig.getStatusReason();
+    final boolean originalStopping = commonConfig.isStopping();
+    final int originalDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    try {
+      // Coordinator requires a registered DataNode ID when the internal RPC service initializes.
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
+      final DataNodeInternalRPCServiceImpl service =
+          new DataNodeInternalRPCServiceImpl(Mockito.mock(DataNodeContext.class));
+      for (final boolean exitBeforeRemoval : new boolean[] {false, true}) {
+        commonConfig.setNodeStatus(NodeStatus.Running);
+        commonConfig.setStopping(false);
+        final AtomicLong closeAttemptCount = new AtomicLong();
+        final SubscriptionReceiverV1 receiver =
+            new SubscriptionReceiverV1() {
+              @Override
+              void closeConsumer(final ConsumerConfig consumerConfig) {
+                closeAttemptCount.incrementAndGet();
+              }
+            };
+        final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+        setField(receiver, "sharedConsumerConfig", consumerConfig);
+        ((ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal"))
+            .set(consumerConfig);
+        final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+        setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+        if (exitBeforeRemoval) {
+          receiver.handleExit();
+        }
+        // The entire Removing interval can fall between two scheduled timeout checks and between
+        // requests. A delayed transport-exit callback may only run after the removal rolls back.
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            service.setSystemStatus(NodeStatus.Removing.getStatus()).getCode());
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            service.setSystemStatus(NodeStatus.Running.getStatus()).getCode());
+        if (!exitBeforeRemoval) {
+          receiver.handleExit();
+        }
+        receiver.handleTimeout();
+
+        Assert.assertEquals(0L, closeAttemptCount.get());
+        Assert.assertFalse(receiver.hasActiveConsumer());
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(originalDataNodeId);
+      commonConfig.setNodeStatusWithReason(originalStatus, originalReason);
+      commonConfig.setStopping(originalStopping);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertExitRetiresTimeoutState(
+      final boolean exitBeforeRetirement, final boolean restoreBeforeExit) throws Exception {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final NodeStatus originalStatus = commonConfig.getNodeStatus();
+    final String originalReason = commonConfig.getStatusReason();
+    final boolean originalStopping = commonConfig.isStopping();
+    try {
+      for (final boolean stopping : new boolean[] {false, true}) {
+        commonConfig.setNodeStatus(NodeStatus.Running);
+        commonConfig.setStopping(false);
+        final AtomicLong closeAttemptCount = new AtomicLong();
+        final SubscriptionReceiverV1 receiver =
+            new SubscriptionReceiverV1() {
+              @Override
+              void closeConsumer(final ConsumerConfig consumerConfig) {
+                closeAttemptCount.incrementAndGet();
+              }
+            };
+        final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+        setField(receiver, "sharedConsumerConfig", consumerConfig);
+        ((ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal"))
+            .set(consumerConfig);
+        final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+        setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+
+        if (exitBeforeRetirement) {
+          receiver.handleExit();
+          Assert.assertTrue(receiver.hasActiveConsumer());
+        }
+        commonConfig.setNodeStatus(stopping ? NodeStatus.ReadOnly : NodeStatus.Removing);
+        commonConfig.setStopping(stopping);
+        receiver.handleTimeout();
+        if (restoreBeforeExit) {
+          commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+          commonConfig.setStopping(false);
+        }
+        if (!exitBeforeRetirement) {
+          receiver.handleExit();
+        }
+
+        Assert.assertFalse(receiver.hasActiveConsumer());
+        Assert.assertNull(
+            ((ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal")).get());
+        commonConfig.setNodeStatus(NodeStatus.ReadOnly);
+        commonConfig.setStopping(false);
+        receiver.handleTimeout();
+        Assert.assertEquals(0L, closeAttemptCount.get());
+      }
+    } finally {
+      commonConfig.setNodeStatusWithReason(originalStatus, originalReason);
+      commonConfig.setStopping(originalStopping);
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testExplicitCloseStillWorksOnRetiringNode() throws Exception {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final NodeStatus originalStatus = commonConfig.getNodeStatus();
+    final String originalReason = commonConfig.getStatusReason();
+    final boolean originalStopping = commonConfig.isStopping();
+    try {
+      for (final boolean stopping : new boolean[] {false, true}) {
+        final AtomicLong closeAttemptCount = new AtomicLong();
+        final SubscriptionReceiverV1 receiver =
+            new SubscriptionReceiverV1() {
+              @Override
+              void closeConsumer(final ConsumerConfig consumerConfig) {
+                closeAttemptCount.incrementAndGet();
+              }
+            };
+        final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+        setField(receiver, "sharedConsumerConfig", consumerConfig);
+        ((ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal"))
+            .set(consumerConfig);
+        final long timeoutMs = invokeCalculateConsumerInactivityTimeoutMs(receiver, consumerConfig);
+        setField(receiver, "lastActivityTimeMs", System.currentTimeMillis() - timeoutMs - 1L);
+        commonConfig.setNodeStatus(stopping ? NodeStatus.ReadOnly : NodeStatus.Removing);
+        commonConfig.setStopping(stopping);
+        receiver.handleTimeout();
+
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            receiver.handle(PipeSubscribeCloseReq.toTPipeSubscribeReq()).getStatus().getCode());
+        Assert.assertEquals(1L, closeAttemptCount.get());
+        Assert.assertFalse(receiver.hasActiveConsumer());
+      }
+    } finally {
+      commonConfig.setNodeStatusWithReason(originalStatus, originalReason);
+      commonConfig.setStopping(originalStopping);
+    }
   }
 
   @Test
@@ -199,6 +456,29 @@ public class SubscriptionReceiverV1Test {
   }
 
   @Test
+  public void testReplacedConnectionReturnsRetryableStatusForAllRequests() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
+    setField(receiver, "sharedConsumerConfig", consumerConfig);
+
+    receiver.invalidateConnection();
+
+    for (final PipeSubscribeRequestType requestType : PipeSubscribeRequestType.values()) {
+      Assert.assertEquals(
+          requestType.name(),
+          TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED.getStatusCode(),
+          receiver
+              .handle(new TPipeSubscribeReq((byte) 1, requestType.getType()))
+              .getStatus()
+              .getCode());
+    }
+    Assert.assertFalse(receiver.hasActiveConsumer());
+    Assert.assertFalse((boolean) getField(receiver, "consumerFenced"));
+    Assert.assertTrue((boolean) getField(receiver, "consumerInvalidated"));
+    Assert.assertEquals(0L, ((AtomicLong) getField(receiver, "inFlightRequestCount")).get());
+  }
+
+  @Test
   public void testFencedConsumerCannotHandshakeAgain() throws Exception {
     final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
     final ConsumerConfig consumerConfig = createConsumerConfig(1_000L);
@@ -216,12 +496,93 @@ public class SubscriptionReceiverV1Test {
   }
 
   @Test
+  public void testHandshakeRepairsMissingBrokerWithoutChangingConsumerMetadata() throws Exception {
+    final String consumerGroupId = "group-" + UUID.randomUUID();
+    final String consumerId = "consumer-" + UUID.randomUUID();
+    final ConsumerConfig consumerConfig =
+        createConsumerConfig(1_000L, null, null, consumerId, consumerGroupId);
+    final ConsumerGroupMeta consumerGroupMeta =
+        new ConsumerGroupMeta(
+            consumerGroupId,
+            System.currentTimeMillis(),
+            new ConsumerMeta(
+                consumerId, System.currentTimeMillis(), consumerConfig.getAttribute()));
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    Assert.assertNull(
+        SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(consumerGroupMeta));
+    try {
+      Assert.assertTrue(SubscriptionAgent.broker().dropBroker(consumerGroupId));
+      Assert.assertFalse(SubscriptionAgent.broker().isBrokerExist(consumerGroupId));
+
+      final TSStatus status =
+          receiver
+              .handle(PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig))
+              .getStatus();
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertTrue(SubscriptionAgent.broker().isBrokerExist(consumerGroupId));
+      Assert.assertTrue(
+          SubscriptionAgent.consumer().isConsumerExisted(consumerGroupId, consumerId));
+    } finally {
+      SubscriptionAgent.consumer().handleDropConsumerGroup(consumerGroupId);
+    }
+  }
+
+  @Test
   public void testNeverHandshakenConsumerStillReturnsMissingConsumerStatus() {
     final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
 
+    final TSStatus status = receiver.handle(SubscriptionHeartbeatReq.toThriftReq()).getStatus();
+
     Assert.assertEquals(
-        TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(),
-        receiver.handle(SubscriptionHeartbeatReq.toThriftReq()).getStatus().getCode());
+        TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        DataNodePipeMessages.MESSAGE_MISSING_CONSUMER_CONFIG_PLEASE_HANDSHAKE_FIRST_CE588329,
+        status.getMessage());
+  }
+
+  @Test
+  public void testUnknownRequestTypeReturnsLocalizedMessageTemplate() {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final short requestType = Short.MAX_VALUE;
+
+    final TSStatus status =
+        receiver.handle(new TPipeSubscribeReq().setType(requestType)).getStatus();
+
+    Assert.assertEquals(TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        String.format(
+            DataNodePipeMessages.MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTTYPE_ARG_7EBB93F8,
+            requestType),
+        status.getMessage());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testCloseFailurePreservesRequestAndExceptionInResponse() throws Exception {
+    final RuntimeException failure = new RuntimeException("expected cleanup failure");
+    final SubscriptionReceiverV1 receiver =
+        new SubscriptionReceiverV1() {
+          @Override
+          void closeConsumer(final ConsumerConfig consumerConfig) {
+            throw failure;
+          }
+        };
+    final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal =
+        (ThreadLocal<ConsumerConfig>) getField(receiver, "consumerConfigThreadLocal");
+    consumerConfigThreadLocal.set(createConsumerConfig(1_000L));
+    final PipeSubscribeCloseReq req = PipeSubscribeCloseReq.toTPipeSubscribeReq();
+
+    final TSStatus status = receiver.handle(req).getStatus();
+
+    Assert.assertEquals(TSStatusCode.SUBSCRIPTION_CLOSE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        String.format(
+            DataNodePipeMessages
+                .MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_CLOSING_WITH_REQUEST_ARG_ARG_1E3215D2,
+            req,
+            failure),
+        status.getMessage());
   }
 
   @Test
@@ -248,6 +609,83 @@ public class SubscriptionReceiverV1Test {
   }
 
   @Test
+  public void testMalformedSliceReturnsMessageAndAllowsCompleteRequestRetry() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final TPipeSubscribeReq heartbeatReq =
+        SubscriptionHeartbeatReq.toThriftReq(Collections.emptyList());
+    final int bodySizeLimit = 2;
+    final int sliceCount = PipeSubscribeSliceReqBuilder.getSliceCount(heartbeatReq, bodySizeLimit);
+
+    receiver.handle(
+        PipeSubscribeSliceReqBuilder.buildSliceReq(heartbeatReq, 1, 0, sliceCount, bodySizeLimit));
+    final TSStatus status =
+        receiver
+            .handle(
+                new TPipeSubscribeReq()
+                    .setVersion(PipeSubscribeRequestVersion.VERSION_1.getVersion())
+                    .setType(PipeSubscribeRequestType.SLICE.getType())
+                    .setBody(ByteBuffer.allocate(1)))
+            .getStatus();
+
+    Assert.assertEquals(TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        DataNodePipeMessages
+            .MESSAGE_SUBSCRIPTION_MALFORMED_REQUEST_SLICE_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_D91FD262,
+        status.getMessage());
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(),
+        receiver
+            .handle(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    heartbeatReq, 1, 1, sliceCount, bodySizeLimit))
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        receiver
+            .handle(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    heartbeatReq, 2, 0, sliceCount, bodySizeLimit))
+            .getStatus()
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(),
+        receiver
+            .handle(
+                PipeSubscribeSliceReqBuilder.buildSliceReq(
+                    heartbeatReq, 2, 1, sliceCount, bodySizeLimit))
+            .getStatus()
+            .getCode());
+  }
+
+  @Test
+  public void testOversizedSliceReturnsRequestedSizeAndReceiverLimit() throws Exception {
+    final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
+    final int maxBodySize = (int) getField(receiver, "maxReassembledRequestBodySize");
+    final int requestedBodySize = maxBodySize + 1;
+    final TPipeSubscribeReq heartbeatReq =
+        SubscriptionHeartbeatReq.toThriftReq(Collections.emptyList());
+    final int bodySizeLimit = 2;
+    final int sliceCount = PipeSubscribeSliceReqBuilder.getSliceCount(heartbeatReq, bodySizeLimit);
+    final TPipeSubscribeReq sliceReq =
+        PipeSubscribeSliceReqBuilder.buildSliceReq(heartbeatReq, 1, 0, sliceCount, bodySizeLimit);
+    // Advertise an oversized body without allocating it. The size follows the order ID, version,
+    // and type in the slice header.
+    sliceReq.body.putInt(Integer.BYTES + Byte.BYTES + Short.BYTES, requestedBodySize);
+
+    final TSStatus status = receiver.handle(sliceReq).getStatus();
+
+    Assert.assertEquals(TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        String.format(
+            DataNodePipeMessages
+                .MESSAGE_SUBSCRIPTION_REQUEST_BODY_SIZE_ARG_BYTES_EXCEEDS_THE_RECEIVER_LIMIT_OF_ARG_BYTES_SPLIT_THE_OPERATION_INTO_SMALLER_REQUESTS_C9513027,
+            requestedBodySize,
+            maxBodySize),
+        status.getMessage());
+  }
+
+  @Test
   public void testNonSliceRequestClearsIncompleteSlices() throws Exception {
     final SubscriptionReceiverV1 receiver = new SubscriptionReceiverV1();
     final TPipeSubscribeReq heartbeatReq =
@@ -266,14 +704,22 @@ public class SubscriptionReceiverV1Test {
     Assert.assertEquals(
         TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER.getStatusCode(),
         receiver.handle(SubscriptionHeartbeatReq.toThriftReq()).getStatus().getCode());
-    Assert.assertEquals(
-        TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(),
+    final TSStatus status =
         receiver
             .handle(
                 PipeSubscribeSliceReqBuilder.buildSliceReq(
                     heartbeatReq, 1, 1, sliceCount, bodySizeLimit))
-            .getStatus()
-            .getCode());
+            .getStatus();
+    Assert.assertEquals(TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals(
+        String.format(
+            DataNodePipeMessages
+                .MESSAGE_SUBSCRIPTION_INVALID_OR_OUT_OF_ORDER_REQUEST_SLICE_ORDERID_ARG_SLICEINDEX_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_BYTES_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_A08D6D8E,
+            1,
+            1,
+            sliceCount,
+            heartbeatReq.body.remaining()),
+        status.getMessage());
   }
 
   @Test

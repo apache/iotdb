@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -69,7 +70,8 @@ public abstract class UDTFSelectK implements UDTF {
         .validateRequiredAttribute("k")
         .validate(
             k -> 0 < (int) k && (int) k <= 1000,
-            "k has to be greater than 0 and less than or equal to 1000.",
+            CommonMessages
+                .EXCEPTION_K_HAS_TO_BE_GREATER_THAN_0_AND_LESS_THAN_OR_EQUAL_TO_1000_AFD17B03,
             validator.getParameters().getInt("k"));
   }
 

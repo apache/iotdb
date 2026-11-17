@@ -30,12 +30,21 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqualUnordered;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.CREATE_SQLS;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.DATABASE_NAME;
 import static org.apache.iotdb.relational.it.query.recent.subquery.SubqueryDataSetUtils.NUMERIC_MEASUREMENTS;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -366,24 +375,38 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
   @Test
   public void testScalarSubqueryInHavingClause() {
     String sql;
-    String[] expectedHeader;
+    String expectedHeader;
     String[] retArray;
 
     // Test case: scalar subquery in having clause
     sql =
         "SELECT device_id, count(*) from table1 group by device_id having count(*) > 3 + (SELECT count(*) from table2 where device_id = 'd01')";
-    expectedHeader = new String[] {"device_id", "_col1"};
+    expectedHeader = "device_id,_col1,";
     retArray =
         new String[] {
           "d01,5,", "d03,5,", "d05,5,", "d07,5,", "d09,5,", "d11,5,", "d13,5,", "d15,5,"
         };
     for (String measurement : NUMERIC_MEASUREMENTS) {
-      tableResultSetEqualTest(
+      assertUnorderedResult(
           String.format(sql, measurement, measurement, measurement, measurement),
           expectedHeader,
-          retArray,
-          DATABASE_NAME);
+          Arrays.asList(retArray));
     }
   }
+
   // endregion
+
+  private static void assertUnorderedResult(
+      String sql, String expectedHeader, List<String> expectedRows) {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        assertResultSetEqualUnordered(resultSet, expectedHeader, expectedRows);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

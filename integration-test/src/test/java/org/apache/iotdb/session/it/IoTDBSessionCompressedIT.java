@@ -23,6 +23,9 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.TableSessionBuilder;
@@ -41,6 +44,8 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -48,6 +53,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBSessionCompressedIT {
 
   private static List<ITableSession> sessions;
@@ -175,10 +182,17 @@ public class IoTDBSessionCompressedIT {
       tablet.addValue("tag1", i, "d1");
       tablet.addValue("attr1", i, "blue");
     }
+    // The client drops all-null FIELD columns, and an insert without a FIELD column is rejected.
     for (ITableSession session : sessions) {
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS test");
       session.executeNonQueryStatement("USE test");
-      session.insert(tablet);
+      try {
+        session.insert(tablet);
+        Assert.fail("Insert should fail");
+      } catch (StatementExecutionException e) {
+        Assert.assertEquals(
+            "507: No Field column present, please check the request", e.getMessage());
+      }
     }
   }
 
@@ -194,10 +208,17 @@ public class IoTDBSessionCompressedIT {
     for (int i = 0; i < 10; i++) {
       tablet.addTimestamp(i, i);
     }
+    // The client drops all-null FIELD columns, and an insert without a FIELD column is rejected.
     for (ITableSession session : sessions) {
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS test");
       session.executeNonQueryStatement("USE test");
-      session.insert(tablet);
+      try {
+        session.insert(tablet);
+        Assert.fail("Insert should fail");
+      } catch (StatementExecutionException e) {
+        Assert.assertEquals(
+            "507: No Field column present, please check the request", e.getMessage());
+      }
     }
   }
 

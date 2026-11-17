@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -142,6 +143,7 @@ public class SessionPool implements ISessionPool {
 
   private int thriftDefaultBufferSize;
   private int thriftMaxFrameSize;
+  private int thriftMaxReusableBufferSize = Integer.MAX_VALUE;
 
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
@@ -187,6 +189,8 @@ public class SessionPool implements ISessionPool {
 
   // may be null
   protected String database;
+
+  protected boolean enableAutoCreateSchema = true;
 
   private static final String INSERT_RECORD_FAIL = SessionMessages.INSERT_RECORD_FAILED;
 
@@ -500,7 +504,7 @@ public class SessionPool implements ISessionPool {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
     }
-    this.nodeUrls = nodeUrls;
+    this.nodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
     this.user = user;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -517,9 +521,9 @@ public class SessionPool implements ISessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-    this.formattedNodeUrls = nodeUrls.toString();
+    this.formattedNodeUrls = this.nodeUrls.toString();
     initThreadPool();
-    initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
+    initAvailableNodes(SessionUtils.parseSeedNodeUrls(this.nodeUrls));
   }
 
   public SessionPool(AbstractSessionPoolBuilder builder) {
@@ -541,6 +545,7 @@ public class SessionPool implements ISessionPool {
     this.version = builder.version;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.thriftMaxReusableBufferSize = builder.thriftMaxReusableBufferSize;
     this.enableAutoFetch = builder.enableAutoFetch;
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
@@ -553,35 +558,36 @@ public class SessionPool implements ISessionPool {
     this.sqlDialect = builder.sqlDialect;
     this.database = builder.database;
     this.queryTimeoutInMs = builder.timeOut;
+    this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
 
-    if (enableAutoFetch) {
+    final INodeSupplier suppliedNodes = builder.nodeSupplier;
+    if (enableAutoFetch && suppliedNodes == null) {
       initThreadPool();
     }
+    final List<TEndPoint> endPointList;
     if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
       }
-      this.nodeUrls = builder.nodeUrls;
+      this.nodeUrls = Collections.unmodifiableList(new ArrayList<>(builder.nodeUrls));
       this.host = null;
       this.port = -1;
       this.formattedNodeUrls = builder.nodeUrls.toString();
-      if (enableAutoFetch) {
-        initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
-      } else {
-        this.availableNodes = new DummyNodesSupplier(SessionUtils.parseSeedNodeUrls(nodeUrls));
-      }
-
+      endPointList = SessionUtils.parseSeedNodeUrls(nodeUrls);
     } else {
       this.host = builder.host;
       this.port = builder.rpcPort;
       this.nodeUrls = null;
       this.formattedNodeUrls = UrlUtils.formatTEndPointIpv4AndIpv6Url(host, port);
-      if (enableAutoFetch) {
-        initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
-      } else {
-        this.availableNodes =
-            new DummyNodesSupplier(Collections.singletonList(new TEndPoint(host, port)));
-      }
+      endPointList = Collections.singletonList(new TEndPoint(host, port));
+    }
+
+    if (suppliedNodes != null) {
+      this.availableNodes = suppliedNodes;
+    } else if (enableAutoFetch) {
+      initAvailableNodes(endPointList);
+    } else {
+      this.availableNodes = new DummyNodesSupplier(endPointList);
     }
   }
 
@@ -590,7 +596,7 @@ public class SessionPool implements ISessionPool {
     if (nodeUrls == null) {
       // Construct custom Session
       session =
-          new Session.Builder()
+          createSessionBuilder()
               .host(host)
               .port(port)
               .username(user)
@@ -599,6 +605,7 @@ public class SessionPool implements ISessionPool {
               .zoneId(zoneId)
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
               .thriftMaxFrameSize(thriftMaxFrameSize)
+              .thriftMaxReusableBufferSize(thriftMaxReusableBufferSize)
               .enableRedirection(enableRedirection)
               .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
               .version(version)
@@ -612,6 +619,7 @@ public class SessionPool implements ISessionPool {
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
               .database(database)
+              .enableAutoCreateSchema(enableAutoCreateSchema)
               .timeOut(queryTimeoutInMs)
               .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
               .enableThriftRpcCompression(enableThriftCompression)
@@ -619,7 +627,7 @@ public class SessionPool implements ISessionPool {
     } else {
       // Construct redirect-able Session
       session =
-          new Session.Builder()
+          createSessionBuilder()
               .nodeUrls(nodeUrls)
               .username(user)
               .password(password)
@@ -627,6 +635,7 @@ public class SessionPool implements ISessionPool {
               .zoneId(zoneId)
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
               .thriftMaxFrameSize(thriftMaxFrameSize)
+              .thriftMaxReusableBufferSize(thriftMaxReusableBufferSize)
               .enableRedirection(enableRedirection)
               .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
               .version(version)
@@ -640,6 +649,7 @@ public class SessionPool implements ISessionPool {
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
               .database(database)
+              .enableAutoCreateSchema(enableAutoCreateSchema)
               .timeOut(queryTimeoutInMs)
               .enableIoTDBRpcCompression(enableIoTDBRpcCompression)
               .enableThriftRpcCompression(enableThriftCompression)
@@ -647,6 +657,10 @@ public class SessionPool implements ISessionPool {
     }
     session.setEnableQueryRedirection(enableQueryRedirection);
     return session;
+  }
+
+  protected Session.Builder createSessionBuilder() {
+    return new Session.Builder();
   }
 
   private void initThreadPool() {
@@ -670,6 +684,7 @@ public class SessionPool implements ISessionPool {
     this.availableNodes =
         NodesSupplier.createNodeSupplier(
             endPointList,
+            endPointList,
             executorService,
             user,
             password,
@@ -684,7 +699,8 @@ public class SessionPool implements ISessionPool {
             keyStorePwd,
             sslProtocol,
             enableThriftCompression,
-            version.toString());
+            version.toString(),
+            thriftMaxReusableBufferSize);
   }
 
   // if this method throws an exception, either the server is broken, or the ip/port/user/password
@@ -803,16 +819,20 @@ public class SessionPool implements ISessionPool {
 
   @SuppressWarnings({"squid:S2446"})
   protected void putBack(ISession session) {
-    queue.push(session);
     synchronized (this) {
-      // we do not need to notifyAll as any waited thread can continue to work after waked up.
-      this.notify();
-      // comment the following codes as putBack is too frequently called.
-      //      if (logger.isTraceEnabled()) {
-      //        logger.trace("put a session back and notify others..., queue.size = {}",
-      // queue.size());
-      //      }
+      if (!closed) {
+        queue.push(session);
+        // we do not need to notifyAll as any waited thread can continue to work after waked up.
+        this.notify();
+        // comment the following codes as putBack is too frequently called.
+        //      if (logger.isTraceEnabled()) {
+        //        logger.trace("put a session back and notify others..., queue.size = {}",
+        // queue.size());
+        //      }
+        return;
+      }
     }
+    closeSession(session);
   }
 
   private void occupy(ISession session) {
@@ -843,7 +863,9 @@ public class SessionPool implements ISessionPool {
       this.executorService = null;
     }
     if (availableNodes != null) {
-      this.availableNodes.close();
+      if (!this.availableNodes.isCallerManaged()) {
+        this.availableNodes.close();
+      }
       this.availableNodes = null;
     }
     LOGGER.info(SessionMessages.CLOSING_SESSION_POOL);
@@ -854,22 +876,41 @@ public class SessionPool implements ISessionPool {
 
   @Override
   public void closeResultSet(SessionDataSetWrapper wrapper) {
+    ISession session;
+    synchronized (wrapper) {
+      session = wrapper.getSession();
+      if (session == null) {
+        return;
+      }
+      // Detach before returning the session, so closing an old wrapper cannot release a new query.
+      wrapper.setSession(null);
+      session = occupied.remove(session);
+    }
+    if (session == null) {
+      return;
+    }
     boolean putback = true;
     try {
       wrapper.getSessionDataSet().closeOperationHandle();
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      tryConstructNewSession();
       putback = false;
+      cleanSessionAndMayThrowConnectionException(session);
     } finally {
-      ISession session = occupied.remove(wrapper.getSession());
-      if (putback && session != null) {
-        putBack(wrapper.getSession());
+      if (putback) {
+        putBack(session);
       }
     }
   }
 
   @SuppressWarnings({"squid:S2446"})
   private void tryConstructNewSession() {
+    synchronized (this) {
+      if (closed) {
+        size--;
+        this.notify();
+        return;
+      }
+    }
     Session session = constructNewSession();
     try {
       session.open(
@@ -3692,6 +3733,10 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
+    /**
+     * Configure recovery seeds using the same host/IP form as each DataNode's dn_rpc_address.
+     * Hostname aliases and IP literals are not DNS-deduplicated during recovery.
+     */
     public Builder nodeUrls(List<String> nodeUrls) {
       this.nodeUrls = nodeUrls;
       return this;
@@ -3734,6 +3779,20 @@ public class SessionPool implements ISessionPool {
 
     public Builder thriftMaxFrameSize(int thriftMaxFrameSize) {
       this.thriftMaxFrameSize = thriftMaxFrameSize;
+      return this;
+    }
+
+    /**
+     * Buffer requests larger than this threshold use temporary arrays and reset reusable buffers to
+     * {@code thriftDefaultBufferSize}. Applies to compressed and uncompressed transports for all
+     * sessions and background node discovery. The default {@link Integer#MAX_VALUE} keeps the
+     * original reuse policy; zero makes every nonempty buffer request use temporary storage.
+     *
+     * @param thriftMaxReusableBufferSize the buffer reuse threshold in bytes
+     * @return this builder
+     */
+    public Builder thriftMaxReusableBufferSize(int thriftMaxReusableBufferSize) {
+      this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
       return this;
     }
 

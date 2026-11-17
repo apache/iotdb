@@ -19,16 +19,19 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileSnapshot;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -145,6 +148,7 @@ public class SnapshotLoader {
         StorageEngineMessages.LOADING_SNAPSHOT_FOR, storageGroupName, dataRegionId, snapshotPaths);
     try {
       deleteAllFilesInDataDirs();
+      LoadTsFileSnapshot.clear(storageGroupName, dataRegionId);
       LOGGER.info(StorageEngineMessages.REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR);
       // IoTConsensus may spread the fragments of one snapshot across several receive folders.
       // The fileTarget map must be shared across all of them so that a tsfile and its companion
@@ -157,6 +161,7 @@ public class SnapshotLoader {
         // fragment back to the same disk as its recv path, rely on fileTarget instead.
         createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, fileTarget, false);
         loadCompressionRatio(snapshotDir);
+        LoadTsFileSnapshot.restore(storageGroupName, dataRegionId, snapshotDir);
       }
       return loadSnapshot();
     } catch (IOException | DiskSpaceInsufficientException e) {
@@ -170,6 +175,7 @@ public class SnapshotLoader {
     try {
       try {
         deleteAllFilesInDataDirs();
+        LoadTsFileSnapshot.clear(storageGroupName, dataRegionId);
         LOGGER.info(StorageEngineMessages.REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR);
       } catch (IOException e) {
         LOGGER.error(StorageEngineMessages.FAILED_TO_REMOVE_ORIGIN_DATA_FILES, e);
@@ -179,6 +185,7 @@ public class SnapshotLoader {
       File snapshotDir = new File(snapshotPath);
       createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir, new HashMap<>(), true);
       loadCompressionRatio(snapshotDir);
+      LoadTsFileSnapshot.restore(storageGroupName, dataRegionId, snapshotDir);
       return loadSnapshot();
     } catch (IOException | DiskSpaceInsufficientException e) {
       LOGGER.error(
@@ -234,9 +241,11 @@ public class SnapshotLoader {
     try {
       try {
         deleteAllFilesInDataDirs();
+        LoadTsFileSnapshot.clear(storageGroupName, dataRegionId);
         LOGGER.info(StorageEngineMessages.REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR);
         createLinksFromSnapshotDirToDataDirWithLog();
         loadCompressionRatio(new File(snapshotPath));
+        LoadTsFileSnapshot.restore(storageGroupName, dataRegionId, new File(snapshotPath));
         return loadSnapshot();
       } catch (IOException e) {
         LOGGER.error(StorageEngineMessages.FAILED_TO_REMOVE_ORIGIN_DATA_FILES, e);
@@ -301,7 +310,7 @@ public class SnapshotLoader {
     }
   }
 
-  private void createLinksFromSnapshotDirToDataDirWithoutLog(
+  void createLinksFromSnapshotDirToDataDirWithoutLog(
       File sourceDir, Map<String, String> fileTarget, boolean preferKeepSameDiskWhenLoading)
       throws IOException, DiskSpaceInsufficientException {
     if (!sourceDir.exists()) {
@@ -332,7 +341,8 @@ public class SnapshotLoader {
     FolderManager folderManager =
         new FolderManager(
             Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs()),
-            DirectoryStrategyType.SEQUENCE_STRATEGY);
+            DirectoryStrategyType.SEQUENCE_STRATEGY,
+            SnapshotLoader::reportDiskFull);
     File[] timePartitionFolders = seqFileDir.listFiles();
     if (timePartitionFolders != null) {
       for (File timePartitionFolder : timePartitionFolders) {
@@ -374,6 +384,16 @@ public class SnapshotLoader {
     }
   }
 
+  private static void reportDiskFull() {
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setReadOnlyForDiskFull(
+            SnapshotLoader.class,
+            () ->
+                Arrays.stream(IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs())
+                    .anyMatch(JVMCommonUtils::hasSpaceWithoutRetry));
+  }
+
   private File createLinksFromSnapshotToSourceDir(
       String targetSuffix,
       File file,
@@ -392,16 +412,7 @@ public class SnapshotLoader {
                 targetFile.getParentFile().getAbsolutePath()));
       }
 
-      try {
-        Files.createLink(targetFile.toPath(), file.toPath());
-        LOGGER.debug(StorageEngineMessages.CREATED_HARD_LINK, file, targetFile);
-        fileTarget.put(fileKey, finalDir);
-        return targetFile;
-      } catch (IOException e) {
-        LOGGER.info(StorageEngineMessages.CANNOT_CREATE_LINK_FALLBACK_COPY, file, targetFile);
-      }
-
-      Files.copy(file.toPath(), targetFile.toPath());
+      SnapshotFileUtils.createLinkOrCopy(targetFile.toPath(), file.toPath());
       fileTarget.put(fileKey, finalDir);
       return targetFile;
     } catch (Exception e) {
@@ -586,7 +597,7 @@ public class SnapshotLoader {
                 StorageEngineMessages.FAILED_TO_CREATE_DIR,
                 targetFile.getParentFile().getAbsolutePath()));
       }
-      Files.createLink(targetFile.toPath(), file.toPath());
+      SnapshotFileUtils.createLinkOrCopy(targetFile.toPath(), file.toPath());
     }
   }
 
@@ -603,11 +614,14 @@ public class SnapshotLoader {
   public List<File> getSnapshotFileInfo() throws IOException {
     File snapshotLogFile = getSnapshotLogFile();
 
+    final List<File> files;
     if (snapshotLogFile == null) {
-      return searchDataFilesRecursively(snapshotPath);
+      files = searchDataFilesRecursively(snapshotPath);
+      files.addAll(LoadTsFileSnapshot.collectSnapshotFiles(new File(snapshotPath)));
     } else {
-      return getSnapshotFileWithLog(snapshotLogFile);
+      files = getSnapshotFileWithLog(snapshotLogFile);
     }
+    return files;
   }
 
   private List<File> getSnapshotFileWithLog(File logFile) throws IOException {
@@ -628,6 +642,7 @@ public class SnapshotLoader {
                 + File.separator
                 + snapshotId;
         fileList.addAll(searchDataFilesRecursively(snapshotDir));
+        fileList.addAll(LoadTsFileSnapshot.collectSnapshotFiles(new File(snapshotDir)));
       }
 
       File[] compressionRatioFiles =
@@ -644,7 +659,10 @@ public class SnapshotLoader {
   }
 
   /**
-   * Search all data files in one directory recursively.
+   * Search all data files in one directory recursively. The LOAD staging folder is skipped here: it
+   * is a dedicated directory independent of the sequence/unsequence data layout, so its files
+   * (which include {@code .progress} bitmaps that are not data files) are collected separately by
+   * {@link LoadTsFileSnapshot#collectSnapshotFiles(File)}.
    *
    * @return
    */
@@ -656,6 +674,9 @@ public class SnapshotLoader {
           @Override
           public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
               throws IOException {
+            if (LoadTsFileSnapshot.SNAPSHOT_SUBDIR_NAME.equals(dir.getFileName().toString())) {
+              return FileVisitResult.SKIP_SUBTREE;
+            }
             return FileVisitResult.CONTINUE;
           }
 

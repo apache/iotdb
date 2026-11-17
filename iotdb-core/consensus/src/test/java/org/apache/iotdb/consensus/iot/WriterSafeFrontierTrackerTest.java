@@ -21,9 +21,29 @@ package org.apache.iotdb.consensus.iot;
 
 import org.junit.Test;
 
+import java.util.Map;
+
 import static org.junit.Assert.assertEquals;
 
 public class WriterSafeFrontierTrackerTest {
+
+  @Test
+  public void testSafeFrontierSnapshotCarriesAppliedSequenceAndIsDetached() {
+    final WriterSafeFrontierTracker tracker = new WriterSafeFrontierTracker();
+    tracker.recordAppliedProgress(100L, 7, 10L);
+    tracker.observePendingWriterSafeTimeBarrier(130L, 7, 20L);
+    final Map<Integer, WriterSafeFrontierTracker.SafeFrontier> before =
+        tracker.snapshotSafeFrontiers();
+    assertEquals(100L, before.get(7).getPhysicalTime());
+    assertEquals(10L, before.get(7).getLocalSeq());
+
+    tracker.recordAppliedProgress(125L, 7, 20L);
+    final WriterSafeFrontierTracker.SafeFrontier after = tracker.snapshotSafeFrontiers().get(7);
+    assertEquals(130L, after.getPhysicalTime());
+    assertEquals(20L, after.getLocalSeq());
+    assertEquals(100L, before.get(7).getPhysicalTime());
+    assertEquals(10L, before.get(7).getLocalSeq());
+  }
 
   @Test
   public void testPendingWriterSafeTimeBarrierPromotesWhenBarrierIsApplied() {

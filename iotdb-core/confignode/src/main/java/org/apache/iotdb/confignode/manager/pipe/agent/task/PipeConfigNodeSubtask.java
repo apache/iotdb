@@ -176,16 +176,22 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
    */
   @Override
   protected boolean executeOnce() throws Exception {
-    if (isClosed.get()) {
+    if (isClosed.get() || shouldStopSubmittingSelf.get()) {
       return false;
     }
 
     final Event event = lastEvent != null ? lastEvent : source.supply();
-    // Record the last event for retry when exception occurs
+    // Keep the event for retry or restart if supply() returns after the task is stopped.
     setLastEvent(event);
 
+    // close() may have released the last event before supply() returned.
+    if (isClosed.get()) {
+      clearReferenceCountAndReleaseLastEvent(event);
+      return false;
+    }
+
     try {
-      if (event == null) {
+      if (event == null || shouldStopSubmittingSelf.get()) {
         return false;
       }
 

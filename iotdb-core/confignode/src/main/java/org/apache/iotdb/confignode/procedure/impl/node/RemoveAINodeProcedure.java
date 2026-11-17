@@ -135,6 +135,15 @@ public class RemoveAINodeProcedure extends AbstractNodeProcedure<RemoveAINodeSta
     // no need to rollback
   }
 
+  /**
+   * A failure in either state is retried instead of failing the procedure, which has nothing to
+   * roll back.
+   */
+  @Override
+  protected boolean isRollbackSupported(final RemoveAINodeState state) {
+    return false;
+  }
+
   @Override
   protected RemoveAINodeState getState(int stateId) {
     return RemoveAINodeState.values()[stateId];

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.i18n.ConfigMessages;
+
 import java.io.File;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -47,7 +49,10 @@ public class IoTDBConstant {
         finalBuildInfo += "-dev";
       }
     } catch (Exception e) {
-      System.err.println("get git.properties error: " + e.getMessage());
+      System.err.println(
+          String.format(
+              ConfigMessages.LOG_GET_GIT_PROPERTIES_ERROR_ARG_2EF68070,
+              Objects.toString(e.getMessage())));
     }
     BUILD_INFO = finalBuildInfo;
   }

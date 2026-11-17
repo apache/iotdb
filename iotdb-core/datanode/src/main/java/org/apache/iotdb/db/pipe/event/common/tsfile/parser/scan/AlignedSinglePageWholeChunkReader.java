@@ -63,37 +63,61 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader
   // deleted intervals of all the sub sensors
   private final List<List<TimeRange>> valueDeleteIntervalsList = new ArrayList<>();
   private final long pageEstimatedMemoryUsageInBytes;
+  private final Chunk ownedTimeChunk;
+  private final List<Chunk> ownedValueChunks;
 
   public AlignedSinglePageWholeChunkReader(
       Chunk timeChunk, List<Chunk> valueChunkList, LongConsumer filteredRowsRecord)
       throws IOException {
     super(Long.MIN_VALUE, null, filteredRowsRecord);
+    ownedTimeChunk = timeChunk;
+    ownedValueChunks = new ArrayList<>(valueChunkList);
     this.timeChunkHeader = timeChunk.getHeader();
     this.timeChunkDataBuffer = timeChunk.getData();
     this.encryptParam = timeChunk.getEncryptParam();
-    this.pageEstimatedMemoryUsageInBytes =
-        calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(timeChunk, valueChunkList);
+    try {
+      this.pageEstimatedMemoryUsageInBytes =
+          calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(timeChunk, valueChunkList);
 
-    valueChunkList.forEach(
-        chunk -> {
-          this.valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
-          this.valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
-          this.valueDeleteIntervalsList.add(chunk == null ? null : chunk.getDeleteIntervalList());
-        });
+      valueChunkList.forEach(
+          chunk -> {
+            this.valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
+            this.valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
+            this.valueDeleteIntervalsList.add(chunk == null ? null : chunk.getDeleteIntervalList());
+          });
 
-    initAllPageReaders();
+      initAllPageReaders();
+    } catch (IOException | RuntimeException | Error e) {
+      try {
+        close();
+      } catch (RuntimeException failure) {
+        e.addSuppressed(failure);
+      }
+      throw e;
+    }
+  }
+
+  @Override
+  public void close() {
+    ownedTimeChunk.close();
+    for (Chunk chunk : ownedValueChunks) {
+      if (chunk != null) {
+        chunk.close();
+      }
+    }
   }
 
   private void initAllPageReaders() throws IOException {
+    int pageIndex = 0;
     while (timeChunkDataBuffer.remaining() > 0) {
-      AlignedPageReader alignedPageReader = deserializeFromSinglePageChunk();
+      AlignedPageReader alignedPageReader = deserializeFromSinglePageChunk(pageIndex++);
       if (alignedPageReader != null) {
         pageReaderList.add(alignedPageReader);
       }
     }
   }
 
-  private AlignedPageReader deserializeFromSinglePageChunk() throws IOException {
+  private AlignedPageReader deserializeFromSinglePageChunk(int pageIndex) throws IOException {
     PageHeader timePageHeader =
         PageHeader.deserializeFrom(timeChunkDataBuffer, (Statistics<? extends Serializable>) null);
     List<PageHeader> valuePageHeaderList = new ArrayList<>();
@@ -115,7 +139,7 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader
       skipCurrentPage(timePageHeader, valuePageHeaderList);
       return null;
     }
-    return constructAlignedPageReader(timePageHeader, valuePageHeaderList);
+    return constructAlignedPageReader(timePageHeader, valuePageHeaderList, pageIndex);
   }
 
   private void skipCurrentPage(PageHeader timePageHeader, List<PageHeader> valuePageHeader) {
@@ -133,11 +157,17 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader
   }
 
   private AlignedPageReader constructAlignedPageReader(
-      PageHeader timePageHeader, List<PageHeader> rawValuePageHeaderList) throws IOException {
+      PageHeader timePageHeader, List<PageHeader> rawValuePageHeaderList, int pageIndex)
+      throws IOException {
     IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     ByteBuffer timePageData =
         ChunkReader.deserializePageData(
-            timePageHeader, timeChunkDataBuffer, timeChunkHeader, decryptor);
+            timePageHeader,
+            timeChunkDataBuffer,
+            timeChunkHeader,
+            decryptor,
+            encryptParam,
+            pageIndex);
 
     List<PageHeader> valuePageHeaderList = new ArrayList<>();
     LazyLoadPageData[] valuePageDataArray = new LazyLoadPageData[rawValuePageHeaderList.size()];
@@ -166,7 +196,9 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader
                 valueChunkDataBufferList.get(i).array(),
                 currentPagePosition,
                 IUnCompressor.getUnCompressor(valueChunkHeader.getCompressionType()),
-                encryptParam);
+                encryptParam,
+                pageIndex,
+                valueChunkHeader.getChunkOrdinal());
         valueDataTypeList.add(valueChunkHeader.getDataType());
         valueDecoderList.add(
             Decoder.getDecoderByType(
@@ -229,44 +261,120 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader
 
   public static List<Long> calculatePageEstimatedMemoryUsageInBytesWithBatchDataList(
       final Chunk timeChunk, final List<Chunk> valueChunkList) throws IOException {
-    final ByteBuffer timeChunkDataBuffer = timeChunk.getData().duplicate();
-    final List<ByteBuffer> valueChunkDataBufferList = new ArrayList<>(valueChunkList.size());
+    final PageMemoryUsageEstimator estimator = new PageMemoryUsageEstimator(timeChunk);
     for (final Chunk valueChunk : valueChunkList) {
-      valueChunkDataBufferList.add(
-          Objects.isNull(valueChunk) ? null : valueChunk.getData().duplicate());
+      estimator.addValueChunk(valueChunk);
     }
+    return estimator.getPageEstimatedMemoryUsageInBytesList();
+  }
 
-    final List<Long> pageEstimatedMemoryUsageInBytesList = new ArrayList<>();
-    while (timeChunkDataBuffer.remaining() > 0) {
-      long pageUncompressedSizeInBytes = 0;
-      final PageHeader timePageHeader =
-          SinglePageWholeChunkReader.deserializePageHeader(
-              timeChunkDataBuffer, timeChunk.getHeader());
-      pageUncompressedSizeInBytes += timePageHeader.getUncompressedSize();
-      SinglePageWholeChunkReader.skipCompressedPageData(timeChunkDataBuffer, timePageHeader);
+  static final class PageMemoryUsageEstimator {
 
-      final List<TSDataType> valueDataTypeList = new ArrayList<>(valueChunkList.size());
-      for (int i = 0; i < valueChunkList.size(); ++i) {
-        final Chunk valueChunk = valueChunkList.get(i);
-        final ByteBuffer valueChunkDataBuffer = valueChunkDataBufferList.get(i);
-        if (Objects.isNull(valueChunk) || Objects.isNull(valueChunkDataBuffer)) {
-          valueDataTypeList.add(null);
-          continue;
-        }
+    private final List<Long> pageUncompressedSizeInBytesList = new ArrayList<>();
+    private final List<Integer> pageRowCountList = new ArrayList<>();
+    private List<Long> pageEstimatedMemoryUsageInBytesList = new ArrayList<>();
 
-        final PageHeader valuePageHeader =
+    private int valueCount;
+    private TSDataType singleValueDataType;
+    private long vectorValueMemoryUsageInBytes;
+
+    PageMemoryUsageEstimator(final Chunk timeChunk) throws IOException {
+      final ByteBuffer timeChunkDataBuffer = timeChunk.getData().duplicate();
+      timeChunkDataBuffer.rewind();
+      while (timeChunkDataBuffer.remaining() > 0) {
+        final PageHeader timePageHeader =
             SinglePageWholeChunkReader.deserializePageHeader(
-                valueChunkDataBuffer, valueChunk.getHeader());
-        pageUncompressedSizeInBytes += valuePageHeader.getUncompressedSize();
-        valueDataTypeList.add(valueChunk.getHeader().getDataType());
-        SinglePageWholeChunkReader.skipCompressedPageData(valueChunkDataBuffer, valuePageHeader);
+                timeChunkDataBuffer, timeChunk.getHeader());
+        pageUncompressedSizeInBytesList.add((long) timePageHeader.getUncompressedSize());
+        pageRowCountList.add(SinglePageWholeChunkReader.getPageRowCount(timePageHeader, timeChunk));
+        SinglePageWholeChunkReader.skipCompressedPageData(timeChunkDataBuffer, timePageHeader);
       }
-      pageEstimatedMemoryUsageInBytesList.add(
-          SinglePageWholeChunkReader.estimatePageMemoryUsageInBytesWithBatchData(
-              pageUncompressedSizeInBytes,
-              SinglePageWholeChunkReader.getPageRowCount(timePageHeader, timeChunk),
-              valueDataTypeList));
+      pageEstimatedMemoryUsageInBytesList = calculatePageEstimatedMemoryUsageInBytesList();
     }
-    return SinglePageWholeChunkReader.toSuffixMaxList(pageEstimatedMemoryUsageInBytesList);
+
+    long calculateMaxPageEstimatedMemoryUsageInBytesWithValueChunk(final Chunk valueChunk)
+        throws IOException {
+      final List<Long> pageEstimatedMemoryUsageInBytesList =
+          calculatePageEstimatedMemoryUsageInBytesList(valueChunk, false);
+      return pageEstimatedMemoryUsageInBytesList.isEmpty()
+          ? 0
+          : pageEstimatedMemoryUsageInBytesList.get(0);
+    }
+
+    void addValueChunk(final Chunk valueChunk) throws IOException {
+      pageEstimatedMemoryUsageInBytesList =
+          calculatePageEstimatedMemoryUsageInBytesList(valueChunk, true);
+    }
+
+    List<Long> getPageEstimatedMemoryUsageInBytesList() {
+      return pageEstimatedMemoryUsageInBytesList;
+    }
+
+    private List<Long> calculatePageEstimatedMemoryUsageInBytesList() {
+      final List<Long> pageEstimatedMemoryUsageInBytesList =
+          new ArrayList<>(pageUncompressedSizeInBytesList.size());
+      for (int i = 0; i < pageUncompressedSizeInBytesList.size(); ++i) {
+        pageEstimatedMemoryUsageInBytesList.add(
+            SinglePageWholeChunkReader.estimatePageMemoryUsageInBytesWithBatchData(
+                pageUncompressedSizeInBytesList.get(i),
+                pageRowCountList.get(i),
+                valueCount,
+                singleValueDataType,
+                vectorValueMemoryUsageInBytes));
+      }
+      return SinglePageWholeChunkReader.toSuffixMaxList(pageEstimatedMemoryUsageInBytesList);
+    }
+
+    private List<Long> calculatePageEstimatedMemoryUsageInBytesList(
+        final Chunk valueChunk, final boolean commit) throws IOException {
+      final ByteBuffer valueChunkDataBuffer;
+      final TSDataType valueDataType;
+      if (Objects.isNull(valueChunk)) {
+        valueChunkDataBuffer = null;
+        valueDataType = null;
+      } else {
+        valueChunkDataBuffer = valueChunk.getData().duplicate();
+        valueChunkDataBuffer.rewind();
+        valueDataType = valueChunk.getHeader().getDataType();
+      }
+
+      final int newValueCount = valueCount + 1;
+      final TSDataType newSingleValueDataType = valueCount == 0 ? valueDataType : null;
+      final long newVectorValueMemoryUsageInBytes =
+          vectorValueMemoryUsageInBytes
+              + SinglePageWholeChunkReader.estimateVectorValueMemoryUsageInBytes(valueDataType);
+      final List<Long> newPageUncompressedSizeInBytesList =
+          new ArrayList<>(pageUncompressedSizeInBytesList);
+      final List<Long> pageEstimatedMemoryUsageInBytesList =
+          new ArrayList<>(pageUncompressedSizeInBytesList.size());
+
+      for (int i = 0; i < newPageUncompressedSizeInBytesList.size(); ++i) {
+        if (Objects.nonNull(valueChunkDataBuffer)) {
+          final PageHeader valuePageHeader =
+              SinglePageWholeChunkReader.deserializePageHeader(
+                  valueChunkDataBuffer, valueChunk.getHeader());
+          newPageUncompressedSizeInBytesList.set(
+              i, newPageUncompressedSizeInBytesList.get(i) + valuePageHeader.getUncompressedSize());
+          SinglePageWholeChunkReader.skipCompressedPageData(valueChunkDataBuffer, valuePageHeader);
+        }
+        pageEstimatedMemoryUsageInBytesList.add(
+            SinglePageWholeChunkReader.estimatePageMemoryUsageInBytesWithBatchData(
+                newPageUncompressedSizeInBytesList.get(i),
+                pageRowCountList.get(i),
+                newValueCount,
+                newSingleValueDataType,
+                newVectorValueMemoryUsageInBytes));
+      }
+
+      if (commit) {
+        pageUncompressedSizeInBytesList.clear();
+        pageUncompressedSizeInBytesList.addAll(newPageUncompressedSizeInBytesList);
+        valueCount = newValueCount;
+        singleValueDataType = newSingleValueDataType;
+        vectorValueMemoryUsageInBytes = newVectorValueMemoryUsageInBytes;
+      }
+
+      return SinglePageWholeChunkReader.toSuffixMaxList(pageEstimatedMemoryUsageInBytesList);
+    }
   }
 }

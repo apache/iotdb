@@ -19,11 +19,20 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
+import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTree2TableView;
+
+import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+
+import static org.apache.iotdb.commons.schema.table.TsTable.AUTO_SYNC_SCHEMA;
 
 public class RenameViewProcedure extends RenameTableProcedure {
   public RenameViewProcedure(final boolean isGeneratedByPipe) {
@@ -40,8 +49,19 @@ public class RenameViewProcedure extends RenameTableProcedure {
   }
 
   @Override
+  protected TUpdateTableReq buildCommitReleaseTableReq(final @Nullable String oldName) {
+    if (!Boolean.parseBoolean(table.getPropValue(AUTO_SYNC_SCHEMA).orElse(null))) {
+      return super.buildCommitReleaseTableReq(oldName);
+    }
+    // A rename does not move the view, so the old name is all the DataNode needs.
+    final TUpdateTree2TableView viewInfo =
+        new TUpdateTree2TableView(TreeToTableViewTrieOperationType.ALTER_RENAME.getOperationType());
+    return SchemaUtils.buildCommitUpdateTableReq(database, table.getTableName(), oldName, viewInfo);
+  }
+
+  @Override
   protected String getActionMessage() {
-    return "rename view";
+    return ProcedureMessages.MESSAGE_RENAME_VIEW_2A0DD1B0;
   }
 
   @Override

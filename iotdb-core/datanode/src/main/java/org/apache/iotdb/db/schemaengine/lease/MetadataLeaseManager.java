@@ -30,6 +30,7 @@ import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.TreeToTableViewCache;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +109,8 @@ public class MetadataLeaseManager {
         () -> ClusterPartitionFetcher.getInstance().invalidAllCache(),
         () -> DataNodeTableCache.getInstance().invalidateAll(),
         () -> TreeDeviceSchemaCacheManager.getInstance().cleanUp(),
-        AuthorityChecker::invalidateAllCache);
+        AuthorityChecker::invalidateAllCache,
+        () -> TreeToTableViewCache.getInstance().clear());
   }
 
   private static List<MetadataAction> defaultPullMetaList() {

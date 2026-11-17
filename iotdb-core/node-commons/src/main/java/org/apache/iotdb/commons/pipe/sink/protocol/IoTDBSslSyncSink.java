@@ -346,7 +346,10 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           receiverStatusHandler.handle(
               resp.getStatus(),
-              String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
+              String.format(
+                  PipeMessages.MESSAGE_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD,
+                  file,
+                  resp.getStatus()),
               file.getName());
         }
       }

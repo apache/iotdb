@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
@@ -73,7 +74,7 @@ public class SetTableColumnPropertiesProcedure extends AbstractSetPropertiesProc
 
   @Override
   protected String getActionMessage() {
-    return "set table column properties";
+    return ProcedureMessages.MESSAGE_SET_TABLE_COLUMN_PROPERTIES_F16B8274;
   }
 
   @Override

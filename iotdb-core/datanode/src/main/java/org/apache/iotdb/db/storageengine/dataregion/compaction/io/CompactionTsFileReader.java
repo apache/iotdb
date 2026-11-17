@@ -81,9 +81,9 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     ((CompactionTsFileInput) tsFileInput).markEndOfAlignedSeries();
   }
 
-  @SuppressWarnings("java:S2177")
+  @Override
   public ChunkHeader readChunkHeader(long position) throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput, position);
+    return super.readChunkHeader(position);
   }
 
   public Map<String, Pair<TimeseriesMetadata, Pair<Long, Long>>>

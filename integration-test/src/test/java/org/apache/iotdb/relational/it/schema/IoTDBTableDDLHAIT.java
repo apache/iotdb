@@ -21,15 +21,14 @@ package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
-import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -43,7 +42,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertTrue;
 
@@ -121,7 +119,8 @@ public class IoTDBTableDDLHAIT {
         victimDataNode.stop();
         Assert.assertFalse("victim DataNode should be stopped", victimDataNode.isAlive());
 
-        executeSpecificSql(databaseName, tableName, statement, createdAfterDownTableName);
+        executeSpecificSql(
+            databaseName, tableName, connection, statement, createdAfterDownTableName);
         testDropDeviceForTreeModel(statement);
       }
     } finally {
@@ -169,7 +168,8 @@ public class IoTDBTableDDLHAIT {
         // Run DDL HA tests via live DataNode. Operations should still succeed because
         // consensus can proceed with 2/3 nodes, and the ReadOnly victim still accepts
         // committed entries as a follower.
-        executeSpecificSql(databaseName, tableName, statement, createdAfterDownTableName);
+        executeSpecificSql(
+            databaseName, tableName, connection, statement, createdAfterDownTableName);
       }
 
     } finally {
@@ -178,7 +178,11 @@ public class IoTDBTableDDLHAIT {
   }
 
   public void executeSpecificSql(
-      String databaseName, String tableName, Statement statement, String createdAfterDownTableName)
+      String databaseName,
+      String tableName,
+      Connection connection,
+      Statement statement,
+      String createdAfterDownTableName)
       throws Exception {
 
     // Take one DataNode down. Its last successful ConfigNode contact is now frozen; after
@@ -231,9 +235,7 @@ public class IoTDBTableDDLHAIT {
         "DELETE DEVICES must succeed with one DataNode down");
 
     LOGGER.info("6. start to test high availability of dropping table procedure");
-    statement.execute("DROP TABLE " + tableName);
-    // DROP TABLE acknowledges submission before the table has been fully removed.
-    awaitDropTableProcedure(statement, databaseName, tableName);
+    TestUtils.dropTable(connection, databaseName, tableName);
     assertTrue(
         "DROP TABLE must succeed with one DataNode down", !tableExists(statement, tableName));
 
@@ -275,30 +277,6 @@ public class IoTDBTableDDLHAIT {
       throws Exception {
     statement.execute(sql);
     assertTrue(message, effect.call());
-  }
-
-  private void awaitDropTableProcedure(
-      final Statement statement, final String databaseName, final String tableName)
-      throws Exception {
-    Awaitility.await()
-        .atMost(60, TimeUnit.SECONDS)
-        .pollInSameThread()
-        // Progress snapshots can differ between cluster nodes while deletion is running.
-        .ignoreException(InconsistentDataException.class)
-        .untilAsserted(
-            () -> {
-              try (final ResultSet resultSet =
-                  statement.executeQuery(
-                      "SELECT state, error_message FROM information_schema.drop_table_procedures "
-                          + "WHERE database = '"
-                          + databaseName
-                          + "' AND table_name = '"
-                          + tableName
-                          + "' ORDER BY procedure_id DESC LIMIT 1")) {
-                assertTrue("DROP TABLE procedure should be visible", resultSet.next());
-                Assert.assertEquals(resultSet.getString(2), "SUCCESS", resultSet.getString(1));
-              }
-            });
   }
 
   private boolean tableExists(final Statement statement, final String tableName) throws Exception {

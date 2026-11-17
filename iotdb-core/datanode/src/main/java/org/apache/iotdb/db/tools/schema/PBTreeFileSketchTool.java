@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 
@@ -45,10 +46,10 @@ public class PBTreeFileSketchTool {
   private static final String SFST_CLI_PREFIX = "print-pbtree-file";
 
   private static final String FILE_ARGS = "f";
-  private static final String FILE_NAME = "pbtree file";
+  private static final String FILE_NAME = DataNodeSchemaMessages.MESSAGE_PBTREE_FILE_493CA5AD;
 
   private static final String OUT_ARGS = "o";
-  private static final String OUT_NAME = "output txt file";
+  private static final String OUT_NAME = DataNodeSchemaMessages.MESSAGE_OUTPUT_TXT_FILE_261FEB25;
 
   private static final String HELP_ARGS = "help";
 
@@ -68,7 +69,9 @@ public class PBTreeFileSketchTool {
             .required()
             .argName(FILE_NAME)
             .hasArg()
-            .desc("Need to specify a pbtree file to sketch (required)")
+            .desc(
+                DataNodeSchemaMessages
+                    .MESSAGE_NEED_TO_SPECIFY_A_PBTREE_FILE_TO_SKETCH_REQUIRED_D40FA676)
             .build();
     options.addOption(opFile);
 
@@ -77,7 +80,9 @@ public class PBTreeFileSketchTool {
             .required(false)
             .argName(OUT_NAME)
             .hasArg()
-            .desc("Could specify the output file after parse (optional)")
+            .desc(
+                DataNodeSchemaMessages
+                    .MESSAGE_COULD_SPECIFY_THE_OUTPUT_FILE_AFTER_PARSE_OPTIONAL_9907C287)
             .build();
     options.addOption(opOut);
 
@@ -85,7 +90,7 @@ public class PBTreeFileSketchTool {
         Option.builder(HELP_ARGS)
             .longOpt(HELP_ARGS)
             .hasArg(false)
-            .desc("Display help information")
+            .desc(DataNodeSchemaMessages.MESSAGE_DISPLAY_HELP_INFORMATION_3BBD4899)
             .build();
     options.addOption(opHelp);
 
@@ -137,7 +142,10 @@ public class PBTreeFileSketchTool {
       throws ParseException {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
-      String msg = String.format("Required values for option '%s' not provided", name);
+      String msg =
+          String.format(
+              DataNodeSchemaMessages.MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2,
+              name);
       logger.info(msg);
       logger.info(DataNodeMiscMessages.USE_HELP);
       throw new ParseException(msg);

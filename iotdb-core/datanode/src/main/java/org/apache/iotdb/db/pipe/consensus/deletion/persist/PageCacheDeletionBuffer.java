@@ -195,8 +195,11 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
 
   private void closeCurrentLoggingFile(boolean notifySuccess) throws IOException {
     LOGGER.info(DataNodePipeMessages.DELETION_PERSIST_CURRENT_FILE_HAS_BEEN_CLOSED, dataRegionId);
-    // Close old resource to fsync.
     if (this.logChannel != null) {
+      // Closing a channel does not fsync. Persist the rotated batch before acknowledging it.
+      if (notifySuccess) {
+        this.logChannel.force(false);
+      }
       this.logChannel.close();
     }
     if (notifySuccess) {
@@ -336,6 +339,8 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
         // if any exception occurred, this batch will not be written to disk and lost.
         pendingDeletionsInOneTask.forEach(deletionResource -> deletionResource.onPersistFailed(e));
         rollbackFileAttribute(currentTaskBatchSize.get());
+        // Failed deletions must not remain in the next batch's success callbacks.
+        resetTaskAttribute();
         taskFinished = true;
       } finally {
         if (taskFinished) {
@@ -372,11 +377,15 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
       // For first deletion we use blocking take() method.
       try {
         DeletionResource firstDeletionResource = deletionResources.take();
-        // Serialize deletion. The first serialization cannot fail because a deletion cannot exceed
-        // size of serializeBuffer.
-        serializeDeletionToBatchBuffer(firstDeletionResource);
         pendingDeletionsInOneTask.add(firstDeletionResource);
         currentTaskDeletionCount++;
+        // A deletion can exceed the DAL buffer even when it is the first entry in a batch.
+        // Include it in failure handling so it cannot be acknowledged without being written.
+        if (!serializeDeletionToBatchBuffer(firstDeletionResource)) {
+          throw new IOException(
+              DataNodePipeMessages
+                  .EXCEPTION_DELETION_RESOURCE_EXCEEDS_THE_DAL_BUFFER_SIZE_E2A17CAC);
+        }
         maxProgressIndexInCurrentFile =
             maxProgressIndexInCurrentFile.updateToMinimumEqualOrIsAfterProgressIndex(
                 firstDeletionResource.getProgressIndex());

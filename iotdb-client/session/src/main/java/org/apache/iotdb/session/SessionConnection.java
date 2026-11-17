@@ -22,6 +22,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
@@ -73,6 +74,8 @@ import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TMultiplexedProtocol;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.utils.Pair;
@@ -84,6 +87,7 @@ import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -99,8 +103,9 @@ public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
+  private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
   public static final String MSG_RECONNECTION_FAIL =
-      "Fail to reconnect to server. Please check server status.";
+      SessionMessages.EXCEPTION_FAIL_TO_RECONNECT_TO_SERVER_PLEASE_CHECK_SERVER_STATUS_D9A2790F;
   protected Session session;
   private TTransport transport;
   protected IClientRPCService.Iface client;
@@ -199,7 +204,9 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException {
     DeepCopyRpcTransportFactory transportFactory =
         DeepCopyRpcTransportFactory.getInstance(
-            session.thriftDefaultBufferSize, session.thriftMaxFrameSize);
+            session.thriftDefaultBufferSize,
+            session.thriftMaxFrameSize,
+            session.thriftMaxReusableBufferSize);
     try {
       if (transport != null && transport.isOpen()) {
         close();
@@ -228,11 +235,15 @@ public class SessionConnection {
       throw new IoTDBConnectionException(e);
     }
 
-    if (session.enableThriftRpcCompaction) {
-      client = new IClientRPCService.Client(new TCompactProtocol(transport));
-    } else {
-      client = new IClientRPCService.Client(new TBinaryProtocol(transport));
+    TProtocol protocol =
+        session.enableThriftRpcCompaction
+            ? new TCompactProtocol(transport)
+            : new TBinaryProtocol(transport);
+    final String rpcServiceName = session.getRpcServiceName();
+    if (rpcServiceName != null) {
+      protocol = new TMultiplexedProtocol(protocol, rpcServiceName);
     }
+    client = new IClientRPCService.Client(protocol);
     client = RpcUtils.newSynchronizedClient(client);
 
     TSOpenSessionReq openReq = new TSOpenSessionReq();
@@ -243,6 +254,9 @@ public class SessionConnection {
     openReq.putToConfiguration("sql_dialect", sqlDialect);
     if (session.useEncryptedPassword) {
       openReq.putToConfiguration(USE_ENCRYPTED_PASSWORD_KEY, Boolean.TRUE.toString());
+    }
+    if (!session.enableAutoCreateSchema) {
+      openReq.putToConfiguration(ENABLE_AUTO_CREATE_SCHEMA_KEY, Boolean.FALSE.toString());
     }
     if (database != null) {
       openReq.putToConfiguration("db", database);
@@ -1139,18 +1153,22 @@ public class SessionConnection {
     for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
-        endPointList = availableNodes.get();
-        int currHostIndex = random.nextInt(endPointList.size());
-        int tryHostNum = 0;
-        for (int j = currHostIndex; j < endPointList.size(); j++) {
-          if (tryHostNum == endPointList.size()) {
-            break;
+        List<TEndPoint> discoveredNodes = availableNodes.get();
+        endPointList = new ArrayList<>(discoveredNodes);
+        if (!endPointList.isEmpty()) {
+          Collections.rotate(endPointList, -random.nextInt(endPointList.size()));
+        }
+        if (availableNodes instanceof INodeSupplier) {
+          List<TEndPoint> seeds = new ArrayList<>(((INodeSupplier) availableNodes).getSeedNodes());
+          if (!seeds.isEmpty()) {
+            Collections.rotate(seeds, -random.nextInt(seeds.size()));
           }
-          this.endPoint = endPointList.get(j);
-          if (j == endPointList.size() - 1) {
-            j = -1;
-          }
-          tryHostNum++;
+          endPointList.addAll(seeds);
+        }
+        // Try every discovered endpoint before falling back to seeds, once per endpoint per round.
+        endPointList = new ArrayList<>(new LinkedHashSet<>(endPointList));
+        for (TEndPoint candidate : endPointList) {
+          this.endPoint = candidate;
           try {
             init(
                 endPoint,
@@ -1161,6 +1179,9 @@ public class SessionConnection {
                 session.keyStorePwd,
                 session.sslProtocol);
             connectedSuccess = true;
+            if (!discoveredNodes.contains(endPoint) && availableNodes instanceof INodeSupplier) {
+              ((INodeSupplier) availableNodes).requestRefresh();
+            }
           } catch (IoTDBConnectionException e) {
             logger.warn(SessionMessages.NODE_DOWN_TRY_NEXT, endPoint);
             continue;

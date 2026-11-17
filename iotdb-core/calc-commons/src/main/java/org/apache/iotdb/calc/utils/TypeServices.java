@@ -4804,12 +4804,14 @@ public class TypeServices {
 
   private static UnsupportedOperationException unsupportedCastTarget(final Type type) {
     return new UnsupportedOperationException(
-        String.format("Unsupported target dataType: %s", type.getTypeEnum()));
+        String.format(
+            CalcMessages.EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_ARG_AFE3789A, type.getTypeEnum()));
   }
 
   private static UnsupportedOperationException unsupportedCastSource(final Type type) {
     return new UnsupportedOperationException(
-        String.format("Unsupported source dataType: %s", type.getTypeEnum()));
+        String.format(
+            CalcMessages.EXCEPTION_UNSUPPORTED_SOURCE_DATATYPE_ARG_678B759C, type.getTypeEnum()));
   }
 
   private static UnSupportedDataTypeException unsupportedApproxMostFrequentDataType(

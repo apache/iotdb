@@ -169,6 +169,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   }
 
   public String getTableModelDatabaseName() {
+    if (!isTableModelEvent()) {
+      return null;
+    }
     return tableModelDatabaseName == null
         ? tableModelDatabaseName = PathUtils.unQualifyDatabaseName(sourceDatabaseNameFromDataRegion)
         : tableModelDatabaseName;

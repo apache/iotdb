@@ -1174,9 +1174,13 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
+  private long loadCleanupTaskIdleTimeoutSeconds = 900L; // 15 min, idle LOAD staging is reclaimed
+
   private int loadTsFileRetryCountOnRegionChange = 10;
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
+
+  private int loadTsFileWriteBufferSize = 1024 * 1024; // 1 MiB
 
   private long loadTabletConversionThresholdBytes = -1;
 
@@ -1235,6 +1239,18 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
 
   private boolean loadActiveListeningVerifyEnable = true;
+
+  /**
+   * Whether a LOAD requires a logged in session with a user name instead of falling back to the
+   * default user. Disabled by default to keep the legacy fallback.
+   */
+  private boolean loadRequireUserIdentity = false;
+
+  /**
+   * Whether the pipe receiver rejects an asynchronous LOAD without an authenticated sender. Enabled
+   * by default; set to false to fall back to the default user.
+   */
+  private boolean pipeReceiverRequireUserIdentity = true;
 
   private String loadDiskSelectStrategy = LoadDiskSelectorType.MIN_IO_FIRST.getValue();
 
@@ -1501,7 +1517,9 @@ public class IoTDBConfig implements DefaultEncodingProvider {
     // format data directories
     formulateDataDirs(newTierDataDirs);
     if (newTierDataDirs.length < this.tierDataDirs.length) {
-      String msg = "some data dirs are removed from data_dirs parameter, please add them back.";
+      String msg =
+          DataNodeMiscMessages
+              .EXCEPTION_SOME_DATA_DIRS_ARE_REMOVED_FROM_DATA_DIRS_PARAMETER_PLEASE_ADD_THEM_BACK_7BF4DBFE;
       logger.error(msg);
       throw new LoadConfigurationException(msg);
     }
@@ -1704,6 +1722,11 @@ public class IoTDBConfig implements DefaultEncodingProvider {
     return this.loadTsFileDirs;
   }
 
+  public void setLoadTsFileDirs(final String[] loadTsFileDirs) {
+    this.loadTsFileDirs = loadTsFileDirs;
+    this.loadTsFileDirCanonicalPaths = canonicalPaths(loadTsFileDirs);
+  }
+
   public String[] getLoadTsFileAllowedDirs() {
     return this.loadTsFileAllowedDirs.length == 0
         ? getLoadTsFileDirs()
@@ -1775,8 +1798,10 @@ public class IoTDBConfig implements DefaultEncodingProvider {
       } catch (final IOException e) {
         return new CanonicalPaths(
             String.format(
-                "Failed to resolve canonical path for Load TsFile allowed directory %s: %s",
-                dirs[i], e.getMessage()));
+                DataNodeMiscMessages
+                    .EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_ALLOWED_DIRECTORY_ARG_ARG_9BD3ABDA,
+                dirs[i],
+                e.getMessage()));
       }
     }
     return new CanonicalPaths(paths);
@@ -1957,8 +1982,10 @@ public class IoTDBConfig implements DefaultEncodingProvider {
     }
     String msg =
         String.format(
-            "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
-            multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
+            DataNodeMiscMessages
+                .EXCEPTION_CANNOT_SET_MULTI_DIR_STRATEGY_TO_ARG_BECAUSE_CLUSTER_MODE_ONLY_ALLOWS_ARG_B0E64F6D,
+            multiDirStrategyClassName,
+            Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
     logger.error(msg);
     throw new RuntimeException(msg);
   }
@@ -4295,6 +4322,14 @@ public class IoTDBConfig implements DefaultEncodingProvider {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
   }
 
+  public long getLoadCleanupTaskIdleTimeoutSeconds() {
+    return loadCleanupTaskIdleTimeoutSeconds;
+  }
+
+  public void setLoadCleanupTaskIdleTimeoutSeconds(final long loadCleanupTaskIdleTimeoutSeconds) {
+    this.loadCleanupTaskIdleTimeoutSeconds = loadCleanupTaskIdleTimeoutSeconds;
+  }
+
   public int getLoadTsFileRetryCountOnRegionChange() {
     return loadTsFileRetryCountOnRegionChange;
   }
@@ -4309,6 +4344,19 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond) {
     this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
+  }
+
+  public int getLoadTsFileWriteBufferSize() {
+    return loadTsFileWriteBufferSize;
+  }
+
+  public void setLoadTsFileWriteBufferSize(final int loadTsFileWriteBufferSize) {
+    if (loadTsFileWriteBufferSize <= 0) {
+      throw new IllegalArgumentException(
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_LOAD_TSFILE_WRITE_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_AB1BA936);
+    }
+    this.loadTsFileWriteBufferSize = loadTsFileWriteBufferSize;
   }
 
   public long getLoadTabletConversionThresholdBytes() {
@@ -4333,6 +4381,22 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setLoadActiveListeningVerifyEnable(boolean loadActiveListeningVerifyEnable) {
     this.loadActiveListeningVerifyEnable = loadActiveListeningVerifyEnable;
+  }
+
+  public boolean isLoadRequireUserIdentity() {
+    return loadRequireUserIdentity;
+  }
+
+  public void setLoadRequireUserIdentity(boolean loadRequireUserIdentity) {
+    this.loadRequireUserIdentity = loadRequireUserIdentity;
+  }
+
+  public boolean isPipeReceiverRequireUserIdentity() {
+    return pipeReceiverRequireUserIdentity;
+  }
+
+  public void setPipeReceiverRequireUserIdentity(boolean pipeReceiverRequireUserIdentity) {
+    this.pipeReceiverRequireUserIdentity = pipeReceiverRequireUserIdentity;
   }
 
   public String getLoadDiskSelectStrategy() {
@@ -4481,10 +4545,12 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   }
 
   public void setLoadTsFileSpiltPartitionMaxSize(int loadTsFileSpiltPartitionMaxSize) {
+    // A cap of 0 would reject every LOAD whose source file spans at least one time partition,
+    // i.e. every LOAD, so the smallest usable value is 1.
     if (loadTsFileSpiltPartitionMaxSize <= 0) {
       throw new IllegalArgumentException(
           DataNodeMiscMessages
-              .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23);
+              .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_0_17B75192);
     }
 
     if (this.loadTsFileSpiltPartitionMaxSize == loadTsFileSpiltPartitionMaxSize) {

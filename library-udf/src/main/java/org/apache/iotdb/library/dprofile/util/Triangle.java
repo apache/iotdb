@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.library.dprofile.util;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.List;
@@ -53,7 +55,10 @@ class Triangle<T extends Pair<Long, Double>> {
   T getResult() {
     return center.map(b -> Area.ofTriangle(left.getResult(), b, right.getCenter())).stream()
         .max(comparing(Area::getValue))
-        .orElseThrow(() -> new RuntimeException("Can't obtain max area triangle"))
+        .orElseThrow(
+            () ->
+                new RuntimeException(
+                    LibraryUdfMessages.EXCEPTION_CAN_T_OBTAIN_MAX_AREA_TRIANGLE_8BE13344))
         .getGenerator();
   }
 }

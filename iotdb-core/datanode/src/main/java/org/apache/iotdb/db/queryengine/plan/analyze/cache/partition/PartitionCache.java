@@ -294,7 +294,8 @@ public class PartitionCache {
       fetchDatabaseAndUpdateCache(false);
     } catch (final TException | ClientManagerException e) {
       logger.warn(
-          "Failed to get need_last_cache info for database {}, will put cache anyway, exception: {}",
+          DataNodeQueryMessages
+              .LOG_FAILED_TO_GET_NEED_LAST_CACHE_INFO_FOR_DATABASE_ARG_WILL_PUT_CACHE_ANYWAY_EXCEPTION_ARG_D5D80E96,
           database,
           e.getMessage());
       return true;
@@ -774,6 +775,16 @@ public class PartitionCache {
     regionReplicaSetLock.writeLock().lock();
     try {
       groupIdToReplicaSetMap.clear();
+    } finally {
+      regionReplicaSetLock.writeLock().unlock();
+    }
+  }
+
+  /** invalidate the replicaSetCache of one region */
+  public void invalidReplicaSetCache(final TConsensusGroupId regionId) {
+    regionReplicaSetLock.writeLock().lock();
+    try {
+      groupIdToReplicaSetMap.remove(regionId);
     } finally {
       regionReplicaSetLock.writeLock().unlock();
     }

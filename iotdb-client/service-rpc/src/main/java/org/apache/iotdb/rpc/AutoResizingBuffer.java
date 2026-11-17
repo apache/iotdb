@@ -19,20 +19,25 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * Helper class that wraps a byte[] so that it can expand and be reused. Users should call
- * resizeIfNecessary to make sure the buffer has suitable capacity, and then use the array as
- * needed.
+ * Helper class that wraps a byte[] so that it can expand and be reused. Incremental writes use
+ * ensureCapacity; resizeIfNecessary also considers shrinking and must receive a complete frame's
+ * size.
  *
  * <p>Resizing policies: Expanding: If the required size > current capacity * 1.5, expand to the
- * required size, otherwise expand to current capacity * 1.5. Shrinking: If initial size < the
- * required size < current capacity * 0.6, and such small requests last for more than 5 times,
- * shrink to the middle of the required size and current capacity.
+ * required size, otherwise expand to current capacity * 1.5 when the memory budget allows it.
+ * Shrinking: If the required size < current capacity * 0.6, and such small requests last for more
+ * than 5 times, shrink to the middle of the required size and current capacity. The required size
+ * is bounded below by the initial capacity.
  */
 class AutoResizingBuffer implements AutoCloseable {
+
+  static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
   private byte[] array;
   private int bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
@@ -56,28 +61,57 @@ class AutoResizingBuffer implements AutoCloseable {
   }
 
   public void resizeIfNecessary(int size) throws IOException {
-    reserveCurrentCapacityIfReleased();
+    ensureCapacity(size);
+    size = Math.max(size, initialCapacity);
     final int currentCapacity = this.array.length;
     final double loadFactor = 0.6;
-    if (currentCapacity < size) {
-      // Increase by a factor of 1.5x
-      int growCapacity = currentCapacity + (currentCapacity >> 1);
-      int newCapacity = Math.max(growCapacity, size);
-      resize(newCapacity);
-      bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
-    } else if (size > initialCapacity
-        && currentCapacity * loadFactor > size
+    if (currentCapacity * loadFactor > size
         && bufTooLargeCounter-- <= 0
         && System.currentTimeMillis() - lastShrinkTime > RpcUtils.MIN_SHRINK_INTERVAL) {
-      // do not resize if it is reading the request size and do not shrink too often
-      resize(size + (currentCapacity - size) / 2);
+      resize(size + (currentCapacity - size) / 2, size);
       bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
       lastShrinkTime = System.currentTimeMillis();
     }
   }
 
+  void ensureCapacity(int size) throws IOException {
+    ensureCapacity(size, MAX_ARRAY_SIZE);
+  }
+
+  void ensureCapacity(int size, int maxCapacity) throws IOException {
+    int limit = Math.min(maxCapacity, MAX_ARRAY_SIZE);
+    if (size < 0 || size > limit) {
+      throw new IllegalArgumentException(
+          String.format(RpcMessages.EXCEPTION_INVALID_BUFFER_SIZE_ARG_5131C6CA, size));
+    }
+    reserveCurrentCapacityIfReleased();
+    final int currentCapacity = this.array.length;
+    if (currentCapacity < size) {
+      resize(Math.min(calculateNewCapacity(currentCapacity, size), limit), size);
+      bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
+    }
+  }
+
+  static int calculateNewCapacity(int currentCapacity, int requiredCapacity) {
+    // Keep geometric growth even above 1.33 GiB. An int overflow here would otherwise copy the
+    // entire buffer for every small write during Thrift serialization.
+    long growCapacity = currentCapacity + (long) (currentCapacity >> 1);
+    return (int) Math.min(MAX_ARRAY_SIZE, Math.max(growCapacity, requiredCapacity));
+  }
+
   public byte[] array() {
     return this.array;
+  }
+
+  boolean isClosed() {
+    return closed;
+  }
+
+  void resetToInitialCapacity() throws IOException {
+    reserveCurrentCapacityIfReleased();
+    resize(initialCapacity, initialCapacity);
+    bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
+    lastShrinkTime = System.currentTimeMillis();
   }
 
   @Override
@@ -89,11 +123,14 @@ class AutoResizingBuffer implements AutoCloseable {
     }
   }
 
-  private void resize(int newCapacity) throws IOException {
+  private void resize(int newCapacity, int requiredCapacity) throws IOException {
     final int currentCapacity = array.length;
     if (newCapacity > currentCapacity) {
-      final int delta = newCapacity - currentCapacity;
-      memoryAccount.allocate(delta);
+      final int delta =
+          (int)
+              memoryAccount.allocate(
+                  newCapacity - currentCapacity, requiredCapacity - currentCapacity);
+      newCapacity = currentCapacity + delta;
       try {
         array = Arrays.copyOf(array, newCapacity);
         accountedCapacity += delta;

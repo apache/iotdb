@@ -176,7 +176,8 @@ public class RpcUtils {
     TSStatus status = new TSStatus(TSStatusCode.MULTIPLE_ERROR.getStatusCode());
     status.setSubStatus(statusList);
     if (LOGGER.isDebugEnabled()) {
-      StringBuilder errMsg = new StringBuilder().append("Multiple error occur, messages: ");
+      StringBuilder errMsg =
+          new StringBuilder().append(RpcMessages.EXCEPTION_MULTIPLE_ERROR_OCCUR_MESSAGES_75A34A00);
       Set<TSStatus> msgSet = new HashSet<>();
       for (TSStatus subStatus : statusList) {
         if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -434,12 +435,13 @@ public class RpcUtils {
     return sql.substring(0, 11).equalsIgnoreCase("sql_dialect");
   }
 
+  // Seconds are floored so that a pre-epoch time keeps a nanos part in [0, 1e9), as Timestamp needs
   public static long getMilliSecond(long time, int timeFactor) {
-    return time / timeFactor * 1_000;
+    return Math.floorDiv(time, timeFactor) * 1_000;
   }
 
   public static int getNanoSecond(long time, int timeFactor) {
-    return (int) (time % timeFactor * (1_000_000_000 / timeFactor));
+    return Math.floorMod(time, timeFactor) * (1_000_000_000 / timeFactor);
   }
 
   public static Timestamp convertToTimestamp(long time, int timeFactor) {

@@ -73,7 +73,6 @@ public class TranslationMap {
   private final Scope scope;
   private final Analysis analysis;
   private final Optional<TranslationMap> outerContext;
-  // TODO unused now
   private final PlannerContext plannerContext;
 
   // current mappings of underlying field -> symbol for translating direct field references
@@ -200,6 +199,10 @@ public class TranslationMap {
 
   public Analysis getAnalysis() {
     return analysis;
+  }
+
+  public PlannerContext getPlannerContext() {
+    return plannerContext;
   }
 
   public boolean canTranslate(Expression expression) {

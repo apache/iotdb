@@ -107,6 +107,39 @@ public class WriterSafeFrontierTracker {
     return Collections.unmodifiableMap(snapshot);
   }
 
+  /**
+   * Returns each safe time together with the applied sequence it covers. A subscription may use the
+   * safe time only after consuming that sequence; applying records to the state machine does not
+   * imply that an independent WAL reader has consumed them.
+   */
+  public synchronized Map<Integer, SafeFrontier> snapshotSafeFrontiers() {
+    final Map<Integer, SafeFrontier> snapshot = new HashMap<>();
+    for (final Map.Entry<Integer, WriterFrontierState> entry : states.entrySet()) {
+      snapshot.put(
+          entry.getKey(),
+          new SafeFrontier(entry.getValue().effectiveSafePt, entry.getValue().appliedLocalSeq));
+    }
+    return Collections.unmodifiableMap(snapshot);
+  }
+
+  public static final class SafeFrontier {
+    private final long physicalTime;
+    private final long localSeq;
+
+    private SafeFrontier(final long physicalTime, final long localSeq) {
+      this.physicalTime = physicalTime;
+      this.localSeq = localSeq;
+    }
+
+    public long getPhysicalTime() {
+      return physicalTime;
+    }
+
+    public long getLocalSeq() {
+      return localSeq;
+    }
+  }
+
   private void promotePendingIfReady(final WriterFrontierState state) {
     if (!state.hasPendingSafeTime()) {
       return;

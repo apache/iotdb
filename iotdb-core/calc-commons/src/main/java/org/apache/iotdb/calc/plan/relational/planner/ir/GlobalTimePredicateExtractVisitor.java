@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonEx
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
@@ -56,7 +57,7 @@ public class GlobalTimePredicateExtractVisitor
         Pair<Expression, Boolean>, GlobalTimePredicateExtractVisitor.Context> {
 
   private static final String NOT_SUPPORTED =
-      "visit() not implemented for %s in GlobalTimePredicateExtract.";
+      CalcMessages.EXCEPTION_VISIT_NOT_IMPLEMENTED_FOR_ARG_IN_GLOBALTIMEPREDICATEEXTRACT_936A2D52;
 
   /**
    * Extract global time predicate from query predicate.
@@ -286,13 +287,22 @@ public class GlobalTimePredicateExtractVisitor
       Expression timeExpression, String timeColumnName, Expression valueExpression) {
     return (isTimeColumn(timeExpression, timeColumnName)
             || isExtractTimeColumn(timeExpression, timeColumnName))
-        && valueExpression instanceof LongLiteral;
+        && isTimeValueLiteral(valueExpression);
   }
 
   private static boolean checkBetweenConstantSatisfy(Expression e1, Expression e2) {
-    return e1 instanceof LongLiteral
-        && e2 instanceof LongLiteral
-        && ((LongLiteral) e1).getParsedValue() <= ((LongLiteral) e2).getParsedValue();
+    return isTimeValueLiteral(e1) && isTimeValueLiteral(e2) && getLongValue(e1) <= getLongValue(e2);
+  }
+
+  private static boolean isTimeValueLiteral(Expression expression) {
+    return expression instanceof LongLiteral || expression instanceof GenericLiteral;
+  }
+
+  private static long getLongValue(Expression expression) {
+    if (expression instanceof GenericLiteral) {
+      return Long.parseLong(((GenericLiteral) expression).getValue());
+    }
+    return ((LongLiteral) expression).getParsedValue();
   }
 
   public static class Context {

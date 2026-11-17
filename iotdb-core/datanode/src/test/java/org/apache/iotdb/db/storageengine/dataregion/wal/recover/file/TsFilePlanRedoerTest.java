@@ -23,18 +23,26 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.TsFileUtilsForRecoverTest;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -46,6 +54,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -66,6 +75,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -626,6 +636,124 @@ public class TsFilePlanRedoerTest {
   }
 
   @Test
+  public void testRedoDeleteWithoutFlushedDataDoesNotCreateMods() throws Exception {
+    File file = new File(FILE_NAME);
+    assertTrue(file.getParentFile().isDirectory() || file.getParentFile().mkdirs());
+    tsFileResource = new TsFileResource(file);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
+
+    planRedoer.redoDelete(
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(new MeasurementPath(SG_NAME + ".**")),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE));
+    planRedoer.redoDelete(
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(
+                new TableDeletionEntry(
+                    new DeletionPredicate("table1"),
+                    new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))),
+            null));
+
+    assertFalse(ModificationFile.getExclusiveMods(file).exists());
+  }
+
+  @Test
+  public void testRedoTreeDeleteDoesNotMaskLaterInserts() throws Exception {
+    File file = new File(FILE_NAME);
+    generateCompleteFile(file);
+    tsFileResource = new TsFileResource(file);
+    tsFileResource.updateStartTime(DEVICE1_NAME, 1);
+    tsFileResource.updateEndTime(DEVICE1_NAME, 2);
+    tsFileResource.updateStartTime(DEVICE2_NAME, 3);
+    tsFileResource.updateEndTime(DEVICE2_NAME, 4);
+    IDeviceID nestedDevice = IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME + ".d1.child");
+    tsFileResource.updateStartTime(nestedDevice, 1);
+    tsFileResource.updateEndTime(nestedDevice, 1);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
+
+    planRedoer.redoDelete(
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(new MeasurementPath(SG_NAME + ".**.s1")),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE));
+
+    List<ModEntry> mods = tsFileResource.getModFileForWrite().getAllMods();
+    for (IDeviceID device : Arrays.asList(DEVICE1_NAME, DEVICE2_NAME, nestedDevice)) {
+      long endTime = tsFileResource.getEndTime(device).get();
+      assertTrue(mods.stream().anyMatch(mod -> mod.affects(device, endTime, endTime)));
+      assertFalse(mods.stream().anyMatch(mod -> mod.affects(device, endTime + 1, endTime + 1)));
+    }
+    assertFalse(mods.stream().anyMatch(mod -> mod.affects(DEVICE3_NAME)));
+    assertTrue(mods.stream().allMatch(mod -> mod.affects("s1") && !mod.affects("s2")));
+
+    planRedoer.redoDelete(
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(new MeasurementPath(SG_NAME + ".**")),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE));
+    List<ModEntry> allMods = tsFileResource.getModFileForWrite().getAllMods();
+    assertTrue(allMods.stream().anyMatch(mod -> mod.affects(nestedDevice) && mod.affects("s2")));
+    assertFalse(allMods.stream().anyMatch(mod -> mod.affects(nestedDevice, 2, 2)));
+    assertFalse(
+        allMods.stream()
+            .anyMatch(
+                mod ->
+                    mod.affects(
+                        IDeviceID.Factory.DEFAULT_FACTORY.create(SG_NAME + ".d1.unflushed"))));
+  }
+
+  @Test
+  public void testRedoTableDeleteDoesNotMaskLaterInserts() throws Exception {
+    File file = new File(FILE_NAME);
+    generateCompleteFile(file);
+    tsFileResource = new TsFileResource(file);
+    List<IDeviceID> devices =
+        Arrays.asList(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table1", "d1", "north"}),
+            IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table1", "d1", null}),
+            IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table1", "d1", ""}));
+    for (int i = 0; i < devices.size(); i++) {
+      tsFileResource.updateStartTime(devices.get(i), 1);
+      tsFileResource.updateEndTime(devices.get(i), i + 2);
+    }
+    IDeviceID otherTable =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table2", "d1", "north"});
+    tsFileResource.updateStartTime(otherTable, 1);
+    tsFileResource.updateEndTime(otherTable, 10);
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
+
+    planRedoer.redoDelete(
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(
+                new TableDeletionEntry(
+                    new DeletionPredicate("table1", new NOP(), Collections.singletonList("s1")),
+                    new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))),
+            null));
+
+    List<ModEntry> mods = tsFileResource.getModFileForWrite().getAllMods();
+    for (IDeviceID device : devices) {
+      long endTime = tsFileResource.getEndTime(device).get();
+      assertTrue(mods.stream().anyMatch(mod -> mod.affects(device, endTime, endTime)));
+      assertFalse(mods.stream().anyMatch(mod -> mod.affects(device, endTime + 1, endTime + 1)));
+    }
+    assertFalse(mods.stream().anyMatch(mod -> mod.affects(otherTable)));
+    assertFalse(
+        mods.stream()
+            .anyMatch(
+                mod ->
+                    mod.affects(
+                        IDeviceID.Factory.DEFAULT_FACTORY.create(
+                            new String[] {"table1", "d2", "north"}))));
+    assertTrue(mods.stream().allMatch(mod -> mod.affects("s1") && !mod.affects("s2")));
+  }
+
+  @Test
   public void testRedoRelationalInsertTablet()
       throws IOException,
           WriteProcessException,
@@ -689,6 +817,54 @@ public class TsFilePlanRedoerTest {
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
     Assert.assertEquals(2, recoveryMemTable.getMemTableMap().size());
     Assert.assertFalse(recoveryMemTable.getMemTableMap().containsKey(existDevice));
+  }
+
+  @Test
+  public void testRedoRelationalInsertWithoutFieldValues() throws Exception {
+    File file = new File(FILE_NAME);
+    generateCompleteFile(file);
+    tsFileResource = new TsFileResource(file);
+
+    RelationalInsertRowNode row =
+        new RelationalInsertRowNode(
+            new PlanNodeId("row"),
+            new PartialPath("table1", false),
+            true,
+            new String[] {null},
+            new TSDataType[] {null},
+            new MeasurementSchema[] {null},
+            101,
+            new Object[] {null},
+            false,
+            new TsTableColumnCategory[] {TsTableColumnCategory.FIELD});
+    RelationalInsertTabletNode tablet =
+        new RelationalInsertTabletNode(
+            new PlanNodeId("tablet"),
+            new PartialPath("table1", false),
+            true,
+            new String[] {null},
+            new TSDataType[] {null},
+            new MeasurementSchema[] {null},
+            new long[] {102, 103},
+            null,
+            new Object[] {null},
+            2,
+            new TsTableColumnCategory[] {TsTableColumnCategory.FIELD});
+
+    TsFilePlanRedoer redoer = new TsFilePlanRedoer(tsFileResource);
+    ByteBuffer rowBuffer = ByteBuffer.allocate(row.serializedSize());
+    row.serializeToWAL(new WALByteBufferForTest(rowBuffer));
+    rowBuffer.flip();
+    redoer.redoInsert((RelationalInsertRowNode) PlanNodeType.deserializeFromWAL(rowBuffer));
+
+    ByteBuffer tabletBuffer = ByteBuffer.allocate(tablet.serializedSize());
+    tablet.serializeToWAL(new WALByteBufferForTest(tabletBuffer));
+    tabletBuffer.flip();
+    redoer.redoInsert((RelationalInsertTabletNode) PlanNodeType.deserializeFromWAL(tabletBuffer));
+
+    assertEquals(1, redoer.getRecoveryMemTable().getMemTableMap().size());
+    assertEquals(
+        3, redoer.getRecoveryMemTable().getMemTableMap().values().iterator().next().count(false));
   }
 
   @Test

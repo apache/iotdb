@@ -32,6 +32,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -188,9 +190,35 @@ public class PipeHeartbeatParser {
               && PipeTaskAgent.isHistoryOnlyPipe(staticMeta.getSourceParameters());
       final boolean hasReliableDataRegionReport =
           pipeHeartbeat.hasCompletedDataRegionReport(staticMeta);
+      final boolean isCompletedEmptySnapshot =
+          PipeStaticMeta.isSubscriptionPipe(staticMeta.getPipeName())
+              && staticMeta
+                  .getSourceParameters()
+                  .getBooleanOrDefault(
+                      SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY, false);
       if (isFiniteInternalPipe
           && hasReliableDataRegionReport
-          && temporaryMeta.getCompletedDataRegionIds().containsAll(requiredDataRegionIds)) {
+          && (requiredDataRegionIds.isEmpty() || isCompletedEmptySnapshot)
+          && isRetainedSubscriptionPipe(staticMeta)) {
+        if (!isCompletedEmptySnapshot) {
+          // Keep the original snapshot boundary across unsubscribe and recovery. There is no
+          // sink queue for an empty snapshot, so persist and push its completion explicitly.
+          staticMeta
+              .getSourceParameters()
+              .addAttribute(
+                  SystemConstant.SUBSCRIPTION_EMPTY_SNAPSHOT_COMPLETED_KEY,
+                  Boolean.TRUE.toString());
+          needWriteConsensusOnConfigNodes.set(true);
+          needPushPipeMetaToDataNodes.set(true);
+        }
+        // The heartbeat is keyed by the pre-completion static meta.
+        continue;
+      }
+      if (isFiniteInternalPipe
+          && hasReliableDataRegionReport
+          && (isCompletedEmptySnapshot
+              || temporaryMeta.getCompletedDataRegionIds().containsAll(requiredDataRegionIds))
+          && !isRetainedSubscriptionPipe(staticMeta)) {
         PipeLogger.log(
             LOGGER::info,
             ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
@@ -296,6 +324,23 @@ public class PipeHeartbeatParser {
         }
       }
     }
+  }
+
+  private boolean isRetainedSubscriptionPipe(final PipeStaticMeta staticMeta) {
+    if (!PipeStaticMeta.isSubscriptionPipe(staticMeta.getPipeName())) {
+      return false;
+    }
+    final String topicName =
+        staticMeta.getSinkParameters().getStringOrDefault(PipeSinkConstant.SINK_TOPIC_KEY, "");
+    final String consumerGroupId =
+        staticMeta
+            .getSinkParameters()
+            .getStringOrDefault(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY, "");
+    return configManager
+        .getSubscriptionManager()
+        .getSubscriptionCoordinator()
+        .getSubscriptionInfo()
+        .shouldRetainSubscriptionPipe(consumerGroupId, topicName, staticMeta.visibleUnder(true));
   }
 
   /**

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -54,9 +55,11 @@ public class AsofJoinOn extends JoinOn {
   private final Expression asofExpression;
 
   private static final String joinErrMsg =
-      "The join expression of ASOF should be single Comparison or Logical 'AND'";
+      DataNodeQueryMessages
+          .EXCEPTION_THE_JOIN_EXPRESSION_OF_ASOF_SHOULD_BE_SINGLE_COMPARISON_OR_LOGICAL_AND_02DC061A;
   private static final String asofErrMsg =
-      "The main join expression of ASOF should only be Comparison '>, >=, <, <=', actual is %s";
+      DataNodeQueryMessages
+          .EXCEPTION_THE_MAIN_JOIN_EXPRESSION_OF_ASOF_SHOULD_ONLY_BE_COMPARISON_ACTUAL_IS_ARG_9A7F3C7F;
 
   public AsofJoinOn(Expression otherExpression, Expression asofExpression) {
     super(otherExpression);

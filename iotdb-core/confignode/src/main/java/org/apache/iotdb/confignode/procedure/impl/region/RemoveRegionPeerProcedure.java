@@ -39,6 +39,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -49,12 +51,15 @@ import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DROP_CONSENSUS_PIPES;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_PEER;
+import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.RESET_IOT_CONSENSUS_V1_PEER_LIST;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
 public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRegionPeerState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(RemoveRegionPeerProcedure.class);
   private static final int MAX_DELETE_OLD_REGION_PEER_RETRY = 3;
   private static final long DELETE_OLD_REGION_PEER_RETRY_INTERVAL_MS = 5_000;
+  private static final int MAX_FINALIZATION_RETRY = 3;
+  private static final long FINALIZATION_RETRY_INTERVAL_MS = 5_000;
   private TDataNodeLocation coordinator;
   private TDataNodeLocation targetDataNode;
   private transient int deleteOldRegionPeerAttempted = 0;
@@ -193,28 +198,77 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
           setNextState(REMOVE_REGION_LOCATION_CACHE);
           break;
         case REMOVE_REGION_LOCATION_CACHE:
-          handler.removeRegionLocation(regionId, targetDataNode);
+          tsStatus = handler.removeRegionLocation(regionId, targetDataNode);
+          if (tsStatus == null || tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
+            return retryStep(
+                state,
+                new ProcedureException(
+                    String.format(
+                        ProcedureMessages
+                            .EXCEPTION_FAILED_TO_FINALIZE_REGION_PEER_REMOVAL_FOR_ARG_AT_STATE_ARG_AFTER_ARG_ATTEMPTS_382EA168,
+                        regionId,
+                        state,
+                        getCycles() + 1)));
+          }
+          if (!handler.isIoTConsensusV1DataRegion(regionId)) {
+            return finishRemoval(state);
+          }
           setKillPoint(state);
-          LOGGER.info(ProcedureMessages.REMOVEREGIONPEER_STATE_SUCCESS, state);
-          LOGGER.info(
-              ProcedureMessages
-                  .PID_REMOVEREGION_SUCCESS_REGION_HAS_BEEN_REMOVED_FROM_DATANODE_PROCEDURE,
-              getProcId(),
-              regionId.getId(),
-              targetDataNode.getDataNodeId(),
-              CommonDateTimeUtils.convertMillisecondToDurationStr(
-                  System.currentTimeMillis() - getSubmittedTime()),
-              DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
-          return Flow.NO_MORE_STATE;
+          setNextState(RESET_IOT_CONSENSUS_V1_PEER_LIST);
+          break;
+        case RESET_IOT_CONSENSUS_V1_PEER_LIST:
+          if (!handler.resetPeerListAfterRemoveForIoTConsensusV1(regionId, targetDataNode)) {
+            // The replica metadata is already committed. Peer list reconciliation is best effort.
+            return retryStep(state, null);
+          }
+          return finishRemoval(state);
         default:
           throw new ProcedureException(ProcedureMessages.UNSUPPORTED_STATE + state.name());
       }
     } catch (Exception e) {
       LOGGER.error(ProcedureMessages.REMOVEREGIONPEER_STATE_FAILED, state, e);
+      if (state == REMOVE_REGION_LOCATION_CACHE) {
+        return retryStep(state, new ProcedureException(e));
+      }
+      if (state == RESET_IOT_CONSENSUS_V1_PEER_LIST) {
+        return retryStep(state, null);
+      }
       return Flow.NO_MORE_STATE;
     }
     LOGGER.info(ProcedureMessages.PID_REMOVEREGION_STATE_SUCCESS, getProcId(), state);
     return Flow.HAS_MORE_STATE;
+  }
+
+  private Flow retryStep(
+      RemoveRegionPeerState state, @Nullable ProcedureException failureOnExhaustion) {
+    if (getCycles() >= MAX_FINALIZATION_RETRY) {
+      if (failureOnExhaustion != null) {
+        setFailure(failureOnExhaustion);
+      }
+      return Flow.NO_MORE_STATE;
+    }
+    setNextState(state);
+    try {
+      Thread.sleep(FINALIZATION_RETRY_INTERVAL_MS);
+    } catch (InterruptedException e) {
+      // Preserve the step for recovery when this ConfigNode stops or loses leadership.
+      Thread.currentThread().interrupt();
+    }
+    return Flow.HAS_MORE_STATE;
+  }
+
+  private Flow finishRemoval(RemoveRegionPeerState state) {
+    setKillPoint(state);
+    LOGGER.info(ProcedureMessages.REMOVEREGIONPEER_STATE_SUCCESS, state);
+    LOGGER.info(
+        ProcedureMessages.PID_REMOVEREGION_SUCCESS_REGION_HAS_BEEN_REMOVED_FROM_DATANODE_PROCEDURE,
+        getProcId(),
+        regionId.getId(),
+        targetDataNode.getDataNodeId(),
+        CommonDateTimeUtils.convertMillisecondToDurationStr(
+            System.currentTimeMillis() - getSubmittedTime()),
+        DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
+    return Flow.NO_MORE_STATE;
   }
 
   @Override

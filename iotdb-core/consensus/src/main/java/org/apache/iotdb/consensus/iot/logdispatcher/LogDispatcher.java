@@ -190,8 +190,14 @@ public class LogDispatcher {
   public void offer(IndexedConsensusRequest request, boolean keepRequestsForSubscription) {
     // we don't need to serialize and offer request when replicaNum is 1.
     if (!threads.isEmpty()) {
-      request.buildSerializedRequests();
-      if (!keepRequestsForSubscription) {
+      // A request that deferred its serialization keeps only its source objects, which stay small,
+      // so that the entries waiting in the queues to be replicated do not retain their payloads.
+      // Such requests materialize their bytes when a batch is built instead.
+      final boolean serializationDeferred = request.hasDeferredRequests();
+      if (!serializationDeferred) {
+        request.buildSerializedRequests();
+      }
+      if (!keepRequestsForSubscription && !serializationDeferred) {
         request.clearRequests();
       }
       synchronized (this) {
@@ -654,6 +660,9 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, Batch logBatches) {
+      // A request that deferred its serialization keeps only its source objects while it is queued,
+      // so its bytes are materialized here, when the batch that carries them is built.
+      request.buildSerializedRequests();
       TLogEntry logEntry =
           new TLogEntry(
               request.getSerializedRequests(),

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.subscription.meta.consumer.SubscriptionProgressS
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletConverter;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusRegionRuntimeState;
@@ -34,6 +35,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionSeekReq;
+import org.apache.iotdb.session.subscription.util.PollTimer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,11 +112,26 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     return poll(consumerId, topicNames, maxBytes, Collections.emptyMap());
   }
 
+  @Override
   public List<SubscriptionEvent> poll(
       final String consumerId,
       final Set<String> topicNames,
       final long maxBytes,
       final Map<String, TopicProgress> progressByTopic) {
+    return poll(
+        consumerId,
+        topicNames,
+        maxBytes,
+        progressByTopic,
+        new PollTimer(System.currentTimeMillis(), SubscriptionAgent.receiver().remainingMs()));
+  }
+
+  List<SubscriptionEvent> poll(
+      final String consumerId,
+      final Set<String> topicNames,
+      final long maxBytes,
+      final Map<String, TopicProgress> progressByTopic,
+      final PollTimer timer) {
     LOGGER.debug(
         DataNodePipeMessages
             .PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_POLL_CALLED_CONSUMERID_TOPICNAMES_5F1F5175,
@@ -130,6 +147,10 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     boolean responseFull = false;
 
     for (final String topicName : topicNames) {
+      timer.update();
+      if (timer.isExpired()) {
+        break;
+      }
       final List<ConsensusPrefetchingQueue> queues =
           topicNameToConsensusPrefetchingQueues.get(topicName);
       if (Objects.isNull(queues) || queues.isEmpty()) {
@@ -143,13 +164,19 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       final List<ConsensusPrefetchingQueue> pollQueues =
           new ArrayList<>(buildPollOrderForAssignedQueues(assignedQueues, topicName));
       final int assignedQueueCount = pollQueues.size();
-      pollQueues.addAll(buildFallbackPollOrder(queues, assignedQueues));
+      if (SubscriptionConfig.getInstance().isSubscriptionConsensusFallbackPollingEnabled()) {
+        pollQueues.addAll(buildFallbackPollOrder(queues, assignedQueues));
+      }
       if (pollQueues.isEmpty()) {
         continue;
       }
       final int eventsBeforeTopicPoll = eventsToPoll.size();
 
       for (int queueIndex = 0; queueIndex < pollQueues.size(); queueIndex++) {
+        timer.update();
+        if (timer.isExpired()) {
+          break;
+        }
         final boolean isFallbackQueue = queueIndex >= assignedQueueCount;
         // Ownership remains the preferred polling path. Only borrow one ready event from another
         // region when every assigned region is currently empty, preventing a consumer from timing
@@ -170,7 +197,8 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
                 ? topicProgress.getRegionProgress().get(regionIdStr)
                 : null;
 
-        final SubscriptionEvent event = consensusQueue.poll(consumerId, regionProgress);
+        // All topics and regions share the receiver's remaining budget, including queue lock waits.
+        final SubscriptionEvent event = consensusQueue.poll(consumerId, regionProgress, timer);
         if (Objects.isNull(event)) {
           continue;
         }
@@ -749,6 +777,52 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     // Subscription setup teardown and rollback manage commit state after this call returns.
     // Persist it on close so asynchronous cleanup cannot delete state restored by a rollback.
     closeAndRemoveConsensusPrefetchingQueues(topicName, true, retainProgressAfterUnsubscribe);
+  }
+
+  public Set<String> getQueueRegionIds(final String topicName) {
+    synchronized (queueLifecycleLock) {
+      return topicNameToConsensusPrefetchingQueues
+          .getOrDefault(topicName, Collections.emptyList())
+          .stream()
+          .filter(queue -> !queue.isClosed())
+          .map(queue -> queue.getConsensusGroupId().toString())
+          .collect(Collectors.toSet());
+    }
+  }
+
+  public boolean hasQueueForRegion(final String topicName, final String regionId) {
+    synchronized (queueLifecycleLock) {
+      return topicNameToConsensusPrefetchingQueues
+          .getOrDefault(topicName, Collections.emptyList())
+          .stream()
+          .anyMatch(
+              queue ->
+                  !queue.isClosed() && regionId.equals(queue.getConsensusGroupId().toString()));
+    }
+  }
+
+  public void rollbackConsensusPrefetchingQueues(
+      final String topicName, final Set<String> existingRegionIds) {
+    final List<ConsensusPrefetchingQueue> queuesToClose = new ArrayList<>();
+    synchronized (queueLifecycleLock) {
+      final List<ConsensusPrefetchingQueue> queues =
+          topicNameToConsensusPrefetchingQueues.get(topicName);
+      if (Objects.isNull(queues)) {
+        return;
+      }
+      for (final ConsensusPrefetchingQueue queue : queues) {
+        if (!existingRegionIds.contains(queue.getConsensusGroupId().toString())) {
+          queuesToClose.add(queue);
+        }
+      }
+      queues.removeAll(queuesToClose);
+      if (queues.isEmpty()) {
+        topicNameToConsensusPrefetchingQueues.remove(topicName, queues);
+        topicConsumerLastPollMs.remove(topicName);
+        topicOwnershipSnapshots.remove(topicName);
+      }
+    }
+    queuesToClose.forEach(queue -> queue.closeAsync(false, false));
   }
 
   public void wakeUpPrefetchingQueues(final String topicName, final boolean isTableModel) {

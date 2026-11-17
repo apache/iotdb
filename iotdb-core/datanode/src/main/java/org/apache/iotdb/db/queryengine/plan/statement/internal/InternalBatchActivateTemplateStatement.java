@@ -31,7 +31,6 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 // This is only used for auto activate template on multi devices while inserting data
 public class InternalBatchActivateTemplateStatement extends Statement {
@@ -53,18 +52,18 @@ public class InternalBatchActivateTemplateStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
-    List<String> templatePaths = new ArrayList<>();
-    for (PartialPath path : deviceMap.keySet()) {
+    List<PartialPath> paths = new ArrayList<>();
+    for (PartialPath devicePath : deviceMap.keySet()) {
       Pair<Template, PartialPath> templateSetInfo =
-          clusterTemplateManager.checkTemplateSetInfo(path);
+          clusterTemplateManager.checkTemplateSetInfo(devicePath);
       if (templateSetInfo == null) {
         continue;
       }
-      templatePaths.addAll(templateSetInfo.left.getSchemaMap().keySet());
+      for (String measurement : templateSetInfo.left.getSchemaMap().keySet()) {
+        paths.add(devicePath.concatAsMeasurementPath(measurement));
+      }
     }
-    return deviceMap.keySet().stream()
-        .flatMap(path -> templatePaths.stream().map(path::concatAsMeasurementPath))
-        .collect(Collectors.toList());
+    return paths;
   }
 
   @Override

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -304,7 +304,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
-    List<TEndPoint> redirectInfo = new ArrayList<>();
+    List<TDataNodeLocation> redirectInfo = new ArrayList<>();
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
       // Data region for insert row node
@@ -317,7 +317,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
                   null);
       // Collect redirectInfo
-      redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
+      redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0));
       InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
       if (tmpNode != null) {
         tmpNode.addOneInsertRowNode(insertRowNode, i);

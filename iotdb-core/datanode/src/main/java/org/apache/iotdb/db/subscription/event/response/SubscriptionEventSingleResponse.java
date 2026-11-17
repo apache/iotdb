@@ -41,7 +41,7 @@ import java.util.Objects;
 public class SubscriptionEventSingleResponse
     implements SubscriptionEventResponse<CachedSubscriptionPollResponse> {
 
-  private final CachedSubscriptionPollResponse response;
+  private volatile CachedSubscriptionPollResponse response;
 
   public SubscriptionEventSingleResponse(
       final short responseType,
@@ -107,6 +107,19 @@ public class SubscriptionEventSingleResponse
   @Override
   public void invalidateCurrentResponseByteBuffer() {
     SubscriptionPollResponseCache.getInstance().invalidate(response);
+  }
+
+  public void replaceCurrentPayload(final SubscriptionPollPayload payload) {
+    final CachedSubscriptionPollResponse previous = response;
+    SubscriptionPollResponseCache.getInstance().invalidate(previous);
+    previous.closeMemoryBlock();
+    response =
+        new CachedSubscriptionPollResponse(
+            previous.getResponseType(),
+            payload,
+            previous.getCommitContext(),
+            previous.isTimeSelected(),
+            previous.getTimeSelectedByTable());
   }
 
   @Override

@@ -446,6 +446,11 @@ public abstract class InsertNode extends SearchNode {
     return measurements == null || !hasValidMeasurements();
   }
 
+  public boolean shouldSkipWrite() {
+    // Table rows remain writable through their time column after every FIELD is rejected.
+    return allMeasurementFailed() && columnCategories == null;
+  }
+
   // endregion
 
   // region progress index

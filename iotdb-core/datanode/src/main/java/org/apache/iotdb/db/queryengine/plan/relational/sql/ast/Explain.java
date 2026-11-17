@@ -53,7 +53,8 @@ public class Explain extends Statement {
     super(null);
     this.statement =
         requireNonNull(statement, DataNodeQueryMessages.EXCEPTION_STATEMENT_IS_NULL_693A0622);
-    this.outputFormat = requireNonNull(outputFormat, "outputFormat is null");
+    this.outputFormat =
+        requireNonNull(outputFormat, DataNodeQueryMessages.EXCEPTION_OUTPUTFORMAT_IS_NULL_7D93060B);
   }
 
   public Explain(NodeLocation location, Statement statement) {
@@ -67,7 +68,8 @@ public class Explain extends Statement {
     super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.statement =
         requireNonNull(statement, DataNodeQueryMessages.EXCEPTION_STATEMENT_IS_NULL_693A0622);
-    this.outputFormat = requireNonNull(outputFormat, "outputFormat is null");
+    this.outputFormat =
+        requireNonNull(outputFormat, DataNodeQueryMessages.EXCEPTION_OUTPUTFORMAT_IS_NULL_7D93060B);
   }
 
   public Statement getStatement() {

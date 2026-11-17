@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -1125,6 +1126,22 @@ public class IoTDBAlignByDeviceIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void selectWithNonExistMeasurementInAlwaysTrueWhereClause() {
+    // root.vehicle.d1 has no s1, so its predicate is always true, while root.vehicle.d0 is still
+    // filtered by its own s1
+    resultSetEqualTest(
+        "select s0 from root.vehicle.* where s1 is null align by device",
+        new String[] {"Time", "Device", "s0"},
+        new String[] {
+          "106,root.vehicle.d0,99,", "1,root.vehicle.d1,999,", "1000,root.vehicle.d1,888,",
+        });
+    resultSetEqualTest(
+        "select count(s0) from root.vehicle.* where s1 is null align by device",
+        new String[] {"Device", "count(s0)"},
+        new String[] {"root.vehicle.d0,1,", "root.vehicle.d1,2,"});
   }
 
   /**

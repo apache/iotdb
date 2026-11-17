@@ -32,7 +32,7 @@ public class DescribedSchema {
   private final List<Field> fields;
 
   private DescribedSchema(List<Field> fields) {
-    requireNonNull(fields, "fields is null");
+    requireNonNull(fields, UdfApiMessages.EXCEPTION_FIELDS_IS_NULL_04C032C9);
     if (fields.isEmpty()) {
       throw new IllegalArgumentException(UdfApiMessages.DESCRIBED_SCHEMA_HAS_NO_FIELDS);
     }

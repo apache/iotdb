@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
@@ -46,6 +47,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.PathUtils.unQualifyDatabaseName;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
@@ -53,6 +55,12 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigT
 public class SchemaValidator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaValidator.class);
+
+  static boolean isAutoCreateSchemaAllowed(final MPPQueryContext context) {
+    return context == null
+        || context.getSession() == null
+        || context.getSession().isEnableAutoCreateSchema();
+  }
 
   public static void validate(
       ISchemaFetcher schemaFetcher, InsertBaseStatement insertStatement, MPPQueryContext context) {
@@ -89,6 +97,26 @@ public class SchemaValidator {
       }
       insertStatement.validateTableSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
+      if (innerInsertStatement.hasFailedMeasurements()) {
+        final boolean hasValidFields;
+        if (innerInsertStatement instanceof InsertRowsStatement) {
+          final InsertRowsStatement rows = (InsertRowsStatement) innerInsertStatement;
+          final List<InsertRowStatement> validRows =
+              rows.getInsertRowStatementList().stream()
+                  .filter(InsertBaseStatement::hasValidMeasurements)
+                  .collect(Collectors.toList());
+          hasValidFields = !validRows.isEmpty();
+          if (hasValidFields) {
+            rows.setInsertRowStatementList(validRows);
+          }
+        } else {
+          hasValidFields = innerInsertStatement.hasValidMeasurements();
+        }
+        if (!hasValidFields) {
+          throw new SemanticException(
+              DataNodeQueryMessages.NO_COLUMN_OTHER_THAN_TIME_PRESENT_PLEASE_CHECK);
+        }
+      }
       insertStatement.validateDeviceSchema(metadata, context);
       insertStatement.removeAttributeColumns();
     } catch (final QueryProcessException e) {
@@ -167,7 +195,7 @@ public class SchemaValidator {
       final List<Boolean> isAlignedList,
       final boolean autoCreateSchema,
       final MPPQueryContext context) {
-    return autoCreateSchema
+    return autoCreateSchema && isAutoCreateSchemaAllowed(context)
         ? schemaFetcher.fetchSchemaListWithAutoCreate(
             devicePaths,
             measurements,

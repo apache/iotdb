@@ -781,9 +781,11 @@ public class PartitionManager {
         allotmentMap.put(database, delta);
 
       } else if (allocatedRegionGroupCount
-              == filterRegionGroupThroughStatus(database, RegionGroupStatus.Disabled).size()
+              == filterRegionGroupThroughStatus(database, RegionGroupStatus.Disabled).stream()
+                  .filter(replicaSet -> replicaSet.getRegionId().getType() == consensusGroupType)
+                  .count()
           && allocatedRegionGroupCount < maxRegionGroupNum) {
-        // 3. All RegionGroups in the specified Database are disabled currently
+        // 3. All RegionGroups of the requested type in the specified Database are disabled.
         allotmentMap.put(database, 1);
       }
     }
@@ -861,6 +863,17 @@ public class PartitionManager {
     return partitionInfo.getAllReplicaSets(type).stream()
         .collect(
             Collectors.toMap(TRegionReplicaSet::getRegionId, regionReplicaSet -> regionReplicaSet));
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param type The specified TConsensusGroupType
+   * @return Sum of N * (N - 1) over the Regions of the specified type, without copying any replica
+   *     set, so it is cheap enough to call on every pipe meta sync round
+   */
+  public long getReplicaPairCount(TConsensusGroupType type) {
+    return partitionInfo.getReplicaPairCount(type);
   }
 
   /**

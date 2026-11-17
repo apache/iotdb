@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -48,12 +49,17 @@ public abstract class AbstractImportSchema extends AbstractSchemaTool implements
           importSchemaFromCsvFile(file);
         } else {
           ioTPrinter.println(
-              file.getName()
-                  + " : The file name must end with \"csv\" when sql_dialect tree or \"sql\" when sql_dialect table!");
+              String.format(
+                  CliMessages
+                      .MESSAGE_ARG_THE_FILE_NAME_MUST_END_WITH_CSV_WHEN_SQL_DIALECT_TREE_OR_SQL_WHEN_SQL_DIALECT_TABLE_7A2FD49A,
+                  String.valueOf(file.getName())));
         }
       }
     } catch (Exception e) {
-      ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_UNEXPECTED_ERROR_OCCURRED_ARG_402FA331,
+              String.valueOf(e.getMessage())));
     }
   }
 
@@ -73,7 +79,10 @@ public abstract class AbstractImportSchema extends AbstractSchemaTool implements
               thread.join();
             } catch (InterruptedException e) {
               Thread.currentThread().interrupt();
-              ioTPrinter.println("ImportData thread join interrupted: " + e.getMessage());
+              ioTPrinter.println(
+                  String.format(
+                      CliMessages.EXCEPTION_IMPORTDATA_THREAD_JOIN_INTERRUPTED_ARG_B94FC04B,
+                      String.valueOf(e.getMessage())));
             }
           });
       ioTPrinter.println(Constants.IMPORT_COMPLETELY);

@@ -54,7 +54,8 @@ public class TableDeviceCacheAttributeGuard {
   }
 
   public void addFetchedRegion(final Integer schemaRegionId) {
-    fetchedSchemaRegionIds2LargestVersionAndDatabaseMap.put(
+    // Later schema reads must not let delayed updates bypass the accepted version.
+    fetchedSchemaRegionIds2LargestVersionAndDatabaseMap.putIfAbsent(
         schemaRegionId, new Pair<>(Long.MIN_VALUE, null));
   }
 

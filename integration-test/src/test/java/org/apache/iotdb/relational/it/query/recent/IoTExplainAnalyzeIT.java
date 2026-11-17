@@ -21,6 +21,7 @@
 
 package org.apache.iotdb.relational.it.query.recent;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
@@ -63,8 +64,6 @@ public class IoTExplainAnalyzeIT {
         "INSERT INTO testtb VALUES(1000, 'd2', 300.0)",
       };
 
-  private static final String dropDbSqls = "DROP DATABASE IF EXISTS " + DATABASE_NAME;
-
   @BeforeClass
   public static void setUpClass() {
     Locale.setDefault(Locale.ENGLISH);
@@ -92,7 +91,7 @@ public class IoTExplainAnalyzeIT {
   public void tearDown() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute(dropDbSqls);
+      TestUtils.dropDatabaseWithRetry(statement, DATABASE_NAME);
     } catch (Exception e) {
       fail(e.getMessage());
     }

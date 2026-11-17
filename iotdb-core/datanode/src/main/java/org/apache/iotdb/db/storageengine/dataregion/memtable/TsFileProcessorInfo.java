@@ -20,21 +20,25 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
+import org.apache.iotdb.db.storageengine.rescon.memory.WriteMemoryBlock;
 
 /** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {
 
-  /** Once tspInfo updated, report to storageGroupInfo that this TSP belongs to. */
-  private final DataRegionInfo dataRegionInfo;
-
   /** memory occupation of unsealed TsFileResource, ChunkMetadata, WAL */
-  private long memCost;
+  private final WriteMemoryBlock memoryBlock;
 
   private final TsFileProcessorInfoMetrics metrics;
 
   public TsFileProcessorInfo(DataRegionInfo dataRegionInfo) {
-    this.dataRegionInfo = dataRegionInfo;
-    this.memCost = 0L;
+    this(dataRegionInfo, "TsFileMetadata");
+  }
+
+  public TsFileProcessorInfo(DataRegionInfo dataRegionInfo, String tsFilePath) {
+    this.memoryBlock =
+        dataRegionInfo
+            .getWriteMemoryManager()
+            .createBlock(tsFilePath, WriteMemoryBlock.Category.TSFILE_METADATA);
     this.metrics =
         new TsFileProcessorInfoMetrics(dataRegionInfo.getDataRegion().getDatabaseName(), this);
     MetricService.getInstance().addMetricSet(metrics);
@@ -42,25 +46,26 @@ public class TsFileProcessorInfo {
 
   /** called in each insert */
   public void addTSPMemCost(long cost) {
-    memCost += cost;
-    dataRegionInfo.addStorageGroupMemCost(cost);
+    memoryBlock.add(cost);
   }
 
   /** called when meet exception */
   public void releaseTSPMemCost(long cost) {
-    dataRegionInfo.releaseStorageGroupMemCost(cost);
-    memCost -= cost;
+    memoryBlock.release(cost);
   }
 
   /** called when closing TSP */
   public void clear() {
-    dataRegionInfo.releaseStorageGroupMemCost(memCost);
-    memCost = 0L;
+    memoryBlock.close();
     MetricService.getInstance().removeMetricSet(metrics);
+  }
+
+  public WriteMemoryBlock getMemoryBlock() {
+    return memoryBlock;
   }
 
   /** get memCost */
   public long getMemCost() {
-    return memCost;
+    return memoryBlock.getAccountedMemoryInBytes();
   }
 }

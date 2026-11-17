@@ -262,7 +262,11 @@ public class IrTypeAnalyzer {
             context,
             whenClause.getOperand(),
             BOOLEAN,
-            (actualType) -> String.format("When clause operand must be boolean: %s", actualType));
+            (actualType) ->
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_WHEN_CLAUSE_OPERAND_MUST_BE_BOOLEAN_ARG_16BDCAFD,
+                    actualType));
       }
 
       List<Expression> expressions = new ArrayList<>();
@@ -273,7 +277,10 @@ public class IrTypeAnalyzer {
 
       Type type =
           coerceToSingleType(
-              context, expressions, "All result types and default result type must be the same");
+              context,
+              expressions,
+              DataNodeQueryMessages
+                  .EXCEPTION_ALL_RESULT_TYPES_AND_DEFAULT_RESULT_TYPE_MUST_BE_THE_SAME_E84986E8);
       setExpressionType(node, type);
 
       for (WhenClause whenClause : node.getWhenClauses()) {

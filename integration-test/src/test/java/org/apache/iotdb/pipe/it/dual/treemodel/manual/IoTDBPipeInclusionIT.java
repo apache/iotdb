@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -41,7 +42,7 @@ import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
-public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
+public class IoTDBPipeInclusionIT extends AbstractPipeTreeModelManualSharedClusterIT {
   @Test
   public void testPureSchemaInclusion() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -108,7 +109,10 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
               "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,ZSTD,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
+          receiverEnv,
+          "select * from root.ln.**",
+          "Time,root.ln.wf01.wt01.status,",
+          Collections.emptySet());
     }
   }
 
@@ -179,8 +183,12 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
               "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"),
           null);
 
+      // Keep the header independent of wildcard expansion order.
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
+          receiverEnv,
+          "select wf01.wt01.status, wf02.wt01.status from root.ln",
+          "Time,root.ln.wf01.wt01.status,root.ln.wf02.wt01.status,",
+          Collections.emptySet());
     }
   }
 
@@ -254,10 +262,15 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
           null);
 
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
+          receiverEnv,
+          "select * from root.ln.**",
+          "Time,root.ln.wf01.wt01.status,",
+          Collections.emptySet());
     }
   }
 
+  // A pipe that includes all events except auth must leave a newly created sender user absent on
+  // the receiver throughout the observation period.
   @Test
   public void testAuthExclusion() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -290,13 +303,18 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      TestUtils.executeNonQuery(senderEnv, "create user `ln_write_user` 'write_pwd123456'", null);
+      TestUtils.executeNonQuery(senderEnv, "create user `ln_write_user` 'Write_pwd!123456'", null);
 
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "list user", "user,", Collections.singleton("root,"));
+          receiverEnv,
+          "list user",
+          ColumnHeaderConstant.USER_ID + "," + ColumnHeaderConstant.USER + ",",
+          Collections.singleton("0,root,"));
     }
   }
 
+  // An auth-only pipe with a root.ln path filter must replicate the user and retain global grants,
+  // while limiting the replicated data privileges to root.ln.**.
   @Test
   public void testAuthInclusionWithPattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -332,19 +350,26 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "create user `ln_write_user` 'write_pwd123456'",
+              "create user `ln_write_user` 'Write_pwd!123456'",
               "grant system,security on root.** to USER ln_write_user with grant option",
               "GRANT READ_DATA, WRITE_DATA ON root.** TO USER ln_write_user;"),
           null);
 
-      TestUtils.assertDataAlwaysOnEnv(
+      TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "LIST PRIVILEGES OF USER ln_write_user",
-          "ROLE,PATH,PRIVILEGES,GRANT OPTION,",
+          ColumnHeaderConstant.ROLE
+              + ","
+              + ColumnHeaderConstant.SCOPE
+              + ","
+              + ColumnHeaderConstant.PRIVILEGES
+              + ","
+              + ColumnHeaderConstant.GRANT_OPTION
+              + ",",
           new HashSet<>(
               Arrays.asList(
-                  ",root.**,SYSTEM,true,",
-                  ",root.**,SECURITY,true,",
+                  ",,SYSTEM,true,",
+                  ",,SECURITY,true,",
                   ",root.ln.**,READ_DATA,false,",
                   ",root.ln.**,WRITE_DATA,false,")));
     }

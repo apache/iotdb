@@ -130,4 +130,17 @@ public final class MetricsMessages {
   public static final String LOG_DETECTED_ERROR_TAKING_METRIC_TIMER_SNAPSHOT_WILL_DISCARD_METRIC_B7154169 = "Detected an error when taking metric timer snapshot, will discard this metric";
   public static final String LOG_PROMETHEUSREPORTER_FAILED_TO_UPDATE_METRICS_SNAPSHOT_ASYNCHRONOUSLY_F19FE4E3 = "PrometheusReporter failed to update metrics snapshot asynchronously";
 
+  public static final String
+      EXCEPTION_FAILED_TO_COLLECT_WINDOWS_DISK_METRICS_POWERSHELL_EXIT_CODE_ARG_E9F65DC2 =
+          "Failed to collect windows disk metrics, powershell exit code: %s";
+
+  public static final String EXCEPTION_FAILED_TO_STATISTIC_THE_SIZE_OF_ARG_BECAUSE_DC9B94FB =
+      "Failed to statistic the size of {}, because";
+
+  public static final String
+      EXCEPTION_ACCESS_DENIED_WHILE_COLLECTING_WINDOWS_DISK_METRICS_THROUGH_POWERSHELL_CIM_DBA4F845 =
+          "Access denied while collecting windows disk metrics through PowerShell/CIM";
+
+  public static final String EXCEPTION_IS_ALREADY_USED_FOR_A_DIFFERENT_TYPE_OF_NAME_BBAF0FFC =
+      " is already used for a different type of name";
 }

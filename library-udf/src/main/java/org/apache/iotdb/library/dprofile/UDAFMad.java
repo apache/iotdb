@@ -21,6 +21,8 @@ package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.ExactOrderStatistics;
 import org.apache.iotdb.library.dprofile.util.MADSketch;
+import org.apache.iotdb.library.dprofile.util.Mad;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -29,6 +31,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /** calculate the exact or approximate median absolute deviation (mad). */
@@ -45,7 +48,8 @@ public class UDAFMad implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             error -> (double) error >= 0 && (double) error < 1,
-            "error has to be greater than or equal to 0 and less than 1.",
+            LibraryUdfMessages
+                .EXCEPTION_ERROR_HAS_TO_BE_GREATER_THAN_OR_EQUAL_TO_0_AND_LESS_THAN_1_2A840865,
             validator.getParameters().getDoubleOrDefault("error", 0));
   }
 
@@ -76,7 +80,13 @@ public class UDAFMad implements UDTF {
     if (exact) {
       collector.putDouble(0, statistics.getMad());
     } else {
-      collector.putDouble(0, sketch.getMad().result);
+      Mad mad = sketch.getMad();
+      if (mad.errorBound == Double.MAX_VALUE) {
+        throw new UDFException(
+            LibraryUdfMessages
+                .EXCEPTION_MAD_SKETCH_CANNOT_PRODUCE_A_RESULT_WITH_THE_GIVEN_ERROR_PLEASE_RETRY_WITH_A_SMALLER_ERROR_OR_USE_ERROR_0_FOR_THE_EXACT_RESULT_E168B5FE);
+      }
+      collector.putDouble(0, mad.result);
     }
   }
 }

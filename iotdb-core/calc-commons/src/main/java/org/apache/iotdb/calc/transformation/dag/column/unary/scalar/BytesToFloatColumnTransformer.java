@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
@@ -70,8 +71,10 @@ public class BytesToFloatColumnTransformer extends UnaryColumnTransformer {
         String problematicValue = generateOriginalValue(inputBytes, inputType);
         String errorMessage =
             String.format(
-                "Failed to execute function '%s' due to an invalid input format. Problematic value: %s",
-                functionName, problematicValue);
+                CalcMessages
+                    .EXCEPTION_FAILED_TO_EXECUTE_FUNCTION_ARG_DUE_TO_AN_INVALID_INPUT_FORMAT_PROBLEMATIC_VALUE_ARG_58DDBF95,
+                functionName,
+                problematicValue);
         throw new SemanticException(errorMessage);
       }
     }

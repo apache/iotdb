@@ -36,6 +36,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.iotdb.commons.client.AbstractConfigNodeInfo.CONFIG_REGION_ID;
+
 public class PipeConfigRegionSourceMetrics implements IMetricSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigRegionSourceMetrics.class);
@@ -117,7 +119,7 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
   //////////////////////////// Show pipes ////////////////////////////
 
   public long getRemainingEventCount(final String pipeName, final long creationTime) {
-    final String taskID = pipeName + "_" + creationTime;
+    final String taskID = pipeName + "_" + CONFIG_REGION_ID.getId() + "_" + creationTime;
     final IoTDBConfigRegionSource extractor = extractorMap.get(taskID);
     // Do not print log to allow collection when config region extractor does not exists
     if (Objects.isNull(extractor)) {

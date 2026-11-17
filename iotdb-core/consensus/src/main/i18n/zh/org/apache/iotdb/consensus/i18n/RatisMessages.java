@@ -130,4 +130,7 @@ public final class RatisMessages {
   public static final String EXCEPTION_ARG_FAILED_TO_LOAD_SNAPSHOT_FROM_ARG_A12E23D7 =
       "%s：从 %s 加载快照失败";
 
+  public static final String
+      EXCEPTION_RAFT_LOG_SUMMARY_GROUP_ARG_TOTAL_SIZE_ARG_FILES_ARG_FB26547E =
+          "[Raft 日志概览]：共识组=%s，总大小=%d，文件=%s";
 }

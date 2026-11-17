@@ -373,7 +373,10 @@ public class FileUtils {
     }
 
     final String fromTo =
-        String.format("from %s to %s", source.getAbsolutePath(), target.getAbsolutePath());
+        String.format(
+            UtilMessages.EXCEPTION_FROM_ARG_TO_ARG_D2758D41,
+            source.getAbsolutePath(),
+            target.getAbsolutePath());
     LOGGER.info(UtilMessages.MOVE_FILE_START, fromTo);
 
     // Prepare the xxx.unfinished File, delete it if it's already exist

@@ -32,6 +32,9 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.v4.ITsFileReader;
+import org.apache.tsfile.read.v4.TsFileReaderBuilder;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -45,6 +48,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -76,6 +83,7 @@ public class IoTDBCopyToTsFileIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockLineNumber(2);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
   }
@@ -95,6 +103,66 @@ public class IoTDBCopyToTsFileIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testExplainCopyTable() throws Exception {
+    assertExplainCopyToContainsNodes("explain", "table1");
+  }
+
+  @Test
+  public void testExplainCopyQueryJson() throws Exception {
+    assertExplainCopyToContainsNodes(
+        "explain (format json)", "(select * from table1 order by time desc limit 3)");
+  }
+
+  @Test
+  public void testExplainAnalyzeCopyTable() throws Exception {
+    assertExplainCopyToContainsNodes("explain analyze", "table1(time, tag1, tag2, s1, s2)");
+  }
+
+  @Test
+  public void testExplainAnalyzeCopyQueryJson() throws Exception {
+    assertExplainCopyToContainsNodes(
+        "explain analyze verbose (format json)",
+        "(select * from table1 order by time desc limit 3)");
+  }
+
+  private void assertExplainCopyToContainsNodes(String explainPrefix, String source)
+      throws Exception {
+    File targetDirectory = Files.createTempDirectory("iotdb-explain-copy-to").toFile();
+    File targetFile = new File(targetDirectory, "result.tsfile");
+    String targetPath = targetFile.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+    String exportDirectoryPath =
+        targetDirectory.getAbsolutePath().replace("\\", "\\\\").replace("'", "''");
+
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      session.executeNonQueryStatement(
+          "set configuration \"copy_to_allowed_export_dirs\"='" + exportDirectoryPath + "'");
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement(
+              explainPrefix
+                  + " copy "
+                  + source
+                  + " to '"
+                  + targetPath
+                  + "' (memory_threshold 1000000)")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        StringBuilder output = new StringBuilder();
+        while (iterator.next()) {
+          output.append(iterator.getString(1)).append('\n');
+        }
+        String result = output.toString();
+        Assert.assertTrue(result, result.contains("TableScan"));
+        Assert.assertTrue(result, result.contains("CopyTo"));
+      } finally {
+        session.executeNonQueryStatement("set configuration \"copy_to_allowed_export_dirs\"=''");
+      }
+    } finally {
+      Files.deleteIfExists(targetFile.toPath());
+      Files.deleteIfExists(targetDirectory.toPath());
+    }
   }
 
   @Test
@@ -741,6 +809,123 @@ public class IoTDBCopyToTsFileIT {
         }
       }
     }
+  }
+
+  @Test
+  public void testCopyWithDescendingTime() throws Exception {
+    assertCopyToRows(
+        "COPY (SELECT time, tag1, tag2, s1, s2 FROM table1 ORDER BY time DESC, tag1)"
+            + " TO 'copy_descending_time.tsfile' WITH (MEMORY_THRESHOLD 1000000)",
+        List.of("tag1", "tag2"),
+        "1,t1_1,t2,1,1",
+        "2,t1_1,t2,2,2",
+        "3,t1_1,t2,3,3",
+        "1,t1_2,t2,1,1",
+        "2,t1_2,t2,2,2",
+        "3,t1_2,t2,3,3");
+  }
+
+  @Test
+  public void testCopyWithUnorderedTimeByField() throws Exception {
+    assertCopyToRows(
+        "COPY (SELECT time, tag1, tag2, s1, s2 FROM table1 ORDER BY s1 % 2, time DESC, tag1)"
+            + " TO 'copy_field_order.tsfile' WITH (MEMORY_THRESHOLD 1000000)",
+        List.of("tag1", "tag2"),
+        "1,t1_1,t2,1,1",
+        "2,t1_1,t2,2,2",
+        "3,t1_1,t2,3,3",
+        "1,t1_2,t2,1,1",
+        "2,t1_2,t2,2,2",
+        "3,t1_2,t2,3,3");
+  }
+
+  @Test
+  public void testCopyWithDescendingTimeAndLimitOffset() throws Exception {
+    assertCopyToRows(
+        "COPY (SELECT time, tag1, tag2, s1, s2 FROM table1"
+            + " ORDER BY time DESC, tag1 OFFSET 1 LIMIT 3) TO 'copy_descending_limit.tsfile'"
+            + " WITH (MEMORY_THRESHOLD 1000000)",
+        List.of("tag1", "tag2"),
+        "2,t1_1,t2,2,2",
+        "2,t1_2,t2,2,2",
+        "3,t1_2,t2,3,3");
+  }
+
+  @Test
+  public void testCopyWithDescendingAliasedTimeAndReorderedTags() throws Exception {
+    assertCopyToRows(
+        "COPY (SELECT time AS t, tag1 AS renamed_tag1, tag2 AS renamed_tag2, s1, s2"
+            + " FROM table1 ORDER BY t DESC, renamed_tag1)"
+            + " TO 'copy_descending_alias.tsfile'"
+            + " WITH (TIME t, TAGS(renamed_tag2, renamed_tag1), MEMORY_THRESHOLD 1000000)",
+        List.of("renamed_tag2", "renamed_tag1"),
+        "1,t2,t1_1,1,1",
+        "2,t2,t1_1,2,2",
+        "3,t2,t1_1,3,3",
+        "1,t2,t1_2,1,1",
+        "2,t2,t1_2,2,2",
+        "3,t2,t1_2,3,3");
+  }
+
+  @Test
+  public void testCopyWithDescendingTimeWithoutTags() throws Exception {
+    assertCopyToRows(
+        "COPY (SELECT time, s1, s2 FROM table1 WHERE tag1 = 't1_1' ORDER BY time DESC)"
+            + " TO 'copy_descending_no_tags.tsfile' WITH (MEMORY_THRESHOLD 1000000)",
+        Collections.emptyList(),
+        "1,1,1",
+        "2,2,2",
+        "3,3,3");
+  }
+
+  private void assertCopyToRows(String sql, List<String> tagColumns, String... expectedRows)
+      throws Exception {
+    long deviceCount;
+    try (ITableSession session =
+            EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME);
+        SessionDataSet dataSet = session.executeQueryStatement(sql)) {
+      SessionDataSet.DataIterator iterator = dataSet.iterator();
+      Assert.assertTrue(iterator.next());
+      targetFilePath = iterator.getString(1);
+      Assert.assertTrue(new File(targetFilePath).isFile());
+      Assert.assertEquals(expectedRows.length, iterator.getLong(2));
+      deviceCount = iterator.getLong(3);
+      Assert.assertTrue(iterator.getLong(4) > 0);
+      Assert.assertEquals("table1", iterator.getString(5));
+      Assert.assertEquals(tagColumns.toString(), iterator.getString(7));
+      Assert.assertFalse(iterator.next());
+    }
+
+    List<String> columns = new ArrayList<>(tagColumns);
+    columns.add("s1");
+    columns.add("s2");
+    List<String> actualRows = new ArrayList<>();
+    Map<List<String>, Long> lastTimeByDevice = new HashMap<>();
+    try (ITsFileReader reader = new TsFileReaderBuilder().file(new File(targetFilePath)).build();
+        ResultSet result = reader.query("table1", columns, Long.MIN_VALUE, Long.MAX_VALUE)) {
+      while (result.next()) {
+        long time = result.getLong(1);
+        StringBuilder row = new StringBuilder(Long.toString(time));
+        List<String> tags = new ArrayList<>();
+        for (int i = 0; i < tagColumns.size(); i++) {
+          String tag = result.isNull(i + 2) ? null : result.getString(i + 2);
+          tags.add(tag);
+          row.append(',').append(tag);
+        }
+        Long lastTime = lastTimeByDevice.put(tags, time);
+        if (lastTime != null) {
+          Assert.assertTrue(time > lastTime);
+        }
+        row.append(',').append(result.getInt(tagColumns.size() + 2));
+        row.append(',').append(result.getInt(tagColumns.size() + 3));
+        actualRows.add(row.toString());
+      }
+    }
+    Assert.assertEquals(deviceCount, lastTimeByDevice.size());
+    List<String> expected = new ArrayList<>(Arrays.asList(expectedRows));
+    Collections.sort(expected);
+    Collections.sort(actualRows);
+    Assert.assertEquals(expected, actualRows);
   }
 
   @Test

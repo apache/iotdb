@@ -166,18 +166,20 @@ public class UDAFPatternMatch implements UDAF {
         .validate(
             (UDFParameterValidator.SingleObjectValidationRule)
                 payload -> ((Long[]) payload).length > 1,
-            "Illegal parameter, timePattern size must larger 1.",
+            LibraryUdfMessages.EXCEPTION_ILLEGAL_PARAMETER_TIMEPATTERN_SIZE_MUST_LARGER_1_35FEDD60,
             timePattern)
         .validate(
             (UDFParameterValidator.SingleObjectValidationRule)
                 payload ->
                     IntStream.range(1, ((Long[]) payload).length)
                         .allMatch(i -> ((Long[]) payload)[i] > ((Long[]) payload)[i - 1]),
-            "Illegal parameter, timePattern value must be in ascending order.",
+            LibraryUdfMessages
+                .EXCEPTION_ILLEGAL_PARAMETER_TIMEPATTERN_VALUE_MUST_BE_IN_ASCENDING_ORDER_C07440BB,
             timePattern)
         .validate(
             payload -> ((Long[]) payload[0]).length == ((Double[]) payload[1]).length,
-            "Illegal parameter, timePattern size must equals valuePattern size.",
+            LibraryUdfMessages
+                .EXCEPTION_ILLEGAL_PARAMETER_TIMEPATTERN_SIZE_MUST_EQUALS_VALUEPATTERN_SIZE_00A547B1,
             timePattern,
             valuePattern);
   }

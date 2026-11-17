@@ -800,6 +800,16 @@ public class LoadCache {
   }
 
   /**
+   * Get the latest leader of the specified RegionGroup.
+   *
+   * @return the leader ID, or -1 if the cache is absent or no leader has been selected
+   */
+  public int getRegionLeaderId(TConsensusGroupId regionGroupId) {
+    ConsensusGroupCache cache = consensusGroupCacheMap.get(regionGroupId);
+    return cache == null ? ConsensusGroupCache.UN_READY_LEADER_ID : cache.getLeaderId();
+  }
+
+  /**
    * Safely get the latest RegionLeaderMap.
    *
    * @return Map<RegionGroupId, leaderId>, leaderId will be -1 if the RegionGroup has no leader yet.

@@ -27,8 +27,9 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -46,6 +47,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
+import static org.apache.iotdb.db.it.utils.TestUtils.dropDatabaseWithRetry;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -57,13 +59,32 @@ import static org.junit.Assert.fail;
 public class IoTDBSimpleQueryTableViewIT {
   private static final String DATABASE_NAME = "test";
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() throws SQLException {
+    // Remove each method's views before deleting their Tree-model source database.
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      dropDatabaseWithRetry(statement, DATABASE_NAME);
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      boolean databaseExists;
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.sg1")) {
+        databaseExists = resultSet.next();
+      }
+      if (databaseExists) {
+        statement.execute("DELETE DATABASE root.sg1");
+      }
+    }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
