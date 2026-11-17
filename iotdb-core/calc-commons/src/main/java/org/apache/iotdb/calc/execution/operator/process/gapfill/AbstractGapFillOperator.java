@@ -224,7 +224,9 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
   }
 
   private boolean hasRemainingGapInPreviousGroup() {
-    return lastGroupKey != null && currentTime < endTime;
+    // endTime is an inclusive bound (see fillGaps and the group-switch flush above), so a gap
+    // row at exactly endTime still needs to be emitted
+    return lastGroupKey != null && currentTime <= endTime;
   }
 
   @Override

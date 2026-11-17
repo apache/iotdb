@@ -392,4 +392,156 @@ public class GapFillWoGroupWoMoOperatorTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testGapFillWoGroupWoMoOperator3() {
+    // The last real row sits exactly one step before the inclusive endTime, so the gap fill
+    // iterator lands exactly on endTime after processing it. The gap-filled row at endTime
+    // must still be emitted (endTime is an inclusive bound).
+    final long[] expectedTimeArray =
+        new long[] {
+          1728849600000L,
+          1728853200000L,
+          1728856800000L,
+          1728860400000L,
+          1728864000000L,
+          1728867600000L,
+          1728871200000L,
+          1728874800000L,
+        };
+    final double[] expectedValueArray =
+        new double[] {
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+        };
+    final boolean[] expectedValueIsNull =
+        new boolean[] {
+          true, true, true, true, true, true, false, true,
+        };
+
+    // Construct operator tree
+    QueryId queryId = new QueryId("stub_query");
+
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    PlanNodeId planNodeId1 = new PlanNodeId("1");
+    driverContext.addOperatorContext(1, planNodeId1, MergeSortOperator.class.getSimpleName());
+    PlanNodeId planNodeId2 = new PlanNodeId("2");
+    driverContext.addOperatorContext(
+        2, planNodeId2, GapFillWoGroupWoMoOperator.class.getSimpleName());
+    // child output: a single real row at endTime - step
+    // Time,         avg_temp
+    // 1728871200000 1.0
+    Operator childOperator =
+        new Operator() {
+
+          private final long[] timeArray = new long[] {1728871200000L};
+
+          private final double[] valueArray = new double[] {1.0};
+
+          private final boolean[] valueIsNull = new boolean[] {false};
+
+          private boolean emitted = false;
+
+          @Override
+          public OperatorContext getOperatorContext() {
+            return driverContext.getOperatorContexts().get(0);
+          }
+
+          @Override
+          public TsBlock next() {
+            if (emitted) {
+              return null;
+            }
+            TsBlockBuilder builder =
+                new TsBlockBuilder(
+                    timeArray.length, Arrays.asList(TSDataType.TIMESTAMP, TSDataType.DOUBLE));
+            for (int i = 0, size = timeArray.length; i < size; i++) {
+              builder.getColumnBuilder(0).writeLong(timeArray[i]);
+              if (valueIsNull[i]) {
+                builder.getColumnBuilder(1).appendNull();
+              } else {
+                builder.getColumnBuilder(1).writeDouble(valueArray[i]);
+              }
+            }
+            builder.declarePositions(timeArray.length);
+            emitted = true;
+            return builder.build(
+                new RunLengthEncodedColumn(
+                    CommonOperatorUtils.TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
+          }
+
+          @Override
+          public boolean hasNext() throws Exception {
+            return !emitted;
+          }
+
+          @Override
+          public void close() throws Exception {}
+
+          @Override
+          public boolean isFinished() throws Exception {
+            return emitted;
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 0;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 0;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
+        };
+
+    OperatorContext operatorContext = driverContext.getOperatorContexts().get(1);
+
+    try (GapFillWoGroupWoMoOperator gapFillOperator =
+        new GapFillWoGroupWoMoOperator(
+            operatorContext,
+            childOperator,
+            0,
+            1728849600000L,
+            1728874800000L,
+            Arrays.asList(TSDataType.TIMESTAMP, TSDataType.DOUBLE),
+            3600000L)) {
+      int count = 0;
+      ListenableFuture<?> listenableFuture = gapFillOperator.isBlocked();
+      listenableFuture.get();
+      while (!gapFillOperator.isFinished() && gapFillOperator.hasNext()) {
+        TsBlock tsBlock = gapFillOperator.next();
+        if (tsBlock != null && !tsBlock.isEmpty()) {
+          for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++, count++) {
+            assertFalse(tsBlock.getColumn(0).isNull(i));
+            assertEquals(expectedTimeArray[count], tsBlock.getColumn(0).getLong(i));
+            assertEquals(expectedValueIsNull[count], tsBlock.getColumn(1).isNull(i));
+            if (!expectedValueIsNull[count]) {
+              assertEquals(expectedValueArray[count], tsBlock.getColumn(1).getDouble(i), 0.00001);
+            }
+          }
+        }
+        listenableFuture = gapFillOperator.isBlocked();
+        listenableFuture.get();
+      }
+      assertEquals(expectedTimeArray.length, count);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }
