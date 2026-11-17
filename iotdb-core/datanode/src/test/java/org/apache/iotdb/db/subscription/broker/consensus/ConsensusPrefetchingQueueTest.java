@@ -3745,7 +3745,7 @@ public class ConsensusPrefetchingQueueTest {
 
       final SubscriptionEvent redeliveredEvent = queue.poll("newConsumer");
       assertTrue(redeliveredEvent == event);
-      assertFalse(queue.ack("oldConsumer", event.getCommitContext()));
+      assertTrue(queue.ackSilent("oldConsumer", event.getCommitContext()));
       assertEquals(1L, queue.getSubscriptionUncommittedEventCount());
       assertEquals(0, queue.getPrefetchedEventCount());
       assertEquals(retainedBytes, queue.getRetainedTabletBytes());
