@@ -250,6 +250,22 @@ public class LoadTsFileDataTypeConverter {
     final boolean needToCreateSession = Objects.isNull(currentSession);
     final IClientSession session =
         needToCreateSession ? createConversionSession(SqlDialect.TABLE) : currentSession;
+    final SessionInfo sourceSessionInfo = Objects.nonNull(context) ? context.getSession() : null;
+    final boolean internalDatabaseSession =
+        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isInternalDatabaseSession();
+    final boolean internalRpcSession =
+        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isInternalRpcSession();
+    final SessionInfo sessionInfo =
+        new SessionInfo(
+            session.getId(),
+            new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
+            ZoneId.systemDefault(),
+            session.getClientVersion(),
+            databaseName,
+            SqlDialect.TABLE,
+            allowAutoCreateSchema && session.isEnableAutoCreateSchema(),
+            internalDatabaseSession,
+            internalRpcSession);
     try {
       return Coordinator.getInstance()
           .executeForTableModel(
@@ -257,15 +273,7 @@ public class LoadTsFileDataTypeConverter {
               relationalSqlParser,
               session,
               SESSION_MANAGER.requestQueryId(),
-              new SessionInfo(
-                  session.getId(),
-                  new UserEntity(
-                      session.getUserId(), session.getUsername(), session.getClientAddress()),
-                  ZoneId.systemDefault(),
-                  session.getClientVersion(),
-                  databaseName,
-                  SqlDialect.TABLE,
-                  allowAutoCreateSchema && session.isEnableAutoCreateSchema()),
+              sessionInfo,
               "",
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -316,25 +324,33 @@ public class LoadTsFileDataTypeConverter {
     final boolean needToCreateSession = Objects.isNull(currentSession);
     final IClientSession session =
         needToCreateSession ? createConversionSession(SqlDialect.TREE) : currentSession;
+    final SessionInfo sourceSessionInfo = Objects.nonNull(context) ? context.getSession() : null;
+    final boolean internalDatabaseSession =
+        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isInternalDatabaseSession();
+    final boolean internalRpcSession =
+        Objects.nonNull(sourceSessionInfo) && sourceSessionInfo.isInternalRpcSession();
+    final SessionInfo sessionInfo =
+        new SessionInfo(
+            session.getId(),
+            new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
+            ZoneId.systemDefault(),
+            session.getClientVersion(),
+            session.getDatabaseName(),
+            SqlDialect.TREE,
+            allowAutoCreateSchema
+                && session.isEnableAutoCreateSchema()
+                && (Objects.isNull(context)
+                    || Objects.isNull(context.getSession())
+                    || context.getSession().isEnableAutoCreateSchema()),
+            internalDatabaseSession,
+            internalRpcSession);
 
     try {
       return Coordinator.getInstance()
           .executeForTreeModel(
               isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
               SESSION_MANAGER.requestQueryId(),
-              new SessionInfo(
-                  session.getId(),
-                  new UserEntity(
-                      session.getUserId(), session.getUsername(), session.getClientAddress()),
-                  ZoneId.systemDefault(),
-                  session.getClientVersion(),
-                  session.getDatabaseName(),
-                  SqlDialect.TREE,
-                  allowAutoCreateSchema
-                      && session.isEnableAutoCreateSchema()
-                      && (Objects.isNull(context)
-                          || Objects.isNull(context.getSession())
-                          || context.getSession().isEnableAutoCreateSchema())),
+              sessionInfo,
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),

@@ -59,8 +59,12 @@ public interface IAuditEntity {
 
   IAuditEntity setSqlString(String sqlString);
 
-  /** Whether the caller is a dedicated internal writer of the database itself. */
-  default boolean isInternal() {
+  /**
+   * Whether the caller represents database-internal execution used for dedicated internal writes
+   * and system-database access. This is independent of the RPC endpoint family used to reach the
+   * server.
+   */
+  default boolean isInternalDatabaseSession() {
     return false;
   }
 }

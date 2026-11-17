@@ -34,7 +34,8 @@ import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,6 +49,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -66,8 +68,9 @@ public class IoTDBRestartIT {
 
   private final Logger logger = LoggerFactory.getLogger(IoTDBRestartIT.class);
 
-  @Before
-  public void setUp() throws Exception {
+  // Reuse the fixed recovery-test configuration while retaining each scenario's DataNode restarts.
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -87,8 +90,8 @@ public class IoTDBRestartIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
     EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("ASYNC");
     EnvFactory.getEnv()
@@ -97,6 +100,24 @@ public class IoTDBRestartIT {
         .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus");
   }
 
+  @After
+  public void cleanDatabases() throws SQLException {
+    // Clear only databases owned by this class so recovered schemas cannot leak between scenarios.
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String database : Arrays.asList("root.turbine", "root.turbine1", "root.sg")) {
+        final boolean exists;
+        try (ResultSet resultSet = statement.executeQuery("show databases " + database)) {
+          exists = resultSet.next();
+        }
+        if (exists) {
+          statement.execute("delete database " + database);
+        }
+      }
+    }
+  }
+
+  /** Write flushed and unflushed points across two restarts, then verify all three timestamps. */
   @Test
   public void testRestart() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -139,6 +160,9 @@ public class IoTDBRestartIT {
     }
   }
 
+  /**
+   * Recover three points, delete the first and then the second, and verify only the third remains.
+   */
   @Test
   public void testRestartDelete() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -183,6 +207,9 @@ public class IoTDBRestartIT {
     }
   }
 
+  /**
+   * Write points around two restarts and verify a query beyond the end time returns only time 4.
+   */
   @Test
   public void testDeleteAndRewriteSurviveForcedRestart() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -334,6 +361,7 @@ public class IoTDBRestartIT {
     }
   }
 
+  /** Add another series at earlier timestamps after recovery and verify both values survive. */
   @Test
   public void testRestartEndTime() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -377,6 +405,9 @@ public class IoTDBRestartIT {
     }
   }
 
+  /**
+   * Recreate a WAL-backed series with a different type and verify the other series' value recovers.
+   */
   @Test
   public void testRecoverWALMismatchDataType() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -407,6 +438,9 @@ public class IoTDBRestartIT {
     }
   }
 
+  /**
+   * Delete one WAL-backed series before restart and verify the remaining series and row recover.
+   */
   @Test
   public void testRecoverWALDeleteSchema() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -434,6 +468,7 @@ public class IoTDBRestartIT {
     }
   }
 
+  /** Flush one series, leave another in the WAL, and verify the flushed values after restart. */
   @Test
   public void testRecoverWALDeleteSchemaCheckResourceTime() throws Exception {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -474,6 +509,7 @@ public class IoTDBRestartIT {
     config.setUnSeqTsFileSize(unFsFileSize);
   }
 
+  /** Restart after inserting two unflushed values and verify both values are recovered. */
   @Test
   public void testRecoverFromFlushMemTableError() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -501,6 +537,9 @@ public class IoTDBRestartIT {
     }
   }
 
+  /**
+   * Load overlapping TsFile data, force-stop DataNodes, and verify both timestamps after recovery.
+   */
   @Test
   public void testInsertLoadAndRecover() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();

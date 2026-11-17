@@ -36,6 +36,10 @@ public class SubscriptionTableSession extends AbstractSubscriptionSession
     super(new SubscriptionSessionWrapper(builder));
   }
 
+  protected SubscriptionTableSession(final SubscriptionSessionWrapper session) {
+    super(session);
+  }
+
   /////////////////////////////// open & close ///////////////////////////////
 
   @Override

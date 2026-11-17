@@ -1089,7 +1089,6 @@ public class IoTDBAlterColumnTypeIT {
     };
 
     String[] createTableSqls = {
-      "CREATE DATABASE test",
       "USE test",
       "CREATE VIEW view1 (battery TAG, voltage INT32 FIELD, current FLOAT FIELD) as root.db.battery.**",
     };

@@ -28,7 +28,8 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -39,6 +40,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.*;
@@ -49,8 +51,9 @@ public class IoTDBRestartRatisIT {
 
   private final Logger logger = LoggerFactory.getLogger(IoTDBRestartRatisIT.class);
 
-  @Before
-  public void setUp() throws Exception {
+  // Share the fixed Ratis/WAL configuration; each test still performs its own recovery restarts.
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
     EnvFactory.getEnv()
         .getConfig()
@@ -60,8 +63,8 @@ public class IoTDBRestartRatisIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
     EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("ASYNC");
     EnvFactory.getEnv()
@@ -70,6 +73,27 @@ public class IoTDBRestartRatisIT {
         .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus");
   }
 
+  @After
+  public void cleanDatabases() throws SQLException {
+    // Remove old schemas and data so each recovery scenario starts from empty databases.
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String database : Arrays.asList("root.turbine", "root.turbine1")) {
+        final boolean exists;
+        try (ResultSet resultSet = statement.executeQuery("show databases " + database)) {
+          exists = resultSet.next();
+        }
+        if (exists) {
+          statement.execute("delete database " + database);
+        }
+      }
+    }
+  }
+
+  /**
+   * Write flushed and unflushed points across two DataNode restarts, then verify that querying the
+   * series still returns the values at all three timestamps.
+   */
   @Test
   public void testRestart() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -112,6 +136,10 @@ public class IoTDBRestartRatisIT {
     }
   }
 
+  /**
+   * Recover three unflushed points, delete the earliest point, then flush and delete another point;
+   * verify that each query returns only the remaining timestamps and values.
+   */
   @Test
   public void testRestartDelete() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -156,6 +184,10 @@ public class IoTDBRestartRatisIT {
     }
   }
 
+  /**
+   * Insert points on both sides of a restart, restart again, and query beyond the earlier end time;
+   * verify that only the point at timestamp four is returned.
+   */
   @Test
   public void testRestartQueryLargerThanEndTime() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -203,6 +235,10 @@ public class IoTDBRestartRatisIT {
     }
   }
 
+  /**
+   * Add a second measurement at existing timestamps between two DataNode restarts, then verify that
+   * its recovered end time includes both points at timestamps one and two.
+   */
   @Test
   public void testRestartEndTime() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -246,6 +282,10 @@ public class IoTDBRestartRatisIT {
     }
   }
 
+  /**
+   * Delete a populated measurement and recreate it with an incompatible INT32 type before restart;
+   * verify that recovery leaves it null while preserving the other measurement's value.
+   */
   @Test
   public void testRecoverWALMismatchDataType() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -276,6 +316,10 @@ public class IoTDBRestartRatisIT {
     }
   }
 
+  /**
+   * Delete one of two populated measurements before restarting DataNodes, then verify that recovery
+   * excludes the deleted column and preserves the surviving measurement and timestamp.
+   */
   @Test
   public void testRecoverWALDeleteSchema() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -303,6 +347,10 @@ public class IoTDBRestartRatisIT {
     }
   }
 
+  /**
+   * Flush an INT64 measurement and append a BOOLEAN measurement at later times before restarting;
+   * verify that a query bounded below time three recovers exactly the two original timestamps.
+   */
   @Test
   public void testRecoverWALDeleteSchemaCheckResourceTime() throws Exception {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -343,6 +391,10 @@ public class IoTDBRestartRatisIT {
     config.setUnSeqTsFileSize(unFsFileSize);
   }
 
+  /**
+   * Restart DataNodes after an unflushed row with two measurements, then verify that recovery
+   * preserves the row's timestamp and both values without requiring an explicit flush.
+   */
   @Test
   public void testRecoverFromFlushMemTableError() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();

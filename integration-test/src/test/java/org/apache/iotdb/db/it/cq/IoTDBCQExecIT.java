@@ -18,11 +18,21 @@
  */
 package org.apache.iotdb.db.it.cq;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.runtime.ClusterTestResultSet;
+import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -31,16 +41,24 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCQExecIT {
+
+  private static final long CQ_RESULT_POLL_INTERVAL_IN_MS = 100;
+  private static final long CQ_RESULT_TIMEOUT_IN_SECONDS = 30;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -52,6 +70,211 @@ public class IoTDBCQExecIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // A wildcard CQ copies only readable fields, observes revoke/grant, and rejects a deleted owner.
+  @Test
+  public void testCQExecutionWithReadDataPermission() throws Exception {
+    testCQExecutionWithReadDataPermission(false, false);
+  }
+
+  // An aligned wildcard CQ filters unreadable fields and rechecks owner permissions per window.
+  @Test
+  public void testCQExecutionWithReadDataPermissionAlignByDevice() throws Exception {
+    testCQExecutionWithReadDataPermission(true, false);
+  }
+
+  // Explicit CQ targets reject missing source access and succeed when that access is restored.
+  @Test
+  public void testCQExecutionWithExplicitTargetReadDataPermission() throws Exception {
+    testCQExecutionWithReadDataPermission(false, true);
+  }
+
+  // Aligned explicit CQ targets retain positional mapping across permission revoke/grant retries.
+  @Test
+  public void testCQExecutionWithExplicitTargetReadDataPermissionAlignByDevice() throws Exception {
+    testCQExecutionWithReadDataPermission(true, true);
+  }
+
+  private void testCQExecutionWithReadDataPermission(boolean alignByDevice, boolean explicitTargets)
+      throws Exception {
+    String cqId =
+        (explicitTargets ? "cq_exp_auth" : "cq_read_auth") + (alignByDevice ? "_aligned" : "");
+    String database = "root." + cqId;
+    String username = cqId + "_user";
+    String password = "CQRead!Test2026";
+    String firstTarget = explicitTargets ? "m1" : "s1";
+    String secondTarget = explicitTargets ? "m2" : "s2";
+    String queryBody =
+        "SELECT "
+            + (explicitTargets ? "s1, s2" : "*")
+            + " INTO "
+            + database
+            + ".target("
+            + (explicitTargets ? "m1, m2" : "::")
+            + ") FROM "
+            + database
+            + ".source"
+            + (alignByDevice ? " ALIGN BY DEVICE" : "");
+    String resultQuery =
+        "SELECT " + firstTarget + ", " + secondTarget + " FROM " + database + ".target";
+    String resultHeader =
+        "Time,"
+            + database
+            + ".target."
+            + firstTarget
+            + ","
+            + database
+            + ".target."
+            + secondTarget
+            + ",";
+
+    IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients =
+        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        CQTestCleanup cleanup = new CQTestCleanup(statement)) {
+      statement.execute("CREATE USER " + username + " '" + password + "'");
+      cleanup.add("DROP USER " + username);
+      statement.execute("CREATE DATABASE " + database);
+      cleanup.add("DELETE DATABASE " + database);
+      statement.execute("CREATE TIMESERIES " + database + ".source.s1 WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES " + database + ".source.s2 WITH DATATYPE=INT64");
+      statement.execute(
+          "CREATE TIMESERIES " + database + ".target." + firstTarget + " WITH DATATYPE=INT64");
+      statement.execute(
+          "CREATE TIMESERIES " + database + ".target." + secondTarget + " WITH DATATYPE=INT64");
+      statement.execute(
+          "INSERT INTO "
+              + database
+              + ".source(time, s1, s2) VALUES (1, 11, 21), (1001, 12, 22), (2001, 13, 23), (3001, 14, 24)");
+      statement.execute("GRANT SYSTEM ON root.** TO USER " + username);
+      statement.execute("GRANT WRITE_DATA ON " + database + ".target.** TO USER " + username);
+      statement.execute("GRANT READ_DATA ON " + database + ".source.s1 TO USER " + username);
+
+      try (Connection userConnection = EnvFactory.getEnv().getConnection(username, password);
+          Statement userStatement = userConnection.createStatement()) {
+        // Keep the scheduler idle and execute deterministic windows through its DataNode RPC.
+        userStatement.execute(
+            "CREATE CQ "
+                + cqId
+                + " RESAMPLE EVERY 1s BOUNDARY "
+                + (System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1))
+                + " BEGIN "
+                + queryBody
+                + " END");
+        cleanup.add("DROP CQ " + cqId);
+      }
+
+      TExecuteCQ request = new TExecuteCQ(queryBody, 0, 1000, 10000, "UTC", cqId, username);
+      String[] expectedRows;
+      if (explicitTargets) {
+        String columnMismatch =
+            "the number of source columns and the number of target paths should be the same";
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SEMANTIC_ERROR, columnMismatch);
+        resultSetEqualTest(resultQuery, resultHeader, new String[0]);
+
+        // Explicit targets retain SELECT INTO's positional mapping. Restore access and retry the
+        // same window, as the CQ scheduler does after an execution failure.
+        statement.execute("GRANT READ_DATA ON " + database + ".source.s2 TO USER " + username);
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SUCCESS_STATUS, null);
+        resultSetEqualTest(resultQuery, resultHeader, new String[] {"1,11,21,"});
+
+        statement.execute("REVOKE READ_DATA ON " + database + ".source.s2 FROM USER " + username);
+        request.setStartTime(1000).setEndTime(2000);
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SEMANTIC_ERROR, columnMismatch);
+        resultSetEqualTest(resultQuery, resultHeader, new String[] {"1,11,21,"});
+
+        statement.execute("GRANT READ_DATA ON " + database + ".source.s2 TO USER " + username);
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SUCCESS_STATUS, null);
+        expectedRows = new String[] {"1,11,21,", "1001,12,22,"};
+      } else {
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SUCCESS_STATUS, null);
+        // The wildcard must not copy s2, for which the CQ owner has no READ_DATA privilege.
+        resultSetEqualTest(resultQuery, resultHeader, new String[] {"1,11,null,"});
+
+        statement.execute("REVOKE READ_DATA ON " + database + ".source.s1 FROM USER " + username);
+        request.setStartTime(1000).setEndTime(2000);
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SUCCESS_STATUS, null);
+        resultSetEqualTest(resultQuery, resultHeader, new String[] {"1,11,null,"});
+
+        statement.execute("GRANT READ_DATA ON " + database + ".source.** TO USER " + username);
+        request.setStartTime(2000).setEndTime(3000);
+        executeCQOnAllDataNodes(clients, request, TSStatusCode.SUCCESS_STATUS, null);
+        expectedRows = new String[] {"1,11,null,", "2001,13,23,"};
+      }
+      resultSetEqualTest(resultQuery, resultHeader, expectedRows);
+
+      statement.execute("DROP USER " + username);
+      cleanup.remove("DROP USER " + username);
+      request.setStartTime(3000).setEndTime(4000);
+      executeCQOnAllDataNodes(clients, request, TSStatusCode.EXECUTE_STATEMENT_ERROR, username);
+      resultSetEqualTest(resultQuery, resultHeader, expectedRows);
+    } finally {
+      clients.close();
+    }
+  }
+
+  private void executeCQOnAllDataNodes(
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients,
+      TExecuteCQ request,
+      TSStatusCode expectedStatus,
+      String expectedMessage)
+      throws Exception {
+    for (DataNodeWrapper dataNode : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      try (SyncDataNodeInternalServiceClient client =
+          clients.borrowClient(
+              new TEndPoint(dataNode.getInternalAddress(), dataNode.getInternalPort()))) {
+        TSStatus status = client.executeCQ(request);
+        assertEquals(status.toString(), expectedStatus.getStatusCode(), status.getCode());
+        if (expectedMessage != null) {
+          assertTrue(status.toString(), status.isSetMessage());
+          assertTrue(status.getMessage(), status.getMessage().contains(expectedMessage));
+        }
+      }
+    }
+  }
+
+  private static class CQTestCleanup implements AutoCloseable {
+    private final Statement statement;
+    private final Deque<String> statements = new ArrayDeque<>();
+
+    private CQTestCleanup(Statement statement) {
+      this.statement = statement;
+    }
+
+    private void add(String sql) {
+      statements.push(sql);
+    }
+
+    private void remove(String sql) {
+      statements.remove(sql);
+    }
+
+    @Override
+    public void close() throws SQLException {
+      // Attempt every cleanup. Try-with-resources preserves the original test failure and adds
+      // cleanup failures as suppressed exceptions.
+      SQLException failure = null;
+      for (String sql : statements) {
+        try {
+          statement.execute(sql);
+        } catch (SQLException e) {
+          if (failure == null) {
+            failure = e;
+          } else {
+            failure.addSuppressed(e);
+          }
+        }
+      }
+      if (failure != null) {
+        throw failure;
+      }
+    }
+  }
+
+  // A 2s resampling CQ must write the expected maximum for every 1s window after its future
+  // boundary.
   @Test
   public void testCQExecution1() {
     String insertTemplate =
@@ -110,25 +333,22 @@ public class IoTDBCQExecIT {
         return;
       }
 
-      long targetTime = firstExecutionTime + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime + 1_000, startTime + 2_000, startTime + 3_000, startTime + 4_000
       };
       long[] expectedValue = {4, 6, 8, 10};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d1.s1_max"));
-          cnt++;
+      try {
+        awaitCQResultCount(statement, "select s1_max from root.sg.d1", expectedTime.length);
+        try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d1")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
+            assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d1.s1_max"));
+            cnt++;
+          }
+          assertEquals(expectedTime.length, cnt);
         }
-        assertEquals(expectedTime.length, cnt);
       } finally {
         statement.execute("DROP CQ cq1");
       }
@@ -139,6 +359,7 @@ public class IoTDBCQExecIT {
     }
   }
 
+  // A CQ without EVERY and with a 4s range must produce the five expected 1s-window maxima.
   @Test
   public void testCQExecution2() {
     String insertTemplate =
@@ -198,25 +419,22 @@ public class IoTDBCQExecIT {
         return;
       }
 
-      long targetTime = firstExecutionTime + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime, startTime + 1_000, startTime + 2_000, startTime + 3_000, startTime + 4_000
       };
       long[] expectedValue = {2, 4, 6, 8, 10};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d2")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d2.s1_max"));
-          cnt++;
+      try {
+        awaitCQResultCount(statement, "select s1_max from root.sg.d2", expectedTime.length);
+        try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d2")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
+            assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d2.s1_max"));
+            cnt++;
+          }
+          assertEquals(expectedTime.length, cnt);
         }
-        assertEquals(expectedTime.length, cnt);
       } finally {
         statement.execute("DROP CQ cq2");
       }
@@ -227,6 +445,7 @@ public class IoTDBCQExecIT {
     }
   }
 
+  // A 4s range with FILL must materialize the missing leading 1s window and retain later maxima.
   @Test
   public void testCQExecution3() {
     String insertTemplate =
@@ -287,12 +506,6 @@ public class IoTDBCQExecIT {
         return;
       }
 
-      long targetTime = firstExecutionTime + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime - 1_000,
         startTime,
@@ -303,19 +516,22 @@ public class IoTDBCQExecIT {
       };
       long[] expectedValue = {100, 2, 4, 6, 8, 10};
 
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select s1_max from root.sg.d3 where time between "
-                  + (startTime - 1_000)
-                  + " and "
-                  + (startTime + 4_000))) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d3.s1_max"));
-          cnt++;
+      String query =
+          "select s1_max from root.sg.d3 where time between "
+              + (startTime - 1_000)
+              + " and "
+              + (startTime + 4_000);
+      try {
+        awaitCQResultCount(statement, query, expectedTime.length);
+        try (ResultSet resultSet = statement.executeQuery(query)) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
+            assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d3.s1_max"));
+            cnt++;
+          }
+          assertEquals(expectedTime.length, cnt);
         }
-        assertEquals(expectedTime.length, cnt);
       } finally {
         statement.execute("DROP CQ cq3");
       }
@@ -326,6 +542,7 @@ public class IoTDBCQExecIT {
     }
   }
 
+  // RANGE 2s, 1s must select two separated 1s windows as resampling advances.
   @Test
   public void testCQExecution4() {
     String insertTemplate =
@@ -385,23 +602,20 @@ public class IoTDBCQExecIT {
         return;
       }
 
-      long targetTime = firstExecutionTime + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {startTime + 1_000, startTime + 3_000};
       long[] expectedValue = {4, 8};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d4")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d4.s1_max"));
-          cnt++;
+      try {
+        awaitCQResultCount(statement, "select s1_max from root.sg.d4", expectedTime.length);
+        try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d4")) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
+            assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d4.s1_max"));
+            cnt++;
+          }
+          assertEquals(expectedTime.length, cnt);
         }
-        assertEquals(expectedTime.length, cnt);
       } finally {
         statement.execute("DROP CQ cq4");
       }
@@ -412,6 +626,7 @@ public class IoTDBCQExecIT {
     }
   }
 
+  // An aligned-by-device CQ must write the expression result for each of the ten input timestamps.
   @Test
   public void testCQExecution5() {
     String insertTemplate =
@@ -471,12 +686,6 @@ public class IoTDBCQExecIT {
         return;
       }
 
-      long targetTime = firstExecutionTime + 10_000;
-
-      while (System.currentTimeMillis() - targetTime < 0) {
-        TimeUnit.SECONDS.sleep(1);
-      }
-
       long[] expectedTime = {
         startTime,
         startTime + 500,
@@ -491,20 +700,23 @@ public class IoTDBCQExecIT {
       };
       double[] expectedValue = {2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0};
 
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "select precalculated_s1 from root.sg.d5 where time between "
-                  + startTime
-                  + " and "
-                  + (startTime + 4_500))) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(
-              expectedValue[cnt], resultSet.getDouble("root.sg.d5.precalculated_s1"), 0.00001);
-          cnt++;
+      String query =
+          "select precalculated_s1 from root.sg.d5 where time between "
+              + startTime
+              + " and "
+              + (startTime + 4_500);
+      try {
+        awaitCQResultCount(statement, query, expectedTime.length);
+        try (ResultSet resultSet = statement.executeQuery(query)) {
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
+            assertEquals(
+                expectedValue[cnt], resultSet.getDouble("root.sg.d5.precalculated_s1"), 0.00001);
+            cnt++;
+          }
+          assertEquals(expectedTime.length, cnt);
         }
-        assertEquals(expectedTime.length, cnt);
       } finally {
         statement.execute("DROP CQ cq5");
       }
@@ -513,5 +725,31 @@ public class IoTDBCQExecIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  private static void awaitCQResultCount(Statement statement, String query, int expectedRowCount)
+      throws Exception {
+    // CQ writes can fall between DataNode query snapshots. Count each snapshot independently
+    // while waiting; the caller then compares all timestamps and values through the cluster
+    // wrapper. Query and transport errors still propagate immediately.
+    Awaitility.await("continuous query output row count")
+        .atMost(CQ_RESULT_TIMEOUT_IN_SECONDS, TimeUnit.SECONDS)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(CQ_RESULT_POLL_INTERVAL_IN_MS, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              try (ResultSet resultSet = statement.executeQuery(query)) {
+                for (ResultSet nodeResultSet : ClusterTestResultSet.getNodeResultSets(resultSet)) {
+                  int rowCount = 0;
+                  while (nodeResultSet.next()) {
+                    rowCount++;
+                  }
+                  if (rowCount < expectedRowCount) {
+                    return false;
+                  }
+                }
+                return true;
+              }
+            });
   }
 }

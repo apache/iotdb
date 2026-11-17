@@ -179,6 +179,20 @@ public abstract class AbstractSubscriptionProvider {
     return session.getSessionConnection();
   }
 
+  void setRpcServiceName(final String rpcServiceName) {
+    session.setRpcServiceName(rpcServiceName);
+  }
+
+  void setSslConfig(
+      final boolean useSSL,
+      final String trustStore,
+      final String trustStorePwd,
+      final String keyStore,
+      final String keyStorePwd,
+      final String sslProtocol) {
+    session.setSslConfig(useSSL, trustStore, trustStorePwd, keyStore, keyStorePwd, sslProtocol);
+  }
+
   private TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req)
       throws TException, IoTDBConnectionException {
     rpcLock.lock();

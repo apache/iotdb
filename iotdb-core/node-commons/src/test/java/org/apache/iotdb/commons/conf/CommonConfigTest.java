@@ -255,6 +255,50 @@ public class CommonConfigTest {
   }
 
   @Test
+  public void testDiskRecoveryCannotClearNewFailureDuringRecoveryCheck() {
+    CommonConfig config = new CommonConfig();
+    AtomicBoolean reportedNewFailure = new AtomicBoolean();
+    AtomicBoolean newSourceAvailable = new AtomicBoolean();
+    config.setReadOnlyForDiskFull(
+        "first",
+        () -> {
+          if (reportedNewFailure.compareAndSet(false, true)) {
+            config.setReadOnlyForDiskFull("second", newSourceAvailable::get);
+          }
+          return true;
+        });
+
+    config.tryRecoverFromDiskFull();
+    Assert.assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
+    Assert.assertEquals(NodeStatus.DISK_FULL, config.getStatusReason());
+
+    newSourceAvailable.set(true);
+    config.tryRecoverFromDiskFull();
+    Assert.assertEquals(NodeStatus.Running, config.getNodeStatus());
+  }
+
+  @Test
+  public void testDiskRecoveryCannotClearDirectoryReloadDuringRecoveryCheck() {
+    CommonConfig config = new CommonConfig();
+    AtomicBoolean reloaded = new AtomicBoolean();
+    config.setReadOnlyForDiskFull(
+        "tier",
+        () -> {
+          if (reloaded.compareAndSet(false, true)) {
+            config.invalidateDiskFullRecoverySnapshot();
+          }
+          return true;
+        });
+
+    config.tryRecoverFromDiskFull();
+    Assert.assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
+    Assert.assertEquals(NodeStatus.DISK_FULL, config.getStatusReason());
+
+    config.tryRecoverFromDiskFull();
+    Assert.assertEquals(NodeStatus.Running, config.getNodeStatus());
+  }
+
+  @Test
   public void testManualRunningClearsPreviousDiskRecoveryChecks() {
     CommonConfig config = new CommonConfig();
     AtomicInteger previousChecks = new AtomicInteger();

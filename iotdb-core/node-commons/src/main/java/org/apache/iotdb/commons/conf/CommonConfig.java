@@ -189,6 +189,12 @@ public class CommonConfig {
   // a live FolderManager uses its identity so its health restrictions are also checked.
   private final Map<Object, BooleanSupplier> diskFullRecoveryChecks = new HashMap<>();
 
+  /**
+   * Invalidates a recovery check that was evaluated before another disk failure or directory
+   * reload.
+   */
+  private long diskFullRecoveryVersion;
+
   private final int TTimePartitionSlotTransmitLimit = 1000;
 
   /** Disk Monitor. */
@@ -853,29 +859,32 @@ public class CommonConfig {
     setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
   }
 
-  public synchronized boolean isReadOnlyForDiskFull() {
-    return status == NodeStatus.ReadOnly && NodeStatus.DISK_FULL.equals(statusReason);
+  public synchronized void invalidateDiskFullRecoverySnapshot() {
+    diskFullRecoveryVersion++;
   }
 
-  /** Recheck the reason under the status lock before clearing disk-full recovery checks. */
-  public synchronized void setRunningIfDiskFull() {
-    if (isReadOnlyForDiskFull()) {
-      setNodeStatus(NodeStatus.Running);
-    }
+  public synchronized boolean isReadOnlyForDiskFull() {
+    return status == NodeStatus.ReadOnly && NodeStatus.DISK_FULL.equals(statusReason);
   }
 
   /** Called after the aggregate disk-space check passes. */
   public void tryRecoverFromDiskFull() {
     final List<BooleanSupplier> recoveryChecks;
+    final long recoveryVersion;
     synchronized (this) {
       if (!isReadOnlyForDiskFull()) {
         return;
       }
       recoveryChecks = new ArrayList<>(diskFullRecoveryChecks.values());
+      recoveryVersion = diskFullRecoveryVersion;
     }
     // Do not hold the status monitor during filesystem I/O.
     if (recoveryChecks.stream().allMatch(BooleanSupplier::getAsBoolean)) {
-      setRunningIfDiskFull();
+      synchronized (this) {
+        if (recoveryVersion == diskFullRecoveryVersion && isReadOnlyForDiskFull()) {
+          setNodeStatus(NodeStatus.Running);
+        }
+      }
     }
   }
 
@@ -885,6 +894,9 @@ public class CommonConfig {
    * reason.
    */
   public synchronized void setNodeStatusWithReason(NodeStatus newStatus, String newReason) {
+    if (newStatus == NodeStatus.ReadOnly && NodeStatus.DISK_FULL.equals(newReason)) {
+      diskFullRecoveryVersion++;
+    }
     if (newStatus != NodeStatus.ReadOnly) {
       diskFullRecoveryChecks.clear();
       newReason = null;

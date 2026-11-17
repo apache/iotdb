@@ -39,12 +39,14 @@ import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.exception.query.KilledByOthersException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -54,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
@@ -62,6 +65,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
@@ -72,13 +76,18 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
@@ -93,6 +102,15 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private final QueryType type;
   private final MPPQueryContext queryContext;
+  private final int queryAttemptId;
+  private final long admissionWindowMs;
+  private final LongSupplier ticker;
+  private final Map<TEndPoint, CachedAdmission> admissionCache = new ConcurrentHashMap<>();
+  // Protected by this, also used to serialize token publication against abort().
+  private final Map<TEndPoint, TQueryAdmissionToken> issuedAdmissionTokens = new HashMap<>();
+  private volatile boolean aborted;
+  private final AtomicReference<LinkedBlockingQueue<Pair<SubPlan, Boolean>>> dispatchQueue =
+      new AtomicReference<>();
   private final String localhostIpAddr;
   private final int localhostInternalPort;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
@@ -118,8 +136,32 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
           asyncInternalServiceClientManager) {
+    this(
+        type,
+        queryContext,
+        syncInternalServiceClientManager,
+        asyncInternalServiceClientManager,
+        System::nanoTime);
+  }
+
+  FragmentInstanceDispatcherImpl(
+      QueryType type,
+      MPPQueryContext queryContext,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
+      IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
+          asyncInternalServiceClientManager,
+      LongSupplier ticker) {
     this.type = type;
     this.queryContext = queryContext;
+    this.queryAttemptId = queryContext.getQueryAttemptId();
+    this.ticker = ticker;
+    // Budget both the initial RPC and the supported reconnect retry. A zero socket timeout
+    // still needs a finite token lifetime; actual query execution keeps its own timeout.
+    this.admissionWindowMs =
+        2L
+            * (COMMON_CONFIG.getDnConnectionTimeoutInMS() > 0
+                ? COMMON_CONFIG.getDnConnectionTimeoutInMS()
+                : TimeUnit.MINUTES.toMillis(1));
     this.syncInternalServiceClientManager = syncInternalServiceClientManager;
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
@@ -145,11 +187,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private Future<FragInstanceDispatchResult> topologicalParallelDispatchRead(
       SubPlan root, List<FragmentInstance> instances) {
     long startTime = System.nanoTime();
-    LinkedBlockingQueue<Pair<SubPlan, Boolean>> queue = new LinkedBlockingQueue<>(instances.size());
+    LinkedBlockingQueue<Pair<SubPlan, Boolean>> queue = new LinkedBlockingQueue<>();
+    dispatchQueue.set(queue);
     List<Future<FragInstanceDispatchResult>> futures = new ArrayList<>(instances.size());
     queue.add(new Pair<>(root, true));
     try {
-      while (futures.size() < instances.size()) {
+      while (!aborted && futures.size() < instances.size()) {
         Pair<SubPlan, Boolean> pair = queue.take();
         SubPlan next = pair.getLeft();
         boolean previousSuccess = pair.getRight();
@@ -188,6 +231,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               RpcUtils.getStatus(
                   TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
     } finally {
+      dispatchQueue.set(null);
       long queryDispatchReadTime = System.nanoTime() - startTime;
       QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, queryDispatchReadTime);
       queryContext.recordDispatchCost(queryDispatchReadTime);
@@ -218,7 +262,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   // If the failure is not notified and the child FI is not sent, the outer loop
                   // won't be able to exit.
                   queue.add(new Pair<>(null, false));
-                } else {
+                } else if (!aborted) {
                   for (SubPlan child : plan.getChildren()) {
                     queue.add(new Pair<>(child, true));
                   }
@@ -462,9 +506,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private void dispatchOneInstance(FragmentInstance instance)
-      throws FragmentInstanceDispatchException {
+      throws FragmentInstanceDispatchException, TException {
+    checkNotAborted();
     TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
     if (isDispatchedToLocal(endPoint)) {
+      prepareAdmission(instance, endPoint, null);
       dispatchLocally(instance);
     } else {
       dispatchRemote(instance, endPoint);
@@ -493,6 +539,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         case READ:
           final TSendFragmentInstanceReq sendFragmentInstanceReq =
               new TSendFragmentInstanceReq(new TFragmentInstance(instance.serializeToByteBuffer()));
+          prepareAdmission(instance, endPoint, client);
+          if (instance.hasQueryAttempt()) {
+            sendFragmentInstanceReq
+                .setQueryAttemptId(instance.getQueryAttemptId())
+                .setAdmissionToken(instance.getAdmissionToken());
+          }
           if (instance.getExecutorType().isStorageExecutor()) {
             sendFragmentInstanceReq.setConsensusGroupId(
                 instance.getRegionReplicaSet().getRegionId());
@@ -596,6 +648,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         recordWriteTransferFailureIfNecessary(endPoint, containsUserData, e);
       }
       throw e;
+    } catch (LegacyAdmissionException ignored) {
+      // The resource scope has returned the invalidated connection. Capability negotiation
+      // needs a fresh connection without consuming the FI's normal reconnect retry.
+      dispatchRemoteHelper(instance, endPoint);
     } catch (TException e) {
       if (!transferAttemptRecorded) {
         recordWriteTransferFailureIfNecessary(endPoint, containsUserData, e);
@@ -662,6 +718,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                     currentTime)));
       }
       // we just retry once to clear stale connection for a restart node.
+      checkNotAborted();
       try {
         dispatchRemoteHelper(instance, endPoint);
       } catch (ClientManagerException
@@ -767,7 +824,99 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   @Override
-  public void abort() {}
+  public synchronized void abort() {
+    aborted = true;
+    LinkedBlockingQueue<Pair<SubPlan, Boolean>> queue = dispatchQueue.get();
+    if (queue != null) {
+      queue.add(new Pair<>(null, false));
+    }
+  }
+
+  private void prepareAdmission(
+      FragmentInstance instance, TEndPoint endPoint, SyncDataNodeInternalServiceClient client)
+      throws FragmentInstanceDispatchException, TException {
+    checkNotAborted();
+    if (instance.hasQueryAttempt()) {
+      // A resend must retain its old token, even after a socket timeout or a receiver restart.
+      // Expired/old-incarnation tokens are retryable dispatch failures, not execution timeouts.
+      return;
+    }
+    CachedAdmission cached =
+        admissionCache.computeIfAbsent(endPoint, ignored -> new CachedAdmission());
+    // Serialize token acquisition per destination, but never hold the abort/publication lock
+    // across an RPC. Other FIs on this host reuse the token while it is conservatively valid.
+    synchronized (cached) {
+      checkNotAborted();
+      if (cached.legacy) {
+        return;
+      }
+      if (cached.token == null
+          || ticker.getAsLong() - cached.requestStart
+              >= TimeUnit.MILLISECONDS.toNanos(cached.token.getValidityMs())) {
+        long requestStart = ticker.getAsLong();
+        // A short query must not leave a fence for the full socket-timeout window. This is a
+        // relative duration, so capping it does not compare coordinator and receiver clocks.
+        long validityMs = Math.min(admissionWindowMs, Math.max(1, instance.getTimeOut()));
+        try {
+          cached.token =
+              client == null
+                  ? FragmentInstanceManager.getInstance().fetchQueryAdmissionToken(validityMs)
+                  : client.fetchQueryAdmissionToken(validityMs);
+          cached.requestStart = requestStart;
+        } catch (TException e) {
+          Throwable cause = ExceptionUtils.getRootCause(e);
+          if (!(cause instanceof TApplicationException)
+              || ((TApplicationException) cause).getType()
+                  != TApplicationException.UNKNOWN_METHOD) {
+            throw e;
+          }
+          // The client interceptor wraps application exceptions in TException. Mark this peer
+          // as legacy, then let the caller replace the connection invalidated by that handler.
+          checkNotAborted();
+          cached.legacy = true;
+          throw new LegacyAdmissionException(cause);
+        }
+      }
+      synchronized (this) {
+        checkNotAborted();
+        instance.setQueryAttempt(queryAttemptId, cached.token);
+        TQueryAdmissionToken previous = issuedAdmissionTokens.get(endPoint);
+        if (previous == null
+            || !previous.getIssuer().equals(cached.token.getIssuer())
+            || cached.token.getDeadlineNanos() - previous.getDeadlineNanos() > 0) {
+          issuedAdmissionTokens.put(endPoint, cached.token);
+        }
+      }
+    }
+  }
+
+  public synchronized Map<TEndPoint, TQueryAdmissionToken> getIssuedAdmissionTokens() {
+    Map<TEndPoint, TQueryAdmissionToken> snapshot = new HashMap<>();
+    issuedAdmissionTokens.forEach((endPoint, token) -> snapshot.put(endPoint, token.deepCopy()));
+    return snapshot;
+  }
+
+  /** Distinguishes capability negotiation from an error returned by the FI RPC itself. */
+  private static class LegacyAdmissionException extends TException {
+    private static final long serialVersionUID = 1L;
+
+    private LegacyAdmissionException(Throwable cause) {
+      super(cause);
+    }
+  }
+
+  private static class CachedAdmission {
+    private TQueryAdmissionToken token;
+    private long requestStart;
+    private boolean legacy;
+  }
+
+  private void checkNotAborted() throws FragmentInstanceDispatchException {
+    if (aborted) {
+      throw new FragmentInstanceDispatchException(
+          RpcUtils.getStatus(TSStatusCode.QUERY_WAS_KILLED, KilledByOthersException.MESSAGE));
+    }
+  }
 
   private boolean isQuery() {
     return type == QueryType.READ || type == QueryType.READ_WRITE;

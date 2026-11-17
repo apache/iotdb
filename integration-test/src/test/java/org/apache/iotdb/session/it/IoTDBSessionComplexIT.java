@@ -38,8 +38,10 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -67,15 +69,38 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBSessionComplexIT {
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
-    createUser("test", "test123123456");
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    createUser("test", "IoTDB!Test2024");
   }
 
   @After
   public void tearDown() throws Exception {
+    // Keep the shared cluster isolated by removing data and users created by this test method.
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      // Restore the dynamic setting changed by insertNotAutoCreateSchemaTest for the next method.
+      session.executeNonQueryStatement("SET CONFIGURATION 'enable_auto_create_schema'='true'");
+      for (String database : Arrays.asList("root.sg1", "root.sg2", "root.sg3")) {
+        boolean exists;
+        try (SessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES " + database)) {
+          exists = dataSet.hasNext();
+        }
+        if (exists) {
+          session.deleteDatabase(database);
+        }
+      }
+    }
+    executeNonQuery("DROP USER test");
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -163,6 +188,7 @@ public class IoTDBSessionComplexIT {
     sessionDataSet.closeOperationHandle();
   }
 
+  // Object inserts require all data/schema/system grants before the ordinary user can write.
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertByObjectTest() {
@@ -183,7 +209,7 @@ public class IoTDBSessionComplexIT {
 
       // auth test
       try (ISession authSession =
-          EnvFactory.getEnv().getSessionConnection("test", "test123123456")) {
+          EnvFactory.getEnv().getSessionConnection("test", "IoTDB!Test2024")) {
         grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
         grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
         try {
@@ -599,11 +625,13 @@ public class IoTDBSessionComplexIT {
     }
   }
 
+  // Record and Tablet APIs enforce missing privileges, then accept writes after all grants.
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testAuth() {
     // auth test
-    try (ISession authSession = EnvFactory.getEnv().getSessionConnection("test", "test123123456")) {
+    try (ISession authSession =
+        EnvFactory.getEnv().getSessionConnection("test", "IoTDB!Test2024")) {
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s1");
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d1.s2");
       grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.sg1.d2.**");

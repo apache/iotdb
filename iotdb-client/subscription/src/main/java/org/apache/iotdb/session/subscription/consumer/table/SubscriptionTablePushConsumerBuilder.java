@@ -133,6 +133,42 @@ public class SubscriptionTablePushConsumerBuilder extends AbstractSubscriptionPu
   }
 
   @Override
+  public SubscriptionTablePushConsumerBuilder useSSL(final boolean useSSL) {
+    super.useSSL(useSSL);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePushConsumerBuilder trustStore(final String trustStore) {
+    super.trustStore(trustStore);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePushConsumerBuilder trustStorePwd(final String trustStorePwd) {
+    super.trustStorePwd(trustStorePwd);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePushConsumerBuilder keyStore(final String keyStore) {
+    super.keyStore(keyStore);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePushConsumerBuilder keyStorePwd(final String keyStorePwd) {
+    super.keyStorePwd(keyStorePwd);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePushConsumerBuilder sslProtocol(final String sslProtocol) {
+    super.sslProtocol(sslProtocol);
+    return this;
+  }
+
+  @Override
   public SubscriptionTablePushConsumerBuilder maxPollParallelism(final int maxPollParallelism) {
     super.maxPollParallelism(maxPollParallelism);
     return this;

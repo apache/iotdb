@@ -39,7 +39,6 @@ import java.util.Collections;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 
 public class DiskFullHotReloadTest {
@@ -74,20 +73,20 @@ public class DiskFullHotReloadTest {
   }
 
   @Test
-  public void loadSameConfigurationClearsOldDiskFullChecks() throws Exception {
+  public void loadSameConfigurationKeepsUnrecoveredDiskFullChecks() throws Exception {
     config.setReadOnlyForDiskFull("old directory", () -> false);
     descriptor.loadHotModifiedProps();
-    assertRecoveredAndCleared();
+    assertStillProtected();
   }
 
   @Test
-  public void setUnrelatedPropertyClearsOldDiskFullChecks() {
+  public void setUnrelatedPropertyKeepsUnrecoveredDiskFullChecks() {
     config.setReadOnlyForDiskFull("old directory", () -> false);
     Map<String, String> update =
         Map.of("enable_partial_insert", Boolean.toString(!originalPartialInsert));
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), setConfiguration(update));
     assertEquals(!originalPartialInsert, descriptor.getConfig().isEnablePartialInsert());
-    assertRecoveredAndCleared();
+    assertStillProtected();
   }
 
   @Test
@@ -131,14 +130,10 @@ public class DiskFullHotReloadTest {
         .getCode();
   }
 
-  private void assertRecoveredAndCleared() {
-    assertEquals(NodeStatus.Running, config.getNodeStatus());
-    assertNull(config.getStatusReason());
-    // A later aggregate-only failure must have no callback left from the previous failure.
-    config.setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+  private void assertStillProtected() {
+    assertReadOnly(NodeStatus.DISK_FULL);
     config.tryRecoverFromDiskFull();
-    assertEquals(NodeStatus.Running, config.getNodeStatus());
-    assertNull(config.getStatusReason());
+    assertReadOnly(NodeStatus.DISK_FULL);
   }
 
   private void assertReadOnly(String reason) {

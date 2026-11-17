@@ -47,6 +47,8 @@ public class IoTDBRegionReadyAfterRestartTableIT {
 
   @BeforeClass
   public static void setUpClass() {
+    // Keep the pre-restart row durable independently of Windows process-stop timing.
+    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
   }
 
@@ -55,6 +57,7 @@ public class IoTDBRegionReadyAfterRestartTableIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // Persist one row, restart all nodes, then require Running Regions and both rows after a write.
   @Test
   public void testWriteAfterClusterRestart() throws SQLException {
     try (final Connection connection = EnvFactory.getEnv().getTableConnection();

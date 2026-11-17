@@ -29,7 +29,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
-import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelSharedClusterIT;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -47,7 +47,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
-public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
+public class IoTDBPipeAlterIT extends AbstractPipeTableModelSharedClusterIT {
 
   @Override
   @Before
@@ -55,6 +55,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
     super.setUp();
   }
 
+  // MODIFY/REPLACE must preserve stopped/running state, advance creation time, and apply
+  // source/processor/sink changes, including empty-attribute resets and lowercase table filters.
   @Test
   public void testBasicAlterPipe() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -65,365 +67,331 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
         String.format(
             "create pipe a2b with source ('source'='iotdb-source', 'database-name'='Test', 'table-name'='Test1', 'mode.streaming'='true') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
+    // This sequence keeps the same cluster and dialect; retain both clients through every
+    // operation while preserving the metadata check after each change.
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement();
+        final SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       statement.execute(sql);
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // show pipe
-    long lastCreationTime;
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(
-                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
-              .pipeInfoList;
-      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(1, showPipeResult.size());
-      // Check status
-      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
-      // Check configurations
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
-      Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeConnector
-              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // Record last creation time
-      lastCreationTime = showPipeResult.get(0).creationTime;
-    }
+      // show pipe
+      long lastCreationTime;
+      {
+        final List<TShowPipeInfo> showPipeResult =
+            client.showPipe(
+                    new TShowPipeReq()
+                        .setIsTableModel(true)
+                        .setUserName(SessionConfig.DEFAULT_USER))
+                .pipeInfoList;
+        showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+        Assert.assertEquals(1, showPipeResult.size());
+        // Check status
+        Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+        // Check configurations
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
+        Assert.assertTrue(
+            showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
+        Assert.assertTrue(
+            showPipeResult
+                .get(0)
+                .pipeConnector
+                .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+        // Record last creation time
+        lastCreationTime = showPipeResult.get(0).creationTime;
+      }
 
-    // Stop pipe
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+      // Stop pipe
       statement.execute("stop pipe a2b");
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Show pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(
-                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
-              .pipeInfoList;
-      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(1, showPipeResult.size());
-      // Check status
-      Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
-    }
+      // Show pipe
+      {
+        final List<TShowPipeInfo> showPipeResult =
+            client.showPipe(
+                    new TShowPipeReq()
+                        .setIsTableModel(true)
+                        .setUserName(SessionConfig.DEFAULT_USER))
+                .pipeInfoList;
+        showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+        Assert.assertEquals(1, showPipeResult.size());
+        // Check status
+        Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
+      }
 
-    // Alter pipe (modify)
-    // The database & table name will be converted to lower case
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+      // Alter pipe (modify)
+      // The database & table name will be converted to lower case
       statement.execute(
           "alter pipe a2b modify source ('table-name'='Test1','database-name'='Test1')");
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Show pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(
-                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
-              .pipeInfoList;
-      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(1, showPipeResult.size());
-      // Check status
-      Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
-      // Check configurations
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test1"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test1"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
-      Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeConnector
-              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // Check creation time and record last creation time
-      Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
-      lastCreationTime = showPipeResult.get(0).creationTime;
-      // Check exception message
-      Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
-    }
+      // Show pipe
+      {
+        final List<TShowPipeInfo> showPipeResult =
+            client.showPipe(
+                    new TShowPipeReq()
+                        .setIsTableModel(true)
+                        .setUserName(SessionConfig.DEFAULT_USER))
+                .pipeInfoList;
+        showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+        Assert.assertEquals(1, showPipeResult.size());
+        // Check status
+        Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
+        // Check configurations
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test1"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test1"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
+        Assert.assertTrue(
+            showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
+        Assert.assertTrue(
+            showPipeResult
+                .get(0)
+                .pipeConnector
+                .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+        // Check creation time and record last creation time
+        Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
+        lastCreationTime = showPipeResult.get(0).creationTime;
+        // Check exception message
+        Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
+      }
 
-    // Alter pipe (replace)
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+      // Alter pipe (replace)
       statement.execute(
           "alter pipe a2b replace source ('capture.table'='true','''source'='iotdb-source', 'table-name'='test','database-name'='test')");
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Show pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(
-                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
-              .pipeInfoList;
-      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(1, showPipeResult.size());
-      // check status
-      Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
-      // check configurations
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
-      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
-      Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeConnector
-              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // Check creation time and record last creation time
-      Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
-      lastCreationTime = showPipeResult.get(0).creationTime;
-      // check exception message
-      Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
-    }
+      // Show pipe
+      {
+        final List<TShowPipeInfo> showPipeResult =
+            client.showPipe(
+                    new TShowPipeReq()
+                        .setIsTableModel(true)
+                        .setUserName(SessionConfig.DEFAULT_USER))
+                .pipeInfoList;
+        showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+        Assert.assertEquals(1, showPipeResult.size());
+        // check status
+        Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
+        // check configurations
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
+        Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("mode.streaming=true"));
+        Assert.assertTrue(
+            showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
+        Assert.assertTrue(
+            showPipeResult
+                .get(0)
+                .pipeConnector
+                .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+        // Check creation time and record last creation time
+        Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
+        lastCreationTime = showPipeResult.get(0).creationTime;
+        // check exception message
+        Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
+      }
 
-    // Alter pipe (modify)
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+      // Alter pipe (modify)
       statement.execute("alter pipe a2b modify sink ('sink.batch.enable'='false')");
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Show pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(
-                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
-              .pipeInfoList;
-      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(1, showPipeResult.size());
-      // Check status
-      Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
-      // Check configurations
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
-      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
-      Assert.assertTrue(
-          showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
-      Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeConnector
-              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // Check creation time and record last creation time
-      Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
-      lastCreationTime = showPipeResult.get(0).creationTime;
-      // Check exception message
-      Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
-    }
+      // Show pipe
+      {
+        final List<TShowPipeInfo> showPipeResult =
+            client.showPipe(
+                    new TShowPipeReq()
+                        .setIsTableModel(true)
+                        .setUserName(SessionConfig.DEFAULT_USER))
+                .pipeInfoList;
+        showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+        Assert.assertEquals(1, showPipeResult.size());
+        // Check status
+        Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
+        // Check configurations
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
+        Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
+        Assert.assertTrue(
+            showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
+        Assert.assertTrue(
+            showPipeResult
+                .get(0)
+                .pipeConnector
+                .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+        // Check creation time and record last creation time
+        Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
+        lastCreationTime = showPipeResult.get(0).creationTime;
+        // Check exception message
+        Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
+      }
 
-    // Start pipe
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+      // Start pipe
       statement.execute("start pipe a2b");
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Alter pipe (modify)
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+      // Alter pipe (modify)
       statement.execute("alter pipe a2b modify sink ('connector.batch.enable'='true')");
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // Show pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(
-                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
-              .pipeInfoList;
-      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(1, showPipeResult.size());
-      // Check status
-      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
-      // Check configurations
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
-      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
-      Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeConnector
-              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // Check creation time and record last creation time
-      Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
-      lastCreationTime = showPipeResult.get(0).creationTime;
-      // Check exception message
-      Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
-    }
+      // Show pipe
+      {
+        final List<TShowPipeInfo> showPipeResult =
+            client.showPipe(
+                    new TShowPipeReq()
+                        .setIsTableModel(true)
+                        .setUserName(SessionConfig.DEFAULT_USER))
+                .pipeInfoList;
+        showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+        Assert.assertEquals(1, showPipeResult.size());
+        // Check status
+        Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+        // Check configurations
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
+        Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
+        Assert.assertTrue(
+            showPipeResult
+                .get(0)
+                .pipeConnector
+                .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+        // Check creation time and record last creation time
+        Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
+        lastCreationTime = showPipeResult.get(0).creationTime;
+        // Check exception message
+        Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
+      }
 
-    // Alter pipe (modify empty)
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+      // Alter pipe (modify empty)
       statement.execute("alter pipe a2b modify source ()");
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // show pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(
-                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
-              .pipeInfoList;
-      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(1, showPipeResult.size());
-      // check status
-      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
-      // check configurations
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
-      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
-      Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeConnector
-              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // Check creation time and record last creation time
-      Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
-      lastCreationTime = showPipeResult.get(0).creationTime;
-      // Check exception message
-      Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
-    }
+      // show pipe
+      {
+        final List<TShowPipeInfo> showPipeResult =
+            client.showPipe(
+                    new TShowPipeReq()
+                        .setIsTableModel(true)
+                        .setUserName(SessionConfig.DEFAULT_USER))
+                .pipeInfoList;
+        showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+        Assert.assertEquals(1, showPipeResult.size());
+        // check status
+        Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+        // check configurations
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
+        Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
+        Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
+        Assert.assertTrue(
+            showPipeResult
+                .get(0)
+                .pipeConnector
+                .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+        // Check creation time and record last creation time
+        Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
+        lastCreationTime = showPipeResult.get(0).creationTime;
+        // Check exception message
+        Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
+      }
 
-    // Alter pipe (replace empty)
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+      // Alter pipe (replace empty)
       statement.execute("alter pipe a2b replace source ()");
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // show pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(
-                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
-              .pipeInfoList;
-      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(1, showPipeResult.size());
-      // check status
-      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
-      // check configurations
+      // show pipe
+      {
+        final List<TShowPipeInfo> showPipeResult =
+            client.showPipe(
+                    new TShowPipeReq()
+                        .setIsTableModel(true)
+                        .setUserName(SessionConfig.DEFAULT_USER))
+                .pipeInfoList;
+        showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+        Assert.assertEquals(1, showPipeResult.size());
+        // check status
+        Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+        // check configurations
 
-      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("__system.sql-dialect=table"));
-      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
-      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
-      Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
-      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
-      Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeConnector
-              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // Check creation time and record last creation time
-      Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
-      lastCreationTime = showPipeResult.get(0).creationTime;
-      // Check exception message
-      Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
-    }
+        Assert.assertTrue(
+            showPipeResult.get(0).pipeExtractor.contains("__system.sql-dialect=table"));
+        Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
+        Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("database-name=test"));
+        Assert.assertFalse(showPipeResult.get(0).pipeExtractor.contains("table-name=test"));
+        Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
+        Assert.assertTrue(
+            showPipeResult
+                .get(0)
+                .pipeConnector
+                .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+        // Check creation time and record last creation time
+        Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
+        lastCreationTime = showPipeResult.get(0).creationTime;
+        // Check exception message
+        Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
+      }
 
-    // Alter pipe (replace empty)
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+      // Alter pipe (replace empty)
       statement.execute("alter pipe a2b replace processor ()");
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
 
-    // show pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(
-                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
-              .pipeInfoList;
-      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(1, showPipeResult.size());
-      // check status
-      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
-      // check configurations
-      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
-      Assert.assertFalse(
-          showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
-      Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeConnector
-              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // Check creation time and record last creation time
-      Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
-      lastCreationTime = showPipeResult.get(0).creationTime;
-      // Check exception message
-      Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
-    }
+      // show pipe
+      {
+        final List<TShowPipeInfo> showPipeResult =
+            client.showPipe(
+                    new TShowPipeReq()
+                        .setIsTableModel(true)
+                        .setUserName(SessionConfig.DEFAULT_USER))
+                .pipeInfoList;
+        showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+        Assert.assertEquals(1, showPipeResult.size());
+        // check status
+        Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+        // check configurations
+        Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
+        Assert.assertFalse(
+            showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
+        Assert.assertTrue(
+            showPipeResult
+                .get(0)
+                .pipeConnector
+                .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+        // Check creation time and record last creation time
+        Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
+        lastCreationTime = showPipeResult.get(0).creationTime;
+        // Check exception message
+        Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
+      }
 
-    // Alter pipe (modify empty)
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+      // Alter pipe (modify empty)
       statement.execute("alter pipe a2b modify sink ()");
+
+      // Show pipe
+      {
+        final List<TShowPipeInfo> showPipeResult =
+            client.showPipe(
+                    new TShowPipeReq()
+                        .setIsTableModel(true)
+                        .setUserName(SessionConfig.DEFAULT_USER))
+                .pipeInfoList;
+        showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+        Assert.assertEquals(1, showPipeResult.size());
+        // Check status
+        Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
+        // Check configurations
+        Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
+        Assert.assertTrue(
+            showPipeResult
+                .get(0)
+                .pipeConnector
+                .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
+        // Check creation time and record last creation time
+        Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
+        // Check exception message
+        Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
+      }
     } catch (SQLException e) {
       fail(e.getMessage());
-    }
-
-    // Show pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult =
-          client.showPipe(
-                  new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER))
-              .pipeInfoList;
-      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
-      Assert.assertEquals(1, showPipeResult.size());
-      // Check status
-      Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
-      // Check configurations
-      Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
-      Assert.assertTrue(
-          showPipeResult
-              .get(0)
-              .pipeConnector
-              .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // Check creation time and record last creation time
-      Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
-      // Check exception message
-      Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
     }
   }
 
+  // ALTER must reject a missing table-model pipe, and the same connection must then create it.
   @Test
   public void testAlterPipeFailure() {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -435,18 +403,17 @@ public class IoTDBPipeAlterIT extends AbstractPipeTableModelDualManualIT {
             receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute(sql);
-      fail();
-    } catch (SQLException ignore) {
-    }
+      try {
+        statement.execute(sql);
+        fail();
+      } catch (SQLException ignore) {
+      }
 
-    // Create pipe
-    sql =
-        String.format(
-            "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test1', 'mode.streaming'='true') with sink ('node-urls'='%s', 'batch.enable'='false')",
-            receiverDataNode.getIpAndPortString());
-    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+      // Create pipe
+      sql =
+          String.format(
+              "create pipe a2b with source ('source'='iotdb-source', 'database-name'='test', 'table-name'='test1', 'mode.streaming'='true') with sink ('node-urls'='%s', 'batch.enable'='false')",
+              receiverDataNode.getIpAndPortString());
       statement.execute(sql);
     } catch (SQLException e) {
       fail(e.getMessage());

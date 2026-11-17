@@ -21,6 +21,15 @@ package org.apache.iotdb.session.i18n;
 
 public final class SessionMessages {
 
+  public static final String EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392 =
+      "Internal node supplier must not be null";
+
+  public static final String EXCEPTION_AN_INTERNAL_NODE_SUPPLIER_IS_REQUIRED_WHEN_AUTO_FETCH_IS_ENABLED_9CB6BA02 =
+      "An internal node supplier is required when auto-fetch is enabled";
+
+  public static final String EXCEPTION_AN_INTERNAL_SUBSCRIPTION_PULL_CONSUMER_REQUIRES_AN_EXPLICIT_HOST_AND_PORT_7B82801E =
+      "An internal subscription pull consumer requires an explicit host and port";
+
   // Session
   public static final String NODE_URLS_EMPTY = "nodeUrls shouldn't be empty.";
   public static final String REDIRECT_TWICE_LOG = "redirect twice";

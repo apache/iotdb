@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 
 import static org.apache.iotdb.commons.disk.FolderManager.FolderState.HEALTHY;
 
@@ -47,6 +48,20 @@ public abstract class DirectoryStrategy {
   List<String> folders = new ArrayList<>();
 
   private boolean changeSystemStatusToReadOnly = true;
+
+  private Runnable diskFullHandler;
+
+  public void setDiskFullHandler(Runnable diskFullHandler) {
+    this.diskFullHandler = diskFullHandler;
+  }
+
+  public void reportDiskFull(Object source, BooleanSupplier recoveryCheck) {
+    if (diskFullHandler != null) {
+      diskFullHandler.run();
+    } else {
+      CommonDescriptor.getInstance().getConfig().setReadOnlyForDiskFull(source, recoveryCheck);
+    }
+  }
 
   public void setChangeSystemStatusToReadOnly(boolean changeSystemStatusToReadOnly) {
     this.changeSystemStatusToReadOnly = changeSystemStatusToReadOnly;
@@ -70,11 +85,8 @@ public abstract class DirectoryStrategy {
       if (changeSystemStatusToReadOnly) {
         LOGGER.error(UtilMessages.DISK_SPACE_INSUFFICIENT_READ_ONLY);
         final List<String> fullFolders = List.copyOf(folders);
-        CommonDescriptor.getInstance()
-            .getConfig()
-            .setReadOnlyForDiskFull(
-                fullFolders,
-                () -> fullFolders.stream().anyMatch(JVMCommonUtils::hasSpaceWithoutRetry));
+        reportDiskFull(
+            fullFolders, () -> fullFolders.stream().anyMatch(JVMCommonUtils::hasSpaceWithoutRetry));
       } else {
         if (LoggerPeriodicalLogReducer.shouldLog(
             UtilMessages.MESSAGE_DISK_SPACE_INSUFFICIENT_DF6205B0)) {
