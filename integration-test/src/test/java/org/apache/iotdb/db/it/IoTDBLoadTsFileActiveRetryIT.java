@@ -74,6 +74,8 @@ public class IoTDBLoadTsFileActiveRetryIT {
       Long.MAX_VALUE / 4;
   private static final MeasurementSchema TSFILE_SCHEMA =
       new MeasurementSchema(MEASUREMENT, TSDataType.INT32, TSEncoding.RLE);
+  private static final MeasurementSchema INCOMPATIBLE_TSFILE_SCHEMA =
+      new MeasurementSchema(MEASUREMENT, TSDataType.BOOLEAN, TSEncoding.RLE);
 
   private File tmpDir;
 
@@ -111,11 +113,9 @@ public class IoTDBLoadTsFileActiveRetryIT {
     final DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     final File retryTsFile = new File(tmpDir, "1-0-0-0.tsfile");
     final File permanentFailureTsFile = new File(tmpDir, "2-0-0-0.tsfile");
-    generateTsFile(retryTsFile, TSFILE_SCHEMA);
+    generateTsFile(retryTsFile, INCOMPATIBLE_TSFILE_SCHEMA);
     // BOOLEAN -> INT64 stays incompatible when type-mismatch conversion is disabled.
-    generateTsFile(
-        permanentFailureTsFile,
-        new MeasurementSchema(MEASUREMENT, TSDataType.BOOLEAN, TSEncoding.RLE));
+    generateTsFile(permanentFailureTsFile, INCOMPATIBLE_TSFILE_SCHEMA);
 
     try (final Connection connection =
             EnvFactory.getEnv().getConnectionWithSpecifiedDataNode(dataNodeWrapper);
