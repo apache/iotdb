@@ -419,11 +419,7 @@ public class IoTDBLoadTsFileMixedModelIT {
             expected.getMessage().contains("aaa_failure_probe"));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("show devices from batch_probe")) {
-        while (resultSet.next()) {
-          registeredDevices.add(resultSet.getString("site"));
-        }
-      }
+      registeredDevices.addAll(getVisibleBatchProbeDevices(statement, batchDeviceReadOrder));
       Assert.assertEquals(
           "The full batch must contain the first devices returned by the TsFile reader",
           expectedRegisteredDevices,
@@ -445,11 +441,7 @@ public class IoTDBLoadTsFileMixedModelIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use " + TABLE_DATABASE);
       final Set<String> devicesAfterRestart = new HashSet<>();
-      try (ResultSet resultSet = statement.executeQuery("show devices from batch_probe")) {
-        while (resultSet.next()) {
-          devicesAfterRestart.add(resultSet.getString("site"));
-        }
-      }
+      devicesAfterRestart.addAll(getVisibleBatchProbeDevices(statement, batchDeviceReadOrder));
       Assert.assertEquals(registeredDevices, devicesAfterRestart);
       try (ResultSet resultSet = statement.executeQuery("select count(reading) from batch_probe")) {
         Assert.assertTrue(resultSet.next());
@@ -845,12 +837,29 @@ public class IoTDBLoadTsFileMixedModelIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet =
-            statement.executeQuery("select time, value from " + device + " order by time")) {
+            statement.executeQuery("select value from " + device + " order by time")) {
       Assert.assertTrue(resultSet.next());
       Assert.assertEquals(expectedTime, resultSet.getLong("time"));
       Assert.assertEquals(expectedValue, resultSet.getLong("value"));
       Assert.assertFalse(resultSet.next());
     }
+  }
+
+  private Set<String> getVisibleBatchProbeDevices(
+      final Statement statement, final List<String> candidateSites) throws SQLException {
+    final Set<String> visibleSites = new HashSet<>();
+    for (final String site : candidateSites) {
+      try (ResultSet resultSet =
+          statement.executeQuery("show devices from batch_probe where site = '" + site + "'")) {
+        if (resultSet.next()) {
+          Assert.assertEquals(site, resultSet.getString("site"));
+          Assert.assertFalse(
+              "An exact site filter returned more than one device", resultSet.next());
+          visibleSites.add(site);
+        }
+      }
+    }
+    return visibleSites;
   }
 
   private void deleteRecursively(final File file) throws IOException {

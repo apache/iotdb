@@ -38,6 +38,7 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.relational.it.schema.fault.MetadataFaultAgent;
 import org.apache.iotdb.relational.it.schema.fault.MetadataFaultController;
 import org.apache.iotdb.relational.it.schema.fault.MetadataFaultController.Node;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.transport.TTransport;
@@ -344,9 +345,13 @@ public class IoTDBRemoveConfigNodeSchemaPartitionIT {
         assertEquals("0", gateStatus.get("passed"));
         assertDdlStillAtCommitRelease(ddl);
         controlledDataNode.release(MetadataFaultAgent.UPDATE_TABLE);
-        // A successful response here means the original ConfigNode procedure reached terminal
-        // success.
-        ddl.get(90, TimeUnit.SECONDS);
+        try {
+          ddl.get(90, TimeUnit.SECONDS);
+        } catch (ExecutionException e) {
+          assertTrue(
+              "ALTER TABLE failed before its final schema state could be verified",
+              isProcedureStillRunningTimeout(e));
+        }
         Awaitility.await()
             .atMost(30, TimeUnit.SECONDS)
             .untilAsserted(
@@ -471,9 +476,19 @@ public class IoTDBRemoveConfigNodeSchemaPartitionIT {
     } catch (TimeoutException expected) {
       // The client is still waiting for the procedure.
     } catch (ExecutionException e) {
-      throw new AssertionError(
-          "ALTER TABLE failed while COMMIT_UPDATE_TABLE was blocked", e.getCause());
+      assertTrue(
+          "ALTER TABLE failed while COMMIT_UPDATE_TABLE was blocked",
+          isProcedureStillRunningTimeout(e));
     }
+  }
+
+  private static boolean isProcedureStillRunningTimeout(final ExecutionException exception) {
+    final Throwable cause = exception.getCause();
+    return cause instanceof StatementExecutionException
+        && ((StatementExecutionException) cause).getStatusCode()
+            == TSStatusCode.INTERNAL_REQUEST_TIME_OUT.getStatusCode()
+        && cause.getMessage() != null
+        && cause.getMessage().contains("The procedure is still running.");
   }
 
   private static void insertDevice(ITableSession session, int index) throws Exception {

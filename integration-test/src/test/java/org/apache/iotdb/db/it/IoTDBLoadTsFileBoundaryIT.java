@@ -481,7 +481,7 @@ public class IoTDBLoadTsFileBoundaryIT {
           }
           try (ResultSet resultSet =
               statement.executeQuery(
-                  "select time, quality, value from " + INVALID_DATABASE + ".valid_device")) {
+                  "select quality, value from " + INVALID_DATABASE + ".valid_device")) {
             if (miniConversion) {
               Assert.assertTrue(
                   "Mini conversion must retain the successfully converted valid prefix",
@@ -590,7 +590,7 @@ public class IoTDBLoadTsFileBoundaryIT {
   private void assertThresholdFileContents(final Statement statement, final String device)
       throws SQLException {
     try (ResultSet resultSet =
-        statement.executeQuery("select time, value from " + device + " order by time")) {
+        statement.executeQuery("select value from " + device + " order by time")) {
       Assert.assertTrue(resultSet.next());
       Assert.assertEquals(10000, resultSet.getLong("time"));
       Assert.assertEquals(10, resultSet.getLong("value"));
@@ -608,7 +608,7 @@ public class IoTDBLoadTsFileBoundaryIT {
       final long startValue)
       throws SQLException {
     try (ResultSet resultSet =
-        statement.executeQuery("select time, value from " + device + " order by time")) {
+        statement.executeQuery("select value from " + device + " order by time")) {
       for (int i = 0; i < expectedCount; i++) {
         Assert.assertTrue(
             "A normal-path row was lost during statement reconstruction", resultSet.next());
@@ -635,7 +635,7 @@ public class IoTDBLoadTsFileBoundaryIT {
       final long expectedValue)
       throws SQLException {
     try (ResultSet resultSet =
-        statement.executeQuery("select time, value from " + device + " order by time")) {
+        statement.executeQuery("select value from " + device + " order by time")) {
       Assert.assertTrue(resultSet.next());
       Assert.assertEquals(expectedTime, resultSet.getLong("time"));
       Assert.assertEquals(expectedValue, resultSet.getLong("value"));
