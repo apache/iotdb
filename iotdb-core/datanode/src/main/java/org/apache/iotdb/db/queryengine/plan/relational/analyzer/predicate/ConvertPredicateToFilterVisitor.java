@@ -135,6 +135,15 @@ public class ConvertPredicateToFilterVisitor
     Type type = context.getType(Symbol.from(operand));
     TSDataType dataType = InternalTypeManager.getTSDataType(type);
     Set<T> inSet = constructInSet(values, type);
+    if (inSet.isEmpty()) {
+      // No literal can match, so the predicate is always false. An empty ValueIn cannot express
+      // that: TsFile's statistics shortcut reports allSatisfy() for a page whose column is
+      // entirely NULL, and the page reader then returns those NULL rows. "=" already uses
+      // FalseLiteralFilter for a literal that can never match. NOT IN is unaffected because a
+      // NotExpression is never pushed into the scan, so it keeps excluding NULL rows in the
+      // column transformer.
+      return new FalseLiteralFilter();
+    }
     return ValueFilterApi.in(measurementIndex, inSet, dataType);
   }
 
@@ -194,7 +203,11 @@ public class ConvertPredicateToFilterVisitor
       double floatPointValue = floatPoint;
 
       if (columnDataType == INT64) {
-        if (floatPointValue > Long.MAX_VALUE) {
+        // (double) Long.MAX_VALUE rounds up to 2^63, so ">" would let a literal of exactly 2^63
+        // through and the cast back to long would saturate it onto Long.MAX_VALUE, matching the
+        // wrong row. 0x1p63 is that bound exactly. INT32 needs no such care: its bound is
+        // representable as a double.
+        if (floatPointValue >= 0x1p63) {
           return constructFilterForGreaterThanMax(operator, measurementIndex);
         }
         if (floatPointValue < Long.MIN_VALUE) {

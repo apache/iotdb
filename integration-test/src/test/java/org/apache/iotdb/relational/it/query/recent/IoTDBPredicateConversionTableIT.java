@@ -53,7 +53,16 @@ public class IoTDBPredicateConversionTableIT {
         "INSERT INTO PredicateTestTable(time, int32_col, int64_col) VALUES(7, null, null)",
         "INSERT INTO PredicateTestTable(time, int32_col, int64_col) VALUES(8, 1000, 1000)",
         "INSERT INTO PredicateTestTable(time, int32_col, int64_col) VALUES(9, -29, -29)",
-        "INSERT INTO PredicateTestTable(time, int32_col, int64_col) VALUES(10, -30, -30)"
+        "INSERT INTO PredicateTestTable(time, int32_col, int64_col) VALUES(10, -30, -30)",
+        // A second table whose "null_dev" device never writes int32_col or int64_col, so after
+        // FLUSH those chunks carry all-NULL statistics. "value_dev" holds the INT64 upper bound.
+        "CREATE TABLE InListBoundaryTable(device STRING TAG, payload INT32 FIELD, "
+            + "int32_col INT32 FIELD, int64_col INT64 FIELD)",
+        "INSERT INTO InListBoundaryTable(time, device, payload) VALUES(1, 'null_dev', 1)",
+        "INSERT INTO InListBoundaryTable(time, device, payload) VALUES(2, 'null_dev', 2)",
+        "INSERT INTO InListBoundaryTable(time, device, payload, int32_col, int64_col) "
+            + "VALUES(1, 'value_dev', 1, 7, 9223372036854775807)",
+        "FLUSH"
       };
 
   @BeforeClass
@@ -502,6 +511,71 @@ public class IoTDBPredicateConversionTableIT {
           "1970-01-01T00:00:00.008Z,false,",
           "1970-01-01T00:00:00.009Z,false,",
           "1970-01-01T00:00:00.010Z,false,"
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testImpossibleInListAndFlushedAllNullColumn() {
+    // Every literal is dropped, so the pushed-down filter must match nothing. An empty IN set
+    // reaches TsFile as a candidate set that allSatisfy() reports as a match for an all-NULL
+    // page, which returned the two "null_dev" rows once the data was flushed.
+    String[] header = {"time", "device", "int32_col"};
+    tableResultSetEqualTest(
+        "SELECT time, device, int32_col FROM InListBoundaryTable WHERE int32_col IN (4294967298, 2.5) ORDER BY time",
+        header,
+        new String[] {},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, device, int64_col FROM InListBoundaryTable WHERE int64_col IN (9223372036854775808.0, 2.5) ORDER BY time",
+        new String[] {"time", "device", "int64_col"},
+        new String[] {},
+        DATABASE_NAME);
+
+    // NOT IN over the same impossible list keeps every non-NULL value and still drops NULL rows
+    tableResultSetEqualTest(
+        "SELECT time, device, int32_col FROM InListBoundaryTable WHERE int32_col NOT IN (4294967298, 2.5) ORDER BY time",
+        header,
+        new String[] {"1970-01-01T00:00:00.001Z,value_dev,7,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testInt64UpperBoundInList() {
+    String[] header = {"time", "device", "int64_col"};
+    // 9223372036854775808.0 is 2^63 and cannot equal any INT64 value, so it must not match the
+    // row holding Long.MAX_VALUE. The second form is deduplicated into "=" by the optimizer and
+    // has to reject the literal on that path as well.
+    tableResultSetEqualTest(
+        "SELECT time, device, int64_col FROM InListBoundaryTable WHERE int64_col IN (9223372036854775808.0, 0) ORDER BY time",
+        header,
+        new String[] {},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, device, int64_col FROM InListBoundaryTable WHERE int64_col IN (9223372036854775808.0, 9223372036854775808.0) ORDER BY time",
+        header,
+        new String[] {},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, device, int64_col FROM InListBoundaryTable WHERE int64_col = 9223372036854775808.0 ORDER BY time",
+        header,
+        new String[] {},
+        DATABASE_NAME);
+    // Long.MAX_VALUE itself still matches
+    tableResultSetEqualTest(
+        "SELECT time, device, int64_col FROM InListBoundaryTable WHERE int64_col IN (9223372036854775807, 0) ORDER BY time",
+        header,
+        new String[] {"1970-01-01T00:00:00.001Z,value_dev,9223372036854775807,"},
+        DATABASE_NAME);
+
+    // The projection is evaluated by the column transformer instead of the pushed-down filter
+    tableResultSetEqualTest(
+        "SELECT time, device, int64_col IN (9223372036854775808.0, 0) AS m FROM InListBoundaryTable ORDER BY time, device",
+        new String[] {"time", "device", "m"},
+        new String[] {
+          "1970-01-01T00:00:00.001Z,null_dev,null,",
+          "1970-01-01T00:00:00.001Z,value_dev,false,",
+          "1970-01-01T00:00:00.002Z,null_dev,null,"
         },
         DATABASE_NAME);
   }

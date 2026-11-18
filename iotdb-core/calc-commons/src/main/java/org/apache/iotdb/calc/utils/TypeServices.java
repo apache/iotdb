@@ -208,8 +208,10 @@ public class TypeServices {
       throw new SemanticException(
           String.format(CalcMessages.CANNOT_CAST_TO_TYPE, value, type.getTypeEnum()));
     }
-    // (double) max + 1 is exact for INT32 and rounds to 2^63 for INT64, so the bound stays exact.
-    return v == Math.floor(v) && v >= min && v < (double) max + 1 ? (long) v : null;
+    // Compare against the exact exclusive upper bound. (double) Long.MAX_VALUE rounds up to
+    // 2^63, so using it would accept 2^63 and then saturate the cast back onto Long.MAX_VALUE.
+    final double exclusiveMax = isInt32 ? 0x1p31 : 0x1p63;
+    return v == Math.floor(v) && v >= min && v < exclusiveMax ? (long) v : null;
   }
 
   private static final IdentityLinearFill IDENTITY_LINEAR_FILL = new IdentityLinearFill();

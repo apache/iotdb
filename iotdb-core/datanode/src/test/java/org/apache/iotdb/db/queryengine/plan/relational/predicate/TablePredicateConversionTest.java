@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLitera
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
@@ -532,10 +533,11 @@ public class TablePredicateConversionTest {
     Assert.assertFalse(notInFilter.satisfyInteger(0, 1));
     Assert.assertTrue(notInFilter.satisfyInteger(0, 2));
 
-    // No literal can match: IN matches nothing and NOT IN matches every non-null value
+    // No literal can match. The result must be FalseLiteralFilter rather than an empty ValueIn:
+    // TsFile reports allSatisfy() for an empty candidate set on an all-NULL page, which would
+    // make the pushed-down filter return those NULL rows.
     Filter impossible = convertInt32(inPredicate(int32Column, "4294967298", "2.5"));
-    Assert.assertEquals(
-        ValueFilterApi.in(0, Collections.<Integer>emptySet(), TSDataType.INT32), impossible);
+    Assert.assertEquals(new FalseLiteralFilter(), impossible);
     Assert.assertFalse(impossible.satisfyInteger(0, 2));
     Filter notImpossible =
         convertInt32(new NotExpression(inPredicate(int32Column, "4294967298", "2.5")));
@@ -565,6 +567,41 @@ public class TablePredicateConversionTest {
             0, new HashSet<>(Arrays.asList(2L, 3L, 4294967298L, Long.MIN_VALUE)), TSDataType.INT64),
         filter);
     Assert.assertFalse(filter.satisfyLong(0, Long.MAX_VALUE));
+  }
+
+  @Test
+  public void testInt64ColumnAndUpperBoundDoubleLiteral() {
+    // The optimizer deduplicates an IN list and rewrites a single remaining value to "=", so the
+    // boundary has to be rejected there too. (double) Long.MAX_VALUE rounds up to 2^63, which
+    // used to let the literal through and saturate back onto Long.MAX_VALUE.
+    DoubleLiteral upperBound = new DoubleLiteral("9223372036854775808.0");
+    Assert.assertEquals(
+        new FalseLiteralFilter(),
+        convertInt64(compare(ComparisonExpression.Operator.EQUAL, upperBound)));
+    Assert.assertEquals(
+        new ValueIsNotNullOperator(0),
+        convertInt64(compare(ComparisonExpression.Operator.NOT_EQUAL, upperBound)));
+    Assert.assertEquals(
+        new FalseLiteralFilter(),
+        convertInt64(compare(ComparisonExpression.Operator.GREATER_THAN, upperBound)));
+    Assert.assertEquals(
+        new ValueIsNotNullOperator(0),
+        convertInt64(compare(ComparisonExpression.Operator.LESS_THAN, upperBound)));
+    // Long.MIN_VALUE is exact as a double, so the lower boundary still converts
+    Assert.assertEquals(
+        ValueFilterApi.eq(0, Long.MIN_VALUE, TSDataType.INT64),
+        convertInt64(
+            compare(
+                ComparisonExpression.Operator.EQUAL, new DoubleLiteral("-9223372036854775808.0"))));
+  }
+
+  private Expression compare(ComparisonExpression.Operator operator, Literal literal) {
+    return new ComparisonExpression(operator, int64Column, literal);
+  }
+
+  private Filter convertInt64(Expression predicate) {
+    return PredicateUtils.convertPredicateToFilter(
+        predicate, int64MeasurementColumnsIndexMap, int64SchemaMap, null, null, null);
   }
 
   private Filter convertInt32(Expression predicate) {
