@@ -29,11 +29,6 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
-  public DataNodeConfig setMetricPrometheusReporterAsyncUpdate(boolean asyncUpdate) {
-    return this;
-  }
-
-  @Override
   public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
     return this;
   }

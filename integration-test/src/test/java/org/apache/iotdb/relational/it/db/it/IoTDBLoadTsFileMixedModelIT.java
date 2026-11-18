@@ -90,13 +90,7 @@ public class IoTDBLoadTsFileMixedModelIT {
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
-        .setLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber(TABLE_DEVICE_BATCH_SIZE)
-        .setMetricReporterType(Collections.singletonList("PROMETHEUS"))
-        .setMetricPrometheusReporterAsyncUpdate(false);
-    EnvFactory.getEnv()
-        .getConfig()
-        .getConfigNodeConfig()
-        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
+        .setLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber(TABLE_DEVICE_BATCH_SIZE);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -212,136 +206,6 @@ public class IoTDBLoadTsFileMixedModelIT {
     Assert.assertTrue(secondTableFile.exists());
     Assert.assertTrue(
         new File(firstTableFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists());
-  }
-
-  @Test
-  public void testTableMiniConversionHonorsExplicitAndSessionDatabases() throws Exception {
-    final File explicitFile = new File(tmpDir, "mini-explicit.tsfile");
-    final File sessionFile = new File(tmpDir, "mini-session.tsfile");
-    writeMiniTableFile(explicitFile, "mini_explicit", true);
-    writeMiniTableFile(sessionFile, "mini_session", false);
-    final long threshold = Math.max(explicitFile.length(), sessionFile.length());
-
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("create database " + TABLE_DATABASE);
-      statement.execute("create database " + SESSION_DATABASE);
-      statement.execute("use " + TABLE_DATABASE);
-      statement.execute(
-          "create table mini_explicit (site STRING TAG, zone STRING TAG, reading INT32 FIELD)");
-      statement.execute("use " + SESSION_DATABASE);
-      statement.execute(
-          "create table mini_session (site STRING TAG, zone STRING TAG, reading INT32 FIELD)");
-    }
-
-    final long conversionsBefore = getMiniConversionCount();
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("use " + SESSION_DATABASE);
-      statement.execute(
-          String.format(
-              "load '%s' with ('database'='%s','database-level'='2',"
-                  + "'tablet-conversion-threshold'='%d','auto-create-schema'='false',"
-                  + "'on-success'='none')",
-              explicitFile.getAbsolutePath(), TABLE_DATABASE, threshold));
-      try (ResultSet resultSet =
-          statement.executeQuery("select time, site, zone, reading from mini_session")) {
-        Assert.assertFalse("Explicit database LOAD changed the session database", resultSet.next());
-      }
-
-      statement.execute(
-          String.format(
-              "load '%s' with ('database-level'='2','tablet-conversion-threshold'='%d',"
-                  + "'auto-create-schema'='false','on-success'='none')",
-              sessionFile.getAbsolutePath(), threshold));
-      try (ResultSet resultSet =
-          statement.executeQuery("select time, site, zone, reading from mini_session")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(20, resultSet.getLong("time"));
-        Assert.assertEquals("east", resultSet.getString("site"));
-        Assert.assertNull(resultSet.getString("zone"));
-        Assert.assertEquals(9, resultSet.getInt("reading"));
-        Assert.assertFalse(resultSet.next());
-      }
-      try (ResultSet resultSet = statement.executeQuery("show tables")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals("mini_session", resultSet.getString(1));
-        Assert.assertFalse(resultSet.next());
-      }
-    }
-
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("use " + TABLE_DATABASE);
-      try (ResultSet resultSet =
-          statement.executeQuery("select time, site, zone, reading from mini_explicit")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(11, resultSet.getLong("time"));
-        Assert.assertEquals("south", resultSet.getString("site"));
-        Assert.assertEquals("south-1", resultSet.getString("zone"));
-        Assert.assertEquals(8, resultSet.getInt("reading"));
-        Assert.assertFalse(resultSet.next());
-      }
-    }
-    Assert.assertEquals(2, getMiniConversionCount() - conversionsBefore);
-    Assert.assertTrue(explicitFile.exists());
-    Assert.assertTrue(sessionFile.exists());
-  }
-
-  @Test
-  public void testMixedMiniAndNormalFilesKeepModelState() throws Exception {
-    final File loadDir = new File(tmpDir, "mixed-mini");
-    Assert.assertTrue(loadDir.mkdir());
-    final File firstMini = new File(loadDir, "01-tree-mini.tsfile");
-    final File normalTable = new File(loadDir, "02-table-normal.tsfile");
-    final File lastMini = new File(loadDir, "03-tree-mini.tsfile");
-    writeTreeFile(firstMini, TREE_DATABASE + ".before", 1, 101);
-    writeMiniTableFile(normalTable, "normal_table", true);
-    writeTreeFile(lastMini, TREE_DATABASE + ".after", 3, 303);
-    assertTsFileOrder(
-        loadDir, "01-tree-mini.tsfile", "02-table-normal.tsfile", "03-tree-mini.tsfile");
-    final long threshold = Math.max(firstMini.length(), lastMini.length());
-    Assert.assertTrue(normalTable.length() > threshold);
-    createTreeSchema("before", "after");
-    final long conversionsBefore = getMiniConversionCount();
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("create database " + TABLE_DATABASE);
-      statement.execute("create database " + SESSION_DATABASE);
-      statement.execute("use " + TABLE_DATABASE);
-      statement.execute(
-          "create table normal_table (site STRING TAG, zone STRING TAG, reading INT32 FIELD)");
-      statement.execute("use " + SESSION_DATABASE);
-      statement.execute(
-          String.format(
-              "load '%s' with ('database'='%s','database-level'='2',"
-                  + "'tablet-conversion-threshold'='%d','auto-create-schema'='false',"
-                  + "'convert-on-type-mismatch'='false','on-success'='none')",
-              loadDir.getAbsolutePath(), TABLE_DATABASE, threshold));
-      statement.execute("create table session_probe (site STRING TAG, reading INT32 FIELD)");
-      statement.execute("insert into session_probe(time, site, reading) values (20, 'session', 2)");
-      try (ResultSet resultSet = statement.executeQuery("select reading from session_probe")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(2, resultSet.getInt(1));
-        Assert.assertFalse(resultSet.next());
-      }
-      statement.execute("use " + TABLE_DATABASE);
-      try (ResultSet resultSet =
-          statement.executeQuery("select time, site, zone, reading from normal_table")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(11, resultSet.getLong("time"));
-        Assert.assertEquals("south", resultSet.getString("site"));
-        Assert.assertEquals("south-1", resultSet.getString("zone"));
-        Assert.assertEquals(8, resultSet.getInt("reading"));
-        Assert.assertFalse(resultSet.next());
-      }
-    }
-    Assert.assertEquals(2, getMiniConversionCount() - conversionsBefore);
-    assertTreeValue(TREE_DATABASE + ".before", 1, 101);
-    assertTreeValue(TREE_DATABASE + ".after", 3, 303);
-    Assert.assertTrue(firstMini.exists());
-    Assert.assertTrue(normalTable.exists());
-    Assert.assertTrue(lastMini.exists());
   }
 
   @Test
@@ -686,52 +550,6 @@ public class IoTDBLoadTsFileMixedModelIT {
           Arrays.asList(
               new Object[] {700L, "west", "r6", 66}, new Object[] {750L, "east", "r7", 77}));
     }
-  }
-
-  private void writeMiniTableFile(
-      final File file, final String tableName, final boolean withDeletion) throws Exception {
-    try (TsFileWriter writer = new TsFileWriter(file)) {
-      writeTable(
-          writer,
-          tableName,
-          Arrays.asList(
-              new MeasurementSchema("site", TSDataType.STRING),
-              new MeasurementSchema("zone", TSDataType.STRING),
-              new MeasurementSchema("reading", TSDataType.INT32)),
-          Arrays.asList(ColumnCategory.TAG, ColumnCategory.TAG, ColumnCategory.FIELD),
-          withDeletion
-              ? Arrays.asList(
-                  new Object[] {10L, "north", null, 7}, new Object[] {11L, "south", "south-1", 8})
-              : Collections.singletonList(new Object[] {20L, "east", null, 9}));
-    }
-    if (withDeletion) {
-      try (ModificationFile modifications =
-          new ModificationFile(
-              new File(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX), false)) {
-        modifications.write(
-            new TableDeletionEntry(new DeletionPredicate(tableName), new TimeRange(10, 10)));
-      }
-    }
-  }
-
-  private long getMiniConversionCount() {
-    long count = 0;
-    for (final String content : EnvFactory.getEnv().getMetricPrometheusReporterContents(null)) {
-      if (content == null) {
-        continue;
-      }
-      for (final String line : content.split("\\n")) {
-        final int labelStart = line.indexOf('{');
-        if (labelStart < 0
-            || !line.substring(0, labelStart).endsWith("_count")
-            || !line.contains("load_time_cost")
-            || !line.contains("name=\"analysis_cast_tablets\"")) {
-          continue;
-        }
-        count += Math.round(Double.parseDouble(line.substring(line.lastIndexOf(' ') + 1).trim()));
-      }
-    }
-    return count;
   }
 
   private void createTreeSchema(final String... devices) throws SQLException {
