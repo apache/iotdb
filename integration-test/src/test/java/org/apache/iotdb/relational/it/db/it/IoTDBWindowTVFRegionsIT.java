@@ -54,9 +54,14 @@ public class IoTDBWindowTVFRegionsIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    // The single-instance plans here hold several ~8MB fragment instances at once, which exceeds
+    // the operator memory pool under the default proportions.
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
+        .setDataNodeMemoryProportion("2:4:1:1:1:1")
+        .setQueryMemoryProportion("1:100:100:10:400:200:100:50")
+        .setSortBufferSize(1024 * 1024)
         .setSchemaRegionGroupExtensionPolicy("CUSTOM")
         .setDataRegionGroupExtensionPolicy("CUSTOM")
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
