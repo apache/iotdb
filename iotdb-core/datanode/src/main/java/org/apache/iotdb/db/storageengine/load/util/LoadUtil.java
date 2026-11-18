@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.load.util;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -453,7 +455,10 @@ public class LoadUtil {
 
     try {
       folderManager =
-          new FolderManager(Arrays.asList(dirs), DirectoryStrategyType.SEQUENCE_STRATEGY);
+          new FolderManager(
+              Arrays.asList(dirs),
+              DirectoryStrategyType.SEQUENCE_STRATEGY,
+              LoadUtil::reportDiskFull);
     } catch (DiskSpaceInsufficientException e) {
       // It should be noted that if this exception is not ignored, the entire process may fail to
       // start.
@@ -476,5 +481,16 @@ public class LoadUtil {
 
     LoadUtil.loadDiskSelector = loadDiskSelector;
     return loadDiskSelector;
+  }
+
+  private static void reportDiskFull() {
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setReadOnlyForDiskFull(
+            LoadUtil.class,
+            () ->
+                Arrays.stream(
+                        IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningDirs())
+                    .anyMatch(JVMCommonUtils::hasSpaceWithoutRetry));
   }
 }

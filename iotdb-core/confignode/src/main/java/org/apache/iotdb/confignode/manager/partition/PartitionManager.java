@@ -868,6 +868,17 @@ public class PartitionManager {
   /**
    * Only leader use this interface.
    *
+   * @param type The specified TConsensusGroupType
+   * @return Sum of N * (N - 1) over the Regions of the specified type, without copying any replica
+   *     set, so it is cheap enough to call on every pipe meta sync round
+   */
+  public long getReplicaPairCount(TConsensusGroupType type) {
+    return partitionInfo.getReplicaPairCount(type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
    * @return Deep copy of all Regions' RegionReplicaSet
    */
   public List<TRegionReplicaSet> getAllReplicaSets() {

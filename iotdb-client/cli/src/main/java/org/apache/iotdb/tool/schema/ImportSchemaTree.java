@@ -152,7 +152,7 @@ public class ImportSchemaTree extends AbstractImportSchema {
       if (CollectionUtils.isNotEmpty(strangers)) {
         ioTPrinter.println(
             CliMessages
-                .MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIBABA_DATATYPE_ENCODING_COMPRESSION_C429E7C6);
+                .MESSAGE_THE_HEADER_OF_THE_CSV_FILE_TO_BE_IMPORTED_IS_ILLEGAL_THE_CORRECT_FORMAT_IS_TIMESERIES_ALIAS_DATATYPE_ENCODING_COMPRESSION_FB573E37);
         return false;
       }
     }

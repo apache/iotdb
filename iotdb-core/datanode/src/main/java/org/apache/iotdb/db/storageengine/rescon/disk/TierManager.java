@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
@@ -45,6 +46,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -52,26 +54,22 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /** The main class of multiple directories. Used to allocate folders to data files. */
 public class TierManager {
   private static final Logger logger = LoggerFactory.getLogger(TierManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private DirectoryStrategyType directoryStrategyType = DirectoryStrategyType.SEQUENCE_STRATEGY;
 
-  /**
-   * seq folder manager of each storage tier, managing both data directories and multi-dir strategy
-   */
-  private volatile List<FolderManager> seqTiers = new ArrayList<>();
+  private record TierDirectory(int tierLevel, String folderName) {}
 
-  /**
-   * unSeq folder manager of each storage tier, managing both data directories and multi-dir
-   * strategy
-   */
-  private volatile List<FolderManager> unSeqTiers = new ArrayList<>();
+  /** Replaced as a whole by {@link #rebuildFolders()}; the published maps are unmodifiable. */
+  private final AtomicReference<Map<TierDirectory, TierFolderManager>> folderManagers =
+      new AtomicReference<>(Map.of());
 
-  private volatile List<FolderManager> objectTiers = new ArrayList<>();
+  // A failed constructor can report DiskFull before the replacement managers are published.
+  private volatile boolean rebuildingFolders;
 
   /** seq file folder's rawFsPath path -> tier level */
   private volatile Map<String, Integer> seqDir2TierLevel = new HashMap<>();
@@ -81,31 +79,28 @@ public class TierManager {
 
   private List<String> objectDirs;
 
-  private List<String> copyToTargetDirs;
-
-  //  private FolderManager copyToFolderManager;
-
-  private MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>
-      copyToFolderManager;
-
   /** total space of each tier, Long.MAX_VALUE when one tier contains remote storage */
-  private long[] tierDiskTotalSpace;
+  private final AtomicReference<long[]> tierDiskTotalSpace = new AtomicReference<>(new long[0]);
 
   private TierManager() {
     initFolders();
   }
 
   public synchronized void initFolders() {
-    initFolders(seqTiers, unSeqTiers, objectTiers, seqDir2TierLevel, unSeqDir2TierLevel);
+    CommonDescriptor.getInstance().getConfig().invalidateDiskFullRecoverySnapshot();
+    rebuildingFolders = true;
+    try {
+      rebuildFolders();
+    } finally {
+      rebuildingFolders = false;
+    }
   }
 
-  private void initFolders(
-      List<FolderManager> seqTiers,
-      List<FolderManager> unSeqTiers,
-      List<FolderManager> objectTiers,
-      Map<String, Integer> seqDir2TierLevel,
-      Map<String, Integer> unSeqDir2TierLevel) {
-    directoryStrategyType =
+  private void rebuildFolders() {
+    Map<TierDirectory, TierFolderManager> newManagers = new HashMap<>();
+    Map<String, Integer> newSeqDir2TierLevel = new HashMap<>();
+    Map<String, Integer> newUnSeqDir2TierLevel = new HashMap<>();
+    DirectoryStrategyType directoryStrategyType =
         DirectoryStrategyType.fromClassName(config.getMultiDirStrategyClassName());
 
     config.updatePath();
@@ -140,13 +135,14 @@ public class TierManager {
                           .getPath())
               .collect(Collectors.toList());
       mkDataDirs(seqDirs);
-      try {
-        seqTiers.add(new FolderManager(seqDirs, directoryStrategyType));
-      } catch (DiskSpaceInsufficientException e) {
-        logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
-      }
+      addFolderManager(
+          newManagers,
+          tierLevel,
+          IoTDBConstant.SEQUENCE_FOLDER_NAME,
+          seqDirs,
+          directoryStrategyType);
       for (String dir : seqDirs) {
-        seqDir2TierLevel.put(dir, tierLevel);
+        newSeqDir2TierLevel.put(dir, tierLevel);
       }
 
       List<String> unSeqDirs =
@@ -159,17 +155,18 @@ public class TierManager {
                           .getPath())
               .collect(Collectors.toList());
       mkDataDirs(unSeqDirs);
-      try {
-        unSeqTiers.add(new FolderManager(unSeqDirs, directoryStrategyType));
-      } catch (DiskSpaceInsufficientException e) {
-        logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
-      }
+      addFolderManager(
+          newManagers,
+          tierLevel,
+          IoTDBConstant.UNSEQUENCE_FOLDER_NAME,
+          unSeqDirs,
+          directoryStrategyType);
       for (String dir : unSeqDirs) {
-        unSeqDir2TierLevel.put(dir, tierLevel);
+        newUnSeqDir2TierLevel.put(dir, tierLevel);
       }
 
       if (tierLevel == 0) {
-        copyToTargetDirs =
+        List<String> copyToTargetDirs =
             Arrays.stream(tierDirs[tierLevel])
                 .filter(Objects::nonNull)
                 .map(
@@ -178,9 +175,12 @@ public class TierManager {
                             .getFile(v, IoTDBConstant.COPY_TO_TARGET_FOLDER_NAME)
                             .getPath())
                 .collect(Collectors.toList());
-        copyToFolderManager =
-            MemoizedCheckedSupplier.valueOf(
-                () -> new FolderManager(copyToTargetDirs, directoryStrategyType));
+        addFolderManager(
+            newManagers,
+            tierLevel,
+            IoTDBConstant.COPY_TO_TARGET_FOLDER_NAME,
+            copyToTargetDirs,
+            directoryStrategyType);
       }
 
       objectDirs =
@@ -193,11 +193,12 @@ public class TierManager {
                           .getPath())
               .collect(Collectors.toList());
 
-      try {
-        objectTiers.add(new FolderManager(objectDirs, directoryStrategyType));
-      } catch (DiskSpaceInsufficientException e) {
-        logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
-      }
+      addFolderManager(
+          newManagers,
+          tierLevel,
+          IoTDBConstant.OBJECT_FOLDER_NAME,
+          objectDirs,
+          directoryStrategyType);
       // try to remove empty objectDirs
       for (String dir : objectDirs) {
         File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
@@ -210,24 +211,77 @@ public class TierManager {
       }
     }
 
-    tierDiskTotalSpace = getTierDiskSpace(DiskSpaceType.TOTAL);
+    tierDiskTotalSpace.set(getTierDiskSpace(DiskSpaceType.TOTAL));
+    seqDir2TierLevel = newSeqDir2TierLevel;
+    unSeqDir2TierLevel = newUnSeqDir2TierLevel;
+    folderManagers.set(Collections.unmodifiableMap(newManagers));
+  }
+
+  private void addFolderManager(
+      Map<TierDirectory, TierFolderManager> newManagers,
+      int tierLevel,
+      String folderName,
+      List<String> folders,
+      DirectoryStrategyType type) {
+    TierDirectory key = new TierDirectory(tierLevel, folderName);
+    TierFolderManager entry = new TierFolderManager(key, folders, type);
+    newManagers.put(key, entry);
+    if (!IoTDBConstant.COPY_TO_TARGET_FOLDER_NAME.equals(folderName)) {
+      try {
+        entry.supplier.get();
+      } catch (DiskSpaceInsufficientException e) {
+        logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
+      }
+    }
+  }
+
+  private final class TierFolderManager {
+    private final List<String> folders;
+    private final MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException> supplier;
+    private final AtomicReference<FolderManager> manager = new AtomicReference<>();
+
+    private TierFolderManager(TierDirectory key, List<String> folders, DirectoryStrategyType type) {
+      this.folders = folders;
+      supplier =
+          MemoizedCheckedSupplier.valueOf(
+              () -> {
+                FolderManager created =
+                    new FolderManager(folders, type, () -> reportDiskFull(key, this));
+                manager.set(created);
+                return created;
+              });
+    }
+
+    private boolean hasSpaceForRecovery() {
+      FolderManager current = manager.get();
+      return current == null
+          ? folders.stream().anyMatch(JVMCommonUtils::hasSpaceWithoutRetry)
+          : current.hasSpaceForRecovery();
+    }
+  }
+
+  private void reportDiskFull(TierDirectory key, TierFolderManager source) {
+    if (!rebuildingFolders && folderManagers.get().get(key) != source) {
+      return;
+    }
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setReadOnlyForDiskFull(key, () -> hasSpaceForRecovery(key));
+  }
+
+  private boolean hasSpaceForRecovery(TierDirectory key) {
+    Map<TierDirectory, TierFolderManager> active = folderManagers.get();
+    if (rebuildingFolders) {
+      return false;
+    }
+    TierFolderManager current = active.get(key);
+    boolean recovered = current == null || current.hasSpaceForRecovery();
+    return recovered && active == folderManagers.get() && !rebuildingFolders;
   }
 
   public synchronized void resetFolders() {
     long startTime = System.currentTimeMillis();
-    List<FolderManager> newSeqTiers = new ArrayList<>();
-    List<FolderManager> newUnSeqTiers = new ArrayList<>();
-    List<FolderManager> newObjectTiers = new ArrayList<>();
-    Map<String, Integer> newSeqDir2TierLevel = new HashMap<>();
-    Map<String, Integer> newUnSeqDir2TierLevel = new HashMap<>();
-
-    initFolders(
-        newSeqTiers, newUnSeqTiers, newObjectTiers, newSeqDir2TierLevel, newUnSeqDir2TierLevel);
-    seqTiers = newSeqTiers;
-    unSeqTiers = newUnSeqTiers;
-    objectTiers = newObjectTiers;
-    seqDir2TierLevel = newSeqDir2TierLevel;
-    unSeqDir2TierLevel = newUnSeqDir2TierLevel;
+    initFolders();
     long endTime = System.currentTimeMillis();
     logger.info(StorageEngineMessages.FOLDERS_RESET_SUCCESSFULLY, (endTime - startTime));
   }
@@ -251,21 +305,32 @@ public class TierManager {
 
   public String getNextFolderForTsFile(int tierLevel, boolean sequence)
       throws DiskSpaceInsufficientException {
-    return sequence
-        ? seqTiers.get(tierLevel).getNextFolder()
-        : unSeqTiers.get(tierLevel).getNextFolder();
+    return getFolderManager(tierLevel, sequence).getNextFolder();
   }
 
   public String getNextFolderForCopyToTargetFile() throws DiskSpaceInsufficientException {
-    return copyToFolderManager.get().getNextFolder();
+    return getFolderManager(0, IoTDBConstant.COPY_TO_TARGET_FOLDER_NAME).getNextFolder();
   }
 
   public String getNextFolderForObjectFile() throws DiskSpaceInsufficientException {
-    return objectTiers.get(0).getNextFolder();
+    return getFolderManager(0, IoTDBConstant.OBJECT_FOLDER_NAME).getNextFolder();
   }
 
-  public FolderManager getFolderManager(int tierLevel, boolean sequence) {
-    return sequence ? seqTiers.get(tierLevel) : unSeqTiers.get(tierLevel);
+  public FolderManager getFolderManager(int tierLevel, boolean sequence)
+      throws DiskSpaceInsufficientException {
+    String folderName =
+        sequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME;
+    return getFolderManager(tierLevel, folderName);
+  }
+
+  private FolderManager getFolderManager(int tierLevel, String folderName)
+      throws DiskSpaceInsufficientException {
+    TierDirectory key = new TierDirectory(tierLevel, folderName);
+    TierFolderManager entry = folderManagers.get().get(key);
+    if (entry == null) {
+      throw new IndexOutOfBoundsException(key.toString());
+    }
+    return entry.supplier.get();
   }
 
   public List<String> getAllFilesFolders() {
@@ -356,7 +421,7 @@ public class TierManager {
   }
 
   public int getTiersNum() {
-    return seqTiers.size();
+    return tierDiskTotalSpace.get().length;
   }
 
   public int getFileTierLevel(File file) {
@@ -387,7 +452,7 @@ public class TierManager {
   }
 
   public long[] getTierDiskTotalSpace() {
-    return Arrays.copyOf(tierDiskTotalSpace, tierDiskTotalSpace.length);
+    return tierDiskTotalSpace.get().clone();
   }
 
   public long[] getTierDiskUsableSpace() {

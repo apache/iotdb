@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.partition.ExecutorType;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TQueryAdmissionToken;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -71,7 +73,31 @@ public class FragmentInstance implements IConsensusRequest {
   // The num of all FI on the dispatched DataNode in this query
   private int dataNodeFINum;
 
+  // Admission metadata travels in the optional RPC envelope, not the binary FI body, so older
+  // DataNodes can still deserialize the plan. Local dispatch sets the same fields directly.
+  private int queryAttemptId = -1;
+  private TQueryAdmissionToken admissionToken;
+
+  public void setQueryAttempt(int queryAttemptId, TQueryAdmissionToken admissionToken) {
+    this.queryAttemptId = queryAttemptId;
+    this.admissionToken = admissionToken;
+  }
+
+  public boolean hasQueryAttempt() {
+    return queryAttemptId >= 0 && admissionToken != null;
+  }
+
+  public int getQueryAttemptId() {
+    return queryAttemptId;
+  }
+
+  public TQueryAdmissionToken getAdmissionToken() {
+    return admissionToken;
+  }
+
   private boolean isHighestPriority;
+
+  private transient UDFClassLoaderManager.QueryScope udfQueryScope;
 
   // indicate which index we are retrying
   private transient int nextRetryIndex = 0;
@@ -242,7 +268,11 @@ public class FragmentInstance implements IConsensusRequest {
   }
 
   public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
-    FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
+    return deserializeFrom(FragmentInstanceId.deserialize(buffer), buffer);
+  }
+
+  /** Deserialize the remaining fragment payload after the caller has read its ID. */
+  public static FragmentInstance deserializeFrom(FragmentInstanceId id, ByteBuffer buffer) {
     PlanFragment planFragment = PlanFragment.deserialize(buffer);
     long timeOut = ReadWriteIOUtils.readLong(buffer);
     boolean hasSessionInfo = ReadWriteIOUtils.readBool(buffer);
@@ -340,6 +370,25 @@ public class FragmentInstance implements IConsensusRequest {
 
   public SessionInfo getSessionInfo() {
     return sessionInfo;
+  }
+
+  public void attachUDFQueryScope(UDFClassLoaderManager.QueryScope queryScope) {
+    udfQueryScope = queryScope;
+  }
+
+  /** Transfer query scope ownership out of this deserialization result. */
+  public UDFClassLoaderManager.QueryScope claimUDFQueryScope() {
+    UDFClassLoaderManager.QueryScope queryScope = udfQueryScope;
+    udfQueryScope = null;
+    return queryScope;
+  }
+
+  public void closeUDFQueryScopeIfPresent() {
+    UDFClassLoaderManager.QueryScope queryScope = claimUDFQueryScope();
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    if (queryScope != null && classLoaderManager != null) {
+      classLoaderManager.finalizeUDFQuery(queryScope);
+    }
   }
 
   public boolean isExplainAnalyze() {

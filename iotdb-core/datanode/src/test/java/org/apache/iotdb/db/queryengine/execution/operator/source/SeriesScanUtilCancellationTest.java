@@ -244,12 +244,12 @@ public class SeriesScanUtilCancellationTest {
     assertEquals(2, loadedFiles);
   }
 
-  @Test(timeout = 15000)
+  @Test
   public void testTimeoutUnblocksDriverResourceCleanup() throws Exception {
     assertFailureUnblocksDriverResourceCleanup(new QueryTimeoutException());
   }
 
-  @Test(timeout = 15000)
+  @Test
   public void testSemanticFailureUnblocksDriverResourceCleanup() throws Exception {
     assertFailureUnblocksDriverResourceCleanup(
         new SemanticException("Scalar sub-query has returned multiple rows."));
@@ -260,6 +260,7 @@ public class SeriesScanUtilCancellationTest {
     ExecutorService notifications = Executors.newSingleThreadExecutor();
     FragmentInstanceContext context = newContext(notifications);
     context.initializeNumOfDrivers(1);
+    ExecutorService worker = Executors.newSingleThreadExecutor();
     try {
       CountDownLatch closeRequested = new CountDownLatch(1);
       SeriesScanUtil scanner =
@@ -314,10 +315,14 @@ public class SeriesScanUtilCancellationTest {
           false,
           exchangeManager);
 
-      assertSame(
-          failure,
-          assertThrows(
-              RuntimeException.class, () -> driver.processFor(new Duration(1, TimeUnit.SECONDS))));
+      // Bound the driver operation rather than cold context and mock initialization in a CI fork.
+      Future<RuntimeException> execution =
+          worker.submit(
+              () ->
+                  assertThrows(
+                      RuntimeException.class,
+                      () -> driver.processFor(new Duration(1, TimeUnit.SECONDS))));
+      assertSame(failure, execution.get(5, TimeUnit.SECONDS));
       // This can complete only after the preceding cleanup callback gets past allDriversClosed.
       notifications.submit(() -> {}).get(5, TimeUnit.SECONDS);
       assertEquals(2, loadedFiles);
@@ -329,12 +334,17 @@ public class SeriesScanUtilCancellationTest {
     } finally {
       // Ensure a failed assertion cannot leave the notification thread waiting on the latch.
       context.decrementNumOfUnClosedDriver();
-      notifications.shutdownNow();
-      assertTrue(notifications.awaitTermination(5, TimeUnit.SECONDS));
+      worker.shutdownNow();
+      notifications.shutdown();
+      try {
+        assertTrue(worker.awaitTermination(5, TimeUnit.SECONDS));
+      } finally {
+        assertTrue(notifications.awaitTermination(5, TimeUnit.SECONDS));
+      }
     }
   }
 
-  @Test(timeout = 60000)
+  @Test
   public void testFinishedScanUnblocksDriverResourceCleanup() throws Exception {
     for (boolean sequence : new boolean[] {true, false}) {
       for (boolean waitForClose : new boolean[] {false, true}) {
@@ -352,7 +362,6 @@ public class SeriesScanUtilCancellationTest {
     CountDownLatch resumeScan = new CountDownLatch(1);
     CountDownLatch closeRequested = new CountDownLatch(1);
     // Cover both orderings: the FI is FINISHED before driver.close(), and close is already pending.
-    notifications.submit(() -> await(allowNotifications));
     FragmentInstanceContext context = newContext(notifications);
     context.initializeNumOfDrivers(1);
     Operator operator = mock(Operator.class);
@@ -401,6 +410,13 @@ public class SeriesScanUtilCancellationTest {
         false,
         exchangeManager);
     try {
+      // Release this gate in finally so a timeout cannot change the ordering under test.
+      Future<?> notificationsAllowed =
+          notifications.submit(
+              () -> {
+                allowNotifications.await();
+                return null;
+              });
       Future<?> execution =
           worker.submit(() -> driver.processFor(new Duration(1, TimeUnit.SECONDS)));
       await(scanEntered);
@@ -415,6 +431,7 @@ public class SeriesScanUtilCancellationTest {
       assertEquals(FragmentInstanceState.FINISHED, context.getStateMachine().getState());
       assertTrue(context.getStateMachine().getFailureCauses().isEmpty());
       allowNotifications.countDown();
+      notificationsAllowed.get(5, TimeUnit.SECONDS);
       notifications.submit(() -> {}).get(5, TimeUnit.SECONDS);
       verify(operator).close();
       verify(context.getMemoryReservationContext()).releaseAllReservedMemory();
@@ -426,12 +443,19 @@ public class SeriesScanUtilCancellationTest {
       resumeScan.countDown();
       allowNotifications.countDown();
       worker.shutdownNow();
-      assertTrue(worker.awaitTermination(5, TimeUnit.SECONDS));
-      driver.close();
-      context.decrementNumOfUnClosedDriver();
-      // Let FI cleanup finish after opening its latch, without interrupting its driver-close wait.
-      notifications.shutdown();
-      assertTrue(notifications.awaitTermination(5, TimeUnit.SECONDS));
+      try {
+        assertTrue(worker.awaitTermination(5, TimeUnit.SECONDS));
+      } finally {
+        try {
+          driver.close();
+        } finally {
+          context.decrementNumOfUnClosedDriver();
+          // Let FI cleanup finish after opening its latch, without interrupting its driver-close
+          // wait.
+          notifications.shutdown();
+          assertTrue(notifications.awaitTermination(5, TimeUnit.SECONDS));
+        }
+      }
     }
   }
 

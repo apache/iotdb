@@ -99,6 +99,11 @@ public class TsFileResourceTest {
     }
   }
 
+  @Test(expected = IOException.class)
+  public void testDeserializeMissingResource() throws IOException {
+    tsFileResource.deserialize();
+  }
+
   @Test
   public void testSerializeAndDeserialize() throws IOException {
     tsFileResource.serialize();

@@ -65,6 +65,11 @@ public final class JdbcMessages {
   public static final String CANNOT_AFTER_CONNECTION_CLOSED =
       "连接已关闭后无法执行 %s！";
 
+  public static final String EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C =
+      "Statement 关闭后无法执行 %s";
+  public static final String EXCEPTION_RESULTSET_HAS_BEEN_CLOSED_45F3BF52 =
+      "ResultSet 已关闭";
+
   // IoTDBTablePreparedStatement
   public static final String FAILED_TO_PREPARE_STATEMENT = "预编译语句失败：";
   public static final String PARAMETER_UNSET = "参数 #%d 未设置";
@@ -80,6 +85,8 @@ public final class JdbcMessages {
       "读取二进制流失败：";
 
   // IoTDBPreparedStatement
+  public static final String EXCEPTION_PARAMETER_INDEX_OUT_OF_RANGE_ARG_EXPECTED_1_ARG_65BF83C6 =
+      "参数索引超出范围：%d（范围应为 1-%d）";
   public static final String NO_TYPE_MATCHED = "没有匹配的类型";
   public static final String SQL_DEBUG = "SQL {}";
   public static final String PARAMETERS_DEBUG = "参数 {}";
@@ -132,6 +139,10 @@ public final class JdbcMessages {
       "获取主键错误：{}";
 
   // IoTDBDataSource
+  public static final String EXCEPTION_INVALID_VALUE_FOR_JDBC_CONNECTION_PROPERTY_ARG_ARG_2193D0EE =
+      "JDBC 连接属性的值无效 %s：%s";
+  public static final String EXCEPTION_LOGINTIMEOUT_MUST_BE_0_A213D684 =
+      "loginTimeout 必须大于等于 0";
   public static final String GET_CONNECTION_ERROR = "获取连接错误：";
 
   // IoTDBJDBCResultSet
@@ -171,6 +182,7 @@ public final class JdbcMessages {
       "不支持此类型的客户端信息：";
   public static final String NOT_SUPPORT_SET_NETWORK_TIMEOUT =
       "不支持 setNetworkTimeout";
+  public static final String EXCEPTION_TIMEOUT_MUST_BE_0_80BF04B8 = "timeout 必须 >= 0";
   public static final String QUERY_TIMEOUT_MUST_BE_NON_NEGATIVE =
       "queryTimeout %d 必须 >= 0！";
   public static final String NOT_SUPPORT_SET_SAVEPOINT = "不支持 setSavepoint";
@@ -183,6 +195,12 @@ public final class JdbcMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_SCHEMA_CANNOT_BE_NULL_E93264A3 =
+      "schema 不能为空";
+  public static final String EXCEPTION_INVALID_TIME_ZONE_ARG_625F2BE2 =
+      "无效的 time_zone：%s";
+  public static final String EXCEPTION_LENGTH_MUST_BE_0_53AF26C8 =
+      "length 必须大于等于 0";
   public static final String EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_NETWORK_AVAILABLE_SERVER_CA72E0D6 = "连接错误，请检查网络是否可用或服务器是否正常";
   public static final String EXCEPTION_HAS_STARTED_BD7BC366 = " 已启动。";
   public static final String EXCEPTION_ERROR_URL_FORMAT_URL_SHOULD_JDBC_IOTDB_ANYTHING_PORT_DATABASE_17D1DCFB =
@@ -277,6 +295,8 @@ public final class JdbcMessages {
       "* Page 数：%d，重叠 Page 数：%d（%.1f%%）";
 
   public static final String EXCEPTION_LINES_OF_RESULT_ARG_26F474C0 = "* 结果行数：%d";
+
+  public static final String EXCEPTION_SQL_STATEMENT_CANNOT_BE_NULL_163667FF = "SQL 语句不能为空";
 
   public static final String EXCEPTION_NUM_OF_RPC_ARG_AVG_COST_ARG_MS_435D62C7 =
       "* RPC 次数：%d，平均耗时：%d ms";

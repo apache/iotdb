@@ -111,6 +111,11 @@ public final class LibraryUdfMessages {
   // MADSketch
   public static final String NO_VALUES_IN_TIME_SERIES = "时间序列中没有值";
 
+  // UDAFMad
+  public static final String
+      EXCEPTION_MAD_SKETCH_CANNOT_PRODUCE_A_RESULT_WITH_THE_GIVEN_ERROR_PLEASE_RETRY_WITH_A_SMALLER_ERROR_OR_USE_ERROR_0_FOR_THE_EXACT_RESULT_E168B5FE =
+          "在给定的 error 下，MAD 近似计算无法得出结果。请减小 error 后重试，或使用 error=0 进行精确计算。";
+
   // SlidingCollector
   public static final String COMBINING_NOT_POSSIBLE = "无法合并";
 

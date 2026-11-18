@@ -51,6 +51,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.enums.RepairDataPartitionTableProgressState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
@@ -114,6 +115,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
@@ -267,10 +269,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
+import org.apache.iotdb.mpp.rpc.thrift.TConsensusSubscriptionQueueReadiness;
 import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -307,6 +311,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -1516,9 +1521,12 @@ public class ConfigManager implements IManager {
                   .EXCEPTION_REJECT_REGISTER_PLEASE_ENSURE_THAT_THE_PARAMETER_ARG_IS_CONSISTENT_WITH_THE_SEED_CONFIGNODE_C072CE7C,
               ManagerMessages.MESSAGE_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_D0F437AF));
     }
-    if (!clusterParameters
-        .getDataRegionConsensusProtocolClass()
-        .equals(CONF.getDataRegionConsensusProtocolClass())) {
+    // Normalize the joining ConfigNode's value as well, so a legacy IoTConsensusV2 class name sent
+    // by a not-yet-upgraded ConfigNode is not mistaken for a different consensus protocol.
+    if (!Objects.equals(
+        ConsensusFactory.normalizeConsensusProtocolClass(
+            clusterParameters.getDataRegionConsensusProtocolClass()),
+        CONF.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
           String.format(
               ManagerMessages
@@ -1807,6 +1815,31 @@ public class ConfigManager implements IManager {
         : new TGetJarInListResp(status, Collections.emptyList());
   }
 
+  private TSStatus confirmSubscriptionFeatureAvailability() {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || PipeConfigNodeAgent.isSubscriptionFeatureEnabled()) {
+      return status;
+    }
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        PipeMessages
+            .MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431);
+  }
+
+  private TSStatus confirmPipeDataInsertionAvailability(
+      final Map<String, String> sourceAttributes) {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || PipeConfigNodeAgent.isPipeDataInsertionEnabled(sourceAttributes)) {
+      return status;
+    }
+    return RpcUtils.getStatus(
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        PipeMessages
+            .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC);
+  }
+
   @Override
   public TSStatus merge() {
     TSStatus status = confirmLeader();
@@ -1869,6 +1902,10 @@ public class ConfigManager implements IManager {
     if (currentNodeId == req.getNodeId()
         || req.getNodeId() < 0
         || req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY) {
+      TSStatus regionGroupPolicyStatus = checkRegionGroupPolicyHotReload(req);
+      if (regionGroupPolicyStatus != null) {
+        return regionGroupPolicyStatus;
+      }
       URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
       boolean configurationFileFound = (url != null && new File(url.getFile()).exists());
       TrimProperties properties = new TrimProperties();
@@ -1929,6 +1966,23 @@ public class ConfigManager implements IManager {
     statusList.add(tsStatus);
     statusList.addAll(statusListOfOtherNodes);
     return RpcUtils.squashResponseStatusList(statusList);
+  }
+
+  private TSStatus checkRegionGroupPolicyHotReload(TSetConfigurationReq req) {
+    if (req.getNodeId() == NodeManager.APPLY_CONFIG_LOCALLY
+        || (!req.getConfigs().containsKey("schema_region_group_extension_policy")
+            && !req.getConfigs().containsKey("data_region_group_extension_policy"))) {
+      return null;
+    }
+    if (!getNodeManager()
+        .isConfigNodeVersionConsistentWith(
+            new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO))) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          ConfigNodeMessages
+              .EXCEPTION_REGIONGROUP_POLICY_HOT_RELOAD_REQUIRES_IDENTICAL_CONFIGNODE_VERSIONS_AND_BUILDS_FA3BBFEA);
+    }
+    return null;
   }
 
   private TSStatus checkConsistentClusterConfigSetConfigurationTarget(TSetConfigurationReq req) {
@@ -2617,7 +2671,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createPipe(TCreatePipeReq req) {
-    TSStatus status = confirmLeader();
+    TSStatus status = confirmPipeDataInsertionAvailability(req.getExtractorAttributes());
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().createPipe(req)
         : status;
@@ -2673,7 +2727,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createTopic(TCreateTopicReq req) {
-    TSStatus status = confirmLeader();
+    TSStatus status = confirmSubscriptionFeatureAvailability();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().createTopic(req)
         : status;
@@ -2681,7 +2735,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus alterTopic(TAlterTopicReq req) {
-    TSStatus status = confirmLeader();
+    TSStatus status = confirmSubscriptionFeatureAvailability();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().alterTopic(req)
         : status;
@@ -2713,7 +2767,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createConsumer(TCreateConsumerReq req) {
-    TSStatus status = confirmLeader();
+    TSStatus status = confirmSubscriptionFeatureAvailability();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().createConsumer(req)
         : status;
@@ -2729,7 +2783,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus createSubscription(TSubscribeReq req) {
-    TSStatus status = confirmLeader();
+    TSStatus status = confirmSubscriptionFeatureAvailability();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().createSubscription(req)
         : status;
@@ -2776,11 +2830,28 @@ public class ConfigManager implements IManager {
                       info.getTopicName() + "\u0000" + info.getConsumerGroupId()));
     }
     final List<TSubscriptionProgressInfo> progressInfoList = new ArrayList<>();
+    final Map<String, Set<Integer>> queuesBoundDataNodeIds = new HashMap<>();
     final Map<Integer, TPullCommitProgressResp> dataNodeResponses =
-        getProcedureManager().getEnv().pullCommitProgressFromDataNodesBestEffort();
+        getProcedureManager().getEnv().pullCommitProgressFromDataNodesBestEffort(true);
     for (final Map.Entry<Integer, TPullCommitProgressResp> dataNodeEntry :
         dataNodeResponses.entrySet()) {
       final TPullCommitProgressResp dataNodeResponse = dataNodeEntry.getValue();
+      if (dataNodeResponse.isSetStatus()
+          && dataNodeResponse.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && dataNodeResponse.isSetConsensusQueueReadiness()) {
+        for (final TConsensusSubscriptionQueueReadiness readiness :
+            dataNodeResponse.getConsensusQueueReadiness()) {
+          if (readiness.isTableModel() != (req.isSetIsTableModel() && req.isIsTableModel())) {
+            continue;
+          }
+          final String key = readiness.getTopicName() + "\u0000" + readiness.getConsumerGroupId();
+          if (visibleSubscriptions.contains(key)) {
+            queuesBoundDataNodeIds
+                .computeIfAbsent(key, ignored -> new HashSet<>())
+                .add(dataNodeEntry.getKey());
+          }
+        }
+      }
       if (!dataNodeResponse.isSetSubscriptionProgress()) {
         continue;
       }
@@ -2865,6 +2936,13 @@ public class ConfigManager implements IManager {
                   progressInfo.getConsumerGroupId(),
                   tableModel,
                   registeredDataNodeIds));
+      final Set<Integer> queuesBoundIds =
+          new TreeSet<>(
+              queuesBoundDataNodeIds.getOrDefault(
+                  progressInfo.getTopicName() + "\u0000" + progressInfo.getConsumerGroupId(),
+                  Collections.emptySet()));
+      queuesBoundIds.retainAll(registeredDataNodeIds);
+      progressInfo.setQueuesBoundOnDns(new ArrayList<>(queuesBoundIds));
     }
     progressInfoList.sort(
         Comparator.comparing(TSubscriptionProgressInfo::getTopicName)

@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator.isAutoCreateSchemaAllowed;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 class TemplateSchemaFetcher {
@@ -73,7 +74,9 @@ class TemplateSchemaFetcher {
       }
     }
 
-    if (!extensionMeasurementList.isEmpty() && config.isAutoCreateSchemaEnabled()) {
+    if (!extensionMeasurementList.isEmpty()
+        && config.isAutoCreateSchemaEnabled()
+        && isAutoCreateSchemaAllowed(context)) {
       autoCreateSchemaExecutor.autoExtendTemplate(
           template.getName(), extensionMeasurementList, extensionDataTypeList, context);
     }
@@ -110,7 +113,7 @@ class TemplateSchemaFetcher {
 
     // not activated
     // auto create and process the missing schema
-    if (config.isAutoCreateSchemaEnabled()) {
+    if (config.isAutoCreateSchemaEnabled() && isAutoCreateSchemaAllowed(context)) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       autoCreateSchemaExecutor.autoActivateTemplate(
           schemaTree, devicePath, template.getId(), context);
@@ -159,7 +162,9 @@ class TemplateSchemaFetcher {
         }
       }
     }
-    if (!extensionMeasurementMap.isEmpty() && config.isAutoCreateSchemaEnabled()) {
+    if (!extensionMeasurementMap.isEmpty()
+        && config.isAutoCreateSchemaEnabled()
+        && isAutoCreateSchemaAllowed(context)) {
       autoCreateSchemaExecutor.autoExtendTemplate(extensionMeasurementMap, context);
     }
 
@@ -211,7 +216,7 @@ class TemplateSchemaFetcher {
     }
 
     // auto create and process the missing schema
-    if (config.isAutoCreateSchemaEnabled()) {
+    if (config.isAutoCreateSchemaEnabled() && isAutoCreateSchemaAllowed(context)) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       autoCreateSchemaExecutor.autoActivateTemplate(
           schemaTree,

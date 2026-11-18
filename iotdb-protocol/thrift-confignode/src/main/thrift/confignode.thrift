@@ -691,6 +691,8 @@ struct TDataNodeInfo {
   // The reason why the DataNode is in its current status, independent of status.
   // Absent when the ConfigNode is an old version.
   8: optional string statusReason
+  // DataNode internal RPC endpoint. Absent when the ConfigNode is an old version.
+  9: optional common.TEndPoint internalRpcEndPoint
 }
 
 struct TAINodeInfo {
@@ -1114,6 +1116,7 @@ struct TSubscriptionProgressInfo {
     18: required string lastConsumerId
     19: required i64 seekGeneration
     20: optional list<i32> readyOnDns
+    21: optional list<i32> queuesBoundOnDns // DataNodes reporting all matching local queues bound.
 }
 
 struct TDropSubscriptionReq {

@@ -104,6 +104,11 @@ These instructions apply to `integration-test/` and supplement the repository-le
   changed state or configuration using the repository's test helpers. Wait for asynchronous
   cleanup effects, such as quota accounting after schema deletion, before the next method's setup;
   successful cleanup SQL alone does not prove that dependent cluster state has converged.
+- Do not use global database-count statements such as `COUNT DATABASE` or `COUNT DATABASE root.**`
+  in ITs, including helper methods and wait conditions. Limit counts to an explicit test-owned
+  database path or test-specific path pattern, or assert the existence or absence of the specific
+  test databases. Do not assume that the cluster's total database count equals the number created
+  by the test; pre-existing databases can vary across test environments.
 - Close sessions, pools, and result sets; shut down test-owned executors and clean the cluster
   even when assertions fail. Use try-with-resources and `finally` as appropriate.
 - Assert the behavior under test and its recovery result. Only tolerate expected cleanup errors
@@ -197,6 +202,18 @@ test; it may be omitted for the default `SimpleIT` profile.
   profiles, verify the affected cases in both profiles. A 1C1D pass does not establish 1C3D behavior.
 - Report the tested revision, edition, profile, and result accurately. Passing an upstream build
   does not establish that the corresponding downstream edition was tested.
+
+### Startup diagnostics
+
+- ConfigNode leader discovery, cluster readiness, and JDBC readiness retry every 100ms. The existing
+  retry count still determines a time budget in seconds (leader discovery allows that budget per
+  ConfigNode); socket/RPC timeouts remain separate. Cluster status checks share their deadline with
+  leader discovery rather than restarting a nested wait.
+- Add `-DintegrationTest.configNodeStartupTrace=true` to a targeted IT command to record JVM startup
+  and class initialization before ConfigNode's first application log. The default is disabled to
+  avoid tracing overhead. Each ConfigNode writes `<node-log>.startup-<pid>.log` alongside its normal
+  log. JVM startup events include nested phases; class initialization events mark their start and
+  do not measure exclusive class execution time.
 
 ### Node templates and IDE runs
 

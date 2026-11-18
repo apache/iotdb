@@ -415,7 +415,7 @@ public class TableDeviceSchemaFetcher {
         // will be a memory source and combine filter
         check =
             Objects.nonNull(fuzzyFilter) && !TreeViewSchema.isTreeViewTable(tableInstance)
-                ? o -> filterVisitor.process(fuzzyFilter, o)
+                ? o -> Boolean.TRUE.equals(filterVisitor.process(fuzzyFilter, o))
                 : null;
       }
 

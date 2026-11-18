@@ -42,17 +42,22 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class UDFManagementService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UDFManagementService.class);
 
-  private final ReentrantLock lock;
+  private final ReentrantReadWriteLock lock;
   private final UDFTable udfTable;
 
   private UDFManagementService() {
-    lock = new ReentrantLock();
+    lock = new ReentrantReadWriteLock();
     udfTable = new UDFTable();
     // register tree model built-in functions
     for (BuiltinTimeSeriesGeneratingFunction builtinTimeSeriesGeneratingFunction :
@@ -69,23 +74,31 @@ public class UDFManagementService {
     }
   }
 
-  public void acquireLock() {
-    lock.lock();
+  public void acquireReadLock() {
+    lock.readLock().lock();
   }
 
-  public void releaseLock() {
-    lock.unlock();
+  public void releaseReadLock() {
+    lock.readLock().unlock();
+  }
+
+  public void acquireWriteLock() {
+    lock.writeLock().lock();
+  }
+
+  public void releaseWriteLock() {
+    lock.writeLock().unlock();
   }
 
   public void register(UDFInformation udfInformation, ByteBuffer jarFile) throws Exception {
     Model model = checkAndGetModel(udfInformation);
     try {
-      acquireLock();
+      acquireWriteLock();
       checkIfRegistered(model, udfInformation);
       saveJarFile(udfInformation.getJarName(), jarFile);
       doRegister(model, udfInformation);
     } finally {
-      releaseLock();
+      releaseWriteLock();
     }
   }
 
@@ -170,17 +183,36 @@ public class UDFManagementService {
   public void doRegister(Model model, UDFInformation udfInformation) throws UDFManagementException {
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    UDFClassLoader candidateClassLoader = null;
+    acquireWriteLock();
     try {
-      UDFClassLoader currentActiveClassLoader =
-          UDFClassLoaderManager.getInstance().updateAndGetActiveClassLoader();
-      updateAllRegisteredClasses(model, currentActiveClassLoader);
+      candidateClassLoader = classLoaderManager.createUDFClassLoader();
+      List<UDFInformation> candidateInformation = new ArrayList<>(udfTable.getAllInformationList());
+      candidateInformation.add(udfInformation);
+      Map<Model, Map<String, Class<?>>> candidateFunctionClasses = new EnumMap<>(Model.class);
+      candidateFunctionClasses.put(Model.TREE, new HashMap<>());
+      candidateFunctionClasses.put(Model.TABLE, new HashMap<>());
+      Class<?> registeredFunctionClass = null;
+      for (UDFInformation information : candidateInformation) {
+        Class<?> functionClass =
+            Class.forName(information.getClassName(), true, candidateClassLoader);
+        Model functionModel = information.getUdfType().isTreeModel() ? Model.TREE : Model.TABLE;
+        candidateFunctionClasses
+            .get(functionModel)
+            .put(information.getFunctionName().toUpperCase(), functionClass);
+        if (information == udfInformation) {
+          registeredFunctionClass = functionClass;
+        }
+      }
 
-      Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
-
-      // ensure that it is a UDF class
-      getBaseClass(model).cast(functionClass.getDeclaredConstructor().newInstance());
-      udfTable.addUDFInformation(functionName, udfInformation);
-      udfTable.addFunctionAndClass(model, functionName, functionClass);
+      // ensure that the new class is a valid UDF implementation
+      getBaseClass(model).cast(registeredFunctionClass.getDeclaredConstructor().newInstance());
+      UDFClassLoader publishClassLoader = candidateClassLoader;
+      classLoaderManager.publishUDFClassLoader(
+          publishClassLoader,
+          () -> udfTable.publishUDF(functionName, udfInformation, candidateFunctionClasses));
+      candidateClassLoader = null;
     } catch (IOException
         | InstantiationException
         | InvocationTargetException
@@ -193,20 +225,18 @@ public class UDFManagementService {
               QueryMessages.UDF_REGISTER_INSTANCE_FAILED, functionName.toUpperCase(), className, e);
       LOGGER.warn(errorMessage, e);
       throw new UDFManagementException(errorMessage);
-    }
-  }
-
-  private void updateAllRegisteredClasses(Model model, UDFClassLoader activeClassLoader)
-      throws ClassNotFoundException {
-    for (UDFInformation information : getUDFInformation(model)) {
-      udfTable.updateFunctionClass(information, activeClassLoader);
+    } finally {
+      if (candidateClassLoader != null) {
+        classLoaderManager.discardUDFClassLoader(candidateClassLoader);
+      }
+      releaseWriteLock();
     }
   }
 
   public void deregister(Model model, String functionName, boolean needToDeleteJar)
       throws Exception {
     try {
-      acquireLock();
+      acquireWriteLock();
       UDFInformation information = udfTable.getUDFInformation(model, functionName);
       if (information == null) {
         return;
@@ -219,7 +249,7 @@ public class UDFManagementService {
             .removeFileUnderTemporaryRoot(functionName.toUpperCase() + ".txt");
       }
     } finally {
-      releaseLock();
+      releaseWriteLock();
     }
   }
 
@@ -232,17 +262,34 @@ public class UDFManagementService {
     } else {
       throw new UDFManagementException(QueryMessages.UDF_CLASS_TYPE_UNSUPPORTED);
     }
-    UDFInformation information = udfTable.getUDFInformation(model, functionName);
-    if (information == null) {
-      String errorMessage =
-          String.format(QueryMessages.UDF_REFLECT_NOT_REGISTERED, functionName.toUpperCase());
-      LOGGER.warn(errorMessage);
-      throw new UDFException(errorMessage);
+    UDFInformation information;
+    Class<?> functionClass;
+    try {
+      acquireReadLock();
+      information = udfTable.getUDFInformation(model, functionName);
+      if (information == null) {
+        String errorMessage =
+            String.format(QueryMessages.UDF_REFLECT_NOT_REGISTERED, functionName.toUpperCase());
+        LOGGER.warn(errorMessage);
+        throw new UDFException(errorMessage);
+      }
+      functionClass = udfTable.getFunctionClass(model, functionName);
+      if (functionClass.getClassLoader() instanceof UDFClassLoader) {
+        UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+        if (classLoaderManager == null) {
+          throw new IllegalStateException(
+              String.format(
+                  QueryMessages.EXCEPTION_UDF_CLASSLOADER_MANAGER_NOT_INITIALIZED_ARG_DF66329C,
+                  functionClass.getName()));
+        }
+        classLoaderManager.pinClassLoaderForCurrentQuery(functionClass);
+      }
+    } finally {
+      releaseReadLock();
     }
 
     try {
-      return clazz.cast(
-          udfTable.getFunctionClass(model, functionName).getDeclaredConstructor().newInstance());
+      return clazz.cast(functionClass.getDeclaredConstructor().newInstance());
     } catch (InstantiationException
         | InvocationTargetException
         | NoSuchMethodException
@@ -255,6 +302,18 @@ public class UDFManagementService {
               e);
       LOGGER.warn(errorMessage, e);
       throw new UDFException(errorMessage);
+    }
+  }
+
+  /** Check a registered function class without instantiating it or acquiring a query scope. */
+  public boolean isRegisteredFunctionAssignableTo(
+      Model model, String functionName, Class<?> expectedType) {
+    try {
+      acquireReadLock();
+      Class<?> functionClass = udfTable.getFunctionClass(model, functionName);
+      return functionClass != null && expectedType.isAssignableFrom(functionClass);
+    } finally {
+      releaseReadLock();
     }
   }
 

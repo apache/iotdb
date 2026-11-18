@@ -141,15 +141,44 @@ public class MemTableFlushTask {
         writer.getFile().getName());
   }
 
+  /**
+   * Headroom of the queued chunk buffers over the raw data counted by {@code memSize}, as a
+   * fraction (5/2 = 2.5): the encoded data can be up to 1.25 times the raw values (variable-length
+   * integers take 5 bytes for an {@code int} and 10 for a {@code long}; the other encodings stay
+   * within about 6%), and the buffers grow by doubling, so their capacity can reach twice the
+   * encoded data.
+   */
+  private static final long CHUNK_BUFFER_HEADROOM_NUMERATOR = 5;
+
+  private static final long CHUNK_BUFFER_HEADROOM_DENOMINATOR = 2;
+
+  /**
+   * Temporary memory of a flush: the bounded IO queue holds up to {@code ioTaskQueueSize} encoded
+   * chunks of average size. With no more series than queue slots the queue can't hold more than the
+   * memtable, so the raw share is capped at {@code memSize}; without the cap a memtable of 3 series
+   * reserved 3.3 times its size, which can exceed the whole MemTable budget and make the reject
+   * threshold negative. The share is multiplied by 2.5 for the encoding expansion and the growth
+   * slack of the chunk buffers.
+   */
+  static long estimateTemporaryMemory(
+      long memSize, int seriesNumber, int ioTaskQueueSize, boolean encodingFasterThanIo) {
+    if (!encodingFasterThanIo || seriesNumber == 0) {
+      return 0;
+    }
+    long queuedShare =
+        seriesNumber <= ioTaskQueueSize ? memSize : memSize / seriesNumber * ioTaskQueueSize;
+    return queuedShare * CHUNK_BUFFER_HEADROOM_NUMERATOR / CHUNK_BUFFER_HEADROOM_DENOMINATOR;
+  }
+
   /** the function for flushing memtable. */
   @SuppressWarnings("squid:S3776")
   public void syncFlushMemTable() throws ExecutionException, InterruptedException {
     long estimatedBytes =
-        encodingFasterThanIo && memTable.getSeriesNumber() != 0
-            ? memTable.memSize()
-                / memTable.getSeriesNumber()
-                * config.getIoTaskQueueSizeForFlushing()
-            : 0;
+        estimateTemporaryMemory(
+            memTable.memSize(),
+            memTable.getSeriesNumber(),
+            config.getIoTaskQueueSizeForFlushing(),
+            encodingFasterThanIo);
     try (SystemInfo.FlushMemoryReservation ignored =
         SystemInfo.getInstance()
             .reserveTemporaryMemoryForFlushing(

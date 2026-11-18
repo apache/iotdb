@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.log.LoggerPeriodicalLogReducer;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -100,6 +101,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DatabaseSc
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -277,6 +279,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         final TPipeTransferResp authResp = checkPipeTransferAuthenticated(requestType);
         if (Objects.nonNull(authResp)) {
           return authResp;
+        }
+        if (PipeDataNodeAgent.isRatisConsensus() && isDataInsertionRequest(requestType)) {
+          return pipeDataInsertionDisabledResponse();
         }
         switch (requestType) {
           case HANDSHAKE_DATANODE_V1:
@@ -578,6 +583,46 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
             : executeStatementAndAddRedirectInfo(statement));
+  }
+
+  private static TPipeTransferResp pipeDataInsertionDisabledResponse() {
+    return new TPipeTransferResp(
+        RpcUtils.getStatus(
+            TSStatusCode.UNSUPPORTED_OPERATION,
+            PipeMessages
+                .MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC));
+  }
+
+  private static boolean isDataInsertionRequest(final PipeRequestType requestType) {
+    return switch (requestType) {
+      case TRANSFER_TABLET_INSERT_NODE,
+          TRANSFER_TABLET_INSERT_NODE_V2,
+          TRANSFER_TABLET_RAW,
+          TRANSFER_TABLET_RAW_V2,
+          TRANSFER_TABLET_BINARY,
+          TRANSFER_TABLET_BINARY_V2,
+          TRANSFER_TABLET_BATCH,
+          TRANSFER_TABLET_BATCH_V2,
+          TRANSFER_TS_FILE_PIECE,
+          TRANSFER_TS_FILE_SEAL,
+          TRANSFER_TS_FILE_PIECE_WITH_MOD,
+          TRANSFER_TS_FILE_SEAL_WITH_MOD ->
+          true;
+      case HANDSHAKE_CONFIGNODE_V1,
+          HANDSHAKE_DATANODE_V1,
+          HANDSHAKE_CONFIGNODE_V2,
+          HANDSHAKE_DATANODE_V2,
+          TRANSFER_PLAN_NODE,
+          TRANSFER_SCHEMA_SNAPSHOT_PIECE,
+          TRANSFER_SCHEMA_SNAPSHOT_SEAL,
+          TRANSFER_CONFIG_PLAN,
+          TRANSFER_CONFIG_SNAPSHOT_PIECE,
+          TRANSFER_CONFIG_SNAPSHOT_SEAL,
+          TRANSFER_COMPRESSED,
+          TRANSFER_SLICE,
+          TRANSFER_PIPE_RECEIVER_RUNTIME_INFO_CLEANUP ->
+          false;
+    };
   }
 
   private TPipeTransferResp handleTransferTabletBinary(final PipeTransferTabletBinaryReq req) {
@@ -1094,6 +1139,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferSchemaPlan(final PipeTransferPlanNodeReq req) {
+    if (PipeDataNodeAgent.isRatisConsensus() && req.getPlanNode() instanceof InsertNode) {
+      return pipeDataInsertionDisabledResponse();
+    }
     // We may be able to skip the alter logical view's exception parsing because
     // the "AlterLogicalViewNode" is itself idempotent
     if (req.getPlanNode() instanceof AlterLogicalViewNode) {

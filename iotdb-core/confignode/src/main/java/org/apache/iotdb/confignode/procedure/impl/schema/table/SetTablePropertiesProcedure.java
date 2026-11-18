@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -35,7 +36,9 @@ import org.apache.tsfile.utils.Pair;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class SetTablePropertiesProcedure extends AbstractSetPropertiesProcedure {
 
@@ -68,9 +71,18 @@ public class SetTablePropertiesProcedure extends AbstractSetPropertiesProcedure 
   @Override
   protected ConfigPhysicalPlan createSetPropertiesPlan(
       final Map<String, String> properties, final boolean isRollback) {
+    final Map<String, String> propertiesToSet =
+        isRollback
+                && properties.containsKey(TsTable.TTL_PROPERTY)
+                && Objects.isNull(properties.get(TsTable.TTL_PROPERTY))
+            ? new HashMap<>(properties)
+            : properties;
+    if (propertiesToSet != properties) {
+      propertiesToSet.put(TsTable.TTL_PROPERTY, IoTDBConstant.TTL_INFINITE);
+    }
     return this instanceof SetViewPropertiesProcedure
-        ? new SetViewPropertiesPlan(database, tableName, properties)
-        : new SetTablePropertiesPlan(database, tableName, properties);
+        ? new SetViewPropertiesPlan(database, tableName, propertiesToSet)
+        : new SetTablePropertiesPlan(database, tableName, propertiesToSet);
   }
 
   @Override

@@ -202,6 +202,15 @@ public final class QueryMessages {
       "反射 UDF 实例失败，因为 UDF %s 尚未注册。";
   public static final String UDF_REFLECT_INSTANCE_FAILED =
       "反射 UDF %s(%s) 实例失败，原因：%s";
+  public static final String EXCEPTION_UDF_CLASSLOADER_REQUIRES_QUERY_SCOPE_ARG_A39FB39E =
+      "无法为类 %s pin UDF ClassLoader，因为当前没有活动的 UDF query scope。";
+  public static final String
+      EXCEPTION_FAILED_TO_PIN_UDF_CLASSLOADER_QUERY_SCOPE_ARG_CLASS_ARG_275E1E20 =
+          "无法为 query scope %s 和类 %s pin UDFClassLoader，因为 classloader 已废弃或已关闭。";
+  public static final String EXCEPTION_UDF_QUERY_SCOPE_IS_CLOSED_ARG_7381D949 =
+      "无法在 query scope %s 中执行操作，因为该 scope 已关闭。";
+  public static final String EXCEPTION_UDF_CLASSLOADER_MANAGER_NOT_INITIALIZED_ARG_DF66329C =
+      "无法为类 %s pin UDF ClassLoader，因为 UDFClassLoaderManager 尚未初始化。";
   public static final String AI_NODE_SERVICE_NOT_AVAILABLE =
       "当前节点不支持表函数 AINode 服务";
   // ======================== UDTF Forecast ========================

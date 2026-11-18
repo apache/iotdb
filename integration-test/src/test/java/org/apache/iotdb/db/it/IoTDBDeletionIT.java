@@ -289,15 +289,22 @@ public class IoTDBDeletionIT {
     cleanData(6);
   }
 
+  // Insert 10,000 five-column rows with a 10KB memtable threshold and 1,000-timestamp
+  // partitions to exercise automatic flushing. Deleting (1500, 9000] must leave 2,500 s0 rows.
   @Test
   public void testDelFlushingMemtable() throws SQLException {
     int testNum = 7;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
+      // Batch the original single-row SQLs to reduce RPCs while retaining their order and
+      // per-row automatic-flush checks on the server.
       for (int i = 1; i <= 10000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, testNum, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+        if (i % 1000 == 0) {
+          statement.executeBatch();
+        }
       }
 
       statement.execute("DELETE FROM root.vehicle7.d0.s0 WHERE time > 1500 and time <= 9000");

@@ -27,6 +27,12 @@ public final class PipeMessages {
   public static final String LOG_AIR_GAP_HANDSHAKE_REQUEST_SENT_ON_SOCKET_ARG_WITHOUT_WAITING_FOR_ACKNOWLEDGEMENT_E1ECD582 =
       "Air gap handshake request sent on socket {} without waiting for acknowledgement.";
 
+  public static final String MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431 =
+      "Subscription is disabled when data region consensus protocol is Ratis.";
+
+  public static final String MESSAGE_PIPE_DATA_INSERTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_7D669ECC =
+      "Pipe synchronization with data insertion is disabled when data region consensus protocol is Ratis.";
+
   // ===================== Common / Shared =====================
 
   public static final String UTILITY_CLASS = "Utility class";
@@ -364,6 +370,13 @@ public final class PipeMessages {
   public static final String PIPE_WAS_STOPPED_CRITICAL_EXCEPTION =
       "Pipe %s (creation time = %s) was stopped because of critical exception "
           + "(occurred time %s).";
+  public static final String
+      LOG_FAILED_TO_START_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_THE_TASK_IS_DROPPED_AND_WILL_BE_RECREATED_BY_THE_FOLLOWING_META_SYNC_7594577C =
+          "Failed to start the task of consensus group {} for pipe {}. The task is dropped and "
+              + "will be recreated by the following meta sync.";
+  public static final String
+      LOG_FAILED_TO_DROP_THE_TASK_OF_CONSENSUS_GROUP_ARG_FOR_PIPE_ARG_AFTER_IT_FAILED_TO_START_394297EC =
+          "Failed to drop the task of consensus group {} for pipe {} after it failed to start.";
 
   // ===================== PipeEventCommitManager =====================
 
@@ -389,7 +402,15 @@ public final class PipeMessages {
   public static final String SUBTASK_ALREADY_RUNNING = "The subtask {} is already running.";
   public static final String SUBTASK_STARTED = "The subtask {} is started to submit self.";
   public static final String SUBTASK_CLOSED = "The subtask {} is closed successfully.";
+  public static final String
+      LOG_FAILED_TO_SUBMIT_THE_SUBTASK_ARG_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_198335BE =
+          "Failed to submit the subtask {} because the executor has been shut down.";
   public static final String SUBTASK_CLOSE_FAILED = "Failed to close the subtask {}.";
+  public static final String LOG_FAILED_TO_START_THE_SUBTASK_DD3FC1BA =
+      "Failed to start the subtask {}.";
+  public static final String
+      EXCEPTION_THE_SUBTASK_CAN_NOT_BE_STARTED_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_9989B212 =
+          "The subtask can not be started because the executor has been shut down.";
 
   // ===================== PipeReportableSubtask =====================
 
