@@ -478,9 +478,24 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       this.isTableModelTsFileReliableIndex = i;
 
       if (0 <= tabletConversionThresholdBytes
-          && tsFile.length() <= tabletConversionThresholdBytes
-          && handleSingleMiniFile(i)) {
-        return;
+          && tsFile.length() <= tabletConversionThresholdBytes) {
+        if (!isTableModelFile
+            && !isConvertOnTypeMismatch
+            && treeSchemaAutoCreatorAndVerifier != null) {
+          treeSchemaAutoCreatorAndVerifier.flush();
+        }
+        final long startTime = System.nanoTime();
+        try {
+          if (!isTableModelFile) {
+            checkMiniFileTreeWritePermission(tsFile, reader);
+          }
+          if (handleSingleMiniFile(i)) {
+            return;
+          }
+        } finally {
+          LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+              LoadTsFileCostMetricsSet.ANALYSIS_CAST_TABLETS, System.nanoTime() - startTime);
+        }
       }
 
       if (isTableModelFile) {
@@ -536,40 +551,67 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean handleSingleMiniFile(final int i) throws FileNotFoundException {
-    final long startTime = System.nanoTime();
-    try {
-      final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-          new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
+    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+        new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
-      final TSStatus status =
-          isTableModelTsFile.get(i)
-              ? loadTsFileDataTypeConverter
-                  .convertForTableModel(createTableConversionStatement(tsFiles.get(i)))
-                  .orElse(null)
-              : loadTsFileDataTypeConverter
-                  .convertForTreeModel(createTreeConversionStatement(tsFiles.get(i)))
-                  .orElse(null);
+    final TSStatus status =
+        isTableModelTsFile.get(i)
+            ? loadTsFileDataTypeConverter
+                .convertForTableModel(createTableConversionStatement(tsFiles.get(i)))
+                .orElse(null)
+            : loadTsFileDataTypeConverter
+                .convertForTreeModel(createTreeConversionStatement(tsFiles.get(i)))
+                .orElse(null);
 
-      if (status == null || !loadTsFileDataTypeConverter.isSuccessful(status)) {
-        LOGGER.warn(
-            DataNodeQueryMessages
-                .LOAD_FAILED_TO_CONVERT_MINI_TSFILE_ARG_TO_TABLETS_FROM_STATEMENT_ARG_STATUS_ARG,
-            tsFiles.get(i).getPath(),
-            isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
-            status);
-        return false;
+    if (status == null || !loadTsFileDataTypeConverter.isSuccessful(status)) {
+      LOGGER.warn(
+          DataNodeQueryMessages
+              .LOAD_FAILED_TO_CONVERT_MINI_TSFILE_ARG_TO_TABLETS_FROM_STATEMENT_ARG_STATUS_ARG,
+          tsFiles.get(i).getPath(),
+          isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
+          status);
+      return false;
+    }
+
+    // A mark of successful conversion
+    isMiniTsFile.set(i, Boolean.TRUE);
+    isMiniTsFileConverted = true;
+
+    addTsFileResource(null);
+    addWritePointCount(0);
+    return true;
+  }
+
+  private void checkMiniFileTreeWritePermission(
+      final File tsFile, final TsFileSequenceReader reader)
+      throws IOException, LoadAnalyzeException, AuthException {
+    final TsFileResource tsFileResource = constructTsFileResource(reader, tsFile);
+    final TreeSchemaAutoCreatorAndVerifier verifier = getOrCreateTreeSchemaVerifier();
+    verifier.setCurrentModificationsAndTimeIndex(tsFileResource, reader);
+
+    final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
+        new TsFileSequenceReaderTimeseriesMetadataIterator(
+            reader,
+            true,
+            IoTDBDescriptor.getInstance()
+                .getConfig()
+                .getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount());
+    while (timeseriesMetadataIterator.hasNext()) {
+      final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+          timeseriesMetadataIterator.next();
+      TsFileResourceUtils.updateTsFileResource(
+          device2TimeseriesMetadata,
+          tsFileResource,
+          IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
+      verifier.setCurrentTimeIndex(tsFileResource.getTimeIndex());
+      for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+          device2TimeseriesMetadata.entrySet()) {
+        try {
+          verifier.checkWritePermission(Collections.singletonMap(entry.getKey(), entry.getValue()));
+        } catch (LoadAnalyzeInvalidPathException ignored) {
+          // Let conversion report invalid paths in file order, after processing earlier tablets.
+        }
       }
-
-      // A mark of successful conversion
-      isMiniTsFile.set(i, Boolean.TRUE);
-      isMiniTsFileConverted = true;
-
-      addTsFileResource(null);
-      addWritePointCount(0);
-      return true;
-    } finally {
-      LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-          LoadTsFileCostMetricsSet.ANALYSIS_CAST_TABLETS, System.nanoTime() - startTime);
     }
   }
 
