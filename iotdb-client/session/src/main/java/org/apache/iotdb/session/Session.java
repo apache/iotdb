@@ -2907,7 +2907,8 @@ public class Session implements ISession {
    */
   public void testInsertRelationalTablet(Tablet tablet, TestInsertStage stage)
       throws IoTDBConnectionException, StatementExecutionException {
-    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    Objects.requireNonNull(
+        stage, SessionMessages.EXCEPTION_TEST_INSERTION_STAGE_MUST_NOT_BE_NULL_EC9D4E51);
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
     if (request == null) {
       throw new StatementExecutionException(
@@ -3749,7 +3750,8 @@ public class Session implements ISession {
   @Override
   public void testInsertTablet(Tablet tablet, boolean sorted, TestInsertStage stage)
       throws IoTDBConnectionException, StatementExecutionException {
-    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    Objects.requireNonNull(
+        stage, SessionMessages.EXCEPTION_TEST_INSERTION_STAGE_MUST_NOT_BE_NULL_EC9D4E51);
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
     if (request == null) {
       throw new StatementExecutionException(
@@ -3770,7 +3772,8 @@ public class Session implements ISession {
   @Override
   public void testInsertTablets(Map<String, Tablet> tablets, boolean sorted, TestInsertStage stage)
       throws IoTDBConnectionException, StatementExecutionException {
-    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    Objects.requireNonNull(
+        stage, SessionMessages.EXCEPTION_TEST_INSERTION_STAGE_MUST_NOT_BE_NULL_EC9D4E51);
     TSInsertTabletsReq request =
         genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
     if (request == null) {
@@ -3790,7 +3793,8 @@ public class Session implements ISession {
       List<List<String>> valuesList,
       TestInsertStage stage)
       throws IoTDBConnectionException, StatementExecutionException {
-    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    Objects.requireNonNull(
+        stage, SessionMessages.EXCEPTION_TEST_INSERTION_STAGE_MUST_NOT_BE_NULL_EC9D4E51);
     TSInsertStringRecordsReq request;
     try {
       request =
@@ -3815,7 +3819,8 @@ public class Session implements ISession {
       List<List<Object>> valuesList,
       TestInsertStage stage)
       throws IoTDBConnectionException, StatementExecutionException {
-    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    Objects.requireNonNull(
+        stage, SessionMessages.EXCEPTION_TEST_INSERTION_STAGE_MUST_NOT_BE_NULL_EC9D4E51);
     TSInsertRecordsReq request;
     try {
       request =
@@ -3839,7 +3844,8 @@ public class Session implements ISession {
       List<String> values,
       TestInsertStage stage)
       throws IoTDBConnectionException, StatementExecutionException {
-    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    Objects.requireNonNull(
+        stage, SessionMessages.EXCEPTION_TEST_INSERTION_STAGE_MUST_NOT_BE_NULL_EC9D4E51);
     TSInsertStringRecordReq request;
     try {
       request = filterAndGenTSInsertStringRecordReq(deviceId, time, measurements, values, false);
@@ -3861,7 +3867,8 @@ public class Session implements ISession {
       List<Object> values,
       TestInsertStage stage)
       throws IoTDBConnectionException, StatementExecutionException {
-    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    Objects.requireNonNull(
+        stage, SessionMessages.EXCEPTION_TEST_INSERTION_STAGE_MUST_NOT_BE_NULL_EC9D4E51);
     TSInsertRecordReq request;
     try {
       request = filterAndGenTSInsertRecordReq(deviceId, time, measurements, types, values, false);

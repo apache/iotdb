@@ -30,8 +30,8 @@ public final class SessionMessages {
   public static final String EXCEPTION_TEST_INSERTION_HAS_NO_NON_NULL_VALUES_40F5D116 =
       "Test insertion has no non-null values";
 
-  public static final String EXCEPTION_STAGE_9A8C2B9D =
-      "stage";
+  public static final String EXCEPTION_TEST_INSERTION_STAGE_MUST_NOT_BE_NULL_EC9D4E51 =
+      "Test insertion stage must not be null";
 
   public static final String EXCEPTION_INTERNAL_NODE_SUPPLIER_MUST_NOT_BE_NULL_C5CAF392 =
       "Internal node supplier must not be null";
