@@ -233,6 +233,9 @@ public class IoTDBDataSource implements DataSource {
     }
     String host =
         serverName == null || serverName.trim().isEmpty() ? Config.IOTDB_DEFAULT_HOST : serverName;
+    if (host.indexOf(':') >= 0 && !(host.startsWith("[") && host.endsWith("]"))) {
+      host = "[" + host + "]";
+    }
     StringBuilder builder = new StringBuilder(Config.IOTDB_URL_PREFIX);
     builder.append(host).append(':').append(port);
     if (databaseName != null && !databaseName.isEmpty()) {

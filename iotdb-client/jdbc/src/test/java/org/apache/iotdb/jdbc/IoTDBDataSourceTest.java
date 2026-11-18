@@ -73,6 +73,17 @@ public class IoTDBDataSourceTest {
   }
 
   @Test
+  public void testConnectionUrlFormatsIpv6ServerName() {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+
+    dataSource.setServerName("::1");
+    assertEquals("jdbc:iotdb://[::1]:6667", dataSource.getConnectionUrl());
+
+    dataSource.setServerName("[::1]");
+    assertEquals("jdbc:iotdb://[::1]:6667", dataSource.getConnectionUrl());
+  }
+
+  @Test
   public void testDataSourceAllowsClearingUserAndPassword() {
     IoTDBDataSource dataSource = new IoTDBDataSource();
 
