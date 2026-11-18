@@ -386,9 +386,20 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       return;
     }
     // The procedure executor may report readiness asynchronously once it has caught up.
-    configManager
-        .getProcedureManager()
-        .startExecutor(() -> markLeaderServicesReadyIfEpochCurrent(epoch));
+    configManager.getProcedureManager().startExecutor();
+    if (!isCurrentLeaderServicesEpoch(epoch)) {
+      return;
+    }
+    startInParallelIfEpochCurrent(
+            epoch,
+            new LeaderServiceStartup(
+                "PipeOnLeaderChanged",
+                () ->
+                    configManager
+                        .getPipeManager()
+                        .getPipeRuntimeCoordinator()
+                        .onConfigRegionGroupLeaderChanged()))
+        .join();
     markLeaderServicesReadyIfEpochCurrent(epoch);
 
     final boolean loadReady = waitForLoadReady(epoch);
@@ -427,13 +438,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         new LeaderServiceStartup(
             "PipeHeartbeat",
             () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat()),
-        new LeaderServiceStartup(
-            "PipeOnLeaderChanged",
-            () ->
-                configManager
-                    .getPipeManager()
-                    .getPipeRuntimeCoordinator()
-                    .onConfigRegionGroupLeaderChanged()),
         new LeaderServiceStartup(
             "SubscriptionMetaSync",
             () ->
