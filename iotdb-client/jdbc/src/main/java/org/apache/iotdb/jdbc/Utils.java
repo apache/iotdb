@@ -29,7 +29,7 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Utilities for JDBC URL parsing. */
+/** Utils to convert between thrift format and TsFile format. */
 public class Utils {
 
   @SuppressWarnings({
@@ -60,57 +60,47 @@ public class Utils {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
       int authorityEnd = findAuthorityEnd(subURL);
       String authority = subURL.substring(0, authorityEnd);
-      int portSeparatorIndex = -1;
+      String portText = null;
       if (authority.startsWith("[")) {
-        int endIndex = authority.indexOf("]");
-        if (endIndex > 1
-            && endIndex + 1 < authority.length()
-            && COLON.equals(authority.substring(endIndex + 1, endIndex + 2))) {
-          host = authority.substring(1, endIndex);
-          portSeparatorIndex = endIndex + 1;
+        int closingBracketIndex = authority.indexOf("]");
+        if (closingBracketIndex > 1
+            && closingBracketIndex + 1 < authority.length()
+            && COLON.equals(
+                authority.substring(closingBracketIndex + 1, closingBracketIndex + 2))) {
+          host = authority.substring(1, closingBracketIndex);
+          portText = authority.substring(closingBracketIndex + 2);
         }
       } else if (!authority.contains("[") && !authority.contains("]")) {
-        portSeparatorIndex = authority.lastIndexOf(COLON);
-        if (portSeparatorIndex > 0) {
+        int portSeparatorIndex = authority.lastIndexOf(COLON);
+        if (portSeparatorIndex > 0 && portSeparatorIndex < authority.length() - 1) {
           host = authority.substring(0, portSeparatorIndex);
+          portText = authority.substring(portSeparatorIndex + 1);
         }
       }
-      if (portSeparatorIndex <= 0 || portSeparatorIndex == authority.length() - 1) {
-        throw new IoTDBURLException(
-            JdbcMessages
-                    .EXCEPTION_ERROR_URL_FORMAT_URL_SHOULD_JDBC_IOTDB_ANYTHING_PORT_DATABASE_17D1DCFB
-                + url);
-      }
-      params.setHost(host);
-      String portText = authority.substring(portSeparatorIndex + 1);
-      // parse port
-      int port = parsePort(portText);
-      suffixURL = subURL.substring(authorityEnd);
-      // legal port
-      if (port >= 1 && port <= 65535) {
-        params.setPort(port);
+      if (host != null && portText != null) {
+        int port = parsePort(portText);
+        suffixURL = subURL.substring(authorityEnd);
+        if (port >= 1 && port <= 65535) {
+          params.setHost(host);
+          params.setPort(port);
 
-        // parse database
-        if (!suffixURL.isEmpty() && suffixURL.charAt(0) == SLASH) {
-          int endIndex = suffixURL.indexOf(PARAMETER_SEPARATOR, 1);
-          String database;
-          if (endIndex < 0) {
-            if (suffixURL.length() == 1) {
-              database = null;
+          if (!suffixURL.isEmpty() && suffixURL.charAt(0) == SLASH) {
+            int endIndex = suffixURL.indexOf(PARAMETER_SEPARATOR, 1);
+            String database;
+            if (endIndex < 0) {
+              database = suffixURL.length() == 1 ? null : suffixURL.substring(1);
+              suffixURL = "";
             } else {
-              database = suffixURL.substring(1);
+              database = endIndex == 1 ? null : suffixURL.substring(1, endIndex);
+              suffixURL = suffixURL.substring(endIndex);
             }
-            suffixURL = "";
-          } else {
-            database = endIndex == 1 ? null : suffixURL.substring(1, endIndex);
-            suffixURL = suffixURL.substring(endIndex);
+            params.setDb(database);
           }
-          params.setDb(database);
-        }
 
-        matcher = SUFFIX_URL_PATTERN.matcher(suffixURL);
-        if (matcher.matches() && parseUrlParam(subURL, properties)) {
-          isUrlLegal = true;
+          matcher = SUFFIX_URL_PATTERN.matcher(suffixURL);
+          if (matcher.matches() && parseUrlParam(subURL, properties)) {
+            isUrlLegal = true;
+          }
         }
       }
     }
@@ -156,9 +146,6 @@ public class Utils {
     if (properties.containsKey(Config.TRUST_STORE_PWD)) {
       params.setTrustStorePwd(properties.getProperty(Config.TRUST_STORE_PWD));
     }
-    if (properties.containsKey(RPC_COMPRESS)) {
-      params.setRpcThriftCompressionEnabled(parseBooleanProperty(properties, RPC_COMPRESS));
-    }
     if (properties.containsKey(Config.KEY_STORE)) {
       params.setKeyStore(properties.getProperty(Config.KEY_STORE));
     }
@@ -168,6 +155,9 @@ public class Utils {
     if (properties.containsKey(Config.SSL_PROTOCOL)) {
       params.setSslProtocol(
           RpcSslUtils.normalizeProtocol(properties.getProperty(Config.SSL_PROTOCOL)));
+    }
+    if (properties.containsKey(RPC_COMPRESS)) {
+      params.setRpcThriftCompressionEnabled(parseBooleanProperty(properties, RPC_COMPRESS));
     }
     if (properties.containsKey(Config.SQL_DIALECT)) {
       params.setSqlDialect(validateSqlDialectProperty(properties));
@@ -224,15 +214,13 @@ public class Utils {
         case Config.TRUST_STORE_PWD:
         case Config.KEY_STORE:
         case Config.KEY_STORE_PWD:
+        case Config.SSL_PROTOCOL:
           info.put(key, value);
           break;
         case Config.USE_SSL:
           if (!isBoolean(value)) {
             return false;
           }
-          info.put(key, value);
-          break;
-        case Config.SSL_PROTOCOL:
           info.put(key, value);
           break;
         case Config.VERSION:

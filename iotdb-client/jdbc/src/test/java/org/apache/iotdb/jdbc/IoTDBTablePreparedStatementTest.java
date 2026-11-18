@@ -35,6 +35,10 @@ import org.apache.iotdb.service.rpc.thrift.TSPrepareReq;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareResp;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.utils.Binary;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -45,8 +49,10 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.sql.Date;
 import java.sql.ParameterMetaData;
 import java.sql.ResultSet;
@@ -57,11 +63,13 @@ import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -120,9 +128,10 @@ public class IoTDBTablePreparedStatementTest {
     // Mock for executePreparedStatement
     when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
         .thenReturn(execStatementResp);
+
+    when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(Status_SUCCESS);
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
     when(client.deallocatePreparedStatement(any())).thenReturn(Status_SUCCESS);
-    when(client.closeOperation(any())).thenReturn(Status_SUCCESS);
   }
 
   /** Count the number of '?' placeholders in a SQL string, ignoring those inside quotes */
@@ -196,6 +205,55 @@ public class IoTDBTablePreparedStatementTest {
 
     assertEquals(Types.INTEGER, metadata.getParameterType(1));
     assertTrue(metadata.isSigned(1));
+  }
+
+  @Test
+  public void testClientSideExecuteQueryUsesCompletedSql() throws Exception {
+    TSExecuteStatementResp response = new TSExecuteStatementResp(Status_SUCCESS);
+    response.setColumns(Collections.singletonList("Version"));
+    response.setDataTypeList(Collections.singletonList(TSDataType.TEXT.name()));
+    response.setIgnoreTimeStamp(true);
+    response.setTableModel(true);
+    response.setQueryResult(Collections.emptyList());
+    when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class))).thenReturn(response);
+
+    try (IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SHOW VERSION", zoneId)) {
+      try (ResultSet resultSet = ps.executeQuery()) {
+        assertNotNull(resultSet);
+        assertSame(resultSet, ps.getResultSet());
+        assertFalse(resultSet.next());
+      }
+    }
+
+    ArgumentCaptor<TSExecuteStatementReq> request =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeQueryStatementV2(request.capture());
+    assertEquals("SHOW VERSION", request.getValue().getStatement());
+    verify(client, never()).executePreparedStatement(any(TSExecutePreparedReq.class));
+  }
+
+  @Test
+  public void testClientSideExecuteQueryPropagatesServerError() throws Exception {
+    TSStatus failure = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    failure.setMessage("statement does not produce a ResultSet");
+    when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class)))
+        .thenReturn(new TSExecuteStatementResp(failure));
+
+    try (IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "INSERT INTO t(time,s) VALUES(1,?)", zoneId)) {
+      ps.setInt(1, 42);
+
+      SQLException exception = assertThrows(SQLException.class, ps::executeQuery);
+      assertEquals(failure.getCode(), exception.getErrorCode());
+    }
+
+    ArgumentCaptor<TSExecuteStatementReq> request =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeQueryStatementV2(request.capture());
+    assertEquals("INSERT INTO t(time,s) VALUES(1,42)", request.getValue().getStatement());
+    verify(client, never()).executePreparedStatement(any(TSExecutePreparedReq.class));
   }
 
   @SuppressWarnings("resource")
@@ -538,6 +596,9 @@ public class IoTDBTablePreparedStatementTest {
     String sql = "SELECT * FROM users WHERE email = ?";
     IoTDBTablePreparedStatement ps =
         new IoTDBTablePreparedStatement(connection, client, sessionId, sql, zoneId);
+    assertEquals(1, ps.getParameterMetaData().getParameterCount());
+    assertThrows(SQLException.class, () -> ps.setString(0, null));
+    assertThrows(SQLException.class, () -> ps.setString(2, null));
     ps.setString(1, null);
     ps.execute();
 
@@ -545,6 +606,174 @@ public class IoTDBTablePreparedStatementTest {
         ArgumentCaptor.forClass(TSExecutePreparedReq.class);
     verify(client).executePreparedStatement(argument.capture());
     assertTrue(argument.getValue().getParameters() != null);
+  }
+
+  // ========== Table Model result column mapping tests ==========
+
+  private static TsBlockBuilder int32BlockBuilder(int columnCount) {
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.nCopies(columnCount, TSDataType.INT32));
+    builder.getTimeColumnBuilder().writeLong(1000L);
+    builder.declarePosition();
+    return builder;
+  }
+
+  private TSExecuteStatementResp buildQueryResp(
+      List<String> columns, List<Integer> mapping, TsBlockBuilder blockBuilder) throws IOException {
+    return buildQueryResp(
+        columns, Collections.nCopies(columns.size(), TSDataType.INT32), mapping, blockBuilder);
+  }
+
+  private TSExecuteStatementResp buildQueryResp(
+      List<String> columns,
+      List<TSDataType> dataTypes,
+      List<Integer> mapping,
+      TsBlockBuilder blockBuilder)
+      throws IOException {
+    TSExecuteStatementResp resp = new TSExecuteStatementResp();
+    resp.setStatus(Status_SUCCESS);
+    resp.setQueryId(1L);
+    resp.setColumns(columns);
+    List<String> dataTypeList = new ArrayList<>();
+    for (TSDataType dataType : dataTypes) {
+      dataTypeList.add(dataType.name());
+    }
+    resp.setDataTypeList(dataTypeList);
+    resp.setIgnoreTimeStamp(true);
+    resp.setTableModel(true);
+    if (mapping != null) {
+      resp.setColumnIndex2TsBlockColumnIndexList(mapping);
+    }
+    resp.setQueryResult(
+        Collections.singletonList(new TsBlockSerde().serialize(blockBuilder.build())));
+    resp.setMoreData(false);
+    return resp;
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedStatementReorderedColumns() throws Exception {
+    TsBlockBuilder blockBuilder = int32BlockBuilder(2);
+    blockBuilder.getColumnBuilder(0).writeInt(10); // physical column 0
+    blockBuilder.getColumnBuilder(1).writeInt(20); // physical column 1
+
+    when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
+        .thenReturn(buildQueryResp(Arrays.asList("b", "a"), Arrays.asList(1, 0), blockBuilder));
+
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "SELECT b, a FROM t WHERE a > ?", zoneId);
+    ps.setInt(1, 0);
+    try (ResultSet rs = ps.executeQuery()) {
+      assertTrue(rs.next());
+      assertEquals(20, rs.getInt(1));
+      assertEquals(10, rs.getInt(2));
+      assertEquals(20, rs.getInt("b"));
+      assertEquals(10, rs.getInt("a"));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedStatementRepeatedProjection() throws Exception {
+    TsBlockBuilder blockBuilder = int32BlockBuilder(1);
+    blockBuilder.getColumnBuilder(0).writeInt(10); // physical column 0, referenced twice
+
+    when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
+        .thenReturn(buildQueryResp(Arrays.asList("x", "y"), Arrays.asList(0, 0), blockBuilder));
+
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "SELECT a AS x, a AS y FROM t WHERE a > ?", zoneId);
+    ps.setInt(1, 0);
+    try (ResultSet rs = ps.executeQuery()) {
+      assertTrue(rs.next());
+      assertEquals(10, rs.getInt(1));
+      assertEquals(10, rs.getInt(2));
+      assertEquals(10, rs.getInt("x"));
+      assertEquals(10, rs.getInt("y"));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedStatementIdentityMapping() throws Exception {
+    TsBlockBuilder blockBuilder = int32BlockBuilder(2);
+    blockBuilder.getColumnBuilder(0).writeInt(10);
+    blockBuilder.getColumnBuilder(1).writeInt(20);
+
+    when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
+        .thenReturn(buildQueryResp(Arrays.asList("a", "b"), Arrays.asList(0, 1), blockBuilder));
+
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "SELECT a, b FROM t WHERE a > ?", zoneId);
+    ps.setInt(1, 0);
+    try (ResultSet rs = ps.executeQuery()) {
+      assertTrue(rs.next());
+      assertEquals(10, rs.getInt(1));
+      assertEquals(20, rs.getInt(2));
+      assertEquals(10, rs.getInt("a"));
+      assertEquals(20, rs.getInt("b"));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedStatementMissingMappingFallsBack() throws Exception {
+    TsBlockBuilder blockBuilder = int32BlockBuilder(2);
+    blockBuilder.getColumnBuilder(0).writeInt(10);
+    blockBuilder.getColumnBuilder(1).writeInt(20);
+
+    // No columnIndex2TsBlockColumnIndexList: the client must keep its own derivation
+    when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
+        .thenReturn(buildQueryResp(Arrays.asList("a", "b"), null, blockBuilder));
+
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection, client, sessionId, "SELECT a, b FROM t WHERE a > ?", zoneId);
+    ps.setInt(1, 0);
+    try (ResultSet rs = ps.executeQuery()) {
+      assertTrue(rs.next());
+      assertEquals(10, rs.getInt(1));
+      assertEquals(20, rs.getInt(2));
+      assertEquals(10, rs.getInt("a"));
+      assertEquals(20, rs.getInt("b"));
+    }
+  }
+
+  // ========== Charset forwarding ==========
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedStatementGetBytesUsesConnectionCharset() throws Exception {
+    // A STRING column holding 中文; the value travels as UTF-8 in the TsBlock, but getBytes must
+    // encode the decoded String with the charset the connection was opened with.
+    TsBlockBuilder blockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.STRING));
+    blockBuilder.getTimeColumnBuilder().writeLong(1000L);
+    blockBuilder.declarePosition();
+    blockBuilder.getColumnBuilder(0).writeBinary(new Binary("中文", Charset.forName("UTF-8")));
+    when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
+        .thenReturn(
+            buildQueryResp(
+                Collections.singletonList("name"),
+                Collections.singletonList(TSDataType.STRING),
+                null,
+                blockBuilder));
+
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(
+            connection,
+            client,
+            sessionId,
+            "SELECT name FROM t WHERE name = ?",
+            zoneId,
+            Charset.forName("GBK"));
+    ps.setString(1, "中文");
+    try (ResultSet rs = ps.executeQuery()) {
+      assertTrue(rs.next());
+      assertArrayEquals("中文".getBytes(Charset.forName("GBK")), rs.getBytes(1));
+      assertArrayEquals("中文".getBytes(Charset.forName("GBK")), rs.getBytes("name"));
+    }
   }
 
   @SuppressWarnings("resource")
@@ -875,10 +1104,11 @@ public class IoTDBTablePreparedStatementTest {
     TSExecuteStatementResp resp = new TSExecuteStatementResp(RpcUtils.SUCCESS_STATUS);
     resp.setQueryId(queryId);
     resp.setColumns(Collections.singletonList("s1"));
-    resp.setDataTypeList(Collections.singletonList("INT32"));
+    resp.setDataTypeList(Collections.singletonList(TSDataType.INT32.name()));
     resp.setIgnoreTimeStamp(true);
+    resp.setTableModel(true);
     resp.setQueryResult(Collections.emptyList());
-    resp.setMoreData(true);
+    resp.setMoreData(false);
     return resp;
   }
 

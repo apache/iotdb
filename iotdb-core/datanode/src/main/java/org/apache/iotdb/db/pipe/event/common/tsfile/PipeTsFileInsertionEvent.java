@@ -593,6 +593,18 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
+  public synchronized boolean decreaseReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
+    final boolean decreased = super.decreaseReferenceCount(holderMessage, shouldReport);
+    if (decreased && isReleased() && Objects.isNull(getCommitterKey())) {
+      // A split TsFile may only commit its generated tablets. Releasing that original event ends
+      // its processing, but the transfer hook must still wait for parsing and all tablet commits.
+      markAsTransferredIfGeneratedTabletEventsCompleted();
+    }
+    return decreased;
+  }
+
+  @Override
   public boolean clearReferenceCount(final String holderMessage) {
     final boolean cleared = super.clearReferenceCount(holderMessage);
     // clearReferenceCount intentionally bypasses the commit queue. Notify the realtime source even
@@ -698,14 +710,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     final boolean generationBoundaryReached =
         !generatedTabletInsertionEventsParsingStarted.get()
             || generatedTabletInsertionEventsParsingCompleted.get();
-    // The normal processor path does not retain a tablet iterable unless parsing has explicitly
-    // been marked as started.  In that path, registering the generated tablets and reaching the
-    // generation boundary is sufficient to establish the transfer boundary (the source TsFile
-    // commit may be reported separately or may be intentionally skipped).  Once an iterable has
-    // been retained, however, the source TsFile commit must also be observed before the generated
-    // tablet counts can release the TsFile.  This distinction keeps deferred parsing safe without
-    // delaying the established non-deferred path.
-    if ((isTsFileEventCommitted.get() || !generatedTabletInsertionEventsParsingStarted.get())
+    // The collector only assigns commit ids to the generated tablets when it splits a TsFile.
+    // The original event then finishes processing without entering the commit queue. If the
+    // original event does enter that queue, resource release alone must not bypass its commit.
+    if ((isTsFileEventCommitted.get()
+            || (isReleased() && Objects.isNull(getCommitterKey()))
+            || !generatedTabletInsertionEventsParsingStarted.get())
         && generationBoundaryReached
         && transferredGeneratedTabletInsertionEventCount.get()
                 + discardedGeneratedTabletInsertionEventCount.get()
@@ -957,16 +967,20 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
-    // Notice that this is only called at realtime extraction, and the tsFile is always closed
-    // Thus we can use the end time to judge the overlap
+    // Only called during realtime extraction, after writer.endFile() has finalized the time bounds.
+    // The resource may not yet be marked closed, but its end time can already be used for overlap.
     return Objects.isNull(resource)
         || startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
   }
 
   @Override
   public boolean shouldParseTime() {
+    // Historical extraction may observe incomplete time bounds while an asynchronous close is in
+    // progress. Realtime TsFile events are published after writer.endFile(), when the bounds are
+    // final even if the resource's closed flag has not yet been updated by the close callbacks.
     if (!isTimeParsed
         && Objects.nonNull(resource)
+        && (!isGeneratedByHistoricalExtractor || resource.isClosed())
         && startTime <= resource.getFileStartTime()
         && resource.getFileEndTime() <= endTime) {
       isTimeParsed = true;
@@ -1543,9 +1557,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     synchronized (isTsFileParserMemoryReserved) {
       if (isTsFileParserMemoryReserved.compareAndSet(true, false)) {
         PipeDataNodeResourceManager.memory()
-            .releaseTsFileParserMemory(pipeName, creationTime, dataRegionId);
+            .releaseTsFileParserMemory(
+                pipeName, creationTime, dataRegionId, tsFileParserMemoryReservationKey);
       }
     }
+  }
+
+  public boolean isWaitingForTsFileParserMemory() {
+    return tsFileParserMemoryReservationKey.isWaitingForSignal();
   }
 
   public void cancelTsFileParserMemoryReservationIfPending() {
@@ -1636,12 +1655,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public void close() {
     // Every cleanup step is best effort and independent.  A parser/reader close failure must not
     // strand its reservation or the pending tablet event.
-    try {
-      cancelTsFileParserMemoryReservationIfPending();
-    } catch (final Exception e) {
-      LOGGER.warn(DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_TSFILE_ERROR, tsFile, e);
-    }
-
     final PipeRawTabletInsertionEvent detachedPendingEvent;
     final boolean pendingEventIsBeingConsumed;
     final TsFileInsertionEventParser parserToClose;
@@ -1662,6 +1675,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         // tablet merely because another thread closed the source event.
         pendingTabletReleaseDeferred = true;
       }
+    }
+
+    // Invalidate old invocations before cancelling: an invocation that passed its generation
+    // check can enqueue while close waits for eventParser. It must either be removed here or
+    // observe the new generation and cancel its own request.
+    try {
+      cancelTsFileParserMemoryReservationIfPending();
+    } catch (final Exception e) {
+      LOGGER.warn(DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_TSFILE_ERROR, tsFile, e);
     }
 
     if (detachedPendingEvent != null && !pendingEventIsBeingConsumed) {
@@ -1827,7 +1849,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         synchronized (isTsFileParserMemoryReserved) {
           if (isTsFileParserMemoryReserved.compareAndSet(true, false)) {
             PipeDataNodeResourceManager.memory()
-                .releaseTsFileParserMemory(pipeName, creationTime, dataRegionId);
+                .releaseTsFileParserMemory(
+                    pipeName, creationTime, dataRegionId, tsFileParserMemoryReservationKey);
           }
         }
       } catch (final Exception e) {

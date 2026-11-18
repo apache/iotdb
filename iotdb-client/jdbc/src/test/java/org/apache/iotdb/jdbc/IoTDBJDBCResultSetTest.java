@@ -46,6 +46,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -287,6 +288,35 @@ public class IoTDBJDBCResultSetTest {
 
     // The client get TSQueryDataSet at the first request
     verify(fetchResultsResp, times(0)).getStatus();
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testBigDecimalScaleUsesFractionalDigits() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    try (ResultSet resultSet = statement.getResultSet()) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(2L, resultSet.getLong(1));
+      Assert.assertEquals(new BigDecimal("2.2"), resultSet.getBigDecimal(2, 1));
+      Assert.assertEquals(new BigDecimal("2"), resultSet.getBigDecimal(2, 0));
+      Assert.assertEquals(new BigDecimal("2.2"), resultSet.getBigDecimal("root.vehicle.d0.s2", 1));
+      Assert.assertThrows(SQLException.class, () -> resultSet.getBigDecimal(2, -1));
+
+      boolean foundLargeValue = false;
+      while (resultSet.next()) {
+        if (resultSet.getLong(1) == 1000) {
+          Assert.assertEquals(new BigDecimal("1000.11"), resultSet.getBigDecimal(2, 2));
+          Assert.assertEquals(
+              new BigDecimal("1000.11"), resultSet.getBigDecimal("root.vehicle.d0.s2", 2));
+          foundLargeValue = true;
+          break;
+        }
+      }
+      Assert.assertTrue(foundLargeValue);
+    }
   }
 
   @SuppressWarnings("resource")
@@ -611,25 +641,6 @@ public class IoTDBJDBCResultSetTest {
         .getDataType();
   }
 
-  private void mockTextQueryResponse() {
-    List<String> columns = new ArrayList<>(Collections.singletonList("root.vehicle.d0.s3"));
-    List<String> dataTypeList = new ArrayList<>(Collections.singletonList("TEXT"));
-
-    when(execResp.isSetColumns()).thenReturn(true);
-    when(execResp.getColumns()).thenReturn(columns);
-    when(execResp.isSetDataTypeList()).thenReturn(true);
-    when(execResp.getDataTypeList()).thenReturn(dataTypeList);
-    when(execResp.isSetOperationType()).thenReturn(true);
-    when(execResp.getOperationType()).thenReturn("QUERY");
-    when(execResp.isSetQueryId()).thenReturn(true);
-    when(execResp.getQueryId()).thenReturn(queryId);
-    when(execResp.isSetTableModel()).thenReturn(false);
-    when(execResp.isIgnoreTimeStamp()).thenReturn(false);
-    when(execResp.getColumnIndex2TsBlockColumnIndexList())
-        .thenReturn(new ArrayList<>(Collections.singletonList(0)));
-    execResp.queryResult = fakedTextFetchTsBlockResult();
-  }
-
   /**
    * The tree-model time pseudo-column is addressed by a negative TsBlock column index. getLong,
    * getString and getObject handle it; the strictly-typed getters used to fall through to
@@ -908,6 +919,25 @@ public class IoTDBJDBCResultSetTest {
     Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
     fetchResultsResp.hasResultSet = true;
     return statement.getResultSet();
+  }
+
+  private void mockTextQueryResponse() {
+    List<String> columns = new ArrayList<>(Collections.singletonList("root.vehicle.d0.s3"));
+    List<String> dataTypeList = new ArrayList<>(Collections.singletonList("TEXT"));
+
+    when(execResp.isSetColumns()).thenReturn(true);
+    when(execResp.getColumns()).thenReturn(columns);
+    when(execResp.isSetDataTypeList()).thenReturn(true);
+    when(execResp.getDataTypeList()).thenReturn(dataTypeList);
+    when(execResp.isSetOperationType()).thenReturn(true);
+    when(execResp.getOperationType()).thenReturn("QUERY");
+    when(execResp.isSetQueryId()).thenReturn(true);
+    when(execResp.getQueryId()).thenReturn(queryId);
+    when(execResp.isSetTableModel()).thenReturn(false);
+    when(execResp.isIgnoreTimeStamp()).thenReturn(false);
+    when(execResp.getColumnIndex2TsBlockColumnIndexList())
+        .thenReturn(new ArrayList<>(Collections.singletonList(0)));
+    execResp.queryResult = fakedTextFetchTsBlockResult();
   }
 
   private void constructObjectList(List<Object> standardObject) {

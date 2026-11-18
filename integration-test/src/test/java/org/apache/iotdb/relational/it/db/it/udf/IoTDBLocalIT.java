@@ -20,9 +20,11 @@
 package org.apache.iotdb.relational.it.db.it.udf;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -32,10 +34,12 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
@@ -65,6 +69,8 @@ public class IoTDBLocalIT {
         "CREATE TABLE secret_table (device_id STRING TAG, secret STRING FIELD)",
         "CREATE TABLE vehicle (device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD)",
         "CREATE TABLE probe_table (device_id STRING TAG, value DOUBLE FIELD)",
+        "CREATE TABLE device_attrs (device_id STRING TAG, alias STRING ATTRIBUTE, v INT32 FIELD)",
+        "CREATE TABLE nullable_attrs (device_id STRING TAG, alias STRING ATTRIBUTE, v INT32 FIELD)",
         "INSERT INTO device_info(time, device_id, device_name) VALUES (1, 'd1', '一号车间温度传感器'), (1, 'd2', '二号车间温度传感器')",
         "INSERT INTO device_limits(time, device_id, max_temp) VALUES (1, 'd1', 30.0), (1, 'd2', 35.0)",
         "INSERT INTO readings(time, device_id, temperature) VALUES (1000, 'd1', 25.5), (1001, 'd2', 32.0), (1002, 'd3', 20.0)",
@@ -74,6 +80,9 @@ public class IoTDBLocalIT {
         "INSERT INTO vehicle(time, device_id, s1, s2) VALUES (2, 'd0', null, 2)",
         "INSERT INTO vehicle(time, device_id, s1, s2) VALUES (3, 'd0', 3, 3)",
         "INSERT INTO vehicle(time, device_id, s1) VALUES (5, 'd0', 4)",
+        "INSERT INTO device_attrs(time, device_id, alias, v) VALUES (1, 'x1', 'd1', 1), (2, 'x1', 'd1', 2), (1, 'x2', 'd2', 3)",
+        "INSERT INTO nullable_attrs(time, device_id, alias, v) VALUES (1, 'y1', 'd1', 1)",
+        "INSERT INTO nullable_attrs(time, device_id, v) VALUES (1, 'y2', 2)",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
@@ -104,6 +113,58 @@ public class IoTDBLocalIT {
     } catch (Exception e) {
       fail("executeAsRoot failed: " + e.getMessage());
     }
+  }
+
+  // ── scalar UDF on TAG/ATTRIBUTE columns, evaluated in schema fragments ─────
+
+  @Test
+  public void testLegacyScalarUdfOnDeviceColumnPredicates() {
+    SQLFunctionUtils.createUDF("contain_null", PKG + ".ContainNull");
+    tableResultSetEqualTest(
+        "SELECT count(*) AS cnt FROM readings WHERE contain_null(device_id) = false",
+        new String[] {"cnt"},
+        new String[] {"3,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT count(*) AS cnt FROM device_attrs WHERE contain_null(alias) = false",
+        new String[] {"cnt"},
+        new String[] {"3,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SHOW DEVICES FROM nullable_attrs WHERE contain_null(alias) = true",
+        new String[] {"device_id", "alias"},
+        new String[] {"y2,null,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "COUNT DEVICES FROM device_attrs WHERE contain_null(alias) = false",
+        new String[] {"count(devices)"},
+        new String[] {"2,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testIoTDBLocalScalarUdfOnDeviceColumnPredicates() {
+    SQLFunctionUtils.createUDF("device_name", IOTDB_LOCAL_PKG + ".DeviceNameFunction");
+    tableResultSetEqualTest(
+        "SELECT device_id, temperature FROM readings WHERE device_name(device_id) = '一号车间温度传感器'",
+        new String[] {"device_id", "temperature"},
+        new String[] {"d1,25.5,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT device_id, v FROM device_attrs WHERE device_name(alias) = '二号车间温度传感器'",
+        new String[] {"device_id", "v"},
+        new String[] {"x2,3,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SHOW DEVICES FROM device_attrs WHERE device_name(alias) = '一号车间温度传感器'",
+        new String[] {"device_id", "alias"},
+        new String[] {"x1,d1,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "COUNT DEVICES FROM readings WHERE device_name(device_id) = '未知设备'",
+        new String[] {"count(devices)"},
+        new String[] {"1,"},
+        DATABASE_NAME);
   }
 
   // ── compatibility: legacy UDF without IoTDBLocal parameter ─────────────────
@@ -416,6 +477,37 @@ public class IoTDBLocalIT {
         LIMITED_PASSWORD,
         DATABASE_NAME);
     dropLimitedUser();
+  }
+
+  @Test
+  public void testIoTDBLocalOnDeviceColumnPredicateDeniedWithoutTablePermission() {
+    setupLimitedUserWithTableGrants("readings");
+    SQLFunctionUtils.createUDF("secret_query", IOTDB_LOCAL_PKG + ".SecretTableQueryFunction");
+    assertAccessDeniedOnEachDataNode(
+        "SELECT device_id FROM readings WHERE secret_query(device_id) = 'top-secret'");
+    assertAccessDeniedOnEachDataNode(
+        "SHOW DEVICES FROM readings WHERE secret_query(device_id) = 'top-secret'");
+    assertAccessDeniedOnEachDataNode(
+        "COUNT DEVICES FROM readings WHERE secret_query(device_id) = 'top-secret'");
+    dropLimitedUser();
+  }
+
+  // A failed schema fragment can reach the client as 803 or 305, depending on whether the query
+  // state or the local source handle reports it first, so the DataNodes are checked one by one.
+  private static void assertAccessDeniedOnEachDataNode(String sql) {
+    for (DataNodeWrapper dataNode : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      try (Connection connection =
+              EnvFactory.getEnv()
+                  .getConnection(
+                      dataNode, LIMITED_USER, LIMITED_PASSWORD, BaseEnv.TABLE_SQL_DIALECT);
+          Statement statement = connection.createStatement()) {
+        statement.execute("USE " + DATABASE_NAME);
+        statement.executeQuery(sql);
+        fail("No exception: " + sql);
+      } catch (SQLException e) {
+        assertTrue(e.getMessage(), e.getMessage().contains("Access Denied"));
+      }
+    }
   }
 
   private static void setupLimitedUserWithTableGrants(String... tables) {

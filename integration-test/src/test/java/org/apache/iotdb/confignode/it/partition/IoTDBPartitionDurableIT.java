@@ -289,11 +289,11 @@ public class IoTDBPartitionDurableIT {
   public void testStoppedDataNode() throws Exception {
     // Shutdown a DataNode, the ConfigNode should still be able to create RegionGroup
     NodeStatus stoppedStatus = EnvUtils.getNodeStatusAfterLocalStop();
+    DataNodeWrapper dataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(testDataNodeId);
     EnvFactory.getEnv().shutdownDataNode(testDataNodeId);
     EnvFactory.getEnv()
         .ensureNodeStatus(
-            Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(testDataNodeId)),
-            Collections.singletonList(stoppedStatus));
+            Collections.singletonList(dataNodeWrapper), Collections.singletonList(stoppedStatus));
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {

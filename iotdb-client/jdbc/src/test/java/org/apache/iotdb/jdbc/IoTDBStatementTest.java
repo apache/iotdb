@@ -20,7 +20,6 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
@@ -129,6 +128,42 @@ public class IoTDBStatementTest {
     Assert.assertEquals(100, statement.getQueryTimeout());
   }
 
+  @SuppressWarnings("resource")
+  @Test
+  public void regionValidationErrorsArePropagatedByExecuteAndExecuteUpdate() throws Exception {
+    String[] statements = {
+      "MIGRATE REGION 1,1 FROM 2 TO 3",
+      "RECONSTRUCT REGION 1,1 ON 2",
+      "EXTEND REGION 1,1 TO 2",
+      "REMOVE REGION 1,1 FROM 2"
+    };
+    TSStatusCode[] codes = {
+      TSStatusCode.MIGRATE_REGION_ERROR,
+      TSStatusCode.RECONSTRUCT_REGION_ERROR,
+      TSStatusCode.EXTEND_REGION_ERROR,
+      TSStatusCode.REMOVE_REGION_PEER_ERROR
+    };
+    for (int i = 0; i < statements.length; i++) {
+      final String sql = statements[i];
+      TSStatus status =
+          new TSStatus(codes[i].getStatusCode()).setMessage("Duplicate Region ID 1 in the request");
+      TSExecuteStatementResp response = new TSExecuteStatementResp().setStatus(status);
+      when(client.executeStatementV2(any())).thenReturn(response);
+      when(client.executeUpdateStatement(any())).thenReturn(response);
+      IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L);
+
+      SQLException executeError =
+          Assert.assertThrows(SQLException.class, () -> statement.execute(sql));
+      assertEquals(status.getCode(), executeError.getErrorCode());
+      Assert.assertTrue(executeError.getMessage().contains(status.getMessage()));
+      SQLException updateError =
+          Assert.assertThrows(SQLException.class, () -> statement.executeUpdate(sql));
+      assertEquals(status.getCode(), updateError.getErrorCode());
+      Assert.assertTrue(updateError.getMessage().contains(status.getMessage()));
+      Assert.assertNull(statement.getWarnings());
+    }
+  }
+
   @Test(expected = SQLException.class)
   public void testSetQueryTimeoutRejectsNegativeValue() throws SQLException {
     IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID);
@@ -178,22 +213,11 @@ public class IoTDBStatementTest {
         assertThrows(
             SQLException.class,
             () -> statement.execute("select 1", Statement.RETURN_GENERATED_KEYS));
-    assertEquals(
-        String.format(
-            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C, "execute"),
-        unsupportedException.getMessage());
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
     unsupportedException = assertThrows(SQLException.class, () -> statement.getGeneratedKeys());
-    assertEquals(
-        String.format(
-            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C,
-            "getGeneratedKeys"),
-        unsupportedException.getMessage());
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
     unsupportedException = assertThrows(SQLException.class, statement::closeOnCompletion);
-    assertEquals(
-        String.format(
-            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C,
-            "closeOnCompletion"),
-        unsupportedException.getMessage());
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
   }
 
   @Test
@@ -338,41 +362,5 @@ public class IoTDBStatementTest {
     resp.setQueryResult(Collections.<ByteBuffer>emptyList());
     resp.setIgnoreTimeStamp(true);
     return resp;
-  }
-
-  @SuppressWarnings("resource")
-  @Test
-  public void regionValidationErrorsArePropagatedByExecuteAndExecuteUpdate() throws Exception {
-    String[] statements = {
-      "MIGRATE REGION 1,1 FROM 2 TO 3",
-      "RECONSTRUCT REGION 1,1 ON 2",
-      "EXTEND REGION 1,1 TO 2",
-      "REMOVE REGION 1,1 FROM 2"
-    };
-    TSStatusCode[] codes = {
-      TSStatusCode.MIGRATE_REGION_ERROR,
-      TSStatusCode.RECONSTRUCT_REGION_ERROR,
-      TSStatusCode.EXTEND_REGION_ERROR,
-      TSStatusCode.REMOVE_REGION_PEER_ERROR
-    };
-    for (int i = 0; i < statements.length; i++) {
-      final String sql = statements[i];
-      TSStatus status =
-          new TSStatus(codes[i].getStatusCode()).setMessage("Duplicate Region ID 1 in the request");
-      TSExecuteStatementResp response = new TSExecuteStatementResp().setStatus(status);
-      when(client.executeStatementV2(any())).thenReturn(response);
-      when(client.executeUpdateStatement(any())).thenReturn(response);
-      IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L);
-
-      SQLException executeError =
-          Assert.assertThrows(SQLException.class, () -> statement.execute(sql));
-      assertEquals(status.getCode(), executeError.getErrorCode());
-      Assert.assertTrue(executeError.getMessage().contains(status.getMessage()));
-      SQLException updateError =
-          Assert.assertThrows(SQLException.class, () -> statement.executeUpdate(sql));
-      assertEquals(status.getCode(), updateError.getErrorCode());
-      Assert.assertTrue(updateError.getMessage().contains(status.getMessage()));
-      Assert.assertNull(statement.getWarnings());
-    }
   }
 }

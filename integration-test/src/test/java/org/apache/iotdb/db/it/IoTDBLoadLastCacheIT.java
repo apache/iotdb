@@ -25,7 +25,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.enums.ColumnCategory;
@@ -94,9 +93,10 @@ public class IoTDBLoadLastCacheIT {
     this.lastCacheLoadStrategy = lastCacheLoadStrategy;
   }
 
-  @Before
-  public void setUp() throws Exception {
-    tmpDir = new File(Files.createTempDirectory("load").toUri());
+  // The load strategy is read at startup, so only tests with the same parameter share a cluster.
+  @Parameterized.BeforeParam
+  public static void setUpEnvironment(LastCacheLoadStrategy lastCacheLoadStrategy)
+      throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv()
         .getConfig()
@@ -111,13 +111,25 @@ public class IoTDBLoadLastCacheIT {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
+  @Parameterized.AfterParam
+  public static void tearDownEnvironment() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    tmpDir = new File(Files.createTempDirectory("load-" + lastCacheLoadStrategy.name()).toUri());
+  }
+
   @After
   public void tearDown() throws Exception {
-    deleteSG();
-    EnvFactory.getEnv().cleanClusterEnvironment();
-
-    if (!deleteDir()) {
-      LOGGER.error("Can not delete tmp dir for loading tsfile.");
+    try {
+      // Drop both models' databases to clear their schemas and last caches between tests.
+      deleteDatabases();
+    } finally {
+      if (!deleteDir()) {
+        LOGGER.error("Can not delete tmp dir for loading tsfile.");
+      }
     }
   }
 
@@ -177,17 +189,30 @@ public class IoTDBLoadLastCacheIT {
     return sql.toString();
   }
 
-  private void deleteSG() throws SQLException {
+  private void deleteDatabases() throws SQLException {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-
-      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_0));
-      statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_1));
-    } catch (final IoTDBSQLException ignored) {
+      for (final String database :
+          Arrays.asList(SchemaConfig.STORAGE_GROUP_0, SchemaConfig.STORAGE_GROUP_1)) {
+        final boolean exists;
+        try (final ResultSet resultSet = statement.executeQuery("show databases " + database)) {
+          exists = resultSet.next();
+        }
+        if (exists) {
+          statement.execute("delete database " + database);
+        }
+      }
+    }
+    try (final Connection connection = EnvFactory.getEnv().getTableConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS " + SchemaConfig.DATABASE_0);
     }
   }
 
   private boolean deleteDir() {
+    if (tmpDir == null) {
+      return true;
+    }
     for (final File file : Objects.requireNonNull(tmpDir.listFiles())) {
       if (!file.delete()) {
         return false;
@@ -196,6 +221,10 @@ public class IoTDBLoadLastCacheIT {
     return tmpDir.delete();
   }
 
+  /**
+   * Prewarm a tree last cache at time 100, load aligned and nonaligned data through time 10000, and
+   * verify that each configured load strategy exposes the new last timestamp.
+   */
   @Test
   public void testTreeModelLoadWithLastCache() throws Exception {
     registerSchema();
@@ -280,6 +309,10 @@ public class IoTDBLoadLastCacheIT {
     }
   }
 
+  /**
+   * Prewarm a table last cache at time 100, load a TsFile with the same device at time 10000, and
+   * verify that the configured load strategy refreshes the cached last value.
+   */
   @Test
   public void testTableModelLoadWithLastCache() throws Exception {
     final String database = SchemaConfig.DATABASE_0;
@@ -518,6 +551,11 @@ public class IoTDBLoadLastCacheIT {
         timeConsumptions.stream().mapToLong(i -> i).average().orElse(0.0) / 1000000);
   }
 
+  /**
+   * Load 100000 table TsFiles while concurrent rate-limited readers query last values until the
+   * final timestamp is visible; keep this large performance workload excluded from ordinary IT
+   * runs.
+   */
   @Ignore("Performance")
   @Test
   public void testTableLoadPerformance() throws Exception {

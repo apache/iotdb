@@ -2117,21 +2117,30 @@ public class IoTDBSessionSimpleIT {
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.insertRecord("root.sg1.d1", 1, Arrays.asList("s3"), Arrays.asList("1"));
+      session.executeNonQueryStatement("FLUSH");
+    }
 
-      TestUtils.stopForciblyAndRestartDataNodes();
+    TestUtils.stopForciblyAndRestartDataNodes();
 
-      SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
-      dataSet.next();
-      dataSet.close();
+    // This case verifies recovered database caches, so do not retain transports across the restart.
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      try (SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1")) {
+        assertTrue(dataSet.hasNext());
+        dataSet.next();
+        assertFalse(dataSet.hasNext());
+      }
 
       session.executeNonQueryStatement("DELETE DATABASE root.sg1");
 
       session.insertRecord(
           "root.sg1.d1", 1, Arrays.asList("s1", "s2", "s3"), Arrays.asList("1", "1", "1"));
 
-      dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1");
-      RowRecord record = dataSet.next();
-      assertEquals(3, record.getFields().size());
+      try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1")) {
+        assertTrue(dataSet.hasNext());
+        RowRecord record = dataSet.next();
+        assertEquals(3, record.getFields().size());
+        assertFalse(dataSet.hasNext());
+      }
     }
   }
 

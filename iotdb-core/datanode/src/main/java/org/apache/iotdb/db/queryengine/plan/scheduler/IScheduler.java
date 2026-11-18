@@ -25,6 +25,7 @@ import io.airlift.units.Duration;
 
 public interface IScheduler {
 
+  /** Starts once; a scheduler stopped before this call must not dispatch work. */
   void start();
 
   void stop(Throwable t);

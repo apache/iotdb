@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -68,6 +69,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -868,8 +870,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return false;
     }
 
-    // Some resource may not be closed due to the control of PIPE_MIN_FLUSH_INTERVAL_IN_MS. We
-    // simply ignore them.
+    // Closing files may still have incomplete progress and time metadata. Select them
+    // conservatively; the event waits for the file to close before parsing or transfer.
     if (!resource.isClosed()
         && Optional.ofNullable(resource.getProcessor())
             .map(TsFileProcessor::alreadyMarkedClosing)
@@ -920,6 +922,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   private boolean isProgressIndexNotCoveredByStartIndex(
       PersistentResource resource, ProgressIndex progressIndex) {
+    // Ratis writes do not carry Pipe progress indexes. Minimum therefore means unknown here,
+    // rather than an empty file already covered by the initial checkpoint. Replay conservatively
+    // after a leader change, or successful writes can disappear from the subscription backlog.
+    if (progressIndex instanceof MinimumProgressIndex
+        && ConsensusFactory.RATIS_CONSENSUS.equals(
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())) {
+      return true;
+    }
     final ProgressIndex innerStartIndex = getInnerProgressIndex(startIndex);
     if (innerStartIndex.isEqualOrAfter(progressIndex)
         || isProgressIndexCoveredByTimePartitionProgressIndex(
@@ -1057,7 +1067,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private boolean isTsFileResourceCoveredByTimeRange(final TsFileResource resource) {
-    return historicalDataExtractionStartTime <= resource.getFileStartTime()
+    // In particular, a sequence file's end time is not final until it is closed. Do not disable
+    // row-level filtering based on the bounds observed while an asynchronous close is in flight.
+    return resource.isClosed()
+        && historicalDataExtractionStartTime <= resource.getFileStartTime()
         && historicalDataExtractionEndTime >= resource.getFileEndTime();
   }
 
@@ -1318,16 +1331,19 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
           event.increaseReferenceCount(
               PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
       if (!isReferenceCountIncreased) {
-        LOGGER.warn(
-            DataNodePipeMessages.PIPE_FAILED_TO_INCREASE_REFERENCE_COUNT_FOR_1,
-            pipeName,
-            dataRegionId,
-            event);
+        // Unlike realtime supply, which already holds a queued event reference, this is the
+        // event's first reference acquisition. The source's pin keeps the file available for retry.
+        // Keep the queue entry, pin, and replicate index until an event owns the resource. A
+        // failed reference acquisition must not advance historical progress past this file.
+        throw new PipeException(
+            String.format(
+                DataNodePipeMessages.INCREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT,
+                event.coreReportMessage()));
       }
       filteredTsFileResources2TableNames.remove(resource);
       shouldUnpinResource = true;
       shouldClearReplicateIndex = true;
-      return isReferenceCountIncreased ? event : null;
+      return event;
     } finally {
       if (shouldClearReplicateIndex) {
         clearReplicateIndexForResource(resource);

@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.DataNodeTransportFailureUtils;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -920,9 +921,16 @@ public class ConfigNodeProcedureEnv {
   }
 
   public Map<Integer, TPullCommitProgressResp> pullCommitProgressFromDataNodesBestEffort() {
+    return pullCommitProgressFromDataNodesBestEffort(false);
+  }
+
+  public Map<Integer, TPullCommitProgressResp> pullCommitProgressFromDataNodesBestEffort(
+      final boolean includeConsensusQueueReadiness) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final TPullCommitProgressReq request = new TPullCommitProgressReq();
+    final TPullCommitProgressReq request =
+        new TPullCommitProgressReq()
+            .setIncludeConsensusQueueReadiness(includeConsensusQueueReadiness);
 
     final DataNodeAsyncRequestContext<TPullCommitProgressReq, TPullCommitProgressResp>
         clientHandler =
@@ -1099,11 +1107,12 @@ public class ConfigNodeProcedureEnv {
                     .putIfAbsent(
                         dataNodeId,
                         new TPushPipeMetaResp(
-                            createMetadataTimeoutStatus(
-                                clientHandler.getRequestType(),
-                                dataNodeId,
-                                TSStatusCode.PIPE_PUSH_META_ERROR,
-                                timeoutInMs))));
+                            DataNodeTransportFailureUtils.markTransportFailure(
+                                createMetadataTimeoutStatus(
+                                    clientHandler.getRequestType(),
+                                    dataNodeId,
+                                    TSStatusCode.PIPE_PUSH_META_ERROR,
+                                    timeoutInMs)))));
   }
 
   private static void fillMissingTopicPushMetaResponses(
@@ -1137,11 +1146,12 @@ public class ConfigNodeProcedureEnv {
                     .putIfAbsent(
                         dataNodeId,
                         new TPushConsumerGroupMetaResp(
-                            createMetadataTimeoutStatus(
-                                clientHandler.getRequestType(),
-                                dataNodeId,
-                                TSStatusCode.CONSUMER_PUSH_META_ERROR,
-                                timeoutInMs))));
+                            DataNodeTransportFailureUtils.markTransportFailure(
+                                createMetadataTimeoutStatus(
+                                    clientHandler.getRequestType(),
+                                    dataNodeId,
+                                    TSStatusCode.CONSUMER_PUSH_META_ERROR,
+                                    timeoutInMs)))));
   }
 
   private static void fillMissingPullCommitProgressResponses(

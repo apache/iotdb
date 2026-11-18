@@ -99,6 +99,16 @@ public class IoTDBDataSourceTest {
   }
 
   @Test
+  public void testNullOrZeroPortUsesDefault() {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+
+    dataSource.setPort(0);
+    assertEquals(Integer.valueOf(Config.IOTDB_DEFAULT_PORT), dataSource.getPort());
+    dataSource.setPort(null);
+    assertEquals(Integer.valueOf(Config.IOTDB_DEFAULT_PORT), dataSource.getPort());
+  }
+
+  @Test
   public void testDataSourceWrapperMethods() throws SQLException {
     IoTDBDataSource dataSource = new IoTDBDataSource();
 
@@ -130,6 +140,22 @@ public class IoTDBDataSourceTest {
 
     assertSame(logWriter, dataSource.getLogWriter());
     assertEquals(10, dataSource.getLoginTimeout());
+  }
+
+  @Test(expected = SQLException.class)
+  public void testConnectionWithCredentialsPropagatesInvalidUrl() throws SQLException {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+    dataSource.setUrl("jdbc:iotdb://test");
+
+    dataSource.getConnection("root", "root");
+  }
+
+  @Test(expected = SQLException.class)
+  public void testConnectionFailureIsPropagated() throws SQLException {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+    dataSource.setUrl("jdbc:iotdb://127.0.0.1:1/");
+
+    dataSource.getConnection();
   }
 
   @Test
@@ -200,13 +226,5 @@ public class IoTDBDataSourceTest {
   @Test(expected = SQLException.class)
   public void testDataSourceRejectsNegativeLoginTimeout() throws SQLException {
     new IoTDBDataSource().setLoginTimeout(-1);
-  }
-
-  @Test(expected = SQLException.class)
-  public void testDataSourceConnectionWithCredentialsThrowsInvalidUrl() throws SQLException {
-    IoTDBDataSource dataSource = new IoTDBDataSource();
-
-    dataSource.setUrl("jdbc:iotdb://test");
-    dataSource.getConnection("root", "root");
   }
 }

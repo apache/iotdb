@@ -205,6 +205,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   @Override
   public ResultSet executeQuery() throws SQLException {
     checkConnection("executeQuery");
+    if (!serverSidePrepared) {
+      closeCurrentResultSet();
+      return super.executeQuery(createCompleteSql(sql, parameters));
+    }
     TSExecuteStatementResp resp = executeInternal();
     return processQueryResult(resp);
   }
@@ -273,7 +277,12 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
                 resp.tracingInfo,
                 (long) queryTimeout * 1000,
                 resp.isSetMoreData() && resp.isMoreData(),
-                zoneId);
+                zoneId,
+                charset,
+                resp.isSetTableModel() && resp.isTableModel(),
+                resp.getColumnIndex2TsBlockColumnIndexList() == null
+                    ? null
+                    : new ArrayList<>(resp.getColumnIndex2TsBlockColumnIndexList()));
       } catch (SQLException | RuntimeException e) {
         throw closeQueryOperationOnResultSetCreationFailure(queryId, e);
       }

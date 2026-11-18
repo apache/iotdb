@@ -31,6 +31,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.time.Instant;
+
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
@@ -259,6 +261,44 @@ public class IoTDBGapFillTableIT {
     retArray = new String[] {};
     tableResultSetEqualTest(
         "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T00:00:00.000+00:00 AND time < 2024-09-24T06:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void gapFillWithTimestampCastBoundsTest() {
+    long startTime = Instant.parse("2024-09-24T04:00:00Z").toEpochMilli();
+    long endTime = Instant.parse("2024-09-24T12:00:00Z").toEpochMilli();
+    String[] expectedHeader = new String[] {"hour_time", "avg_s1"};
+    String[] retArray =
+        new String[] {
+          "2024-09-24T04:00:00.000Z,null,",
+          "2024-09-24T05:00:00.000Z,null,",
+          "2024-09-24T06:00:00.000Z,null,",
+          "2024-09-24T07:00:00.000Z,27.2,",
+          "2024-09-24T08:00:00.000Z,27.3,",
+          "2024-09-24T09:00:00.000Z,null,",
+          "2024-09-24T10:00:00.000Z,null,",
+          "2024-09-24T11:00:00.000Z,29.3,"
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1"
+            + " where time >= CAST("
+            + startTime
+            + " AS TIMESTAMP) and time < CAST("
+            + endTime
+            + " AS TIMESTAMP) and device_id = 'd1' group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1"
+            + " where time between CAST("
+            + startTime
+            + " AS TIMESTAMP) and CAST("
+            + (endTime - 1)
+            + " AS TIMESTAMP) and device_id = 'd1' group by 1 order by 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);

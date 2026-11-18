@@ -683,9 +683,6 @@ public class IoTDBStatement implements Statement {
               return client.executeUpdateStatement(execReq);
             },
             TSExecuteStatementResp::getStatus);
-    if (execResp.isSetQueryId()) {
-      queryId = execResp.getQueryId();
-    }
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (final StatementExecutionException e) {

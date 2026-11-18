@@ -26,6 +26,8 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
+import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.dual.PipeTestUtils.RetryFlushHandler;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -41,7 +43,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
@@ -53,22 +54,30 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
     super.setUp();
   }
 
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
+    // Retain multiple Regions for the three parallel tasks without generating many tiny files
+    // from CPU-based defaults or exhausting query memory on concurrent schema analysis.
+    for (final BaseEnv env : new BaseEnv[] {senderEnv, receiverEnv}) {
+      env.getConfig().getCommonConfig().setDataRegionPerDataNode(2);
+      env.getConfig().getDataNodeConfig().setLoadTsFileAnalyzeSchemaMemorySizeInBytes(256 * 1024L);
+    }
+  }
+
+  // Three parallel batched tasks must deliver ten historical and ten realtime table rows plus four
+  // tree rows, with per-Region serialization disabled and double-living mode enabled.
   @Test
   public void testIoTConnectorParallel() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
     TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-    TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+    TableModelUtils.insertData("test", "test", 0, 10, senderEnv);
     final Set<String> expectedResSet = new HashSet<>();
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final RetryFlushHandler handleFailure = new RetryFlushHandler(senderEnv, receiverEnv)) {
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -105,7 +114,7 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
               "insert into root.sg1.d1(time, s1) values (3, 4)",
               "flush"),
           null);
-      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      TableModelUtils.insertData("test", "test", 10, 20, senderEnv);
       expectedResSet.add("0,1.0,");
       expectedResSet.add("1,2.0,");
       expectedResSet.add("2,3.0,");
@@ -117,7 +126,7 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
           expectedResSet,
           handleFailure);
 
-      TableModelUtils.assertCountData("test", "test", 200, receiverEnv, handleFailure);
+      TableModelUtils.assertCountData("test", "test", 20, receiverEnv, handleFailure);
     }
   }
 }

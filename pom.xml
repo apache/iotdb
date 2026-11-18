@@ -54,7 +54,6 @@
         <airlift-units.version>1.7</airlift-units.version>
         <airlift.version>206</airlift.version>
         <!--airlift-stats.version>235</airlift-stats.version-->
-        <airline.version>0.9</airline.version>
         <antlr4.version>4.13.2</antlr4.version>
         <!-- By default, the argLine is empty-->
         <argLine/>
@@ -91,7 +90,7 @@
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
         <iotdb-tools-thrift.version>0.25.0.0</iotdb-tools-thrift.version>
-        <jackson.version>2.18.11</jackson.version>
+        <jackson.version>2.18.12</jackson.version>
         <jakarta.annotation-api.version>3.0.0</jakarta.annotation-api.version>
         <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
         <jakarta.validation-api.version>3.0.2</jakarta.validation-api.version>
@@ -99,8 +98,8 @@
         <java-websocket.version>1.5.4</java-websocket.version>
         <jcip-annotations.version>1.0-1</jcip-annotations.version>
         <jersey.version>3.1.11</jersey.version>
-        <jetty.version>12.0.36</jetty.version>
-        <jline.version>3.26.2</jline.version>
+        <jetty.version>12.0.41</jetty.version>
+        <jline.version>3.30.17</jline.version>
         <jna.version>5.14.0</jna.version>
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
@@ -353,18 +352,6 @@
                 <groupId>io.airlift</groupId>
                 <artifactId>units</artifactId>
                 <version>${airlift-units.version}</version>
-            </dependency>
-            <!-- TODO: Deprecated: Use Airline 2 or Picocli instead -->
-            <dependency>
-                <groupId>io.airlift</groupId>
-                <artifactId>airline</artifactId>
-                <version>${airline.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>javax.inject</groupId>
-                        <artifactId>javax.inject</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.reflections</groupId>
@@ -1450,8 +1437,14 @@
                 -->
                 <argLine><![CDATA[
                         --add-opens=java.base/java.lang=ALL-UNNAMED
+                        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
                         --add-opens=java.base/java.util=ALL-UNNAMED
                         --add-opens=java.base/java.nio=ALL-UNNAMED
+                        --add-opens=java.base/java.nio.file=ALL-UNNAMED
+                        --add-opens=java.base/java.nio.channels=ALL-UNNAMED
+                        --add-opens=java.base/java.nio.channels.spi=ALL-UNNAMED
+                        --add-opens=java.base/sun.nio.fs=ALL-UNNAMED
+                        --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
                         --add-opens=java.base/java.io=ALL-UNNAMED
                         --add-opens=java.base/java.net=ALL-UNNAMED
                         --add-opens=java.base/java.util.concurrent=ALL-UNNAMED

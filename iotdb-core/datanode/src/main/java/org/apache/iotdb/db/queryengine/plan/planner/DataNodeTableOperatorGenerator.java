@@ -1444,7 +1444,11 @@ public class DataNodeTableOperatorGenerator
                                 0,
                                 context.getTypeProvider(),
                                 metadata,
-                                context.getMemoryReservationManager())),
+                                context.getMemoryReservationManager(),
+                                getFragmentInstanceId(context),
+                                getQueryId(context),
+                                getOuterQueryDeadlineMs(context),
+                                getIoTDBLocalFactory(context))),
                     columnSchemaList,
                     database,
                     table)

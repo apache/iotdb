@@ -37,10 +37,13 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNod
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TagColumnUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
+
+import com.google.common.collect.ImmutableSet;
 
 import java.util.List;
 import java.util.Map;
@@ -117,25 +120,39 @@ public class ParallelizeGrouping implements PlanOptimizer {
               .collect(Collectors.toList()));
     }
 
-    /** We need to make sure: context#partitionKey can match the prefix of childOrderSchema */
+    /**
+     * We need to make sure: context#partitionKey can be satisfied by the prefix of childOrder.
+     *
+     * <p>When the child exposes exactly the partition keys, the prefix is compared as a column set:
+     * partition columns are identified by their values, so a different writing order still produces
+     * the same partitions. This lets nested set-semantic table functions reuse their input
+     * clustering when the same PARTITION BY columns are listed in a different order. The set
+     * comparison is deliberately limited to this case: for a strict subset the child's partitions
+     * are only a refinement of the required ones, and after a fan-in over unordered sources
+     * (multiple DataRegions, hash aggregation) the subset need not be contiguous in the input.
+     *
+     * <p>Otherwise the prefix is compared positionally, as before.
+     *
+     * <p>The ORDER BY part of the requirement needs no check here. A group node sorts within every
+     * partition run by its full ordering scheme, so the input only has to be clustered; whatever
+     * order rows have inside a partition is re-established locally by the group's own sort.
+     */
     private void checkPrefixMatch(Context context, List<Symbol> childOrder) {
       if (context.canSkip()) {
         return;
       }
-      if (context.partitionKeyCount > childOrder.size()) {
+      int partitionKeyCount = context.partitionKeyCount;
+      if (partitionKeyCount > childOrder.size()) {
         context.canOptimized = TO_SORT;
         return;
       }
-      OrderingScheme prefix = context.sortKey;
-      for (int i = 0; i < context.partitionKeyCount; i++) {
-        Symbol lhs = prefix.getOrderBy().get(i);
-        Symbol rhs = childOrder.get(i);
-        if (!lhs.equals(rhs)) {
-          context.canOptimized = TO_SORT;
-          return;
-        }
-      }
-      context.canOptimized = ENABLE_PARALLEL;
+      List<Symbol> requiredPrefix = context.sortKey.getOrderBy().subList(0, partitionKeyCount);
+      List<Symbol> actualPrefix = childOrder.subList(0, partitionKeyCount);
+      boolean sameKeySet =
+          partitionKeyCount == childOrder.size()
+              && ImmutableSet.copyOf(requiredPrefix).equals(ImmutableSet.copyOf(actualPrefix));
+      context.canOptimized =
+          sameKeySet || requiredPrefix.equals(actualPrefix) ? ENABLE_PARALLEL : TO_SORT;
     }
 
     @Override
@@ -260,11 +277,6 @@ public class ParallelizeGrouping implements PlanOptimizer {
           tableColumnSchema = analysis.getTableColumnSchema(node.getQualifiedObjectName());
         }
         //  check there are no field in sortKey and all tags in sortKey
-        Set<Symbol> tagSymbols =
-            tableColumnSchema.entrySet().stream()
-                .filter(entry -> entry.getValue().getColumnCategory() == TAG)
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toSet());
         for (int i = 0; i < context.partitionKeyCount; i++) {
           Symbol symbol = sortKey.getOrderBy().get(i);
           if (!tableColumnSchema.containsKey(symbol)) {
@@ -273,7 +285,6 @@ public class ParallelizeGrouping implements PlanOptimizer {
           }
           switch (tableColumnSchema.get(symbol).getColumnCategory()) {
             case TAG:
-              tagSymbols.remove(symbol);
               break;
             case ATTRIBUTE:
               // If all tags in partition key, attributes must be the same in one partition.
@@ -283,11 +294,13 @@ public class ParallelizeGrouping implements PlanOptimizer {
               return node;
           }
         }
-        if (!tagSymbols.isEmpty()) {
-          context.canOptimized = TO_SORT;
-        } else {
-          context.canOptimized = ENABLE_PARALLEL;
-        }
+        Set<String> tagColumnNames =
+            TagColumnUtils.tagColumnNames(
+                sortKey.getOrderBy().subList(0, context.partitionKeyCount), tableColumnSchema);
+        context.canOptimized =
+            TagColumnUtils.coversAllTagColumns(tableColumnSchema, tagColumnNames)
+                ? ENABLE_PARALLEL
+                : TO_SORT;
       }
       return node;
     }

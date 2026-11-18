@@ -254,7 +254,7 @@ public class TreeAccessTest {
         new TreeAccessCheckContext(AuthorityChecker.SUPER_USER_ID, AuthorityChecker.SUPER_USER, "");
     final TreeAccessCheckContext internalCaller =
         new TreeAccessCheckContext(AuthorityChecker.SUPER_USER_ID, AuthorityChecker.SUPER_USER, "")
-            .setInternal(true);
+            .setInternalDatabaseSession(true);
 
     final InsertStatement systemInsert = new InsertStatement();
     systemInsert.setDevice(new PartialPath("root.__system.d"));
