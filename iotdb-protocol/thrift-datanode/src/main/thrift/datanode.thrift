@@ -970,6 +970,9 @@ service IDataNodeRPCService {
   */
   TSendBatchPlanNodeResp sendBatchPlanNode(TSendBatchPlanNodeReq req);
 
+  // Deserialize and validate insertion plans without executing them.
+  TSendBatchPlanNodeResp testInsertPlanNodes(TSendBatchPlanNodeReq req);
+
   TFragmentInstanceInfoResp fetchFragmentInstanceInfo(TFetchFragmentInstanceInfoReq req);
 
   TCancelResp cancelQuery(TCancelQueryReq req);

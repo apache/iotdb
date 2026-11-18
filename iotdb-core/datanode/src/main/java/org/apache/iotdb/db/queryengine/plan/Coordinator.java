@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
@@ -57,17 +58,23 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
 import org.apache.iotdb.db.queryengine.execution.QueryState;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.TestInsertPlanValidator;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
@@ -159,10 +166,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewr
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipeMemoryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.udf.InternalQueryExecutor;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TestInsertStage;
 
 import org.apache.thrift.TBase;
 import org.apache.tsfile.utils.Accountable;
@@ -280,6 +295,115 @@ public class Coordinator {
           DataNodeQueryMessages
               .INITIALIZED_SHARED_MEMORYBLOCK_COORDINATOR_WITH_ALL_AVAILABLE_MEMORY_ARG_BYTES,
           coordinatorMemoryBlock.getTotalMemorySizeInBytes());
+    }
+  }
+
+  /** Analyze and plan an insertion without scheduling any writes. */
+  public TSStatus testInsert(
+      InsertBaseStatement statement,
+      TestInsertStage stage,
+      long queryId,
+      SessionInfo session,
+      SqlParser sqlParser,
+      Metadata metadata,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher)
+      throws Exception {
+    MPPQueryContext context =
+        new MPPQueryContext(
+            "",
+            queryIdGenerator.createNextQueryId(),
+            queryId,
+            session,
+            DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+            DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
+    context.setTestInsert(true);
+    context.setStartTime(System.currentTimeMillis());
+    context.setTimeOut(CONFIG.getQueryTimeoutThreshold());
+    try {
+      IPlanner planner =
+          statement.isWriteToTable()
+              ? new TableModelPlanner(
+                  statement.toRelationalStatement(context),
+                  sqlParser,
+                  metadata,
+                  scheduledExecutor,
+                  SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+                  ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+                  statementRewrite,
+                  logicalPlanOptimizers,
+                  distributionPlanOptimizers,
+                  AuthorityChecker.getAccessControl(),
+                  dataNodeLocationSupplier,
+                  Collections.emptyList(),
+                  Collections.emptyMap(),
+                  typeManager)
+              : new TreeModelPlanner(
+                  statement,
+                  executor,
+                  scheduledExecutor,
+                  partitionFetcher,
+                  schemaFetcher,
+                  SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+                  ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
+      IAnalysis analysis = planner.analyze(context);
+      if (analysis.isFailed()) {
+        return analysis.getFailStatus();
+      }
+      context.checkTimeOut();
+      if (stage == TestInsertStage.UNTIL_ANALYZED) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+      if (analysis.isFinishQueryAfterAnalyze()) {
+        throw new SemanticException(
+            DataNodeQueryMessages
+                .EXCEPTION_TEST_INSERTION_HAS_NO_EXECUTABLE_INSERTION_PLAN_803B3A76);
+      }
+      context.checkTimeOut();
+      LogicalQueryPlan logicalPlan = planner.doLogicalPlan(analysis, context);
+      if (analysis.isFailed()) {
+        return analysis.getFailStatus();
+      }
+      DistributedQueryPlan plan = planner.doDistributionPlan(analysis, logicalPlan, context);
+      context.reserveMemoryForFrontEndImmediately();
+      if (stage == TestInsertStage.UNTIL_WRITE_TARGET_RECEIVED) {
+        for (FragmentInstance instance : plan.getInstances()) {
+          context.checkTimeOut();
+          TSendBatchPlanNodeReq request =
+              new TSendBatchPlanNodeReq(
+                  Collections.singletonList(
+                      new TSendSinglePlanNodeReq(
+                          new TPlanNode(
+                              instance.getFragment().getPlanNodeTree().serializeToByteBuffer()),
+                          instance.getRegionReplicaSet().getRegionId())));
+          TEndPoint endpoint = instance.getHostDataNode().getInternalEndPoint();
+          TSendBatchPlanNodeResp response;
+          if (DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT.equals(endpoint)) {
+            response = TestInsertPlanValidator.validate(request);
+          } else {
+            try (SyncDataNodeInternalServiceClient client =
+                SYNC_INTERNAL_SERVICE_CLIENT_MANAGER.borrowClient(endpoint)) {
+              response = client.testInsertPlanNodes(request);
+            }
+          }
+          if (response.getResponsesSize() != 1) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_INVALID_TEST_INSERTION_ACKNOWLEDGEMENT_FROM_ARG_E2F722A6,
+                    endpoint));
+          }
+          if (!response.getResponses().get(0).isAccepted()) {
+            return response.getResponses().get(0).getStatus();
+          }
+          RpcUtils.verifySuccess(response.getResponses().get(0).getStatus());
+        }
+      }
+      context.checkTimeOut();
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } finally {
+      context.releaseAllMemoryReservedForFrontEnd();
+      DataNodeSchemaLockManager.getInstance().releaseReadLock(context);
     }
   }
 

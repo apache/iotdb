@@ -110,6 +110,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -200,9 +201,12 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSTestInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSTestInsertResp;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
+import org.apache.iotdb.service.rpc.thrift.TestInsertStage;
 
 import io.airlift.units.Duration;
 import org.apache.thrift.TException;
@@ -2941,6 +2945,117 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus testInsertTablet(TSInsertTabletReq req) {
     LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSTestInsertResp testInsert(TSTestInsertReq req) {
+    try {
+      IClientSession session = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      if (!SESSION_MANAGER.checkLogin(session)) {
+        return new TSTestInsertResp(getNotLoggedInStatus(), 0);
+      }
+      TestInsertStage stage = TestInsertStage.findByValue(req.getStage());
+      int payloads =
+          (req.isSetTablet() ? 1 : 0)
+              + (req.isSetTablets() ? 1 : 0)
+              + (req.isSetRecord() ? 1 : 0)
+              + (req.isSetStringRecord() ? 1 : 0)
+              + (req.isSetRecords() ? 1 : 0)
+              + (req.isSetRecordsOfOneDevice() ? 1 : 0)
+              + (req.isSetStringRecords() ? 1 : 0);
+      if (stage == null || payloads != 1) {
+        return new TSTestInsertResp(
+            RpcUtils.getStatus(
+                TSStatusCode.ILLEGAL_PARAMETER,
+                DataNodeMiscMessages
+                    .MESSAGE_TEST_INSERTION_REQUIRES_A_KNOWN_STAGE_AND_EXACTLY_ONE_INSERTION_PAYLOAD_B0F3D171),
+            0);
+      }
+      if (stage == TestInsertStage.UNTIL_RPC_PROCESSED) {
+        return new TSTestInsertResp(
+            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), req.getStage());
+      }
+      InsertBaseStatement statement;
+      if (req.isSetTablet()) {
+        if (!req.getTablet().isWriteToTable()) {
+          req.getTablet()
+              .setMeasurements(
+                  PathUtils.checkIsLegalSingleMeasurementsAndUpdate(
+                      req.getTablet().getMeasurements()));
+        }
+        statement = StatementGenerator.createStatement(req.getTablet());
+      } else if (req.isSetTablets()) {
+        req.getTablets()
+            .setMeasurementsList(
+                PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(
+                    req.getTablets().getMeasurementsList()));
+        statement = StatementGenerator.createStatement(req.getTablets());
+      } else if (req.isSetRecord()) {
+        if (!req.getRecord().isIsWriteToTable()) {
+          req.getRecord()
+              .setMeasurements(
+                  PathUtils.checkIsLegalSingleMeasurementsAndUpdate(
+                      req.getRecord().getMeasurements()));
+        }
+        statement = StatementGenerator.createStatement(req.getRecord());
+      } else if (req.isSetStringRecord()) {
+        req.getStringRecord()
+            .setMeasurements(
+                PathUtils.checkIsLegalSingleMeasurementsAndUpdate(
+                    req.getStringRecord().getMeasurements()));
+        statement = StatementGenerator.createStatement(req.getStringRecord());
+      } else if (req.isSetRecords()) {
+        req.getRecords()
+            .setMeasurementsList(
+                PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(
+                    req.getRecords().getMeasurementsList()));
+        statement = StatementGenerator.createStatement(req.getRecords());
+      } else if (req.isSetRecordsOfOneDevice()) {
+        req.getRecordsOfOneDevice()
+            .setMeasurementsList(
+                PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(
+                    req.getRecordsOfOneDevice().getMeasurementsList()));
+        statement = StatementGenerator.createStatement(req.getRecordsOfOneDevice());
+      } else {
+        req.getStringRecords()
+            .setMeasurementsList(
+                PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(
+                    req.getStringRecords().getMeasurementsList()));
+        statement = StatementGenerator.createStatement(req.getStringRecords());
+      }
+      if (stage == TestInsertStage.UNTIL_DECODED) {
+        return new TSTestInsertResp(
+            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), req.getStage());
+      }
+      if (!statement.isWriteToTable()) {
+        TSStatus permission =
+            AuthorityChecker.checkAuthority(
+                statement,
+                new TreeAccessCheckContext(
+                    session.getUserId(), session.getUsername(), session.getClientAddress()));
+        if (permission.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return new TSTestInsertResp(permission, 0);
+        }
+      }
+      TSStatus status =
+          COORDINATOR.testInsert(
+              statement,
+              stage,
+              SESSION_MANAGER.requestQueryId(),
+              SESSION_MANAGER.getSessionInfo(session),
+              relationSqlParser,
+              metadata,
+              partitionFetcher,
+              schemaFetcher);
+      return new TSTestInsertResp(
+          status,
+          status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() ? req.getStage() : 0);
+    } catch (Exception e) {
+      return new TSTestInsertResp(
+          onQueryException(e, "testInsert", TSStatusCode.EXECUTE_STATEMENT_ERROR), 0);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override

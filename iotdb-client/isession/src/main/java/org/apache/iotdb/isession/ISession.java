@@ -29,6 +29,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
+import org.apache.iotdb.service.rpc.thrift.TestInsertStage;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
@@ -570,4 +571,54 @@ public interface ISession extends AutoCloseable {
    */
   @Deprecated
   default void setEnableCacheLeader(boolean enableCacheLeader) {}
+
+  /**
+   * Tests insertion up to the requested stage without writing data or changing metadata. Analysis
+   * and later stages require existing schema and data partitions.
+   */
+  void testInsertTablet(Tablet tablet, TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void testInsertTablet(Tablet tablet, boolean sorted, TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void testInsertTablets(Map<String, Tablet> tablets, TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void testInsertTablets(Map<String, Tablet> tablets, boolean sorted, TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void testInsertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void testInsertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void testInsertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<String> values,
+      TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void testInsertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<Object> values,
+      TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException;
 }

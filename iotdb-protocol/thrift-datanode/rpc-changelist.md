@@ -19,6 +19,13 @@
 
 -->
 
+# 2.0.x staged test insertion
+
+Staged test insertion: added `testInsert(TSTestInsertReq)` with an explicit completed-stage
+acknowledgement, and internal `testInsertPlanNodes` for execution-free target checks.
+Existing `testInsertXXX` RPCs retain their behavior. New RPCs require upgraded servers;
+unsupported methods must fail rather than fall back to a normal insertion.
+
 # 0.12.x -> 0.13.x
 
 Last Updated on 2022.1.17 by Xin Zhao.

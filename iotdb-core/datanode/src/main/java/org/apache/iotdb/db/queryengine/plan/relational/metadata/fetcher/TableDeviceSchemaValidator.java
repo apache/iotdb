@@ -250,6 +250,9 @@ public class TableDeviceSchemaValidator {
       final List<Object[]> inputDeviceIdList,
       final List<String> attributeKeyList,
       final List<Object[]> intPutAttributeValueList) {
+    if (context != null) {
+      context.checkSchemaModificationAllowed();
+    }
     final int size =
         previousValidateResult.missingDeviceIndexList.size()
             + previousValidateResult.attributeUpdateDeviceIndexList.size();

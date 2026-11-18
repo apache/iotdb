@@ -56,7 +56,9 @@ import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSTestInsertReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TestInsertStage;
 import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.rpccompress.TabletEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
@@ -2900,6 +2902,20 @@ public class Session implements ISession {
   }
 
   /**
+   * Tests a table-model tablet without writing data or changing metadata. Analysis and later stages
+   * require existing schema, devices and partitions, and must not require attribute updates.
+   */
+  public void testInsertRelationalTablet(Tablet tablet, TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+    request.setWriteToTable(true);
+    request.setColumnCategories(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
+    getDefaultSessionConnection()
+        .testInsert(new TSTestInsertReq(0, stage.getValue()).setTablet(request));
+  }
+
+  /**
    * insert a relational Tablet. Note: This method is for internal use only, we do not guarantee
    * compatibility with subsequent versions.
    *
@@ -3717,6 +3733,133 @@ public class Session implements ISession {
       return;
     }
     getDefaultSessionConnection().testInsertRecord(request);
+  }
+
+  /** Test insertion up to the requested stage without writing data or metadata. */
+  @Override
+  public void testInsertTablet(Tablet tablet, TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException {
+    testInsertTablet(tablet, false, stage);
+  }
+
+  /** Test insertion up to the requested stage without writing data or metadata. */
+  @Override
+  public void testInsertTablet(Tablet tablet, boolean sorted, TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+    getDefaultSessionConnection()
+        .testInsert(new TSTestInsertReq(0, stage.getValue()).setTablet(request));
+  }
+
+  /** Test insertion up to the requested stage without writing data or metadata. */
+  @Override
+  public void testInsertTablets(Map<String, Tablet> tablets, TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException {
+    testInsertTablets(tablets, false, stage);
+  }
+
+  /** Test insertion up to the requested stage without writing data or metadata. */
+  @Override
+  public void testInsertTablets(Map<String, Tablet> tablets, boolean sorted, TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    TSInsertTabletsReq request =
+        genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
+    getDefaultSessionConnection()
+        .testInsert(new TSTestInsertReq(0, stage.getValue()).setTablets(request));
+  }
+
+  /** Test insertion up to the requested stage without writing data or metadata. */
+  @Override
+  public void testInsertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    TSInsertStringRecordsReq request;
+    try {
+      request =
+          filterAndGenTSInsertStringRecordsReq(
+              deviceIds, times, measurementsList, valuesList, false);
+    } catch (NoValidValueException e) {
+      throw new StatementExecutionException(
+          SessionMessages.EXCEPTION_TEST_INSERTION_HAS_NO_NON_NULL_VALUES_40F5D116);
+    }
+
+    getDefaultSessionConnection()
+        .testInsert(new TSTestInsertReq(0, stage.getValue()).setStringRecords(request));
+  }
+
+  /** Test insertion up to the requested stage without writing data or metadata. */
+  @Override
+  public void testInsertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    TSInsertRecordsReq request;
+    try {
+      request =
+          filterAndGenTSInsertRecordsReq(
+              deviceIds, times, measurementsList, typesList, valuesList, false);
+    } catch (NoValidValueException e) {
+      throw new StatementExecutionException(
+          SessionMessages.EXCEPTION_TEST_INSERTION_HAS_NO_NON_NULL_VALUES_40F5D116);
+    }
+
+    getDefaultSessionConnection()
+        .testInsert(new TSTestInsertReq(0, stage.getValue()).setRecords(request));
+  }
+
+  /** Test insertion up to the requested stage without writing data or metadata. */
+  @Override
+  public void testInsertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<String> values,
+      TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    TSInsertStringRecordReq request;
+    try {
+      request = filterAndGenTSInsertStringRecordReq(deviceId, time, measurements, values, false);
+    } catch (NoValidValueException e) {
+      throw new StatementExecutionException(
+          SessionMessages.EXCEPTION_TEST_INSERTION_HAS_NO_NON_NULL_VALUES_40F5D116);
+    }
+    getDefaultSessionConnection()
+        .testInsert(new TSTestInsertReq(0, stage.getValue()).setStringRecord(request));
+  }
+
+  /** Test insertion up to the requested stage without writing data or metadata. */
+  @Override
+  public void testInsertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<Object> values,
+      TestInsertStage stage)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
+    TSInsertRecordReq request;
+    try {
+      request = filterAndGenTSInsertRecordReq(deviceId, time, measurements, types, values, false);
+    } catch (NoValidValueException e) {
+      throw new StatementExecutionException(
+          SessionMessages.EXCEPTION_TEST_INSERTION_HAS_NO_NON_NULL_VALUES_40F5D116);
+    }
+    getDefaultSessionConnection()
+        .testInsert(new TSTestInsertReq(0, stage.getValue()).setRecord(request));
   }
 
   /**

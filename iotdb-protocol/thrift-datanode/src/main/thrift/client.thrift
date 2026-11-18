@@ -564,6 +564,41 @@ struct TSConnectionInfoResp {
   1: required list<TSConnectionInfo> connectionInfoList
 }
 
+// Staged test insertion never writes data or changes metadata.
+// Analysis and later stages require pre-existing metadata and data partitions.
+enum TestInsertStage {
+  // Login, stage and payload-count checks have passed; no Statement has been decoded.
+  UNTIL_RPC_PROCESSED = 1,
+  // The insertion payload has been decoded into a Statement.
+  UNTIL_DECODED = 2,
+  // Read-only analysis has completed.
+  UNTIL_ANALYZED = 3,
+  // Logical and distributed plans have been generated.
+  UNTIL_PLANNED = 4,
+  // All plan targets have deserialized the plan and checked its type and target region existence.
+  // No triggers, consensus or storage writes have been invoked.
+  UNTIL_WRITE_TARGET_RECEIVED = 5
+}
+
+// Exactly one payload must be supplied. Separate RPC prevents old servers silently ignoring stages.
+struct TSTestInsertReq {
+  1: required i64 sessionId
+  2: required i32 stage
+  3: optional TSInsertTabletReq tablet
+  4: optional TSInsertTabletsReq tablets
+  5: optional TSInsertRecordReq record
+  6: optional TSInsertStringRecordReq stringRecord
+  7: optional TSInsertRecordsReq records
+  8: optional TSInsertRecordsOfOneDeviceReq recordsOfOneDevice
+  9: optional TSInsertStringRecordsReq stringRecords
+}
+
+struct TSTestInsertResp {
+  1: required common.TSStatus status
+  // Zero on failure; otherwise the requested stage has completed.
+  2: required i32 completedStage
+}
+
 service IClientRPCService {
 
   TSExecuteStatementResp executeQueryStatementV2(1:TSExecuteStatementReq req);
@@ -644,6 +679,8 @@ service IClientRPCService {
   common.TSStatus insertStringRecordsOfOneDevice(1:TSInsertStringRecordsOfOneDeviceReq req);
 
   common.TSStatus insertStringRecords(1:TSInsertStringRecordsReq req);
+
+  TSTestInsertResp testInsert(1:TSTestInsertReq req);
 
   common.TSStatus testInsertTablet(1:TSInsertTabletReq req);
 
