@@ -2078,6 +2078,29 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testPearsonHandlesFiniteDoubleEndpoints() throws Exception {
+    UDFParameters parameters = createTwoDoubleSeriesParameters(Collections.emptyMap());
+    for (double[] yValues :
+        new double[][] {
+          {-Double.MAX_VALUE, Double.MAX_VALUE},
+          {Double.MIN_VALUE, -Double.MIN_VALUE}
+        }) {
+      UDAFPearson pearson = new UDAFPearson();
+      RecordingPointCollector collector = new RecordingPointCollector();
+      pearson.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+      pearson.transform(
+          new DoubleRow(1, new double[] {-Double.MAX_VALUE, yValues[0]}, new boolean[2]),
+          collector);
+      pearson.transform(
+          new DoubleRow(2, new double[] {Double.MAX_VALUE, yValues[1]}, new boolean[2]), collector);
+      pearson.terminate(collector);
+
+      Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
+      Assert.assertEquals(yValues[0] < yValues[1] ? 1.0 : -1.0, collector.values.get(0), 1e-12);
+    }
+  }
+
+  @Test
   public void testFrequencyFunctionsIgnoreEmptyInput() throws Exception {
     RecordingPointCollector collector = new RecordingPointCollector();
     UDFParameters singleSeries = createSingleDoubleSeriesParameters(Collections.emptyMap());
