@@ -288,15 +288,9 @@ public class SessionConnectionTest {
     CountDownLatch redirectOpenStarted = new CountDownLatch(1);
     CountDownLatch continueRedirectOpen = new CountDownLatch(1);
     try (ForceCloseTestServer redirectedServer =
-            new ForceCloseTestServer(
-                redirectOpenStarted, continueRedirectOpen, null, null, null);
+            new ForceCloseTestServer(redirectOpenStarted, continueRedirectOpen, null, null, null);
         ForceCloseTestServer primaryServer =
-            new ForceCloseTestServer(
-                null,
-                null,
-                redirectedServer.getEndpoint(),
-                null,
-                null)) {
+            new ForceCloseTestServer(null, null, redirectedServer.getEndpoint(), null, null)) {
       Session session =
           new Session.Builder()
               .nodeUrls(
@@ -318,13 +312,15 @@ public class SessionConnectionTest {
                   return null;
                 });
         Assert.assertTrue(
-            "Redirected openSession did not start",
-            redirectOpenStarted.await(5, TimeUnit.SECONDS));
+            "Redirected openSession did not start", redirectOpenStarted.await(5, TimeUnit.SECONDS));
 
-        executor.submit(() -> {
-          session.close();
-          return null;
-        }).get(1, TimeUnit.SECONDS);
+        executor
+            .submit(
+                () -> {
+                  session.close();
+                  return null;
+                })
+            .get(1, TimeUnit.SECONDS);
 
         continueRedirectOpen.countDown();
         try {
