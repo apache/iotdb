@@ -41,6 +41,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -308,7 +309,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public void closeOnCompletion() throws SQLException {
-    throw new SQLException("Not support closeOnCompletion");
+    throw unsupportedOperation("closeOnCompletion", JdbcMessages.NOT_SUPPORT_CLOSE_ON_COMPLETION);
   }
 
   /**
@@ -763,6 +764,10 @@ public class IoTDBStatement implements Statement {
 
   public long getMilliSecond(long time) {
     return RpcUtils.getMilliSecond(time, connection.getTimeFactor());
+  }
+
+  public Timestamp getTimestamp(long time) {
+    return RpcUtils.getTimestamp(time, connection.getTimeFactor());
   }
 
   int getFetchSizeInternal() {

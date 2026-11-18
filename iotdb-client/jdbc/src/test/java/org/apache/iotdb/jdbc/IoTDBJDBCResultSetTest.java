@@ -142,6 +142,7 @@ public class IoTDBJDBCResultSetTest {
   @Before
   public void before() throws Exception {
     MockitoAnnotations.initMocks(this);
+    when(connection.getTimeFactor()).thenReturn(1_000);
 
     statement = new IoTDBStatement(connection, client, sessionId, zoneID);
 
@@ -671,6 +672,7 @@ public class IoTDBJDBCResultSetTest {
       Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
       expectedTimestamp.setNanos(123_456_000);
       Assert.assertEquals(expectedTimestamp, resultSet.getObject(8, Timestamp.class));
+      Assert.assertEquals(expectedTimestamp, resultSet.getObject(8));
       Assert.assertEquals(Long.valueOf(1_700_000_000_123_456L), resultSet.getObject(8, Long.class));
       Assert.assertEquals(LocalDate.of(2024, 1, 15), resultSet.getObject(9, LocalDate.class));
       Assert.assertEquals("42", resultSet.getObject(2, String.class));
@@ -720,6 +722,7 @@ public class IoTDBJDBCResultSetTest {
       Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
       expectedTimestamp.setNanos(123_456_000);
       Assert.assertEquals(expectedTimestamp, resultSet.getObject("ts", Timestamp.class));
+      Assert.assertEquals(expectedTimestamp, resultSet.getObject("ts"));
       Assert.assertEquals(LocalDate.of(2024, 1, 15), resultSet.getObject("dt", LocalDate.class));
       assertRejectedWithSqlException(() -> resultSet.getObject("s", Integer.class));
       assertRejectedWithSqlException(() -> resultSet.getObject("no_such_column", Integer.class));

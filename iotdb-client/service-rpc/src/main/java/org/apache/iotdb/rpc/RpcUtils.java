@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Proxy;
+import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -95,6 +96,12 @@ public class RpcUtils {
 
   public static long getMilliSecond(long time, int timeFactor) {
     return Math.floorDiv(time, timeFactor) * 1_000;
+  }
+
+  public static Timestamp getTimestamp(long time, int timeFactor) {
+    Timestamp timestamp = new Timestamp(Math.floorDiv(time, timeFactor) * 1_000);
+    timestamp.setNanos((int) (Math.floorMod(time, timeFactor) * 1_000_000_000L / timeFactor));
+    return timestamp;
   }
 
   public static IClientRPCService.Iface newSynchronizedClient(IClientRPCService.Iface client) {

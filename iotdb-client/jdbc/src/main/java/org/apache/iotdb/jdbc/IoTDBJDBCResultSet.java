@@ -721,7 +721,12 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public Object getObject(int columnIndex) throws SQLException {
     checkOpen();
     try {
-      return getObject(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+      String columnName = ioTDBRpcDataSet.findColumnNameByIndex(columnIndex);
+      if (IoTDBRpcDataSet.TIMESTAMP_STR.equals(columnName)
+          || ioTDBRpcDataSet.getDataType(columnIndex) == TSDataType.TIMESTAMP) {
+        return getTimestamp(columnIndex);
+      }
+      return getObjectByName(columnName);
     } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
@@ -730,7 +735,20 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public Object getObject(String columnName) throws SQLException {
     checkOpen();
-    return getObjectByName(columnName);
+    Object value = getObjectByName(columnName);
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof Timestamp) {
+      return getTimestamp(columnName);
+    }
+    try {
+      return ioTDBRpcDataSet.getDataType(columnName) == TSDataType.TIMESTAMP
+          ? getTimestamp(columnName)
+          : value;
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
@@ -759,7 +777,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
       } else if (type == byte[].class) {
         value = getBytes(columnIndex);
       } else if (type == Timestamp.class && dataType == TSDataType.TIMESTAMP) {
-        value = ioTDBRpcDataSet.getTimestamp(columnIndex);
+        value = getTimestamp(columnIndex);
       } else if (type == LocalDate.class && dataType == TSDataType.DATE) {
         value = ioTDBRpcDataSet.getDate(columnIndex);
       } else if (type == Boolean.class && dataType == TSDataType.BOOLEAN) {
@@ -904,7 +922,10 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public Timestamp getTimestamp(int columnIndex) throws SQLException {
     checkOpen();
     try {
-      return ioTDBRpcDataSet.getTimestamp(columnIndex);
+      long timestamp = ioTDBRpcDataSet.getLong(columnIndex);
+      return ioTDBRpcDataSet.lastReadWasNull
+          ? null
+          : ((IoTDBStatement) statement).getTimestamp(timestamp);
     } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
@@ -913,11 +934,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public Timestamp getTimestamp(String columnName) throws SQLException {
     checkOpen();
-    try {
-      return ioTDBRpcDataSet.getTimestamp(columnName);
-    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
-      throw new SQLException(e.getMessage());
-    }
+    return getTimestamp(findColumnIndex(columnName));
   }
 
   @Override

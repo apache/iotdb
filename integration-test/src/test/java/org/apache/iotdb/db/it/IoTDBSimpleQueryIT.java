@@ -1240,4 +1240,12 @@ public class IoTDBSimpleQueryIT {
       Assert.assertFalse(resultSet.next());
     }
   }
+
+  private static void executeQuietly(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignored) {
+      // ignore
+    }
+  }
 }

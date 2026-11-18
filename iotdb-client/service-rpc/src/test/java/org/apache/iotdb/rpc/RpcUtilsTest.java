@@ -25,6 +25,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -103,6 +104,20 @@ public class RpcUtilsTest {
   public void testGetMilliSecond() {
     Assert.assertEquals(-2_000L, RpcUtils.getMilliSecond(-1_500L, 1_000));
     Assert.assertEquals(1_000L, RpcUtils.getMilliSecond(1_500L, 1_000));
+  }
+
+  @Test
+  public void testGetTimestamp() {
+    Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
+    expectedTimestamp.setNanos(123_456_000);
+    Assert.assertEquals(
+        expectedTimestamp, RpcUtils.getTimestamp(1_700_000_000_123_456L, 1_000_000));
+
+    Timestamp expectedNegativeTimestamp = new Timestamp(-2_000L);
+    expectedNegativeTimestamp.setNanos(499_999_000);
+    Assert.assertEquals(expectedNegativeTimestamp, RpcUtils.getTimestamp(-1_500_001L, 1_000_000));
+    Assert.assertEquals(
+        expectedNegativeTimestamp, RpcUtils.getTimestamp(-1_500_001_000L, 1_000_000_000));
   }
 
   @Test
