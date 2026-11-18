@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
@@ -27,6 +28,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
@@ -40,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class AlignedWritableMemChunkTest {
@@ -238,5 +241,51 @@ public class AlignedWritableMemChunkTest {
     Assert.assertEquals(originalMaxNumberOfPointsInChunk, encodeInfo.maxNumberOfPointsInChunk);
     Assert.assertTrue(ioTaskQueue.size() > 1);
     chunk.release();
+  }
+
+  @Test
+  public void testEncodeFlushesPendingPageBeforeSealingAtChunkCap() {
+    int originalThreshold = IoTDBDescriptor.getInstance().getConfig().getTvListSortThreshold();
+    // A positive threshold selects the single-TVLIST iterator path. Keep it above the row count so
+    // the points stay in the working TVList instead of being handed over to sortedList, which
+    // would switch to the multi-list iterator that flushes pages on its own.
+    IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(100_000);
+    AlignedWritableMemChunk chunk = null;
+    try {
+      IMeasurementSchema schema = new MeasurementSchema("s0", TSDataType.INT64);
+      List<IMeasurementSchema> schemas = Collections.singletonList(schema);
+      chunk = new AlignedWritableMemChunk(new ArrayList<>(schemas));
+      int rowCount = 2400;
+      for (int i = 0; i < rowCount; i++) {
+        chunk.writeAlignedPoints(i, new Object[] {(long) i}, schemas);
+      }
+      chunk.sortTvListForFlush();
+
+      BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+      // The 1500-point chunk cap is not a multiple of the 1000-point page cap, so the second chunk
+      // is sealed in the middle of a page. This is what target_chunk_size narrowing produces for
+      // wide TEXT columns: min(target_chunk_point_num, target_chunk_size / avg point size).
+      BatchEncodeInfo encodeInfo = new BatchEncodeInfo(0, 0, 0, 1000, 1500, 10_000_000L);
+      chunk.encode(ioTaskQueue, encodeInfo, new long[1000], false);
+
+      long totalTimePoints = 0;
+      for (Object encodedChunk : ioTaskQueue) {
+        AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) encodedChunk;
+        long timePoints = chunkWriter.getTimeChunkWriter().getStatistics().getCount();
+        totalTimePoints += timePoints;
+        for (int column = 0; column < chunkWriter.getValueChunkWriterList().size(); column++) {
+          Assert.assertEquals(
+              "the time and value chunks of one aligned chunk must contain the same points",
+              timePoints,
+              chunkWriter.getValueChunkWriterByIndex(column).getStatistics().getCount());
+        }
+      }
+      Assert.assertEquals(rowCount, totalTimePoints);
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(originalThreshold);
+      if (chunk != null) {
+        chunk.release();
+      }
+    }
   }
 }
