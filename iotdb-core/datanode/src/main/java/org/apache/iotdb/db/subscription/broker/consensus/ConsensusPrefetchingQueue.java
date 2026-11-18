@@ -3758,10 +3758,10 @@ public class ConsensusPrefetchingQueue {
       }
 
       final SubscriptionEvent event = outstandingEventsByCommitContext.get(commitContext);
-      // A recycled event may already have been claimed by another consumer. Only an event that is
-      // still queued can be committed by the previous consumer's late ACK.
+      // A recycled event may already have been claimed by another consumer. Accept the late ACK as
+      // a no-op and leave the event for its current owner to commit.
       if (Objects.nonNull(event) && !prefetchingQueue.remove(event)) {
-        return false;
+        return true;
       }
 
       final WriterId commitWriterId = extractCommitWriterId(commitContext);
