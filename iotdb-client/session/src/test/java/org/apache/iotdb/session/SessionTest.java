@@ -28,8 +28,12 @@ import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
+import org.apache.iotdb.service.rpc.thrift.TSTestInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TestInsertStage;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -42,6 +46,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -885,6 +890,76 @@ public class SessionTest {
   public void testSetSchemaTemplateException()
       throws IoTDBConnectionException, StatementExecutionException {
     session.setSchemaTemplate("template1", "prefixPath");
+  }
+
+  @Test
+  public void testStagedTabletsRejectFilteredEmptyRequests() throws Exception {
+    Tablet tableTablet =
+        new Tablet(
+            "t",
+            Collections.singletonList("v"),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList(ColumnCategory.FIELD));
+    tableTablet.addTimestamp(0, 1);
+    tableTablet.addValue("v", 0, null);
+    Tablet treeTablet =
+        new Tablet(
+            "root.sg.d", Collections.singletonList(new MeasurementSchema("v", TSDataType.INT64)));
+    treeTablet.addTimestamp(0, 1);
+    treeTablet.addValue("v", 0, null);
+    TableSession tableSession = new TableSession((Session) session);
+    String expectedMessage =
+        SessionMessages.EXCEPTION_TEST_INSERTION_HAS_NO_NON_NULL_VALUES_40F5D116;
+    assertEquals(
+        expectedMessage,
+        Assert.assertThrows(
+                StatementExecutionException.class, () -> tableSession.testInsert(tableTablet))
+            .getMessage());
+    for (TestInsertStage stage : TestInsertStage.values()) {
+      assertEquals(
+          expectedMessage,
+          Assert.assertThrows(
+                  StatementExecutionException.class,
+                  () -> tableSession.testInsert(tableTablet, stage))
+              .getMessage());
+      assertEquals(
+          expectedMessage,
+          Assert.assertThrows(
+                  StatementExecutionException.class,
+                  () -> session.testInsertTablet(treeTablet, stage))
+              .getMessage());
+      assertEquals(
+          expectedMessage,
+          Assert.assertThrows(
+                  StatementExecutionException.class,
+                  () ->
+                      session.testInsertTablets(
+                          Collections.singletonMap("root.sg.d", treeTablet), stage))
+              .getMessage());
+    }
+    Mockito.verifyZeroInteractions(sessionConnection);
+  }
+
+  @Test
+  public void testStagedTableTabletKeepsFilteredColumnCategories() throws Exception {
+    Tablet tablet =
+        new Tablet(
+            "t",
+            Arrays.asList("id", "empty", "value"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD));
+    tablet.addTimestamp(0, 1);
+    tablet.addValue("id", 0, "d");
+    tablet.addValue("empty", 0, null);
+    tablet.addValue("value", 0, 1L);
+    new TableSession((Session) session).testInsert(tablet, TestInsertStage.UNTIL_DECODED);
+    ArgumentCaptor<TSTestInsertReq> request = ArgumentCaptor.forClass(TSTestInsertReq.class);
+    Mockito.verify(sessionConnection).testInsert(request.capture());
+    Assert.assertTrue(request.getValue().getTablet().isWriteToTable());
+    assertEquals(Arrays.asList("id", "value"), request.getValue().getTablet().getMeasurements());
+    assertEquals(
+        Arrays.asList((byte) ColumnCategory.TAG.ordinal(), (byte) ColumnCategory.FIELD.ordinal()),
+        request.getValue().getTablet().getColumnCategories());
   }
 
   @Test

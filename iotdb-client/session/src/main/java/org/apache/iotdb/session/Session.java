@@ -2909,8 +2909,11 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
+    if (request == null) {
+      throw new StatementExecutionException(
+          SessionMessages.EXCEPTION_TEST_INSERTION_HAS_NO_NON_NULL_VALUES_40F5D116);
+    }
     request.setWriteToTable(true);
-    request.setColumnCategories(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
     getDefaultSessionConnection()
         .testInsert(new TSTestInsertReq(0, stage.getValue()).setTablet(request));
   }
@@ -3748,6 +3751,10 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+    if (request == null) {
+      throw new StatementExecutionException(
+          SessionMessages.EXCEPTION_TEST_INSERTION_HAS_NO_NON_NULL_VALUES_40F5D116);
+    }
     getDefaultSessionConnection()
         .testInsert(new TSTestInsertReq(0, stage.getValue()).setTablet(request));
   }
@@ -3766,6 +3773,10 @@ public class Session implements ISession {
     Objects.requireNonNull(stage, SessionMessages.EXCEPTION_STAGE_9A8C2B9D);
     TSInsertTabletsReq request =
         genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted, false);
+    if (request == null) {
+      throw new StatementExecutionException(
+          SessionMessages.EXCEPTION_TEST_INSERTION_HAS_NO_NON_NULL_VALUES_40F5D116);
+    }
     getDefaultSessionConnection()
         .testInsert(new TSTestInsertReq(0, stage.getValue()).setTablets(request));
   }
