@@ -85,12 +85,14 @@ public class IoTDBLoadTsFileMixedModelIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setWalMode("SYNC")
         .setDatanodeMemoryProportion("3:3:1:1:1:0");
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
         .setLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber(TABLE_DEVICE_BATCH_SIZE)
-        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
+        .setMetricReporterType(Collections.singletonList("PROMETHEUS"))
+        .setMetricPrometheusReporterAsyncUpdate(false);
     EnvFactory.getEnv()
         .getConfig()
         .getConfigNodeConfig()
@@ -125,6 +127,7 @@ public class IoTDBLoadTsFileMixedModelIT {
   @AfterClass
   public static void tearDownClass() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("ASYNC");
   }
 
   @Test
