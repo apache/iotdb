@@ -176,7 +176,26 @@ public class DeletionResourceManager implements AutoCloseable {
     }
   }
 
-  public void removeDAL() {
+  /** Close an existing manager and remove its DAL without creating a manager for cleanup. */
+  public static void closeAndRemoveDAL(int groupId) {
+    if (DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP == null) {
+      return;
+    }
+    final DeletionResourceManager manager =
+        DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.get(groupId);
+    if (manager != null) {
+      manager.close();
+      removeDAL(groupId, manager.storageDir);
+    } else {
+      removeDAL(
+          groupId,
+          new File(
+              IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir(),
+              Integer.toString(groupId)));
+    }
+  }
+
+  private static void removeDAL(int dataRegionId, File storageDir) {
     if (storageDir.exists()) {
       FileUtils.deleteFileOrDirectory(storageDir);
       LOGGER.info(

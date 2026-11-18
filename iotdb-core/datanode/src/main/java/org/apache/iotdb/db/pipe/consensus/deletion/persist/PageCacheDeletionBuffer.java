@@ -390,7 +390,11 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
             maxProgressIndexInCurrentFile.updateToMinimumEqualOrIsAfterProgressIndex(
                 firstDeletionResource.getProgressIndex());
       } catch (InterruptedException e) {
-        LOGGER.warn(DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM);
+        // shutdownNow interrupts the idle queue wait during normal close.
+        if (!isClosed) {
+          LOGGER.warn(
+              DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM);
+        }
         Thread.currentThread().interrupt();
         return;
       }

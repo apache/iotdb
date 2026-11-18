@@ -24,11 +24,16 @@ import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
@@ -37,6 +42,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.InOrder;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,11 +51,16 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -73,6 +84,70 @@ public class PageCacheDeletionBufferTest {
   @After
   public void tearDown() {
     PageCacheDeletionBuffer.setDalBufferSize(previousDalBufferSize);
+  }
+
+  @Test
+  public void testIdleCloseDoesNotWarnAboutQueueInterruption() throws Exception {
+    assertQueueInterruptionLogging(true);
+  }
+
+  @Test
+  public void testUnexpectedQueueInterruptionStillWarns() throws Exception {
+    assertQueueInterruptionLogging(false);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertQueueInterruptionLogging(boolean closeNormally) throws Exception {
+    final PageCacheDeletionBuffer deletionBuffer =
+        new PageCacheDeletionBuffer(1, temporaryFolder.newFolder("interrupt").getAbsolutePath());
+    final CountDownLatch taking = new CountDownLatch(1);
+    final AtomicReference<Thread> worker = new AtomicReference<>();
+    final Field queueField = PageCacheDeletionBuffer.class.getDeclaredField("deletionResources");
+    queueField.setAccessible(true);
+    final BlockingQueue<DeletionResource> originalQueue =
+        (BlockingQueue<DeletionResource>) queueField.get(deletionBuffer);
+    final BlockingQueue<DeletionResource> queue =
+        mock(BlockingQueue.class, delegatesTo(originalQueue));
+    doAnswer(
+            invocation -> {
+              worker.set(Thread.currentThread());
+              taking.countDown();
+              return originalQueue.take();
+            })
+        .when(queue)
+        .take();
+    queueField.set(deletionBuffer, queue);
+    final Logger logger = (Logger) LoggerFactory.getLogger(PageCacheDeletionBuffer.class);
+    final Appender<ILoggingEvent> appender = mock(Appender.class);
+    logger.addAppender(appender);
+    deletionBuffer.start();
+    try {
+      Assert.assertTrue(taking.await(10, TimeUnit.SECONDS));
+      if (!closeNormally) {
+        worker.get().interrupt();
+        Awaitility.await()
+            .atMost(10, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    verify(appender, atLeastOnce())
+                        .doAppend(argThat(this::isQueueInterruptionWarning)));
+      }
+    } finally {
+      try {
+        deletionBuffer.close();
+        if (closeNormally) {
+          verify(appender, never()).doAppend(argThat(this::isQueueInterruptionWarning));
+        }
+      } finally {
+        logger.detachAppender(appender);
+      }
+    }
+  }
+
+  private boolean isQueueInterruptionWarning(ILoggingEvent event) {
+    return event.getLevel() == Level.WARN
+        && DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM.equals(
+            event.getMessage());
   }
 
   @Test
