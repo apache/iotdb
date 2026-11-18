@@ -35,6 +35,26 @@ public class PipeRealtimeDataRegionSourceTest {
       PipeRealtimeDataRegionSourceTest.class.getName();
 
   @Test
+  public void logicalBackupBoundaryRejectsNewEventsAndDrainsAcceptedEvents() throws Exception {
+    try (final ProgressReportTestSource source = new ProgressReportTestSource()) {
+      final java.lang.reflect.Field until =
+          PipeRealtimeDataRegionSource.class.getDeclaredField("logicalBackupUntil");
+      until.setAccessible(true);
+      until.set(source, System.currentTimeMillis() + 60_000L);
+      final PipeRealtimeEvent accepted = createHeartbeatEvent();
+      source.extract(accepted);
+      until.set(source, System.currentTimeMillis() - 1L);
+      final PipeRealtimeEvent late = createHeartbeatEvent();
+      source.extract(late);
+      Assert.assertTrue(late.getEvent().isReleased());
+      Assert.assertFalse(source.isLogicalBackupDrained());
+      Assert.assertSame(accepted, source.supply());
+      accepted.decreaseReferenceCount(TEST_REFERENCE_HOLDER, false);
+      Assert.assertTrue(source.isLogicalBackupDrained());
+    }
+  }
+
+  @Test
   public void progressReportEventReleasesDroppedHeartbeatEvent() throws Exception {
     try (final ProgressReportTestSource source = new ProgressReportTestSource()) {
       final PipeRealtimeEvent heartbeatEvent = createHeartbeatEvent();
