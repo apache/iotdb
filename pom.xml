@@ -689,8 +689,6 @@
                             <exclude>**/.git/**</exclude>
                             <exclude>**/.mvn/**</exclude>
                             <exclude>**/.gitignore</exclude>
-                            <exclude>**/.gitmodules</exclude>
-                            <exclude>**/.git-blame-ignore-revs</exclude>
                             <exclude>**/git.properties</exclude>
                             <!-- Maven related files -->
                             <exclude>**/target/**</exclude>
@@ -747,8 +745,6 @@
                             <exclude>**/venv/**</exclude>
                             <exclude>apache_iotdb.egg-info/**</exclude>
                             <exclude>**/thrift/**/__init__.py</exclude>
-                            <!-- Java SPI uses files in resources/META-INF/services-->
-                            <exclude>**/resources/META-INF/services/**</exclude>
                             <!-- site-->
                             <exclude>**/redirects</exclude>
                             <exclude>**/.eslintignore</exclude>
