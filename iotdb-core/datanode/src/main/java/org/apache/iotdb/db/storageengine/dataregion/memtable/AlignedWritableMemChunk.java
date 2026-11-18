@@ -1132,32 +1132,42 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       }
 
       if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk) {
-        alignedChunkWriter.sealCurrentPage();
-        alignedChunkWriter.clearPageWriter();
-        try {
-          ioTaskQueue.put(alignedChunkWriter);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
+        flushPendingPageAndEnqueueChunk(ioTaskQueue, alignedChunkWriter, encodeInfo, times);
         alignedChunkWriter = new AlignedChunkWriterImpl(activeSchemaList, encryptParameter);
-        encodeInfo.reset();
       }
     }
 
     // last batch of points
     if (encodeInfo.pointNumInChunk > 0) {
-      if (encodeInfo.pointNumInPage > 0) {
-        alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
-      }
-      alignedChunkWriter.sealCurrentPage();
-      alignedChunkWriter.clearPageWriter();
-      try {
-        ioTaskQueue.put(alignedChunkWriter);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-      encodeInfo.reset();
+      flushPendingPageAndEnqueueChunk(ioTaskQueue, alignedChunkWriter, encodeInfo, times);
     }
+  }
+
+  /**
+   * Flush the pending page, if any, and seal the chunk before enqueueing it for IO.
+   *
+   * <p>{@code encodeBatch} may return with a partially filled page: when the chunk cap is reached
+   * in the middle of a page, the values of that page have already been written into the value chunk
+   * writers, while the corresponding time page has not been written yet. Sealing the chunk without
+   * flushing the partial page first would make the time chunk contain one page less than the value
+   * chunks, so the rows of that page could never be read and the chunk statistics would diverge.
+   */
+  private void flushPendingPageAndEnqueueChunk(
+      BlockingQueue<Object> ioTaskQueue,
+      AlignedChunkWriterImpl alignedChunkWriter,
+      BatchEncodeInfo encodeInfo,
+      long[] times) {
+    if (encodeInfo.pointNumInPage > 0) {
+      alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
+    }
+    alignedChunkWriter.sealCurrentPage();
+    alignedChunkWriter.clearPageWriter();
+    try {
+      ioTaskQueue.put(alignedChunkWriter);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    encodeInfo.reset();
   }
 
   @Override

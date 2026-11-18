@@ -22,13 +22,16 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -462,6 +465,72 @@ public class MemTableFlushTaskTest {
         assertEquals(rowCount, index);
       }
     } finally {
+      memChunk.release();
+    }
+  }
+
+  @Test
+  public void testAlignedFlushKeepsAllRowsWhenChunkCapIsNotAPageMultiple() throws Exception {
+    // With tvlist_sort_threshold > 0 the aligned memchunk is encoded through the single-TVLIST
+    // iterator. A wide TEXT column narrows the chunk cap to target_chunk_size / avg point size,
+    // which is not a multiple of the page cap, so a chunk is sealed in the middle of a page.
+    int originalThreshold = IoTDBDescriptor.getInstance().getConfig().getTvListSortThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(100_000);
+    int pageCap = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN));
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
+    String alignedFilePath =
+        TestConstant.OUTPUT_DATA_DIR.concat("testAlignedWideTextChunkCap.tsfile");
+    try {
+      int rowCount = 3000;
+      char[] chars = new char[300];
+      Arrays.fill(chars, 'x');
+      Binary binary = new Binary(new String(chars), TSFileConfig.STRING_CHARSET);
+      for (int index = 0; index < rowCount; index++) {
+        memChunk.putAlignedRow(index, new Object[] {(long) index, binary});
+      }
+      memChunk.sortTvListForFlush();
+
+      BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+      // target_chunk_size / avg point size is below the page cap, so a chunk is sealed with a
+      // pending partial page whose values are already in the value chunk writers.
+      BatchEncodeInfo encodeInfo = new BatchEncodeInfo(0, 0, 0, pageCap, 10_000, 262_144);
+      memChunk.encode(ioTaskQueue, encodeInfo, new long[pageCap], false);
+      try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
+        alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
+        Object task;
+        while ((task = ioTaskQueue.poll()) != null) {
+          if (task instanceof IChunkWriter chunkWriter) {
+            chunkWriter.writeToFileWriter(alignedWriter);
+          }
+        }
+        alignedWriter.endChunkGroup();
+        alignedWriter.endFile();
+      }
+
+      try (TsFileSequenceReader sequenceReader = new TsFileSequenceReader(alignedFilePath);
+          TsFileReader fileReader = new TsFileReader(sequenceReader)) {
+        QueryDataSet dataSet =
+            fileReader.query(
+                QueryExpression.create(
+                    Arrays.asList(new Path("root.d", "s0", false), new Path("root.d", "s1", false)),
+                    null));
+        int index = 0;
+        while (dataSet.hasNext()) {
+          RowRecord row = dataSet.next();
+          assertEquals(index, row.getTimestamp());
+          assertEquals((long) index, row.getFields().get(0).getLongV());
+          assertEquals(binary, row.getFields().get(1).getBinaryV());
+          index++;
+        }
+        // The rows of the pending pages must be readable, not silently dropped.
+        assertEquals(rowCount, index);
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(originalThreshold);
       memChunk.release();
     }
   }
