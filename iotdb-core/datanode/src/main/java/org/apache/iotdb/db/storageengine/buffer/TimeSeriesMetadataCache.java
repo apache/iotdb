@@ -383,8 +383,14 @@ public class TimeSeriesMetadataCache {
       LongConsumer ioSizeRecorder)
       throws IOException {
     // cached measurements are already in the result: no need to deserialize them again
-    Set<String> returned = new HashSet<>(cacheEnabled ? allSensors : requested);
-    returned.removeAll(result.keySet());
+    Set<String> returned;
+    if (!cacheEnabled || allSensors.equals(requested)) {
+      // the aligned batch read requests exactly the set it caches, so only the misses remain
+      returned = pending;
+    } else {
+      returned = new HashSet<>(allSensors);
+      returned.removeAll(result.keySet());
+    }
     Map<String, TimeseriesMetadata> loaded =
         reader.readTimeseriesMetadata(
             device,
@@ -559,11 +565,15 @@ public class TimeSeriesMetadataCache {
     private final TsFileID tsFileID;
     private final IDeviceID device;
     private final String measurement;
+    private final int hash;
 
     public TimeSeriesMetadataCacheKey(TsFileID tsFileID, IDeviceID device, String measurement) {
       this.tsFileID = tsFileID;
       this.device = device;
       this.measurement = measurement;
+      // a key is built for every lookup and every write: compute the hash once instead of
+      // allocating the Objects.hash argument array on each call
+      this.hash = Objects.hash(tsFileID, device, measurement);
     }
 
     public long getRetainedSizeInBytes() {
@@ -586,7 +596,7 @@ public class TimeSeriesMetadataCache {
 
     @Override
     public int hashCode() {
-      return Objects.hash(tsFileID, device, measurement);
+      return hash;
     }
 
     @Override
