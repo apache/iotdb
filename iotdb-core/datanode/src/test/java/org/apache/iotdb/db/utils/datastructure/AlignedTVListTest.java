@@ -609,6 +609,8 @@ public class AlignedTVListTest {
     Assert.assertNull(clonedTvList.getValues().get(1).get(0));
     Assert.assertEquals("[null, null]", clonedTvList.getAlignedValue(0).toString());
     Assert.assertEquals("[value, 1]", clonedTvList.getAlignedValue(ARRAY_SIZE + 1).toString());
+    Assert.assertEquals(1, clonedTvList.getColumnValueCnt(0));
+    Assert.assertEquals(1, clonedTvList.getColumnValueCnt(1));
 
     WALByteBufferForTest walBuffer =
         new WALByteBufferForTest(ByteBuffer.allocate(tvList.serializedSize()));
@@ -622,6 +624,8 @@ public class AlignedTVListTest {
     Assert.assertEquals("[null, null]", deserializedTvList.getAlignedValue(0).toString());
     Assert.assertEquals(
         "[value, 1]", deserializedTvList.getAlignedValue(ARRAY_SIZE + 1).toString());
+    Assert.assertEquals(1, deserializedTvList.getColumnValueCnt(0));
+    Assert.assertEquals(1, deserializedTvList.getColumnValueCnt(1));
   }
 
   @Test
@@ -804,6 +808,83 @@ public class AlignedTVListTest {
   }
 
   @Test
+  public void testColumnValueCountTracksBatchNullsAndFailures() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    tvList.putAlignedValue(0, new Object[] {1L, 1L});
+    tvList.putAlignedValue(1, new Object[] {null, 2L});
+    tvList.putAlignedValue(2, new Object[] {3L, null});
+    Assert.assertEquals(2, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(2, tvList.getColumnValueCnt(1));
+
+    long[] times = new long[4];
+    long[][] values = new long[2][4];
+    for (int i = 0; i < 4; i++) {
+      times[i] = 3 + i;
+      values[0][i] = i;
+      values[1][i] = i;
+    }
+    BitMap[] bitMaps = new BitMap[] {new BitMap(4), null};
+    bitMaps[0].mark(1);
+    TSStatus[] results = new TSStatus[4];
+    results[2] = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    tvList.putAlignedValues(times, values, bitMaps, 0, 4, results);
+
+    // Column 0 loses one input value to the null bitmap and one to the failed status, while
+    // column 1 only loses the failed row.
+    Assert.assertEquals(4, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(5, tvList.getColumnValueCnt(1));
+
+    tvList.sort();
+    Assert.assertEquals(4, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(5, tvList.getColumnValueCnt(1));
+  }
+
+  @Test
+  public void testColumnValueCountTracksDeletesAndClones() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    for (int i = 0; i < 5; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i, i % 2 == 0 ? null : (long) i});
+    }
+    Assert.assertEquals(5, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(2, tvList.getColumnValueCnt(1));
+
+    tvList.delete(1, 2);
+    Assert.assertEquals(3, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(1, tvList.getColumnValueCnt(1));
+
+    AlignedTVList clone = tvList.clone();
+    AlignedTVList flushClone = tvList.cloneForFlushSort();
+    for (AlignedTVList copy : Arrays.asList(clone, flushClone)) {
+      Assert.assertEquals(3, copy.getColumnValueCnt(0));
+      Assert.assertEquals(1, copy.getColumnValueCnt(1));
+    }
+
+    tvList.deleteColumn(1);
+    Assert.assertEquals(3, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(0, tvList.getColumnValueCnt(1));
+
+    tvList.clear();
+    Assert.assertEquals(0, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(0, tvList.getColumnValueCnt(1));
+  }
+
+  @Test
+  public void testAvgPointSizeUsesMaintainedColumnValueCount() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
+    Binary text = new Binary("0123456789".repeat(8), TSFileConfig.STRING_CHARSET);
+    for (int i = 0; i < 6; i++) {
+      tvList.putAlignedValue(i, new Object[] {i % 2 == 0 ? text : null, (long) i});
+    }
+
+    Assert.assertEquals(3, tvList.getColumnValueCnt(0));
+    int expectedAvgPointSize = (int) tvList.memoryBinaryChunkSize[0] / 3;
+    Assert.assertEquals(Math.max(expectedAvgPointSize, 8), tvList.getAvgPointSizeOfLargestColumn());
+  }
+
+  @Test
   public void testMovesUnclonedColumns() {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
@@ -823,15 +904,25 @@ public class AlignedTVListTest {
     Assert.assertTrue(tvList.isNullValue(0, 2));
     Assert.assertEquals(2L, clonedTvList.getLongByValueIndex(0, 1));
 
+    Assert.assertEquals(1, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(1, tvList.getColumnValueCnt(1));
+    Assert.assertEquals(0, tvList.getColumnValueCnt(2));
+
     partialClonePlan.commit();
 
     Assert.assertNull(tvList.getValues().get(0));
     Assert.assertNull(tvList.getValues().get(2));
     Assert.assertTrue(tvList.isNullValue(0, 0));
     Assert.assertTrue(tvList.isNullValue(0, 2));
+    Assert.assertEquals(0, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(1, tvList.getColumnValueCnt(1));
+    Assert.assertEquals(0, tvList.getColumnValueCnt(2));
     Assert.assertEquals(1L, clonedTvList.getLongByValueIndex(0, 0));
     Assert.assertEquals(2L, clonedTvList.getLongByValueIndex(0, 1));
     Assert.assertTrue(clonedTvList.isNullValue(0, 2));
+    Assert.assertEquals(1, clonedTvList.getColumnValueCnt(0));
+    Assert.assertEquals(1, clonedTvList.getColumnValueCnt(1));
+    Assert.assertEquals(0, clonedTvList.getColumnValueCnt(2));
     Assert.assertEquals(retainedRamSize, tvList.calculateRamSize().getRamSize());
   }
 
@@ -950,6 +1041,9 @@ public class AlignedTVListTest {
     // Verify bitmaps were created for column 1
     Assert.assertNotNull(tvList.getBitMaps());
     Assert.assertNotNull(tvList.getBitMaps().get(1));
+    Assert.assertEquals(100, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(50, tvList.getColumnValueCnt(1));
+    Assert.assertEquals(100, tvList.getColumnValueCnt(2));
 
     // Keep only column 0 and 2, release column 1
     Set<Integer> columnsToKeep = new HashSet<>(Arrays.asList(0, 2));
@@ -958,6 +1052,9 @@ public class AlignedTVListTest {
     // Verify column 1 is released
     Assert.assertNull(tvList.getValues().get(1));
     Assert.assertNull(tvList.getBitMaps().get(1));
+    Assert.assertEquals(100, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(0, tvList.getColumnValueCnt(1));
+    Assert.assertEquals(100, tvList.getColumnValueCnt(2));
 
     // Verify columns 0 and 2 are intact
     Assert.assertFalse(tvList.getValues().get(0).isEmpty());

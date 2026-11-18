@@ -86,6 +86,10 @@ public abstract class AlignedTVList extends TVList {
   // Record total memory size of binary column
   protected long[] memoryBinaryChunkSize;
 
+  // Number of non-null values in each column. It is maintained on every write/delete so that flush
+  // can compute the average point size of a column in O(1) instead of scanning the whole list.
+  private int[] nonNullValueCounts;
+
   // Number and memory cost of primitive arrays that have been allocated for each value column
   private int[] materializedValueArrayCounts;
   private long materializedValueArrayMemCost;
@@ -165,6 +169,7 @@ public abstract class AlignedTVList extends TVList {
     super();
     dataTypes = types;
     memoryBinaryChunkSize = new long[dataTypes.size()];
+    nonNullValueCounts = new int[dataTypes.size()];
     materializedValueArrayCounts = new int[dataTypes.size()];
 
     values = new ArrayList<>(types.size());
@@ -250,6 +255,7 @@ public abstract class AlignedTVList extends TVList {
         alignedTvList.materializedValueArrayCounts[i] = materializedArrayCount;
         alignedTvList.materializedValueArrayMemCost +=
             (long) materializedArrayCount * primitiveArrayMemCost(dataTypeList.get(i));
+        alignedTvList.nonNullValueCounts[i] = nonNullValueCounts[columnIndex];
       }
     }
     return alignedTvList;
@@ -261,6 +267,9 @@ public abstract class AlignedTVList extends TVList {
     cloneAs(cloneList);
     cloneList.timeDeletedCnt = this.timeDeletedCnt;
     cloneList.memoryBinaryChunkSize = this.memoryBinaryChunkSize;
+    // This clone shares the value arrays/bitmaps with the source, so share the counts that
+    // describe them as well.
+    cloneList.nonNullValueCounts = this.nonNullValueCounts;
     cloneList.values = this.values;
     cloneList.bitMaps = this.bitMaps;
     cloneList.timeColDeletedMap = this.timeColDeletedMap;
@@ -393,6 +402,7 @@ public abstract class AlignedTVList extends TVList {
         bitMaps.set(i, null);
       }
       memoryBinaryChunkSize[i] = 0;
+      nonNullValueCounts[i] = 0;
 
       // The source no longer owns the moved column's materialized arrays.
       int materializedCount = materializedValueArrayCounts[i];
@@ -444,6 +454,7 @@ public abstract class AlignedTVList extends TVList {
       }
       values.set(i, null);
       memoryBinaryChunkSize[i] = 0;
+      nonNullValueCounts[i] = 0;
 
       // Release bitmap memory for non-query columns
       if (bitMaps != null && bitMaps.get(i) != null) {
@@ -482,6 +493,7 @@ public abstract class AlignedTVList extends TVList {
       TSDataType dataType = dataTypes.get(i);
       Object valueArray = getOrCreateValueArray(i, arrayIndex, elementIndex);
       Type.fromTsDataType(dataType).addValue(elementIndex, columnValue, valueArray);
+      nonNullValueCounts[i]++;
       if (dataType.isBinary()) {
         memoryBinaryChunkSize[i] += getBinarySize((Binary) columnValue);
       }
@@ -629,6 +641,7 @@ public abstract class AlignedTVList extends TVList {
     // Recompute the full-width memory estimate only once for the entire batch.
     refreshArrayMemCostWithoutPrimitiveArrays();
     memoryBinaryChunkSize = Arrays.copyOf(memoryBinaryChunkSize, dataTypes.size());
+    nonNullValueCounts = Arrays.copyOf(nonNullValueCounts, dataTypes.size());
     materializedValueArrayCounts = Arrays.copyOf(materializedValueArrayCounts, dataTypes.size());
   }
 
@@ -947,6 +960,7 @@ public abstract class AlignedTVList extends TVList {
         int elementIndex = originRowIndex % ARRAY_SIZE;
         if (markNullValue(columnIndex, arrayIndex, elementIndex)) {
           deletedNumber++;
+          nonNullValueCounts[columnIndex]--;
         }
       } else {
         deleteColumn = false;
@@ -962,6 +976,7 @@ public abstract class AlignedTVList extends TVList {
    * or delete wrong rows.
    */
   public synchronized void deleteColumn(int columnIndex) {
+    nonNullValueCounts[columnIndex] = 0;
     List<Object> columnValues = values.get(columnIndex);
     if (columnValues == null) {
       return;
@@ -1002,6 +1017,10 @@ public abstract class AlignedTVList extends TVList {
     boolean cloneAllColumns = columnsToClone == null;
     System.arraycopy(
         memoryBinaryChunkSize, 0, cloneList.memoryBinaryChunkSize, 0, dataTypes.size());
+    // The clone owns every column after commit: retained columns are deep-cloned and the other
+    // columns are moved without changing their non-null counts.
+    System.arraycopy(
+        nonNullValueCounts, 0, cloneList.nonNullValueCounts, 0, nonNullValueCounts.length);
     boolean hasBitMapsToMove = false;
     for (int i = 0; i < values.size(); i++) {
       // Clone value
@@ -1065,6 +1084,7 @@ public abstract class AlignedTVList extends TVList {
       memoryBinaryChunkSize[i] = 0;
     }
     Arrays.fill(materializedValueArrayCounts, 0);
+    Arrays.fill(nonNullValueCounts, 0);
     materializedValueArrayMemCost = 0;
   }
 
@@ -1210,10 +1230,8 @@ public abstract class AlignedTVList extends TVList {
       int arrayIndex) {
 
     /* 1. Build result-level bitmap (1 = failure row) */
-    BitMap resultBitMap =
-        results != null && containsFailedStatus(results, idx, len)
-            ? buildResultBitMap(results, idx, elementIdx, len)
-            : null;
+    boolean hasFailedStatus = results != null && containsFailedStatus(results, idx, len);
+    BitMap resultBitMap = hasFailedStatus ? buildResultBitMap(results, idx, elementIdx, len) : null;
 
     for (int j = 0; j < inputValues.length; j++) {
       // A null value array represents an entirely null block, so no bitmap is needed until the
@@ -1228,9 +1246,17 @@ public abstract class AlignedTVList extends TVList {
         continue;
       }
 
+      // Count the values that survive the null/failure masks. The fast path avoids scanning the
+      // range when no input value is masked.
+      BitMap inputBitMap = bitMaps == null ? null : bitMaps[j];
+      boolean hasNullMarks = inputBitMap != null && inputBitMap.isRangeAnyMarked(idx, len);
+      nonNullValueCounts[j] +=
+          countNonNullValues(
+              inputValues[j], inputBitMap, results, idx, len, hasNullMarks, hasFailedStatus);
+
       /* 2.mask the column bitmap */
-      if (bitMaps != null && bitMaps[j] != null && bitMaps[j].isRangeAnyMarked(idx, len)) {
-        getBitMap(j, arrayIndex).merge(bitMaps[j], idx, elementIdx, len);
+      if (hasNullMarks) {
+        getBitMap(j, arrayIndex).merge(inputBitMap, idx, elementIdx, len);
       }
 
       /* 3. Overlay result bitmap (failure rows) */
@@ -1238,6 +1264,35 @@ public abstract class AlignedTVList extends TVList {
         getBitMap(j, arrayIndex).merge(resultBitMap, elementIdx & 7, elementIdx, len);
       }
     }
+  }
+
+  private static int countNonNullValues(
+      Object inputValueArray,
+      BitMap inputBitMap,
+      TSStatus[] results,
+      int idx,
+      int len,
+      boolean hasNullMarks,
+      boolean hasFailedStatus) {
+    if (inputValueArray == null) {
+      return 0;
+    }
+    if (!hasNullMarks && !hasFailedStatus) {
+      return len;
+    }
+    int nonNullCount = 0;
+    for (int i = idx; i < idx + len; i++) {
+      if (inputBitMap != null && inputBitMap.isMarked(i)) {
+        continue;
+      }
+      if (results != null
+          && results[i] != null
+          && results[i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        continue;
+      }
+      nonNullCount++;
+    }
+    return nonNullCount;
   }
 
   private static boolean containsFailedStatus(TSStatus[] results, int start, int length) {
@@ -1467,6 +1522,7 @@ public abstract class AlignedTVList extends TVList {
 
     size += listRamCostWithReferences(dataTypes);
     size += RamUsageEstimator.sizeOfLongArray(memoryBinaryChunkSize.length);
+    size += RamUsageEstimator.sizeOfIntArray(nonNullValueCounts.length);
     size += RamUsageEstimator.sizeOfIntArray(materializedValueArrayCounts.length);
     size += listRamCostWithoutReferences(timestamps);
     if (indices != null) {
@@ -2053,14 +2109,9 @@ public abstract class AlignedTVList extends TVList {
     return Math.max(avgPointSizeOfLargestBinaryColumn, largestPrimitivePointSize);
   }
 
-  private int getColumnValueCnt(int columnIndex) {
-    int pointNum = 0;
-    for (int i = 0; i < rowCount; i++) {
-      if (!isNullValue(i, columnIndex)) {
-        pointNum++;
-      }
-    }
-    return pointNum;
+  /** Return the number of non-null values in the column in O(1). */
+  int getColumnValueCnt(int columnIndex) {
+    return nonNullValueCounts[columnIndex];
   }
 
   public List<List<BitMap>> getBitMaps() {
