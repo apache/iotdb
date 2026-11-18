@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.pipe.it.single;
+package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -35,7 +35,6 @@ import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.apache.ratis.util.ExitUtils;
 import org.apache.ratis.util.TimeDuration;
@@ -47,7 +46,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
@@ -61,8 +59,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-@Category({LocalStandaloneIT.class})
-public class PipeSchemaRegionSnapshotRecoveryIT {
+public class PipeSchemaRegionSnapshotRecoveryTest {
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
