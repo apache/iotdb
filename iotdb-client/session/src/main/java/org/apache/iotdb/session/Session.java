@@ -158,6 +158,7 @@ public class Session implements ISession {
   protected TEndPoint defaultEndPoint;
   protected SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
+  private volatile boolean closing;
 
   // this field only take effect in write request, nothing to do with any other type requests,
   // like query, load and so on.
@@ -565,6 +566,7 @@ public class Session implements ISession {
     }
 
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    closing = false;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
     isClosed = false;
@@ -647,6 +649,7 @@ public class Session implements ISession {
     this.availableNodes = nodesSupplier;
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    closing = false;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
     isClosed = false;
@@ -673,6 +676,7 @@ public class Session implements ISession {
     this.availableNodes = nodesSupplier;
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    closing = false;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
     isClosed = false;
@@ -686,6 +690,7 @@ public class Session implements ISession {
 
   @Override
   public synchronized void close() throws IoTDBConnectionException {
+    closing = true;
     Throwable closeException = null;
     try {
       if (isClosed) {
@@ -717,6 +722,7 @@ public class Session implements ISession {
 
   /** Closes the underlying transports without waiting for a close-session RPC. */
   public synchronized void forceClose() {
+    closing = true;
     if (isClosed) {
       return;
     }
@@ -748,7 +754,8 @@ public class Session implements ISession {
   private void finishClose() {
     if (!isClosed) {
       if (endPointToSessionConnection != null) {
-        endPointToSessionConnection.clear();
+        // Do not wait for a concurrent computeIfAbsent that is still opening a connection.
+        endPointToSessionConnection = new ConcurrentHashMap<>();
       }
       setDefaultSessionConnection(null);
     }
@@ -1071,6 +1078,9 @@ public class Session implements ISession {
   }
 
   private SessionConnection getQuerySessionConnection() throws IoTDBConnectionException {
+    if (closing) {
+      throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+    }
     Optional<TEndPoint> endPoint =
         availableNodes == null ? Optional.empty() : availableNodes.getQueryEndPoint();
     if (!endPoint.isPresent() || endPointToSessionConnection == null) {
@@ -1080,12 +1090,27 @@ public class Session implements ISession {
         endPointToSessionConnection.computeIfAbsent(
             endPoint.get(),
             k -> {
+              if (closing) {
+                return null;
+              }
               try {
-                return constructSessionConnection(this, endPoint.get(), zoneId);
+                SessionConnection newConnection =
+                    constructSessionConnection(this, endPoint.get(), zoneId);
+                if (closing) {
+                  newConnection.forceCloseTransport();
+                  return null;
+                }
+                return newConnection;
               } catch (IoTDBConnectionException ex) {
                 return null;
               }
             });
+    if (closing) {
+      if (connection != null) {
+        connection.forceCloseTransport();
+      }
+      throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+    }
     return connection == null ? getDefaultSessionConnection() : connection;
   }
 
@@ -1495,6 +1520,9 @@ public class Session implements ISession {
 
   private void handleRedirection(String deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
+      if (closing) {
+        return;
+      }
       // no need to redirection
       if (UrlUtils.isWildcardAddress(endpoint.ip)) {
         return;
@@ -1507,12 +1535,28 @@ public class Session implements ISession {
           endPointToSessionConnection.computeIfAbsent(
               endpoint,
               k -> {
+                if (closing) {
+                  return null;
+                }
                 try {
-                  return constructSessionConnection(this, endpoint, zoneId);
+                  SessionConnection newConnection =
+                      constructSessionConnection(this, endpoint, zoneId);
+                  if (closing) {
+                    newConnection.forceCloseTransport();
+                    return null;
+                  }
+                  return newConnection;
                 } catch (IoTDBConnectionException ex) {
                   return null;
                 }
               });
+      if (closing) {
+        if (connection != null) {
+          connection.forceCloseTransport();
+        }
+        deviceIdToEndpoint.remove(deviceId);
+        return;
+      }
       if (connection == null) {
         deviceIdToEndpoint.remove(deviceId);
       }
@@ -1521,6 +1565,9 @@ public class Session implements ISession {
 
   private void handleRedirection(IDeviceID deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
+      if (closing) {
+        return;
+      }
       // no need to redirection
       if (UrlUtils.isWildcardAddress(endpoint.ip)) {
         return;
@@ -1533,12 +1580,28 @@ public class Session implements ISession {
           endPointToSessionConnection.computeIfAbsent(
               endpoint,
               k -> {
+                if (closing) {
+                  return null;
+                }
                 try {
-                  return constructSessionConnection(this, endpoint, zoneId);
+                  SessionConnection newConnection =
+                      constructSessionConnection(this, endpoint, zoneId);
+                  if (closing) {
+                    newConnection.forceCloseTransport();
+                    return null;
+                  }
+                  return newConnection;
                 } catch (IoTDBConnectionException ex) {
                   return null;
                 }
               });
+      if (closing) {
+        if (connection != null) {
+          connection.forceCloseTransport();
+        }
+        tableModelDeviceIdToEndpoint.remove(deviceId);
+        return;
+      }
       if (connection == null) {
         tableModelDeviceIdToEndpoint.remove(deviceId);
       }
@@ -1547,14 +1610,24 @@ public class Session implements ISession {
 
   private void handleQueryRedirection(TEndPoint endPoint) throws IoTDBConnectionException {
     if (enableQueryRedirection) {
+      if (closing) {
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+      }
       AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       SessionConnection connection =
           endPointToSessionConnection.computeIfAbsent(
               endPoint,
               k -> {
+                if (closing) {
+                  return null;
+                }
                 try {
                   SessionConnection sessionConnection =
                       constructSessionConnection(this, endPoint, zoneId);
+                  if (closing) {
+                    sessionConnection.forceCloseTransport();
+                    return null;
+                  }
                   sessionConnection.setEnableRedirect(enableQueryRedirection);
                   return sessionConnection;
                 } catch (IoTDBConnectionException ex) {
@@ -1562,6 +1635,12 @@ public class Session implements ISession {
                   return null;
                 }
               });
+      if (closing) {
+        if (connection != null) {
+          connection.forceCloseTransport();
+        }
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+      }
       if (connection == null) {
         throw new IoTDBConnectionException(exceptionReference.get());
       }

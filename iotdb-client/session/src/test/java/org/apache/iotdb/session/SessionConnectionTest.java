@@ -284,6 +284,73 @@ public class SessionConnectionTest {
   }
 
   @Test
+  public void testCloseDoesNotWaitForRedirectConnectionCreation() throws Exception {
+    CountDownLatch redirectOpenStarted = new CountDownLatch(1);
+    CountDownLatch continueRedirectOpen = new CountDownLatch(1);
+    try (ForceCloseTestServer redirectedServer =
+            new ForceCloseTestServer(
+                redirectOpenStarted, continueRedirectOpen, null, null, null);
+        ForceCloseTestServer primaryServer =
+            new ForceCloseTestServer(
+                null,
+                null,
+                redirectedServer.getEndpoint(),
+                null,
+                null)) {
+      Session session =
+          new Session.Builder()
+              .nodeUrls(
+                  Collections.singletonList(
+                      primaryServer.getEndpoint().getIp()
+                          + ":"
+                          + primaryServer.getEndpoint().getPort()))
+              .username("root")
+              .password("root")
+              .enableAutoFetch(false)
+              .build();
+      ExecutorService executor = Executors.newFixedThreadPool(2);
+      try {
+        session.open(false, 1000);
+        Future<Void> queryFuture =
+            executor.submit(
+                () -> {
+                  session.executeQueryStatement("select * from root.**");
+                  return null;
+                });
+        Assert.assertTrue(
+            "Redirected openSession did not start",
+            redirectOpenStarted.await(5, TimeUnit.SECONDS));
+
+        executor.submit(() -> {
+          session.close();
+          return null;
+        }).get(1, TimeUnit.SECONDS);
+
+        continueRedirectOpen.countDown();
+        try {
+          queryFuture.get(5, TimeUnit.SECONDS);
+          Assert.fail("Expected the redirected query to fail after close");
+        } catch (ExecutionException e) {
+          Assert.assertTrue(e.getCause() instanceof IoTDBConnectionException);
+        }
+
+        Assert.assertEquals(1, primaryServer.getOpenSessionCount());
+        Assert.assertEquals(1, redirectedServer.getOpenSessionCount());
+        Assert.assertTrue(
+            "The primary transport is still connected",
+            primaryServer.awaitNoActiveConnections(5, TimeUnit.SECONDS));
+        Assert.assertTrue(
+            "The redirected transport is still connected",
+            redirectedServer.awaitNoActiveConnections(5, TimeUnit.SECONDS));
+      } finally {
+        continueRedirectOpen.countDown();
+        session.forceClose();
+        executor.shutdownNow();
+      }
+    }
+  }
+
+  @Test
   public void testSetTransportTimeoutOnUnsupportedTransport() {
     Assert.assertFalse(sessionConnection.setTransportTimeout(123));
   }
@@ -528,6 +595,16 @@ public class SessionConnectionTest {
 
     private ForceCloseTestServer(CountDownLatch rpcStarted, CountDownLatch continueRpc)
         throws Exception {
+      this(null, null, null, rpcStarted, continueRpc);
+    }
+
+    private ForceCloseTestServer(
+        CountDownLatch openSessionStarted,
+        CountDownLatch continueOpenSession,
+        TEndPoint redirectEndpoint,
+        CountDownLatch rpcStarted,
+        CountDownLatch continueRpc)
+        throws Exception {
       ServerSocket listener = new ServerSocket(0);
       endpoint = new TEndPoint("127.0.0.1", listener.getLocalPort());
       socket = new TServerSocket(listener);
@@ -536,6 +613,10 @@ public class SessionConnectionTest {
           .thenAnswer(
               ignored -> {
                 openSessionCount.incrementAndGet();
+                if (openSessionStarted != null) {
+                  openSessionStarted.countDown();
+                  continueOpenSession.await(5, TimeUnit.SECONDS);
+                }
                 return new TSOpenSessionResp(
                         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
                         TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3)
@@ -546,7 +627,7 @@ public class SessionConnectionTest {
           .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       Mockito.doAnswer(
               ignored -> {
-                if (statementExecutionCount.incrementAndGet() == 1) {
+                if (rpcStarted != null && statementExecutionCount.incrementAndGet() == 1) {
                   rpcStarted.countDown();
                   continueRpc.await(5, TimeUnit.SECONDS);
                 }
@@ -555,6 +636,17 @@ public class SessionConnectionTest {
               })
           .when(handler)
           .executeUpdateStatementV2(any());
+      Mockito.when(handler.executeQueryStatementV2(any()))
+          .thenAnswer(
+              ignored -> {
+                if (redirectEndpoint == null) {
+                  return new TSExecuteStatementResp(
+                      new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+                }
+                return new TSExecuteStatementResp(
+                    new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
+                        .setRedirectNode(redirectEndpoint));
+              });
 
       server =
           new TThreadPoolServer(

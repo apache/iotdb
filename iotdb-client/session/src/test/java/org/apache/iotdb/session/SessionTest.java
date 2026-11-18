@@ -133,7 +133,9 @@ public class SessionTest {
 
     Mockito.verify(sessionConnection).close();
     Mockito.verify(redirectedConnection).close();
-    Assert.assertTrue(connections.isEmpty());
+    Map<TEndPoint, SessionConnection> closedConnections =
+        Whitebox.getInternalState(session, "endPointToSessionConnection");
+    Assert.assertTrue(closedConnections.isEmpty());
     Assert.assertNull(Whitebox.getInternalState(session, "defaultSessionConnection"));
     Assert.assertNull(Whitebox.getInternalState(session, "executorService"));
     Assert.assertNull(Whitebox.getInternalState(session, "availableNodes"));
@@ -160,7 +162,9 @@ public class SessionTest {
 
     Mockito.verify(sessionConnection).close();
     Mockito.verify(redirectedConnection).close();
-    Assert.assertTrue(connections.isEmpty());
+    Map<TEndPoint, SessionConnection> closedConnections =
+        Whitebox.getInternalState(session, "endPointToSessionConnection");
+    Assert.assertTrue(closedConnections.isEmpty());
   }
 
   @Test
