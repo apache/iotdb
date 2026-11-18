@@ -20,10 +20,12 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -67,6 +69,55 @@ public class RpcUtilsTest {
     Assert.assertEquals(
         "1970-01-01T07:59:59.999+08:00",
         RpcUtils.parseLongToDateWithPrecision(formatter, -1, zoneId, "ms"));
+  }
+
+  @Test
+  public void testGetTimeFactor() {
+    Assert.assertEquals(1_000, RpcUtils.getTimeFactor(new TSOpenSessionResp()));
+    Assert.assertEquals(
+        1_000,
+        RpcUtils.getTimeFactor(
+            new TSOpenSessionResp()
+                .setConfiguration(Collections.singletonMap("timestamp_precision", "ms"))));
+    Assert.assertEquals(
+        1_000_000,
+        RpcUtils.getTimeFactor(
+            new TSOpenSessionResp()
+                .setConfiguration(Collections.singletonMap("timestamp_precision", "us"))));
+    Assert.assertEquals(
+        1_000_000_000,
+        RpcUtils.getTimeFactor(
+            new TSOpenSessionResp()
+                .setConfiguration(Collections.singletonMap("timestamp_precision", "ns"))));
+    IllegalArgumentException exception =
+        Assert.assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                RpcUtils.getTimeFactor(
+                    new TSOpenSessionResp()
+                        .setConfiguration(
+                            Collections.singletonMap("timestamp_precision", "invalid"))));
+    Assert.assertEquals("Unknown time precision: invalid", exception.getMessage());
+  }
+
+  @Test
+  public void testGetMilliSecond() {
+    Assert.assertEquals(-2_000L, RpcUtils.getMilliSecond(-1_500L, 1_000));
+    Assert.assertEquals(1_000L, RpcUtils.getMilliSecond(1_500L, 1_000));
+  }
+
+  @Test
+  public void testGetTimestamp() {
+    Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
+    expectedTimestamp.setNanos(123_456_000);
+    Assert.assertEquals(
+        expectedTimestamp, RpcUtils.getTimestamp(1_700_000_000_123_456L, 1_000_000));
+
+    Timestamp expectedNegativeTimestamp = new Timestamp(-2_000L);
+    expectedNegativeTimestamp.setNanos(499_999_000);
+    Assert.assertEquals(expectedNegativeTimestamp, RpcUtils.getTimestamp(-1_500_001L, 1_000_000));
+    Assert.assertEquals(
+        expectedNegativeTimestamp, RpcUtils.getTimestamp(-1_500_001_000L, 1_000_000_000));
   }
 
   @Test

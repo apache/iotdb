@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
@@ -56,6 +57,7 @@ public class IoTDBRpcDataSet {
   public List<String> columnTypeList; // no deduplication
   public Map<String, Integer>
       columnOrdinalMap; // used because the server returns deduplicated columns
+  private boolean explicitlyClosed = false;
   public List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   public int fetchSize;
   public final long timeout;
@@ -272,7 +274,12 @@ public class IoTDBRpcDataSet {
   }
 
   public void close() throws StatementExecutionException, TException {
+    close(true);
+  }
+
+  private void close(boolean explicitlyClosed) throws StatementExecutionException, TException {
     if (isClosed) {
+      this.explicitlyClosed = this.explicitlyClosed || explicitlyClosed;
       return;
     }
     if (client != null) {
@@ -291,9 +298,14 @@ public class IoTDBRpcDataSet {
     }
     client = null;
     isClosed = true;
+    this.explicitlyClosed = explicitlyClosed;
   }
 
   public boolean next() throws StatementExecutionException, IoTDBConnectionException {
+    if (explicitlyClosed) {
+      throw new IoTDBConnectionException(
+          RpcMessages.EXCEPTION_THIS_DATASET_IS_ALREADY_CLOSED_826EDCDB);
+    }
     if (hasCachedBlock()) {
       lastReadWasNull = false;
       constructOneRow();
@@ -311,7 +323,7 @@ public class IoTDBRpcDataSet {
       return true;
     } else {
       try {
-        close();
+        close(false);
         return false;
       } catch (TException e) {
         throw new IoTDBConnectionException(
@@ -331,7 +343,7 @@ public class IoTDBRpcDataSet {
       RpcUtils.verifySuccess(resp.getStatus());
       moreData = resp.moreData;
       if (!resp.hasResultSet) {
-        close();
+        close(false);
       } else {
         queryResult = resp.getQueryResult();
         queryResultIndex = 0;
@@ -627,6 +639,10 @@ public class IoTDBRpcDataSet {
   }
 
   public void checkRecord() throws StatementExecutionException {
+    if (explicitlyClosed) {
+      throw new StatementExecutionException(
+          RpcMessages.EXCEPTION_THIS_DATASET_IS_ALREADY_CLOSED_826EDCDB);
+    }
     if (queryResultIndex > queryResultSize
         || tsBlockIndex >= tsBlockSize
         || queryResult == null

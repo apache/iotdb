@@ -23,6 +23,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -32,6 +33,9 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class IoTDBResultMetadataTest {
@@ -172,5 +176,107 @@ public class IoTDBResultMetadataTest {
     for (int i = 1; i <= types.length; i++) {
       assertEquals(metadata.getColumnType(i + 1), types[i - 1]);
     }
+  }
+
+  @Test
+  public void testMetadataColumnMethodsRejectInvalidIndex() throws SQLException {
+    metadata =
+        new IoTDBResultMetadata(
+            false,
+            null,
+            "QUERY",
+            Arrays.asList("Time", "root.a.b.c1"),
+            Arrays.asList("TIMESTAMP", "INT32"),
+            false);
+
+    assertThrows(SQLException.class, () -> metadata.getCatalogName(0));
+    assertThrows(SQLException.class, () -> metadata.isAutoIncrement(0));
+    assertThrows(SQLException.class, () -> metadata.isNullable(3));
+    assertFalse(metadata.isAutoIncrement(1));
+    assertTrue(metadata.isCaseSensitive(1));
+    assertEquals(ResultSetMetaData.columnNullable, metadata.isNullable(1));
+  }
+
+  @Test
+  public void testMissingColumnTypeMetadataThrowsSQLException() {
+    metadata =
+        new IoTDBResultMetadata(
+            false,
+            null,
+            "QUERY",
+            Arrays.asList("Time", "root.a.b.c1"),
+            Collections.singletonList("TIMESTAMP"),
+            false);
+
+    assertThrows(SQLException.class, () -> metadata.getColumnType(2));
+    assertThrows(SQLException.class, () -> metadata.getColumnTypeName(2));
+    assertThrows(SQLException.class, () -> metadata.getPrecision(2));
+    assertThrows(SQLException.class, () -> metadata.getScale(2));
+  }
+
+  @Test
+  public void testNullColumnTypeMetadataThrowsSQLException() {
+    metadata =
+        new IoTDBResultMetadata(
+            false,
+            null,
+            "QUERY",
+            Arrays.asList("Time", "root.a.b.c1"),
+            Arrays.asList("TIMESTAMP", null),
+            false);
+
+    assertThrows(SQLException.class, () -> metadata.getColumnType(2));
+    assertThrows(SQLException.class, () -> metadata.getColumnTypeName(2));
+    assertThrows(SQLException.class, () -> metadata.getPrecision(2));
+    assertThrows(SQLException.class, () -> metadata.getScale(2));
+  }
+
+  @Test
+  public void testCatalogAndSchemaHandleMissingStorageGroupMetadata() throws SQLException {
+    metadata =
+        new IoTDBResultMetadata(
+            false,
+            null,
+            "QUERY",
+            Arrays.asList("Time", "root.a.b.c1"),
+            Arrays.asList("TIMESTAMP", "INT32"),
+            false);
+
+    assertEquals("", metadata.getCatalogName(2));
+    assertEquals("", metadata.getSchemaName(2));
+  }
+
+  @Test
+  public void testUnknownColumnTypeClassNameReturnsNull() throws SQLException {
+    metadata =
+        new IoTDBResultMetadata(
+            false,
+            null,
+            "QUERY",
+            Arrays.asList("Time", "root.a.b.c1"),
+            Arrays.asList("TIMESTAMP", "UNKNOWN"),
+            false);
+
+    assertEquals(0, metadata.getColumnType(2));
+    assertNull(metadata.getColumnTypeName(2));
+    assertNull(metadata.getColumnClassName(2));
+  }
+
+  @Test
+  public void testWrapperMethods() throws SQLException {
+    metadata = new IoTDBResultMetadata(false, null, "QUERY", null, null, false);
+
+    assertTrue(metadata.isWrapperFor(IoTDBResultMetadata.class));
+    assertTrue(metadata.isWrapperFor(ResultSetMetaData.class));
+    assertFalse(metadata.isWrapperFor(String.class));
+    assertFalse(metadata.isWrapperFor(null));
+    assertSame(metadata, metadata.unwrap(IoTDBResultMetadata.class));
+    assertSame(metadata, metadata.unwrap(ResultSetMetaData.class));
+  }
+
+  @Test(expected = SQLException.class)
+  public void testUnwrapRejectsUnsupportedClass() throws SQLException {
+    metadata = new IoTDBResultMetadata(false, null, "QUERY", null, null, false);
+    metadata.unwrap(String.class);
   }
 }

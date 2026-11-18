@@ -30,6 +30,7 @@
     <name>IoTDB: Client: Service-RPC</name>
     <description>RPC framework for client and server.</description>
     <properties>
+        <i18n.locale>en</i18n.locale>
         <rpc.it.skip>${rpc.test.skip}</rpc.it.skip>
         <rpc.test.skip>false</rpc.test.skip>
         <rpc.ut.skip>${rpc.test.skip}</rpc.ut.skip>
@@ -82,6 +83,24 @@
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-i18n-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.basedir}/src/main/i18n/${i18n.locale}</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <!--
         Generate an OSGI compatible MANIFEST file.
       -->
@@ -176,6 +195,12 @@
             </activation>
             <properties>
                 <rpc.ut.skip>true</rpc.ut.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>with-zh-locale</id>
+            <properties>
+                <i18n.locale>zh</i18n.locale>
             </properties>
         </profile>
     </profiles>

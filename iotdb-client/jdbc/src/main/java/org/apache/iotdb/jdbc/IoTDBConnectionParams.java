@@ -48,6 +48,7 @@ public class IoTDBConnectionParams {
   private boolean useSSL = false;
   private String trustStore;
   private String trustStorePwd;
+  private boolean rpcThriftCompressionEnabled = Config.rpcThriftCompressionEnable;
 
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;
@@ -175,5 +176,13 @@ public class IoTDBConnectionParams {
 
   public void setTrustStorePwd(String trustStorePwd) {
     this.trustStorePwd = trustStorePwd;
+  }
+
+  public boolean isRpcThriftCompressionEnabled() {
+    return rpcThriftCompressionEnabled;
+  }
+
+  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
+    this.rpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
   }
 }
