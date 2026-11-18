@@ -71,13 +71,16 @@ public class DeletionResourceManager implements AutoCloseable {
   private final Condition recoveryReadyCondition = recoverLock.newCondition();
   private volatile boolean hasCompletedRecovery = false;
 
+  private static File getStorageDir(int dataRegionId) {
+    return new File(
+        IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir()
+            + File.separator
+            + dataRegionId);
+  }
+
   private DeletionResourceManager(int dataRegionId) throws IOException {
     this.dataRegionId = dataRegionId;
-    this.storageDir =
-        new File(
-            IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir()
-                + File.separator
-                + dataRegionId);
+    this.storageDir = getStorageDir(dataRegionId);
     this.deletionBuffer = new PageCacheDeletionBuffer(dataRegionId, storageDir.getAbsolutePath());
     initAndRecover();
     // Only after initAndRecover can we start serialize and sync new deletions.
@@ -173,21 +176,6 @@ public class DeletionResourceManager implements AutoCloseable {
       return deleteNode2ResourcesMap.values().stream().collect(ImmutableList.toImmutableList());
     } finally {
       recoverLock.unlock();
-    }
-  }
-
-  public void removeDAL() {
-    if (storageDir.exists()) {
-      FileUtils.deleteFileOrDirectory(storageDir);
-      LOGGER.info(
-          DataNodePipeMessages.DELETIONMANAGER_CURRENT_DAL_DIR_IS_DELETED_SUCCESSFULLY,
-          dataRegionId,
-          storageDir);
-    } else {
-      LOGGER.info(
-          DataNodePipeMessages.DELETIONMANAGER_CURRENT_DAL_DIR_IS_NOT_INITIALIZED,
-          dataRegionId,
-          storageDir);
     }
   }
 
@@ -306,6 +294,42 @@ public class DeletionResourceManager implements AutoCloseable {
             throw new RuntimeException(e);
           }
         });
+  }
+
+  /**
+   * Returns the manager of the given data region without creating one. Deleting a data region must
+   * not create a manager just to close it, which would allocate a deletion buffer and start a
+   * persist thread only to shut it down immediately.
+   */
+  public static DeletionResourceManager getInstanceIfPresent(int groupId) {
+    return DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP == null
+        ? null
+        : DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.get(groupId);
+  }
+
+  /** Closes the manager of the data region if it exists, then removes its DAL folder. */
+  public static void closeAndRemoveDAL(int dataRegionId) {
+    DeletionResourceManager manager = getInstanceIfPresent(dataRegionId);
+    if (manager != null) {
+      manager.close();
+    }
+    removeDALFolder(dataRegionId);
+  }
+
+  private static void removeDALFolder(int dataRegionId) {
+    File storageDir = getStorageDir(dataRegionId);
+    if (storageDir.exists()) {
+      FileUtils.deleteFileOrDirectory(storageDir);
+      LOGGER.info(
+          DataNodePipeMessages.DELETIONMANAGER_CURRENT_DAL_DIR_IS_DELETED_SUCCESSFULLY,
+          dataRegionId,
+          storageDir);
+    } else {
+      LOGGER.info(
+          DataNodePipeMessages.DELETIONMANAGER_CURRENT_DAL_DIR_IS_NOT_INITIALIZED,
+          dataRegionId,
+          storageDir);
+    }
   }
 
   // Only when consensus protocol is IoTConsensusV2, will this class be initialized.

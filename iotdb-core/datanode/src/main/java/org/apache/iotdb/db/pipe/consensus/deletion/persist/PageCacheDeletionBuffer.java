@@ -390,7 +390,15 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
             maxProgressIndexInCurrentFile.updateToMinimumEqualOrIsAfterProgressIndex(
                 firstDeletionResource.getProgressIndex());
       } catch (InterruptedException e) {
-        LOGGER.warn(DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM);
+        if (isClosed && isAllDeletionFlushed()) {
+          // close() only interrupts the idle persist thread after waiting for all deletions to be
+          // flushed, so this interruption is the expected shutdown path, not a failure.
+          LOGGER.debug(
+              DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM);
+        } else {
+          LOGGER.warn(
+              DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM);
+        }
         Thread.currentThread().interrupt();
         return;
       }
