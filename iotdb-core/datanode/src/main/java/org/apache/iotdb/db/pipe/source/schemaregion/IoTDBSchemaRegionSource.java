@@ -75,6 +75,7 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -291,18 +292,18 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
   }
 
   @Override
-  protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
-      final PipeWritePlanEvent event) throws AccessDeniedException {
+  protected List<PipeWritePlanEvent> trimRealtimeEventByPrivilege(final PipeWritePlanEvent event)
+      throws AccessDeniedException {
     final Optional<PlanNode> result =
         treePrivilegeParseVisitor
             .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userEntity)
             .flatMap(planNode -> tablePrivilegeParseVisitor.process(planNode, userEntity));
     if (result.isPresent()) {
-      return Optional.of(
+      return Collections.singletonList(
           new PipeSchemaRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
     }
     if (skipIfNoPrivileges) {
-      return Optional.empty();
+      return Collections.emptyList();
     }
     throw new AccessDeniedException(
         DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_EVENT
