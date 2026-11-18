@@ -3342,8 +3342,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       try {
         // apply "- duration" backwards from time, so that natural months are counted correctly
         long offset =
-            DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), false, "-".equals(ctx.getChild(i).getText()));
+            DataNodeDateTimeUtils.convertDateExpressionOffset(
+                time, ctx.getChild(i + 1).getText(), "-".equals(ctx.getChild(i).getText()));
         time = Math.addExact(time, offset);
       } catch (ArithmeticException e) {
         throw new SemanticException(

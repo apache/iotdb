@@ -38,6 +38,7 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.ZoneId;
 import java.util.Calendar;
+import java.util.concurrent.TimeUnit;
 
 public class DataNodeDateTimeUtils {
   public static Long parseDateTimeExpressionToLong(String dateExpression, ZoneId zoneId) {
@@ -60,11 +61,23 @@ public class DataNodeDateTimeUtils {
         parser1.dateExpression(), DateTimeUtils.getTimestampPrecision());
   }
 
-  /** convert duration string to millisecond, microsecond or nanosecond. */
+  /**
+   * convert duration string to millisecond, microsecond or nanosecond.
+   *
+   * <p>A {@code currentTime} of -1 means a context free situation, see {@link
+   * #convertDurationStrToLong(String)}.
+   */
   public static long convertDurationStrToLong(
       long currentTime, long value, String unit, String timestampPrecision) {
+    return convertDurationStrToLong(
+        currentTime, currentTime != -1, value, unit, timestampPrecision);
+  }
+
+  private static long convertDurationStrToLong(
+      long currentTime, boolean anchored, long value, String unit, String timestampPrecision) {
     try {
-      return convertDurationStrToLongInternal(currentTime, value, unit, timestampPrecision);
+      return convertDurationStrToLongInternal(
+          currentTime, anchored, value, unit, timestampPrecision);
     } catch (ArithmeticException e) {
       throw new SemanticException(
           DataNodeQueryMessages.EXCEPTION_TIME_DURATION_IS_OUT_OF_RANGE_A56B1A29);
@@ -72,7 +85,7 @@ public class DataNodeDateTimeUtils {
   }
 
   private static long convertDurationStrToLongInternal(
-      long currentTime, long value, String unit, String timestampPrecision) {
+      long currentTime, boolean anchored, long value, String unit, String timestampPrecision) {
     DateTimeUtils.DurationUnit durationUnit = DateTimeUtils.DurationUnit.valueOf(unit);
     long res = value;
     switch (durationUnit) {
@@ -82,14 +95,19 @@ public class DataNodeDateTimeUtils {
         break;
       case mo:
       case month:
-        if (currentTime == -1) {
+        if (!anchored) {
           res = Math.multiplyExact(value, 30 * 86_400_000L);
         } else {
+          // Calendar works in milliseconds, while currentTime is in timestampPrecision units, so
+          // the calendar is anchored at the millisecond that currentTime falls in. The offset
+          // below is a whole number of milliseconds, so the sub-millisecond part of currentTime
+          // is left untouched by the month step and is carried over to the caller's result.
+          long anchorMillis = Math.floorDiv(currentTime, ticksPerMillisecond(timestampPrecision));
           Calendar calendar = Calendar.getInstance();
           calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
-          calendar.setTimeInMillis(currentTime);
+          calendar.setTimeInMillis(anchorMillis);
           calendar.add(Calendar.MONTH, Math.toIntExact(value));
-          res = Math.subtractExact(calendar.getTimeInMillis(), currentTime);
+          res = Math.subtractExact(calendar.getTimeInMillis(), anchorMillis);
         }
         break;
       case w:
@@ -149,6 +167,11 @@ public class DataNodeDateTimeUtils {
     }
   }
 
+  private static long ticksPerMillisecond(String timestampPrecision) {
+    return DateTimeUtils.timestampPrecisionStringToTimeUnit(timestampPrecision)
+        .convert(1, TimeUnit.MILLISECONDS);
+  }
+
   @TestOnly
   public static long convertDurationStrToLongForTest(
       long value, String unit, String timestampPrecision) {
@@ -164,18 +187,40 @@ public class DataNodeDateTimeUtils {
    */
   public static long convertDurationStrToLong(
       long currentTime, String duration, String timestampPrecision, boolean convertYearToMonth) {
-    return convertDurationStrToLong(
-        currentTime, duration, timestampPrecision, convertYearToMonth, false);
+    return convertDurationStrToLongInternal(
+        currentTime, currentTime != -1, duration, timestampPrecision, convertYearToMonth, false);
   }
 
   /**
-   * Same as {@link #convertDurationStrToLong(long, String, String, boolean)}, but if {@code
-   * negative} is true, every unit is applied backwards from {@code currentTime} and the returned
-   * offset is negative. This is what {@code currentTime - duration} means for natural months, e.g.
-   * 2024-03-15 and 1mo gives -29 days (to 2024-02-15), not -31 days (the length of the next month).
+   * Offset to add to {@code time} for the {@code time + duration} or {@code time - duration} of a
+   * date expression.
+   *
+   * <p>{@code time} is always a real timestamp here, so -1 is an ordinary anchor and not the
+   * context free marker that {@link #convertDurationStrToLong(long, String, String, boolean)} takes
+   * it for.
+   *
+   * <p>If {@code negative} is true, every unit is applied backwards from {@code time} and the
+   * returned offset is negative. That is what {@code time - duration} means for natural months: for
+   * 2024-03-15 and 1mo the offset is -29 days (back to 2024-02-15), not -31 days, which is the
+   * length of the month that follows 2024-03-15.
    */
-  public static long convertDurationStrToLong(
+  public static long convertDateExpressionOffset(
+      long time, String duration, String timestampPrecision, boolean negative) {
+    return convertDurationStrToLongInternal(
+        time, true, duration, timestampPrecision, false, negative);
+  }
+
+  public static long convertDateExpressionOffset(long time, String duration, boolean negative) {
+    return convertDateExpressionOffset(
+        time,
+        duration,
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+        negative);
+  }
+
+  private static long convertDurationStrToLongInternal(
       long currentTime,
+      boolean anchored,
       String duration,
       String timestampPrecision,
       boolean convertYearToMonth,
@@ -203,7 +248,8 @@ public class DataNodeDateTimeUtils {
               Math.addExact(
                   total,
                   convertDurationStrToLong(
-                      currentTime == -1 ? -1 : Math.addExact(currentTime, total),
+                      anchored ? Math.addExact(currentTime, total) : -1,
+                      anchored,
                       negative ? -temp : temp,
                       unit,
                       timestampPrecision));
@@ -219,17 +265,11 @@ public class DataNodeDateTimeUtils {
 
   public static long convertDurationStrToLong(
       long currentTime, String duration, boolean convertYearToMonth) {
-    return convertDurationStrToLong(currentTime, duration, convertYearToMonth, false);
-  }
-
-  public static long convertDurationStrToLong(
-      long currentTime, String duration, boolean convertYearToMonth, boolean negative) {
     return convertDurationStrToLong(
         currentTime,
         duration,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
-        convertYearToMonth,
-        negative);
+        convertYearToMonth);
   }
 
   /**

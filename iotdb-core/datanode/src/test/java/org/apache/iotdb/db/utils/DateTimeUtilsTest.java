@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
@@ -283,6 +284,10 @@ public class DateTimeUtilsTest {
       {"2024-03-31T00:00:00+00:00 - 1mo - 1d", "2024-02-28T00:00:00Z"},
       // negative timestamp
       {"1969-03-15T00:00:00+00:00 - 1mo", "1969-02-15T00:00:00Z"},
+      // an intermediate timestamp of -1 is a real anchor, not a missing one
+      {"1970-01-01T00:00:00+00:00 - 1ms - 1mo", "1969-11-30T23:59:59.999Z"},
+      {"1970-01-01T00:00:00+00:00 - 1ms1mo", "1969-11-30T23:59:59.999Z", "tree"},
+      {"1970-01-01T00:00:00+00:00 - 1ms + 1mo", "1970-01-31T23:59:59.999Z"},
       // subtraction is the inverse of addition
       {"2024-02-15T00:00:00+00:00 + 1mo - 1mo", "2024-02-15T00:00:00Z"},
       // addition is unchanged
@@ -306,30 +311,76 @@ public class DateTimeUtilsTest {
         new String[][] {{"2024-03-01T00:00:00+05:30 - 1mo", "2024-01-31T18:30:00Z"}});
   }
 
+  /**
+   * Natural months are counted from the same calendar instant at every timestamp precision, and the
+   * sub-millisecond part of the timestamp survives the month step.
+   */
+  @Test
+  public void dateExpressionNaturalMonthSubMillisecondPrecisionTest() {
+    String[][] cases = {
+      {"2024-01-16T00:00:00+00:00 - 1mo", "2023-12-16T00:00:00Z"},
+      {"2024-01-16T00:00:00+00:00 + 1mo", "2024-02-16T00:00:00Z"},
+      {"2024-03-31T00:00:00+00:00 - 1mo", "2024-02-29T00:00:00Z"},
+      {"2024-01-31T00:00:00+00:00 + 1mo", "2024-02-29T00:00:00Z"},
+      {"2024-02-15T00:00:00+00:00 + 1mo - 1mo", "2024-02-15T00:00:00Z"},
+      {"2024-01-16T00:00:00.000500+00:00 - 1mo", "2023-12-16T00:00:00.000500Z"},
+      {"1969-03-15T00:00:00+00:00 - 1mo", "1969-02-15T00:00:00Z"},
+    };
+    assertDateExpressions("UTC", "us", cases);
+    assertDateExpressions("UTC", "ns", cases);
+    // A pre-1970 timestamp with a sub-millisecond part: the calendar is anchored at the
+    // millisecond the timestamp falls in, which is below it. This is ns only because
+    // DateTimeUtils.getInstantWithPrecision reads such a literal 999999us too high at us
+    // precision, which is a separate problem on master.
+    assertDateExpressions(
+        "UTC",
+        "ns",
+        new String[][] {{"1969-03-15T00:00:00.000500+00:00 - 1mo", "1969-02-15T00:00:00.000500Z"}});
+  }
+
   private void assertDateExpressions(String sessionZone, String[][] cases) {
+    assertDateExpressions(sessionZone, "ms", cases);
+  }
+
+  private void assertDateExpressions(String sessionZone, String precision, String[][] cases) {
     ZoneId zoneId = ZoneId.of(sessionZone);
     IClientSession session = new InternalClientSession("dateExpressionNaturalMonthTest");
     session.setZoneId(zoneId);
+    String previousPrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision(precision);
     DateTimeUtils.initTimestampPrecision();
     SqlParser tableParser = new SqlParser();
     try {
       SessionManager.getInstance().registerSession(session);
       for (String[] c : cases) {
-        long expected = Instant.parse(c[1]).toEpochMilli();
+        long expected = toPrecision(Instant.parse(c[1]), precision);
         Assert.assertEquals(
-            "tree: " + c[0],
+            precision + " tree: " + c[0],
             expected,
             (long) DataNodeDateTimeUtils.parseDateTimeExpressionToLong(c[0], zoneId));
         if (c.length > 2) {
           continue;
         }
         Assert.assertEquals(
-            "table: " + c[0],
+            precision + " table: " + c[0],
             expected,
             ((LongLiteral) tableParser.createExpression(c[0], zoneId)).getParsedValue());
       }
     } finally {
       SessionManager.getInstance().removeCurrSession();
+      CommonDescriptor.getInstance().getConfig().setTimestampPrecision(previousPrecision);
+      DateTimeUtils.initTimestampPrecision();
+    }
+  }
+
+  private static long toPrecision(Instant instant, String precision) {
+    switch (precision) {
+      case "us":
+        return instant.getEpochSecond() * 1000_000L + instant.getNano() / 1000;
+      case "ns":
+        return instant.getEpochSecond() * 1000_000_000L + instant.getNano();
+      default:
+        return instant.toEpochMilli();
     }
   }
 
