@@ -56,11 +56,7 @@ public class DTWState implements State {
 
   @Override
   public byte[] serialize() {
-    int capacity =
-        Integer.BYTES * 2
-            + Byte.BYTES
-            + input.size() * (Double.BYTES + Long.BYTES)
-            + matchResults.size() * DTWMatchResult.BYTES;
+    int capacity = Integer.BYTES + input.size() * (Double.BYTES + Long.BYTES);
     ByteBuffer byteBuffer = ByteBuffer.allocate(capacity);
 
     byteBuffer.putInt(input.size());
@@ -68,12 +64,6 @@ public class DTWState implements State {
       byteBuffer.putLong(point.getKey());
       byteBuffer.putDouble(point.getValue());
     }
-
-    byteBuffer.putInt(matchResults.size());
-    for (DTWMatchResult matchResult : matchResults) {
-      byteBuffer.put(matchResult.toByteArray());
-    }
-    byteBuffer.put((byte) (needsRebuild ? 1 : 0));
 
     return byteBuffer.array();
   }
@@ -88,13 +78,7 @@ public class DTWState implements State {
       updateBuffer(byteBuffer.getLong(), byteBuffer.getDouble());
     }
 
-    int resultSize = byteBuffer.getInt();
-    for (int i = 0; i < resultSize; i++) {
-      byte[] dst = new byte[DTWMatchResult.BYTES];
-      byteBuffer.get(dst);
-      matchResults.add(DTWMatchResult.fromByteArray(dst));
-    }
-    needsRebuild = byteBuffer.get() != 0;
+    needsRebuild = !input.isEmpty();
   }
 
   public void setSize(int size) {
@@ -107,7 +91,6 @@ public class DTWState implements State {
 
   public void updateBuffer(long time, double dataPoint) {
     if (!timeBuffer.isEmpty() && time <= timeBuffer.getLast()) {
-      // Late or replaced points invalidate previously calculated windows, just like a merge.
       needsRebuild = true;
     }
     input.put(time, dataPoint);

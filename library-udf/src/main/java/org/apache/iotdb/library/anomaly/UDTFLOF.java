@@ -51,82 +51,124 @@ public class UDTFLOF implements UDTF {
   private boolean hasProcessedSeriesVector;
   private long lastProcessedSeriesTimestamp;
 
-  int partition(Double[][] a, int left, int right) {
-    Double key = a[left][1];
-    Double key2 = a[left][0];
-    while (left < right) {
-      while (left < right && a[right][1] >= key) {
-        right--;
-      }
-      if (left < right) {
-        a[left][0] = a[right][0];
-        a[left][1] = a[right][1];
-      }
-      while (left < right && a[left][1] <= key) {
-        left++;
-      }
-      if (left < right) {
-        a[right][0] = a[left][0];
-        a[right][1] = a[left][1];
-      }
-    }
-    a[left][0] = key2;
-    a[left][1] = key;
-    return left;
-  }
+  private double[] calculateLOFs(double[][] points, int length) {
+    int neighborCount = Math.min(multipleK, length - 1);
+    int[][] neighbors = new int[length][neighborCount];
+    double[][] neighborDistances = new double[length][neighborCount];
+    int[] heapSizes = new int[length];
 
-  Double findKthNum(Double[][] a, int left, int right, int k) {
-    int index = partition(a, left, right);
-    if (index + 1 == k) {
-      return a[index][0];
-    } else if (index + 1 < k) {
-      return findKthNum(a, index + 1, right, k);
-    } else {
-      return findKthNum(a, left, index - 1, k);
-    }
-  }
-
-  public double getLOF(Double[][] knn, Double[] x, int length) {
-    double sum = 0;
     for (int i = 0; i < length; i++) {
-      Double[] o = knn[i];
-      sum += getLocDens(knn, o, length) / getLocDens(knn, x, length);
+      for (int j = i + 1; j < length; j++) {
+        double distance = distance(points[i], points[j]);
+        heapSizes[i] =
+            addNearestNeighbor(neighbors[i], neighborDistances[i], heapSizes[i], j, distance);
+        heapSizes[j] =
+            addNearestNeighbor(neighbors[j], neighborDistances[j], heapSizes[j], i, distance);
+      }
     }
-    return sum / multipleK;
-  }
 
-  public double getLocDens(Double[][] knn, Double[] x, int length) {
-    Double[] nnk = findKthPoint(knn, x, length);
-
-    double sum = 0;
+    double[] kDistances = new double[length];
     for (int i = 0; i < length; i++) {
-      Double[] o = knn[i];
-      sum += reachDist(o, x, nnk);
+      kDistances[i] = neighborDistances[i][0];
     }
-    return sum / multipleK;
-  }
 
-  public Double[] findKthPoint(Double[][] knn, Double[] x, int length) {
-    int index;
-    Double[][] d = new Double[length][2];
+    double[] localDensities = new double[length];
     for (int i = 0; i < length; i++) {
-      d[i][0] = (double) i;
-      d[i][1] = dist(knn[i], x);
+      double reachabilityDistanceSum = 0;
+      for (int j = 0; j < neighborCount; j++) {
+        int neighbor = neighbors[i][j];
+        reachabilityDistanceSum += Math.max(kDistances[neighbor], neighborDistances[i][j]);
+      }
+      localDensities[i] =
+          reachabilityDistanceSum == 0
+              ? Double.POSITIVE_INFINITY
+              : neighborCount / reachabilityDistanceSum;
     }
-    index = (int) (double) (findKthNum(d, 0, length - 1, multipleK + 1));
-    return knn[index];
+
+    double[] lof = new double[length];
+    for (int i = 0; i < length; i++) {
+      double densityRatioSum = 0;
+      for (int j = 0; j < neighborCount; j++) {
+        densityRatioSum += densityRatio(localDensities[neighbors[i][j]], localDensities[i]);
+      }
+      lof[i] = densityRatioSum / neighborCount;
+    }
+    return lof;
   }
 
-  public double reachDist(Double[] o, Double[] x, Double[] nnk) {
-    return Math.max(dist(o, x), dist(nnk, x));
+  private int addNearestNeighbor(
+      int[] neighbors, double[] distances, int size, int candidate, double distance) {
+    if (size < multipleK) {
+      int index = size++;
+      neighbors[index] = candidate;
+      distances[index] = distance;
+      while (index > 0) {
+        int parent = (index - 1) / 2;
+        if (distances[parent] >= distances[index]) {
+          break;
+        }
+        swap(neighbors, distances, parent, index);
+        index = parent;
+      }
+      return size;
+    }
+
+    if (distance >= distances[0]) {
+      return size;
+    }
+    neighbors[0] = candidate;
+    distances[0] = distance;
+    int index = 0;
+    while (true) {
+      int left = index * 2 + 1;
+      if (left >= size) {
+        break;
+      }
+      int farther = left;
+      int right = left + 1;
+      if (right < size && distances[right] > distances[left]) {
+        farther = right;
+      }
+      if (distances[index] >= distances[farther]) {
+        break;
+      }
+      swap(neighbors, distances, index, farther);
+      index = farther;
+    }
+    return size;
   }
 
-  private double dist(Double[] nnk, Double[] x) {
-    double sum = 0;
-    for (int i = 0; i < nnk.length; i++) {
-      sum += (nnk[i] - x[i]) * (nnk[i] - x[i]);
+  private static void swap(int[] neighbors, double[] distances, int left, int right) {
+    int neighbor = neighbors[left];
+    neighbors[left] = neighbors[right];
+    neighbors[right] = neighbor;
+    double distance = distances[left];
+    distances[left] = distances[right];
+    distances[right] = distance;
+  }
+
+  private static double densityRatio(double neighborDensity, double pointDensity) {
+    if (neighborDensity == pointDensity) {
+      return 1;
     }
-    return Math.sqrt(sum);
+    if (Double.isInfinite(pointDensity)) {
+      return 0;
+    }
+    if (pointDensity == 0) {
+      return Double.POSITIVE_INFINITY;
+    }
+    return neighborDensity / pointDensity;
+  }
+
+  private static double distance(double[] left, double[] right) {
+    if (left.length == 1) {
+      return Math.abs(left[0] - right[0]);
+    }
+    double distance = 0;
+    for (int i = 0; i < left.length; i++) {
+      distance = Math.hypot(distance, left[i] - right[i]);
+    }
+    return distance;
   }
 
   @Override
@@ -188,11 +230,11 @@ public class UDTFLOF implements UDTF {
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     if (this.method.equalsIgnoreCase(DEFAULT_METHOD)) {
       int size = 0;
-      Double[][] knn = new Double[rowWindow.windowSize()][dim];
+      double[][] knn = new double[rowWindow.windowSize()][dim];
       long[] timestamp = new long[rowWindow.windowSize()];
       int row = 0;
       while (row < rowWindow.windowSize()) {
-        Double[] values = new Double[dim];
+        double[] values = new double[dim];
         boolean valid = true;
         for (int j = 0; j < dim; j++) {
           if (rowWindow.getRow(row).isNull(j)) {
@@ -214,10 +256,9 @@ public class UDTFLOF implements UDTF {
         row++;
       }
       if (size > multipleK) {
-        double[] lof = new double[size];
+        double[] lof = calculateLOFs(knn, size);
         for (int m = 0; m < size; m++) {
           try {
-            lof[m] = getLOF(knn, knn[m], size);
             collector.putDouble(timestamp[m], lof[m]);
           } catch (Exception e) {
             throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + m, e);
@@ -241,7 +282,7 @@ public class UDTFLOF implements UDTF {
       for (int i = 0; i < vectorCount; i++) {
         long timestamp = timestamps.get(i);
         if (!hasProcessedSeriesVector || timestamp > lastProcessedSeriesTimestamp) {
-          Double[] vector = new Double[window];
+          double[] vector = new double[window];
           for (int p = 0; p < window; p++) {
             vector[p] = values.get(i + p);
           }
@@ -254,13 +295,15 @@ public class UDTFLOF implements UDTF {
       if (seriesNeighbors.size() + pendingSeriesVectors.size() > multipleK) {
         List<SeriesVector> candidates = new ArrayList<>(seriesNeighbors);
         candidates.addAll(pendingSeriesVectors);
-        Double[][] knn = new Double[candidates.size()][window];
+        double[][] knn = new double[candidates.size()][window];
         for (int i = 0; i < candidates.size(); i++) {
           knn[i] = candidates.get(i).values;
         }
-        for (SeriesVector vector : pendingSeriesVectors) {
+        double[] lofValues = calculateLOFs(knn, candidates.size());
+        for (int i = 0; i < pendingSeriesVectors.size(); i++) {
+          SeriesVector vector = pendingSeriesVectors.get(i);
           try {
-            double lof = getLOF(knn, vector.values, candidates.size());
+            double lof = lofValues[seriesNeighbors.size() + i];
             collector.putDouble(vector.timestamp, lof);
           } catch (Exception e) {
             throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + vector.timestamp, e);
@@ -287,9 +330,9 @@ public class UDTFLOF implements UDTF {
 
   private static class SeriesVector {
     private final long timestamp;
-    private final Double[] values;
+    private final double[] values;
 
-    private SeriesVector(long timestamp, Double[] values) {
+    private SeriesVector(long timestamp, double[] values) {
       this.timestamp = timestamp;
       this.values = values;
     }

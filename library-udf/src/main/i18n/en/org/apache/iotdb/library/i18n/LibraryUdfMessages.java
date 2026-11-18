@@ -211,6 +211,12 @@ public final class LibraryUdfMessages {
   public static final String EXCEPTION_CAPACITY_SHOULD_BE_LARGER_THAN_0_055372C7 = "Capacity should be larger than 0.";
   public static final String EXCEPTION_TIME_VALUE_SHOULD_BE_FINITE_A661DDB0 = "Time value should be finite.";
   public static final String EXCEPTION_INVALID_DATETIME_FORMAT_A3DC435A = "Invalid datetime format.";
+  public static final String
+      EXCEPTION_DTW_INPUT_EXCEEDS_THE_MAXIMUM_SUPPORTED_NUMBER_OF_DISTINCT_TIMESTAMPS_ARG_8EC7ACC3 =
+          "DTW input exceeds the maximum supported number of distinct timestamps (%d).";
+  public static final String
+      EXCEPTION_SPREAD_EXCEEDS_THE_SUPPORTED_OUTPUT_RANGE_FOR_THE_INPUT_TYPE_AF96EC95 =
+          "Spread exceeds the supported output range for the input type.";
 
   private LibraryUdfMessages() {}
 

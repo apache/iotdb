@@ -28,6 +28,7 @@ import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
@@ -41,6 +42,8 @@ import java.util.List;
 import java.util.Map;
 
 public class UDAFDTWMatch implements UDAF {
+  public static final int MAX_INPUT_POINTS = 100_000;
+
   //    private static final Logger LOGGER = Logger.getLogger(DTWMatch.class);
   private Double[] pattern;
   private float threshold;
@@ -90,13 +93,13 @@ public class UDAFDTWMatch implements UDAF {
           continue;
         }
         long timestamp = columns[1].getLong(i);
+        ensureInputCapacity(DTWState, timestamp);
         DTWState.updateBuffer(timestamp, value);
         if (!DTWState.needsRebuild() && DTWState.getValueBuffer().length == pattern.length) {
           float dtw = calculateDTW(DTWState.getValueBuffer(), pattern);
           if (dtw <= threshold) {
-            ((DTWState) state)
-                .addMatchResult(
-                    new DTWMatchResult(dtw, DTWState.getFirstTime(), DTWState.getLastTime()));
+            DTWState.addMatchResult(
+                new DTWMatchResult(dtw, DTWState.getFirstTime(), DTWState.getLastTime()));
           }
         }
       }
@@ -132,7 +135,31 @@ public class UDAFDTWMatch implements UDAF {
   @Override
   public void combineState(State state, State state1) {
     // Accumulate partitions without repeatedly recalculating every historical window.
-    ((DTWState) state).mergeInput((DTWState) state1);
+    DTWState target = (DTWState) state;
+    DTWState source = (DTWState) state1;
+    Map<Long, Double> targetInput = target.getInput();
+    int mergedSize = targetInput.size();
+    for (long timestamp : source.getInput().keySet()) {
+      if (!targetInput.containsKey(timestamp) && ++mergedSize > MAX_INPUT_POINTS) {
+        throw inputLimitExceeded();
+      }
+    }
+    target.mergeInput(source);
+  }
+
+  private static void ensureInputCapacity(DTWState state, long timestamp) {
+    Map<Long, Double> input = state.getInput();
+    if (!input.containsKey(timestamp) && input.size() >= MAX_INPUT_POINTS) {
+      throw inputLimitExceeded();
+    }
+  }
+
+  private static UDFException inputLimitExceeded() {
+    return new UDFException(
+        String.format(
+            LibraryUdfMessages
+                .EXCEPTION_DTW_INPUT_EXCEEDS_THE_MAXIMUM_SUPPORTED_NUMBER_OF_DISTINCT_TIMESTAMPS_ARG_8EC7ACC3,
+            MAX_INPUT_POINTS));
   }
 
   private void rebuildMatches(DTWState dtwState) {
@@ -160,8 +187,9 @@ public class UDAFDTWMatch implements UDAF {
     DTWState dtwState = (DTWState) this.createState();
     dtwState.reset();
     for (int i = 0; i < times.size(); i++) {
+      ensureInputCapacity(dtwState, times.get(i));
       dtwState.updateBuffer(times.get(i), values.get(i));
-      if (dtwState.getValueBuffer().length == pattern.length) {
+      if (!dtwState.needsRebuild() && dtwState.getValueBuffer().length == pattern.length) {
         float dtw = calculateDTW(dtwState.getValueBuffer(), pattern);
         if (dtw <= threshold) {
           dtwState.addMatchResult(

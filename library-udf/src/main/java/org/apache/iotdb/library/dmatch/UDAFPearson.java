@@ -33,11 +33,11 @@ import org.apache.iotdb.udf.api.type.Type;
 public class UDAFPearson implements UDTF {
 
   private long count = 0;
-  private double sumX = 0.0;
-  private double sumY = 0.0;
-  private double sumXY = 0.0;
-  private double sumXX = 0.0;
-  private double sumYY = 0.0;
+  private double meanX = 0.0;
+  private double meanY = 0.0;
+  private double coMoment = 0.0;
+  private double sumSquaredDeviationX = 0.0;
+  private double sumSquaredDeviationY = 0.0;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -52,11 +52,11 @@ public class UDAFPearson implements UDTF {
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     count = 0;
-    sumX = 0.0;
-    sumY = 0.0;
-    sumXY = 0.0;
-    sumXX = 0.0;
-    sumYY = 0.0;
+    meanX = 0.0;
+    meanY = 0.0;
+    coMoment = 0.0;
+    sumSquaredDeviationX = 0.0;
+    sumSquaredDeviationY = 0.0;
   }
 
   @Override
@@ -68,11 +68,13 @@ public class UDAFPearson implements UDTF {
     double y = Util.getValueAsDouble(row, 1);
     if (Double.isFinite(x) && Double.isFinite(y)) { // skip NaN rows
       count++;
-      sumX += x;
-      sumY += y;
-      sumXY += x * y;
-      sumXX += x * x;
-      sumYY += y * y;
+      double deltaX = x - meanX;
+      double deltaY = y - meanY;
+      meanX += deltaX / count;
+      meanY += deltaY / count;
+      sumSquaredDeviationX += deltaX * (x - meanX);
+      sumSquaredDeviationY += deltaY * (y - meanY);
+      coMoment += deltaX * (y - meanY);
     }
   }
 
@@ -81,15 +83,14 @@ public class UDAFPearson implements UDTF {
     if (count == 0) {
       return;
     }
-    double xVariance = count * sumXX - sumX * sumX;
-    double yVariance = count * sumYY - sumY * sumY;
-    if (!Double.isFinite(xVariance)
-        || !Double.isFinite(yVariance)
-        || xVariance <= 0
-        || yVariance <= 0) {
+    if (!Double.isFinite(sumSquaredDeviationX)
+        || !Double.isFinite(sumSquaredDeviationY)
+        || !Double.isFinite(coMoment)
+        || sumSquaredDeviationX <= 0
+        || sumSquaredDeviationY <= 0) {
       return;
     }
-    double pearson = (count * sumXY - sumX * sumY) / Math.sqrt(xVariance) / Math.sqrt(yVariance);
+    double pearson = coMoment / Math.sqrt(sumSquaredDeviationX) / Math.sqrt(sumSquaredDeviationY);
     if (Double.isFinite(pearson)) {
       collector.putDouble(0, pearson);
     }

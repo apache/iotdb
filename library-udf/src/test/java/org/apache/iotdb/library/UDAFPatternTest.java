@@ -33,6 +33,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.exception.UDFAttributeNotProvidedException;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesNumberNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
@@ -241,6 +242,26 @@ public class UDAFPatternTest {
     exactMatch.addInput(exactState, columns, null);
 
     Assert.assertEquals(1, exactState.getMatchResults().size());
+  }
+
+  @Test
+  public void testDTWMatchBoundsRetainedInputPoints() {
+    UDAFDTWMatch match = new UDAFDTWMatch();
+    match.beforeStart(createDtwParameters("1", "0"), new UDAFConfigurations());
+    DTWState target = (DTWState) match.createState();
+    target.reset();
+
+    int inputSize = UDAFDTWMatch.MAX_INPUT_POINTS + 1;
+    long[] timestamps = new long[inputSize];
+    double[] values = new double[inputSize];
+    for (int i = 0; i < inputSize; i++) {
+      timestamps[i] = i;
+      values[i] = 1;
+    }
+    Assert.assertThrows(UDFException.class, () -> addDtwInput(match, target, timestamps, values));
+
+    DTWState source = dtwState(match, new long[] {UDAFDTWMatch.MAX_INPUT_POINTS}, new double[] {1});
+    Assert.assertThrows(UDFException.class, () -> match.combineState(target, source));
   }
 
   @Test

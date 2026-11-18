@@ -196,6 +196,12 @@ public final class LibraryUdfMessages {
   public static final String EXCEPTION_CAPACITY_SHOULD_BE_LARGER_THAN_0_055372C7 = "容量必须大于 0。";
   public static final String EXCEPTION_TIME_VALUE_SHOULD_BE_FINITE_A661DDB0 = "时间值必须为有限值。";
   public static final String EXCEPTION_INVALID_DATETIME_FORMAT_A3DC435A = "日期时间格式无效。";
+  public static final String
+      EXCEPTION_DTW_INPUT_EXCEEDS_THE_MAXIMUM_SUPPORTED_NUMBER_OF_DISTINCT_TIMESTAMPS_ARG_8EC7ACC3 =
+          "DTW 输入的不同时间戳数量超过支持上限（%d）。";
+  public static final String
+      EXCEPTION_SPREAD_EXCEEDS_THE_SUPPORTED_OUTPUT_RANGE_FOR_THE_INPUT_TYPE_AF96EC95 =
+          "Spread 超出该输入类型的输出范围。";
 
   private LibraryUdfMessages() {}
 

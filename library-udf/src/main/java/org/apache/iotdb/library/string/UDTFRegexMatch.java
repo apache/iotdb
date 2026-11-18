@@ -83,9 +83,9 @@ public class UDTFRegexMatch implements UDTF {
     if (row.isNull(0)) {
       return;
     }
-    Matcher matcher = pattern.matcher(row.getString(0));
-    if (matcher.find() && matcher.groupCount() >= group) {
-      collector.putString(row.getTime(), matcher.group(group));
+    String matchedGroup = findGroup(row.getString(0));
+    if (matchedGroup != null) {
+      collector.putString(row.getTime(), matchedGroup);
     }
   }
 
@@ -94,12 +94,7 @@ public class UDTFRegexMatch implements UDTF {
     if (row.isNull(0)) {
       return null;
     }
-    Matcher matcher = pattern.matcher(row.getString(0));
-    if (matcher.find() && matcher.groupCount() >= group) {
-      return matcher.group(group);
-    }
-
-    return null;
+    return findGroup(row.getString(0));
   }
 
   @Override
@@ -113,13 +108,21 @@ public class UDTFRegexMatch implements UDTF {
         builder.appendNull();
       } else {
         String str = inputs[i].toString();
-        Matcher matcher = pattern.matcher(str);
-        if (matcher.find() && matcher.groupCount() >= group) {
-          builder.writeBinary(new Binary(matcher.group(group).getBytes()));
+        String matchedGroup = findGroup(str);
+        if (matchedGroup != null) {
+          builder.writeBinary(new Binary(matchedGroup.getBytes()));
         } else {
           builder.appendNull();
         }
       }
     }
+  }
+
+  private String findGroup(String value) {
+    Matcher matcher = pattern.matcher(value);
+    if (!matcher.find() || matcher.groupCount() < group) {
+      return null;
+    }
+    return matcher.group(group);
   }
 }
