@@ -428,6 +428,26 @@ public class TableFunctionTest {
   }
 
   @Test
+  public void testNestedSessionTagCompleteSubsetKeepsOuterGroup() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM SESSION(DATA => (SELECT * FROM SESSION(DATA => table1 "
+            + "PARTITION BY (tag1, tag2, tag3, attr1) ORDER BY time, GAP => 1m)) "
+            + "PARTITION BY (tag1, tag2, tag3) ORDER BY time, GAP => 2m)";
+    planTester.createPlan(sql);
+    Consumer<TableFunctionProcessorMatcher.Builder> outer =
+        sessionMatcher("window_start", "window_end", 120_000L);
+    Consumer<TableFunctionProcessorMatcher.Builder> inner =
+        sessionMatcher("window_start_0", "window_end_1", 60_000L);
+    // The outer PARTITION BY covers every TAG column, so its partitions are single devices and
+    // can reuse the finer inner grouping: both levels are split per region.
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        tableFunctionProcessor(outer, group(tableFunctionProcessor(inner, scanAllColumns()))));
+  }
+
+  @Test
   public void testNestedSetSemanticDifferentOrderByKeepsOuterGroup() {
     PlanTester planTester = new PlanTester();
     String sql =

@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFi
 
 import com.google.common.collect.ImmutableSet;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -90,9 +91,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
  *       {@code partitionKeyCount} keys.
  *   <li>Per-instance partitioning or grouping (a group's partition keys, a table function's,
  *       pattern recognition's, row number's or ranking's PARTITION BY, a pushed-down aggregation
- *       scan's pre-grouped keys, an aggregation's grouping keys): only an exact key set is safe,
- *       because a required prefix can be interleaved across instances. A completed aggregation is
- *       an exception: it emits each full grouping key exactly once.
+ *       scan's pre-grouped keys, an aggregation's grouping keys): an exact key set, or a smaller
+ *       key set that still covers every TAG column, since such a partition is a single device and a
+ *       device cannot span instances. A completed aggregation is also clustered by its exact
+ *       grouping keys even when it hashed.
  * </ul>
  *
  * <p>Otherwise, the GroupNode should be transformed into a SortNode.
@@ -161,23 +163,61 @@ public class ParallelizeGrouping implements PlanOptimizer {
     }
 
     /**
-     * Whether per-instance partitioning satisfies the required partition keys. Only an exact key
-     * set is accepted: a required prefix can be interleaved across instances. A completed
-     * aggregation emits each full grouping key exactly once, so even a hashed aggregation is
-     * clustered by its grouping keys.
+     * Whether per-instance partitioning satisfies the required partition keys. An exact key set is
+     * always accepted, as is a smaller key set that still covers every TAG column when the instance
+     * stream is ordered by a key set containing it: such a partition is a single device, and a
+     * device cannot span instances (cross-region devices are merged by device order).
      */
-    private void checkPartitionKeysMatch(Context context, List<Symbol> childPartitionKeys) {
+    private void checkPartitionKeysMatch(
+        Context context, List<Symbol> childPartitionKeys, Set<Symbol> tagSymbols) {
       if (context.canSkip()) {
         return;
       }
       List<Symbol> requiredKeys =
           context.sortKey.getOrderBy().subList(0, context.partitionKeyCount);
-      context.canOptimized = sameKeys(requiredKeys, childPartitionKeys) ? ENABLE_PARALLEL : TO_SORT;
+      context.canOptimized =
+          sameKeys(requiredKeys, childPartitionKeys)
+                  || splitsByDevice(requiredKeys, childPartitionKeys, tagSymbols)
+              ? ENABLE_PARALLEL
+              : TO_SORT;
+    }
+
+    /** Whether every partition of the required keys is a single device. */
+    private static boolean splitsByDevice(
+        List<Symbol> requiredKeys, List<Symbol> orderedKeys, Set<Symbol> tagSymbols) {
+      return !tagSymbols.isEmpty()
+          && requiredKeys.containsAll(tagSymbols)
+          && ImmutableSet.copyOf(orderedKeys).containsAll(requiredKeys);
     }
 
     private static boolean sameKeys(List<Symbol> requiredKeys, List<Symbol> childKeys) {
       return requiredKeys.size() == childKeys.size()
           && ImmutableSet.copyOf(requiredKeys).equals(ImmutableSet.copyOf(childKeys));
+    }
+
+    /** Symbols of the TAG columns of the table scanned below the node, empty when unknown. */
+    private Set<Symbol> tagSymbolsBelow(PlanNode node) {
+      PlanNode cursor = node;
+      while (!(cursor instanceof DeviceTableScanNode)) {
+        if (cursor.getChildren().size() != 1) {
+          return ImmutableSet.of();
+        }
+        cursor = cursor.getChildren().get(0);
+      }
+      if (cursor instanceof ExternalTsFileScanNode
+          || cursor instanceof ExternalTsFileAggregationScanNode) {
+        return ImmutableSet.of();
+      }
+      Set<Symbol> tagSymbols = new HashSet<>();
+      for (Map.Entry<Symbol, ColumnSchema> entry :
+          analysis
+              .getTableColumnSchema(((DeviceTableScanNode) cursor).getQualifiedObjectName())
+              .entrySet()) {
+        if (entry.getValue().getColumnCategory() == TAG) {
+          tagSymbols.add(entry.getKey());
+        }
+      }
+      return tagSymbols;
     }
 
     @Override
@@ -201,7 +241,9 @@ public class ParallelizeGrouping implements PlanOptimizer {
         // claim cannot reuse it, TO_SORT is recorded on its context and the ancestor sorts this
         // group's output itself.
         checkPartitionKeysMatch(
-            context, node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount()));
+            context,
+            node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount()),
+            tagSymbolsBelow(node));
         GroupNode newNode = (GroupNode) node.clone();
         newNode.addChild(child);
         return newNode;
@@ -241,8 +283,8 @@ public class ParallelizeGrouping implements PlanOptimizer {
 
     /**
      * A row number or ranking forwards rows in input order and the distributed planner drops a sort
-     * below it, so only a surviving group can satisfy an ancestor's claim. The child is processed
-     * first to learn whether its group survives.
+     * below it, so only a surviving group can satisfy an ancestor's claim. Nothing below may decide
+     * the claim, so the child is processed first with it already rejected.
      */
     private PlanNode visitRanking(
         SingleChildProcessNode node, Context context, List<Symbol> partitionBy) {
@@ -253,10 +295,13 @@ public class ParallelizeGrouping implements PlanOptimizer {
       PlanNode child = node.getChild().accept(this, context);
       PlanNode result = node.clone();
       result.addChild(child);
-      if (child instanceof GroupNode
-          && sameKeys(
-              context.sortKey.getOrderBy().subList(0, context.partitionKeyCount), partitionBy)) {
-        context.canOptimized = ENABLE_PARALLEL;
+      if (child instanceof GroupNode) {
+        List<Symbol> requiredKeys =
+            context.sortKey.getOrderBy().subList(0, context.partitionKeyCount);
+        if (sameKeys(requiredKeys, partitionBy)
+            || splitsByDevice(requiredKeys, partitionBy, tagSymbolsBelow(node))) {
+          context.canOptimized = ENABLE_PARALLEL;
+        }
       }
       return result;
     }
@@ -292,7 +337,8 @@ public class ParallelizeGrouping implements PlanOptimizer {
         if (!dataOrganizationSpecification.isPresent()) {
           context.canOptimized = TO_SORT;
         } else {
-          checkPartitionKeysMatch(context, dataOrganizationSpecification.get().getPartitionBy());
+          checkPartitionKeysMatch(
+              context, dataOrganizationSpecification.get().getPartitionBy(), tagSymbolsBelow(node));
         }
       }
       return visitPlan(node, context);
@@ -313,7 +359,7 @@ public class ParallelizeGrouping implements PlanOptimizer {
         if (!orderingScheme.isPresent()) {
           context.canOptimized = TO_SORT;
         } else {
-          checkPartitionKeysMatch(context, partitionBy);
+          checkPartitionKeysMatch(context, partitionBy, tagSymbolsBelow(node));
         }
       }
       return visitPlan(node, context);
@@ -368,7 +414,9 @@ public class ParallelizeGrouping implements PlanOptimizer {
 
     @Override
     public PlanNode visitAggregation(AggregationNode node, Context context) {
-      checkPartitionKeysMatch(context, node.getGroupingKeys());
+      // Exact set only: a hashed aggregation, or one whose pre-grouping is dropped in distributed
+      // planning, does not keep device runs contiguous.
+      checkPartitionKeysMatch(context, node.getGroupingKeys(), ImmutableSet.of());
       return visitPlan(node, context);
     }
 
@@ -381,6 +429,8 @@ public class ParallelizeGrouping implements PlanOptimizer {
         context.canOptimized =
             sameKeys(requiredKeys, node.getGroupingKeys())
                     || sameKeys(requiredKeys, node.getPreGroupedSymbols())
+                    || splitsByDevice(
+                        requiredKeys, node.getPreGroupedSymbols(), tagSymbolsBelow(node))
                 ? ENABLE_PARALLEL
                 : TO_SORT;
       }

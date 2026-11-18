@@ -294,6 +294,32 @@ public class WindowFunctionOptimizationTest {
   }
 
   @Test
+  public void testTagCompleteSubsetWindowPartitionKeepsGroup() {
+    PlanTester planTester = new PlanTester();
+
+    // The outer PARTITION BY covers every TAG column, so each of its partitions is a single
+    // device and cannot span regions even though the inner grouping is finer.
+    String sql =
+        "SELECT *, count(s1) OVER (PARTITION BY tag1, tag2, tag3) FROM "
+            + "(SELECT *, max(s1) OVER (PARTITION BY tag1, tag2, tag3, attr1) AS m FROM table1)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            window(
+                ImmutableList.of("tag1", "tag2", "tag3"),
+                ImmutableList.of(),
+                group(
+                    window(
+                        ImmutableList.of("tag1", "tag2", "tag3", "attr1"),
+                        ImmutableList.of(),
+                        group(tableScan("testdb.table1")))))));
+    // Both windows run per region; only a collect joins them.
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+  }
+
+  @Test
   public void testTopKRankingPushDown() {
     PlanTester planTester = new PlanTester();
 
