@@ -66,8 +66,8 @@ DataNode archives are no longer published. AINode uses its own archive.
 For example:
 ```shell
 $ ls target/
-apache-iotdb-2.0.11-SNAPSHOT-all-bin.zip
-apache-iotdb-2.0.11-SNAPSHOT-ainode-bin.zip
+apache-iotdb-2.0.13-SNAPSHOT-all-bin.zip
+apache-iotdb-2.0.13-SNAPSHOT-ainode-bin.zip
 ```
 
 To avoid manually copy these files, you can run our `do-docker-build.sh` with argument `-b`.
@@ -109,7 +109,7 @@ docker run -d \
   -e AIN_CLUSTER_INGRESS_PORT=6667 \
   -e AIN_CLUSTER_INGRESS_USERNAME=root \
   -e AIN_CLUSTER_INGRESS_PASSWORD=root \
-  apache/iotdb:2.0.11-SNAPSHOT-ainode
+  apache/iotdb:2.0.13-SNAPSHOT-ainode
 ```
 
 ## Quick start
