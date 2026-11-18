@@ -36,6 +36,7 @@
           1. Runs cmake configure + build (cmake-maven-plugin)
           2. Runs plain/TLS/mTLS integration-test phases (exec-maven-plugin)
           3. Packages the produced install tree (maven-assembly-plugin)
+          4. Generates the CycloneDX SBOM alongside the ZIP (groovy-maven-plugin)
 
         Everything else - thrift download, code generation, Boost/m4/flex/bison
         bootstrap, OpenSSL discovery - lives in CMake modules under cmake/.
@@ -238,6 +239,22 @@
                                     </includes>
                                 </fileSet>
                             </fileSets>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.gmaven</groupId>
+                <artifactId>groovy-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>generate-release-zip-sboms</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>execute</goal>
+                        </goals>
+                        <configuration>
+                            <source>${maven.multiModuleProjectDirectory}/src/main/groovy/generateReleaseSboms.groovy</source>
                         </configuration>
                     </execution>
                 </executions>

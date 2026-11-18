@@ -225,6 +225,7 @@ jobs:
           path: |
             ${{ steps.pkg.outputs.path }}
             ${{ steps.pkg.outputs.sha512_path }}
+            ${{ steps.pkg.outputs.path }}.cdx.json
           if-no-files-found: error
 
   package-linux-aarch64-glibc228:
@@ -283,6 +284,7 @@ jobs:
           path: |
             ${{ steps.pkg.outputs.path }}
             ${{ steps.pkg.outputs.sha512_path }}
+            ${{ steps.pkg.outputs.path }}.cdx.json
           if-no-files-found: error
 
   package-macos:
@@ -356,6 +358,7 @@ jobs:
           path: |
             ${{ steps.pkg.outputs.path }}
             ${{ steps.pkg.outputs.sha512_path }}
+            ${{ steps.pkg.outputs.path }}.cdx.json
           if-no-files-found: error
       - name: Verify packaged examples
         shell: bash
@@ -508,6 +511,7 @@ jobs:
           path: |
             ${{ steps.pkg.outputs.path }}
             ${{ steps.pkg.outputs.sha512_path }}
+            ${{ steps.pkg.outputs.path }}.cdx.json
           if-no-files-found: error
       - name: Verify packaged examples
         shell: bash

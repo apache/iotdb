@@ -59,6 +59,29 @@ You can choose issue types: bug, improvement, new feature, etc.  New issues will
 
 * Before developing a new feature, you can send an e-mail to declare the task you want to do.（Hi，I'm working on issue IOTDB-XXX，My plan is ...）
 
+## Release SBOMs
+
+The Maven `package` phase generates a CycloneDX JSON alongside each source and Java
+distribution ZIP in an `apache-release` build. The standalone C++ packaging build generates
+its JSON too. Java distribution SBOMs use
+[Syft](https://oss.anchore.com/docs/installation/syft/) on `PATH`.
+
+```bash
+mvn clean package -P apache-release -pl distribution -am -DskipTests
+mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
+```
+
+The source SBOM keeps the Maven dependency graph. Each Java distribution SBOM inventories the
+packages Syft identifies in the actual ZIP. The C++ packaging step reads the Thrift version
+and Boost include directory resolved by CMake, and includes OpenSSL when it is bundled or
+statically linked. The C++ package workflow includes the JSON in the downloadable CI artifact.
+
+Each generated `<archive>.zip.cdx.json` records the ZIP's SHA-256. The inventory is marked
+incomplete because Maven only covers the source project's Maven dependencies, and binary
+catalogers can miss bundled code without component metadata. A frozen AINode distribution
+needs a build-time inventory to cover Python modules without package metadata. Upload each
+JSON alongside its ZIP in the [ATR release draft](https://releases.apache.org/docs/sbom-workflows).
+
 ## Contributing documents
 
 The content of all IoTDB official websites lives in a separate repository,
