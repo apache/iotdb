@@ -51,8 +51,8 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
@@ -526,8 +526,8 @@ public class SessionConnectionTest {
     private final AtomicInteger statementExecutionCount = new AtomicInteger();
     private final AtomicInteger activeConnections = new AtomicInteger();
 
-    private ForceCloseTestServer(
-        CountDownLatch rpcStarted, CountDownLatch continueRpc) throws Exception {
+    private ForceCloseTestServer(CountDownLatch rpcStarted, CountDownLatch continueRpc)
+        throws Exception {
       ServerSocket listener = new ServerSocket(0);
       endpoint = new TEndPoint("127.0.0.1", listener.getLocalPort());
       socket = new TServerSocket(listener);
@@ -582,8 +582,7 @@ public class SessionConnectionTest {
                 ServerContext context, TTransport input, TTransport output) {}
 
             @Override
-            public void deleteContext(
-                ServerContext context, TProtocol input, TProtocol output) {
+            public void deleteContext(ServerContext context, TProtocol input, TProtocol output) {
               activeConnections.decrementAndGet();
             }
           });
