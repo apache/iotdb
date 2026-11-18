@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletInsertNodeReq;
@@ -40,12 +42,15 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -72,6 +77,19 @@ public class PipeTransferSerializationSizeTest {
     Assert.assertEquals(
         PipeTransferTabletRawReqV2.calculateAirGapSerializedSize(tablet, database),
         PipeTransferTabletRawReqV2.toTPipeTransferBytes(tablet, false, database).length);
+  }
+
+  @Test
+  public void testAirGapTabletRequestByteFormat() throws Exception {
+    final Tablet tablet = createTablet();
+    final String database = "pipe_db_\u6d4b\u8bd5";
+    Assert.assertArrayEquals(
+        serializeTabletRequestWithStream(tablet, PipeRequestType.TRANSFER_TABLET_RAW, false, null),
+        PipeTransferTabletRawReq.toTPipeTransferBytes(tablet, false));
+    Assert.assertArrayEquals(
+        serializeTabletRequestWithStream(
+            tablet, PipeRequestType.TRANSFER_TABLET_RAW_V2, true, database),
+        PipeTransferTabletRawReqV2.toTPipeTransferBytes(tablet, true, database));
   }
 
   @Test
@@ -515,6 +533,25 @@ public class PipeTransferSerializationSizeTest {
     final byte[] actualBytes = new byte[expectedBytes.length];
     buffer.get(actualBytes);
     Assert.assertArrayEquals(expectedBytes, actualBytes);
+  }
+
+  private static byte[] serializeTabletRequestWithStream(
+      final Tablet tablet,
+      final PipeRequestType requestType,
+      final boolean isAligned,
+      final String databaseName)
+      throws IOException {
+    try (final PublicBAOS output = new PublicBAOS();
+        final DataOutputStream stream = new DataOutputStream(output)) {
+      ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), stream);
+      ReadWriteIOUtils.write(requestType.getType(), stream);
+      tablet.serialize(stream);
+      ReadWriteIOUtils.write(isAligned, stream);
+      if (databaseName != null) {
+        ReadWriteIOUtils.write(databaseName, stream);
+      }
+      return output.toByteArray();
+    }
   }
 
   private static Tablet createTablet() {
