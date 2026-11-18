@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class AlignedWritableMemChunkTest {
 
@@ -211,6 +213,30 @@ public class AlignedWritableMemChunkTest {
     Assert.assertEquals(columnCount + 1, chunk.getSchemaList().size());
     Assert.assertEquals(5L, list.getLongByValueIndex(2, 1));
     Assert.assertEquals(4L, list.getLongByValueIndex(2, columnCount));
+    chunk.release();
+  }
+
+  @Test
+  public void testEncodeRestoresSharedMaxNumberOfPointsInChunk() {
+    IMeasurementSchema text = new MeasurementSchema("text", TSDataType.TEXT);
+    AlignedWritableMemChunk chunk =
+        new AlignedWritableMemChunk(new ArrayList<>(Collections.singletonList(text)));
+    Binary value = new Binary(new byte[1024]);
+    for (int i = 0; i < 10; i++) {
+      chunk.writeAlignedPoints(i, new Object[] {value}, Collections.singletonList(text));
+    }
+    chunk.initWorkingListForFlushIfNecessary(chunk.getWorkingTVList(), false);
+
+    long originalMaxNumberOfPointsInChunk = 100_000L;
+    BatchEncodeInfo encodeInfo =
+        new BatchEncodeInfo(0, 0, 0, 2048, originalMaxNumberOfPointsInChunk, 4096);
+    LinkedBlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+    chunk.encode(ioTaskQueue, encodeInfo, new long[2048], false);
+
+    // The per-chunk point cap computed from the largest column must not leak into the shared
+    // BatchEncodeInfo used by the following devices of the same flush task.
+    Assert.assertEquals(originalMaxNumberOfPointsInChunk, encodeInfo.maxNumberOfPointsInChunk);
+    Assert.assertTrue(ioTaskQueue.size() > 1);
     chunk.release();
   }
 }

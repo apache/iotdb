@@ -1073,11 +1073,27 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       BatchEncodeInfo encodeInfo,
       long[] times,
       boolean ignoreAllNullRows) {
-    encodeInfo.maxNumberOfPointsInChunk =
-        Math.min(
-            encodeInfo.maxNumberOfPointsInChunk,
-            (encodeInfo.targetChunkSize / getAvgPointSizeOfLargestColumn()));
+    // The cap is derived from this memchunk's largest column. BatchEncodeInfo is shared by all
+    // devices of a flush task, so keep the narrowed cap local to this encode call and restore the
+    // original value afterwards; otherwise one wide TEXT column would shrink the chunk size of
+    // every following device in the same flush.
+    long originalMaxNumberOfPointsInChunk = encodeInfo.maxNumberOfPointsInChunk;
+    try {
+      encodeInfo.maxNumberOfPointsInChunk =
+          Math.min(
+              originalMaxNumberOfPointsInChunk,
+              (encodeInfo.targetChunkSize / getAvgPointSizeOfLargestColumn()));
+      encodeWithComputedChunkCap(ioTaskQueue, encodeInfo, times, ignoreAllNullRows);
+    } finally {
+      encodeInfo.maxNumberOfPointsInChunk = originalMaxNumberOfPointsInChunk;
+    }
+  }
 
+  private void encodeWithComputedChunkCap(
+      BlockingQueue<Object> ioTaskQueue,
+      BatchEncodeInfo encodeInfo,
+      long[] times,
+      boolean ignoreAllNullRows) {
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingAlignedTVList(
           ioTaskQueue,
