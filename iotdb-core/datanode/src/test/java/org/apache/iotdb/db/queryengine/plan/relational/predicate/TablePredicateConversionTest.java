@@ -588,11 +588,10 @@ public class TablePredicateConversionTest {
         new ValueIsNotNullOperator(0),
         convertInt64(compare(ComparisonExpression.Operator.LESS_THAN, upperBound)));
     // Long.MIN_VALUE is exact as a double, so the lower boundary still converts
+    DoubleLiteral lowerBound = new DoubleLiteral("-9223372036854775808.0");
     Assert.assertEquals(
         ValueFilterApi.eq(0, Long.MIN_VALUE, TSDataType.INT64),
-        convertInt64(
-            compare(
-                ComparisonExpression.Operator.EQUAL, new DoubleLiteral("-9223372036854775808.0"))));
+        convertInt64(compare(ComparisonExpression.Operator.EQUAL, lowerBound)));
   }
 
   private Expression compare(ComparisonExpression.Operator operator, Literal literal) {
