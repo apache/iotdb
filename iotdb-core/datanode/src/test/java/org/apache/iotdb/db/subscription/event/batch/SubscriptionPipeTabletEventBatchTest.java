@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.TsFileParserMemoryReservation;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -42,7 +43,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -137,7 +137,7 @@ public class SubscriptionPipeTabletEventBatchTest {
     batch.resetForIteration();
 
     Assert.assertTrue(batch.hasNext());
-    final Pair<String, List<Tablet>> first = batch.next();
+    final SubscriptionPipeTabletEventBatch.TabletBatch first = batch.next();
     assertTablet(first, "table_0", 1);
     Assert.assertTrue("The exhausted file must release its parser before ACK", canReserveParser());
 
@@ -271,11 +271,15 @@ public class SubscriptionPipeTabletEventBatchTest {
   }
 
   private static void assertTablet(
-      final Pair<String, List<Tablet>> tablets, final String tableName, final long time) {
+      final SubscriptionPipeTabletEventBatch.TabletBatch tablets,
+      final String tableName,
+      final long time) {
     Assert.assertNotNull(tablets);
-    Assert.assertEquals("test_sg_0", tablets.left);
-    Assert.assertEquals(1, tablets.right.size());
-    final Tablet tablet = tablets.right.get(0);
+    Assert.assertEquals("test_sg_0", tablets.getDatabaseName());
+    Assert.assertEquals(1, tablets.getTablets().size());
+    final Tablet tablet = tablets.getTablets().get(0);
+    Assert.assertEquals(
+        PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet), tablets.getEstimatedSizeInBytes());
     Assert.assertEquals(tableName, tablet.getTableName());
     Assert.assertEquals(1, tablet.getRowSize());
     Assert.assertEquals(time, tablet.getTimestamps()[0]);

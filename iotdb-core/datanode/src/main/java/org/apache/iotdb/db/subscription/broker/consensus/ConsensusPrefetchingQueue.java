@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
+import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker.SafeFrontier;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
@@ -81,6 +82,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -1433,22 +1435,24 @@ public class ConsensusPrefetchingQueue {
     return writerStates.computeIfAbsent(writerNodeId, ignored -> new WriterState());
   }
 
-  private void refreshWriterSafeFrontiers() {
-    final Map<Integer, Long> safePts =
-        serverImpl.getWriterSafeFrontierTracker().snapshotEffectiveSafePts();
-    for (final Map.Entry<Integer, Long> entry : safePts.entrySet()) {
+  private WriterSafeFrontierTracker.Snapshot refreshWriterSafeFrontiers() {
+    final WriterSafeFrontierTracker.Snapshot safePts =
+        serverImpl.getWriterSafeFrontierTracker().snapshotEffectiveSafePtsWithVersion();
+    for (final Map.Entry<Integer, Long> entry : safePts.getEffectiveSafePts().entrySet()) {
       final WriterState writerState = trackWriterState(entry.getKey());
       writerState.effectiveSafePt = Math.max(writerState.effectiveSafePt, entry.getValue());
     }
+    return safePts;
   }
 
-  private <T extends WriterBufferedEntry> PriorityQueue<WriterFrontier> buildWriterFrontiers(
+  private <T extends WriterBufferedEntry> WriterFrontierSnapshot buildWriterFrontiers(
       final Map<Integer, ?> writerEntriesByWriter, final Function<Integer, T> headSupplier) {
-    refreshWriterSafeFrontiers();
-    final PriorityQueue<WriterFrontier> frontiers = new PriorityQueue<>();
+    final WriterSafeFrontierTracker.Snapshot safePts = refreshWriterSafeFrontiers();
+    final Set<Integer> activeWriterNodeIdsSnapshot = activeWriterNodeIds;
     final boolean useActiveWriterBarriers = shouldUseActiveWriterBarriers();
-    final Set<Integer> writerNodeIds = ConcurrentHashMap.newKeySet();
-    final Set<Integer> seenActiveWriterNodeIds = ConcurrentHashMap.newKeySet();
+    final PriorityQueue<WriterFrontier> frontiers = new PriorityQueue<>();
+    final Set<Integer> writerNodeIds = new HashSet<>();
+    final Set<Integer> seenActiveWriterNodeIds = new HashSet<>();
     writerNodeIds.addAll(writerStates.keySet());
     writerNodeIds.addAll(writerEntriesByWriter.keySet());
     for (final int writerNodeId : writerNodeIds) {
@@ -1458,29 +1462,36 @@ public class ConsensusPrefetchingQueue {
       }
       final T head = headSupplier.apply(writerNodeId);
       if (Objects.nonNull(head)) {
-        if (isWriterRuntimeActive(writerNodeId)) {
+        if (isWriterRuntimeActive(writerNodeId, activeWriterNodeIdsSnapshot)) {
           seenActiveWriterNodeIds.add(writerNodeId);
         }
-        frontiers.add(WriterFrontier.forHead(writerNodeId, head));
+        frontiers.add(WriterFrontier.forHead(writerNodeId, head.getOrderingKey()));
         continue;
       }
       if (Objects.nonNull(writerState)
           && writerState.effectiveSafePt > 0
           && useActiveWriterBarriers
-          && isWriterRuntimeActive(writerNodeId)) {
+          && isWriterRuntimeActive(writerNodeId, activeWriterNodeIdsSnapshot)) {
         seenActiveWriterNodeIds.add(writerNodeId);
         frontiers.add(WriterFrontier.forBarrier(writerNodeId, writerState.effectiveSafePt));
       }
     }
     if (useActiveWriterBarriers) {
-      for (final Integer activeWriterNodeId : activeWriterNodeIds) {
+      for (final Integer activeWriterNodeId : activeWriterNodeIdsSnapshot) {
         if (!seenActiveWriterNodeIds.contains(activeWriterNodeId)) {
-          frontiers.add(WriterFrontier.forBarrier(activeWriterNodeId, Long.MIN_VALUE));
+          frontiers.add(WriterFrontier.forUnknownActiveWriter(activeWriterNodeId));
           break;
         }
       }
     }
-    return frontiers;
+    return new WriterFrontierSnapshot(
+        frontiers, safePts.getVersion(), activeWriterNodeIdsSnapshot, useActiveWriterBarriers);
+  }
+
+  private boolean isWriterRuntimeActive(
+      final int writerNodeId, final Set<Integer> activeWriterNodeIdsSnapshot) {
+    return activeWriterNodeIdsSnapshot.isEmpty()
+        || activeWriterNodeIdsSnapshot.contains(writerNodeId);
   }
 
   private boolean shouldUseActiveWriterBarriers() {
@@ -1519,7 +1530,7 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private PriorityQueue<WriterFrontier> buildRealtimeWriterFrontiers() {
+  private WriterFrontierSnapshot buildRealtimeWriterFrontiers() {
     return buildWriterFrontiers(realtimeEntriesByWriter, this::peekRealtimeEntry);
   }
 
@@ -2068,6 +2079,7 @@ public class ConsensusPrefetchingQueue {
               new WriterFrontier(
                   writerNodeId,
                   new OrderingKey(head.getPhysicalTime(), writerNodeId, head.getProgressLocalSeq()),
+                  false,
                   false));
         } else if (isWriterRuntimeActive(writerNodeId) || !state.caughtUp) {
           final SafeFrontier safe = safeFrontiers.get(writerNodeId);
@@ -3868,7 +3880,7 @@ public class ConsensusPrefetchingQueue {
 
   private <T extends WriterBufferedEntry> boolean drainWriterEntries(
       final DeliveryBatchState batchState,
-      final Supplier<PriorityQueue<WriterFrontier>> frontierSupplier,
+      final Supplier<WriterFrontierSnapshot> frontierSupplier,
       final Function<Integer, T> headSupplier,
       final Predicate<T> releasePredicate,
       final BiConsumer<Integer, T> removeHeadAction,
@@ -3877,20 +3889,44 @@ public class ConsensusPrefetchingQueue {
       final long maxBatchBytes,
       final boolean trackLingerTime,
       final long expectedSeekGeneration) {
+    WriterFrontierSnapshot frontierSnapshot = frontierSupplier.get();
+    final WriterFrontierQueue frontiers = new WriterFrontierQueue(frontierSnapshot.frontiers);
+    boolean hasConsumedEntrySinceRefresh = false;
+
     while (true) {
-      final PriorityQueue<WriterFrontier> frontiers = frontierSupplier.get();
-      if (frontiers.isEmpty()) {
+      if (frontierSnapshot.activeWriterNodeIds != activeWriterNodeIds
+          || frontierSnapshot.useActiveWriterBarriers != shouldUseActiveWriterBarriers()
+          || frontierSnapshot.safeFrontierVersion
+              != serverImpl.getWriterSafeFrontierTracker().getEffectiveSafePtVersion()) {
+        frontierSnapshot = frontierSupplier.get();
+        frontiers.reset(frontierSnapshot.frontiers);
+        hasConsumedEntrySinceRefresh = false;
+        continue;
+      }
+
+      final WriterFrontier frontier = frontiers.peek();
+      if (Objects.isNull(frontier)) {
         return true;
       }
-      final WriterFrontier frontier = frontiers.peek();
-      if (Objects.isNull(frontier) || frontier.isBarrier) {
+      if (frontier.isBarrier) {
+        if (hasConsumedEntrySinceRefresh) {
+          frontierSnapshot = frontierSupplier.get();
+          frontiers.reset(frontierSnapshot.frontiers);
+          hasConsumedEntrySinceRefresh = false;
+          continue;
+        }
         lastBlockedWriterFrontier = frontier;
         lastWriterBarrierInOrderedReplay = false;
         return true;
       }
+
+      frontiers.poll();
       final T writerHead = headSupplier.apply(frontier.writerNodeId);
       if (Objects.isNull(writerHead)) {
-        return true;
+        frontierSnapshot = frontierSupplier.get();
+        frontiers.reset(frontierSnapshot.frontiers);
+        hasConsumedEntrySinceRefresh = false;
+        continue;
       }
       if (!releasePredicate.test(writerHead)) {
         return true;
@@ -3901,6 +3937,8 @@ public class ConsensusPrefetchingQueue {
           return false;
         }
         removeHeadAction.accept(frontier.writerNodeId, writerHead);
+        hasConsumedEntrySinceRefresh = true;
+        addNextWriterFrontier(frontiers, frontierSnapshot, frontier, headSupplier);
         continue;
       }
 
@@ -3912,6 +3950,38 @@ public class ConsensusPrefetchingQueue {
 
       removeHeadAction.accept(frontier.writerNodeId, writerHead);
       batchState.append(writerHead, entryEstimatedBytes, trackLingerTime);
+      hasConsumedEntrySinceRefresh = true;
+      addNextWriterFrontier(frontiers, frontierSnapshot, frontier, headSupplier);
+    }
+  }
+
+  private <T extends WriterBufferedEntry> void addNextWriterFrontier(
+      final WriterFrontierQueue frontiers,
+      final WriterFrontierSnapshot frontierSnapshot,
+      final WriterFrontier frontier,
+      final Function<Integer, T> headSupplier) {
+    final T nextWriterHead = headSupplier.apply(frontier.writerNodeId);
+    if (Objects.nonNull(nextWriterHead)) {
+      frontiers.add(WriterFrontier.forHead(frontier.writerNodeId, nextWriterHead.getOrderingKey()));
+      return;
+    }
+
+    if (!frontierSnapshot.useActiveWriterBarriers) {
+      return;
+    }
+    final Set<Integer> activeWriterNodeIdsSnapshot = frontierSnapshot.activeWriterNodeIds;
+    final WriterState writerState = writerStates.get(frontier.writerNodeId);
+    final boolean writerIsRuntimeActive =
+        isWriterRuntimeActive(frontier.writerNodeId, activeWriterNodeIdsSnapshot);
+    if (Objects.nonNull(writerState)
+        && !writerState.closed
+        && writerState.effectiveSafePt > 0
+        && writerIsRuntimeActive) {
+      frontiers.add(WriterFrontier.forBarrier(frontier.writerNodeId, writerState.effectiveSafePt));
+    } else if (!activeWriterNodeIdsSnapshot.isEmpty()
+        && activeWriterNodeIdsSnapshot.contains(frontier.writerNodeId)
+        && !frontiers.hasUnknownActiveWriterBarrier()) {
+      frontiers.add(WriterFrontier.forUnknownActiveWriter(frontier.writerNodeId));
     }
   }
 
@@ -5810,8 +5880,7 @@ public class ConsensusPrefetchingQueue {
   }
 
   private boolean isWriterRuntimeActive(final int writerNodeId) {
-    final Set<Integer> writerNodeIds = activeWriterNodeIds;
-    return writerNodeIds.isEmpty() || writerNodeIds.contains(writerNodeId);
+    return isWriterRuntimeActive(writerNodeId, activeWriterNodeIds);
   }
 
   public void applyRuntimeState(final ConsensusRegionRuntimeState runtimeState) {
@@ -6389,25 +6458,114 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private static final class WriterFrontier implements Comparable<WriterFrontier> {
+  private static final class WriterFrontierSnapshot {
+    private final PriorityQueue<WriterFrontier> frontiers;
+    private final long safeFrontierVersion;
+    private final Set<Integer> activeWriterNodeIds;
+    private final boolean useActiveWriterBarriers;
+
+    private WriterFrontierSnapshot(
+        final PriorityQueue<WriterFrontier> frontiers,
+        final long safeFrontierVersion,
+        final Set<Integer> activeWriterNodeIds,
+        final boolean useActiveWriterBarriers) {
+      this.frontiers = frontiers;
+      this.safeFrontierVersion = safeFrontierVersion;
+      this.activeWriterNodeIds = activeWriterNodeIds;
+      this.useActiveWriterBarriers = useActiveWriterBarriers;
+    }
+  }
+
+  static final class WriterFrontierQueue {
+    private PriorityQueue<WriterFrontier> frontiers = new PriorityQueue<>();
+    private Integer unknownActiveWriterBarrierNodeId;
+
+    WriterFrontierQueue(final PriorityQueue<WriterFrontier> frontiers) {
+      reset(frontiers);
+    }
+
+    void reset(final PriorityQueue<WriterFrontier> frontiers) {
+      this.frontiers = frontiers;
+      unknownActiveWriterBarrierNodeId = null;
+      for (final WriterFrontier frontier : frontiers) {
+        if (frontier.isUnknownActiveWriterBarrier) {
+          unknownActiveWriterBarrierNodeId = frontier.writerNodeId;
+          break;
+        }
+      }
+    }
+
+    void add(final WriterFrontier frontier) {
+      frontiers.add(frontier);
+      if (frontier.isUnknownActiveWriterBarrier) {
+        unknownActiveWriterBarrierNodeId = frontier.writerNodeId;
+      }
+    }
+
+    WriterFrontier peek() {
+      return frontiers.peek();
+    }
+
+    WriterFrontier poll() {
+      final WriterFrontier frontier = frontiers.poll();
+      if (frontier != null && frontier.isUnknownActiveWriterBarrier) {
+        unknownActiveWriterBarrierNodeId = null;
+      }
+      return frontier;
+    }
+
+    boolean hasUnknownActiveWriterBarrier() {
+      return unknownActiveWriterBarrierNodeId != null;
+    }
+  }
+
+  static final class WriterFrontier implements Comparable<WriterFrontier> {
     private final int writerNodeId;
     private final OrderingKey orderingKey;
     private final boolean isBarrier;
+    private final boolean isUnknownActiveWriterBarrier;
 
     private WriterFrontier(
-        final int writerNodeId, final OrderingKey orderingKey, final boolean isBarrier) {
+        final int writerNodeId,
+        final OrderingKey orderingKey,
+        final boolean isBarrier,
+        final boolean isUnknownActiveWriterBarrier) {
       this.writerNodeId = writerNodeId;
       this.orderingKey = orderingKey;
       this.isBarrier = isBarrier;
+      this.isUnknownActiveWriterBarrier = isUnknownActiveWriterBarrier;
     }
 
     private static WriterFrontier forHead(final int writerNodeId, final WriterBufferedEntry entry) {
-      return new WriterFrontier(writerNodeId, entry.getOrderingKey(), false);
+      return forHead(writerNodeId, entry.getOrderingKey());
+    }
+
+    static WriterFrontier forHead(final int writerNodeId, final OrderingKey orderingKey) {
+      return new WriterFrontier(writerNodeId, orderingKey, false, false);
     }
 
     private static WriterFrontier forBarrier(final int writerNodeId, final long effectiveSafePt) {
       return new WriterFrontier(
-          writerNodeId, new OrderingKey(effectiveSafePt, Integer.MIN_VALUE, Long.MIN_VALUE), true);
+          writerNodeId,
+          new OrderingKey(effectiveSafePt, Integer.MIN_VALUE, Long.MIN_VALUE),
+          true,
+          false);
+    }
+
+    static WriterFrontier forUnknownActiveWriter(final int writerNodeId) {
+      return new WriterFrontier(
+          writerNodeId,
+          new OrderingKey(Long.MIN_VALUE, Integer.MIN_VALUE, Long.MIN_VALUE),
+          true,
+          true);
+    }
+
+    int getWriterNodeId() {
+      return writerNodeId;
+    }
+
+    boolean isBarrier() {
+      return isBarrier;
     }
 
     @Override
