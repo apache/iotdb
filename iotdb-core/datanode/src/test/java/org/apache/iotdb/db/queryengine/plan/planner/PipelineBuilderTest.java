@@ -1592,7 +1592,7 @@ public class PipelineBuilderTest {
     fragmentInstanceContext.setDataRegion(dataRegion);
 
     return new LocalExecutionPlanContext(
-        typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
+        typeProvider, fragmentInstanceContext, new DataNodeQueryContext());
   }
 
   private LocalExecutionPlanContext createLocalExecutionPlanContextWithQueryId(
@@ -1610,7 +1610,7 @@ public class PipelineBuilderTest {
     fragmentInstanceContext.setDataRegion(dataRegion);
 
     return new LocalExecutionPlanContext(
-        typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
+        typeProvider, fragmentInstanceContext, new DataNodeQueryContext());
   }
 
   /**

@@ -20,14 +20,22 @@
 package org.apache.iotdb.db.queryengine.plan.scheduler.load;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -38,6 +46,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -51,7 +60,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
@@ -132,6 +143,134 @@ public class LoadFallbackHandlerTest {
 
     Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
     Assert.assertTrue(failedIndexes.isEmpty());
+  }
+
+  @Test
+  public void testTableFallbackPreservesRequestSchemaCreationSetting() throws Exception {
+    assertTableConversionPreservesRequestSchemaCreationSetting(false);
+  }
+
+  @Test
+  public void testTableRewritePreservesRequestSchemaCreationSetting() throws Exception {
+    assertTableConversionPreservesRequestSchemaCreationSetting(true);
+  }
+
+  @Test
+  public void testTreeFallbackPreservesRequestSchemaCreationSetting() throws Exception {
+    when(converter.convertForTreeModel(any())).thenReturn(Optional.of(RpcUtils.SUCCESS_STATUS));
+    final File file = temporaryFolder.newFile("tree-schema.tsfile");
+    for (final boolean tableModelRequest : new boolean[] {false, true}) {
+      for (final boolean generatedByPipe : new boolean[] {false, true}) {
+        for (final boolean requested : new boolean[] {false, true, false}) {
+          clearInvocations(converter);
+          final LoadSingleTsFileNode node =
+              splitLoadNode(file, tableModelRequest, generatedByPipe, requested, false);
+          final List<Integer> failedIndexes = new ArrayList<>(Collections.singletonList(0));
+          final QueryStateMachine stateMachine = newStateMachine();
+          new LoadFallbackHandler(
+                  mock(MPPQueryContext.class),
+                  generatedByPipe,
+                  Collections.singletonList(node),
+                  failedIndexes,
+                  stateMachine)
+              .convertFailedTsFilesToTablets();
+          Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+          Assert.assertTrue(failedIndexes.isEmpty());
+          final ArgumentCaptor<LoadTsFileStatement> statement =
+              ArgumentCaptor.forClass(LoadTsFileStatement.class);
+          verify(converter).convertForTreeModel(statement.capture());
+          Assert.assertEquals(requested, statement.getValue().isAutoCreateSchema());
+          Assert.assertEquals(generatedByPipe, statement.getValue().isGeneratedByPipe());
+          Assert.assertTrue(statement.getValue().isDeleteAfterLoad());
+          Assert.assertEquals(Collections.singletonList(file), statement.getValue().getTsFiles());
+          Assert.assertTrue(file.exists());
+        }
+      }
+    }
+  }
+
+  private void assertTableConversionPreservesRequestSchemaCreationSetting(final boolean rewrite)
+      throws Exception {
+    when(converter.convertForTableModel(any())).thenReturn(Optional.of(RpcUtils.SUCCESS_STATUS));
+    final File file = temporaryFolder.newFile("table-schema.tsfile");
+    for (final boolean tableModelRequest : new boolean[] {false, true}) {
+      for (final boolean generatedByPipe : new boolean[] {false, true}) {
+        for (final boolean requested : new boolean[] {false, true, false}) {
+          clearInvocations(converter);
+          final LoadSingleTsFileNode node =
+              splitLoadNode(file, tableModelRequest, generatedByPipe, requested, true);
+          if (rewrite) {
+            Assert.assertTrue(
+                new TabletRewriteLoadStrategy(
+                        converter, generatedByPipe, mock(LoadTsFileCostMetricsSet.class))
+                    .execute(node));
+          } else {
+            final List<Integer> failedIndexes = new ArrayList<>(Collections.singletonList(0));
+            final QueryStateMachine stateMachine = newStateMachine();
+            new LoadFallbackHandler(
+                    mock(MPPQueryContext.class),
+                    generatedByPipe,
+                    Collections.singletonList(node),
+                    failedIndexes,
+                    stateMachine)
+                .convertFailedTsFilesToTablets();
+            Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+            Assert.assertTrue(failedIndexes.isEmpty());
+          }
+          final ArgumentCaptor<LoadTsFile> statement = ArgumentCaptor.forClass(LoadTsFile.class);
+          verify(converter).convertForTableModel(statement.capture());
+          Assert.assertEquals(requested, statement.getValue().isAutoCreateSchema());
+          Assert.assertEquals("test", statement.getValue().getDatabase());
+          Assert.assertEquals(generatedByPipe, statement.getValue().isGeneratedByPipe());
+          Assert.assertEquals(!rewrite, statement.getValue().isDeleteAfterLoad());
+          Assert.assertTrue(file.exists());
+        }
+      }
+    }
+  }
+
+  private LoadSingleTsFileNode splitLoadNode(
+      final File file,
+      final boolean tableModelRequest,
+      final boolean generatedByPipe,
+      final boolean requested,
+      final boolean tableModelFile)
+      throws Exception {
+    final IAnalysis analysis;
+    if (tableModelRequest) {
+      final LoadTsFile statement =
+          LoadTsFile.createUnchecked(
+                  null,
+                  file.getAbsolutePath(),
+                  requested
+                      ? Collections.emptyMap()
+                      : Collections.singletonMap("auto-create-schema", "false"))
+              .setDatabase("test")
+              .setDeleteAfterLoad(true);
+      statement.addWritePointCount(1);
+      final org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis tableAnalysis =
+          new org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis(
+              generatedByPipe ? new PipeEnriched(statement) : statement, Collections.emptyMap());
+      analysis = tableAnalysis;
+    } else {
+      final LoadTsFileStatement statement =
+          LoadTsFileStatement.createUnchecked(file.getAbsolutePath()).setDeleteAfterLoad(true);
+      statement.setAutoCreateSchema(requested);
+      statement.addWritePointCount(1);
+      final org.apache.iotdb.db.queryengine.plan.analyze.Analysis treeAnalysis =
+          new org.apache.iotdb.db.queryengine.plan.analyze.Analysis();
+      treeAnalysis.setRealStatement(
+          generatedByPipe ? new PipeEnrichedStatement(statement) : statement);
+      analysis = treeAnalysis;
+    }
+    final LoadTsFileNode loadNode =
+        new LoadTsFileNode(
+            new PlanNodeId("load_schema"),
+            Collections.singletonList(new TsFileResource(file)),
+            Collections.singletonList(tableModelFile),
+            tableModelFile ? "test" : "root.test",
+            false);
+    return (LoadSingleTsFileNode) loadNode.splitByPartition(analysis).get(0);
   }
 
   private LoadSingleTsFileNode newNode(final String name, final boolean tableModel)

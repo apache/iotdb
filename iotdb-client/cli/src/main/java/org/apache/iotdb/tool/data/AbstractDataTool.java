@@ -49,7 +49,6 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.csv.QuoteMode;
 import org.apache.thrift.annotation.Nullable;
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.ObjectUtils;
@@ -169,6 +168,8 @@ public abstract class AbstractDataTool {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractDataTool.class);
+  private static final Pattern INTEGER_PATTERN = Pattern.compile("[+-]?\\d+");
+  private static final long FLOAT_EXACT_INTEGER_BOUND = 1L << 24;
 
   protected AbstractDataTool() {}
 
@@ -451,14 +452,15 @@ public abstract class AbstractDataTool {
     } else if (isTimeStamp(strValue)) {
       return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_TIMESTAMP);
     } else if (isNumber(strValue)) {
-      if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
-        if (isConvertFloatPrecisionLack(StringUtils.trim(strValue))) {
-          return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_LONG);
-        }
-        return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_INT);
-      } else {
-        return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_FLOAT);
+      String number = StringUtils.trim(strValue);
+      if (INTEGER_PATTERN.matcher(number).matches()) {
+        return Constants.TYPE_INFER_KEY_DICT.get(
+            fitsIntKeyType(number) ? Constants.DATATYPE_INT : Constants.DATATYPE_LONG);
       }
+      TSDataType floatKeyType = Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_FLOAT);
+      return floatKeyType == TSDataType.FLOAT && isOutOfFloatRange(Double.parseDouble(number))
+          ? Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_DOUBLE)
+          : floatKeyType;
     } else if (Constants.DATATYPE_NULL.equals(strValue)
         || Constants.DATATYPE_NULL.toUpperCase().equals(strValue)) {
       return null;
@@ -505,8 +507,33 @@ public abstract class AbstractDataTool {
         || s.equalsIgnoreCase(SqlConstant.BOOLEAN_FALSE);
   }
 
-  private static boolean isConvertFloatPrecisionLack(String s) {
-    return Long.parseLong(s) > (2 << 24);
+  /**
+   * Whether an integer gets the type the "int" key maps to. The inferred type applies to the whole
+   * column, so with FLOAT the bound is |value| <= 2^24, where FLOAT holds every integer exactly.
+   */
+  private static boolean fitsIntKeyType(String s) {
+    long value;
+    try {
+      value = Long.parseLong(s);
+    } catch (NumberFormatException e) {
+      // Integer literal outside the long range
+      return false;
+    }
+    TSDataType intKeyType = Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_INT);
+    if (intKeyType == TSDataType.FLOAT) {
+      return value >= -FLOAT_EXACT_INTEGER_BOUND && value <= FLOAT_EXACT_INTEGER_BOUND;
+    }
+    if (intKeyType == TSDataType.INT32) {
+      return value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE;
+    }
+    return true;
+  }
+
+  /** A finite value that FLOAT would turn into infinity or lose to underflow. */
+  private static boolean isOutOfFloatRange(double value) {
+    double magnitude = Math.abs(value);
+    return Double.isFinite(value)
+        && (magnitude > Float.MAX_VALUE || (magnitude != 0 && magnitude < Float.MIN_NORMAL));
   }
 
   /**

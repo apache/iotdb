@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TagColumnUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
@@ -224,20 +225,9 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       Map<Symbol, ColumnSchema> nodeColumnSchema,
       OrderingScheme orderingScheme,
       int streamSortIndex) {
-    int tagCount = 0;
-    for (ColumnSchema columnSchema : tableColumnSchema.values()) {
-      if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
-        tagCount++;
-      }
-    }
-
-    for (Symbol orderBy : orderingScheme.getOrderBy()) {
-      ColumnSchema columnSchema = nodeColumnSchema.get(orderBy);
-      if (columnSchema != null && columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
-        tagCount--;
-      }
-    }
-    return tagCount == 0
+    Set<String> orderedTagColumnNames =
+        TagColumnUtils.tagColumnNames(orderingScheme.getOrderBy(), nodeColumnSchema);
+    return TagColumnUtils.coversAllTagColumns(tableColumnSchema, orderedTagColumnNames)
         && (orderingScheme.getOrderings().size() == streamSortIndex + 1
             || isTimeColumn(
                 orderingScheme.getOrderBy().get(streamSortIndex + 1), tableColumnSchema));

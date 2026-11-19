@@ -23,6 +23,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
 import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
@@ -88,23 +89,26 @@ public class IoTDBRegionMigrateWithCompressionRatioIT {
           "Old leader: %d, follower: %d, new leader: %d%n", leaderId, followerId, newLeaderId);
 
       double[] compressionRatioBeforeMigration = new double[] {Double.NaN};
+      // Parallel SHOW REGIONS queries can observe different stages of a heartbeat metrics update.
       Awaitility.await()
           .atMost(10, TimeUnit.MINUTES)
+          .ignoreException(InconsistentDataException.class)
           .pollDelay(1, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
+                double currentCompressionRatio = Double.NaN;
                 try (ResultSet showRegions = statement.executeQuery("SHOW REGIONS")) {
                   while (showRegions.next()) {
                     int regionId = showRegions.getInt("RegionId");
                     int dataNodeId = showRegions.getInt("DataNodeId");
                     if (regionId == dataRegionIdForTest && dataNodeId == leaderId) {
-                      compressionRatioBeforeMigration[0] =
-                          showRegions.getDouble("CompressionRatio");
+                      currentCompressionRatio = showRegions.getDouble("CompressionRatio");
                       break;
                     }
                   }
                 }
-                Assert.assertFalse(Double.isNaN(compressionRatioBeforeMigration[0]));
+                Assert.assertFalse(Double.isNaN(currentCompressionRatio));
+                compressionRatioBeforeMigration[0] = currentCompressionRatio;
               });
 
       statement.execute(
@@ -112,8 +116,10 @@ public class IoTDBRegionMigrateWithCompressionRatioIT {
               "migrate region %d from %d to %d", dataRegionIdForTest, leaderId, newLeaderId));
 
       double finalCompressionRatioBeforeMigration = compressionRatioBeforeMigration[0];
+      // Parallel SHOW REGIONS queries can observe different stages of the migration.
       Awaitility.await()
           .atMost(10, TimeUnit.MINUTES)
+          .ignoreException(InconsistentDataException.class)
           .pollDelay(1, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {

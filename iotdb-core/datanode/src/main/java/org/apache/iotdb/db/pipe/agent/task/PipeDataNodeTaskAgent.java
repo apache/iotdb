@@ -70,6 +70,7 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegio
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -144,6 +145,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   @Override
   protected boolean isShutdown() {
     return PipeDataNodeAgent.runtime().isShutdown();
+  }
+
+  @Override
+  protected boolean isPipeDataInsertionEnabled(final PipeStaticMeta pipeStaticMeta) {
+    return PipeDataNodeAgent.isPipeDataInsertionEnabled(pipeStaticMeta.getSourceParameters());
   }
 
   @Override
@@ -307,6 +313,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
     if (isShutdown()
         || !SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        || !PipeDataNodeAgent.isSubscriptionFeatureEnabled()
         || pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.RUNNING
         || !PipeStaticMeta.isSubscriptionPipe(staticMeta.getPipeName())
         || !staticMeta
@@ -451,10 +458,14 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
 
     schemaRegionId2ListeningQueueNewFirstIndex.forEach(
-        (schemaRegionId, listeningQueueNewFirstIndex) ->
-            PipeDataNodeAgent.runtime()
-                .schemaListener(new SchemaRegionId(schemaRegionId))
-                .removeBefore(listeningQueueNewFirstIndex));
+        (schemaRegionId, listeningQueueNewFirstIndex) -> {
+          final SchemaRegionListeningQueue listeningQueue =
+              PipeDataNodeAgent.runtime()
+                  .schemaListenerIfPresent(new SchemaRegionId(schemaRegionId));
+          if (listeningQueue != null) {
+            listeningQueue.removeBefore(listeningQueueNewFirstIndex);
+          }
+        });
 
     return schemaRegionId2ListeningQueueNewFirstIndex.keySet();
   }

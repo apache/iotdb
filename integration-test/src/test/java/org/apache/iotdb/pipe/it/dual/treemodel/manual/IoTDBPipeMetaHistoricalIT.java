@@ -25,14 +25,12 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -42,26 +40,19 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
-public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT {
+public class IoTDBPipeMetaHistoricalIT extends AbstractPipeTreeModelManualSharedClusterIT {
   @Override
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-
+  protected void setupConfig() {
+    super.setupConfig();
     senderEnv
         .getConfig()
         .getCommonConfig()
-        .setAutoCreateSchemaEnabled(false)
-        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setTimestampPrecision("ms")
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
@@ -69,22 +60,25 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
     receiverEnv
         .getConfig()
         .getCommonConfig()
-        .setAutoCreateSchemaEnabled(false)
-        .setDatanodeMemoryProportion("3:3:1:1:1:0")
         .setTimestampPrecision("ms")
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2)
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment(3, 3);
   }
 
+  @Override
+  protected CompletableFuture<Void> initializeClusters() {
+    // Preserve the receiver's 3x3 topology while starting it alongside the 1x1 sender.
+    return CompletableFuture.allOf(
+        CompletableFuture.runAsync(senderEnv::initClusterEnvironment),
+        CompletableFuture.runAsync(() -> receiverEnv.initClusterEnvironment(3, 3)));
+  }
+
+  // Historical/realtime template events under root.ln must replicate to the 3C3D receiver with its
+  // own replication factors, while ordinary schema and authorization remain excluded.
   @Test
   public void testTemplateInclusion() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -103,7 +97,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
               "create database root.ln",
               "create database root.db",
               "set ttl to root.ln 3600000",
-              "create user `thulab` 'passwd123456'",
+              "create user `thulab` 'IoTDB!Test2024'",
               "create role `admin`",
               "grant role `admin` to `thulab`",
               "grant read on root.** to role `admin`",
@@ -176,6 +170,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
     }
   }
 
+  // An auth-only historical pipe must replicate existing users, roles and their grants, while
+  // excluding the sender's databases, timeseries and data.
   @Test
   public void testAuthInclusion() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -193,7 +189,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualTreeModelManualIT
           Arrays.asList(
               "create database root.ln",
               "set ttl to root.ln 3600000",
-              "create user `thulab` 'passwd123456'",
+              "create user `thulab` 'IoTDB!Test2024'",
               "create role `admin`",
               "grant role `admin` to `thulab`",
               "grant read on root.** to role `admin`",

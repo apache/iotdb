@@ -87,6 +87,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -153,6 +154,7 @@ public class Session implements ISession {
   protected ZoneId zoneId;
   protected int thriftDefaultBufferSize;
   protected int thriftMaxFrameSize;
+  protected int thriftMaxReusableBufferSize = Integer.MAX_VALUE;
   protected TEndPoint defaultEndPoint;
   protected SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
@@ -486,6 +488,7 @@ public class Session implements ISession {
     this.zoneId = builder.zoneId;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.thriftMaxReusableBufferSize = builder.thriftMaxReusableBufferSize;
     this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.version = builder.version;
     this.useSSL = builder.useSSL;
@@ -545,31 +548,15 @@ public class Session implements ISession {
       this.executorService = null;
     }
     if (this.availableNodes != null) {
-      this.availableNodes.close();
+      if (!this.availableNodes.isCallerManaged()) {
+        this.availableNodes.close();
+      }
       this.availableNodes = null;
     }
 
     if (enableAutoFetch) {
       initThreadPool();
-      this.availableNodes =
-          NodesSupplier.createNodeSupplier(
-              getNodeUrls(),
-              SessionUtils.parseSeedNodeUrls(initialNodeUrls),
-              executorService,
-              username,
-              password,
-              zoneId,
-              thriftDefaultBufferSize,
-              thriftMaxFrameSize,
-              connectionTimeoutInMs,
-              useSSL,
-              trustStore,
-              trustStorePwd,
-              keyStore,
-              keyStorePwd,
-              sslProtocol,
-              enableRPCCompaction,
-              version.toString());
+      initAvailableNodes(enableRPCCompaction, connectionTimeoutInMs);
     } else {
       // A static supplier has no separate seed tier. Keep every configured address after reopen.
       Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
@@ -589,7 +576,7 @@ public class Session implements ISession {
     }
   }
 
-  private void initThreadPool() {
+  protected void initThreadPool() {
     this.executorService =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
@@ -604,6 +591,30 @@ public class Session implements ISession {
               }
               return t;
             });
+  }
+
+  protected void initAvailableNodes(
+      final boolean enableRPCCompaction, final int connectionTimeoutInMs) {
+    this.availableNodes =
+        NodesSupplier.createNodeSupplier(
+            getNodeUrls(),
+            SessionUtils.parseSeedNodeUrls(initialNodeUrls),
+            executorService,
+            username,
+            password,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            keyStore,
+            keyStorePwd,
+            sslProtocol,
+            enableRPCCompaction,
+            version.toString(),
+            thriftMaxReusableBufferSize);
   }
 
   private static List<String> shuffleNodeUrls(List<String> endPoints) {
@@ -675,28 +686,66 @@ public class Session implements ISession {
 
   @Override
   public synchronized void close() throws IoTDBConnectionException {
+    Throwable closeException = null;
     try {
       if (isClosed) {
         return;
       }
-      if (enableRedirection) {
+
+      Set<SessionConnection> closedConnections = Collections.newSetFromMap(new IdentityHashMap<>());
+      if (endPointToSessionConnection != null) {
         for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
-          sessionConnection.close();
+          if (sessionConnection != null && closedConnections.add(sessionConnection)) {
+            try {
+              sessionConnection.close();
+            } catch (IoTDBConnectionException | RuntimeException e) {
+              if (closeException == null) {
+                closeException = e;
+              } else if (closeException != e) {
+                closeException.addSuppressed(e);
+              }
+            }
+          }
         }
-        endPointToSessionConnection.clear();
       }
-      getDefaultSessionConnection().close();
-      setDefaultSessionConnection(null);
+
+      SessionConnection defaultSessionConnection = getDefaultSessionConnection();
+      if (defaultSessionConnection != null && closedConnections.add(defaultSessionConnection)) {
+        try {
+          defaultSessionConnection.close();
+        } catch (IoTDBConnectionException | RuntimeException e) {
+          if (closeException == null) {
+            closeException = e;
+          } else if (closeException != e) {
+            closeException.addSuppressed(e);
+          }
+        }
+      }
     } finally {
+      if (!isClosed) {
+        if (endPointToSessionConnection != null) {
+          endPointToSessionConnection.clear();
+        }
+        setDefaultSessionConnection(null);
+      }
       // if executorService is null, it means that availableNodes is got from SessionPool and we
       // shouldn't clean that
       if (this.executorService != null) {
         this.executorService.shutdown();
         this.executorService = null;
-        this.availableNodes.close();
+        if (!this.availableNodes.isCallerManaged()) {
+          this.availableNodes.close();
+        }
         this.availableNodes = null;
       }
       isClosed = true;
+    }
+
+    if (closeException instanceof IoTDBConnectionException) {
+      throw (IoTDBConnectionException) closeException;
+    }
+    if (closeException instanceof RuntimeException) {
+      throw (RuntimeException) closeException;
     }
   }
 
@@ -4437,6 +4486,10 @@ public class Session implements ISession {
     this.defaultSessionConnection = defaultSessionConnection;
   }
 
+  protected String getRpcServiceName() {
+    return null;
+  }
+
   public boolean isEnableThriftRpcCompaction() {
     return enableThriftRpcCompaction;
   }
@@ -4494,6 +4547,17 @@ public class Session implements ISession {
 
     public Builder thriftMaxFrameSize(int thriftMaxFrameSize) {
       this.thriftMaxFrameSize = thriftMaxFrameSize;
+      return this;
+    }
+
+    /**
+     * Buffer requests larger than this number of bytes use temporary arrays and reset reusable
+     * buffers to {@code thriftDefaultBufferSize}. Applies to compressed and uncompressed
+     * transports. The default {@link Integer#MAX_VALUE} keeps the original reuse policy; zero makes
+     * every nonempty buffer request use temporary storage.
+     */
+    public Builder thriftMaxReusableBufferSize(int thriftMaxReusableBufferSize) {
+      this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
       return this;
     }
 
@@ -4593,6 +4657,10 @@ public class Session implements ISession {
             SessionMessages
                 .EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084);
       }
+      return createSession();
+    }
+
+    protected Session createSession() {
       return new Session(this);
     }
   }

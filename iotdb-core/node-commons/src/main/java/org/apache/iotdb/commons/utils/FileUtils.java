@@ -36,6 +36,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.FileChannel;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystems;
@@ -59,6 +60,7 @@ public class FileUtils {
   private static final int BUFFER_SIZE = 1024;
   private static final long FILE_REMOVE_COST_IN_BYTES = 64 * 1024L;
   private static final long DIRECTORY_REMOVE_COST_IN_BYTES = 4 * 1024L;
+  private static final String UNFINISHED_FILE_SUFFIX = ".unfinished";
 
   private FileUtils() {}
 
@@ -479,6 +481,39 @@ public class FileUtils {
     return hardlink;
   }
 
+  /**
+   * Hardlinks {@code sourceFile} to {@code hardlinkOrCopiedFile}, or copies it atomically when the
+   * hardlink can not be created, e.g. across disks. The same file is returned as is and is never
+   * linked onto itself.
+   */
+  public static File createHardLinkOrCopy(final File sourceFile, final File hardlinkOrCopiedFile)
+      throws IOException {
+    if (sourceFile.getAbsoluteFile().equals(hardlinkOrCopiedFile.getAbsoluteFile())) {
+      // Never link a file onto itself: a failed link would delete the target, which is the source.
+      if (!hardlinkOrCopiedFile.isFile()) {
+        throw new NoSuchFileException(hardlinkOrCopiedFile.getPath());
+      }
+      return hardlinkOrCopiedFile;
+    }
+
+    try {
+      return createHardLink(sourceFile, hardlinkOrCopiedFile);
+    } catch (final IOException | UnsupportedOperationException linkFailure) {
+      LOGGER.warn(
+          UtilMessages
+              .LOG_FAILED_TO_CREATE_THE_HARDLINK_OF_THE_FILE_ARG_TO_ARG_FALLING_BACK_TO_COPYING_THE_FILE_89FED96B,
+          sourceFile.getAbsolutePath(),
+          hardlinkOrCopiedFile.getAbsolutePath(),
+          linkFailure);
+      try {
+        return copyFileAtomically(sourceFile, hardlinkOrCopiedFile);
+      } catch (final IOException | UnsupportedOperationException copyFailure) {
+        copyFailure.addSuppressed(linkFailure);
+        throw copyFailure;
+      }
+    }
+  }
+
   public static File copyFile(File sourceFile, File targetFile) throws IOException {
     if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
       synchronized (FileUtils.class) {
@@ -495,6 +530,35 @@ public class FileUtils {
 
     Files.copy(sourceFile.toPath(), targetFile.toPath());
     return targetFile;
+  }
+
+  /**
+   * Copies {@code sourceFile} to {@code targetFile} by writing a temporary file first and then
+   * renaming it, so that a crash or a full disk can never leave a truncated file under the final
+   * name. An existing target, including a partial copy left by a previous failure, is replaced.
+   */
+  public static File copyFileAtomically(final File sourceFile, final File targetFile)
+      throws IOException {
+    final File unfinishedFile = new File(targetFile.getPath() + UNFINISHED_FILE_SUFFIX);
+    try {
+      // A temporary file left by a killed process would fail the copy the same way.
+      deleteFileIfExist(unfinishedFile);
+      copyFile(sourceFile, unfinishedFile);
+      try {
+        Files.move(
+            unfinishedFile.toPath(),
+            targetFile.toPath(),
+            StandardCopyOption.ATOMIC_MOVE,
+            StandardCopyOption.REPLACE_EXISTING);
+      } catch (final AtomicMoveNotSupportedException e) {
+        Files.move(
+            unfinishedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      }
+      return targetFile;
+    } catch (final IOException | RuntimeException e) {
+      deleteFileIfExist(unfinishedFile);
+      throw e;
+    }
   }
 
   /**

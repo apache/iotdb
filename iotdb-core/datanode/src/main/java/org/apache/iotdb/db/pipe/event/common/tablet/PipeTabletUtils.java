@@ -21,9 +21,11 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.utils.BitMapUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -168,6 +170,25 @@ public final class PipeTabletUtils {
       final Object value) {
     Type type = Type.fromTsDataType(dataType);
     type.addValue(rowIndex, value, tablet.getValues()[columnIndex]);
+    unmarkNullValue(tablet, rowIndex, columnIndex);
+  }
+
+  /** Copy a query field without boxing primitive values on the way to the tablet. */
+  public static void putFieldValue(
+      final Tablet tablet,
+      final int rowIndex,
+      final int columnIndex,
+      final TSDataType dataType,
+      final Field field) {
+    if (field.getDataType() == null) {
+      putValue(tablet, rowIndex, columnIndex, dataType, null);
+      return;
+    }
+
+    TypeServices.Pipe.PIPE_FIELD_TABLET_VALUE_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(field, tablet.getValues()[columnIndex], rowIndex);
+    // A row discarded after applying mods may have marked this slot before it is reused.
     unmarkNullValue(tablet, rowIndex, columnIndex);
   }
 

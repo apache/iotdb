@@ -685,25 +685,33 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
       final TEndPoint endPoint,
       final long bytesLength) {
     if (pipeName != null && endPointRateLimitBytesPerSecond > 0) {
-      PIPE_END_POINT_RATE_LIMITER_MAP
-          .computeIfAbsent(
+      final PipeEndPointRateLimiter limiter =
+          PIPE_END_POINT_RATE_LIMITER_MAP.computeIfAbsent(
               new Pair<>(pipeName, creationTime),
               endpoint ->
-                  new PipeEndPointRateLimiter(
-                      pipeName, creationTime, endPointRateLimitBytesPerSecond))
-          .acquire(endPoint, bytesLength);
+                  PipeEndPointRateLimiter.isPipeAlive(pipeName, creationTime)
+                      ? new PipeEndPointRateLimiter(
+                          pipeName, creationTime, endPointRateLimitBytesPerSecond)
+                      : null);
+      if (limiter != null) {
+        limiter.acquire(endPoint, bytesLength);
+      }
     }
 
     GLOBAL_RATE_LIMITER.acquire(bytesLength);
   }
 
+  public static void clearPipeRateLimiter(final String pipeName, final long creationTime) {
+    PIPE_END_POINT_RATE_LIMITER_MAP.remove(new Pair<>(pipeName, creationTime));
+  }
+
   /**
-   * When a pipe is dropped, the connector maybe reused and will not be closed. We need to discard
-   * its batched or queued events in the output pipe connector.
+   * When a region task is dropped, the connector may be reused and will not be closed. Discard its
+   * batched or queued events in the output pipe connector.
    */
   public synchronized void discardEventsOfPipe(
       final String pipeName, final long creationTime, final int regionId) {
-    // Do nothing by default
+    // Rate limiter state is pipe-wide and is cleared only after the whole pipe is dropped.
   }
 
   public PipeReceiverStatusHandler statusHandler() {

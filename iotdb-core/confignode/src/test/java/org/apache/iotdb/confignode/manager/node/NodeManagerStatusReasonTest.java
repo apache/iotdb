@@ -93,10 +93,30 @@ public class NodeManagerStatusReasonTest {
     assertEquals(2, result.size());
     assertEquals(NodeStatus.ReadOnly.getStatus(), result.get(0).getStatus());
     assertEquals(NodeStatus.MANUAL, result.get(0).getStatusReason());
+    assertEquals(
+        new TEndPoint("127.0.0.1", 10730 + NODE_ID), result.get(0).getInternalRpcEndPoint());
     assertEquals(NodeStatus.Unknown.getStatus(), result.get(1).getStatus());
     assertNull(result.get(1).getStatusReason());
     assertEquals(NodeStatus.Running, currentStatistics.get().getStatus());
     assertNull(currentStatistics.get().getStatusReason());
+  }
+
+  @Test
+  public void testDataNodeInternalEndpointRemainsOptional() {
+    when(nodeInfo.getRegisteredDataNodes())
+        .thenReturn(
+            Collections.singletonList(
+                new TDataNodeConfiguration()
+                    .setLocation(
+                        new TDataNodeLocation()
+                            .setDataNodeId(NODE_ID)
+                            .setClientRpcEndPoint(new TEndPoint("127.0.0.1", 6667 + NODE_ID)))
+                    .setResource(new TNodeResource(1, 1024))));
+
+    List<TDataNodeInfo> result = nodeManager.getRegisteredDataNodeInfoList();
+
+    assertEquals(1, result.size());
+    assertNull(result.get(0).getInternalRpcEndPoint());
   }
 
   @Test
@@ -121,7 +141,8 @@ public class NodeManagerStatusReasonTest {
         .setLocation(
             new TDataNodeLocation()
                 .setDataNodeId(nodeId)
-                .setClientRpcEndPoint(new TEndPoint("127.0.0.1", 6667 + nodeId)))
+                .setClientRpcEndPoint(new TEndPoint("127.0.0.1", 6667 + nodeId))
+                .setInternalEndPoint(new TEndPoint("127.0.0.1", 10730 + nodeId)))
         .setResource(new TNodeResource(1, 1024));
   }
 

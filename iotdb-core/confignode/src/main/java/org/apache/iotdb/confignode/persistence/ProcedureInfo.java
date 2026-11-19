@@ -268,7 +268,9 @@ public class ProcedureInfo implements SnapshotProcessor {
     Arrays.stream(Objects.requireNonNull(procedureSnapshotDir.listFiles()))
         .forEach(
             procedureSnapshotFile -> {
-              if (!procedureSnapshotFile.getName().equals(MAIN_SNAPSHOT_FILENAME)) {
+              if (procedureSnapshotFile.isFile()
+                  && procedureSnapshotFile.getName().endsWith(PROCEDURE_SNAPSHOT_FILE_SUFFIX)
+                  && !procedureSnapshotFile.getName().equals(MAIN_SNAPSHOT_FILENAME)) {
                 loadProcedure(procedureSnapshotFile.toPath())
                     .ifPresent(procedure -> procedureMap.put(procedure.getProcId(), procedure));
               }
