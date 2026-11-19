@@ -588,6 +588,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     clientSession.removeQueryId(statementId, queryId);
   }
 
+  /** Runs a query to its end and discards its result. */
+  private static void consumeResult(IQueryExecution queryExecution) throws IoTDBException {
+    if (queryExecution == null) {
+      // only queries are registered, any other statement has already been executed
+      return;
+    }
+    while (queryExecution.hasNextResult()) {
+      if (!queryExecution.getBatchResult().isPresent()) {
+        break;
+      }
+    }
+  }
+
   /** Adapter that wraps TSExecuteStatementReq to implement NativeStatementRequest. */
   private static class TSExecuteStatementReqAdapter implements NativeStatementRequest {
     private final TSExecuteStatementReq req;
@@ -2190,8 +2203,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long t2 = System.nanoTime();
         String type = null;
         OperationQuota quota = null;
+        Long queryId = null;
+        Throwable t = null;
         try {
-          long queryId;
           ExecutionResult result;
           if (clientSession.getSqlDialect() == SqlDialect.TREE) {
             Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
@@ -2314,9 +2328,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
               && result.status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
             isAllSuccessful = false;
+          } else if (queryId != null) {
+            // A batch returns no result set, so nobody fetches the result of a statement that is a
+            // query. Without a consumer such a statement is not run to its end, which matters for
+            // the ones that write, such as SELECT INTO.
+            consumeResult(COORDINATOR.getQueryExecution(queryId));
           }
           results.add(result.status);
         } catch (Exception e) {
+          t = e;
           LOGGER.warn(DataNodeMiscMessages.ERROR_EXECUTING_BATCH_STATEMENT, e);
           TSStatus status =
               onQueryException(
@@ -2324,6 +2344,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           isAllSuccessful = false;
           results.add(status);
         } finally {
+          if (queryId != null) {
+            // Nobody can fetch or close the query of this statement once the batch has returned.
+            COORDINATOR.cleanupQueryExecution(queryId, req, t);
+          }
           CommonUtils.addStatementExecutionLatency(
               OperationType.EXECUTE_STATEMENT, type, System.nanoTime() - t2);
           if (quota != null) {
@@ -3226,6 +3250,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       Statement statement, TSQueryTemplateReq req, TSQueryTemplateResp resp) {
     long startTime = System.nanoTime();
     OperationQuota quota = null;
+    Long queryId = null;
+    Throwable t = null;
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       // permission check
@@ -3245,7 +3271,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
 
-      long queryId = SESSION_MANAGER.requestQueryId();
+      queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult executionResult =
           COORDINATOR.executeForTreeModel(
@@ -3292,10 +3318,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return resp;
       }
     } catch (Exception e) {
+      t = e;
       resp.setStatus(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
       return null;
     } finally {
+      if (queryId != null) {
+        // The whole result is part of the response, so nobody can fetch or close the query later.
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+      }
       CommonUtils.addStatementExecutionLatency(
           OperationType.EXECUTE_STATEMENT,
           statement.getType().name(),

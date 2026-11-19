@@ -94,6 +94,37 @@ public class IoTDBExecuteBatchIT {
   }
 
   @Test
+  public void testJDBCExecuteBatchWithSelectInto() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.addBatch("insert into root.batch_into.src(timestamp,s1) values(1,1.0)");
+        statement.addBatch("insert into root.batch_into.src(timestamp,s1) values(2,2.0)");
+        statement.addBatch("select s1 into root.batch_into.dst(s1) from root.batch_into.src");
+        statement.executeBatch();
+        statement.clearBatch();
+        // A batch has no result set to fetch, so the rows must be written when it returns.
+        ResultSet resultSet = statement.executeQuery("select s1 from root.batch_into.dst");
+        int count = 0;
+
+        long[] timestamps = {1, 2};
+        double[] values = {1.0, 2.0};
+
+        while (resultSet.next()) {
+          assertEquals(timestamps[count], resultSet.getLong(ColumnHeaderConstant.TIME));
+          assertEquals(values[count], resultSet.getDouble("root.batch_into.dst.s1"), 0.0);
+          count++;
+        }
+        assertEquals(timestamps.length, count);
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.batch_into");
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testJDBCExecuteBatchForCreateMultiTimeSeriesPlan() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
