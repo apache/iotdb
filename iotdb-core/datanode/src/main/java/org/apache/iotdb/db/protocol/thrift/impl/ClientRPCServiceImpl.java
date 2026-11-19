@@ -396,49 +396,56 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         : 0;
   }
 
-  private static boolean canFitInOneResponse(
-      ByteBuffer cachedResult, IClientSession clientSession) {
-    if (cachedResult == null) {
-      return true;
-    }
-    int maxPayloadSize = getMaxResultPayloadSize(clientSession);
-    return maxPayloadSize <= 0 || cachedResult.remaining() <= maxPayloadSize;
+  private static boolean canFitInOneResponse(ByteBuffer cachedResult, int maxPayloadSize) {
+    return cachedResult == null
+        || maxPayloadSize <= 0
+        || cachedResult.remaining() <= maxPayloadSize;
   }
 
   /**
    * Transfers an oversized materialized result in fragments. The execution is registered so that
    * {@code fetchResultsV2} can continue from the pending fragment, and it is cleaned up once the
    * last fragment is sent or the query is closed.
+   *
+   * @param maxPayloadSize the payload bound read once by the caller, so that the decision to
+   *     fragment and the transfer itself use the same hot-reloadable value
    */
   private TSExecuteStatementResp respondWithFragmentedResult(
       long queryId,
       ByteBuffer cachedResult,
       int fetchSize,
       long timeout,
+      int maxPayloadSize,
+      String sql,
       IClientSession clientSession)
       throws IoTDBException, IOException {
     MaterializedResultExecution execution =
         new MaterializedResultExecution(
-            queryId,
+            COORDINATOR.createQueryId(),
             cachedResult,
             DatasetHeaderFactory.getLastQueryHeader(),
             StatementType.FAST_LAST_QUERY.name(),
+            sql,
             timeout,
             clientSession.getUsername(),
             clientSession.getClientAddress());
     COORDINATOR.registerQueryExecution(queryId, execution);
-    TSExecuteStatementResp resp =
-        createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
-    resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
-    boolean finished =
-        SELECT_RESULT.apply(resp, execution, fetchSize, getMaxResultPayloadSize(clientSession));
-    // the cached result exceeds the payload bound, so the first response is always a fragment
-    checkState(
-        !finished,
-        DataNodeMiscMessages
-            .EXCEPTION_THE_FIRST_RESPONSE_OF_A_FRAGMENTED_FAST_LAST_RESULT_MUST_NOT_BE_COMPLETE_DEF121D5);
-    resp.setMoreData(true);
-    return resp;
+    try {
+      TSExecuteStatementResp resp =
+          createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
+      boolean finished = SELECT_RESULT.apply(resp, execution, fetchSize, maxPayloadSize);
+      // the cached result exceeds the payload bound, so the first response is always a fragment
+      checkState(
+          !finished,
+          DataNodeMiscMessages
+              .EXCEPTION_THE_FIRST_RESPONSE_OF_A_FRAGMENTED_FAST_LAST_RESULT_MUST_NOT_BE_COMPLETE_DEF121D5);
+      resp.setMoreData(true);
+      return resp;
+    } catch (Throwable t) {
+      COORDINATOR.cleanupQueryExecution(queryId);
+      throw t;
+    }
   }
 
   public ClientRPCServiceImpl() {
@@ -1360,12 +1367,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       ByteBuffer cachedResult = builder.isEmpty() ? null : serde.serialize(builder.build());
-      if (!canFitInOneResponse(cachedResult, clientSession)) {
+      int maxPayloadSize = getMaxResultPayloadSize(clientSession);
+      if (!canFitInOneResponse(cachedResult, maxPayloadSize)) {
         return respondWithFragmentedResult(
             queryId,
             cachedResult,
             req.isSetFetchSize() ? req.getFetchSize() : -1,
             req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold(),
+            maxPayloadSize,
+            "SELECT LAST " + String.join(".", req.getPrefixes()) + ".**",
             clientSession);
       }
 
@@ -1544,12 +1554,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         // cache hit
         if (allCached) {
           ByteBuffer cachedResult = builder.isEmpty() ? null : serde.serialize(builder.build());
-          if (!canFitInOneResponse(cachedResult, clientSession)) {
+          int maxPayloadSize = getMaxResultPayloadSize(clientSession);
+          if (!canFitInOneResponse(cachedResult, maxPayloadSize)) {
             return respondWithFragmentedResult(
                 queryId,
                 cachedResult,
                 req.isSetFetchSize() ? req.getFetchSize() : -1,
                 req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold(),
+                maxPayloadSize,
+                "SELECT LAST " + String.join(", ", convert(req).getPaths()),
                 clientSession);
           }
           TSExecuteStatementResp resp =
@@ -1717,12 +1730,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       statementType = queryExecution.getStatementType();
 
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
+        // the chunking capability is announced once at openSession, so the continuation path
+        // must not decide by the presence of offset: a request without offset while a fragment is
+        // pending then fails the offset check loudly instead of silently dropping the tail
         QueryDataSetUtils.ResultChunk chunk =
             fetchResultChunk(
                 queryExecution,
                 req.fetchSize,
                 req.isSetOffset() ? req.getOffset() : 0,
-                req.isSetOffset() ? config.getMppDataExchangeMaxPayloadSizeInBytes() : 0);
+                getMaxResultPayloadSize(clientSession));
         finished = fillQueryResult(resp, chunk);
         resp.setHasResultSet(!chunk.getQueryResult().isEmpty());
         resp.setIsAlign(true);

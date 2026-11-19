@@ -67,13 +67,6 @@ public class SharedTsBlockQueue {
 
   private long bufferRetainedSizeInBytes = 0L;
 
-  /**
-   * The memory in bytes taken out with {@code retainMemory=true}. Not counted in {@link
-   * #bufferRetainedSizeInBytes}: the block is no longer buffered here, so it must not block the
-   * producer.
-   */
-  private long pendingRetainedSizeInBytes = 0L;
-
   private final Queue<Pair<TsBlock, Long>> queue = new LinkedList<>();
 
   private SettableFuture<Void> blocked = SettableFuture.create();
@@ -206,19 +199,13 @@ public class SharedTsBlockQueue {
     }
   }
 
-  public TsBlock remove() {
-    return remove(false);
-  }
-
   /**
    * Remove a TsBlock from the head of the queue and return. Should be invoked only when the future
-   * returned by {@link #isBlocked()} completes. If {@code retainMemory} is true, the memory
-   * reserved for the block is not freed; the caller must release it via {@link
-   * #freeRetainedMemory()}.
+   * returned by {@link #isBlocked()} completes.
    *
    * @throws IllegalStateException Cannot remove TsBlock from closed queue.
    */
-  public TsBlock remove(boolean retainMemory) {
+  public TsBlock remove() {
     if (closed) {
       // try throw underlying exception instead of "Source handle is aborted."
       if (abortedCause != null) {
@@ -237,18 +224,14 @@ public class SharedTsBlockQueue {
     Pair<TsBlock, Long> tsBlockWithReservedBytes = queue.remove();
     long reservedBytes = tsBlockWithReservedBytes.right;
     if (reservedBytes > 0) {
+      localMemoryManager
+          .getQueryPool()
+          .free(
+              localFragmentInstanceId.getQueryId(),
+              fullFragmentInstanceId,
+              localPlanNodeId,
+              reservedBytes);
       bufferRetainedSizeInBytes -= reservedBytes;
-      if (retainMemory) {
-        pendingRetainedSizeInBytes += reservedBytes;
-      } else {
-        localMemoryManager
-            .getQueryPool()
-            .free(
-                localFragmentInstanceId.getQueryId(),
-                fullFragmentInstanceId,
-                localPlanNodeId,
-                reservedBytes);
-      }
     }
     // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event
     // to
@@ -260,22 +243,6 @@ public class SharedTsBlockQueue {
       blocked = SettableFuture.create();
     }
     return tsBlockWithReservedBytes.left;
-  }
-
-  /** Releases the memory of the blocks taken out with {@code retainMemory=true}. */
-  public void freeRetainedMemory() {
-    if (pendingRetainedSizeInBytes <= 0) {
-      return;
-    }
-    long retainedSize = pendingRetainedSizeInBytes;
-    pendingRetainedSizeInBytes = 0;
-    localMemoryManager
-        .getQueryPool()
-        .free(
-            localFragmentInstanceId.getQueryId(),
-            fullFragmentInstanceId,
-            localPlanNodeId,
-            retainedSize);
   }
 
   /**
@@ -376,7 +343,16 @@ public class SharedTsBlockQueue {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
     }
     queue.clear();
-    freeAllRetainedMemory();
+    if (bufferRetainedSizeInBytes > 0L) {
+      localMemoryManager
+          .getQueryPool()
+          .free(
+              localFragmentInstanceId.getQueryId(),
+              fullFragmentInstanceId,
+              localPlanNodeId,
+              bufferRetainedSizeInBytes);
+      bufferRetainedSizeInBytes = 0;
+    }
     if (sinkChannel != null) {
       // attention: LocalSinkChannel of this SharedTsBlockQueue could be null when we
       // close
@@ -411,7 +387,16 @@ public class SharedTsBlockQueue {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
     }
     queue.clear();
-    freeAllRetainedMemory();
+    if (bufferRetainedSizeInBytes > 0L) {
+      localMemoryManager
+          .getQueryPool()
+          .free(
+              localFragmentInstanceId.getQueryId(),
+              fullFragmentInstanceId,
+              localPlanNodeId,
+              bufferRetainedSizeInBytes);
+      bufferRetainedSizeInBytes = 0;
+    }
   }
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
@@ -431,25 +416,19 @@ public class SharedTsBlockQueue {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
     }
     queue.clear();
-    freeAllRetainedMemory();
-  }
-
-  public Optional<Throwable> getAbortedCause() {
-    return Optional.ofNullable(abortedCause);
-  }
-
-  private void freeAllRetainedMemory() {
-    long totalRetainedSize = bufferRetainedSizeInBytes + pendingRetainedSizeInBytes;
-    if (totalRetainedSize > 0L) {
+    if (bufferRetainedSizeInBytes > 0L) {
       localMemoryManager
           .getQueryPool()
           .free(
               localFragmentInstanceId.getQueryId(),
               fullFragmentInstanceId,
               localPlanNodeId,
-              totalRetainedSize);
+              bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
-      pendingRetainedSizeInBytes = 0;
     }
+  }
+
+  public Optional<Throwable> getAbortedCause() {
+    return Optional.ofNullable(abortedCause);
   }
 }

@@ -26,43 +26,70 @@ import java.nio.ByteBuffer;
  * to be sent in the following response(s). The block is already serialized and removed from the
  * result handle, so this fragment only holds a reference to it and never copies the payload.
  *
- * <p>The memory the block retains stays reserved in the memory pool until the block is fully sent.
- * The owner binds a {@code memoryReleaser} which is invoked by {@link #clear()}, so callers only
- * interact with this holder and never release the memory themselves.
+ * <p>The memory of the pending block is reserved from the query memory pool through an {@link
+ * Account} owned by the query, and released when the fragment is {@link #clear() cleared}. The
+ * account lives with the query rather than with the result handle, so the reservation covers the
+ * whole lifetime of the fragment on the local, the remote and the in-memory result paths.
  */
 public class PendingResultFragment {
 
-  private final Runnable memoryReleaser;
+  /** Reserves and releases the memory of a pending block; {@code null} disables accounting. */
+  public interface Account {
+
+    /** Returns the bytes actually reserved, which may be fewer than requested. */
+    long reserve(long bytes);
+
+    void free(long bytes);
+  }
+
+  private final Account account;
 
   private ByteBuffer block;
   private int nextOffset;
+  private long reservedBytes;
 
-  public PendingResultFragment(Runnable memoryReleaser) {
-    this.memoryReleaser = memoryReleaser;
+  public PendingResultFragment(Account account) {
+    this.account = account;
   }
 
-  /** Records that {@code block} has been sent up to {@code nextOffset} bytes. */
-  public void reset(ByteBuffer block, int nextOffset) {
-    this.block = block;
+  /**
+   * Records that {@code block} has been sent up to {@code nextOffset} bytes. When a new block
+   * becomes pending, its serialized length is reserved from the query memory pool.
+   */
+  public synchronized void reset(ByteBuffer block, int nextOffset) {
+    if (block != this.block) {
+      release();
+      this.block = block;
+      if (account != null) {
+        reservedBytes = account.reserve(block.remaining());
+      }
+    }
     this.nextOffset = nextOffset;
   }
 
-  public ByteBuffer getBlock() {
+  public synchronized ByteBuffer getBlock() {
     return block;
   }
 
-  public int getNextOffset() {
+  public synchronized int getNextOffset() {
     return nextOffset;
   }
 
   /**
-   * Discards the pending fragment and releases the memory of the blocks that have been fully sent.
-   * It is also called right after a complete block has been added to a response, when nothing is
-   * pending. Calling it repeatedly is a no-op.
+   * Discards the pending fragment and releases the memory of the pending block. It is also called
+   * right after a complete block has been added to a response, when nothing is pending. Calling it
+   * repeatedly is a no-op.
    */
-  public void clear() {
+  public synchronized void clear() {
     block = null;
     nextOffset = 0;
-    memoryReleaser.run();
+    release();
+  }
+
+  private void release() {
+    if (reservedBytes > 0) {
+      account.free(reservedBytes);
+      reservedBytes = 0;
+    }
   }
 }

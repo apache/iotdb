@@ -21,15 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.execution;
 
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
-import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
-import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -46,37 +42,31 @@ import java.util.Optional;
  */
 public class MaterializedResultExecution implements IQueryExecution {
 
-  private static final String PLAN_NODE_ID = "lastCacheResult";
-
-  private final long queryId;
+  private final QueryId queryId;
   private final DatasetHeader datasetHeader;
   private final String statementType;
+  private final String executeSQL;
   private final long startExecutionTime = System.currentTimeMillis();
   private final long timeout;
   private final String user;
   private final String clientHostname;
 
-  private final LocalMemoryManager localMemoryManager;
-  private final TFragmentInstanceId fragmentInstanceId;
-  private final String fullFragmentInstanceId;
-
-  private final PendingResultFragment pendingResultFragment =
-      new PendingResultFragment(this::freeReservedMemory);
+  private final QueryOwnedFragmentAccount fragmentAccount;
+  private final PendingResultFragment pendingResultFragment;
 
   /** The serialized result, handed over once. */
   private ByteBuffer serializedResult;
-
-  private long reservedBytes;
 
   private volatile long startTimeOfCurrentRpc = System.nanoTime();
   private long totalExecutionTime;
   private boolean cleanedUp;
 
   public MaterializedResultExecution(
-      long queryId,
+      QueryId queryId,
       ByteBuffer serializedResult,
       DatasetHeader datasetHeader,
       String statementType,
+      String executeSQL,
       long timeout,
       String user,
       String clientHostname) {
@@ -85,6 +75,7 @@ public class MaterializedResultExecution implements IQueryExecution {
         serializedResult,
         datasetHeader,
         statementType,
+        executeSQL,
         timeout,
         user,
         clientHostname,
@@ -93,10 +84,11 @@ public class MaterializedResultExecution implements IQueryExecution {
 
   @TestOnly
   MaterializedResultExecution(
-      long queryId,
+      QueryId queryId,
       ByteBuffer serializedResult,
       DatasetHeader datasetHeader,
       String statementType,
+      String executeSQL,
       long timeout,
       String user,
       String clientHostname,
@@ -105,41 +97,13 @@ public class MaterializedResultExecution implements IQueryExecution {
     this.serializedResult = serializedResult;
     this.datasetHeader = datasetHeader;
     this.statementType = statementType;
+    this.executeSQL = executeSQL;
     this.timeout = timeout;
     this.user = user;
     this.clientHostname = clientHostname;
 
-    this.localMemoryManager = localMemoryManager;
-    this.fragmentInstanceId = new TFragmentInstanceId(Long.toString(queryId), 0, PLAN_NODE_ID);
-    this.fullFragmentInstanceId =
-        FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(fragmentInstanceId);
-    reserveResult();
-  }
-
-  /** Best-effort accounting: a result too large for one reservation still gets transferred. */
-  private void reserveResult() {
-    MemoryPool queryPool = localMemoryManager.getQueryPool();
-    queryPool.registerPlanNodeIdToQueryMemoryMap(
-        Long.toString(queryId), fullFragmentInstanceId, PLAN_NODE_ID, MemorySide.OUTPUT);
-    long maxBytesCanReserve = queryPool.getMaxBytes();
-    long bytesToReserve = Math.min(serializedResult.remaining(), maxBytesCanReserve);
-    if (queryPool.tryReserve(
-        Long.toString(queryId),
-        fullFragmentInstanceId,
-        PLAN_NODE_ID,
-        bytesToReserve,
-        maxBytesCanReserve)) {
-      reservedBytes = bytesToReserve;
-    }
-  }
-
-  private synchronized void freeReservedMemory() {
-    if (reservedBytes > 0) {
-      localMemoryManager
-          .getQueryPool()
-          .free(Long.toString(queryId), fullFragmentInstanceId, PLAN_NODE_ID, reservedBytes);
-      reservedBytes = 0;
-    }
+    this.fragmentAccount = new QueryOwnedFragmentAccount(localMemoryManager, queryId.getId());
+    this.pendingResultFragment = new PendingResultFragment(fragmentAccount);
   }
 
   private synchronized void cleanup() {
@@ -148,11 +112,12 @@ public class MaterializedResultExecution implements IQueryExecution {
     }
     cleanedUp = true;
     pendingResultFragment.clear();
-    freeReservedMemory();
-    localMemoryManager
-        .getQueryPool()
-        .deRegisterFragmentInstanceFromQueryMemoryMap(
-            Long.toString(queryId), fullFragmentInstanceId, false);
+    serializeResult(null);
+    fragmentAccount.deregister();
+  }
+
+  private synchronized void serializeResult(ByteBuffer result) {
+    serializedResult = result;
   }
 
   @Override
@@ -177,8 +142,7 @@ public class MaterializedResultExecution implements IQueryExecution {
 
   @Override
   public ExecutionResult getStatus() {
-    return new ExecutionResult(
-        new QueryId(Long.toString(queryId)), RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return new ExecutionResult(queryId, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
   @Override
@@ -187,7 +151,7 @@ public class MaterializedResultExecution implements IQueryExecution {
   }
 
   @Override
-  public Optional<ByteBuffer> getByteBufferBatchResult(boolean retainMemory) {
+  public synchronized Optional<ByteBuffer> getByteBufferBatchResult() {
     ByteBuffer result = serializedResult;
     serializedResult = null;
     return Optional.ofNullable(result);
@@ -199,7 +163,7 @@ public class MaterializedResultExecution implements IQueryExecution {
   }
 
   @Override
-  public boolean hasNextResult() {
+  public synchronized boolean hasNextResult() {
     return serializedResult != null;
   }
 
@@ -230,7 +194,7 @@ public class MaterializedResultExecution implements IQueryExecution {
 
   @Override
   public String getQueryId() {
-    return Long.toString(queryId);
+    return queryId.getId();
   }
 
   @Override
@@ -267,7 +231,7 @@ public class MaterializedResultExecution implements IQueryExecution {
 
   @Override
   public Optional<String> getExecuteSQL() {
-    return Optional.empty();
+    return Optional.of(executeSQL);
   }
 
   @Override

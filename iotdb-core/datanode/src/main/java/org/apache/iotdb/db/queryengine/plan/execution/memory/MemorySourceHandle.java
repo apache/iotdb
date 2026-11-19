@@ -77,8 +77,7 @@ public class MemorySourceHandle implements ISourceHandle {
   }
 
   @Override
-  public synchronized ByteBuffer getSerializedTsBlock(boolean retainMemory) throws IoTDBException {
-    // serialized blocks are not reserved from the memory pool, so retainMemory is ignored
+  public synchronized ByteBuffer getSerializedTsBlock() throws IoTDBException {
     hasNext = false;
     if (result.isEmpty()) {
       return null;
@@ -89,11 +88,6 @@ public class MemorySourceHandle implements ISourceHandle {
         throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
       }
     }
-  }
-
-  @Override
-  public void freeRetainedMemory() {
-    // nothing is reserved from the memory pool
   }
 
   @Override

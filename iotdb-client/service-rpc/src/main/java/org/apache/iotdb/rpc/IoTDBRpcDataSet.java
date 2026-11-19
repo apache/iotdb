@@ -386,7 +386,8 @@ public class IoTDBRpcDataSet {
     if (offsetSet) {
       if (totalLength <= 0) {
         throw new IllegalArgumentException(
-            RpcMessages.EXCEPTION_CHUNKED_RESULT_MISSING_TOTAL_LENGTH_FOR_FIRST_FRAGMENT_1D11374F);
+            RpcMessages
+                .EXCEPTION_MISSING_TOTALLENGTH_FOR_THE_FIRST_FRAGMENT_OF_A_CHUNKED_TSBLOCK_1D11374F);
       }
       fragmentBuffer = new ResultFragmentBuffer(totalLength);
       fragmentBuffer.append(blocks.get(blockIndex));
@@ -413,7 +414,8 @@ public class IoTDBRpcDataSet {
     private void append(ByteBuffer fragment) {
       if (!fragment.hasRemaining()) {
         throw new IllegalArgumentException(
-            RpcMessages.EXCEPTION_CHUNKED_RESULT_EMPTY_FRAGMENT_03A0EF39);
+            RpcMessages
+                .EXCEPTION_EMPTY_FRAGMENT_RECEIVED_WHEN_ASSEMBLING_A_CHUNKED_QUERY_RESULT_03A0EF39);
       }
       // a fragment may be a slice of a larger buffer, so honor arrayOffset and position
       buffer.write(
@@ -427,7 +429,7 @@ public class IoTDBRpcDataSet {
         throw new IllegalArgumentException(
             String.format(
                 RpcMessages
-                    .EXCEPTION_CHUNKED_RESULT_FRAGMENT_OFFSET_ARG_NOT_GREATER_THAN_ACCUMULATED_LENGTH_ARG_A0F032E3,
+                    .EXCEPTION_FRAGMENT_OFFSET_ARG_DOES_NOT_MATCH_THE_ACCUMULATED_LENGTH_ARG_1EB45347,
                 nextOffset,
                 buffer.size()));
       }
@@ -439,7 +441,7 @@ public class IoTDBRpcDataSet {
         throw new IllegalArgumentException(
             String.format(
                 RpcMessages
-                    .EXCEPTION_CHUNKED_RESULT_ASSEMBLED_LENGTH_ARG_DOES_NOT_MATCH_TOTAL_LENGTH_ARG_925DCB15,
+                    .EXCEPTION_ASSEMBLED_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_THE_TOTAL_LENGTH_ARG_925DCB15,
                 buffer.size(),
                 totalLength));
       }

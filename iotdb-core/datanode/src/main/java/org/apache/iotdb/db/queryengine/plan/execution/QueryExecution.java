@@ -113,9 +113,10 @@ public class QueryExecution implements IQueryExecution {
   // used for cleaning resultHandle up exactly once
   private final AtomicBoolean resultHandleCleanUp;
 
-  // the serialized TsBlock that is partially sent to the client and waits for the next RPC
-  private final PendingResultFragment pendingResultFragment =
-      new PendingResultFragment(this::releaseResultHandleRetainedMemory);
+  // the serialized TsBlock that is partially sent to the client and waits for the next RPC; its
+  // memory is reserved under the account below, which lives as long as the query
+  private final PendingResultFragment pendingResultFragment;
+  private final QueryOwnedFragmentAccount pendingFragmentAccount;
 
   private final UDFClassLoaderManager.QueryScope udfQueryScope;
 
@@ -138,6 +139,8 @@ public class QueryExecution implements IQueryExecution {
   public QueryExecution(IPlanner planner, MPPQueryContext context, ExecutorService executor) {
     this.context = context;
     this.planner = planner;
+    this.pendingFragmentAccount = new QueryOwnedFragmentAccount(context.getQueryId().getId());
+    this.pendingResultFragment = new PendingResultFragment(pendingFragmentAccount);
     UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
     this.udfQueryScope =
         classLoaderManager == null
@@ -556,6 +559,9 @@ public class QueryExecution implements IQueryExecution {
     // the query will not serve any more fetch requests, release the pending fragment's memory and
     // make sure a retried execution does not continue a stale fragment
     pendingResultFragment.clear();
+    if (!isRetry) {
+      pendingFragmentAccount.deregister();
+    }
     // close ResultHandle to unblock client's getResult request
     // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
     // There are only two scenarios where the ResultHandle should be closed:
@@ -724,8 +730,8 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
-  public Optional<ByteBuffer> getByteBufferBatchResult(boolean retainMemory) throws IoTDBException {
-    return getResult(() -> resultHandle.getSerializedTsBlock(retainMemory));
+  public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
+    return getResult(this::getSerializedTsBlock);
   }
 
   @Override
@@ -733,10 +739,8 @@ public class QueryExecution implements IQueryExecution {
     return pendingResultFragment;
   }
 
-  private void releaseResultHandleRetainedMemory() {
-    if (resultHandle != null) {
-      resultHandle.freeRetainedMemory();
-    }
+  private ByteBuffer getSerializedTsBlock() throws IoTDBException {
+    return resultHandle.getSerializedTsBlock();
   }
 
   /**

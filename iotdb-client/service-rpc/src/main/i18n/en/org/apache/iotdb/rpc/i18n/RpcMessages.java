@@ -128,15 +128,15 @@ public final class RpcMessages {
   public static final String EXCEPTION_DATA_TYPE_ARG_IS_NOT_SUPPORTED_31213160 =
       "Data type %s is not supported.";
 
-  public static final String EXCEPTION_CHUNKED_RESULT_EMPTY_FRAGMENT_03A0EF39 =
+  public static final String EXCEPTION_EMPTY_FRAGMENT_RECEIVED_WHEN_ASSEMBLING_A_CHUNKED_QUERY_RESULT_03A0EF39 =
       "Empty fragment received when assembling a chunked query result";
   public static final String
-      EXCEPTION_CHUNKED_RESULT_FRAGMENT_OFFSET_ARG_NOT_GREATER_THAN_ACCUMULATED_LENGTH_ARG_A0F032E3 =
-          "Fragment offset %d is not greater than the accumulated length %d";
-  public static final String EXCEPTION_CHUNKED_RESULT_MISSING_TOTAL_LENGTH_FOR_FIRST_FRAGMENT_1D11374F =
+      EXCEPTION_FRAGMENT_OFFSET_ARG_DOES_NOT_MATCH_THE_ACCUMULATED_LENGTH_ARG_1EB45347 =
+          "Fragment offset %d does not match the accumulated length %d";
+  public static final String EXCEPTION_MISSING_TOTALLENGTH_FOR_THE_FIRST_FRAGMENT_OF_A_CHUNKED_TSBLOCK_1D11374F =
       "Missing totalLength for the first fragment of a chunked TsBlock";
   public static final String
-      EXCEPTION_CHUNKED_RESULT_ASSEMBLED_LENGTH_ARG_DOES_NOT_MATCH_TOTAL_LENGTH_ARG_925DCB15 =
+      EXCEPTION_ASSEMBLED_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_THE_TOTAL_LENGTH_ARG_925DCB15 =
           "Assembled fragment length %d does not match the total length %d";
 
   public static final String EXCEPTION_INVALID_BUFFER_SIZE_ARG_5131C6CA =

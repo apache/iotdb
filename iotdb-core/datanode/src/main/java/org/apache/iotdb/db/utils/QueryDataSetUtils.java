@@ -253,7 +253,7 @@ public class QueryDataSetUtils {
     long memorySize = 0;
     List<ByteBuffer> res = new ArrayList<>();
     while (rowCount < fetchSize && memorySize < MAX_RETURN_SIZE) {
-      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult(false);
+      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
       if (!optionalByteBuffer.isPresent()) {
         break;
       }
@@ -291,7 +291,7 @@ public class QueryDataSetUtils {
         throw new IllegalArgumentException(
             String.format(
                 DataNodeQueryMessages
-                    .EXCEPTION_RESULT_FRAGMENT_REQUEST_OFFSET_ARG_DOES_NOT_MATCH_PENDING_FRAGMENT_OFFSET_ARG_A1B13DBC,
+                    .EXCEPTION_REQUEST_OFFSET_ARG_DOES_NOT_MATCH_THE_PENDING_RESULT_FRAGMENT_OFFSET_ARG_A1B13DBC,
                 requestOffset,
                 nextOffset));
       }
@@ -310,22 +310,22 @@ public class QueryDataSetUtils {
       throw new IllegalArgumentException(
           String.format(
               DataNodeQueryMessages
-                  .EXCEPTION_RESULT_FRAGMENT_REQUEST_OFFSET_ARG_IS_INVALID_WITHOUT_PENDING_FRAGMENT_C403454F,
+                  .EXCEPTION_REQUEST_OFFSET_ARG_IS_INVALID_BECAUSE_NO_RESULT_FRAGMENT_IS_PENDING_C403454F,
               requestOffset));
     }
 
     while (rowCount < fetchSize && memorySize < MAX_RETURN_SIZE && remainingPayloadSize > 0) {
-      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult(true);
+      Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
       if (!optionalByteBuffer.isPresent()) {
         break;
       }
-      ByteBuffer byteBuffer = optionalByteBuffer.get();
+      // make the offsets block-relative regardless of where the buffer comes from
+      ByteBuffer byteBuffer = optionalByteBuffer.get().slice();
       int positionCount = readPositionCount(byteBuffer);
       if (positionCount == 0) {
         pendingFragment.clear();
         continue;
       }
-      int blockStart = byteBuffer.position();
       int blockSize = byteBuffer.remaining();
       rowCount += positionCount;
       if (blockSize <= remainingPayloadSize) {
@@ -334,10 +334,9 @@ public class QueryDataSetUtils {
         memorySize += blockSize;
         pendingFragment.clear();
       } else {
-        res.add(slice(byteBuffer, blockStart, remainingPayloadSize));
-        pendingFragment.reset(byteBuffer, blockStart + remainingPayloadSize);
-        return ResultChunk.fragment(
-            res, blockStart + remainingPayloadSize, blockStart == 0 ? blockSize : -1, false);
+        res.add(slice(byteBuffer, 0, remainingPayloadSize));
+        pendingFragment.reset(byteBuffer, remainingPayloadSize);
+        return ResultChunk.fragment(res, remainingPayloadSize, blockSize, false);
       }
     }
     return ResultChunk.complete(res, !queryExecution.hasNextResult());

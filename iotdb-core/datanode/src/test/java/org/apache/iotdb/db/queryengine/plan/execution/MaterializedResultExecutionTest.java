@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution;
 
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
@@ -54,19 +55,19 @@ public class MaterializedResultExecutionTest {
 
     MaterializedResultExecution execution =
         new MaterializedResultExecution(
-            1L,
+            new QueryId("20261119_050035_03054_1"),
             serialized.duplicate(),
             DatasetHeaderFactory.getLastQueryHeader(),
             "FAST_LAST_QUERY",
+            "SELECT LAST root.sg.d1.s1",
             60_000L,
             "root",
             "127.0.0.1",
             localMemoryManager);
+    assertEquals(0L, memoryPool.getReservedBytes());
 
-    // the serialized bytes are reserved from the query pool
-    assertEquals(totalLength, memoryPool.getReservedBytes());
-
-    // the result is served once; the first response carries a fragment of it
+    // the result is served once; the first response carries a fragment of it, and the serialized
+    // bytes of the pending block are reserved from the query pool
     QueryDataSetUtils.ResultChunk firstChunk =
         QueryDataSetUtils.convertQueryResultByFetchSize(execution, 10, 0, payloadSize);
     assertFalse(firstChunk.isFinished());
@@ -74,7 +75,8 @@ public class MaterializedResultExecutionTest {
     assertEquals(totalLength, firstChunk.getTotalLength());
     assertEquals(payloadSize, firstChunk.getQueryResult().get(0).remaining());
     assertFalse(execution.hasNextResult());
-    assertTrue(execution.getByteBufferBatchResult(true).isEmpty());
+    assertTrue(execution.getByteBufferBatchResult().isEmpty());
+    assertEquals(totalLength, memoryPool.getReservedBytes());
 
     // the following fetch completes the block and releases the reservation
     QueryDataSetUtils.ResultChunk secondChunk =
@@ -98,14 +100,17 @@ public class MaterializedResultExecutionTest {
 
     MaterializedResultExecution execution =
         new MaterializedResultExecution(
-            2L,
+            new QueryId("20261119_050035_03054_2"),
             serialized.duplicate(),
             DatasetHeaderFactory.getLastQueryHeader(),
             "FAST_LAST_QUERY",
+            "SELECT LAST root.sg.d1.s1",
             60_000L,
             "root",
             "127.0.0.1",
             localMemoryManager);
+
+    QueryDataSetUtils.convertQueryResultByFetchSize(execution, 10, 0, 64);
     assertEquals(serialized.remaining(), memoryPool.getReservedBytes());
 
     // the client never fetches the rest
@@ -124,19 +129,20 @@ public class MaterializedResultExecutionTest {
 
     MaterializedResultExecution execution =
         new MaterializedResultExecution(
-            3L,
+            new QueryId("20261119_050035_03054_3"),
             serialized.duplicate(),
             DatasetHeaderFactory.getLastQueryHeader(),
             "FAST_LAST_QUERY",
+            "SELECT LAST root.sg.d1.s1",
             60_000L,
             "root",
             "127.0.0.1",
             localMemoryManager);
-    assertEquals(smallCapacity, memoryPool.getReservedBytes());
 
     QueryDataSetUtils.ResultChunk chunk =
         QueryDataSetUtils.convertQueryResultByFetchSize(execution, 10, 0, 64);
     assertTrue(chunk.hasNextOffset());
+    assertEquals(smallCapacity, memoryPool.getReservedBytes());
     execution.stopAndCleanup(null);
     assertEquals(0L, memoryPool.getReservedBytes());
   }

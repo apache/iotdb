@@ -124,10 +124,6 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public TsBlock receive() {
-    return receive(false);
-  }
-
-  private TsBlock receive(boolean retainMemory) {
     long startTime = System.nanoTime();
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       checkState();
@@ -137,7 +133,7 @@ public class LocalSourceHandle implements ISourceHandle {
       }
       TsBlock tsBlock;
       synchronized (queue) {
-        tsBlock = queue.remove(retainMemory);
+        tsBlock = queue.remove();
       }
       if (tsBlock != null) {
         if (LOGGER.isDebugEnabled()) {
@@ -157,8 +153,8 @@ public class LocalSourceHandle implements ISourceHandle {
   }
 
   @Override
-  public ByteBuffer getSerializedTsBlock(boolean retainMemory) throws IoTDBException {
-    TsBlock tsBlock = receive(retainMemory);
+  public ByteBuffer getSerializedTsBlock() throws IoTDBException {
+    TsBlock tsBlock = receive();
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(DataNodeQueryMessages.GET_SERIALIZED_TSBLOCK, CommonUtils.toString(tsBlock));
     }
@@ -175,13 +171,6 @@ public class LocalSourceHandle implements ISourceHandle {
       }
     } else {
       return null;
-    }
-  }
-
-  @Override
-  public void freeRetainedMemory() {
-    synchronized (queue) {
-      queue.freeRetainedMemory();
     }
   }
 

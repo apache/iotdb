@@ -158,7 +158,7 @@ public class QueryDataSetUtilsTest {
     TsBlock tsBlock = buildTsBlock();
     Mockito.when(queryExecution.getBatchResult())
         .thenReturn(Optional.of(tsBlock), Optional.empty());
-    Mockito.when(queryExecution.getByteBufferBatchResult(false))
+    Mockito.when(queryExecution.getByteBufferBatchResult())
         .thenReturn(Optional.of(new TsBlockSerde().serialize(tsBlock)), Optional.empty());
     return queryExecution;
   }
@@ -294,10 +294,9 @@ public class QueryDataSetUtilsTest {
     int payloadSize = totalLength - 1;
 
     IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
-    Runnable memoryReleaser = Mockito.mock(Runnable.class);
-    PendingResultFragment pendingFragment = new PendingResultFragment(memoryReleaser);
+    PendingResultFragment pendingFragment = new PendingResultFragment(null);
     Mockito.when(queryExecution.getPendingResultFragment()).thenReturn(pendingFragment);
-    Mockito.when(queryExecution.getByteBufferBatchResult(true))
+    Mockito.when(queryExecution.getByteBufferBatchResult())
         .thenReturn(Optional.of(serialized.duplicate()), Optional.empty());
     Mockito.when(queryExecution.hasNextResult()).thenReturn(false);
 
@@ -311,8 +310,6 @@ public class QueryDataSetUtilsTest {
     assertEquals(1, firstChunk.getQueryResult().size());
     assertEquals(payloadSize, firstChunk.getQueryResult().get(0).remaining());
     assertTrue(pendingFragment.getBlock() != null);
-    // the memory of the pending block is still retained
-    Mockito.verify(memoryReleaser, Mockito.never()).run();
 
     QueryDataSetUtils.ResultChunk secondChunk =
         QueryDataSetUtils.convertQueryResultByFetchSize(
@@ -321,8 +318,6 @@ public class QueryDataSetUtilsTest {
     assertFalse(secondChunk.hasNextOffset());
     assertFalse(secondChunk.hasTotalLength());
     assertTrue(pendingFragment.getBlock() == null);
-    // the memory is released once the fragmented block has been fully sent
-    Mockito.verify(memoryReleaser, Mockito.times(1)).run();
 
     TsBlock result = deserialize(firstChunk.getQueryResult().get(0), secondChunk.getQueryResult());
     assertEquals(2, result.getPositionCount());
@@ -341,10 +336,9 @@ public class QueryDataSetUtilsTest {
     int payloadSize = smallBlock.remaining() + blockSize / 2;
 
     IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
-    Runnable memoryReleaser = Mockito.mock(Runnable.class);
-    PendingResultFragment pendingFragment = new PendingResultFragment(memoryReleaser);
+    PendingResultFragment pendingFragment = new PendingResultFragment(null);
     Mockito.when(queryExecution.getPendingResultFragment()).thenReturn(pendingFragment);
-    Mockito.when(queryExecution.getByteBufferBatchResult(true))
+    Mockito.when(queryExecution.getByteBufferBatchResult())
         .thenReturn(Optional.of(smallBlock), Optional.of(serialized.duplicate()), Optional.empty());
     Mockito.when(queryExecution.hasNextResult()).thenReturn(false);
 
@@ -358,7 +352,6 @@ public class QueryDataSetUtilsTest {
     assertTrue(firstChunk.hasTotalLength());
     assertEquals(blockSize, firstChunk.getTotalLength());
     // the complete block is released at once, the fragmented one is released when it completes
-    Mockito.verify(memoryReleaser, Mockito.times(1)).run();
 
     QueryDataSetUtils.ResultChunk secondChunk =
         QueryDataSetUtils.convertQueryResultByFetchSize(
@@ -368,7 +361,6 @@ public class QueryDataSetUtilsTest {
     // only the rest of the oversized block remains
     assertEquals(1, secondChunk.getQueryResult().size());
     assertEquals(blockSize - blockSize / 2, secondChunk.getQueryResult().get(0).remaining());
-    Mockito.verify(memoryReleaser, Mockito.times(2)).run();
   }
 
   @Test
@@ -379,10 +371,9 @@ public class QueryDataSetUtilsTest {
     int payloadSize = blockSize / 2;
 
     IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
-    Runnable memoryReleaser = Mockito.mock(Runnable.class);
-    PendingResultFragment pendingFragment = new PendingResultFragment(memoryReleaser);
+    PendingResultFragment pendingFragment = new PendingResultFragment(null);
     Mockito.when(queryExecution.getPendingResultFragment()).thenReturn(pendingFragment);
-    Mockito.when(queryExecution.getByteBufferBatchResult(true))
+    Mockito.when(queryExecution.getByteBufferBatchResult())
         .thenReturn(
             Optional.of(serialized.duplicate()),
             Optional.of(serialized.duplicate()),
@@ -393,7 +384,6 @@ public class QueryDataSetUtilsTest {
         QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, 10, 0, payloadSize);
     assertFalse(firstChunk.isFinished());
     assertEquals(payloadSize, firstChunk.getNextOffset());
-    Mockito.verify(memoryReleaser, Mockito.never()).run();
 
     // The response that completes the fragmented block must not fetch new blocks, otherwise its
     // row count would exceed fetchSize (the tail of the big block is not accounted).
@@ -405,7 +395,6 @@ public class QueryDataSetUtilsTest {
     assertEquals(1, continuationChunk.getQueryResult().size());
     assertEquals(blockSize - payloadSize, continuationChunk.getQueryResult().get(0).remaining());
     assertTrue(pendingFragment.getBlock() == null);
-    Mockito.verify(memoryReleaser, Mockito.times(1)).run();
 
     // New blocks are delivered by the following request only
     QueryDataSetUtils.ResultChunk nextChunk =
@@ -414,7 +403,6 @@ public class QueryDataSetUtilsTest {
     assertFalse(nextChunk.hasNextOffset());
     assertEquals(1, nextChunk.getQueryResult().size());
     assertEquals(blockSize, nextChunk.getQueryResult().get(0).remaining());
-    Mockito.verify(memoryReleaser, Mockito.times(2)).run();
   }
 
   @Test
@@ -425,10 +413,9 @@ public class QueryDataSetUtilsTest {
     ByteBuffer serialized = new TsBlockSerde().serialize(tsBlock);
 
     IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
-    Runnable memoryReleaser = Mockito.mock(Runnable.class);
     Mockito.when(queryExecution.getPendingResultFragment())
-        .thenReturn(new PendingResultFragment(memoryReleaser));
-    Mockito.when(queryExecution.getByteBufferBatchResult(true))
+        .thenReturn(new PendingResultFragment(null));
+    Mockito.when(queryExecution.getByteBufferBatchResult())
         .thenReturn(Optional.of(emptyBlock), Optional.of(serialized), Optional.empty());
     Mockito.when(queryExecution.hasNextResult()).thenReturn(false);
 
@@ -438,12 +425,11 @@ public class QueryDataSetUtilsTest {
     assertTrue(chunk.isFinished());
     assertEquals(1, chunk.getQueryResult().size());
     // the empty block and the complete block are both released immediately
-    Mockito.verify(memoryReleaser, Mockito.times(2)).run();
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testConvertQueryResultByFetchSizeRejectsMismatchedOffset() throws IoTDBException {
-    PendingResultFragment pendingFragment = new PendingResultFragment(() -> {});
+    PendingResultFragment pendingFragment = new PendingResultFragment(null);
     pendingFragment.reset(ByteBuffer.wrap(new byte[10]), 5);
     IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
     Mockito.when(queryExecution.getPendingResultFragment()).thenReturn(pendingFragment);
@@ -456,7 +442,7 @@ public class QueryDataSetUtilsTest {
       throws IoTDBException {
     IQueryExecution queryExecution = Mockito.mock(IQueryExecution.class);
     Mockito.when(queryExecution.getPendingResultFragment())
-        .thenReturn(new PendingResultFragment(() -> {}));
+        .thenReturn(new PendingResultFragment(null));
 
     QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, 10, 5, 8);
   }

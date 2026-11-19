@@ -181,7 +181,18 @@ public class ResultChunkingEndToEndTest {
     private final List<Integer> payloadSizes = new ArrayList<>();
     private final List<ByteBuffer> remainingBlocks = new ArrayList<>();
     private final PendingResultFragment pendingFragment =
-        new PendingResultFragment(releaseCount::incrementAndGet);
+        new PendingResultFragment(
+            new PendingResultFragment.Account() {
+              @Override
+              public long reserve(long bytes) {
+                return bytes;
+              }
+
+              @Override
+              public void free(long bytes) {
+                releaseCount.incrementAndGet();
+              }
+            });
     private final IQueryExecution queryExecution;
 
     private ServerSideSimulation(ByteBuffer serialized, int positionCount, int totalLength)
@@ -192,7 +203,7 @@ public class ResultChunkingEndToEndTest {
       this.remainingBlocks.add(serialized);
       this.queryExecution = Mockito.mock(IQueryExecution.class);
       Mockito.when(queryExecution.getPendingResultFragment()).thenReturn(pendingFragment);
-      Mockito.when(queryExecution.getByteBufferBatchResult(true))
+      Mockito.when(queryExecution.getByteBufferBatchResult())
           .thenAnswer(
               invocation ->
                   remainingBlocks.isEmpty()
