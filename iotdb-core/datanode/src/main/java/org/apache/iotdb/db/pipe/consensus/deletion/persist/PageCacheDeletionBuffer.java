@@ -62,6 +62,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final int QUEUE_CAPACITY = config.getDeletionAheadLogBufferQueueCapacity();
   private static final long MAX_WAIT_CLOSE_TIME_IN_MS = 10000;
+  private static final long CLOSE_CHECK_INTERVAL_MS = 100;
 
   // Buffer config keep consistent with WAL.
   public static int DAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
@@ -282,11 +283,20 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     }
     // Force sync existing data in memory to disk.
     // first waiting serialize and sync tasks finished, then release all resources
-    waitUntilFlushAllDeletionsOrTimeOut();
+    final boolean flushed = waitUntilFlushAllDeletionsOrTimeOut();
     if (persistThread != null) {
       lifecycleLock.lock();
       try {
-        persistThread.shutdownNow();
+        if (flushed) {
+          persistThread.shutdown();
+        } else {
+          LOGGER.warn(
+              DataNodePipeMessages
+                  .LOG_DELETION_PERSIST_ARG_TIMED_OUT_WAITING_FOR_ARG_DELETIONS_TO_FLUSH_BEFORE_SHUTDOWN_52469B0D,
+              dataRegionId,
+              unflushedDeletionCount.get());
+          persistThread.shutdownNow();
+        }
       } finally {
         lifecycleLock.unlock();
       }
@@ -310,7 +320,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     serializeBuffer = null;
   }
 
-  private void waitUntilFlushAllDeletionsOrTimeOut() {
+  private boolean waitUntilFlushAllDeletionsOrTimeOut() {
     long currentTime = System.currentTimeMillis();
     while (!isAllDeletionFlushed()
         && System.currentTimeMillis() - currentTime < MAX_WAIT_CLOSE_TIME_IN_MS) {
@@ -319,8 +329,10 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
       } catch (InterruptedException e) {
         LOGGER.error(DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_ALL_DELETIONS_FLUSHED);
         Thread.currentThread().interrupt();
+        return false;
       }
     }
+    return isAllDeletionFlushed();
   }
 
   private class PersistTask implements Runnable {
@@ -374,9 +386,13 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     }
 
     private void persistDeletion() throws IOException {
-      // For first deletion we use blocking take() method.
+      // Bounded waiting lets an idle task observe close without using interruption as control flow.
       try {
-        DeletionResource firstDeletionResource = deletionResources.take();
+        DeletionResource firstDeletionResource =
+            deletionResources.poll(CLOSE_CHECK_INTERVAL_MS, TimeUnit.MILLISECONDS);
+        if (firstDeletionResource == null) {
+          return;
+        }
         pendingDeletionsInOneTask.add(firstDeletionResource);
         currentTaskDeletionCount++;
         // A deletion can exceed the DAL buffer even when it is the first entry in a batch.
@@ -390,7 +406,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
             maxProgressIndexInCurrentFile.updateToMinimumEqualOrIsAfterProgressIndex(
                 firstDeletionResource.getProgressIndex());
       } catch (InterruptedException e) {
-        // shutdownNow interrupts the idle queue wait during normal close.
+        // Forced shutdown after a flush timeout may still interrupt the queue wait.
         if (!isClosed) {
           LOGGER.warn(
               DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM);
@@ -405,10 +421,26 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
         DeletionResource deletionResource = null;
         try {
           // Timeout config keep consistent with WAL async mode.
-          deletionResource =
-              deletionResources.poll(config.getWalAsyncModeFsyncDelayInMs(), TimeUnit.MILLISECONDS);
+          final long deadline =
+              System.nanoTime()
+                  + TimeUnit.MILLISECONDS.toNanos(config.getWalAsyncModeFsyncDelayInMs());
+          do {
+            deletionResource = deletionResources.poll();
+            if (deletionResource != null || isClosed) {
+              break;
+            }
+            final long remaining = deadline - System.nanoTime();
+            if (remaining <= 0) {
+              break;
+            }
+            deletionResource =
+                deletionResources.poll(
+                    Math.min(remaining, TimeUnit.MILLISECONDS.toNanos(CLOSE_CHECK_INTERVAL_MS)),
+                    TimeUnit.NANOSECONDS);
+          } while (deletionResource == null);
         } catch (InterruptedException e) {
-          LOGGER.warn(DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_TAKING_WALENTRY_FROM);
+          LOGGER.warn(
+              DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM);
           Thread.currentThread().interrupt();
         }
         // If timeout, flush deletions to disk.

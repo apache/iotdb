@@ -3180,4 +3180,8 @@ public final class DataNodePipeMessages {
       EXCEPTION_FAILED_TO_PIN_THE_TSFILE_ARG_BY_CREATING_A_HARDLINK_AND_THE_TSFILE_CAN_NOT_BE_COPIED_BECAUSE_IT_IS_NOT_CLOSED_YET_4E346D68 =
           "Failed to pin the TsFile %s by creating a hardlink, and the TsFile can not be copied"
               + " because it is not closed yet";
+  public static final String EXCEPTION_DELETION_RESOURCE_MANAGER_FOR_DATAREGION_ARG_IS_CLOSED_OR_DELETED_951C0622 =
+      "Deletion resource manager for DataRegion %s is closed or deleted.";
+  public static final String LOG_DELETION_PERSIST_ARG_TIMED_OUT_WAITING_FOR_ARG_DELETIONS_TO_FLUSH_BEFORE_SHUTDOWN_52469B0D =
+      "Deletion persist-{}: timed out waiting for {} deletions to flush before shutdown.";
 }

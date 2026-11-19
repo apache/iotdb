@@ -53,12 +53,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
@@ -101,6 +105,7 @@ public class PageCacheDeletionBufferTest {
     final PageCacheDeletionBuffer deletionBuffer =
         new PageCacheDeletionBuffer(1, temporaryFolder.newFolder("interrupt").getAbsolutePath());
     final CountDownLatch taking = new CountDownLatch(1);
+    final AtomicBoolean queueInterrupted = new AtomicBoolean();
     final AtomicReference<Thread> worker = new AtomicReference<>();
     final Field queueField = PageCacheDeletionBuffer.class.getDeclaredField("deletionResources");
     queueField.setAccessible(true);
@@ -112,10 +117,15 @@ public class PageCacheDeletionBufferTest {
             invocation -> {
               worker.set(Thread.currentThread());
               taking.countDown();
-              return originalQueue.take();
+              try {
+                return originalQueue.poll(invocation.getArgument(0), invocation.getArgument(1));
+              } catch (InterruptedException e) {
+                queueInterrupted.set(true);
+                throw e;
+              }
             })
         .when(queue)
-        .take();
+        .poll(anyLong(), any(TimeUnit.class));
     queueField.set(deletionBuffer, queue);
     final Logger logger = (Logger) LoggerFactory.getLogger(PageCacheDeletionBuffer.class);
     final Appender<ILoggingEvent> appender = mock(Appender.class);
@@ -137,10 +147,112 @@ public class PageCacheDeletionBufferTest {
         deletionBuffer.close();
         if (closeNormally) {
           verify(appender, never()).doAppend(argThat(this::isQueueInterruptionWarning));
+          Assert.assertFalse(queueInterrupted.get());
         }
       } finally {
         logger.detachAppender(appender);
       }
+    }
+  }
+
+  @Test(timeout = 30000)
+  @SuppressWarnings("unchecked")
+  public void testCloseWhileBatchPollingFlushesWithoutInterruptingWorker() throws Exception {
+    final PageCacheDeletionBuffer buffer =
+        new PageCacheDeletionBuffer(1, temporaryFolder.newFolder("batch-close").getAbsolutePath());
+    final Field queueField = PageCacheDeletionBuffer.class.getDeclaredField("deletionResources");
+    queueField.setAccessible(true);
+    final BlockingQueue<DeletionResource> original =
+        (BlockingQueue<DeletionResource>) queueField.get(buffer);
+    final BlockingQueue<DeletionResource> queue = mock(BlockingQueue.class, delegatesTo(original));
+    final CountDownLatch collectingBatch = new CountDownLatch(1);
+    final CountDownLatch batchCanContinue = new CountDownLatch(1);
+    final AtomicBoolean queueInterrupted = new AtomicBoolean();
+    doAnswer(
+            invocation -> {
+              try {
+                if (invocation.getArgument(1) == TimeUnit.NANOSECONDS) {
+                  collectingBatch.countDown();
+                  Assert.assertTrue(batchCanContinue.await(10, TimeUnit.SECONDS));
+                }
+                return original.poll(invocation.getArgument(0), invocation.getArgument(1));
+              } catch (InterruptedException e) {
+                queueInterrupted.set(true);
+                throw e;
+              }
+            })
+        .when(queue)
+        .poll(anyLong(), any(TimeUnit.class));
+    queueField.set(buffer, queue);
+    final DeletionResource deletion = createDeletion(1, 1);
+    final ExecutorService closer = Executors.newSingleThreadExecutor();
+    buffer.start();
+    try {
+      buffer.registerDeletionResource(deletion);
+      Assert.assertTrue(collectingBatch.await(10, TimeUnit.SECONDS));
+      final Future<?> close = closer.submit(buffer::close);
+      final Field closed = PageCacheDeletionBuffer.class.getDeclaredField("isClosed");
+      closed.setAccessible(true);
+      Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> closed.getBoolean(buffer));
+      batchCanContinue.countDown();
+      close.get(10, TimeUnit.SECONDS);
+    } finally {
+      batchCanContinue.countDown();
+      closer.shutdownNow();
+      Assert.assertTrue(closer.awaitTermination(10, TimeUnit.SECONDS));
+    }
+    Assert.assertSame(DeletionResource.Status.SUCCESS, deletion.waitForResult());
+    // ThreadPoolExecutor may interrupt an idle worker during shutdown; assert the DAL wait itself.
+    Assert.assertFalse(queueInterrupted.get());
+    Assert.assertTrue(buffer.isAllDeletionFlushed());
+  }
+
+  @Test(timeout = 30000)
+  @SuppressWarnings("unchecked")
+  public void testFlushTimeoutWarnsAndForceInterruptsBatchPoll() throws Exception {
+    final PageCacheDeletionBuffer buffer =
+        new PageCacheDeletionBuffer(
+            1, temporaryFolder.newFolder("timeout-close").getAbsolutePath());
+    final Field queueField = PageCacheDeletionBuffer.class.getDeclaredField("deletionResources");
+    queueField.setAccessible(true);
+    final BlockingQueue<DeletionResource> original =
+        (BlockingQueue<DeletionResource>) queueField.get(buffer);
+    final BlockingQueue<DeletionResource> queue = mock(BlockingQueue.class, delegatesTo(original));
+    final CountDownLatch batchPollStarted = new CountDownLatch(1);
+    final CountDownLatch blockBatch = new CountDownLatch(1);
+    doAnswer(
+            invocation -> {
+              if (invocation.getArgument(1) == TimeUnit.NANOSECONDS) {
+                batchPollStarted.countDown();
+                blockBatch.await();
+              }
+              return original.poll(invocation.getArgument(0), invocation.getArgument(1));
+            })
+        .when(queue)
+        .poll(anyLong(), any(TimeUnit.class));
+    queueField.set(buffer, queue);
+    final Logger logger = (Logger) LoggerFactory.getLogger(PageCacheDeletionBuffer.class);
+    final Appender<ILoggingEvent> appender = mock(Appender.class);
+    logger.addAppender(appender);
+    final DeletionResource deletion = createDeletion(1, 1);
+    buffer.start();
+    try {
+      buffer.registerDeletionResource(deletion);
+      Assert.assertTrue(batchPollStarted.await(10, TimeUnit.SECONDS));
+      buffer.close();
+      verify(appender)
+          .doAppend(
+              argThat(
+                  event ->
+                      event.getLevel() == Level.WARN
+                          && DataNodePipeMessages
+                              .LOG_DELETION_PERSIST_ARG_TIMED_OUT_WAITING_FOR_ARG_DELETIONS_TO_FLUSH_BEFORE_SHUTDOWN_52469B0D
+                              .equals(event.getMessage())));
+      Assert.assertSame(DeletionResource.Status.FAILURE, deletion.waitForResult());
+      Assert.assertNotNull(deletion.getCause());
+    } finally {
+      blockBatch.countDown();
+      logger.detachAppender(appender);
     }
   }
 
