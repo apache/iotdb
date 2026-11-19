@@ -110,8 +110,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final List<File> tsFiles;
   private final List<Boolean> isMiniTsFile;
   private boolean isMiniTsFileConverted = false;
-  private final List<Boolean> isTableModelTsFile;
-  private int isTableModelTsFileReliableIndex = -1;
+  private final LoadTsFileModelCache modelCache;
 
   // User specified configs
   private final int databaseLevel;
@@ -141,7 +140,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     this.tsFiles = loadTsFileStatement.getTsFiles();
     this.isMiniTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
-    this.isTableModelTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
+    this.modelCache = new LoadTsFileModelCache(this.tsFiles.size());
 
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.databaseForTableData = loadTsFileStatement.getDatabase();
@@ -169,7 +168,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
     this.isMiniTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
-    this.isTableModelTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
+    this.modelCache = new LoadTsFileModelCache(this.tsFiles.size());
 
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.databaseForTableData = loadTsFileTableStatement.getDatabase();
@@ -458,8 +457,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         throw new SemanticException(DataNodeQueryMessages.THE_ENCRYPTION_WAY_OF_THE_TSFILE_IS_NOT);
       }
 
-      this.isTableModelTsFile.set(i, isTableModelFile);
-      this.isTableModelTsFileReliableIndex = i;
+      modelCache.recordModelType(i, isTableModelFile);
 
       if (0 <= tabletConversionThresholdBytes
           && tsFile.length() <= tabletConversionThresholdBytes
@@ -523,7 +521,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
       final TSStatus status =
-          isTableModelTsFile.get(i)
+          modelCache.isTableModelFile(i)
               ? loadTsFileDataTypeConverter
                   .convertForTableModel(
                       (isGeneratedByPipe
@@ -740,9 +738,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private void setTsFileModelInfoToStatement() {
     if (isTableModelStatement) {
-      this.loadTsFileTableStatement.setIsTableModel(this.isTableModelTsFile);
+      this.loadTsFileTableStatement.setIsTableModel(modelCache.getTableModelFiles());
     } else {
-      this.loadTsFileTreeStatement.setIsTableModel(this.isTableModelTsFile);
+      this.loadTsFileTreeStatement.setIsTableModel(modelCache.getTableModelFiles());
     }
   }
 
@@ -800,7 +798,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return;
     }
 
-    if (isTableModelTsFileReliableIndex < tsFiles.size() - 1) {
+    if (modelCache.getReliableIndex() < tsFiles.size() - 1) {
       try {
         getFileModelInfoBeforeTabletConversion();
       } catch (Exception e1) {
@@ -827,7 +825,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final String filePath = tsFiles.get(i).getPath();
       try {
         final TSStatus status =
-            isTableModelTsFile.get(i)
+            modelCache.isTableModelFile(i)
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
                         (isGeneratedByPipe
@@ -927,12 +925,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private void getFileModelInfoBeforeTabletConversion() throws IOException {
-    for (int i = isTableModelTsFileReliableIndex + 1; i < tsFiles.size(); i++) {
+    for (int i = modelCache.getReliableIndex() + 1; i < tsFiles.size(); i++) {
       try (final TsFileSequenceReader reader =
           new TsFileSequenceReader(tsFiles.get(i).getAbsolutePath(), true)) {
         final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
-        isTableModelTsFile.set(i, Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty());
-        isTableModelTsFileReliableIndex = i;
+        modelCache.recordModelType(i, Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty());
       }
     }
   }
