@@ -1093,6 +1093,9 @@ public class ConsensusPrefetchingQueue {
         commitManager.isConfigNodeProgressAvailable(consumerGroupId, topicName, consensusGroupId);
     final boolean hasPersistedState =
         commitManager.hasPersistedState(consumerGroupId, topicName, consensusGroupId);
+    // Claim transient commit ownership and discard any stale in-flight state left by a previous
+    // queue or deactivation cycle before snapshotting committed progress and starting replay.
+    commitManager.claimTransientInFlightState(consumerGroupId, topicName, consensusGroupId, this);
     final RegionProgress committedRegionProgress = resolveCommittedRegionProgressForInit();
     final boolean useConsumerHint =
         !configNodeProgressAvailable
@@ -3435,7 +3438,11 @@ public class ConsensusPrefetchingQueue {
     final WriterId writerId = commitContext.getWriterId();
     final WriterProgress writerProgress = commitContext.getWriterProgress();
     commitManager.recordMapping(
-        consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+        consumerGroupId, topicName, consensusGroupId, writerId, writerProgress, this);
+    if (commitManager.isSupersededTransientOwner(
+        consumerGroupId, topicName, consensusGroupId, this)) {
+      return false;
+    }
     if (tablets.isEmpty()) {
       return commitAndRefreshWalRetention(writerId, writerProgress);
     }
@@ -4536,6 +4543,7 @@ public class ConsensusPrefetchingQueue {
 
       inFlightEvents.values().forEach(event -> cleanUpEvent(event, true));
       inFlightEvents.clear();
+      commitManager.clearTransientInFlightState(consumerGroupId, topicName, consensusGroupId, this);
       discardRetainedEventMemory();
 
       discardRealtimeEntries();
@@ -4873,6 +4881,8 @@ public class ConsensusPrefetchingQueue {
     writerStates.clear();
     clearRecoveryWriterProgress();
     materializedProgressByWriter.clear();
+    commitManager.claimTransientInFlightStateIfPresent(
+        consumerGroupId, topicName, consensusGroupId, this);
     final RegionProgress committedRegionProgress =
         commitManager.resetState(
             consumerGroupId,
@@ -4923,6 +4933,10 @@ public class ConsensusPrefetchingQueue {
 
   private boolean commitWriterProgress(
       final WriterId writerId, final WriterProgress writerProgress) {
+    if (commitManager.isSupersededTransientOwner(
+        consumerGroupId, topicName, consensusGroupId, this)) {
+      return false;
+    }
     final boolean committed =
         commitManager.commit(
             consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
@@ -4934,6 +4948,10 @@ public class ConsensusPrefetchingQueue {
 
   private boolean commitWithoutOutstandingAndRefreshWalRetention(
       final WriterId writerId, final WriterProgress writerProgress) {
+    if (commitManager.isSupersededTransientOwner(
+        consumerGroupId, topicName, consensusGroupId, this)) {
+      return false;
+    }
     final boolean committed =
         commitManager.commitWithoutOutstanding(
             consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
@@ -5766,6 +5784,8 @@ public class ConsensusPrefetchingQueue {
           prefetchingQueue.clear();
           inFlightEvents.values().forEach(event -> cleanUpEvent(event, true));
           inFlightEvents.clear();
+          commitManager.clearTransientInFlightState(
+              consumerGroupId, topicName, consensusGroupId, this);
           discardRetainedEventMemory();
 
           pendingEntries.clear();

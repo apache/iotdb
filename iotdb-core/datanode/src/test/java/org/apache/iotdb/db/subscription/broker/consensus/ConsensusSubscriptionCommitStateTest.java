@@ -1063,6 +1063,109 @@ public class ConsensusSubscriptionCommitStateTest {
     }
   }
 
+  @Test
+  public void testClearTransientInFlightStateUnblocksRebatchedCommitAndPrunesUncommittedKeys() {
+    final WriterId writerId = new WriterId("4_1", 7);
+    final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
+        new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(
+            "4_1", new SubscriptionConsensusProgress());
+
+    state.recordMapping(writerId, new WriterProgress(1059L, 59L));
+    assertTrue(state.commit(writerId, new WriterProgress(1059L, 59L)));
+    assertEquals(
+        new WriterProgress(1059L, 59L),
+        state.getCommittedRegionProgress().getWriterPositions().get(writerId));
+
+    // Leave seq 63 outstanding and ACK seq 65 out of order so 65 stays in both
+    // committedPendingKeysByWriter and recentlyCommittedKeys.
+    state.recordMapping(writerId, new WriterProgress(1063L, 63L));
+    state.recordMapping(writerId, new WriterProgress(1065L, 65L));
+    assertTrue(state.commit(writerId, new WriterProgress(1065L, 65L)));
+    assertEquals(
+        new WriterProgress(1059L, 59L),
+        state.getCommittedRegionProgress().getWriterPositions().get(writerId));
+
+    state.clearTransientInFlightState();
+
+    // Committed frontier is preserved, and already-committed keys remain idempotently committable.
+    assertEquals(
+        new WriterProgress(1059L, 59L),
+        state.getCommittedRegionProgress().getWriterPositions().get(writerId));
+    assertTrue(state.commit(writerId, new WriterProgress(1059L, 59L)));
+    assertTrue(state.commitWithoutOutstanding(writerId, new WriterProgress(1059L, 59L)));
+
+    // Uncommitted seq 65 was pruned from recentlyCommittedKeys, so committing without a new
+    // mapping is rejected; once replayed and mapped, direct commit advances past the old gap 63.
+    assertFalse(state.commitWithoutOutstanding(writerId, new WriterProgress(1065L, 65L)));
+    state.recordMapping(writerId, new WriterProgress(1065L, 65L));
+    assertTrue(state.commitWithoutOutstanding(writerId, new WriterProgress(1065L, 65L)));
+    assertEquals(
+        new WriterProgress(1065L, 65L),
+        state.getCommittedRegionProgress().getWriterPositions().get(writerId));
+
+    // Replaying into a different dynamic batch boundary after another transient clear advances
+    // cleanly.
+    state.recordMapping(writerId, new WriterProgress(1068L, 68L));
+    state.recordMapping(writerId, new WriterProgress(1070L, 70L));
+    assertTrue(state.commit(writerId, new WriterProgress(1070L, 70L)));
+    state.clearTransientInFlightState();
+
+    state.recordMapping(writerId, new WriterProgress(1075L, 75L));
+    assertTrue(state.commit(writerId, new WriterProgress(1075L, 75L)));
+    assertEquals(
+        new WriterProgress(1075L, 75L),
+        state.getCommittedRegionProgress().getWriterPositions().get(writerId));
+  }
+
+  @Test
+  public void testTransientOwnerFencingProtectsReplacementQueueFromDelayedCleanupAndMappings()
+      throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("transientOwnerFencing");
+    try {
+      final ConsensusSubscriptionCommitManager manager = newCommitManager(systemDir);
+      final DataRegionId regionId = new DataRegionId(42);
+      final WriterId writerId = new WriterId(regionId.toString(), 7);
+      final Object owner1 = new Object();
+      final Object owner2 = new Object();
+
+      // Clearing before any state is created must not materialize an empty commit state.
+      manager.clearTransientInFlightState("cg", "topic", regionId, owner1);
+      assertFalse(manager.hasPersistedState("cg", "topic", regionId));
+      assertTrue(
+          manager
+              .getCommittedRegionProgress("cg", "topic", regionId)
+              .getWriterPositions()
+              .isEmpty());
+
+      manager.claimTransientInFlightState("cg", "topic", regionId, owner1);
+      manager.recordMapping(
+          "cg", "topic", regionId, writerId, new WriterProgress(1063L, 63L), owner1);
+
+      // Replacement queue claims ownership and records a re-batched mapping.
+      manager.claimTransientInFlightState("cg", "topic", regionId, owner2);
+      manager.recordMapping(
+          "cg", "topic", regionId, writerId, new WriterProgress(1075L, 75L), owner2);
+
+      // Delayed mapping, commits, and async cleanup from owner1 cannot touch owner2's live state.
+      assertTrue(manager.isSupersededTransientOwner("cg", "topic", regionId, owner1));
+      assertFalse(manager.isSupersededTransientOwner("cg", "topic", regionId, owner2));
+      manager.recordMapping(
+          "cg", "topic", regionId, writerId, new WriterProgress(1064L, 64L), owner1);
+      manager.clearTransientInFlightState("cg", "topic", regionId, owner1);
+
+      assertTrue(manager.commit("cg", "topic", regionId, writerId, new WriterProgress(1075L, 75L)));
+      assertEquals(
+          new WriterProgress(1075L, 75L),
+          manager
+              .getCommittedRegionProgress("cg", "topic", regionId)
+              .getWriterPositions()
+              .get(writerId));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
   private static void writeMalformedTopicProgressFile(final File systemDir) throws Exception {
     final File progressDir = new File(systemDir, "subscription/consensus_progress");
     final File malformedFile =
