@@ -20,6 +20,7 @@
 package org.apache.iotdb.cli.fs.provider;
 
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.ReductionOptions;
 import org.apache.iotdb.cli.fs.command.TemporalOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
@@ -199,6 +200,33 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
                       row -> visitor.visit(normalizer.apply(row)))));
     }
     return result;
+  }
+
+  @Override
+  public List<SqlRow> reduce(FsPath path, ReductionOptions options) throws SQLException {
+    Map<String, List<FsColumn>> devices = new java.util.TreeMap<>();
+    for (SqlRow row : rawSchema(path)) {
+      Path series = new Path(row.get("Timeseries"), true);
+      devices
+          .computeIfAbsent(series.getDeviceString(), ignored -> new ArrayList<>())
+          .add(column(row));
+    }
+    for (List<FsColumn> schema : devices.values()) FsReduction.validate(schema, options);
+    FsReduction engine = new FsReduction(model(), path.toString(), options);
+    for (Map.Entry<String, List<FsColumn>> device : devices.entrySet()) {
+      RowNormalizer normalizer = new RowNormalizer(true);
+      engine.scan(
+          device.getKey(),
+          device.getValue(),
+          sink ->
+              executor.scan(
+                  "SELECT * FROM "
+                      + device.getKey()
+                      + options.scanOptions().timePredicate()
+                      + " ORDER BY time ASC",
+                  row -> sink.visit(normalizer.apply(row))));
+    }
+    return engine.finish();
   }
 
   @Override

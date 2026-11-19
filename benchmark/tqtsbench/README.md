@@ -222,3 +222,50 @@ the matrix without issuing database queries or LLM requests.
 The completed 32-trial matrix, answer-alignment review, final deployment and
 remaining bottlenecks are recorded in
 [FS_TEMPORAL_ABLATION_20261119.md](FS_TEMPORAL_ABLATION_20261119.md).
+
+## Explicit window grids, entity reductions and endpoint deltas
+
+The [window/reduction protocol](FS_WINDOW_PROTOCOL.md) specifies fixed-duration
+versus calendar windows, explicit origin/timezone, entity versus pooled grain,
+endpoint differences/rates and deterministic result ranking. `windows` generates
+bounded, inspectable grids; `reduce` streams raw finite numeric observations and
+returns keyed summaries. Both use native CLI computation without SQL aggregation
+pushdown. Empty groups are omitted; ties and NULL behavior are explicit.
+
+`verify_window_base.py` checks an isolated synthetic Tree/Table fixture and real
+Tree data. The current server's Tree aggregate ORDER BY can omit groups: direct
+SQL ordered-window ranking is checked with Table `date_bin`, while Tree numerical
+results use complete unsorted SQL aggregates and an independent sort. This scope
+limit is retained in the validation report; benchmark gold is not rewritten.
+
+`run_window_ablation.py` runs grid-base/grid-only/reduce-only/grid-reduce on the
+same eight questions and budgets, with previous temporal/extreme capabilities in
+all arms. Use a new output directory containing `validation/summary.json` whose
+CLI hash matches the deployment. `analyze_window_ablation.py` compares saved traces
+without issuing new database queries or model requests.
+
+The completed 32-trial matrix, strict/partial answer reviews and trace-supported
+limitations are recorded in [FS_WINDOW_ABLATION_20261119.md](FS_WINDOW_ABLATION_20261119.md).
+
+## Frozen eight-question evaluation contract
+
+See [the original TQTS contracts and scoring audit](TQTS_EVALUATION_CONTRACT_20261119.md). Existing FS manual alignment counts are diagnostic, not official execution accuracy. Semantic alternatives remain non-grading trace annotations; original gold and per-question matching rules govern evaluation.
+
+### Active baseline: grid-reduce
+
+The active implementation was rolled back from `composition` to `grid-reduce`
+on 2026-11-19. `run_fs_pilot.py` defaults to `--features grid-reduce`:
+`temporal`, `extreme`, `grid`, and `reduce` remain available. Native `frame`, its
+adapter parameters, and its experiment entry point have been retired from the
+active source. Window origins/timezones, entity/pooled reduction, ranking and
+endpoint differences remain supported. The independent `--final-table` evaluation
+option is retained; existing experiment results and scoring contracts are unchanged.
+
+Frame source is archived at `.tmp/fs-grid-reduce-rollback-20261119/pre-rollback-source.tar.gz`;
+[FS_FRAME_PROTOCOL.md](FS_FRAME_PROTOCOL.md) and its validation report describe the
+historical implementation, not the currently deployed command surface.
+
+The contemporaneous LLM bundle ablation is recorded in
+[FS_COMPOSITION_ABLATION_20261119.md](FS_COMPOSITION_ABLATION_20261119.md).
+Its original-matcher final-table extension scores are distinct from the earlier
+manual prose-alignment figures; full trace and scoring limitations are retained.

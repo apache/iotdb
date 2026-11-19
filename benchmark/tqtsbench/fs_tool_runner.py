@@ -34,10 +34,13 @@ COMMANDS = ("help", "ls", "find", "tree", "schema", "meta", "stats", "count", "c
 AGGREGATES = ("count", "min", "max", "sum", "avg", "median", "first", "last", "min_time", "max_time", "null_count")
 READ = {"cat", "head"}
 TEMPORAL = {"gaps", "sessions", "extreme"}
-PAGED = READ | TEMPORAL
+ANALYTIC = {"windows", "reduce"}
+METRICS = ("count", "sum", "avg", "min", "max", "first", "last", "delta", "elapsed_ms", "rate_per_ms")
+GRID_ARGS = {"origin", "width", "step", "unit", "timezone"}
+PAGED = READ | TEMPORAL | ANALYTIC
 
 def enabled_commands(features):
-    return set(COMMANDS) | ({"gaps", "sessions"} if "temporal" in features else set()) | ({"extreme"} if "extreme" in features else set())
+    return set(COMMANDS) | ({"gaps", "sessions"} if "temporal" in features else set()) | ({"extreme"} if "extreme" in features else set()) | ({"windows"} if "grid" in features else set()) | ({"reduce"} if "reduce" in features else set())
 
 
 def integer(value, name, low, high):
@@ -90,6 +93,13 @@ def help_text(scope, features=()):
         result["commands"]["sessions"] = "Complete sessionization: required path, numeric field and positive gap_ms. Consecutive non-null target observations split ONLY when their gap > gap_ms; equality stays in session. Optional inclusive start_ms/end_ms filters BEFORE segmentation (clipped sessions, indices restart at0); windows not allowed. Per-device session_index/start/end,count,avg,first,last. Never pool devices. limit/offset paginate output sessions with next_offset. Null target values skipped; non-finite numeric target values rejected. Full scan, not inferred from sampled windows."
     if "extreme" in features:
         result["commands"]["extreme"] = "Associated extreme row: required path, numeric field and mode=min|max; optional measurements of associated fields, inclusive start_ms/end_ms OR windows, limit/offset. Independently per device/window; ties choose earliest time. Skip null comparison values, retain null associated values, reject non-finite comparison values. Return object, group_scope=entity, field, window keys, observed_at, extreme_value and value.<field> (target always included). No pooling/global ranking. Empty windows have no row. Structured pages with next_offset."
+    if "grid" in features:
+        result["commands"]["windows"] = "Generate explicit window grid, no data read. Required inclusive start_ms/end_ms, origin (epoch-ms string or ISO local/offset datetime), positive width; step defaults to width; unit=ms|day|month default ms; timezone=IANA name default UTC. ms is fixed duration; day/month is calendar arithmetic anchored at origin. Select starts inside range, clip ends to end_ms; no left partial window from outside. Return nominal half-open bounds, effective inclusive window_start/window_end, local labels and grid descriptors. Use returned inclusive bounds with stats/gaps/extreme/reduce. Max256 windows. Ambiguous/nonexistent local DST boundaries, sub-ms origin and overflow rejected. limit/offset paginate grid. No path parameter."
+    if "reduce" in features:
+        result["commands"]["reduce"] = "Native raw-observation reduction: explicit path and numeric field; metrics subset of count,sum,avg,min,max,first,last,delta,elapsed_ms,rate_per_ms (default count,first,last,delta). Optional inclusive start_ms/end_ms OR explicit windows. group_by=entity (default) keeps device/window rows; pooled merges raw observations per window, sample-weighted mean, never mean of entity means. NULL targets skipped, non-finite rejected, empty groups omitted. delta=last-first at non-null physical-time endpoints; elapsed_ms=last_at-first_at; rate_per_ms=delta/elapsed_ms (NULL if zero). No implicit unit/cycle conversion. Return endpoint identities/times and group/window/timezone descriptors. Optional rank_by selected metric, order=asc|desc(default desc), top>=1; top/order require rank_by. Global row-number ranking AFTER reduction, NULL last; ties window_index then entity identity. Endpoint timestamp ties choose lexicographically first entity (NULL tags first). Top before limit/offset paging. Exact decimal result strings; division DECIMAL128. Max65536 nonempty groups. timezone labels explicit epoch bounds; does not shift them."
+        result["scope_note"] = "Only native read-only FS commands enumerated here are enabled. reduce explicitly selects entity vs pooled grain and can rank result rows; stats remains entity-local. No SQL/shell/local files/writes."
+        if "grid" in features:
+            result["commands"]["reduce"] += " Optional origin,width,step,unit,timezone generate the same grid as windows directly, requiring start_ms/end_ms and excluding explicit windows; no manual window array needed."
     return result
 
 
@@ -100,7 +110,7 @@ def build_command(args, package, features=()):
     if cmd not in enabled_commands(features):
         raise ValueError("Unknown command; use help")
     allowed = {"command"}
-    if cmd != "help":
+    if cmd not in {"help", "windows"}:
         allowed.add("paths" if cmd in {"paste", "join"} else "path")
     if cmd in READ | {"stats", "schema", "count", "extreme"}:
         allowed.add("measurements")
@@ -112,14 +122,18 @@ def build_command(args, package, features=()):
         allowed.add("offset")
     if cmd == "stats":
         allowed |= {"aggregates", "windows"}
-    if cmd in TEMPORAL:
+    if cmd in TEMPORAL | {"reduce"}:
         allowed.add("field")
-    if cmd in {"gaps", "extreme"}:
+    if cmd in {"gaps", "extreme", "reduce"}:
         allowed.add("windows")
     if cmd == "sessions":
         allowed.add("gap_ms")
     if cmd == "extreme":
         allowed.add("mode")
+    if cmd == "windows" or (cmd == "reduce" and "grid" in features):
+        allowed |= GRID_ARGS
+    if cmd == "reduce":
+        allowed |= {"metrics", "group_by", "rank_by", "order", "top", "timezone"}
     if cmd in {"find", "grep"}:
         allowed.add("pattern")
     if cmd in {"tree", "find"}:
@@ -142,20 +156,53 @@ def build_command(args, package, features=()):
     else:
         paths = [path_arg(args.get("path", "/root/"+package), package)]
     parts = [cmd]
-    if cmd in TEMPORAL:
+    if cmd in TEMPORAL | {"reduce"}:
         if "path" not in args:
             raise ValueError("Analysis commands require an explicit path")
         field = args.get("field")
         if not isinstance(field, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", field):
             raise ValueError("field must be a measurement identifier")
         parts += ["--field", field]
+    if cmd in ANALYTIC:
+        has_grid = "origin" in args
+        if cmd == "windows" and not has_grid:
+            raise ValueError("windows requires origin, width and start_ms/end_ms")
+        if has_grid:
+            if not {"start_ms", "end_ms", "width"} <= set(args) or "windows" in args:
+                raise ValueError("Grid requires origin,width,start_ms,end_ms and excludes windows")
+            origin = args["origin"]
+            if not isinstance(origin,str) or len(origin)>100 or not re.fullmatch(r"[0-9TtZz:+.\-]+",origin):
+                raise ValueError("origin must be an epoch-ms string or ISO local/offset datetime")
+            parts += ["--origin",origin,"--width",str(integer(args["width"],"width",1,2**63-1))]
+            if "step" in args: parts += ["--step",str(integer(args["step"],"step",1,2**63-1))]
+            unit=args.get("unit","ms")
+            if unit not in {"ms","day","month"}: raise ValueError("unit must be ms, day or month")
+            parts += ["--unit",unit]
+        elif any(k in args for k in ["width","step","unit"]):
+            raise ValueError("width/step/unit require origin")
+        if "timezone" in args:
+            zone=args["timezone"]
+            if not isinstance(zone,str) or len(zone)>100 or not re.fullmatch(r"[A-Za-z0-9_/+\-:]+",zone): raise ValueError("timezone must be an IANA zone or offset")
+            parts += ["--timezone",zone]
+    if cmd == "reduce":
+        metrics=args.get("metrics",["count","first","last","delta"])
+        if not isinstance(metrics,list) or not metrics or any(v not in METRICS for v in metrics) or len(set(metrics))!=len(metrics): raise ValueError("metrics must be distinct supported reduction metrics")
+        group=args.get("group_by","entity")
+        if group not in {"entity","pooled"}: raise ValueError("group_by must be entity or pooled")
+        parts += ["--metrics",",".join(metrics),"--group-by",group]
+        if "rank_by" in args:
+            rank=args["rank_by"]; order=args.get("order","desc")
+            if rank not in metrics or order not in {"asc","desc"}: raise ValueError("rank_by must be selected metric; order asc or desc")
+            parts += ["--rank-by",rank,"--order",order]
+            if "top" in args:parts += ["--top",str(integer(args["top"],"top",1,65536))]
+        elif "top" in args or "order" in args:raise ValueError("top/order require rank_by")
     if cmd == "sessions":
         parts += ["--gap-ms", str(integer(args.get("gap_ms"), "gap_ms", 1, 2**63-1))]
     if cmd == "extreme":
         if args.get("mode") not in {"min", "max"}:
             raise ValueError("mode must be min or max")
         parts += ["--mode", args["mode"]]
-    if cmd in {"schema", "meta", "stats", "count", "cat", "head"} | TEMPORAL:
+    if cmd in {"schema", "meta", "stats", "count", "cat", "head"} | TEMPORAL | ANALYTIC:
         parts += ["-f", "ndjson"]
     elif cmd == "tail":
         parts += ["--format", "ndjson"]
@@ -222,7 +269,7 @@ def build_command(args, package, features=()):
         parts += ["-t",",","-1",str(integer(args.get("left_field",1),"left_field",1,10000)),"-2",str(integer(args.get("right_field",1),"right_field",1,10000))]
     if cmd == "wc":
         parts += ["-c"]
-    if cmd != "find":
+    if cmd not in {"find", "windows"}:
         parts += paths
     return " ".join(shlex.quote(p) for p in parts)
 

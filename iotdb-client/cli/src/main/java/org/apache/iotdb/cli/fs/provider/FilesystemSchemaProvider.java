@@ -20,6 +20,7 @@
 package org.apache.iotdb.cli.fs.provider;
 
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.ReductionOptions;
 import org.apache.iotdb.cli.fs.command.TemporalOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
@@ -103,6 +104,10 @@ public interface FilesystemSchemaProvider {
   /** Entity-local temporal computation; output can stop a session stream at a page boundary. */
   default void temporal(FsPath path, TemporalOptions options, RowVisitor visitor)
       throws SQLException {
+    throw new SQLException(CliMessages.NOT_SUPPORTED_YET);
+  }
+
+  default List<SqlRow> reduce(FsPath path, ReductionOptions options) throws SQLException {
     throw new SQLException(CliMessages.NOT_SUPPORTED_YET);
   }
 

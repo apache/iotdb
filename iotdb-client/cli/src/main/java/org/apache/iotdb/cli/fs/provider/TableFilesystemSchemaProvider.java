@@ -21,6 +21,7 @@ package org.apache.iotdb.cli.fs.provider;
 
 import org.apache.iotdb.cli.fs.FsRowRenderer;
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.ReductionOptions;
 import org.apache.iotdb.cli.fs.command.TemporalOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
@@ -202,6 +203,17 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     }
     ensureExists(path, file);
     return file;
+  }
+
+  @Override
+  public List<SqlRow> reduce(FsPath path, ReductionOptions options) throws SQLException {
+    TableFileRef file = tableFile(path);
+    FsReduction engine = new FsReduction(model(), path.toString(), options);
+    engine.scan(
+        file.database + "." + file.table,
+        columns(file),
+        sink -> scan(path, options.scanOptions(), false, sink));
+    return engine.finish();
   }
 
   @Override

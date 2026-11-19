@@ -97,6 +97,25 @@ class FsBoundaryTest(unittest.TestCase):
         self.assertTrue(command_failed("grep",1,True,""))
         self.assertTrue(command_failed("stats",1,False,""))
 
+    def test_grid_and_reduce_gates_and_types(self):
+        grid={"command":"windows","origin":"2024-03-10T00:00:00","width":1,"unit":"day","timezone":"America/New_York","start_ms":1710046800000,"end_ms":1710215999999}
+        with self.assertRaises(ValueError):build_command(grid,"iotdb_ndbc",["reduce"])
+        native=build_command(grid,"iotdb_ndbc",["grid"])
+        self.assertIn("--origin 2024-03-10T00:00:00",native)
+        self.assertNotIn("/root",native)
+        self.assertIn("-n 201",native)
+        reduce={**grid,"command":"reduce","path":"/root/iotdb_ndbc","field":"wspd","metrics":["avg","delta"],"rank_by":"delta","top":3}
+        with self.assertRaises(ValueError):build_command(reduce,"iotdb_ndbc",["reduce"])
+        native=build_command(reduce,"iotdb_ndbc",["grid","reduce"])
+        self.assertIn("--rank-by delta",native)
+        self.assertIn("--group-by entity",native)
+        self.assertIn("--top 3",native)
+        for changes in [{"width":True},{"timezone":"UTC;sql"},{"origin":"0|cat"},{"unit":"year"},{"windows":[{"start_ms":0,"end_ms":1}]},{"metrics":["delta","delta"]},{"rank_by":"sum"},{"group_by":"auto"}]:
+            with self.subTest(changes=changes),self.assertRaises(ValueError):build_command({**reduce,**changes},"iotdb_ndbc",["grid","reduce"])
+        contract=help_text("/root/iotdb_ndbc",["grid","reduce"])
+        self.assertIn("sample-weighted",contract["commands"]["reduce"])
+        self.assertIn("no left partial",contract["commands"]["windows"])
+
     def test_resource_metrics_preserve_units(self):
         self.assertEqual(resource_metrics("Maximum resident set size (kbytes): 1234\nUser time (seconds): 1.25\nSystem time (seconds): 0.10"), {"peak_rss_kib": 1234.0, "cpu_user_seconds": 1.25, "cpu_system_seconds": 0.1})
 

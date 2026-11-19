@@ -36,6 +36,8 @@ public class FilesystemCommand {
     META,
     SCHEMA,
     STATS,
+    WINDOWS,
+    REDUCE,
     GAPS,
     SESSIONS,
     EXTREME,

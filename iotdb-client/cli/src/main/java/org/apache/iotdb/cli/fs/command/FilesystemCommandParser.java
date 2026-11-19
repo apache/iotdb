@@ -146,6 +146,25 @@ public class FilesystemCommandParser {
       case CD:
         args.paths(0, 1);
         return FilesystemCommand.path(type, args.operands.isEmpty() ? "/" : args.operands.get(0));
+      case WINDOWS:
+      case REDUCE:
+        validateScope(args);
+        if (type == FilesystemCommand.Type.WINDOWS) args.paths(0, 0);
+        if (args.has("--windows") && args.value("--windows").isEmpty())
+          throw ReductionOptions.invalid();
+        FilesystemCommand reduction =
+            withReadOptions(
+                    FilesystemCommand.path(type, args.path(type == FilesystemCommand.Type.REDUCE))
+                        .withLimit(
+                            args.has("-n")
+                                ? unsignedInteger(command, "-n", args.value("-n"), false)
+                                : -1),
+                    args,
+                    "-f")
+                .withOptions(args.options);
+        if (type == FilesystemCommand.Type.REDUCE) ReductionOptions.from(reduction);
+        else WindowGrid.from(reduction);
+        return reduction;
       case GAPS:
       case SESSIONS:
       case EXTREME:
@@ -762,6 +781,34 @@ public class FilesystemCommandParser {
               || "--table".equals(flag)
               || "-m".equals(flag)
               || "--measurements".equals(flag);
+        case "windows":
+        case "reduce":
+          return java.util.Arrays.asList(
+                      "--origin",
+                      "--width",
+                      "--step",
+                      "--unit",
+                      "--timezone",
+                      "--start",
+                      "--end",
+                      "-f",
+                      "--format",
+                      "-n",
+                      "--limit",
+                      "--offset")
+                  .contains(flag)
+              || ("reduce".equals(command)
+                  && java.util.Arrays.asList(
+                          "--field",
+                          "--metrics",
+                          "--group-by",
+                          "--rank-by",
+                          "--order",
+                          "--top",
+                          "--windows",
+                          "--tag-filter",
+                          "--tag-match")
+                      .contains(flag));
         case "gaps":
         case "sessions":
         case "extreme":
