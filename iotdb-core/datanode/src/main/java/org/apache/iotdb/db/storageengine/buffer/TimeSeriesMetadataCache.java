@@ -267,9 +267,10 @@ public class TimeSeriesMetadataCache {
           return result;
         }
         cachePhaseEndTime = System.nanoTime();
+        String deviceName = device.toString();
         // serialize reads of the same device+file (same lock key as get) so threads don't each
         // walk the device metadata index and race on the shared reader
-        synchronized (deviceLock(device.toString(), filePath)) {
+        synchronized (deviceLock(deviceName, filePath)) {
           // another thread may have loaded some of these while this one waited for the lock
           Iterator<String> pendingIterator = pending.iterator();
           while (pendingIterator.hasNext()) {
@@ -290,7 +291,7 @@ public class TimeSeriesMetadataCache {
             cachePhaseEndTime = System.nanoTime();
             return result;
           }
-          String devicePrefix = device.toString() + IoTDBConstant.PATH_SEPARATOR;
+          String devicePrefix = deviceName + IoTDBConstant.PATH_SEPARATOR;
           if (debug) {
             for (String measurement : pending) {
               DEBUG_LOGGER.info(
@@ -473,8 +474,20 @@ public class TimeSeriesMetadataCache {
   }
 
   /**
-   * Reads the pending measurements from the leaf groups that hold them. When the cache is enabled
-   * the group siblings are returned as well, so a later single-column get() finds them in the LRU.
+   * Reads the pending measurements from the reader and merges the result into {@code result}.
+   *
+   * <p>The three sets have different roles. {@code pending} holds the measurements that are neither
+   * in the LRU nor ruled out by the bloom filter; it selects the leaf groups the reader visits.
+   * {@code requested} holds the measurements whose metadata the caller wants in the result. {@code
+   * allSensors} is the full selected set of the scan; when it is the same object as {@code
+   * requested} (the aligned batch call) the reader deserializes only the misses, otherwise (the
+   * single-column path) it deserializes the whole selected set so the group of the requested column
+   * is warmed for later lookups.
+   *
+   * <p>The reader returns the measurements of the visited groups that are in {@code returned};
+   * {@code pending} is always part of that set. A pending measurement the reader does not return
+   * was routed to a group that was read, so it is absent from the file and is remembered with a
+   * negative cache entry.
    */
   private void readAndMerge(
       TsFileSequenceReader reader,
@@ -494,8 +507,8 @@ public class TimeSeriesMetadataCache {
     // must be part of what the reader returns, otherwise a miss outside `allSensors` would be
     // mistaken for an absent series and pollute the negative cache.
     Set<String> returned;
-    if (!cacheEnabled || allSensors.equals(requested)) {
-      // the aligned batch read requests exactly the set it caches, so only the misses remain
+    if (!cacheEnabled || allSensors == requested) {
+      // the aligned batch caller passes the same set for both, so equal contents are already known
       returned = pending;
     } else if (result.isEmpty() && allSensors.containsAll(pending)) {
       // nothing cached to exclude and the selected set covers the misses: use it without copying
@@ -515,6 +528,7 @@ public class TimeSeriesMetadataCache {
             ioSizeRecorder);
     for (Map.Entry<String, TimeseriesMetadata> entry : loaded.entrySet()) {
       String measurement = entry.getKey();
+      pending.remove(measurement);
       TimeseriesMetadata metadata = entry.getValue();
       if (metadata.getStatistics().getCount() == 0) {
         if (debug) {
@@ -535,17 +549,13 @@ public class TimeSeriesMetadataCache {
         }
       }
     }
-    // a pending measurement the reader did not return was routed to a leaf group that was read,
-    // so it is absent; remember it instead of reading that group again on the next query
+    // what is left in pending was routed to a leaf group that was read and not found there
     for (String measurement : pending) {
-      if (!loaded.containsKey(measurement)) {
-        if (requested.contains(measurement)) {
-          result.put(measurement, null);
-        }
-        cacheNonExistenceIfNeeded(tsFileID, device, measurement, cacheEnabled, ignoreNotExists);
+      if (requested.contains(measurement)) {
+        result.put(measurement, null);
       }
+      cacheNonExistenceIfNeeded(tsFileID, device, measurement, cacheEnabled, ignoreNotExists);
     }
-    fillMissingWithNull(requested, result);
   }
 
   private static void fillMissingWithNull(
@@ -689,15 +699,11 @@ public class TimeSeriesMetadataCache {
     private final TsFileID tsFileID;
     private final IDeviceID device;
     private final String measurement;
-    private final int hash;
 
     public TimeSeriesMetadataCacheKey(TsFileID tsFileID, IDeviceID device, String measurement) {
       this.tsFileID = tsFileID;
       this.device = device;
       this.measurement = measurement;
-      // a key is built for every lookup and every write: compute the hash once instead of
-      // allocating the Objects.hash argument array on each call
-      this.hash = Objects.hash(tsFileID, device, measurement);
     }
 
     public long getRetainedSizeInBytes() {
@@ -720,7 +726,7 @@ public class TimeSeriesMetadataCache {
 
     @Override
     public int hashCode() {
-      return hash;
+      return Objects.hash(tsFileID, device, measurement);
     }
 
     @Override
