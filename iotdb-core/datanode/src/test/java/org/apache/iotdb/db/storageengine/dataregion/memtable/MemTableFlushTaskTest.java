@@ -410,6 +410,97 @@ public class MemTableFlushTaskTest {
   }
 
   @Test
+  public void testAlignedFlushMergesDuplicateTimestampsAcrossBoundaries() throws Exception {
+    checkAlignedFlushMergesDuplicateTimestampsAcrossBoundaries(false, false);
+  }
+
+  @Test
+  public void testAlignedFlushMergesDuplicateTimestampsAcrossBoundariesAfterDeletion()
+      throws Exception {
+    checkAlignedFlushMergesDuplicateTimestampsAcrossBoundaries(true, false);
+  }
+
+  @Test
+  public void testAlignedFlushSkipsAllNullDuplicateRowsAcrossBoundaries() throws Exception {
+    checkAlignedFlushMergesDuplicateTimestampsAcrossBoundaries(false, true);
+  }
+
+  private void checkAlignedFlushMergesDuplicateTimestampsAcrossBoundaries(
+      boolean removeSecondMeasurement, boolean ignoreAllNullRows) throws Exception {
+    List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
+    String alignedFilePath =
+        TestConstant.OUTPUT_DATA_DIR.concat(
+            "duplicateBoundary-" + removeSecondMeasurement + "-" + ignoreAllNullRows + ".tsfile");
+
+    try {
+      // Timestamp 5 has four duplicate rows, so it spans page and chunk caps 2 and 3.
+      memChunk.putAlignedRow(6, new Object[] {6L, 66L});
+      memChunk.putAlignedRow(5, new Object[] {null, 55L});
+      memChunk.putAlignedRow(1, new Object[] {1L, null});
+      memChunk.putAlignedRow(3, new Object[] {3L, null});
+      memChunk.putAlignedRow(5, new Object[] {5L, null});
+      memChunk.putAlignedRow(1, new Object[] {null, 11L});
+      memChunk.putAlignedRow(5, new Object[] {null, null});
+      memChunk.putAlignedRow(3, new Object[] {null, 33L});
+      memChunk.putAlignedRow(1, new Object[] {null, null});
+      memChunk.putAlignedRow(5, new Object[] {null, null});
+      memChunk.putAlignedRow(2, new Object[] {2L, 22L});
+      if (ignoreAllNullRows) {
+        memChunk.putAlignedRow(4, new Object[] {null, null});
+      } else {
+        memChunk.putAlignedRow(4, new Object[] {4L, 44L});
+      }
+      if (removeSecondMeasurement) {
+        memChunk.removeColumn("s1");
+      }
+      memChunk.sortTvListForFlush();
+
+      BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 3, 2, ignoreAllNullRows);
+      try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
+        alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
+        Object task;
+        while ((task = ioTaskQueue.poll()) != null) {
+          if (task instanceof IChunkWriter chunkWriter) {
+            chunkWriter.writeToFileWriter(alignedWriter);
+          }
+        }
+        alignedWriter.endChunkGroup();
+        alignedWriter.endFile();
+      }
+
+      try (TsFileSequenceReader sequenceReader = new TsFileSequenceReader(alignedFilePath);
+          TsFileReader fileReader = new TsFileReader(sequenceReader)) {
+        List<Path> paths = new ArrayList<>();
+        paths.add(new Path("root.d", "s0", false));
+        if (!removeSecondMeasurement) {
+          paths.add(new Path("root.d", "s1", false));
+        }
+        QueryDataSet dataSet = fileReader.query(QueryExpression.create(paths, null));
+
+        int[] expectedTimes =
+            ignoreAllNullRows ? new int[] {1, 2, 3, 5, 6} : new int[] {1, 2, 3, 4, 5, 6};
+        for (int time : expectedTimes) {
+          assertTrue(dataSet.hasNext());
+          RowRecord row = dataSet.next();
+          assertEquals(time, row.getTimestamp());
+          assertEquals(time, row.getFields().get(0).getLongV());
+          if (!removeSecondMeasurement) {
+            assertEquals(time * 11L, row.getFields().get(1).getLongV());
+          }
+        }
+        assertFalse(dataSet.hasNext());
+      }
+    } finally {
+      memChunk.release();
+    }
+  }
+
+  @Test
   public void testAlignedFastPathKeepsPagesAndValuesAlignedAfterPartialSegmentSort()
       throws IOException, InterruptedException {
     // Covers one moved segment and several untouched segments across multiple logical pages.

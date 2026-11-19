@@ -133,32 +133,37 @@ public class AlignedFlushDuplicateTimeCheckPerformanceTest {
   }
 
   private static long runOptimized(BenchmarkData data) {
+    // Single row-major pass mirroring the encoder's duplicate-timestamp merge.
     long nullCount = 0;
-    long[] lastValidPointTimeForTimeDupCheck = new long[COLUMN_COUNT];
-    int[] lastValidPointIndexForTimeDupCheck = new int[COLUMN_COUNT];
-    Arrays.fill(lastValidPointIndexForTimeDupCheck, -1);
-    for (int columnIndex = 0; columnIndex < COLUMN_COUNT; columnIndex++) {
-      for (int rowIndex = 0; rowIndex < ROW_COUNT; rowIndex++) {
-        int valueIndex = data.list.getValueIndex(rowIndex);
-        long time = data.list.getTime(rowIndex);
-        boolean currentValueIsNull = data.list.isNullValue(valueIndex, columnIndex);
-        if (!currentValueIsNull) {
-          lastValidPointTimeForTimeDupCheck[columnIndex] = time;
-          lastValidPointIndexForTimeDupCheck[columnIndex] = valueIndex;
+    int[] lastValidPointIndex = new int[COLUMN_COUNT];
+    Arrays.fill(lastValidPointIndex, -1);
+    boolean hasPendingGroup = false;
+    long pendingTime = 0;
+    for (int rowIndex = 0; rowIndex < ROW_COUNT; rowIndex++) {
+      long time = data.list.getTime(rowIndex);
+      if (hasPendingGroup && time != pendingTime) {
+        for (int columnIndex = 0; columnIndex < COLUMN_COUNT; columnIndex++) {
+          if (lastValidPointIndex[columnIndex] < 0) {
+            nullCount++;
+          }
         }
-        if (data.timeDuplicateInfo[rowIndex]) {
-          continue;
+        Arrays.fill(lastValidPointIndex, -1);
+        hasPendingGroup = false;
+      }
+      if (!hasPendingGroup) {
+        hasPendingGroup = true;
+        pendingTime = time;
+      }
+      int valueIndex = data.list.getValueIndex(rowIndex);
+      for (int columnIndex = 0; columnIndex < COLUMN_COUNT; columnIndex++) {
+        if (!data.list.isNullValue(valueIndex, columnIndex)) {
+          lastValidPointIndex[columnIndex] = valueIndex;
         }
-
-        int originRowIndex;
-        if (lastValidPointIndexForTimeDupCheck[columnIndex] >= 0
-            && time == lastValidPointTimeForTimeDupCheck[columnIndex]) {
-          originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex];
-        } else {
-          originRowIndex = valueIndex;
-        }
-        boolean isNull = originRowIndex == valueIndex && currentValueIsNull;
-        if (isNull) {
+      }
+    }
+    if (hasPendingGroup) {
+      for (int columnIndex = 0; columnIndex < COLUMN_COUNT; columnIndex++) {
+        if (lastValidPointIndex[columnIndex] < 0) {
           nullCount++;
         }
       }
