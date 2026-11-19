@@ -204,8 +204,31 @@ public class Constants {
   public static final String COLON = ": ";
   public static final String MINUS = "-";
 
+  public static final String HEADER_TAGS = "Tags";
+  public static final String HEADER_ATTRIBUTES = "Attributes";
+  public static final String HEADER_ALIAS = "Alias";
+  public static final String HEADER_DATATYPE = "DataType";
+  public static final String HEADER_ENCODING = "Encoding";
+  public static final String HEADER_COMPRESSION = "Compression";
+
   public static final List<String> HEAD_COLUMNS =
-      Arrays.asList("Timeseries", "Alias", "DataType", "Encoding", "Compression");
+      Arrays.asList(
+          "Timeseries", HEADER_ALIAS, HEADER_DATATYPE, HEADER_ENCODING, HEADER_COMPRESSION);
+
+  /**
+   * Column layout written by the tree model schema export. The Tags and Attributes cells hold a
+   * JSON object, so files carrying them are parsed with the RFC4180 settings instead of the legacy
+   * ones.
+   */
+  public static final List<String> HEAD_COLUMNS_V2 =
+      Arrays.asList(
+          "Timeseries",
+          HEADER_ALIAS,
+          HEADER_DATATYPE,
+          HEADER_ENCODING,
+          HEADER_COMPRESSION,
+          HEADER_TAGS,
+          HEADER_ATTRIBUTES);
 
   // export constants
   public static final String EXPORT_CLI_PREFIX = CliMessages.EXCEPTION_EXPORT_DATA_2F1FB3D9;
