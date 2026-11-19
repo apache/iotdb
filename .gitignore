@@ -3,6 +3,7 @@
 **/logs/*
 **/lib/**
 **/data/**
+.tmp/
 
 # Python runtime file
 **/__pycache__/**

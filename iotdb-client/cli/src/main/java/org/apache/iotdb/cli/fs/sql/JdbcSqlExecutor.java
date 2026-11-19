@@ -47,6 +47,16 @@ public class JdbcSqlExecutor implements SqlExecutor {
   }
 
   @Override
+  public void scan(String sql, RowVisitor visitor) throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      statement.setFetchSize(1024);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        visitRows(resultSet, visitor);
+      }
+    }
+  }
+
+  @Override
   public List<SqlRow> executeQueryOrUpdate(String sql) throws SQLException {
     try (Statement statement = connection.createStatement()) {
       if (!statement.execute(sql)) {
@@ -59,13 +69,23 @@ public class JdbcSqlExecutor implements SqlExecutor {
   }
 
   private static List<SqlRow> readRows(ResultSet resultSet) throws SQLException {
+    List<SqlRow> rows = new ArrayList<>();
+    visitRows(
+        resultSet,
+        row -> {
+          rows.add(row);
+          return true;
+        });
+    return rows;
+  }
+
+  private static void visitRows(ResultSet resultSet, RowVisitor visitor) throws SQLException {
     ResultSetMetaData metaData = resultSet.getMetaData();
     int columnCount = metaData.getColumnCount();
     Map<String, String> dataTypes = new LinkedHashMap<>();
     for (int column = 1; column <= columnCount; column++) {
       dataTypes.put(metaData.getColumnLabel(column), metaData.getColumnTypeName(column));
     }
-    List<SqlRow> rows = new ArrayList<>();
     while (resultSet.next()) {
       Map<String, String> values = new LinkedHashMap<>();
       for (int column = 1; column <= columnCount; column++) {
@@ -77,9 +97,8 @@ public class JdbcSqlExecutor implements SqlExecutor {
           values.put(name, resultSet.getString(column));
         }
       }
-      rows.add(new SqlRow(values, dataTypes));
+      if (!visitor.visit(new SqlRow(values, dataTypes))) break;
     }
-    return rows;
   }
 
   @Override

@@ -135,7 +135,7 @@ This ablation mode does not bound model-facing CSV or provide next_offset; large
         else ""
     )
     stats_behavior = (
-        "apply optional time/TAG filters before computing the requested aggregates; use one stats call instead of reading rows when the requested calculation is available"
+        "apply optional time/TAG filters before computing the requested aggregates; use one stats call instead of reading rows when the requested calculation is available. INT64 aggregate results use decimal strings to preserve values outside the JSON safe-integer range"
         if filtered_stats
         else "compute whole-object statistics or statistics for one measurement; time and tag filters are not supported"
     )

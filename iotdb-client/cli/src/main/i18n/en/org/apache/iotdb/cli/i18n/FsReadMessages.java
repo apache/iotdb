@@ -27,4 +27,5 @@ public final class FsReadMessages {
   public static final String INVALID_DEVICE = "Invalid tree device path: %s";
   public static final String TEXT_OPTIONS =
       "Text inputs do not support data selectors, filters or structured output formats";
+  public static final String EXCEPTION_EXPECTED_1_256_INCLUSIVE_EPOCH_WINDOWS_START_END_SEPARATED_BY_COMMAS_START_MUST_NOT_EXCEED_END_AND_WINDOWS_CANNOT_BE_COMBINED_WITH_START_END_DCB04A3E = "Expected 1..256 inclusive epoch windows start:end separated by commas; start must not exceed end and --windows cannot be combined with --start/--end";
 }

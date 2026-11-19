@@ -20,13 +20,14 @@
 from decimal import Decimal
 import unittest
 
-from run_dsh_benchmark import render_prompt, score
+from run_dsh_benchmark import interval_iou, patches_for_arm, render_prompt, score
 
 
 class DshBenchmarkRunnerTest(unittest.TestCase):
     def setUp(self):
         self.task = {
             "id": "L1_T1_Global_Aggregation_00007",
+            "subtask": "Global Aggregation",
             "question": "What is the median value of channel 147 in 2020?",
             "meta": {"args": {"answer_sentinel": "DO_NOT_EXPOSE"}},
         }
@@ -69,6 +70,50 @@ class DshBenchmarkRunnerTest(unittest.TestCase):
         self.assertEqual(Decimal(correct["parsed_answer"]), Decimal("0.150"))
         self.assertEqual(wrong["answer_status"], "wrong_answer")
         self.assertEqual(invalid["answer_status"], "invalid_format")
+
+    def test_score_interval_uses_strict_format_and_official_iou(self):
+        expected = ["2020-01-01 00:00:00", "2020-01-01 02:00:00"]
+        correct = score("[2020-01-01 00:00:00, 2020-01-01 02:00:00]", expected)
+        partial = score("[2020-01-01 01:00:00, 2020-01-01 03:00:00]", expected)
+        invalid = score('["2020-01-01 00:00:00", "2020-01-01 02:00:00"]', expected)
+        self.assertTrue(correct["correct"])
+        self.assertEqual(correct["official_score"], 1.0)
+        self.assertEqual(partial["answer_status"], "wrong_answer")
+        self.assertAlmostEqual(partial["official_score"], 1 / 3)
+        self.assertEqual(invalid["answer_status"], "invalid_format")
+
+    def test_interval_iou_matches_zero_duration_rule(self):
+        interval = ["2020-01-01 00:00:00", "2020-01-01 00:00:00"]
+        self.assertEqual(interval_iou(interval, interval), 1.0)
+
+    def test_sql_dialect_patch_is_last_and_sql_only(self):
+        self.assertEqual(
+            patches_for_arm(["agent.yml"], "baseline.yml", "sql", "dialect.yml"),
+            ["agent.yml", "baseline.yml", "dialect.yml"],
+        )
+        self.assertEqual(
+            patches_for_arm(["agent.yml"], "baseline.yml", "filesystem", "dialect.yml"),
+            ["agent.yml", "baseline.yml"],
+        )
+
+    def test_interval_prompts_keep_schema_but_not_oracle(self):
+        task = {
+            "id": "L1_T3_Interval_Discovery_00340",
+            "subtask": "Interval Discovery",
+            "question": "Find the longest period where channel 71 remained above 0.01.",
+        }
+        record = {
+            "database": "nlqts_v1_00340",
+            "oracle_public": ["2020-09-02 07:45:00", "2020-09-10 17:00:00"],
+        }
+        sql = render_prompt(task, record, "sql", "filtered-stats")
+        filesystem = render_prompt(task, record, "filesystem", "filtered-stats")
+        self.assertIn("aggregate window functions", sql)
+        self.assertIn("direct TIMESTAMP subtraction is invalid", sql)
+        self.assertIn("exactly one UTC interval", sql)
+        self.assertIn("stats command cannot compute contiguous intervals", filesystem)
+        self.assertIn("offset=next_offset", filesystem)
+        self.assertNotIn("2020-09-02", sql + filesystem)
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ package org.apache.iotdb.cli.fs.command;
 
 import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.i18n.FsHelpMessages;
+import org.apache.iotdb.cli.i18n.FsWindowMessages;
 
 import java.io.PrintStream;
 import java.util.LinkedHashMap;
@@ -39,7 +40,30 @@ public final class FilesystemCommandHelp {
           + " [--offset n] [--start time] [--end time]"
           + " [--tag-filter tag op [value]] [--tag-match all|any]";
 
+  private static final String TEMPORAL_READ =
+      "[-f table|ndjson|csv] [--offset n] [--start ms] [--end ms] [--tag-filter tag op [value]] [--tag-match all|any]";
+
   static {
+    add(
+        "windows",
+        "windows --start ms --end ms --origin epoch-or-ISO --width n [--step n] [--unit ms|day|month] [--timezone zone] [-n n] [-f ndjson] [--offset n]",
+        new String[] {
+          FsWindowMessages
+              .MESSAGE_GENERATE_AN_EXPLICIT_FIXED_DURATION_OR_CALENDAR_WINDOW_GRID_CC82BDC7,
+          FsWindowMessages
+              .MESSAGE_GENERATE_EXPLICIT_WINDOWS_WITHOUT_READING_DATA_REQUIRED_START_END_ARE_INCLUSIVE_EPOCH_MS_ORIGIN_IS_EPOCH_MS_OR_ISO_LOCAL_OFFSET_DATETIME_WIDTH_IS_POSITIVE_STEP_DEFAULTS_TO_WIDTH_UNIT_MS_DAY_MONTH_DEFAULTS_TO_MS_TIMEZONE_DEFAULTS_TO_UTC_SELECT_GRID_STARTS_INSIDE_THE_RANGE_CLIP_EACH_FINAL_END_TO_THE_REQUESTED_END_OUTPUT_NOMINAL_HALF_OPEN_AND_EFFECTIVE_INCLUSIVE_BOUNDS_LOCAL_LABELS_ORIGIN_UNIT_AND_TIMEZONE_CALENDAR_OFFSETS_ARE_ANCHORED_TO_ORIGIN_NO_ITERATIVE_MONTH_DRIFT_AMBIGUOUS_NONEXISTENT_LOCAL_BOUNDARIES_AND_OVERFLOW_ARE_ERRORS_MAXIMUM_256_WINDOWS_PAGING_USES_N_OFFSET_90AB8B84
+        },
+        "windows --start 0 --end 9999 --origin 0 --width 1000 -f ndjson");
+    add(
+        "reduce",
+        "reduce path --field field [--metrics count,sum,avg,min,max,first,last,delta,elapsed_ms,rate_per_ms] [--group-by entity|pooled] [--rank-by metric --order asc|desc --top n] [--windows start:end,... | --start ms --end ms] [--origin epoch-or-ISO --width n --step n --unit ms|day|month --timezone zone] [-n n] [--offset n] [-f table|csv|ndjson] [--tag-filter tag op value] [--tag-match all|any]",
+        new String[] {
+          FsWindowMessages
+              .MESSAGE_REDUCE_OBSERVATIONS_AT_AN_EXPLICIT_ENTITY_GRAIN_AND_RANK_RESULT_ROWS_6D9CCB5B,
+          FsWindowMessages
+              .MESSAGE_REDUCE_RAW_FINITE_NUMERIC_OBSERVATIONS_LOCALLY_FIELD_REQUIRED_METRICS_DEFAULTS_TO_COUNT_FIRST_LAST_DELTA_GROUP_BY_ENTITY_DEFAULT_KEEPS_TREE_DEVICE_OR_FULL_TABLE_TAG_TUPLE_POOLED_EXPLICITLY_MERGES_OBSERVATIONS_PER_WINDOW_NEVER_AVERAGES_ENTITY_AVERAGES_NULL_TARGET_SKIPPED_EMPTY_GROUPS_OMITTED_DELTA_LAST_FIRST_ELAPSED_MS_LAST_AT_FIRST_AT_RATE_PER_MS_DELTA_ELAPSED_MS_NULL_FOR_ZERO_SPAN_ENDPOINT_TIES_USE_LEXICOGRAPHIC_ENTITY_IDENTITY_NULL_TAGS_FIRST_RETURN_ENDPOINT_IDENTITIES_TIMES_OPTIONAL_RANK_BY_SELECTED_METRIC_ORDER_ASC_DESC_DEFAULT_DESC_TOP_POSITIVE_TIES_USE_WINDOW_INDEX_THEN_ENTITY_IDENTITY_NULL_SCORES_LAST_RANK_IS_ROW_NUMBER_RANKING_PRECEDES_TOP_THEN_OUTPUT_PAGING_USE_EXPLICIT_INCLUSIVE_WINDOWS_OR_START_END_GRID_PARAMETERS_FOLLOW_WINDOWS_COMMAND_AND_EXCLUDE_EXPLICIT_WINDOWS_ALL_RESULTS_RETAIN_GROUP_WINDOW_TIMEZONE_DESCRIPTORS_AT_MOST_65536_NONEMPTY_ENTITY_WINDOW_GROUPS_NO_SQL_AGGREGATION_PUSHDOWN_F01EECDA
+        },
+        "reduce /root/db --field value --metrics avg,delta --rank-by delta --top 5 -f ndjson");
     add("pwd", "pwd", FsHelpMessages.PWD, "pwd");
     add("ls", "ls [-laR] " + FORMAT + " [path]", FsHelpMessages.LS, "ls /\n  ls -la /db1");
     add("ll", "ll [-aR] " + FORMAT + " [path]", FsHelpMessages.LL, "ll -a /db1");
@@ -59,9 +83,25 @@ public final class FilesystemCommandHelp {
             + " "
             + FORMAT
             + " [--start time] [--end time] [--tag-filter tag op [value]]"
-            + " [--tag-match all|any] [--aggregates count,min,max,sum,avg,median] [path]",
+            + " [--tag-match all|any] [--aggregates count,min,max,sum,avg,median,first,last,min_time,max_time,null_count] [--windows start:end,...] [path]",
         FsHelpMessages.STATS,
         "stats /db1/table1.csv -m temperature --start 0 --end 1000 --aggregates avg,median");
+    add(
+        "gaps",
+        "gaps path --field field [--windows start:end,...] [-n count] " + TEMPORAL_READ,
+        FsHelpMessages.GAPS,
+        "gaps /root/db/device --field value --windows 0:3599999,3600000:7199999 -f ndjson");
+    add(
+        "sessions",
+        "sessions path --field field --gap-ms duration [-n count] " + TEMPORAL_READ,
+        FsHelpMessages.SESSIONS,
+        "sessions /root/db/device --field value --gap-ms 14400000 -f ndjson");
+    add(
+        "extreme",
+        "extreme path --field field --mode min|max [-m field ...] [--windows start:end,...] [-n count] "
+            + TEMPORAL_READ,
+        FsHelpMessages.EXTREME,
+        "extreme /root/db/device --field temperature --mode max -m humidity -f ndjson");
     add(
         "count",
         "count " + SCOPE + " " + FORMAT + " [path]",

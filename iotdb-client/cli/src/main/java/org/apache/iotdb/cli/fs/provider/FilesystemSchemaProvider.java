@@ -20,13 +20,17 @@
 package org.apache.iotdb.cli.fs.provider;
 
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.ReductionOptions;
+import org.apache.iotdb.cli.fs.command.TemporalOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.path.FsPath;
+import org.apache.iotdb.cli.fs.sql.SqlExecutor.RowVisitor;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 import org.apache.iotdb.cli.i18n.CliMessages;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -71,6 +75,40 @@ public interface FilesystemSchemaProvider {
   /** Return logical row/entity/column counts for a table or timeseries path. */
   default List<SqlRow> countRows(FsPath path) throws SQLException {
     throw new SQLException("Counts are not supported for path: " + path);
+  }
+
+  /**
+   * Ordered raw scan. Native providers stream; the default preserves custom-provider compatibility.
+   */
+  default void scan(FsPath path, ReadOptions options, boolean descending, RowVisitor visitor)
+      throws SQLException {
+    boolean filtered =
+        options.getStart() != null
+            || options.getEnd() != null
+            || !options.getTagFilters().isEmpty();
+    int limit =
+        options.getLimit() < 0 || filtered
+            ? -1
+            : (int)
+                Math.min(
+                    Integer.MAX_VALUE,
+                    options.getLimit() + Math.min(Integer.MAX_VALUE, options.getOffset()));
+    List<SqlRow> rows = descending ? tail(path, limit) : read(path, limit);
+    if (descending) {
+      rows = new ArrayList<>(rows);
+      Collections.reverse(rows);
+    }
+    for (SqlRow row : rows) if (!visitor.visit(row)) break;
+  }
+
+  /** Entity-local temporal computation; output can stop a session stream at a page boundary. */
+  default void temporal(FsPath path, TemporalOptions options, RowVisitor visitor)
+      throws SQLException {
+    throw new SQLException(CliMessages.NOT_SUPPORTED_YET);
+  }
+
+  default List<SqlRow> reduce(FsPath path, ReductionOptions options) throws SQLException {
+    throw new SQLException(CliMessages.NOT_SUPPORTED_YET);
   }
 
   List<SqlRow> read(FsPath path, int limit) throws SQLException;

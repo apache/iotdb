@@ -742,4 +742,71 @@ public class FilesystemCommandParserTest {
       assertFalse(input, command.getErrorMessage().isEmpty());
     }
   }
+
+  @Test
+  public void parseMultiWindowStatisticsAndRejectAmbiguousBounds() {
+    FilesystemCommand command =
+        FilesystemCommandParser.parse(
+            "stats /root/db/d --windows -10:0,0:10,0:10 --aggregates first,last,min_time,max_time,null_count");
+    assertEquals(FilesystemCommand.Type.STATS, command.getType());
+    assertEquals(3, command.getReadOptions().getWindows().size());
+    assertEquals(-10, command.getReadOptions().getWindows().get(0).getStart());
+    assertEquals(" WHERE time >= -10 AND time <= 10", command.getReadOptions().timePredicate());
+    for (String invalid :
+        new String[] {
+          "stats --windows 2:1",
+          "stats --windows 0:1 --start 0",
+          "stats --windows 0:9223372036854775808",
+          "cat --windows 0:1",
+          "stats --windows '0:1,'",
+          "stats --windows ''"
+        }) {
+      assertEquals(
+          invalid,
+          FilesystemCommand.Type.INVALID,
+          FilesystemCommandParser.parse(invalid).getType());
+    }
+  }
+
+  @Test
+  public void windowScanUsesMergedUnionWithoutOverflowOrScanningGaps() {
+    ReadOptions options =
+        ReadOptions.defaults()
+            .withStatistics(
+                "count", "100:200,-10:0,201:300,100:200,9223372036854775807:9223372036854775807");
+    assertEquals(
+        " WHERE (time >= -10 AND time <= 0) OR (time >= 100 AND time <= 300) OR (time >= 9223372036854775807 AND time <= 9223372036854775807)",
+        options.timePredicate());
+    assertEquals(5, options.getWindows().size());
+  }
+
+  @Test
+  public void temporalCommandsValidateContractBeforeExecution() {
+    assertEquals(
+        FilesystemCommand.Type.GAPS,
+        FilesystemCommandParser.parse(
+                "gaps /root/db/d --field x --windows -10:0,0:10 -n 3 --offset 1 -f ndjson")
+            .getType());
+    assertEquals(
+        FilesystemCommand.Type.SESSIONS,
+        FilesystemCommandParser.parse(
+                "sessions /db/t.csv --field x --gap-ms 14400000 --start 0 --end 10")
+            .getType());
+    assertEquals(
+        FilesystemCommand.Type.EXTREME,
+        FilesystemCommandParser.parse("extreme /root/db/d --field x --mode max -m y").getType());
+    for (String command :
+        new String[] {
+          "gaps /root/db/d",
+          "sessions /root/db/d --field x --gap-ms 0",
+          "sessions /root/db/d --field x --gap-ms 1 --windows 0:1",
+          "extreme /root/db/d --field x --mode top",
+          "gaps /root/db/d --field x --start 10 --end 0",
+          "extreme /root/db/d --field x --mode max --windows 0:1 --end 1"
+        })
+      assertEquals(
+          command,
+          FilesystemCommand.Type.INVALID,
+          FilesystemCommandParser.parse(command).getType());
+  }
 }

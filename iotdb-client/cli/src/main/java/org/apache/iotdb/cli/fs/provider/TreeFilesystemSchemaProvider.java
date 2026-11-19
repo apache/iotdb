@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.cli.fs.provider;
 
-import org.apache.iotdb.cli.fs.FsRowReader;
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.ReductionOptions;
+import org.apache.iotdb.cli.fs.command.TemporalOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.sql.SqlExecutor;
+import org.apache.iotdb.cli.fs.sql.SqlExecutor.RowVisitor;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 import org.apache.iotdb.cli.i18n.FsReadMessages;
 
@@ -179,20 +181,81 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
     }
     List<SqlRow> result = new ArrayList<>();
     for (Map.Entry<String, List<FsColumn>> device : devices.entrySet()) {
-      // The union of every measurement's timestamps is the device timeline,
-      // including timestamps where the selected measurement is NULL.
-      List<SqlRow> rows =
-          normalize(
-              executor.query("SELECT * FROM " + device.getKey() + " ORDER BY time ASC"), true);
-      if (options != null) {
-        rows = FsRowReader.filterRows(rows, device.getValue(), options);
-      }
+      // Retain all measurements in the raw scan: null_count uses the device union timeline.
+      ReadOptions readOptions = options == null ? ReadOptions.defaults() : options;
+      RowNormalizer normalizer = new RowNormalizer(true);
       result.addAll(
-          count
-              ? FsStatistics.count(model(), device.getKey(), device.getValue(), rows)
-              : FsStatistics.stats(model(), device.getKey(), device.getValue(), rows));
+          FsStatistics.scan(
+              model(),
+              device.getKey(),
+              device.getValue(),
+              readOptions,
+              count,
+              visitor ->
+                  executor.scan(
+                      "SELECT * FROM "
+                          + device.getKey()
+                          + readOptions.timePredicate()
+                          + " ORDER BY time ASC",
+                      row -> visitor.visit(normalizer.apply(row)))));
     }
     return result;
+  }
+
+  @Override
+  public List<SqlRow> reduce(FsPath path, ReductionOptions options) throws SQLException {
+    Map<String, List<FsColumn>> devices = new java.util.TreeMap<>();
+    for (SqlRow row : rawSchema(path)) {
+      Path series = new Path(row.get("Timeseries"), true);
+      devices
+          .computeIfAbsent(series.getDeviceString(), ignored -> new ArrayList<>())
+          .add(column(row));
+    }
+    for (List<FsColumn> schema : devices.values()) FsReduction.validate(schema, options);
+    FsReduction engine = new FsReduction(model(), path.toString(), options);
+    for (Map.Entry<String, List<FsColumn>> device : devices.entrySet()) {
+      RowNormalizer normalizer = new RowNormalizer(true);
+      engine.scan(
+          device.getKey(),
+          device.getValue(),
+          sink ->
+              executor.scan(
+                  "SELECT * FROM "
+                      + device.getKey()
+                      + options.scanOptions().timePredicate()
+                      + " ORDER BY time ASC",
+                  row -> sink.visit(normalizer.apply(row))));
+    }
+    return engine.finish();
+  }
+
+  @Override
+  public void temporal(FsPath path, TemporalOptions options, RowVisitor visitor)
+      throws SQLException {
+    Map<String, List<FsColumn>> devices = new java.util.TreeMap<>();
+    for (SqlRow row : rawSchema(path)) {
+      Path series = new Path(row.get("Timeseries"), true);
+      devices
+          .computeIfAbsent(series.getDeviceString(), ignored -> new ArrayList<>())
+          .add(column(row));
+    }
+    for (List<FsColumn> schema : devices.values()) FsTemporal.validate(schema, options);
+    for (Map.Entry<String, List<FsColumn>> device : devices.entrySet()) {
+      RowNormalizer normalizer = new RowNormalizer(true);
+      if (!FsTemporal.run(
+          model(),
+          device.getKey(),
+          device.getValue(),
+          options,
+          sink ->
+              executor.scan(
+                  "SELECT * FROM "
+                      + device.getKey()
+                      + options.scanOptions().timePredicate()
+                      + " ORDER BY time ASC",
+                  row -> sink.visit(normalizer.apply(row))),
+          visitor)) break;
+    }
   }
 
   @Override
@@ -227,6 +290,25 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
     return rows;
   }
 
+  @Override
+  public void scan(FsPath path, ReadOptions options, boolean descending, RowVisitor visitor)
+      throws SQLException {
+    if (path.isRoot()) throw new SQLException(String.format(FsReadMessages.INVALID_SCOPE, path));
+    List<SqlRow> schema = rawSchema(path);
+    String scope = toTreePath(path);
+    boolean measurement = schema.size() == 1 && scope.equals(schema.get(0).get("Timeseries"));
+    String sql =
+        "SELECT "
+            + (measurement ? identifier(path.getFileName()) : "*")
+            + " FROM "
+            + (measurement ? toTreePath(parent(path)) : scope)
+            + options.timePredicate()
+            + " ORDER BY time "
+            + (descending ? "DESC" : "ASC");
+    RowNormalizer normalizer = new RowNormalizer(!multipleDevices(schema));
+    executor.scan(sql, row -> visitor.visit(normalizer.apply(row)));
+  }
+
   private static boolean multipleDevices(List<SqlRow> schema) {
     Set<String> devices = new LinkedHashSet<>();
     for (SqlRow row : schema) {
@@ -236,29 +318,54 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
   }
 
   private static List<SqlRow> normalize(List<SqlRow> rows, boolean shortNames) {
+    RowNormalizer normalizer = new RowNormalizer(shortNames);
     List<SqlRow> result = new ArrayList<>();
-    for (SqlRow row : rows) {
+    for (SqlRow row : rows) result.add(normalizer.apply(row));
+    return result;
+  }
+
+  /** Column labels are query metadata: parse each Tree path once, not once per cell. */
+  private static final class RowNormalizer {
+    private final boolean shortNames;
+    private final Map<String, String> labels = new LinkedHashMap<>();
+
+    private RowNormalizer(boolean shortNames) {
+      this.shortNames = shortNames;
+    }
+
+    private SqlRow apply(SqlRow row) {
       Map<String, String> cells = new LinkedHashMap<>();
       Map<String, String> types = new LinkedHashMap<>();
       for (Map.Entry<String, String> entry : row.asMap().entrySet()) {
         String name = entry.getKey();
         String normalized =
-            "time".equalsIgnoreCase(name)
-                ? "time"
-                : shortNames && name.startsWith("root.")
-                    ? new Path(name, true).getMeasurement()
-                    : name;
+            labels.computeIfAbsent(
+                name,
+                key ->
+                    "time".equalsIgnoreCase(key)
+                        ? "time"
+                        : shortNames && key.startsWith("root.")
+                            ? new Path(key, true).getMeasurement()
+                            : key);
         cells.put(normalized, entry.getValue());
         types.put(normalized, row.getDataType(name));
       }
-      result.add(new SqlRow(cells, types));
+      return new SqlRow(cells, types);
     }
-    return result;
   }
 
   @Override
   public long count(FsPath path) throws SQLException {
-    return read(path, -1).size();
+    long[] count = {0};
+    scan(
+        path,
+        ReadOptions.defaults(),
+        false,
+        row -> {
+          count[0]++;
+          return true;
+        });
+    return count[0];
   }
 
   private List<FsNode> listTreeRoots() throws SQLException {

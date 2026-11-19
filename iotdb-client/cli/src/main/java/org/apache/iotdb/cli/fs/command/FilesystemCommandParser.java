@@ -146,6 +146,43 @@ public class FilesystemCommandParser {
       case CD:
         args.paths(0, 1);
         return FilesystemCommand.path(type, args.operands.isEmpty() ? "/" : args.operands.get(0));
+      case WINDOWS:
+      case REDUCE:
+        validateScope(args);
+        if (type == FilesystemCommand.Type.WINDOWS) args.paths(0, 0);
+        if (args.has("--windows") && args.value("--windows").isEmpty())
+          throw ReductionOptions.invalid();
+        FilesystemCommand reduction =
+            withReadOptions(
+                    FilesystemCommand.path(type, args.path(type == FilesystemCommand.Type.REDUCE))
+                        .withLimit(
+                            args.has("-n")
+                                ? unsignedInteger(command, "-n", args.value("-n"), false)
+                                : -1),
+                    args,
+                    "-f")
+                .withOptions(args.options);
+        if (type == FilesystemCommand.Type.REDUCE) ReductionOptions.from(reduction);
+        else WindowGrid.from(reduction);
+        return reduction;
+      case GAPS:
+      case SESSIONS:
+      case EXTREME:
+        validateScope(args);
+        FilesystemCommand temporal =
+            withReadOptions(
+                    FilesystemCommand.path(type, args.path(true))
+                        .withLimit(
+                            args.has("-n")
+                                ? unsignedInteger(command, "-n", args.value("-n"), false)
+                                : -1),
+                    args,
+                    "-f")
+                .withOptions(args.options);
+        if (args.has("--windows") && args.value("--windows").isEmpty())
+          throw TemporalOptions.invalid();
+        TemporalOptions.from(temporal);
+        return temporal;
       case SCHEMA:
       case META:
       case STATS:
@@ -154,7 +191,16 @@ public class FilesystemCommandParser {
         if (type == FilesystemCommand.Type.STATS && args.has("--aggregates")) {
           validateAggregates(args.value("--aggregates"));
         }
-        return withReadOptions(FilesystemCommand.path(type, args.path(false)), args, "-f");
+        FilesystemCommand metadata =
+            withReadOptions(FilesystemCommand.path(type, args.path(false)), args, "-f");
+        if (args.has("--windows")) {
+          String windows = args.value("--windows");
+          if (windows.isEmpty())
+            throw invalid(
+                CliMessages.EXCEPTION_ARG_UNEXPECTED_ARGUMENT_ARG_3EF9EC3F, "stats", windows);
+          metadata.getReadOptions().withStatistics("", windows);
+        }
+        return metadata;
       case SKETCH:
         if (args.has("--force") && !args.has("-o")) {
           throw invalid(CliMessages.EXCEPTION_ARG_MISSING_VALUE_FOR_ARG_695999CB, command, "-o");
@@ -470,7 +516,12 @@ public class FilesystemCommandParser {
               || "max".equals(aggregate)
               || "sum".equals(aggregate)
               || "avg".equals(aggregate)
-              || "median".equals(aggregate))
+              || "median".equals(aggregate)
+              || "first".equals(aggregate)
+              || "last".equals(aggregate)
+              || "min_time".equals(aggregate)
+              || "max_time".equals(aggregate)
+              || "null_count".equals(aggregate))
           || seen.contains(aggregate)) {
         throw invalid(CliMessages.EXCEPTION_ARG_UNEXPECTED_ARGUMENT_ARG_3EF9EC3F, "stats", value);
       }
@@ -730,6 +781,51 @@ public class FilesystemCommandParser {
               || "--table".equals(flag)
               || "-m".equals(flag)
               || "--measurements".equals(flag);
+        case "windows":
+        case "reduce":
+          return java.util.Arrays.asList(
+                      "--origin",
+                      "--width",
+                      "--step",
+                      "--unit",
+                      "--timezone",
+                      "--start",
+                      "--end",
+                      "-f",
+                      "--format",
+                      "-n",
+                      "--limit",
+                      "--offset")
+                  .contains(flag)
+              || ("reduce".equals(command)
+                  && java.util.Arrays.asList(
+                          "--field",
+                          "--metrics",
+                          "--group-by",
+                          "--rank-by",
+                          "--order",
+                          "--top",
+                          "--windows",
+                          "--tag-filter",
+                          "--tag-match")
+                      .contains(flag));
+        case "gaps":
+        case "sessions":
+        case "extreme":
+          return "--field".equals(flag)
+              || ("sessions".equals(command) && "--gap-ms".equals(flag))
+              || ("extreme".equals(command)
+                  && ("--mode".equals(flag) || "-m".equals(flag) || "--measurements".equals(flag)))
+              || (!"sessions".equals(command) && "--windows".equals(flag))
+              || "-f".equals(flag)
+              || "--format".equals(flag)
+              || "-n".equals(flag)
+              || "--limit".equals(flag)
+              || "--offset".equals(flag)
+              || "--start".equals(flag)
+              || "--end".equals(flag)
+              || "--tag-filter".equals(flag)
+              || "--tag-match".equals(flag);
         case "stats":
           return "-f".equals(flag)
               || "--format".equals(flag)
@@ -743,7 +839,8 @@ public class FilesystemCommandParser {
               || "--end".equals(flag)
               || "--tag-filter".equals(flag)
               || "--tag-match".equals(flag)
-              || "--aggregates".equals(flag);
+              || "--aggregates".equals(flag)
+              || "--windows".equals(flag);
         case "sketch":
           return "-o".equals(flag) || "--output".equals(flag);
         case "export":

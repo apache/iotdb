@@ -18,6 +18,11 @@
 
 # SQL/FS experiment server
 
+The active environment moved to `zzy@101.6.42.165` on 2026-11-10.
+See [the migration record](SERVER_165_MIGRATION.md) for current paths,
+startup commands, resource settings and validation. The description below
+preserves the original server's installation history.
+
 Deployment prepared on 2026-09-20 on `root@192.168.99.49` (`timecho`).
 The experiment root is `/data_01/iotdb-fs-exp`; `/data_01` had approximately
 3.4 TiB available at setup. This is an installation and smoke-test environment,

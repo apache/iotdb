@@ -76,10 +76,10 @@ public final class FsHelpMessages {
     CURRENT
   };
   public static final String[] STATS = {
-    "Print typed FIELD statistics per device, with TAG values, real null counts and non-null time"
-        + " ranges; time/TAG filters are applied before aggregation and stats_source is scan.",
-    "Current scope; all FIELD columns and statistics. --aggregates accepts count, min, max, sum,"
-        + " avg and median. BOOLEAN sum counts true; non-numeric avg/median are NULL."
+    "Print typed FIELD statistics per device with real null counts; time/TAG filters precede aggregation.",
+    "--aggregates accepts count,min,max,sum,avg,median,first,last,min_time,max_time,null_count. Omit for all. Only requested fields are accumulated. min_time/max_time are first/last non-null times, not argmin/argmax."
+    + " " + "--windows start:end,... accepts 1..256 inclusive epoch ranges in input order, including overlapping or duplicate windows; excludes --start/--end. One scan per device/table reads their merged union. Output adds zero-based window_index, window_start, window_end; empty Tree windows retain zero counts, empty Table windows have no entities."
+    + " " + "Scalar aggregates stream; exact median uses bounded buffers and private temporary disk runs cleaned on completion/failure. BOOLEAN sum counts true; INT64 sum/avg/median use exact decimal strings."
   };
   public static final String[] COUNT = {
     "Print row/entity/non-null/null counts and time ranges for TAG and FIELD columns. TIME and"
@@ -187,4 +187,7 @@ public final class FsHelpMessages {
     "Leave filesystem mode with the requested exit status; quit is an alias.",
     "Status is 0; supplied status is reduced to its low 8 bits."
   };
+  public static final String[] GAPS = {"Complete non-null predecessor gaps per entity, assigned to the later observation. Each inclusive window returns distinct first/last/min/max gap observations; equal extrema choose the earliest time. Output includes previous_at, observed_at, exact decimal gap_ms and selected_as.", "Required --field; optional --windows start:end,... (1..256, inclusive, excludes --start/--end). Without windows use one inclusive start/end interval, unbounded if omitted. The real predecessor can be outside the interval; scanning begins before its lower bound. Tree devices and complete Table TAG keys never pool. Null fields are skipped; empty/no-gap windows produce no row. -n/--offset paginate OUTPUT rows (default unlimited/0); -f table|csv|ndjson (default table); Table --tag-filter/--tag-match all|any apply before analysis."};
+  public static final String[] SESSIONS = {"Complete sessions per entity over non-null finite numeric --field observations. Required positive --gap-ms: a new session starts only when the next gap is strictly greater; equality remains in the same session. Output session_index/start/end, count, avg, first and last.", "Optional inclusive --start/--end filters BEFORE segmentation, so boundary sessions are clipped and session_index restarts at zero. No windows. Tree devices and full Table TAG tuples never pool; NULL observations are skipped. -n/--offset paginate OUTPUT sessions (default unlimited/0); -f table|csv|ndjson; Table --tag-filter/--tag-match all|any. Integer averages retain exact decimal arithmetic."};
+  public static final String[] EXTREME = {"Select the complete associated row for finite numeric --field with required --mode min|max, independently per entity/window. Ties choose earliest time; NULL comparison values are skipped, NULL associated fields stay NULL. No global pooling or cross-entity ranking.", "Optional -m associated FIELD (repeatable; target always included), inclusive --windows start:end,... OR --start/--end; omitted bounds mean all time. Output object/TAG identity, window_index/start/end, observed_at, extreme_value and value.<field>. Empty windows emit no row. -n/--offset paginate OUTPUT rows (default unlimited/0); -f table|csv|ndjson; Table --tag-filter/--tag-match all|any."};
 }

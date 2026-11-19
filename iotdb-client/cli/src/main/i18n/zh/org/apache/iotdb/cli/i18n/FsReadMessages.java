@@ -25,4 +25,5 @@ public final class FsReadMessages {
   public static final String INVALID_SCOPE = "请选择可读表、设备或时间序列，而不是目录 %s";
   public static final String INVALID_DEVICE = "无效的树模型设备路径：%s";
   public static final String TEXT_OPTIONS = "文本输入不支持数据对象选择、过滤或结构化输出格式";
+  public static final String EXCEPTION_EXPECTED_1_256_INCLUSIVE_EPOCH_WINDOWS_START_END_SEPARATED_BY_COMMAS_START_MUST_NOT_EXCEED_END_AND_WINDOWS_CANNOT_BE_COMBINED_WITH_START_END_DCB04A3E = "请提供以逗号分隔的 1..256 个闭区间 epoch 窗口 start:end；start 不得大于 end，--windows 不能与 --start/--end 同时使用";
 }

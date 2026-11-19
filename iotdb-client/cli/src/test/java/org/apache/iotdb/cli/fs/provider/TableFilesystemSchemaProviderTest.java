@@ -48,8 +48,18 @@ public class TableFilesystemSchemaProviderTest {
   private TableFilesystemSchemaProvider provider;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
+    org.mockito.Mockito.doAnswer(
+            invocation -> {
+              org.apache.iotdb.cli.fs.sql.SqlExecutor.RowVisitor visitor =
+                  invocation.getArgument(1);
+              for (SqlRow row : executor.query(invocation.getArgument(0)))
+                if (!visitor.visit(row)) break;
+              return null;
+            })
+        .when(executor)
+        .scan(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
     provider = new TableFilesystemSchemaProvider(executor);
   }
 
@@ -338,7 +348,8 @@ public class TableFilesystemSchemaProviderTest {
     assertEquals("s1", first.get("field"));
     assertEquals("9007199254740993", first.get("min"));
     assertEquals("9007199254740993", first.get("max"));
-    assertNull(first.get("sum"));
+    assertEquals("9007199254740993", first.get("sum"));
+    assertEquals("STRING", first.getDataType("sum"));
     assertEquals("1", first.get("null_count"));
     assertEquals("1", first.get("min_time"));
     assertEquals("INT64", first.getDataType("min"));

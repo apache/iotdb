@@ -251,6 +251,7 @@ class CommandValidationTest(unittest.TestCase):
         filtered = filesystem_help(PATH, filtered_stats=True)
         self.assertIn("- aggregates ", filtered)
         self.assertIn("filters before computing", filtered)
+        self.assertIn("INT64 aggregate results use decimal strings", filtered)
 
 
 class ToolProcessTest(unittest.TestCase):

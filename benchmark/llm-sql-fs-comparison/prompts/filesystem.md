@@ -87,7 +87,9 @@ entity_count 是不同 TAG 组合数量。count 不返回 TIME 列统计行。
 `min/max/first/last/sum`。不是全表合并统计，**没有 AVG 字段**。
 数值字段可根据 sum 和 non_null_count 计算平均值；合并多组时按数量加权，
 不得简单平均各组均值。BOOLEAN 的 sum 是 true 数量，NULL 与 false 分开计数。
-INT64/TIMESTAMP/DATE 的 sum 不提供；不要把不可用的统计量当零。
+INT32/INT64 的 sum 提供精确十进制结果；INT64 的 sum/avg/median 在 NDJSON 中以
+字符串编码，避免超出 JSON 安全整数范围。TIMESTAMP/DATE 的 sum 不提供；不要把
+不可用的统计量当零。
 
 schema/count/stats 可用 `-m <column>` 选择统计输出；多列重复 `-m`，stats 仅选择 FIELD。
 它们不支持 cat/head/tail 的时间过滤和 TAG 过滤选项；不要把这些选项直接迁移

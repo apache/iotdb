@@ -24,12 +24,16 @@ import org.apache.iotdb.cli.fs.command.FilesystemCommandHelp;
 import org.apache.iotdb.cli.fs.command.FilesystemCommandParser;
 import org.apache.iotdb.cli.fs.command.FsShellWords;
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.ReductionOptions;
+import org.apache.iotdb.cli.fs.command.TemporalOptions;
+import org.apache.iotdb.cli.fs.command.WindowGrid;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.provider.FilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.provider.FsTemporal;
 import org.apache.iotdb.cli.fs.provider.UnsupportedFilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 import org.apache.iotdb.cli.fs.write.TsFileWriteExecutor;
@@ -73,9 +77,43 @@ public class FilesystemShell {
 
   private static final List<String> COMMANDS =
       Arrays.asList(
-          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "wc", "cat", "head",
-          "tail", "grep", "find", "less", "more", "file", "mkdir", "rmdir", "rm", "mv", "cp", "cut",
-          "paste", "join", "tree", "help", "exit", "quit", "tee", "write", "export", "sketch",
+          "pwd",
+          "ls",
+          "ll",
+          "cd",
+          "stat",
+          "meta",
+          "schema",
+          "stats",
+          "gaps",
+          "sessions",
+          "extreme",
+          "count",
+          "wc",
+          "cat",
+          "head",
+          "tail",
+          "grep",
+          "find",
+          "less",
+          "more",
+          "file",
+          "mkdir",
+          "rmdir",
+          "rm",
+          "mv",
+          "cp",
+          "cut",
+          "paste",
+          "join",
+          "tree",
+          "help",
+          "exit",
+          "quit",
+          "tee",
+          "write",
+          "export",
+          "sketch",
           "sql");
 
   private final CliContext ctx;
@@ -127,6 +165,29 @@ public class FilesystemShell {
         if (checkExists("stat", node)) {
           printNode(node);
         }
+        return true;
+      case WINDOWS:
+      case REDUCE:
+        List<SqlRow> reduced =
+            command.getType() == FilesystemCommand.Type.WINDOWS
+                ? WindowGrid.from(command).rows()
+                : provider.reduce(resolve(command.getPath()), ReductionOptions.from(command));
+        ReadOptions reductionRead = command.getReadOptions();
+        int from = (int) Math.min(reduced.size(), reductionRead.getOffset());
+        int to =
+            reductionRead.getLimit() < 0
+                ? reduced.size()
+                : (int) Math.min(reduced.size(), from + reductionRead.getLimit());
+        FsRowRenderer.print(
+            ctx.getOut(),
+            resultColumns(reduced),
+            reduced.subList(from, to),
+            reductionRead.getFormat());
+        return true;
+      case GAPS:
+      case SESSIONS:
+      case EXTREME:
+        printTemporal(command);
         return true;
       case META:
       case SCHEMA:
@@ -483,8 +544,15 @@ public class FilesystemShell {
       ctx.getOut().write(bytes, start, end - start);
       return;
     }
-    FsRowReader.Result result = new FsRowReader(provider).read(resolvedPath, options, false);
-    FsRowRenderer.print(ctx.getOut(), result.getColumns(), result.getRows(), options.getFormat());
+    FsRowReader reader = new FsRowReader(provider);
+    List<FsColumn> columns =
+        FsRowReader.selectColumns(
+            provider.columns(reader.scope(resolvedPath, options)), options.getColumns());
+    FsRowRenderer.printStream(
+        ctx.getOut(),
+        columns,
+        options.getFormat(),
+        visitor -> reader.scan(resolvedPath, options, false, visitor));
   }
 
   private static int skipLines(byte[] bytes, int start, long count) {
@@ -730,6 +798,33 @@ public class FilesystemShell {
     }
   }
 
+  private void printTemporal(FilesystemCommand command) throws SQLException {
+    TemporalOptions options = TemporalOptions.from(command);
+    FsPath path = resolve(command.getPath());
+    List<FsColumn> columns = FsTemporal.outputColumns(provider.columns(path), options);
+    long[] skipped = {0}, emitted = {0};
+    FsRowRenderer.printStream(
+        ctx.getOut(),
+        columns,
+        options.getRead().getFormat(),
+        sink -> {
+          if (options.getRead().getLimit() == 0) return;
+          provider.temporal(
+              path,
+              options,
+              row -> {
+                if (skipped[0] < options.getRead().getOffset()) {
+                  skipped[0]++;
+                  return true;
+                }
+                emitted[0]++;
+                return sink.visit(row)
+                    && (options.getRead().getLimit() < 0
+                        || emitted[0] < options.getRead().getLimit());
+              });
+        });
+  }
+
   private void printMetadata(FilesystemCommand command) throws SQLException {
     FsPath path =
         new FsRowReader(provider).scope(resolve(command.getPath()), command.getReadOptions());
@@ -800,6 +895,8 @@ public class FilesystemShell {
                 "time_source"));
         break;
       case STATS:
+        if (command.hasOption("--windows"))
+          names.addAll(Arrays.asList("window_index", "window_start", "window_end"));
         names.add("model");
         names.add("object");
         for (FsColumn column : provider.columns(path)) {
@@ -843,6 +940,7 @@ public class FilesystemShell {
         if ("model".equals(name)
             || "object".equals(name)
             || name.startsWith("tag.")
+            || name.startsWith("window_")
             || "field".equals(name)
             || "data_type".equals(name)) {
           cells.put(name, row.get(name));

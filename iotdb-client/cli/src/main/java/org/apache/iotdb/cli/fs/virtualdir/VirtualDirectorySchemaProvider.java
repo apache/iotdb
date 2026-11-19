@@ -20,10 +20,13 @@
 package org.apache.iotdb.cli.fs.virtualdir;
 
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.ReductionOptions;
+import org.apache.iotdb.cli.fs.command.TemporalOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.sql.SqlExecutor.RowVisitor;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 import org.apache.iotdb.cli.i18n.FsVirtualMessages;
 
@@ -79,6 +82,23 @@ public class VirtualDirectorySchemaProvider implements FilesystemSchemaProvider 
   @Override
   public List<SqlRow> stats(FsPath path, ReadOptions options) throws SQLException {
     return delegate.stats(canonicalPath(path), options);
+  }
+
+  @Override
+  public void scan(FsPath path, ReadOptions options, boolean descending, RowVisitor visitor)
+      throws SQLException {
+    delegate.scan(canonicalPath(path), options, descending, visitor);
+  }
+
+  @Override
+  public List<SqlRow> reduce(FsPath path, ReductionOptions options) throws SQLException {
+    return delegate.reduce(canonicalPath(path), options);
+  }
+
+  @Override
+  public void temporal(FsPath path, TemporalOptions options, RowVisitor visitor)
+      throws SQLException {
+    delegate.temporal(canonicalPath(path), options, visitor);
   }
 
   @Override
