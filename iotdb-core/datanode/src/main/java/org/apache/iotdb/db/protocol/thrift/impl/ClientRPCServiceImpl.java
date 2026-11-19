@@ -1375,7 +1375,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             req.isSetFetchSize() ? req.getFetchSize() : -1,
             req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold(),
             maxPayloadSize,
-            "SELECT LAST " + String.join(".", req.getPrefixes()) + ".**",
+            String.format("SELECT LAST %s.**", String.join(".", req.getPrefixes())),
             clientSession);
       }
 
@@ -1562,7 +1562,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 req.isSetFetchSize() ? req.getFetchSize() : -1,
                 req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold(),
                 maxPayloadSize,
-                "SELECT LAST " + String.join(", ", convert(req).getPaths()),
+                String.format("SELECT LAST %s", String.join(", ", convert(req).getPaths())),
                 clientSession);
           }
           TSExecuteStatementResp resp =
