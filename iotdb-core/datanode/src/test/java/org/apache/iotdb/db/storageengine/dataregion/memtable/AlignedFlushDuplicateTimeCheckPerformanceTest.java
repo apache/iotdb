@@ -34,6 +34,15 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Manual benchmark of the aligned duplicate-timestamp merge loop.
+ *
+ * <p>The model compares the legacy per-column traversal against the single row-major pass. It
+ * varies the duplicate-timestamp ratio and the per-value null ratio, because the ratio reported for
+ * one synthetic shape must not be extrapolated to other workloads. The encoder's additional skip
+ * paths (all-null rows with {@code ignoreAllNullRows}, time-deleted rows) are not modeled here;
+ * they are covered functionally by {@link MemTableFlushTaskTest}.
+ */
 public class AlignedFlushDuplicateTimeCheckPerformanceTest {
 
   private static final String ENABLED_PROPERTY = "iotdb.aligned.flush.duplicate-check.perf.enabled";
@@ -42,6 +51,10 @@ public class AlignedFlushDuplicateTimeCheckPerformanceTest {
   private static final int ROW_COUNT = 16_384;
   private static final int COLUMN_COUNT = 8;
   private static final int WARMUP_ROUNDS = 3;
+  // Fraction of rows that share the previous row's timestamp.
+  private static final double[] DUPLICATE_RATIOS = {0.0, 0.5, 0.9};
+  // Fraction of values that are null.
+  private static final double[] NULL_RATIOS = {0.0, 0.5, 0.9};
 
   private static volatile long benchmarkBlackhole;
 
@@ -64,10 +77,39 @@ public class AlignedFlushDuplicateTimeCheckPerformanceTest {
     Assert.assertTrue(rounds > 0);
     Assert.assertTrue(scans > 0);
 
-    BenchmarkData data = createBenchmarkData();
+    System.out.printf(
+        Locale.ROOT,
+        "Aligned flush duplicate-time merge benchmark: rows=%d, columns=%d, value checks/scan=%d,"
+            + " scans/round=%d, rounds=%d%n",
+        ROW_COUNT,
+        COLUMN_COUNT,
+        ROW_COUNT * COLUMN_COUNT,
+        scans,
+        rounds);
+    System.out.printf(
+        Locale.ROOT,
+        "  %8s %10s %13s %15s %8s %8s%n",
+        "dup",
+        "null",
+        "legacy(ms)",
+        "onePass(ms)",
+        "cpu%",
+        "alloc%");
+    for (double duplicateRatio : DUPLICATE_RATIOS) {
+      for (double nullRatio : NULL_RATIOS) {
+        runScenario(duplicateRatio, nullRatio, rounds, scans);
+      }
+    }
+  }
+
+  private static void runScenario(double duplicateRatio, double nullRatio, int rounds, int scans) {
+    BenchmarkData data = createBenchmarkData(duplicateRatio, nullRatio);
     long legacyResult = runLegacy(data);
     long optimizedResult = runOptimized(data);
-    Assert.assertEquals(legacyResult, optimizedResult);
+    Assert.assertEquals(
+        String.format(Locale.ROOT, "dup=%.2f null=%.2f", duplicateRatio, nullRatio),
+        legacyResult,
+        optimizedResult);
 
     for (int i = 0; i < WARMUP_ROUNDS; i++) {
       runLegacy(data);
@@ -88,7 +130,18 @@ public class AlignedFlushDuplicateTimeCheckPerformanceTest {
 
     Summary legacySummary = ManualPerformanceTestUtils.summarize(legacyMeasurements, scans);
     Summary optimizedSummary = ManualPerformanceTestUtils.summarize(optimizedMeasurements, scans);
-    printResult(rounds, scans, legacySummary, optimizedSummary);
+    System.out.printf(
+        Locale.ROOT,
+        "  %8.2f %10.2f %13.3f %15.3f %7.1f%% %7.1f%%%n",
+        duplicateRatio,
+        nullRatio,
+        legacySummary.getCpuNanosPerOperation() / 1_000_000.0,
+        optimizedSummary.getCpuNanosPerOperation() / 1_000_000.0,
+        percentage(
+            optimizedSummary.getCpuNanosPerOperation(), legacySummary.getCpuNanosPerOperation()),
+        percentage(
+            optimizedSummary.getAllocatedBytesPerOperation(),
+            legacySummary.getAllocatedBytesPerOperation()));
   }
 
   private static Measurement measureLegacy(BenchmarkData data, int scans) {
@@ -172,20 +225,25 @@ public class AlignedFlushDuplicateTimeCheckPerformanceTest {
     return nullCount;
   }
 
-  private static BenchmarkData createBenchmarkData() {
+  private static BenchmarkData createBenchmarkData(double duplicateRatio, double nullRatio) {
     List<TSDataType> dataTypes = new ArrayList<>(COLUMN_COUNT);
     for (int columnIndex = 0; columnIndex < COLUMN_COUNT; columnIndex++) {
       dataTypes.add(TSDataType.INT64);
     }
     AlignedTVList list = AlignedTVList.newAlignedList(dataTypes);
+    int distinctTimestamps = Math.max(1, (int) Math.round(ROW_COUNT * (1.0 - duplicateRatio)));
+    int nullPercent = (int) Math.round(nullRatio * 100);
     for (int rowIndex = 0; rowIndex < ROW_COUNT; rowIndex++) {
+      // Monotonic timestamps: distinct timestamps are shared by 1/(1-duplicateRatio) rows.
+      long time = (long) rowIndex * distinctTimestamps / ROW_COUNT;
       Object[] values = new Object[COLUMN_COUNT];
       for (int columnIndex = 0; columnIndex < COLUMN_COUNT; columnIndex++) {
-        if ((rowIndex + columnIndex) % 4 != 0) {
+        // Deterministic pattern so the legacy and single-pass models see identical data.
+        if (Math.floorMod(rowIndex * 31 + columnIndex * 17, 100) >= nullPercent) {
           values[columnIndex] = (long) rowIndex + columnIndex;
         }
       }
-      list.putAlignedValue(rowIndex / 4, values);
+      list.putAlignedValue(time, values);
     }
     list.sort();
 
@@ -194,37 +252,6 @@ public class AlignedFlushDuplicateTimeCheckPerformanceTest {
       timeDuplicateInfo[rowIndex] = list.getTime(rowIndex) == list.getTime(rowIndex + 1);
     }
     return new BenchmarkData(list, timeDuplicateInfo);
-  }
-
-  private static void printResult(
-      int rounds, int scans, Summary legacySummary, Summary optimizedSummary) {
-    System.out.printf(
-        Locale.ROOT,
-        "Aligned flush duplicate-time check benchmark: rows=%d, columns=%d, value checks/scan=%d, scans/round=%d, rounds=%d%n",
-        ROW_COUNT,
-        COLUMN_COUNT,
-        ROW_COUNT * COLUMN_COUNT,
-        scans,
-        rounds);
-    printSummary("legacy", legacySummary);
-    printSummary("optimized", optimizedSummary);
-    System.out.printf(
-        Locale.ROOT,
-        "  optimized/legacy CPU ratio=%.2f%%, allocation ratio=%.2f%%%n",
-        percentage(
-            optimizedSummary.getCpuNanosPerOperation(), legacySummary.getCpuNanosPerOperation()),
-        percentage(
-            optimizedSummary.getAllocatedBytesPerOperation(),
-            legacySummary.getAllocatedBytesPerOperation()));
-  }
-
-  private static void printSummary(String label, Summary summary) {
-    System.out.printf(
-        Locale.ROOT,
-        "  %-10s CPU=%.3f ms/scan, allocated=%.2f bytes/scan%n",
-        label,
-        summary.getCpuNanosPerOperation() / 1_000_000.0,
-        summary.getAllocatedBytesPerOperation());
   }
 
   private static double percentage(double numerator, double denominator) {
