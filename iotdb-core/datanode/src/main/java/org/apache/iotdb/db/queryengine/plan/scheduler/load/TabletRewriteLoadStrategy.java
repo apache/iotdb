@@ -30,22 +30,28 @@ public class TabletRewriteLoadStrategy implements TsFileLoadStrategy {
 
   private final LoadTsFileDataTypeConverter converter;
   private final boolean isGeneratedByPipe;
+  private final boolean preferLocalNode;
   private final LoadTsFileCostMetricsSet costMetrics;
 
   public TabletRewriteLoadStrategy(
-      final MPPQueryContext queryContext, final boolean isGeneratedByPipe) {
+      final MPPQueryContext queryContext,
+      final boolean isGeneratedByPipe,
+      final boolean preferLocalNode) {
     this(
         new LoadTsFileDataTypeConverter(queryContext, isGeneratedByPipe),
         isGeneratedByPipe,
+        preferLocalNode,
         LoadTsFileCostMetricsSet.getInstance());
   }
 
   TabletRewriteLoadStrategy(
       final LoadTsFileDataTypeConverter converter,
       final boolean isGeneratedByPipe,
+      final boolean preferLocalNode,
       final LoadTsFileCostMetricsSet costMetrics) {
     this.converter = converter;
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.preferLocalNode = preferLocalNode;
     this.costMetrics = costMetrics;
   }
 
@@ -55,7 +61,8 @@ public class TabletRewriteLoadStrategy implements TsFileLoadStrategy {
     try {
       // Only the scheduler may delete the source, after the entire strategy has succeeded.
       return converter.isSuccessful(
-          LoadFallbackHandler.convertTsFileToTablets(converter, node, isGeneratedByPipe, false));
+          LoadFallbackHandler.convertTsFileToTablets(
+              converter, node, isGeneratedByPipe, preferLocalNode, false));
     } catch (final Exception e) {
       throw new LoadFileException(e);
     } finally {

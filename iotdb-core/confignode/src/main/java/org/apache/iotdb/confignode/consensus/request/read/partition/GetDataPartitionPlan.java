@@ -35,6 +35,12 @@ public class GetDataPartitionPlan extends ConfigPhysicalReadPlan {
   // Map<StorageGroup, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
   protected Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap;
 
+  /**
+   * The DataNode that issued the request, when it asks to host the first replica of the DataRegions
+   * created for the request. {@code -1} means no preference.
+   */
+  protected int preferredDataNodeId = -1;
+
   public GetDataPartitionPlan(final ConfigPhysicalPlanType configPhysicalPlanType) {
     super(configPhysicalPlanType);
   }
@@ -47,6 +53,14 @@ public class GetDataPartitionPlan extends ConfigPhysicalReadPlan {
 
   public Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> getPartitionSlotsMap() {
     return partitionSlotsMap;
+  }
+
+  public int getPreferredDataNodeId() {
+    return preferredDataNodeId;
+  }
+
+  public void setPreferredDataNodeId(final int preferredDataNodeId) {
+    this.preferredDataNodeId = preferredDataNodeId;
   }
 
   /**
@@ -68,11 +82,12 @@ public class GetDataPartitionPlan extends ConfigPhysicalReadPlan {
       return false;
     }
     final GetDataPartitionPlan that = (GetDataPartitionPlan) o;
-    return partitionSlotsMap.equals(that.partitionSlotsMap);
+    return preferredDataNodeId == that.preferredDataNodeId
+        && partitionSlotsMap.equals(that.partitionSlotsMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(partitionSlotsMap);
+    return Objects.hash(partitionSlotsMap, preferredDataNodeId);
   }
 }

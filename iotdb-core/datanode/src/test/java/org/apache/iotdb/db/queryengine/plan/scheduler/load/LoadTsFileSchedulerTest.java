@@ -75,7 +75,8 @@ public class LoadTsFileSchedulerTest {
                 newStateMachine("load_start"),
                 mock(IClientManager.class),
                 mock(IPartitionFetcher.class),
-                false));
+                false,
+                true));
     t.start();
     Assert.assertNull(t.getTotalCpuTime());
     Assert.assertNull(t.getFragmentInfo());
@@ -140,7 +141,8 @@ public class LoadTsFileSchedulerTest {
         stateMachine,
         mock(IClientManager.class),
         mock(IPartitionFetcher.class),
-        false);
+        false,
+        true);
   }
 
   /**
@@ -176,6 +178,7 @@ public class LoadTsFileSchedulerTest {
     final LoadFallbackHandler fallbackHandler =
         new LoadFallbackHandler(
             mock(MPPQueryContext.class),
+            true,
             true,
             Collections.emptyList(),
             new ArrayList<>(),

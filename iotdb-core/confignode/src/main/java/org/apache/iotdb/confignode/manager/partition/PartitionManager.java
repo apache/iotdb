@@ -446,7 +446,9 @@ public class PartitionManager {
                       .collect(Collectors.toSet())));
       TSStatus status =
           extendRegionGroupIfNecessary(
-              unassignedDataSeriesPartitionSlotsMap, TConsensusGroupType.DataRegion);
+              unassignedDataSeriesPartitionSlotsMap,
+              TConsensusGroupType.DataRegion,
+              req.getPreferredDataNodeId());
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // Return an error code if Region extension failed
         resp.setStatus(status);
@@ -607,6 +609,24 @@ public class PartitionManager {
   TSStatus extendRegionGroupIfNecessary(
       final Map<String, ? extends Collection<TSeriesPartitionSlot>> unassignedPartitionSlotsMap,
       final TConsensusGroupType consensusGroupType) {
+    return extendRegionGroupIfNecessary(unassignedPartitionSlotsMap, consensusGroupType, -1);
+  }
+
+  /**
+   * Allocate more RegionGroup to the specified StorageGroups if necessary.
+   *
+   * @param unassignedPartitionSlotsMap Map<StorageGroup, unassigned series slots>
+   * @param consensusGroupType SchemaRegion or DataRegion
+   * @param preferredDataNodeId the DataNode that issued the request when it prefers to host the
+   *     first replica of the DataRegions created for the request, or -1 for no preference. It is
+   *     ignored for SchemaRegions.
+   * @return SUCCESS_STATUS when RegionGroup extension successful; NOT_ENOUGH_DATA_NODE when there
+   *     are not enough DataNodes; STORAGE_GROUP_NOT_EXIST when some StorageGroups don't exist
+   */
+  TSStatus extendRegionGroupIfNecessary(
+      final Map<String, ? extends Collection<TSeriesPartitionSlot>> unassignedPartitionSlotsMap,
+      final TConsensusGroupType consensusGroupType,
+      final int preferredDataNodeId) {
 
     final TSStatus result = new TSStatus();
 
@@ -615,27 +635,27 @@ public class PartitionManager {
         switch (CONF.getSchemaRegionGroupExtensionPolicy()) {
           case PROACTIVE:
             return proactiveExtendRegionGroupIfNecessary(
-                unassignedPartitionSlotsMap, consensusGroupType);
+                unassignedPartitionSlotsMap, consensusGroupType, preferredDataNodeId);
           case CUSTOM:
             return customExtendRegionGroupIfNecessary(
-                unassignedPartitionSlotsMap, consensusGroupType);
+                unassignedPartitionSlotsMap, consensusGroupType, preferredDataNodeId);
           case AUTO:
           default:
             return autoExtendRegionGroupIfNecessary(
-                unassignedPartitionSlotsMap, consensusGroupType);
+                unassignedPartitionSlotsMap, consensusGroupType, preferredDataNodeId);
         }
       } else {
         switch (CONF.getDataRegionGroupExtensionPolicy()) {
           case PROACTIVE:
             return proactiveExtendRegionGroupIfNecessary(
-                unassignedPartitionSlotsMap, consensusGroupType);
+                unassignedPartitionSlotsMap, consensusGroupType, preferredDataNodeId);
           case CUSTOM:
             return customExtendRegionGroupIfNecessary(
-                unassignedPartitionSlotsMap, consensusGroupType);
+                unassignedPartitionSlotsMap, consensusGroupType, preferredDataNodeId);
           case AUTO:
           default:
             return autoExtendRegionGroupIfNecessary(
-                unassignedPartitionSlotsMap, consensusGroupType);
+                unassignedPartitionSlotsMap, consensusGroupType, preferredDataNodeId);
         }
       }
     } catch (NotEnoughDataNodeException e) {
@@ -653,7 +673,8 @@ public class PartitionManager {
 
   private TSStatus proactiveExtendRegionGroupIfNecessary(
       final Map<String, ? extends Collection<TSeriesPartitionSlot>> unassignedPartitionSlotsMap,
-      final TConsensusGroupType consensusGroupType)
+      final TConsensusGroupType consensusGroupType,
+      final int preferredDataNodeId)
       throws DatabaseNotExistsException, NotEnoughDataNodeException {
     final Map<String, Integer> allotmentMap = new HashMap<>();
     for (Map.Entry<String, ? extends Collection<TSeriesPartitionSlot>> entry :
@@ -695,12 +716,13 @@ public class PartitionManager {
         allotmentMap.put(database, 1);
       }
     }
-    return generateAndAllocateRegionGroups(allotmentMap, consensusGroupType);
+    return generateAndAllocateRegionGroups(allotmentMap, consensusGroupType, preferredDataNodeId);
   }
 
   private TSStatus customExtendRegionGroupIfNecessary(
       final Map<String, ? extends Collection<TSeriesPartitionSlot>> unassignedPartitionSlotsMap,
-      final TConsensusGroupType consensusGroupType)
+      final TConsensusGroupType consensusGroupType,
+      final int preferredDataNodeId)
       throws DatabaseNotExistsException, NotEnoughDataNodeException {
 
     // Map<Database, Region allotment>
@@ -718,12 +740,13 @@ public class PartitionManager {
       }
     }
 
-    return generateAndAllocateRegionGroups(allotmentMap, consensusGroupType);
+    return generateAndAllocateRegionGroups(allotmentMap, consensusGroupType, preferredDataNodeId);
   }
 
   private TSStatus autoExtendRegionGroupIfNecessary(
       final Map<String, ? extends Collection<TSeriesPartitionSlot>> unassignedPartitionSlotsMap,
-      final TConsensusGroupType consensusGroupType)
+      final TConsensusGroupType consensusGroupType,
+      final int preferredDataNodeId)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
     // Map<Database, Region allotment>
@@ -790,15 +813,20 @@ public class PartitionManager {
       }
     }
 
-    return generateAndAllocateRegionGroups(allotmentMap, consensusGroupType);
+    return generateAndAllocateRegionGroups(allotmentMap, consensusGroupType, preferredDataNodeId);
   }
 
   private TSStatus generateAndAllocateRegionGroups(
-      final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)
+      final Map<String, Integer> allotmentMap,
+      final TConsensusGroupType consensusGroupType,
+      final int preferredDataNodeId)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
     if (!allotmentMap.isEmpty()) {
       final CreateRegionGroupsPlan createRegionGroupsPlan =
-          getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
+          preferredDataNodeId >= 0
+              ? getLoadManager()
+                  .allocateRegionGroups(allotmentMap, consensusGroupType, preferredDataNodeId)
+              : getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
       LOGGER.info(ManagerMessages.CREATEREGIONGROUPS_STARTING_TO_CREATE_THE_FOLLOWING_REGIONGROUPS);
       createRegionGroupsPlan.planLog(LOGGER);
       return getProcedureManager().createRegionGroups(consensusGroupType, createRegionGroupsPlan);

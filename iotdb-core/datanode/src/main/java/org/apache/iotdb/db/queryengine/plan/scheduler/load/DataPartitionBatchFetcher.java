@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 
@@ -50,12 +52,14 @@ class DataPartitionBatchFetcher {
       CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
 
   private final IPartitionFetcher fetcher;
+  private final boolean preferLocalNode;
   private volatile String database;
 
-  DataPartitionBatchFetcher(final IPartitionFetcher fetcher) {
+  DataPartitionBatchFetcher(final IPartitionFetcher fetcher, final boolean preferLocalNode) {
     this.fetcher =
         Objects.requireNonNull(
             fetcher, DataNodeQueryMessages.EXCEPTION_FETCHER_CANNOT_BE_NULL_6C143C90);
+    this.preferLocalNode = preferLocalNode;
   }
 
   void setDatabase(final String database) {
@@ -69,6 +73,18 @@ class DataPartitionBatchFetcher {
   // -------------------------------------------------------------------------
   // Partition Querying
   // -------------------------------------------------------------------------
+
+  /**
+   * The DataNode that the LOAD request prefers as a replica of the DataRegions it has to create, or
+   * -1 when the request does not ask for the preference.
+   */
+  private int getPreferredDataNodeId() {
+    if (!preferLocalNode) {
+      return -1;
+    }
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    return config.getDataNodeId();
+  }
 
   /**
    * Queries or creates data partition replica sets for the supplied (device, time-partition) slots.
@@ -85,6 +101,7 @@ class DataPartitionBatchFetcher {
     final int totalSlots = slotList.size();
     final List<TRegionReplicaSet> replicaSets = new ArrayList<>(totalSlots);
     final String currentDatabase = this.database;
+    final int preferredDataNodeId = getPreferredDataNodeId();
 
     for (int fromIndex = 0; fromIndex < totalSlots; fromIndex += TRANSMIT_LIMIT) {
       final int toIndex = Math.min(totalSlots, fromIndex + TRANSMIT_LIMIT);
@@ -92,7 +109,8 @@ class DataPartitionBatchFetcher {
           slotList.subList(fromIndex, toIndex);
 
       final List<DataPartitionQueryParam> queryParams = toQueryParams(batchSlots, currentDatabase);
-      final DataPartition dataPartition = fetcher.getOrCreateDataPartition(queryParams, userName);
+      final DataPartition dataPartition =
+          fetcher.getOrCreateDataPartition(queryParams, userName, preferredDataNodeId);
 
       if (dataPartition == null) {
         throw new IllegalStateException(

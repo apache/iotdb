@@ -209,6 +209,25 @@ public class PartitionManagerProactiveExtensionTest {
   }
 
   @Test
+  public void testPreferredDataNodeIsForwardedToTheRegionAllocation() throws Exception {
+    assumeTrue(type == TConsensusGroupType.DataRegion);
+    configureDataPartitionConsensusAndAllocation();
+    when(loadManager.allocateRegionGroups(anyMap(), any(TConsensusGroupType.class), eq(7)))
+        .thenAnswer(invocation -> regionPlan(invocation.getArgument(0), invocation.getArgument(1)));
+
+    assertSuccess(
+        partitionManager
+            .getOrCreateDataPartition(
+                new GetOrCreateDataPartitionPlan(
+                    Collections.singletonMap(DATABASE, dataRequest(0, 0)), 7))
+            .getStatus());
+
+    // The hint reaches the allocation, which pins DataNode 7 as a replica of the new DataRegions
+    verify(loadManager).allocateRegionGroups(anyMap(), eq(type), eq(7));
+    verify(loadManager, never()).allocateRegionGroups(anyMap(), any(TConsensusGroupType.class));
+  }
+
+  @Test
   public void testSatisfiedDatabaseDoesNotGrowForAnotherDatabasesPendingSlots() throws Exception {
     assumeTrue(type == TConsensusGroupType.DataRegion);
     assertSuccess(extend(DATABASE, slots(0)));

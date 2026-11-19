@@ -57,6 +57,7 @@ import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurat
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.PIPE_GENERATED_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.PREFER_LOCAL_NODE_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY;
 
 public class LoadTsFileStatement extends Statement {
@@ -72,6 +73,8 @@ public class LoadTsFileStatement extends Statement {
   private boolean autoCreateDatabase = true;
   private boolean isGeneratedByPipe = false;
   private boolean isAsyncLoad = false;
+  // Whether the DataRegions created by this LOAD pin the local DataNode as a replica
+  private boolean preferLocalNode = false;
 
   private List<File> tsFiles;
   private List<Boolean> isTableModel;
@@ -321,6 +324,11 @@ public class LoadTsFileStatement extends Statement {
     return deleteAfterLoad;
   }
 
+  public LoadTsFileStatement setPreferLocalNode(final boolean preferLocalNode) {
+    this.preferLocalNode = preferLocalNode;
+    return this;
+  }
+
   public LoadTsFileStatement setConvertOnTypeMismatch(boolean convertOnTypeMismatch) {
     this.convertOnTypeMismatch = convertOnTypeMismatch;
     return this;
@@ -360,6 +368,10 @@ public class LoadTsFileStatement extends Statement {
 
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  public boolean isPreferLocalNode() {
+    return preferLocalNode;
   }
 
   public boolean isNeedDecode4TimeColumn() {
@@ -410,6 +422,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateSchema =
         LoadTsFileConfigurator.parseOrGetDefaultAutoCreateSchema(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
+    this.preferLocalNode = LoadTsFileConfigurator.parseOrGetDefaultPreferLocalNode(loadAttributes);
     if (LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes)) {
       markIsGeneratedByPipe();
     }
@@ -512,6 +525,7 @@ public class LoadTsFileStatement extends Statement {
       statement.autoCreateDatabase = this.autoCreateDatabase;
       statement.isAsyncLoad = this.isAsyncLoad;
       statement.isGeneratedByPipe = this.isGeneratedByPipe;
+      statement.preferLocalNode = this.preferLocalNode;
 
       statement.tsFiles = new ArrayList<>(batchFiles);
       statement.resources = new ArrayList<>(batchFiles.size());
@@ -549,6 +563,7 @@ public class LoadTsFileStatement extends Statement {
         TABLET_CONVERSION_THRESHOLD_KEY, String.valueOf(tabletConversionThresholdBytes));
     loadAttributes.put(ASYNC_LOAD_KEY, String.valueOf(isAsyncLoad));
     loadAttributes.put(AUTO_CREATE_SCHEMA_KEY, String.valueOf(autoCreateSchema));
+    loadAttributes.put(PREFER_LOCAL_NODE_KEY, String.valueOf(preferLocalNode));
     if (isGeneratedByPipe) {
       loadAttributes.put(PIPE_GENERATED_KEY, String.valueOf(true));
     }

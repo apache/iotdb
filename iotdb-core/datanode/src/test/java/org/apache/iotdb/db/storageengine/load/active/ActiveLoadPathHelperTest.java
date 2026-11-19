@@ -40,7 +40,7 @@ public class ActiveLoadPathHelperTest {
           ActiveLoadPathHelper.resolveTargetDir(
               pendingDir,
               ActiveLoadPathHelper.buildAttributes(
-                  null, null, null, null, null, null, null, userName));
+                  null, null, null, null, null, null, null, null, userName));
       final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
 
       Assert.assertTrue(targetDir.getAbsolutePath().contains("user-v1-"));
@@ -133,7 +133,7 @@ public class ActiveLoadPathHelperTest {
     try {
       final Map<String, String> attributes =
           ActiveLoadPathHelper.buildAttributes(
-              null, null, true, true, true, null, true, "root", "task-123");
+              null, null, true, true, true, null, true, null, "root", "task-123");
       final File targetDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);
       final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
       createFile(tsFile);
@@ -163,7 +163,8 @@ public class ActiveLoadPathHelperTest {
     final File pendingDir = Files.createTempDirectory("active-load-schema").toFile();
     try {
       final Map<String, String> attributes =
-          ActiveLoadPathHelper.buildAttributes(null, null, null, true, false, null, true, "root");
+          ActiveLoadPathHelper.buildAttributes(
+              null, null, null, true, false, null, true, null, "root");
       final File targetDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);
       final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
       createFile(tsFile);
@@ -179,6 +180,35 @@ public class ActiveLoadPathHelperTest {
       ActiveLoadPathHelper.applyAttributesToStatement(parsedAttributes, statement, false);
       Assert.assertTrue(statement.isVerifySchema());
       Assert.assertFalse(statement.isAutoCreateSchema());
+    } finally {
+      deleteRecursively(pendingDir);
+    }
+  }
+
+  @Test
+  public void testPreferLocalNodeAttributeShouldSurviveActiveLoadPath() throws Exception {
+    final File pendingDir = Files.createTempDirectory("active-load-prefer-local").toFile();
+    try {
+      final Map<String, String> attributes =
+          ActiveLoadPathHelper.buildAttributes(
+              null, null, null, null, null, null, false, true, "root");
+      final File targetDir = ActiveLoadPathHelper.resolveTargetDir(pendingDir, attributes);
+      final File tsFile = new File(targetDir, "1-0-0-0.tsfile");
+      createFile(tsFile);
+
+      // The asynchronous load and the active-load retry rebuild the statement from these
+      // attributes, so the preference must be encoded in the pending directory
+      final Map<String, String> parsedAttributes =
+          ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+      Assert.assertEquals(
+          Boolean.TRUE.toString(),
+          parsedAttributes.get(LoadTsFileConfigurator.PREFER_LOCAL_NODE_KEY));
+
+      final LoadTsFileStatement statement =
+          LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
+      Assert.assertFalse(statement.isPreferLocalNode());
+      ActiveLoadPathHelper.applyAttributesToStatement(parsedAttributes, statement, false);
+      Assert.assertTrue(statement.isPreferLocalNode());
     } finally {
       deleteRecursively(pendingDir);
     }

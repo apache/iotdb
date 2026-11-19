@@ -54,6 +54,7 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
   // Whether there exists a region with both i and j as replicas (fake-id indexed, binary)
   private int[][] combinationCounter;
   private Map<Integer, Integer> fakeToRealIdMap;
+  private Map<Integer, Integer> realToFakeIdMap;
 
   private int alphaDataNodeNum;
   // The best valuation found so far
@@ -67,7 +68,8 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
       List<TRegionReplicaSet> allocatedRegionGroups,
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
-      TConsensusGroupId consensusGroupId) {
+      TConsensusGroupId consensusGroupId,
+      int preferredDataNodeId) {
     this.regionPerDataNode =
         consensusGroupId.getType().equals(TConsensusGroupType.DataRegion)
             ? ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode()
@@ -78,9 +80,29 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
         allocatedRegionGroups,
         databaseAllocatedRegionGroups);
 
+    final Integer fixedFakeId =
+        preferredDataNodeId >= 0 ? realToFakeIdMap.get(preferredDataNodeId) : null;
+    // A DataNode that is not part of the candidate map is dropped by the mapping above.
+    // A filled DataNode is not a replica candidate of this algorithm, so the preference is dropped
+    // in that case and the original search runs unchanged.
+    // A configured value <= 0 means that the per-DataNode cap is not set, so the DataNode is not
+    // considered filled.
+    final boolean pinPreferredDataNode =
+        fixedFakeId != null
+            && (regionPerDataNode <= 0 || regionCounter[fixedFakeId] < regionPerDataNode);
+    final int fallbackPreferredDataNodeId = pinPreferredDataNode ? preferredDataNodeId : -1;
+
     // Select alpha nodes set
-    for (int i = 0; i < subGraphCount; i++) {
-      subGraphSearch(i, freeDiskSpaceMap);
+    if (pinPreferredDataNode) {
+      // The pinned DataNode occupies the first alpha slot, which is also the write entry point of
+      // the new RegionGroup. It fixes the sub-graph, so only the alpha sets of that sub-graph are
+      // valued, which trades some optimality for the preference. The remaining alpha and beta nodes
+      // are still chosen by the partite-graph valuation.
+      subGraphSearch(fixedFakeId % subGraphCount, freeDiskSpaceMap, fixedFakeId);
+    } else {
+      for (int i = 0; i < subGraphCount; i++) {
+        subGraphSearch(i, freeDiskSpaceMap, -1);
+      }
     }
     if (bestValue.regionSum == Integer.MAX_VALUE) {
       // Use greedy allocator as alternative if no alpha nodes set is found
@@ -90,7 +112,8 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
           allocatedRegionGroups,
           databaseAllocatedRegionGroups,
           replicationFactor,
-          consensusGroupId);
+          consensusGroupId,
+          fallbackPreferredDataNodeId);
     }
 
     // Select the beta nodes sets
@@ -103,7 +126,8 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
           allocatedRegionGroups,
           databaseAllocatedRegionGroups,
           replicationFactor,
-          consensusGroupId);
+          consensusGroupId,
+          fallbackPreferredDataNodeId);
     }
 
     // The next placement scheme is alpha \cup beta
@@ -145,7 +169,7 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     // Initialize the fake index for each DataNode,
     // since the index of DataNode might not be continuous
     this.fakeToRealIdMap = new TreeMap<>();
-    Map<Integer, Integer> realToFakeIdMap = new TreeMap<>();
+    this.realToFakeIdMap = new TreeMap<>();
     this.dataNodeNum = availableDataNodeMap.size();
     List<Integer> dataNodeIdList =
         availableDataNodeMap.values().stream()
@@ -215,9 +239,14 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     return new Value(regionSum, databaseRegionSum, edgeSum);
   }
 
-  private void subGraphSearch(int firstIndex, Map<Integer, Double> freeDiskSpaceMap) {
+  private void subGraphSearch(
+      int firstIndex, Map<Integer, Double> freeDiskSpaceMap, int fixedDataNodeId) {
     List<PgpDataNodeEntry> entryList = new ArrayList<>();
     for (int index = firstIndex; index < dataNodeNum; index += subGraphCount) {
+      if (index == fixedDataNodeId) {
+        // The pinned DataNode occupies one alpha slot and is not part of the sorted candidates
+        continue;
+      }
       // Prune: skip filled DataNodes
       if (regionCounter[index] < regionPerDataNode) {
         entryList.add(
@@ -228,22 +257,38 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
                 freeDiskSpaceMap.get(fakeToRealIdMap.get(index))));
       }
     }
-    if (entryList.size() < alphaDataNodeNum) {
+    final int fixedNodeCount = fixedDataNodeId >= 0 ? 1 : 0;
+    if (entryList.size() + fixedNodeCount < alphaDataNodeNum) {
       // Skip: not enough DataNodes
       return;
     }
     Collections.sort(entryList);
     int[] alphaNodes = new int[alphaDataNodeNum];
-    for (int i = 0; i < alphaDataNodeNum - 1; i++) {
-      alphaNodes[i] = entryList.get(i).dataNodeId;
+    if (fixedNodeCount == 1) {
+      alphaNodes[0] = fixedDataNodeId;
     }
-    for (int i = alphaDataNodeNum - 1; i < entryList.size(); i++) {
+    // The pinned DataNode is part of the alpha set, so at most one fewer alpha node is chosen by
+    // the sorted order and by varying the last slot.
+    final int sortedAlphaSlots = alphaDataNodeNum - fixedNodeCount - 1;
+    if (sortedAlphaSlots < 0) {
+      // The only alpha slot is the pinned DataNode
+      updateBestAlphaNodes(alphaNodes);
+      return;
+    }
+    for (int i = 0; i < sortedAlphaSlots; i++) {
+      alphaNodes[fixedNodeCount + i] = entryList.get(i).dataNodeId;
+    }
+    for (int i = sortedAlphaSlots; i < entryList.size(); i++) {
       alphaNodes[alphaDataNodeNum - 1] = entryList.get(i).dataNodeId;
-      Value currentValue = valuation(alphaNodes);
-      if (currentValue.compareTo(bestValue) < 0) {
-        bestValue = currentValue;
-        System.arraycopy(alphaNodes, 0, bestAlphaNodes, 0, alphaDataNodeNum);
-      }
+      updateBestAlphaNodes(alphaNodes);
+    }
+  }
+
+  private void updateBestAlphaNodes(int[] alphaNodes) {
+    Value currentValue = valuation(alphaNodes);
+    if (currentValue.compareTo(bestValue) < 0) {
+      bestValue = currentValue;
+      System.arraycopy(alphaNodes, 0, bestAlphaNodes, 0, alphaDataNodeNum);
     }
   }
 

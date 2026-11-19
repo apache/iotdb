@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -227,5 +228,71 @@ public class PartiteGraphPlacementRegionGroupAllocatorTest {
       }
     }
     return counter;
+  }
+
+  /**
+   * The preferred DataNode is pinned into the alpha set, so it becomes the first replica of every
+   * new RegionGroup while the other alpha and beta nodes are still chosen by the partite-graph
+   * valuation.
+   */
+  @Test
+  public void testPreferredDataNodeIsPinned() {
+    final int replicationFactor = 3;
+    final int preferredDataNodeId = 5;
+    final int regionGroups = 40;
+    final int originDataRegionPerDataNode =
+        ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode();
+    ConfigNodeDescriptor.getInstance().getConf().setDataRegionPerDataNode(regionGroups);
+    try {
+      final List<TRegionReplicaSet> allocatedRegionGroups = new ArrayList<>();
+      final List<TRegionReplicaSet> databaseAllocatedRegionGroups = new ArrayList<>();
+      for (int index = 0; index < regionGroups; index++) {
+        final TRegionReplicaSet newRegionGroup =
+            ALLOCATOR.generateOptimalRegionReplicasDistribution(
+                AVAILABLE_DATA_NODE_MAP,
+                FREE_SPACE_MAP,
+                allocatedRegionGroups,
+                databaseAllocatedRegionGroups,
+                replicationFactor,
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, index),
+                preferredDataNodeId);
+        Assert.assertEquals(replicationFactor, newRegionGroup.getDataNodeLocationsSize());
+        Assert.assertEquals(
+            preferredDataNodeId, newRegionGroup.getDataNodeLocations().get(0).getDataNodeId());
+        Assert.assertEquals(
+            replicationFactor,
+            newRegionGroup.getDataNodeLocations().stream()
+                .map(TDataNodeLocation::getDataNodeId)
+                .distinct()
+                .count());
+        allocatedRegionGroups.add(newRegionGroup);
+        databaseAllocatedRegionGroups.add(newRegionGroup);
+      }
+
+      final Map<Integer, Integer> replicaCounter = countReplicasPerDataNode(allocatedRegionGroups);
+      Assert.assertEquals(regionGroups, replicaCounter.get(preferredDataNodeId).intValue());
+      int minCount = Integer.MAX_VALUE;
+      int maxCount = 0;
+      for (int dataNodeId = 1; dataNodeId <= TEST_DATA_NODE_NUM; dataNodeId++) {
+        if (dataNodeId == preferredDataNodeId) {
+          continue;
+        }
+        final int regionCount = replicaCounter.getOrDefault(dataNodeId, 0);
+        minCount = Math.min(minCount, regionCount);
+        maxCount = Math.max(maxCount, regionCount);
+      }
+      LOGGER.info(
+          "preferred DataNode replicas: {}, other DataNodes: min={}, max={}",
+          regionGroups,
+          minCount,
+          maxCount);
+      // The pinned DataNode removes one candidate from the balance of the other replicas, but PGP
+      // still spreads them over the remaining DataNodes.
+      Assert.assertTrue(maxCount - minCount <= 3);
+    } finally {
+      ConfigNodeDescriptor.getInstance()
+          .getConf()
+          .setDataRegionPerDataNode(originDataRegionPerDataNode);
+    }
   }
 }

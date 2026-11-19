@@ -248,4 +248,94 @@ public class GreedyCopySetRegionGroupAllocatorTest {
     Assert.assertTrue(greedyCopySetMaxScatterWidth >= greedyMaxScatterWidth);
     Assert.assertTrue(greedyCopySetMinScatterWidth >= greedyMinScatterWidth);
   }
+
+  @Test
+  public void testPreferredDataNodeWith2Factor() {
+    testPreferredDataNode(2);
+  }
+
+  @Test
+  public void testPreferredDataNodeWith3Factor() {
+    testPreferredDataNode(3);
+  }
+
+  /**
+   * The preferred DataNode is pinned as the first replica of every new RegionGroup, while the other
+   * replicas are still selected by the original keys and therefore stay evenly distributed.
+   */
+  private void testPreferredDataNode(int replicationFactor) {
+    final int preferredDataNodeId = 7;
+    final int regionGroupNum = 30;
+    final List<TRegionReplicaSet> allocatedRegionGroups = new ArrayList<>();
+    final List<TRegionReplicaSet> databaseAllocatedRegionGroups = new ArrayList<>();
+
+    for (int index = 0; index < regionGroupNum; index++) {
+      final TRegionReplicaSet newRegionGroup =
+          GREEDY_COPY_SET_ALLOCATOR.generateOptimalRegionReplicasDistribution(
+              AVAILABLE_DATA_NODE_MAP,
+              FREE_SPACE_MAP,
+              allocatedRegionGroups,
+              databaseAllocatedRegionGroups,
+              replicationFactor,
+              new TConsensusGroupId(TConsensusGroupType.DataRegion, index),
+              preferredDataNodeId);
+      Assert.assertEquals(replicationFactor, newRegionGroup.getDataNodeLocationsSize());
+      Assert.assertEquals(
+          preferredDataNodeId, newRegionGroup.getDataNodeLocations().get(0).getDataNodeId());
+      Assert.assertEquals(
+          replicationFactor,
+          newRegionGroup.getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toSet())
+              .size());
+      allocatedRegionGroups.add(newRegionGroup);
+      databaseAllocatedRegionGroups.add(newRegionGroup);
+    }
+
+    final Map<Integer, Integer> replicaCounter = new HashMap<>();
+    allocatedRegionGroups.forEach(
+        regionReplicaSet ->
+            regionReplicaSet
+                .getDataNodeLocations()
+                .forEach(
+                    location -> replicaCounter.merge(location.getDataNodeId(), 1, Integer::sum)));
+    Assert.assertEquals(
+        regionGroupNum, replicaCounter.getOrDefault(preferredDataNodeId, 0).intValue());
+
+    int minRegionCount = Integer.MAX_VALUE;
+    int maxRegionCount = 0;
+    for (int dataNodeId = 1; dataNodeId <= TEST_DATA_NODE_NUM; dataNodeId++) {
+      if (dataNodeId == preferredDataNodeId) {
+        continue;
+      }
+      final int regionCount = replicaCounter.getOrDefault(dataNodeId, 0);
+      minRegionCount = Math.min(minRegionCount, regionCount);
+      maxRegionCount = Math.max(maxRegionCount, regionCount);
+    }
+    LOGGER.info(
+        "replicationFactor: {}, preferred DataNode replicas: {}, other DataNodes: min={}, max={}",
+        replicationFactor,
+        regionGroupNum,
+        minRegionCount,
+        maxRegionCount);
+    Assert.assertTrue(maxRegionCount - minRegionCount <= 1);
+  }
+
+  @Test
+  public void testPreferredDataNodeNotAvailable() {
+    final int replicationFactor = 3;
+    final TRegionReplicaSet newRegionGroup =
+        GREEDY_COPY_SET_ALLOCATOR.generateOptimalRegionReplicasDistribution(
+            AVAILABLE_DATA_NODE_MAP,
+            FREE_SPACE_MAP,
+            new ArrayList<>(),
+            new ArrayList<>(),
+            replicationFactor,
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 0),
+            TEST_DATA_NODE_NUM + 1);
+    Assert.assertEquals(replicationFactor, newRegionGroup.getDataNodeLocationsSize());
+    Assert.assertFalse(
+        newRegionGroup.getDataNodeLocations().stream()
+            .anyMatch(location -> location.getDataNodeId() > TEST_DATA_NODE_NUM));
+  }
 }

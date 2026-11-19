@@ -64,6 +64,9 @@ public class LoadTsFileConfigurator {
       case ASYNC_LOAD_KEY:
         validateAsyncLoadParam(value);
         break;
+      case PREFER_LOCAL_NODE_KEY:
+        validatePreferLocalNodeParam(value);
+        break;
       default:
         throw new SemanticException(
             String.format(StorageEngineMessages.INVALID_PARAMETER_FOR_LOAD_TSFILE_COMMAND, key));
@@ -239,6 +242,33 @@ public class LoadTsFileConfigurator {
   public static boolean parseOrGetDefaultAsyncLoad(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
         loadAttributes.getOrDefault(ASYNC_LOAD_KEY, String.valueOf(ASYNC_LOAD_DEFAULT_VALUE)));
+  }
+
+  public static final String PREFER_LOCAL_NODE_KEY = "prefer-local-node";
+  private static final boolean PREFER_LOCAL_NODE_DEFAULT_VALUE = false;
+
+  public static void validatePreferLocalNodeParam(final String preferLocalNode) {
+    if (!"true".equalsIgnoreCase(preferLocalNode) && !"false".equalsIgnoreCase(preferLocalNode)) {
+      throw new SemanticException(
+          String.format(
+              StorageEngineMessages.PARAMETER_VALUE_NOT_SUPPORTED_BOOLEAN,
+              PREFER_LOCAL_NODE_KEY,
+              preferLocalNode));
+    }
+  }
+
+  /**
+   * Whether the LOAD request pins the local DataNode as the first replica of the DataRegions it
+   * creates; the first replica is also the write entry point of a RegionGroup.
+   *
+   * <p>The preference is opt-in per request and best-effort: it stays disabled unless the LOAD
+   * statement asks for it, it only affects the DataRegions created by that request, and the
+   * ConfigNode drops it while the local DataNode is not a healthy placement candidate.
+   */
+  public static boolean parseOrGetDefaultPreferLocalNode(final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(
+            PREFER_LOCAL_NODE_KEY, String.valueOf(PREFER_LOCAL_NODE_DEFAULT_VALUE)));
   }
 
   private LoadTsFileConfigurator() {

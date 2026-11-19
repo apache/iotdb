@@ -122,11 +122,29 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       List<TRegionReplicaSet> allocatedRegionGroups,
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
-      TConsensusGroupId consensusGroupId) {
+      TConsensusGroupId consensusGroupId,
+      int preferredDataNodeId) {
     try {
       this.replicationFactor = replicationFactor;
       prepare(availableDataNodeMap, allocatedRegionGroups, databaseAllocatedRegionGroups);
-      dfsAllocateReplica(-1, 0, new int[replicationFactor], 0, 0);
+      final int fixedDataNodeId =
+          availableDataNodeMap.containsKey(preferredDataNodeId) ? preferredDataNodeId : -1;
+      if (fixedDataNodeId >= 0) {
+        // Pin the preferred DataNode as the first replica (the write entry point of the new
+        // RegionGroup), then let the original DFS select the remaining replicas with the usual
+        // counters, so only the pinned replica is forced.
+        final int[] fixedReplicaSet = new int[replicationFactor];
+        fixedReplicaSet[0] = fixedDataNodeId;
+        dfsAllocateReplica(
+            -1,
+            1,
+            fixedReplicaSet,
+            databaseRegionCounter[fixedDataNodeId],
+            regionCounter[fixedDataNodeId],
+            fixedDataNodeId);
+      } else {
+        dfsAllocateReplica(-1, 0, new int[replicationFactor], 0, 0, -1);
+      }
 
       // Randomly pick one optimal plan as result
       Collections.shuffle(optimalReplicaSets);
@@ -559,7 +577,8 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       int currentReplica,
       int[] currentReplicaSet,
       int databaseRegionSum,
-      int regionSum) {
+      int regionSum,
+      int fixedDataNodeId) {
     if (regionSum > optimalRegionSum) {
       // Pruning: no needs for further searching when the first key
       // is bigger than the historical optimal result
@@ -601,6 +620,10 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     }
 
     for (int i = lastIndex + 1; i < dataNodeIds.length; i++) {
+      if (dataNodeIds[i] == fixedDataNodeId) {
+        // The pinned replica is already part of the allocation plan
+        continue;
+      }
       // Decide the next DataNodeId in the allocation plan
       currentReplicaSet[currentReplica] = dataNodeIds[i];
       dfsAllocateReplica(
@@ -608,7 +631,8 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           currentReplica + 1,
           currentReplicaSet,
           databaseRegionSum + databaseRegionCounter[dataNodeIds[i]],
-          regionSum + regionCounter[dataNodeIds[i]]);
+          regionSum + regionCounter[dataNodeIds[i]],
+          fixedDataNodeId);
       if (optimalReplicaSets.size() == GCR_MAX_OPTIMAL_PLAN_NUM) {
         // Pruning: no needs for further searching when
         // the number of optimal plans reaches the limitation

@@ -151,7 +151,7 @@ public class DataPartitionRouterTest {
     private boolean dropAnswers;
 
     private RecordingPartitionFetcher() {
-      super(mock(IPartitionFetcher.class));
+      super(mock(IPartitionFetcher.class), true);
     }
 
     @Override

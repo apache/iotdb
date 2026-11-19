@@ -40,13 +40,53 @@ public interface IRegionGroupAllocator {
    * @param consensusGroupId TConsensusGroupId of result TRegionReplicaSet
    * @return The optimal TRegionReplicaSet derived by the specified algorithm
    */
+  default TRegionReplicaSet generateOptimalRegionReplicasDistribution(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups,
+      int replicationFactor,
+      TConsensusGroupId consensusGroupId) {
+    return generateOptimalRegionReplicasDistribution(
+        availableDataNodeMap,
+        freeDiskSpaceMap,
+        allocatedRegionGroups,
+        databaseAllocatedRegionGroups,
+        replicationFactor,
+        consensusGroupId,
+        -1);
+  }
+
+  /**
+   * Generate an optimal RegionReplicas' distribution for a new RegionGroup with an optional pinned
+   * replica.
+   *
+   * <p>When {@code preferredDataNodeId} is a member of {@code availableDataNodeMap}, the
+   * implementation must place it as the first replica and then select the remaining {@code
+   * replicationFactor - 1} replicas with its usual allocation algorithm and balancing keys, so the
+   * preference does not replace a replica that the algorithm would otherwise have chosen. The first
+   * replica is the one the write path routes the RegionGroup to, so the pinned DataNode is also the
+   * write entry point of the new RegionGroup. Callers pass -1 when the DataNode is not a healthy
+   * placement candidate.
+   *
+   * @param availableDataNodeMap DataNodes that can be used for allocation
+   * @param freeDiskSpaceMap The free disk space of the DataNodes
+   * @param allocatedRegionGroups Allocated RegionGroups
+   * @param databaseAllocatedRegionGroups Allocated RegionGroups within the same Database with the
+   *     result
+   * @param replicationFactor Replication factor of TRegionReplicaSet
+   * @param consensusGroupId TConsensusGroupId of result TRegionReplicaSet
+   * @param preferredDataNodeId the DataNode to pin as the first replica, or -1 for no preference
+   * @return The optimal TRegionReplicaSet derived by the specified algorithm
+   */
   TRegionReplicaSet generateOptimalRegionReplicasDistribution(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<Integer, Double> freeDiskSpaceMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
-      TConsensusGroupId consensusGroupId);
+      TConsensusGroupId consensusGroupId,
+      int preferredDataNodeId);
 
   /**
    * Select the optimal DataNode to place the new replica on along with the remaining replica set.

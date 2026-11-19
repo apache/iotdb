@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -32,8 +33,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.PREFER_LOCAL_NODE_KEY;
 
 public class LoadTsFileStatementTest {
 
@@ -57,6 +62,42 @@ public class LoadTsFileStatementTest {
       Assert.assertEquals(2, subStatements.size());
       subStatements.forEach(
           subStatement -> Assert.assertEquals("test_db", subStatement.getDatabase()));
+    } finally {
+      config.setLoadTsFileSubStatementBatchSize(originalBatchSize);
+      config.setLoadTsFileAllowedDirs(originalAllowedDirs);
+      deleteRecursively(tempDir);
+    }
+  }
+
+  @Test
+  public void testPreferLocalNodeAttributeIsParsedAndPropagated() throws Exception {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    final int originalBatchSize = config.getLoadTsFileSubStatementBatchSize();
+    final String[] originalAllowedDirs = config.getLoadTsFileAllowedDirs().clone();
+    final Path tempDir = Files.createTempDirectory("load-tsfile-prefer-local-node");
+
+    try {
+      config.setLoadTsFileSubStatementBatchSize(1);
+      config.setLoadTsFileAllowedDirs(new String[] {tempDir.toString()});
+      Files.createFile(tempDir.resolve("a.tsfile"));
+      Files.createFile(tempDir.resolve("b.tsfile"));
+
+      final Map<String, String> attributes = new HashMap<>();
+      attributes.put(PREFER_LOCAL_NODE_KEY, "true");
+
+      final LoadTsFileStatement statement = new LoadTsFileStatement(tempDir.toString());
+      Assert.assertFalse(statement.isPreferLocalNode());
+      statement.setLoadAttributes(attributes);
+      Assert.assertTrue(statement.isPreferLocalNode());
+
+      statement
+          .getSubStatements()
+          .forEach(subStatement -> Assert.assertTrue(subStatement.isPreferLocalNode()));
+
+      final LoadTsFile relationalStatement = (LoadTsFile) statement.toRelationalStatement(null);
+      Assert.assertTrue(relationalStatement.isPreferLocalNode());
+      Assert.assertEquals(
+          "true", relationalStatement.getLoadAttributes().get(PREFER_LOCAL_NODE_KEY));
     } finally {
       config.setLoadTsFileSubStatementBatchSize(originalBatchSize);
       config.setLoadTsFileAllowedDirs(originalAllowedDirs);
