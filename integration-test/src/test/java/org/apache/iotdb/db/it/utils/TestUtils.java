@@ -1569,9 +1569,7 @@ public class TestUtils {
   public static void executeQuery(String sql, String userName, String password) {
     try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        drainResultSet(resultSet);
-      }
+      statement.executeQuery(sql);
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1582,9 +1580,7 @@ public class TestUtils {
     try (Connection connection =
             EnvFactory.getEnv().getConnection(userName, password, TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        drainResultSet(resultSet);
-      }
+      statement.executeQuery(sql);
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1629,9 +1625,7 @@ public class TestUtils {
         }
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           lastIndex = i;
-          try (final ResultSet resultSet = statement.executeQuery(sqlList.get(i))) {
-            drainResultSet(resultSet);
-          }
+          statement.executeQuery(sqlList.get(i));
         }
         return;
       } catch (final SQLException e) {

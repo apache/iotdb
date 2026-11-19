@@ -425,7 +425,7 @@ public class IoTDBGroupByCountIT {
   @Test
   public void errorTest1() {
     errorTest(
-        "select count(temperature) from root.** group by count(soc, 2)",
+        "select count(soc) from root.** group by count(soc, 2)",
         "701: root.**.soc in group by clause shouldn't refer to more than one timeseries.");
   }
 
