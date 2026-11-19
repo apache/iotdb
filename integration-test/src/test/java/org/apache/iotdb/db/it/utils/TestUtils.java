@@ -618,7 +618,9 @@ public class TestUtils {
             EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use " + databaseName);
-      statement.executeQuery(sql);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        while (resultSet.next()) {}
+      }
       fail("No exception!");
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
@@ -630,7 +632,9 @@ public class TestUtils {
     try (Connection connection =
             EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        while (resultSet.next()) {}
+      }
       fail("No exception!");
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
