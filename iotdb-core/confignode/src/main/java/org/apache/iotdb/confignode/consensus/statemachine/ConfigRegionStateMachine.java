@@ -67,7 +67,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** {@link IStateMachine} for ConfigRegion. */
@@ -95,10 +94,12 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private final ConfigPlanExecutor executor;
 
   /**
-   * Whether the leader services of the {@link #leaderServicesEpoch current epoch} have finished
-   * starting up. Read by {@link ConsensusManager#confirmLeader()} to gate external serving.
+   * Readiness of leader services in the {@link #leaderServicesEpoch current epoch}. Recovered
+   * procedures can run once the Pipe callback has completed, but external requests must also wait
+   * for worker startup to finish.
    */
-  private final AtomicBoolean leaderServicesReady;
+  private volatile LeaderServicesReadiness leaderServicesReadiness =
+      LeaderServicesReadiness.WARMING_UP;
 
   /**
    * Monotonically increasing leadership generation. Every become-leader / resign-leader transition
@@ -106,8 +107,14 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
    */
   private final AtomicLong leaderServicesEpoch;
 
-  /** Guards {@link #leaderServicesReady} and {@link #leaderServicesEpoch} as a unit. */
+  /** Guards {@link #leaderServicesReadiness} and {@link #leaderServicesEpoch} as a unit. */
   private final Object leaderServicesLock;
+
+  private enum LeaderServicesReadiness {
+    WARMING_UP,
+    READY_FOR_PROCEDURES,
+    READY
+  }
 
   private ConfigManager configManager;
 
@@ -132,7 +139,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   public ConfigRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
-    this.leaderServicesReady = new AtomicBoolean(false);
     this.leaderServicesEpoch = new AtomicLong(0);
     this.leaderServicesLock = new Object();
     this.configManager = configManager;
@@ -385,7 +391,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     if (!isCurrentLeaderServicesEpoch(epoch)) {
       return;
     }
-    // The procedure executor may report readiness asynchronously once it has caught up.
     final boolean procedureExecutorWasRunning =
         configManager.getProcedureManager().getExecutor().isRunning();
     configManager
@@ -393,6 +398,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         .startExecutor(
             () -> {
               startPipeOnLeaderChangedIfEpochCurrent(epoch);
+              markLeaderServicesReadyIfEpochCurrent(
+                  epoch, LeaderServicesReadiness.READY_FOR_PROCEDURES);
             });
     if (!isCurrentLeaderServicesEpoch(epoch)) {
       return;
@@ -400,7 +407,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     if (procedureExecutorWasRunning) {
       startPipeOnLeaderChangedIfEpochCurrent(epoch);
     }
-    markLeaderServicesReadyIfEpochCurrent(epoch);
+    markLeaderServicesReadyIfEpochCurrent(epoch, LeaderServicesReadiness.READY);
 
     final boolean loadReady = waitForLoadReady(epoch);
     if (!isCurrentLeaderServicesEpoch(epoch)) {
@@ -527,10 +534,11 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         .join();
   }
 
-  private void markLeaderServicesReadyIfEpochCurrent(final long epoch) {
+  private void markLeaderServicesReadyIfEpochCurrent(
+      final long epoch, final LeaderServicesReadiness readiness) {
     synchronized (leaderServicesLock) {
       if (isCurrentLeaderServicesEpoch(epoch)) {
-        leaderServicesReady.set(true);
+        leaderServicesReadiness = readiness;
       }
     }
   }
@@ -574,14 +582,16 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
   }
 
-  public boolean areLeaderServicesReady() {
-    return leaderServicesReady.get();
+  public boolean areLeaderServicesReady(final boolean forInternalProcedure) {
+    final LeaderServicesReadiness readiness = leaderServicesReadiness;
+    return readiness == LeaderServicesReadiness.READY
+        || (forInternalProcedure && readiness == LeaderServicesReadiness.READY_FOR_PROCEDURES);
   }
 
   /** Open a new leadership generation, invalidating the previous one. */
   private long nextLeaderServicesEpoch() {
     synchronized (leaderServicesLock) {
-      leaderServicesReady.set(false);
+      leaderServicesReadiness = LeaderServicesReadiness.WARMING_UP;
       return leaderServicesEpoch.incrementAndGet();
     }
   }
@@ -589,7 +599,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   /** Invalidate the current leadership generation without opening a serving one. */
   private void invalidateLeaderServices() {
     synchronized (leaderServicesLock) {
-      leaderServicesReady.set(false);
+      leaderServicesReadiness = LeaderServicesReadiness.WARMING_UP;
       leaderServicesEpoch.incrementAndGet();
     }
   }
