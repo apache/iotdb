@@ -91,17 +91,17 @@ public abstract class IoTDBSource implements PipeExtractor {
     validator
         .validate(
             args -> optionsAreAllLegal((String) args, isTreeDataListened, isTableDataListened),
-            "The 'inclusion' string contains illegal path.",
+            PipeMessages.EXCEPTION_THE_INCLUSION_STRING_CONTAINS_ILLEGAL_PATH_B97B3F90,
             inclusionString)
         .validate(
             args -> optionsAreAllLegal((String) args, isTreeDataListened, isTableDataListened),
-            "The 'inclusion.exclusion' string contains illegal path.",
+            PipeMessages.EXCEPTION_THE_INCLUSION_EXCLUSION_STRING_CONTAINS_ILLEGAL_PATH_1BC64146,
             exclusionString)
         .validate(
             args ->
                 hasAtLeastOneOption(
                     (String) args[0], (String) args[1], isTreeDataListened, isTableDataListened),
-            "The pipe inclusion content can't be empty.",
+            PipeMessages.MESSAGE_THE_PIPE_INCLUSION_CONTENT_CAN_T_BE_EMPTY_80945D2A,
             inclusionString,
             exclusionString);
 

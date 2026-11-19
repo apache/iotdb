@@ -29,13 +29,14 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
-import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
@@ -45,21 +46,21 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
-public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
+public class IoTDBPipeMetaIT extends AbstractPipeTableModelSharedClusterIT {
 
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
+  @Rule public final TestName testName = new TestName();
 
+  // Sync matching table schema, device attributes and deletions; exclude unmatched
+  // tables/databases.
   @Test
   public void testTableSync() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -77,7 +78,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("__system.sql-dialect", "table");
-      extractorAttributes.put("extractor.database-name", "test");
+      extractorAttributes.put("extractor.database-name", database("test"));
       extractorAttributes.put("extractor.table-name", "t.*[0-9]");
       extractorAttributes.put("user", "root");
 
@@ -93,8 +94,10 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      final String dbName = "test";
-      TableModelUtils.createDatabase(senderEnv, dbName, 300);
+      final String dbName = database("test");
+      // Keep rows alive while asynchronous metadata and data synchronization finish.
+      final long databaseTtl = TimeUnit.DAYS.toMillis(1);
+      TableModelUtils.createDatabase(senderEnv, dbName, databaseTtl);
 
       TestUtils.executeNonQueries(
           dbName,
@@ -109,13 +112,13 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
               "create table noTransferTable(a tag, b attribute, c int32) with (ttl=3000)"),
           null);
 
-      TableModelUtils.createDatabase(senderEnv, "noTransferDatabase", 300);
+      TableModelUtils.createDatabase(senderEnv, database("noTransferDatabase"), 300);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "show tables from test",
+          "show tables from " + database("test"),
           "TableName,TTL(ms),",
-          Collections.singleton("table1,300,"),
+          Collections.singleton("table1," + databaseTtl + ","),
           dbName);
 
       // Test devices
@@ -157,9 +160,9 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       // Will not include no-transfer table
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
-          "show tables from test",
+          "show tables from " + database("test"),
           "TableName,TTL(ms),",
-          Collections.singleton("table1,300,"),
+          Collections.singleton("table1," + databaseTtl + ","),
           dbName);
 
       TestUtils.assertDataEventuallyOnEnv(
@@ -179,7 +182,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "show tables from test",
+          "show tables from " + database("test"),
           "TableName,TTL(ms),",
           Collections.emptySet(),
           dbName);
@@ -200,6 +203,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
     }
   }
 
+  // A table-only pipe must keep the receiver's tree catalog empty after tree writes on the sender.
   @Test
   public void testNoTree() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -234,9 +238,9 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "create database root.test",
-              "create timeSeries root.test.d1.s1 int32",
-              "insert into root.test.d1 (s1) values (1)"));
+              "create database " + treeDatabasePath(),
+              "create timeSeries " + treeDatabasePath() + ".d1.s1 int32",
+              "insert into " + treeDatabasePath() + ".d1 (s1) values (1)"));
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
@@ -246,6 +250,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
     }
   }
 
+  // A tree-only pipe must keep the receiver's table catalog empty after table DDL on the sender.
   @Test
   public void testNoTable() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -280,7 +285,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      final String dbName = "test";
+      final String dbName = database("test");
       TableModelUtils.createDatabase(senderEnv, dbName, 300);
 
       TestUtils.executeNonQueries(
@@ -303,6 +308,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
     }
   }
 
+  // Sync historical and realtime grants for testUser, retaining only the selected table privileges.
   @Test
   public void testAuth() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -315,7 +321,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
 
       TestUtils.executeNonQueries(
           senderEnv,
-          Arrays.asList("create user testUser 'password'", "grant all on root.** to user testUser"),
+          Arrays.asList(
+              "create user testUser 'IoTDB!Test2024'", "grant all on root.** to user testUser"),
           null);
 
       TestUtils.executeNonQueries(
@@ -324,7 +331,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           senderEnv,
           Arrays.asList(
               "grant create on db.tb to user testUser",
-              "grant drop on database test to user testUser"),
+              "grant drop on database " + database("test") + " to user testUser"),
           null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -335,7 +342,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("__system.sql-dialect", "table");
-      extractorAttributes.put("extractor.database-name", "test");
+      extractorAttributes.put("extractor.database-name", database("test"));
       extractorAttributes.put("extractor.table-name", "t.*[0-9]");
       extractorAttributes.put("user", "root");
 
@@ -371,11 +378,12 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
                   ",,SYSTEM,false,",
                   ",,SECURITY,false,",
                   ",*.*,ALTER,true,",
-                  ",test.*,DROP,false,")),
+                  "," + database("test") + ".*,DROP,false,")),
           "information_schema");
     }
   }
 
+  // Each dialect must accept its own schema inclusion and reject the other model's schema path.
   @Test
   public void testValidation() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -422,13 +430,16 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
     }
   }
 
+  // Merge complementary device attributes from a historical snapshot without losing existing
+  // values.
   @Test
   public void testAttributeSync() {
+    final String database = database("test");
     TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
-            "create database test",
-            "use test",
+            "create database " + database,
+            "use " + database,
             "create table table1(a tag, b attribute, c attribute, d int32)",
             "insert into table1 (time, a, b, c, d) values(1, 1, null, 1, 1), (2, 2, 2, null, 2)"),
         BaseEnv.TABLE_SQL_DIALECT);
@@ -436,8 +447,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
-            "create database test",
-            "use test",
+            "create database " + database,
+            "use " + database,
             "create table table1(a tag, b attribute, c attribute, d int32)",
             "insert into table1 (time, a, b, c, d) values(1, 1, 1, null, 1), (2, 2, null, 2, 2)",
             String.format(
@@ -451,6 +462,14 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
         "show devices from table1",
         "a,b,c,",
         new HashSet<>(Arrays.asList("1,1,1,", "2,2,2,")),
-        "test");
+        database);
+  }
+
+  private String database(final String name) {
+    return (name + "_" + testName.getMethodName()).toLowerCase(Locale.ROOT);
+  }
+
+  private String treeDatabasePath() {
+    return "root.test_" + testName.getMethodName().toLowerCase(Locale.ROOT);
   }
 }

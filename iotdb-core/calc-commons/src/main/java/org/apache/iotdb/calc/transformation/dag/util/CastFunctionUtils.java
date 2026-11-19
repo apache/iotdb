@@ -31,7 +31,8 @@ import javax.annotation.Nonnull;
 import java.time.ZoneId;
 
 public class CastFunctionUtils {
-  public static final String ERROR_MSG = "Unsupported target dataType: %s";
+  public static final String ERROR_MSG =
+      CalcMessages.EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_ARG_AFE3789A;
 
   public static int castLongToInt(long value) {
     if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
@@ -66,7 +67,7 @@ public class CastFunctionUtils {
           String.format(
               CalcMessages.EXCEPTION_DOUBLE_VALUE_ARG_OUT_RANGE_INTEGER_VALUE_BAB52E11, value));
     }
-    return Math.round((float) value);
+    return (int) Math.round(value);
   }
 
   public static long castDoubleToLong(double value) {

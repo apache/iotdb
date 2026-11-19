@@ -259,7 +259,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
     new TableRegionTaskExecutor<>(
-            "delete data for table device",
+            ProcedureMessages.MESSAGE_DELETE_DATA_FOR_TABLE_DEVICE_0FA6C84A,
             env,
             env.getConfigManager().getRelatedDataRegionGroup4TableModel(database),
             CnToDnAsyncRequestType.DELETE_DATA_FOR_TABLE_DEVICE,
@@ -272,7 +272,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
 
   private void deleteDeviceSchema(final ConfigNodeProcedureEnv env) {
     new TableRegionTaskExecutor<>(
-            "delete table device in black list",
+            ProcedureMessages.MESSAGE_DELETE_TABLE_DEVICE_IN_BLACK_LIST_B93F1C9F,
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database),
             CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,
@@ -311,7 +311,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       throws IOException, InterruptedException, ProcedureException {
     if (deleteDevicesState == CONSTRUCT_BLACK_LIST) {
       new TableRegionTaskExecutor<>(
-              "roll back table device black list",
+              ProcedureMessages.EXCEPTION_ROLL_BACK_TABLE_DEVICE_BLACK_LIST_DFE5A8CB,
               env,
               env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database),
               CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,

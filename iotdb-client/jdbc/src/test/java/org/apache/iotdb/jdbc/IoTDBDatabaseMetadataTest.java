@@ -27,6 +27,7 @@ import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 
 import org.apache.thrift.TException;
 import org.junit.Assert;
@@ -48,7 +49,13 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class IoTDBDatabaseMetadataTest {
@@ -84,6 +91,43 @@ public class IoTDBDatabaseMetadataTest {
     ResultSet resultSet = databaseMetaData.getExportedKeys(null, null, null);
     Assert.assertEquals("Time", resultSet.getMetaData().getColumnName(1));
     Assert.assertEquals("PKTABLE_CAT", resultSet.getMetaData().getColumnName(2));
+  }
+
+  @Test
+  public void testWrapperMethods() throws SQLException {
+    assertTrue(databaseMetaData.isWrapperFor(IoTDBDatabaseMetadata.class));
+    assertTrue(databaseMetaData.isWrapperFor(DatabaseMetaData.class));
+    assertFalse(databaseMetaData.isWrapperFor(String.class));
+    assertFalse(databaseMetaData.isWrapperFor(null));
+    assertSame(databaseMetaData, databaseMetaData.unwrap(IoTDBDatabaseMetadata.class));
+    assertSame(databaseMetaData, databaseMetaData.unwrap(DatabaseMetaData.class));
+  }
+
+  @Test(expected = SQLException.class)
+  public void testUnwrapRejectsUnsupportedClass() throws SQLException {
+    databaseMetaData.unwrap(String.class);
+  }
+
+  @Test
+  public void testClosedConnectionRejectsMetadataOperations() throws SQLException, TException {
+    when(connection.isClosed()).thenReturn(true);
+
+    assertThrows(SQLException.class, () -> databaseMetaData.isWrapperFor(DatabaseMetaData.class));
+    assertThrows(SQLException.class, () -> databaseMetaData.unwrap(DatabaseMetaData.class));
+    assertThrows(SQLException.class, () -> databaseMetaData.getConnection());
+    assertThrows(SQLException.class, () -> databaseMetaData.getURL());
+    assertThrows(SQLException.class, () -> databaseMetaData.getUserName());
+    assertThrows(SQLException.class, () -> databaseMetaData.isReadOnly());
+    assertThrows(SQLException.class, () -> databaseMetaData.getDatabaseProductVersion());
+    assertThrows(SQLException.class, () -> databaseMetaData.getSystemFunctions());
+    assertThrows(SQLException.class, () -> databaseMetaData.getMaxConnections());
+    assertThrows(SQLException.class, () -> databaseMetaData.getMaxStatementLength());
+    assertThrows(SQLException.class, () -> databaseMetaData.getDatabaseMajorVersion());
+    assertThrows(SQLException.class, () -> databaseMetaData.getDatabaseMinorVersion());
+    assertThrows(
+        SQLException.class, () -> ((IoTDBDatabaseMetadata) databaseMetaData).getMetadataInJson());
+    assertEquals("", databaseMetaData.toString());
+    verify(client, never()).fetchMetadata(any(TSFetchMetadataReq.class));
   }
 
   @Test
@@ -157,6 +201,26 @@ public class IoTDBDatabaseMetadataTest {
     Assert.assertEquals("Time", resultSet.getMetaData().getColumnName(1));
     Assert.assertEquals("PKTABLE_CAT", resultSet.getMetaData().getColumnName(2));
     Assert.assertEquals("PKTABLE_SCHEM", resultSet.getMetaData().getColumnName(3));
+  }
+
+  @Test
+  public void testGetColumnsToleratesConnectionWithoutCatalog() throws Exception {
+    // A connection that switched to the table dialect reports no catalog
+    when(connection.getCatalog()).thenReturn(null);
+    TSExecuteStatementResp showTimeseriesResp =
+        new TSExecuteStatementResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    showTimeseriesResp.setQueryId(1L);
+    showTimeseriesResp.setColumns(Collections.singletonList("Timeseries"));
+    showTimeseriesResp.setDataTypeList(Collections.singletonList("TEXT"));
+    showTimeseriesResp.setIgnoreTimeStamp(true);
+    showTimeseriesResp.setColumnIndex2TsBlockColumnIndexList(
+        new ArrayList<>(Collections.singletonList(0)));
+    showTimeseriesResp.setQueryResult(Collections.emptyList());
+    when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class)))
+        .thenReturn(showTimeseriesResp);
+    when(client.closeOperation(any())).thenReturn(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+
+    Assert.assertNotNull(databaseMetaData.getColumns(null, "root.sg", null, null));
   }
 
   @Test

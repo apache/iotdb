@@ -708,20 +708,12 @@ class RatisConsensus implements IConsensus {
       reply = transferLeader(raftGroup, newRaftLeader);
       if (!reply.isSuccess()) {
         String errorMsg =
-            String.format(
-                "transferLeader for group %s to %s failed. This could be due to a timeout, "
-                    + "especially during heavy disk usage. Consider increasing the "
-                    + "'ratis_transfer_leader_timeout_ms' configuration property.",
-                groupId, newLeader);
+            String.format(RatisMessages.TRANSFER_LEADER_FAILED_TIMEOUT, groupId, newLeader);
         throw new RatisRequestFailedException(errorMsg, reply.getException());
       }
     } catch (Exception e) {
       String errorMsg =
-          String.format(
-              "transferLeader for group %s to %s failed. This could be due to a timeout, "
-                  + "especially during initial startup. Consider increasing the "
-                  + "'ratis_rpc_transfer_leader_timeout_ms' configuration property.",
-              groupId, newLeader);
+          String.format(RatisMessages.TRANSFER_LEADER_FAILED_STARTUP, groupId, newLeader);
       throw new RatisRequestFailedException(errorMsg, e);
     }
   }

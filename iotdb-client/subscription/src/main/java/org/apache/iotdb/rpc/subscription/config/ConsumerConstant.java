@@ -38,6 +38,13 @@ public class ConsumerConstant {
   public static final String PASSWORD_KEY = "password";
   public static final String ENCRYPTED_PASSWORD_KEY = "encrypted-password";
 
+  public static final String USE_SSL_KEY = "use-ssl";
+  public static final String TRUST_STORE_KEY = "trust-store";
+  public static final String TRUST_STORE_PWD_KEY = "trust-store-pwd";
+  public static final String KEY_STORE_KEY = "key-store";
+  public static final String KEY_STORE_PWD_KEY = "key-store-pwd";
+  public static final String SSL_PROTOCOL_KEY = "ssl-protocol";
+
   public static final String CONSUMER_ID_KEY = "consumer-id";
   public static final String CONSUMER_GROUP_ID_KEY = "group-id";
   public static final String CONSUMER_INSTANCE_ID_KEY = "consumer-instance-id";

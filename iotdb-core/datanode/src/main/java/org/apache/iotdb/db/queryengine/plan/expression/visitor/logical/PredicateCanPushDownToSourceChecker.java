@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.logical;
 
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 
 public class PredicateCanPushDownToSourceChecker extends LogicalAndVisitor<Void> {
 
@@ -36,5 +37,12 @@ public class PredicateCanPushDownToSourceChecker extends LogicalAndVisitor<Void>
   @Override
   public Boolean visitLeafOperand(LeafOperand leafOperand, Void context) {
     return Boolean.TRUE;
+  }
+
+  @Override
+  public Boolean visitLogicNotExpression(LogicNotExpression logicNotExpression, Void context) {
+    // TsFile filters cannot represent NOT. Predicates that cannot be inverted during analysis must
+    // be evaluated by FilterOperator instead of being pushed into a scan.
+    return Boolean.FALSE;
   }
 }

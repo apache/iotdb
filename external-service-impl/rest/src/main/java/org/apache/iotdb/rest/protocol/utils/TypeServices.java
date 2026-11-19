@@ -25,6 +25,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 /** Type-specific column writers used by the REST insert handlers. */
 public final class TypeServices {
@@ -144,7 +145,10 @@ public final class TypeServices {
   }
 
   private static WriteProcessRejectException unsupportedValue(Object value) {
-    return new WriteProcessRejectException("unsupported data type: " + value.getClass());
+    return new WriteProcessRejectException(
+        String.format(
+            RestMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_3D7368DD,
+            Objects.toString(value.getClass())));
   }
 
   @FunctionalInterface

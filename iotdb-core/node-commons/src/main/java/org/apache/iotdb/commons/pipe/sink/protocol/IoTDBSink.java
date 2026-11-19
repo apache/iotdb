@@ -214,7 +214,7 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
                 || (boolean) args[4]
                 || (((boolean) args[5] || (boolean) args[6]) && (boolean) args[7]),
         String.format(
-            "One of %s, %s:%s, %s, %s:%s must be specified",
+            PipeMessages.MESSAGE_ONE_OF_ARG_ARG_ARG_ARG_ARG_ARG_MUST_BE_SPECIFIED_A41C7BCE,
             CONNECTOR_IOTDB_NODE_URLS_KEY,
             CONNECTOR_IOTDB_HOST_KEY,
             CONNECTOR_IOTDB_PORT_KEY,
@@ -233,7 +233,7 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     validator.validate(
         requestMaxBatchSizeInBytes -> (long) requestMaxBatchSizeInBytes > 0,
         String.format(
-            "%s must be > 0, but got %s",
+            PipeMessages.MESSAGE_ARG_MUST_BE_0_BUT_GOT_ARG_B2A3D4A2,
             SINK_IOTDB_BATCH_SIZE_KEY,
             parameters.getLongOrDefault(
                 Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
@@ -291,8 +291,9 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     validator.validate(
         arg -> CONNECTOR_LOAD_BALANCE_STRATEGY_SET.contains(loadBalanceStrategy),
         String.format(
-            "Load balance strategy should be one of %s, but got %s.",
-            CONNECTOR_LOAD_BALANCE_STRATEGY_SET, loadBalanceStrategy),
+            PipeMessages.MESSAGE_LOAD_BALANCE_STRATEGY_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_9247DA78,
+            CONNECTOR_LOAD_BALANCE_STRATEGY_SET,
+            loadBalanceStrategy),
         loadBalanceStrategy);
 
     loadTsFileStrategy =
@@ -305,8 +306,9 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     validator.validate(
         arg -> CONNECTOR_LOAD_TSFILE_STRATEGY_SET.contains(loadTsFileStrategy),
         String.format(
-            "Load tsfile strategy should be one of %s, but got %s.",
-            CONNECTOR_LOAD_TSFILE_STRATEGY_SET, loadTsFileStrategy),
+            PipeMessages.MESSAGE_LOAD_TSFILE_STRATEGY_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_FF567B85,
+            CONNECTOR_LOAD_TSFILE_STRATEGY_SET,
+            loadTsFileStrategy),
         loadTsFileStrategy);
     loadTsFileValidation =
         parameters.getBooleanOrDefault(
@@ -324,7 +326,8 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
             (int) arg >= CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE
                 && (int) arg <= CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE,
         String.format(
-            "Zstd compression level should be in the range [%d, %d], but got %d.",
+            PipeMessages
+                .MESSAGE_ZSTD_COMPRESSION_LEVEL_SHOULD_BE_IN_THE_RANGE_ARG_ARG_BUT_GOT_ARG_E5A3079B,
             CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE,
             CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE,
             zstdCompressionLevel),
@@ -346,8 +349,9 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
         validator.validate(
             arg -> CONNECTOR_COMPRESSOR_SET.contains(trimmedCompressionType),
             String.format(
-                "Compressor should be one of %s, but got %s.",
-                CONNECTOR_COMPRESSOR_SET, trimmedCompressionType),
+                PipeMessages.MESSAGE_COMPRESSOR_SHOULD_BE_ONE_OF_ARG_BUT_GOT_ARG_A1E39742,
+                CONNECTOR_COMPRESSOR_SET,
+                trimmedCompressionType),
             trimmedCompressionType);
         compressors.add(
             PipeCompressorFactory.getCompressor(
@@ -357,8 +361,10 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     validator.validate(
         arg -> compressors.size() <= Byte.MAX_VALUE,
         String.format(
-            "The number of compressors should be less than or equal to %d, but got %d.",
-            Byte.MAX_VALUE, compressors.size()),
+            PipeMessages
+                .EXCEPTION_THE_NUMBER_OF_COMPRESSORS_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_ARG_BUT_GOT_ARG_128D372F,
+            Byte.MAX_VALUE,
+            compressors.size()),
         compressors.size());
     isRpcCompressionEnabled = !compressors.isEmpty();
 
@@ -369,14 +375,16 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
     validator.validate(
         arg -> endPointRateLimitBytesPerSecond <= Double.MAX_VALUE,
         String.format(
-            "Rate limit should be in the range (0, %f], but got %f.",
-            Double.MAX_VALUE, endPointRateLimitBytesPerSecond),
+            PipeMessages.MESSAGE_RATE_LIMIT_SHOULD_BE_IN_THE_RANGE_0_F_BUT_GOT_F_A84E09CD,
+            Double.MAX_VALUE,
+            endPointRateLimitBytesPerSecond),
         endPointRateLimitBytesPerSecond);
 
     validator.validate(
         arg -> arg.equals("retry") || arg.equals("ignore"),
         String.format(
-            "The value of key %s or %s must be either 'retry' or 'ignore'.",
+            PipeMessages
+                .EXCEPTION_THE_VALUE_OF_KEY_ARG_OR_ARG_MUST_BE_EITHER_RETRY_OR_IGNORE_783FDB2B,
             CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY,
             SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY),
         parameters
@@ -677,25 +685,33 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
       final TEndPoint endPoint,
       final long bytesLength) {
     if (pipeName != null && endPointRateLimitBytesPerSecond > 0) {
-      PIPE_END_POINT_RATE_LIMITER_MAP
-          .computeIfAbsent(
+      final PipeEndPointRateLimiter limiter =
+          PIPE_END_POINT_RATE_LIMITER_MAP.computeIfAbsent(
               new Pair<>(pipeName, creationTime),
               endpoint ->
-                  new PipeEndPointRateLimiter(
-                      pipeName, creationTime, endPointRateLimitBytesPerSecond))
-          .acquire(endPoint, bytesLength);
+                  PipeEndPointRateLimiter.isPipeAlive(pipeName, creationTime)
+                      ? new PipeEndPointRateLimiter(
+                          pipeName, creationTime, endPointRateLimitBytesPerSecond)
+                      : null);
+      if (limiter != null) {
+        limiter.acquire(endPoint, bytesLength);
+      }
     }
 
     GLOBAL_RATE_LIMITER.acquire(bytesLength);
   }
 
+  public static void clearPipeRateLimiter(final String pipeName, final long creationTime) {
+    PIPE_END_POINT_RATE_LIMITER_MAP.remove(new Pair<>(pipeName, creationTime));
+  }
+
   /**
-   * When a pipe is dropped, the connector maybe reused and will not be closed. We need to discard
-   * its batched or queued events in the output pipe connector.
+   * When a region task is dropped, the connector may be reused and will not be closed. Discard its
+   * batched or queued events in the output pipe connector.
    */
   public synchronized void discardEventsOfPipe(
       final String pipeName, final long creationTime, final int regionId) {
-    // Do nothing by default
+    // Rate limiter state is pipe-wide and is cleared only after the whole pipe is dropped.
   }
 
   public PipeReceiverStatusHandler statusHandler() {

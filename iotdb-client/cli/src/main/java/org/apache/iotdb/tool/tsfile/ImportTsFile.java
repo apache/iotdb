@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.tsfile;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -71,7 +72,8 @@ public class ImportTsFile extends AbstractTsFileTool {
   protected static String timestampPrecision = "ms";
   private static final String TIMESTAMP_PRECISION_ARGS = "tp";
   private static final String TIMESTAMP_PRECISION_NAME = "timestamp_precision";
-  private static final String TIMESTAMP_PRECISION_ARGS_NAME = "timestamp precision (ms/us/ns)";
+  private static final String TIMESTAMP_PRECISION_ARGS_NAME =
+      CliMessages.EXCEPTION_TIMESTAMP_PRECISION_MS_US_NS_5DC07992;
 
   private static String source;
 
@@ -97,8 +99,8 @@ public class ImportTsFile extends AbstractTsFileTool {
             .required()
             .hasArg()
             .desc(
-                "The source file or directory path, "
-                    + "which can be a tsfile or a directory containing tsfiles. (required)")
+                CliMessages
+                    .EXCEPTION_THE_SOURCE_FILE_OR_DIRECTORY_PATH_WHICH_CAN_BE_A_TSFILE_OR_A_DIRECTORY_CONTAINING_TSFILES_REQUIRED_5C5AC0CC)
             .build();
     options.addOption(opSource);
 
@@ -109,8 +111,8 @@ public class ImportTsFile extends AbstractTsFileTool {
             .required()
             .hasArg()
             .desc(
-                "When loading tsfile successfully, do operation on tsfile (and its .resource and .mods files), "
-                    + "optional parameters are none, mv, cp, delete. (required)")
+                CliMessages
+                    .EXCEPTION_WHEN_LOADING_TSFILE_SUCCESSFULLY_DO_OPERATION_ON_TSFILE_AND_ITS_RESOURCE_AND_MODS_FILES_OPTIONAL_PARAMETERS_ARE_NONE_MV_CP_DELETE_REQUIRED_601E75DC)
             .build();
     options.addOption(opOnSuccess);
 
@@ -121,8 +123,8 @@ public class ImportTsFile extends AbstractTsFileTool {
             .required()
             .hasArg()
             .desc(
-                "When loading tsfile fail, do operation on tsfile (and its .resource and .mods files), "
-                    + "optional parameters are none, mv, cp, delete. (required)")
+                CliMessages
+                    .EXCEPTION_WHEN_LOADING_TSFILE_FAIL_DO_OPERATION_ON_TSFILE_AND_ITS_RESOURCE_AND_MODS_FILES_OPTIONAL_PARAMETERS_ARE_NONE_MV_CP_DELETE_REQUIRED_7BA55A84)
             .build();
     options.addOption(opOnFail);
 
@@ -131,7 +133,7 @@ public class ImportTsFile extends AbstractTsFileTool {
             .longOpt(SUCCESS_DIR_NAME)
             .argName(SUCCESS_DIR_NAME)
             .hasArg()
-            .desc("The target folder when 'os' is 'mv' or 'cp'.")
+            .desc(CliMessages.EXCEPTION_THE_TARGET_FOLDER_WHEN_OS_IS_MV_OR_CP_C2F33AE4)
             .build();
     options.addOption(opSuccessDir);
 
@@ -140,7 +142,7 @@ public class ImportTsFile extends AbstractTsFileTool {
             .longOpt(FAIL_DIR_NAME)
             .argName(FAIL_DIR_NAME)
             .hasArg()
-            .desc("The target folder when 'of' is 'mv' or 'cp'.")
+            .desc(CliMessages.EXCEPTION_THE_TARGET_FOLDER_WHEN_OF_IS_MV_OR_CP_6F43F81D)
             .build();
     options.addOption(opFailDir);
 
@@ -149,7 +151,9 @@ public class ImportTsFile extends AbstractTsFileTool {
             .longOpt(THREAD_NUM_NAME)
             .argName(THREAD_NUM_NAME)
             .hasArgs()
-            .desc("The number of threads used to import tsfile, default is 8.")
+            .desc(
+                CliMessages
+                    .EXCEPTION_THE_NUMBER_OF_THREADS_USED_TO_IMPORT_TSFILE_DEFAULT_IS_8_4623E27F)
             .build();
     options.addOption(opThreadNum);
 
@@ -158,7 +162,7 @@ public class ImportTsFile extends AbstractTsFileTool {
             .longOpt(TIMESTAMP_PRECISION_NAME)
             .argName(TIMESTAMP_PRECISION_ARGS_NAME)
             .hasArg()
-            .desc("Timestamp precision (ms/us/ns) (optional)")
+            .desc(CliMessages.EXCEPTION_TIMESTAMP_PRECISION_MS_US_NS_OPTIONAL_E312B661)
             .build();
 
     options.addOption(opTimestampPrecision);
@@ -175,7 +179,8 @@ public class ImportTsFile extends AbstractTsFileTool {
     helpFormatter.setWidth(MAX_HELP_CONSOLE_WIDTH);
 
     if (args == null || args.length == 0) {
-      IOT_PRINTER.println("Too few arguments, please check the following hint.");
+      IOT_PRINTER.println(
+          CliMessages.LOG_TOO_FEW_ARGUMENTS_PLEASE_CHECK_THE_FOLLOWING_HINT_7EB254F2);
       helpFormatter.printHelp(TS_FILE_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -186,7 +191,10 @@ public class ImportTsFile extends AbstractTsFileTool {
         System.exit(CODE_OK);
       }
     } catch (ParseException e) {
-      IOT_PRINTER.println("Failed to parse the provided options: " + e.getMessage());
+      IOT_PRINTER.println(
+          String.format(
+              CliMessages.LOG_FAILED_TO_PARSE_THE_PROVIDED_OPTIONS_ARG_5E552330,
+              Objects.toString(e.getMessage())));
       helpFormatter.printHelp(TS_FILE_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -195,7 +203,10 @@ public class ImportTsFile extends AbstractTsFileTool {
     try {
       commandLine = parser.parse(options, args, true);
     } catch (ParseException e) {
-      IOT_PRINTER.println("Failed to parse the provided options: " + e.getMessage());
+      IOT_PRINTER.println(
+          String.format(
+              CliMessages.LOG_FAILED_TO_PARSE_THE_PROVIDED_OPTIONS_ARG_5E552330,
+              Objects.toString(e.getMessage())));
       helpFormatter.printHelp(TS_FILE_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -205,11 +216,16 @@ public class ImportTsFile extends AbstractTsFileTool {
       parseSpecialParams(commandLine);
     } catch (Exception e) {
       IOT_PRINTER.println(
-          "Encounter an error when parsing the provided options: " + e.getMessage());
+          String.format(
+              CliMessages.LOG_ENCOUNTER_AN_ERROR_WHEN_PARSING_THE_PROVIDED_OPTIONS_ARG_D74C6F72,
+              Objects.toString(e.getMessage())));
       System.exit(CODE_ERROR);
     }
 
-    IOT_PRINTER.println(isRemoteLoad ? "Load remotely." : "Load locally.");
+    IOT_PRINTER.println(
+        isRemoteLoad
+            ? CliMessages.LOG_LOAD_REMOTELY_87E711F6
+            : CliMessages.LOG_LOAD_LOCALLY_F1E20946);
     final int resultCode = importFromTargetPath();
 
     ImportTsFileBase.printResult(startTime);
@@ -223,14 +239,19 @@ public class ImportTsFile extends AbstractTsFileTool {
         precision = sessionPool.getTimestampPrecision();
       } catch (Exception e) {
         IOT_PRINTER.println(
-            "Encounter an error when get IoTDB server timestampPrecision : " + e.getMessage());
+            String.format(
+                CliMessages
+                    .LOG_ENCOUNTER_AN_ERROR_WHEN_GET_IOTDB_SERVER_TIMESTAMPPRECISION_ARG_DECCC828,
+                Objects.toString(e.getMessage())));
         System.exit(CODE_ERROR);
       }
       if (!timestampPrecision.equalsIgnoreCase(precision)) {
         IOT_PRINTER.println(
             String.format(
-                "Encounter an error The time accuracy of the iotdb server is \"%s\", but the client time accuracy is %s",
-                precision, timestampPrecision));
+                CliMessages
+                    .LOG_ENCOUNTER_AN_ERROR_THE_TIME_ACCURACY_OF_THE_IOTDB_SERVER_IS_ARG_BUT_THE_CLIENT_TIME_ACCURACY_IS_ARG_8A881838,
+                precision,
+                timestampPrecision));
         System.exit(CODE_ERROR);
       }
     }
@@ -247,11 +268,16 @@ public class ImportTsFile extends AbstractTsFileTool {
       parseSpecialParams(commandLine);
     } catch (Exception e) {
       IOT_PRINTER.println(
-          "Encounter an error when parsing the provided options: " + e.getMessage());
+          String.format(
+              CliMessages.LOG_ENCOUNTER_AN_ERROR_WHEN_PARSING_THE_PROVIDED_OPTIONS_ARG_D74C6F72,
+              Objects.toString(e.getMessage())));
       System.exit(CODE_ERROR);
     }
 
-    IOT_PRINTER.println(isRemoteLoad ? "Load remotely." : "Load locally.");
+    IOT_PRINTER.println(
+        isRemoteLoad
+            ? CliMessages.LOG_LOAD_REMOTELY_87E711F6
+            : CliMessages.LOG_LOAD_LOCALLY_F1E20946);
 
     final int resultCode = importFromTargetPath();
 
@@ -262,7 +288,9 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static void parseSpecialParams(CommandLine commandLine) {
     source = commandLine.getOptionValue(SOURCE_ARGS);
     if (!Files.exists(Paths.get(source))) {
-      IOT_PRINTER.println(String.format("Source file or directory %s does not exist", source));
+      IOT_PRINTER.println(
+          String.format(
+              CliMessages.MESSAGE_SOURCE_FILE_OR_DIRECTORY_ARG_DOES_NOT_EXIST_0299DF95, source));
       System.exit(CODE_ERROR);
     }
 
@@ -270,7 +298,8 @@ public class ImportTsFile extends AbstractTsFileTool {
     final String onFail = commandLine.getOptionValue(ON_FAIL_ARGS).trim().toLowerCase();
     if (!ImportTsFileOperation.isValidOperation(onSuccess)
         || !ImportTsFileOperation.isValidOperation(onFail)) {
-      IOT_PRINTER.println("Args error: os/of must be one of none, mv, cp, delete");
+      IOT_PRINTER.println(
+          CliMessages.LOG_ARGS_ERROR_OS_OF_MUST_BE_ONE_OF_NONE_MV_CP_DELETE_6E478D75);
       System.exit(CODE_ERROR);
     }
 
@@ -299,7 +328,10 @@ public class ImportTsFile extends AbstractTsFileTool {
       isRemoteLoad = !NodeUrlUtils.containsLocalAddress(Collections.singletonList(host));
     } catch (UnknownHostException e) {
       IOT_PRINTER.println(
-          "Unknown host: " + host + ". Exception: " + e.getMessage() + ". Will use remote load.");
+          String.format(
+              CliMessages.LOG_UNKNOWN_HOST_ARG_EXCEPTION_ARG_WILL_USE_REMOTE_LOAD_7E2F7E65,
+              Objects.toString(host),
+              Objects.toString(e.getMessage())));
     }
     if (commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS) != null) {
       timestampPrecision = commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS);
@@ -316,7 +348,10 @@ public class ImportTsFile extends AbstractTsFileTool {
       return Objects.equals(
           Files.getFileStore(Paths.get(pathString)), Files.getFileStore(dir.toPath()));
     } catch (IOException e) {
-      IOT_PRINTER.println("IOException when checking file store: " + e.getMessage());
+      IOT_PRINTER.println(
+          String.format(
+              CliMessages.LOG_IOEXCEPTION_WHEN_CHECKING_FILE_STORE_ARG_B5302D40,
+              Objects.toString(e.getMessage())));
       return false;
     }
   }
@@ -328,7 +363,9 @@ public class ImportTsFile extends AbstractTsFileTool {
     File file = new File(successDir);
     if (!file.isDirectory()) {
       if (!file.mkdirs()) {
-        IOT_PRINTER.println(String.format("Failed to create %s %s", SUCCESS_DIR_NAME, successDir));
+        IOT_PRINTER.println(
+            String.format(
+                CliMessages.LOG_FAILED_TO_CREATE_ARG_ARG_3A4A1CFA, SUCCESS_DIR_NAME, successDir));
         System.exit(CODE_ERROR);
       }
     }
@@ -342,7 +379,9 @@ public class ImportTsFile extends AbstractTsFileTool {
     File file = new File(failDir);
     if (!file.isDirectory()) {
       if (!file.mkdirs()) {
-        IOT_PRINTER.println(String.format("Failed to create %s %s", FAIL_DIR_NAME, failDir));
+        IOT_PRINTER.println(
+            String.format(
+                CliMessages.LOG_FAILED_TO_CREATE_ARG_ARG_3A4A1CFA, FAIL_DIR_NAME, failDir));
         System.exit(CODE_ERROR);
       }
     }
@@ -372,11 +411,13 @@ public class ImportTsFile extends AbstractTsFileTool {
 
       return asyncImportTsFiles();
     } catch (InterruptedException e) {
-      IOT_PRINTER.println(String.format("Import tsfile fail: %s", e.getMessage()));
+      IOT_PRINTER.println(
+          String.format(CliMessages.LOG_IMPORT_TSFILE_FAIL_ARG_6A83990E, e.getMessage()));
       Thread.currentThread().interrupt();
       return CODE_ERROR;
     } catch (Exception e) {
-      IOT_PRINTER.println(String.format("Import tsfile fail: %s", e.getMessage()));
+      IOT_PRINTER.println(
+          String.format(CliMessages.LOG_IMPORT_TSFILE_FAIL_ARG_6A83990E, e.getMessage()));
       return CODE_ERROR;
     } finally {
       if (sessionPool != null) {
@@ -391,7 +432,9 @@ public class ImportTsFile extends AbstractTsFileTool {
     final File file = new File(source);
     ImportTsFileScanTool.setSourceFullPath(file.getAbsolutePath());
     if (!file.isFile() && !file.isDirectory()) {
-      IOT_PRINTER.println(String.format("Source file or directory %s does not exist", source));
+      IOT_PRINTER.println(
+          String.format(
+              CliMessages.MESSAGE_SOURCE_FILE_OR_DIRECTORY_ARG_DOES_NOT_EXIST_0299DF95, source));
       System.exit(CODE_ERROR);
     }
 
@@ -430,7 +473,10 @@ public class ImportTsFile extends AbstractTsFileTool {
             thread.join();
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            IOT_PRINTER.println("ImportTsFile thread join interrupted: " + e.getMessage());
+            IOT_PRINTER.println(
+                String.format(
+                    CliMessages.LOG_IMPORTTSFILE_THREAD_JOIN_INTERRUPTED_ARG_E4141B99,
+                    Objects.toString(e.getMessage())));
           }
         });
     return Thread.currentThread().isInterrupted() || ImportTsFileBase.hasFailures()

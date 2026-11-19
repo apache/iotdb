@@ -66,7 +66,9 @@ public abstract class AbstractTsFileTool {
       throws ArgsErrorException {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
-      String msg = String.format("Required values for option '%s' not provided", name);
+      String msg =
+          String.format(
+              CliMessages.MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2, name);
       ioTPrinter.println(msg);
       ioTPrinter.println(CliMessages.USE_HELP_FOR_MORE);
       throw new ArgsErrorException(msg);
@@ -101,7 +103,7 @@ public abstract class AbstractTsFileTool {
         Option.builder(HELP_ARGS)
             .longOpt(HELP_ARGS)
             .hasArg(false)
-            .desc("Display help information")
+            .desc(CliMessages.EXCEPTION_DISPLAY_HELP_INFORMATION_3BBD4899)
             .build();
     options.addOption(opHelp);
     helpOptions.addOption(opHelp);
@@ -111,7 +113,7 @@ public abstract class AbstractTsFileTool {
             .longOpt(HOST_NAME)
             .argName(HOST_NAME)
             .hasArg()
-            .desc("Host Name (optional)")
+            .desc(CliMessages.EXCEPTION_HOST_NAME_OPTIONAL_FD001BC0)
             .build();
     options.addOption(opHost);
 

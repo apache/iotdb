@@ -27,8 +27,9 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -40,12 +41,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
+import static org.apache.iotdb.db.it.utils.TestUtils.dropDatabaseWithRetry;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -57,13 +57,32 @@ import static org.junit.Assert.fail;
 public class IoTDBSimpleQueryTableViewIT {
   private static final String DATABASE_NAME = "test";
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() throws SQLException {
+    // Remove each method's views before deleting their Tree-model source database.
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      dropDatabaseWithRetry(statement, DATABASE_NAME);
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      boolean databaseExists;
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.sg1")) {
+        databaseExists = resultSet.next();
+      }
+      if (databaseExists) {
+        statement.execute("DELETE DATABASE root.sg1");
+      }
+    }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -453,31 +472,29 @@ public class IoTDBSimpleQueryTableViewIT {
       statement.execute(
           "CREATE VIEW table1(device STRING TAG, s0 INT64 FIELD, s1 INT64 FIELD) as root.sg1.**");
 
-      List<ResultSet> resultSetList = new ArrayList<>();
+      try (ResultSet r1 =
+          statement.executeQuery("select * from table1 where device='d0' and time <= 1")) {
+        Assert.assertTrue(r1.next());
+        Assert.assertEquals(r1.getLong(1), 1L);
+        Assert.assertEquals(r1.getLong(3), 1L);
+        Assert.assertEquals(r1.getLong(4), 1L);
+      }
 
-      ResultSet r1 = statement.executeQuery("select * from table1 where device='d0' and time <= 1");
-      resultSetList.add(r1);
+      try (ResultSet r2 =
+          statement.executeQuery("select * from table1 where device='d1' and s0 = 1000")) {
+        Assert.assertTrue(r2.next());
+        Assert.assertEquals(r2.getLong(1), 1000L);
+        Assert.assertEquals(r2.getLong(3), 1000L);
+        Assert.assertEquals(r2.getLong(4), 1000L);
+      }
 
-      ResultSet r2 = statement.executeQuery("select * from table1 where device='d1' and s0 = 1000");
-      resultSetList.add(r2);
-
-      ResultSet r3 = statement.executeQuery("select * from table1 where device='d0' and s1 = 10");
-      resultSetList.add(r3);
-
-      r1.next();
-      Assert.assertEquals(r1.getLong(1), 1L);
-      Assert.assertEquals(r1.getLong(3), 1L);
-      Assert.assertEquals(r1.getLong(4), 1L);
-
-      r2.next();
-      Assert.assertEquals(r2.getLong(1), 1000L);
-      Assert.assertEquals(r2.getLong(3), 1000L);
-      Assert.assertEquals(r2.getLong(4), 1000L);
-
-      r3.next();
-      Assert.assertEquals(r3.getLong(1), 10L);
-      Assert.assertEquals(r3.getLong(3), 10L);
-      Assert.assertEquals(r3.getLong(4), 10L);
+      try (ResultSet r3 =
+          statement.executeQuery("select * from table1 where device='d0' and s1 = 10")) {
+        Assert.assertTrue(r3.next());
+        Assert.assertEquals(r3.getLong(1), 10L);
+        Assert.assertEquals(r3.getLong(3), 10L);
+        Assert.assertEquals(r3.getLong(4), 10L);
+      }
     }
   }
 

@@ -94,6 +94,7 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testCreateAlignedTimeseriesWithDeletion() throws Exception {
     String[] timeSeriesArray =
         new String[] {
@@ -147,6 +148,7 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testDifferentDeviceAlignment() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

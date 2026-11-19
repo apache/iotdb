@@ -93,6 +93,7 @@ public class IoTDBIPv6ExternalServiceIT {
     }
   }
 
+  /** REST ping and writes to an IPv6 loopback endpoint remain reachable and queryable. */
   @Test
   public void restServiceCanCommunicateThroughIPv6Loopback() throws Exception {
     final DataNodeWrapper dataNode = EnvFactory.getEnv().getDataNodeWrapper(0);
@@ -103,7 +104,8 @@ public class IoTDBIPv6ExternalServiceIT {
     try (CloseableHttpClient httpClient = HttpClientBuilder.create().build()) {
       Awaitility.await()
           .atMost(30, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
+          .pollDelay(0, TimeUnit.MILLISECONDS)
+          .pollInterval(100, TimeUnit.MILLISECONDS)
           .ignoreExceptions()
           .untilAsserted(() -> assertRestPingSucceeds(httpClient, restAddress));
 

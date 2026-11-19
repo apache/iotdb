@@ -79,7 +79,11 @@ exclude = [
 python = ">=3.11.0,<3.12.0"
 
 # ---- DL / HF stack ----
-torch = "^2.9.0,<2.10.0"
+# Keep CUDA 12.6 on Linux for Volta GPU support.
+torch = [
+    { version = "==2.14.1", markers = "platform_system != 'Linux'" },
+    { version = "==2.14.1+cu126", markers = "platform_system == 'Linux'", source = "pytorch-cu126" },
+]
 torchmetrics = "^1.8.0"
 transformers = "==4.56.2"
 tokenizers = ">=0.22.0,<=0.23.0"
@@ -110,10 +114,10 @@ tzlocal = "^5.3.1"
 hf_xet = ">=1.1.9"
 
 # ---- Tooling ----
-pyinstaller = "6.16.0"
+pyinstaller = "==6.22.3"
 black = ">=26.3.1"
 isort = "6.0.1"
-setuptools = ">=75.3.0"
+setuptools = "==84.2.1"
 joblib = ">=1.4.2"
 urllib3 = "2.6.3"
 jaxtyping = ">=0.2.24"
@@ -125,3 +129,8 @@ ainode = "iotdb.ainode.core.script:main"
 [tool.isort]
 profile = "black"
 skip = ["build", "dist", "target"]
+
+[[tool.poetry.source]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+priority = "explicit"

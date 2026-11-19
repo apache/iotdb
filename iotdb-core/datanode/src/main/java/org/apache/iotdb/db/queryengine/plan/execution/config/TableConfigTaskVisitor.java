@@ -314,7 +314,8 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryContext> {
 
-  public static final String DATABASE_NOT_SPECIFIED = "database is not specified";
+  public static final String DATABASE_NOT_SPECIFIED =
+      DataNodeQueryMessages.EXCEPTION_DATABASE_IS_NOT_SPECIFIED_616923CA;
 
   private static final ColumnFilterParser COLUMN_FILTER_PARSER = new ColumnFilterParser();
   private static final TagFilterParser TAG_FILTER_PARSER = new TagFilterParser();
@@ -1250,11 +1251,12 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   private boolean parseBooleanFromLiteral(final Object value, final String name) {
     if (!(value instanceof BooleanLiteral)) {
       throw new SemanticException(
-          name
-              + " value must be a BooleanLiteral, but now is "
-              + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
-              + ", value: "
-              + value);
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_ARG_VALUE_MUST_BE_A_BOOLEANLITERAL_BUT_NOW_IS_ARG_VALUE_ARG_25C5FFF0,
+              Objects.toString(name),
+              Objects.toString((Objects.nonNull(value) ? value.getClass().getSimpleName() : null)),
+              Objects.toString(value)));
     }
     return ((BooleanLiteral) value).getValue();
   }

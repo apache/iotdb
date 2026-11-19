@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 import org.apache.iotdb.commons.schema.table.TreeToTableViewTrieOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewFieldDetector;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
@@ -125,7 +126,7 @@ public class SetViewPropertiesProcedure extends SetTablePropertiesProcedure {
 
   @Override
   protected String getActionMessage() {
-    return "set view properties";
+    return ProcedureMessages.MESSAGE_SET_VIEW_PROPERTIES_DB957EE0;
   }
 
   @Override

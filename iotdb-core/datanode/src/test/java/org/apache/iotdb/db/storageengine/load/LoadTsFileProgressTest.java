@@ -39,6 +39,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Arrays;
 
 public class LoadTsFileProgressTest {
 
@@ -178,6 +179,154 @@ public class LoadTsFileProgressTest {
         chunk.getChunkStatistic().getSerializedSize(), statisticsBody.array().length);
     Assert.assertEquals(chunk.getHeader().getSerializedSize() - 1, headerBody.remaining());
     Assert.assertEquals(chunk.getChunkStatistic().getSerializedSize(), statisticsBody.remaining());
+  }
+
+  @Test
+  public void testEveryIncompleteHeaderIsRepairedBeforeAppending() throws Exception {
+    final File tsFile = Files.createTempFile("load-progress-header", ".tsfile").toFile();
+    final File progressFile = LoadTsFileProgress.progressFileFor(tsFile);
+    try {
+      recordChunk(tsFile, 1L);
+      final byte[] complete = Files.readAllBytes(progressFile.toPath());
+      final int headerLength =
+          Integer.BYTES
+              + "LTPROG1".length()
+              + Integer.BYTES
+              + tsFile.getParentFile().getName().getBytes(StandardCharsets.UTF_8).length;
+      for (int length = 0; length < headerLength; length++) {
+        Files.write(progressFile.toPath(), Arrays.copyOf(complete, length));
+
+        Assert.assertTrue(
+            "incomplete header at byte " + length,
+            new LoadTsFileProgress(tsFile).readAllRecordsRepairingTornTail().isEmpty());
+        Assert.assertEquals(0L, progressFile.length());
+        Assert.assertTrue(new LoadTsFileProgress(tsFile).readAllRecords().isEmpty());
+        Assert.assertNull(LoadTsFileProgress.readTerminal(progressFile));
+
+        // A restored task must be able to append again after its empty header was repaired.
+        recordChunk(tsFile, 2L);
+        Assert.assertEquals(1, new LoadTsFileProgress(tsFile).readAllRecords().size());
+      }
+    } finally {
+      Files.deleteIfExists(progressFile.toPath());
+      Files.deleteIfExists(tsFile.toPath());
+    }
+  }
+
+  @Test
+  public void testEveryTornEntryKeepsTheCompletePrefix() throws Exception {
+    final File tsFile = Files.createTempFile("load-progress-torn-entry", ".tsfile").toFile();
+    final File progressFile = LoadTsFileProgress.progressFileFor(tsFile);
+    try {
+      recordChunk(tsFile, 1L);
+      final long firstEnd = progressFile.length();
+      recordChunk(tsFile, 2L);
+      final long secondEnd = progressFile.length();
+      new LoadTsFileProgress(tsFile).recordTerminal(LoadTsFileConsensusOp.COMMIT, 3L);
+      final byte[] complete = Files.readAllBytes(progressFile.toPath());
+
+      final int headerLength =
+          Integer.BYTES
+              + "LTPROG1".length()
+              + Integer.BYTES
+              + tsFile.getParentFile().getName().getBytes(StandardCharsets.UTF_8).length;
+      for (int length = headerLength; length < complete.length; length++) {
+        Files.write(progressFile.toPath(), Arrays.copyOf(complete, length));
+        final int expectedRecords = length < firstEnd ? 0 : length < secondEnd ? 1 : 2;
+        final long expectedLength =
+            length < firstEnd ? headerLength : length < secondEnd ? firstEnd : secondEnd;
+        Assert.assertEquals(
+            "torn entry at byte " + length,
+            expectedRecords,
+            new LoadTsFileProgress(tsFile).readAllRecordsRepairingTornTail().size());
+        Assert.assertEquals(expectedLength, progressFile.length());
+        Assert.assertNull(LoadTsFileProgress.readTerminal(progressFile));
+      }
+    } finally {
+      Files.deleteIfExists(progressFile.toPath());
+      Files.deleteIfExists(tsFile.toPath());
+    }
+  }
+
+  @Test
+  public void testTornEntryLargerThanTheReadBufferIsRepaired() throws Exception {
+    final File tsFile = Files.createTempFile("load-progress-large-torn", ".tsfile").toFile();
+    final File progressFile = LoadTsFileProgress.progressFileFor(tsFile);
+    try {
+      recordChunk(tsFile, 1L);
+      final long completeLength = progressFile.length();
+      try (final DataOutputStream out =
+          new DataOutputStream(new FileOutputStream(progressFile, true))) {
+        out.writeInt(32769);
+        out.writeByte(99);
+        out.write(new byte[24576]);
+      }
+
+      Assert.assertEquals(
+          1, new LoadTsFileProgress(tsFile).readAllRecordsRepairingTornTail().size());
+      Assert.assertEquals(completeLength, progressFile.length());
+    } finally {
+      Files.deleteIfExists(progressFile.toPath());
+      Files.deleteIfExists(tsFile.toPath());
+    }
+  }
+
+  @Test
+  public void testCompleteEntryLargerThanTheReadBufferIsPreserved() throws Exception {
+    final File tsFile = Files.createTempFile("load-progress-large-complete", ".tsfile").toFile();
+    final File progressFile = LoadTsFileProgress.progressFileFor(tsFile);
+    try {
+      recordChunk(tsFile, 1L);
+      try (final DataOutputStream out =
+          new DataOutputStream(new FileOutputStream(progressFile, true))) {
+        out.writeInt(32769);
+        out.writeByte(99);
+        out.write(new byte[32768]);
+      }
+      new LoadTsFileProgress(tsFile).recordTerminal(LoadTsFileConsensusOp.COMMIT, 3L);
+      final long completeLength = progressFile.length();
+
+      Assert.assertEquals(
+          1, new LoadTsFileProgress(tsFile).readAllRecordsRepairingTornTail().size());
+      Assert.assertEquals(completeLength, progressFile.length());
+      Assert.assertEquals(3L, LoadTsFileProgress.readTerminal(progressFile).searchIndex());
+    } finally {
+      Files.deleteIfExists(progressFile.toPath());
+      Files.deleteIfExists(tsFile.toPath());
+    }
+  }
+
+  @Test
+  public void testInvalidMagicIsNotRepairedAsATornHeader() throws Exception {
+    final File tsFile = Files.createTempFile("load-progress-invalid-magic", ".tsfile").toFile();
+    final File progressFile = LoadTsFileProgress.progressFileFor(tsFile);
+    try {
+      recordChunk(tsFile, 1L);
+      final byte[] corrupt = Files.readAllBytes(progressFile.toPath());
+      corrupt[Integer.BYTES] = 'X';
+      Files.write(progressFile.toPath(), corrupt);
+
+      Assert.assertThrows(
+          java.io.IOException.class,
+          () -> new LoadTsFileProgress(tsFile).readAllRecordsRepairingTornTail());
+      Assert.assertArrayEquals(corrupt, Files.readAllBytes(progressFile.toPath()));
+    } finally {
+      Files.deleteIfExists(progressFile.toPath());
+      Files.deleteIfExists(tsFile.toPath());
+    }
+  }
+
+  private static void recordChunk(final File tsFile, final long searchIndex) throws Exception {
+    new LoadTsFileProgress(tsFile)
+        .recordChunk(
+            new StringArrayDeviceID("root", "sg", "d1"),
+            false,
+            7L,
+            30L,
+            true,
+            createChunk(),
+            40L,
+            searchIndex);
   }
 
   private static Chunk createChunk() {

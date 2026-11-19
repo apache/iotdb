@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
+import java.util.Objects;
+
 class PrintUtil {
   static String[] header_1 = {"", "Total", "Overlap", "Overlap/Total"};
   static String[] header_2 = {"", "Total", "Sequence", "UnSequence", "UnSequence/Total"};
@@ -34,7 +38,7 @@ class PrintUtil {
   private static void printProgressLog(String label, OverlapStatistic statistic) {
     String[][] log = {
       {
-        "File Number",
+        StorageEngineMessages.EXCEPTION_FILE_NUMBER_BDF776A4,
         statistic.totalSequenceFile + statistic.totalUnsequenceFile + "",
         statistic.totalSequenceFile + "",
         statistic.totalUnsequenceFile + "",
@@ -45,7 +49,7 @@ class PrintUtil {
                 / (statistic.totalSequenceFile + statistic.totalUnsequenceFile))
       },
       {
-        "File Size(MB)",
+        StorageEngineMessages.EXCEPTION_FILE_SIZE_MB_F383DFA7,
         (statistic.totalSequenceFileSize + statistic.totalUnsequenceFileSize) / MSize + "",
         statistic.totalSequenceFileSize / MSize + "",
         statistic.totalUnsequenceFileSize / MSize + "",
@@ -70,11 +74,15 @@ class PrintUtil {
                     - Math.min(statistic.sequenceMinStartTime, statistic.unSequenceMinStartTime)))
       }
     };
-    System.out.println(System.getProperty("line.separator") + "Data Table:");
+    System.out.println(
+        String.format(
+            StorageEngineMessages.LOG_ARG_DATA_TABLE_D6B1FAB8,
+            Objects.toString(System.getProperty("line.separator"))));
     printStaticsTable(log);
 
     System.out.printf(
-        "Progress: %s\n" + "Sequence File progress: %d/%d\n" + "Partition progress: %d/%d %s",
+        StorageEngineMessages
+            .LOG_PROGRESS_ARG_SEQUENCE_FILE_PROGRESS_ARG_ARG_PARTITION_PROGRESS_ARG_ARG_ARG_F63A0CC5,
         label,
         OverlapStatisticTool.processedSeqFileCount,
         OverlapStatisticTool.seqFileCount,
@@ -97,25 +105,25 @@ class PrintUtil {
             overlapStatistic.totalChunksInSequenceFile);
     String[][] log = {
       {
-        "Sequence File",
+        StorageEngineMessages.EXCEPTION_SEQUENCE_FILE_96DAC97E,
         overlapStatistic.totalSequenceFile + "",
         overlapStatistic.overlappedSequenceFiles + "",
         String.format("%.2f%%", overlappedSeqFilePercentage)
       },
       {
-        "ChunkGroup In Sequence File",
+        StorageEngineMessages.EXCEPTION_CHUNKGROUP_IN_SEQUENCE_FILE_AA750F6F,
         overlapStatistic.totalChunkGroupsInSequenceFile + "",
         overlapStatistic.overlappedChunkGroupsInSequenceFile + "",
         String.format("%.2f%%", overlappedChunkGroupPercentage)
       },
       {
-        "Chunk In Sequence File",
+        StorageEngineMessages.EXCEPTION_CHUNK_IN_SEQUENCE_FILE_3F4FFEF6,
         overlapStatistic.totalChunksInSequenceFile + "",
         overlapStatistic.overlappedChunksInSequenceFile + "",
         String.format("%.2f%%", overlappedChunkPercentage)
       }
     };
-    System.out.println("Overlap Table:");
+    System.out.println(StorageEngineMessages.LOG_OVERLAP_TABLE_25E74227);
     printOverlapTable(log);
   }
 

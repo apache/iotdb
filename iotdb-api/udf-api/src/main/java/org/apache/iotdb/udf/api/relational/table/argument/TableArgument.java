@@ -44,13 +44,16 @@ public class TableArgument implements Argument {
       List<String> partitionBy,
       List<String> orderBy,
       boolean rowSemantic) {
-    this.fieldNames = requireNonNull(fieldNames, "fieldNames is null");
-    this.fieldTypes = requireNonNull(fieldTypes, "fieldTypes is null");
+    this.fieldNames =
+        requireNonNull(fieldNames, UdfApiMessages.EXCEPTION_FIELDNAMES_IS_NULL_AD6E57B6);
+    this.fieldTypes =
+        requireNonNull(fieldTypes, UdfApiMessages.EXCEPTION_FIELDTYPES_IS_NULL_08BA6A6B);
     if (fieldNames.size() != fieldTypes.size()) {
       throw new IllegalArgumentException(UdfApiMessages.FIELD_NAMES_AND_TYPES_MUST_HAVE_SAME_SIZE);
     }
-    this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
-    this.orderBy = requireNonNull(orderBy, "orderBy is null");
+    this.partitionBy =
+        requireNonNull(partitionBy, UdfApiMessages.EXCEPTION_PARTITIONBY_IS_NULL_82C1E068);
+    this.orderBy = requireNonNull(orderBy, UdfApiMessages.EXCEPTION_ORDERBY_IS_NULL_26D8DCDD);
     this.rowSemantics = rowSemantic;
   }
 

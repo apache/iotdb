@@ -194,6 +194,23 @@ public class SessionUtils {
   }
 
   /**
+   * Writes a tablet column in the PLAIN layout of the RPC tablet compression: fixed-width values
+   * big-endian (INT32 not as a var int), binary values with an int length prefix.
+   */
+  public static void encodePlainValue(
+      TSDataType dataType, Tablet tablet, int i, ByteArrayOutputStream outputStream) {
+    SessionTypeServices.tabletPlainValueWriter(dataType).write(tablet, i, outputStream);
+  }
+
+  /**
+   * @return the bytes per row of a column in the layout of {@link #encodePlainValue}, without the
+   *     bytes of binary values
+   */
+  public static int getPlainRowSize(TSDataType dataType) {
+    return SessionTypeServices.tabletPlainRowSize(dataType);
+  }
+
+  /**
    * Remove FIELD columns that are entirely null within {@code [0, rowSize)} according to BitMap.
    * TAG / ATTRIBUTE columns are always kept. Does not mutate the input tablet.
    *

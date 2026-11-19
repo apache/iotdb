@@ -79,6 +79,9 @@ public final class UtilMessages {
       "failed to create hardlink %s for file %s: failed to create parent dir %s";
   public static final String FAILED_TO_COPY_FILE_PARENT_DIR =
       "failed to copy file %s to %s: failed to create parent dir %s";
+  public static final String
+      LOG_FAILED_TO_CREATE_THE_HARDLINK_OF_THE_FILE_ARG_TO_ARG_FALLING_BACK_TO_COPYING_THE_FILE_89FED96B =
+          "Failed to create the hardlink of the file {} to {}, falling back to copying the file";
   public static final String DELETED_DUPLICATE_FILE =
       "Deleted the file {} because it already exists in the target directory: {}";
   public static final String FAILED_TO_CREATE_TARGET_DIRECTORY =
@@ -262,4 +265,12 @@ public final class UtilMessages {
   public static final String LOG_ARG_COLON_ARG_DCE519A1 = "{}: {}";
   public static final String EMPTY_MESSAGE = "";
 
+  public static final String
+      EXCEPTION_IN_WINDOWS_SYSTEM_THE_PATH_SHALL_NOT_CONTAIN_ARG_OR_ASCII_CONTROL_CHARACTERS_EQUALS_ONE_OF_ARG_WITH_OR_WITHOUT_AN_EXTENSION_OR_ENDS_WITH_OR_B3B92470 =
+          "In Windows System, the path shall not contain %s or ASCII control characters, equals one"
+              + " of %s with or without an extension, or ends with '.' or ' '.";
+
+  public static final String EXCEPTION_FROM_ARG_TO_ARG_D2758D41 = "from %s to %s";
+  public static final String EXCEPTION_FILE_CHANNEL_WRITE_MADE_NO_PROGRESS_B0F24ACD =
+      "File channel write made no progress";
 }

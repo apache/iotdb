@@ -96,7 +96,10 @@ public class TsFileEpochManager {
     // Keep one set per repeated device instead and materialize its array only once.
     for (final InsertNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
       final IDeviceID deviceID = insertRowNode.getDeviceID();
-      final String[] measurements = Objects.requireNonNull(insertRowNode.getMeasurements());
+      final String[] measurements = insertRowNode.getMeasurements();
+      if (measurements == null) {
+        continue;
+      }
       final String[] firstMeasurements = device2Measurements.putIfAbsent(deviceID, measurements);
       if (firstMeasurements == null) {
         continue;

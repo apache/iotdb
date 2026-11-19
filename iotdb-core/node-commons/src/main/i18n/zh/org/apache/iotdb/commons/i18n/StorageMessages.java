@@ -32,4 +32,9 @@ public final class StorageMessages {
       "无法创建目录 %s，请检查配置并重启。";
   public static final String STORAGE_EXCEPTION_CONFLICT_IS_DETECTED_IN_DIRECTORY_S_WHICH_MAY_BE_BEING_USED_CB5C77FC =
       "目录 %s 检测到冲突，可能正被另一个 IoTDB 使用 (ProcessId=%s)。请检查配置并重启。";
+
+  public static final String EXCEPTION_DELETE_FORMAL_SYSTEM_PROPERTIES_FILE_FAIL_ARG_BB18DD99 =
+      "删除正式系统属性文件失败：%s";
+
+  public static final String EXCEPTION_UNSUPPORTED_FILE_SYSTEM_3C31AA63 = "不支持的文件系统：";
 }

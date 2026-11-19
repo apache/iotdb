@@ -94,8 +94,9 @@ public class ErrorHandler extends BaseErrorListener {
 
       message =
           String.format(
-              "mismatched input '%s'. Expecting: %s",
-              parser.getTokenStream().get(result.getErrorTokenIndex()).getText(), expected);
+              DataNodeQueryMessages.EXCEPTION_MISMATCHED_INPUT_ARG_EXPECTING_ARG_CC10F881,
+              parser.getTokenStream().get(result.getErrorTokenIndex()).getText(),
+              expected);
     } catch (Exception exception) {
       LOGGER.warn(
           DataNodeQueryMessages

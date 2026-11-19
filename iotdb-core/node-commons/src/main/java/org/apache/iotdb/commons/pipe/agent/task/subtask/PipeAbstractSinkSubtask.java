@@ -42,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
@@ -279,17 +280,29 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       return;
     }
 
-    final long schedulingDelayInMs = getNextSchedulingDelayInMs();
-    if (schedulingDelayInMs > 0) {
-      isSubmitted = true;
-      subtaskWorkerScheduledExecutor.schedule(
-          // Keep the isSubmitted placeholder set before the delayed submission to avoid duplicate
-          // schedules, so the delayed task should not mark it again.
-          () -> submitSelfToWorker(false), schedulingDelayInMs, TimeUnit.MILLISECONDS);
-      return;
-    }
+    try {
+      final long schedulingDelayInMs = getNextSchedulingDelayInMs();
+      if (schedulingDelayInMs > 0) {
+        isSubmitted = true;
+        subtaskWorkerScheduledExecutor.schedule(
+            // Keep the isSubmitted placeholder set before the delayed submission to avoid duplicate
+            // schedules, so the delayed task should not mark it again.
+            () -> submitSelfToWorker(false), schedulingDelayInMs, TimeUnit.MILLISECONDS);
+        return;
+      }
 
-    submitSelfToWorker(true);
+      submitSelfToWorker(true);
+    } catch (final RejectedExecutionException e) {
+      // The executor has been shut down, e.g., because the pipe was dropped. Clear isSubmitted so
+      // the subtask can be submitted again, and report the rejection.
+      isSubmitted = false;
+      LOGGER.warn(
+          PipeMessages
+              .LOG_FAILED_TO_SUBMIT_THE_SUBTASK_ARG_BECAUSE_THE_EXECUTOR_HAS_BEEN_SHUT_DOWN_198335BE,
+          getDisplayTaskID(),
+          e);
+      throw e;
+    }
   }
 
   @Override
@@ -390,7 +403,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       } else {
         LOGGER.info(
             PipeMessages.EXCEPTION_IN_PIPE_TRANSFER_IGNORED,
-            e.getMessage() != null ? " Message: " + e.getMessage() : "");
+            e.getMessage() != null
+                ? String.format(
+                    PipeMessages.MESSAGE_MESSAGE_ARG_F49E6C85, String.valueOf(e.getMessage()))
+                : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
     }
@@ -404,7 +420,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       LOGGER.info(
           PipeMessages.PIPE_EXCEPTION_IGNORED,
           e.getClass().getSimpleName(),
-          e.getMessage() != null ? " Message: " + e.getMessage() : "");
+          e.getMessage() != null
+              ? String.format(
+                  PipeMessages.MESSAGE_MESSAGE_ARG_F49E6C85, String.valueOf(e.getMessage()))
+              : "");
       clearReferenceCountAndReleaseLastEvent(event);
     }
   }

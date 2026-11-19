@@ -76,6 +76,13 @@ public class RegionGroup {
   }
 
   /**
+   * @return the number of replicas of this Region, without copying the replica set
+   */
+  public synchronized int getReplicaNum() {
+    return replicaSet.getDataNodeLocationsSize();
+  }
+
+  /**
    * Update the DataNodeLocation in TRegionReplicaSet if necessary.
    *
    * @param newDataNodeLocation The new DataNodeLocation.

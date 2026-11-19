@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -346,26 +347,31 @@ public class IterativeOptimizer implements AdaptivePlanOptimizer {
       if (NANOSECONDS.toMillis(nanoTime() - startTimeInNanos) >= timeoutInMilliseconds) {
         String message =
             format(
-                OPTIMIZER_TIMEOUT.getStatusCode()
-                    + ": The optimizer exhausted the time limit of %d ms",
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_ARG_THE_OPTIMIZER_EXHAUSTED_THE_TIME_LIMIT_OF_ARG_D_MS_454EB946,
+                    Objects.toString(OPTIMIZER_TIMEOUT.getStatusCode())),
                 timeoutInMilliseconds);
         List<QueryPlanOptimizerStatistics> topRulesByTime =
             iterativeOptimizerStatsCollector.getTopRuleStats(5);
         if (topRulesByTime.isEmpty()) {
-          message += ": no rules invoked";
+          message += DataNodeQueryMessages.EXCEPTION_NO_RULES_INVOKED_8E11FD30;
         } else {
           message +=
-              ": Top rules: "
-                  + topRulesByTime.stream()
-                      .map(
-                          ruleStats ->
-                              format(
-                                  "%s: %s ms, %s invocations, %s applications",
-                                  ruleStats.rule(),
-                                  NANOSECONDS.toMillis(ruleStats.totalTime()),
-                                  ruleStats.invocations(),
-                                  ruleStats.applied()))
-                      .collect(joining(",\n\t\t", "{\n\t\t", " }"));
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_TOP_RULES_ARG_31C182D1,
+                  Objects.toString(
+                      topRulesByTime.stream()
+                          .map(
+                              ruleStats ->
+                                  format(
+                                      DataNodeQueryMessages
+                                          .EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84,
+                                      ruleStats.rule(),
+                                      NANOSECONDS.toMillis(ruleStats.totalTime()),
+                                      ruleStats.invocations(),
+                                      ruleStats.applied()))
+                          .collect(joining(",\n\t\t", "{\n\t\t", " }"))));
         }
         throw new RuntimeException(message);
       }

@@ -376,7 +376,8 @@ public class TreeDeviceViewFieldDetector {
     protected void onAllReplicasetFailure(
         final TConsensusGroupId consensusGroupId,
         final Set<TDataNodeLocation> dataNodeLocationSet) {
-      final String errorMsg = "Failed to get device view field type on region {}.";
+      final String errorMsg =
+          ManagerMessages.LOG_FAILED_TO_GET_DEVICE_VIEW_FIELD_TYPE_ON_REGION_ARG_317F545F;
       LOGGER.warn(errorMsg, consensusGroupId);
       result =
           new TDeviceViewResp(

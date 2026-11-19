@@ -54,6 +54,7 @@ public class ConsumerGroupMeta {
   private Map<String, ConsumerMeta> consumerIdToConsumerMeta;
   private boolean tableModel;
   private Map<String, Long> topicNameToSubscriptionCreationTime; // used when creationTime < 0
+  private final Set<String> retainedTopicNames = ConcurrentHashMap.newKeySet();
 
   public ConsumerGroupMeta() {
     this.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
@@ -85,6 +86,7 @@ public class ConsumerGroupMeta {
     copied.tableModel = tableModel;
     copied.topicNameToSubscriptionCreationTime =
         new ConcurrentHashMap<>(topicNameToSubscriptionCreationTime);
+    copied.retainedTopicNames.addAll(retainedTopicNames);
     return copied;
   }
 
@@ -218,6 +220,18 @@ public class ConsumerGroupMeta {
     return Collections.unmodifiableSet(topicNameToSubscribedConsumerIdSet.keySet());
   }
 
+  public Set<String> getRetainedTopicNames() {
+    return Collections.unmodifiableSet(retainedTopicNames);
+  }
+
+  public void retainTopic(final String topicName) {
+    retainedTopicNames.add(topicName);
+  }
+
+  public void removeRetainedTopic(final String topicName) {
+    retainedTopicNames.remove(topicName);
+  }
+
   /**
    * Get the consumers subscribing the given topic in this group.
    *
@@ -338,7 +352,14 @@ public class ConsumerGroupMeta {
     ReadWriteIOUtils.write(consumerGroupId, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
-    ReadWriteIOUtils.write(topicNameToSubscribedConsumerIdSet.size(), outputStream);
+    // A negative topic count identifies the extended, self-delimiting format. Do not infer the
+    // presence of retained topics from remaining bytes: this meta is also nested in procedures.
+    final boolean hasRetainedTopics = !retainedTopicNames.isEmpty();
+    ReadWriteIOUtils.write(
+        hasRetainedTopics
+            ? -topicNameToSubscribedConsumerIdSet.size() - 1
+            : topicNameToSubscribedConsumerIdSet.size(),
+        outputStream);
     for (final Map.Entry<String, Set<String>> entry :
         topicNameToSubscribedConsumerIdSet.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
@@ -365,6 +386,12 @@ public class ConsumerGroupMeta {
         ReadWriteIOUtils.write(entry.getValue(), outputStream);
       }
     }
+    if (hasRetainedTopics) {
+      ReadWriteIOUtils.write(retainedTopicNames.size(), outputStream);
+      for (final String topicName : retainedTopicNames) {
+        ReadWriteIOUtils.write(topicName, outputStream);
+      }
+    }
   }
 
   public static ConsumerGroupMeta deserialize(final InputStream inputStream) throws IOException {
@@ -375,6 +402,10 @@ public class ConsumerGroupMeta {
 
     consumerGroupMeta.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
     int size = ReadWriteIOUtils.readInt(inputStream);
+    final boolean hasRetainedTopics = size < 0;
+    if (hasRetainedTopics) {
+      size = -size - 1;
+    }
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
 
@@ -407,6 +438,12 @@ public class ConsumerGroupMeta {
       }
     }
 
+    if (hasRetainedTopics) {
+      size = ReadWriteIOUtils.readInt(inputStream);
+      for (int i = 0; i < size; ++i) {
+        consumerGroupMeta.retainedTopicNames.add(ReadWriteIOUtils.readString(inputStream));
+      }
+    }
     return consumerGroupMeta;
   }
 
@@ -418,6 +455,10 @@ public class ConsumerGroupMeta {
 
     consumerGroupMeta.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
     int size = ReadWriteIOUtils.readInt(byteBuffer);
+    final boolean hasRetainedTopics = size < 0;
+    if (hasRetainedTopics) {
+      size = -size - 1;
+    }
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
 
@@ -450,6 +491,12 @@ public class ConsumerGroupMeta {
       }
     }
 
+    if (hasRetainedTopics) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; ++i) {
+        consumerGroupMeta.retainedTopicNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      }
+    }
     return consumerGroupMeta;
   }
 
@@ -470,6 +517,7 @@ public class ConsumerGroupMeta {
         && Objects.equals(
             this.topicNameToSubscribedConsumerIdSet, that.topicNameToSubscribedConsumerIdSet)
         && Objects.equals(this.consumerIdToConsumerMeta, that.consumerIdToConsumerMeta)
+        && Objects.equals(this.retainedTopicNames, that.retainedTopicNames)
         && Objects.equals(
             this.topicNameToSubscriptionCreationTime, that.topicNameToSubscriptionCreationTime);
   }
@@ -482,6 +530,7 @@ public class ConsumerGroupMeta {
         tableModel,
         topicNameToSubscribedConsumerIdSet,
         consumerIdToConsumerMeta,
+        retainedTopicNames,
         topicNameToSubscriptionCreationTime);
   }
 
@@ -498,6 +547,8 @@ public class ConsumerGroupMeta {
         + consumerIdToConsumerMeta
         + ", topicNameToSubscriptionCreationTime="
         + topicNameToSubscriptionCreationTime
+        + ", retainedTopicNames="
+        + retainedTopicNames
         + "}";
   }
 }

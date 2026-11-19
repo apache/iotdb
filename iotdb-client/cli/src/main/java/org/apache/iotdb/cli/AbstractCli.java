@@ -157,7 +157,8 @@ public abstract class AbstractCli {
   private static boolean continuePrint = false;
 
   private static int lineCount = 0;
-  private static final String SUCCESS_MESSAGE = "The statement is executed successfully.";
+  private static final String SUCCESS_MESSAGE =
+      CliMessages.EXCEPTION_THE_STATEMENT_IS_EXECUTED_SUCCESSFULLY_B07F8CCB;
 
   private static boolean isReachEnd = false;
 
@@ -209,12 +210,17 @@ public abstract class AbstractCli {
 
   static Options createOptions() {
     Options options = new Options();
-    Option help = new Option(HELP_ARGS, false, "Display help information. (optional)");
+    Option help =
+        new Option(
+            HELP_ARGS, false, CliMessages.EXCEPTION_DISPLAY_HELP_INFORMATION_OPTIONAL_BF7EAC3D);
     help.setRequired(false);
     options.addOption(help);
 
     Option timeFormat =
-        new Option(ISO8601_ARGS, false, "Display timestamp in numeric format. (optional)");
+        new Option(
+            ISO8601_ARGS,
+            false,
+            CliMessages.EXCEPTION_DISPLAY_TIMESTAMP_IN_NUMERIC_FORMAT_OPTIONAL_74353C35);
     timeFormat.setRequired(false);
     options.addOption(timeFormat);
 
@@ -222,7 +228,7 @@ public abstract class AbstractCli {
         Option.builder(HOST_ARGS)
             .argName(HOST_NAME)
             .hasArg()
-            .desc("Host Name. Default is 127.0.0.1. (optional)")
+            .desc(CliMessages.EXCEPTION_HOST_NAME_DEFAULT_IS_127_0_0_1_OPTIONAL_487641A0)
             .build();
     options.addOption(host);
 
@@ -230,7 +236,7 @@ public abstract class AbstractCli {
         Option.builder(PORT_ARGS)
             .argName(PORT_NAME)
             .hasArg()
-            .desc("Port. Default is 6667. (optional)")
+            .desc(CliMessages.EXCEPTION_PORT_DEFAULT_IS_6667_OPTIONAL_97563E4C)
             .build();
     options.addOption(port);
 
@@ -238,7 +244,7 @@ public abstract class AbstractCli {
         Option.builder(USERNAME_ARGS)
             .argName(USERNAME_NAME)
             .hasArg()
-            .desc("User name. (required)")
+            .desc(CliMessages.EXCEPTION_USER_NAME_REQUIRED_45948411)
             .required()
             .build();
     options.addOption(username);
@@ -248,7 +254,7 @@ public abstract class AbstractCli {
             .argName(PW_NAME)
             .hasArg(true)
             .optionalArg(true)
-            .desc("Password. Default is root. (optional)")
+            .desc(CliMessages.EXCEPTION_PASSWORD_DEFAULT_IS_ROOT_OPTIONAL_E6E2197E)
             .build();
     options.addOption(password);
 
@@ -256,7 +262,7 @@ public abstract class AbstractCli {
         Option.builder(USE_SSL_ARGS)
             .argName(USE_SSL)
             .hasArg()
-            .desc("Use SSL statement. (optional)")
+            .desc(CliMessages.EXCEPTION_USE_SSL_STATEMENT_OPTIONAL_92E1AA92)
             .build();
     options.addOption(useSSL);
 
@@ -265,7 +271,7 @@ public abstract class AbstractCli {
             .longOpt(TRUST_STORE)
             .argName(TRUST_STORE)
             .hasArg()
-            .desc("Trust store. (optional)")
+            .desc(CliMessages.EXCEPTION_TRUST_STORE_OPTIONAL_EA106F8E)
             .build();
     options.addOption(trustStore);
 
@@ -274,7 +280,7 @@ public abstract class AbstractCli {
             .longOpt(TRUST_STORE_PWD)
             .argName(TRUST_STORE_PWD)
             .hasArg()
-            .desc("Trust store password. (optional)")
+            .desc(CliMessages.EXCEPTION_TRUST_STORE_PASSWORD_OPTIONAL_B017719D)
             .build();
     options.addOption(trustStorePwd);
 
@@ -283,7 +289,7 @@ public abstract class AbstractCli {
             .longOpt(KEY_STORE)
             .argName(KEY_STORE)
             .hasArg()
-            .desc("Key store for mutual SSL. (optional)")
+            .desc(CliMessages.EXCEPTION_KEY_STORE_FOR_MUTUAL_SSL_OPTIONAL_A617339F)
             .build();
     options.addOption(keyStore);
 
@@ -292,7 +298,7 @@ public abstract class AbstractCli {
             .longOpt(KEY_STORE_PWD)
             .argName(KEY_STORE_PWD)
             .hasArg()
-            .desc("Key store password for mutual SSL. (optional)")
+            .desc(CliMessages.EXCEPTION_KEY_STORE_PASSWORD_FOR_MUTUAL_SSL_OPTIONAL_CA3006DD)
             .build();
     options.addOption(keyStorePwd);
 
@@ -301,7 +307,7 @@ public abstract class AbstractCli {
             .longOpt(SSL_PROTOCOL)
             .argName(SSL_PROTOCOL)
             .hasArg()
-            .desc("SSL protocol. (optional)")
+            .desc(CliMessages.EXCEPTION_SSL_PROTOCOL_OPTIONAL_F7C84E29)
             .build();
     options.addOption(sslProtocol);
 
@@ -316,7 +322,7 @@ public abstract class AbstractCli {
     Option isRpcCompressed =
         Option.builder(RPC_COMPRESS_ARGS)
             .argName(RPC_COMPRESS_NAME)
-            .desc("Enable or disable Rpc Compression. (optional)")
+            .desc(CliMessages.EXCEPTION_ENABLE_OR_DISABLE_RPC_COMPRESSION_OPTIONAL_9F1F97AB)
             .build();
     options.addOption(isRpcCompressed);
 
@@ -324,7 +330,9 @@ public abstract class AbstractCli {
         Option.builder(TIMEOUT_ARGS)
             .argName(TIMEOUT_NAME)
             .hasArg()
-            .desc("The timeout in seconds. Uses the server configuration if not set. (optional)")
+            .desc(
+                CliMessages
+                    .EXCEPTION_THE_TIMEOUT_IN_SECONDS_USES_THE_SERVER_CONFIGURATION_IF_NOT_SET_OPTIONAL_49A917F7)
             .build();
     options.addOption(queryTimeout);
 
@@ -332,7 +340,9 @@ public abstract class AbstractCli {
         Option.builder(SQL_DIALECT)
             .argName(SQL_DIALECT)
             .hasArg()
-            .desc("Currently supports tree and table; uses tree if not set. (optional)")
+            .desc(
+                CliMessages
+                    .EXCEPTION_CURRENTLY_SUPPORTS_TREE_AND_TABLE_USES_TREE_IF_NOT_SET_OPTIONAL_9D030956)
             .build();
     options.addOption(sqlDialect);
     return options;
@@ -349,12 +359,20 @@ public abstract class AbstractCli {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
       if (isRequired) {
-        String msg = String.format("%s: Required values for option '%s' not provided", IOTDB, name);
+        String msg =
+            String.format(
+                CliMessages.EXCEPTION_ARG_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_1593074C,
+                IOTDB,
+                name);
         ctx.getPrinter().println(msg);
         ctx.getPrinter().println(CliMessages.USE_HELP_FOR_MORE);
         throw new ArgsErrorException(msg);
       } else if (defaultValue == null) {
-        String msg = String.format("%s: Required values for option '%s' is null.", IOTDB, name);
+        String msg =
+            String.format(
+                CliMessages.EXCEPTION_ARG_REQUIRED_VALUES_FOR_OPTION_ARG_IS_NULL_E4215AA7,
+                IOTDB,
+                name);
         throw new ArgsErrorException(msg);
       } else {
         return defaultValue;
@@ -377,16 +395,24 @@ public abstract class AbstractCli {
     if (values.length != 2) {
       ctx.getPrinter()
           .println(
-              String.format("Fetch size format error, please input like %s=10000", SET_FETCH_SIZE));
+              String.format(
+                  CliMessages.LOG_FETCH_SIZE_FORMAT_ERROR_PLEASE_INPUT_LIKE_ARG_10000_F43DF137,
+                  SET_FETCH_SIZE));
       return CODE_ERROR;
     }
     try {
       setFetchSize(cmd.split("=")[1]);
     } catch (Exception e) {
-      ctx.getPrinter().println(String.format("Fetch size format error, %s", e.getMessage()));
+      ctx.getPrinter()
+          .println(
+              String.format(CliMessages.LOG_FETCH_SIZE_FORMAT_ERROR_ARG_C2A64235, e.getMessage()));
       return CODE_ERROR;
     }
-    ctx.getPrinter().println("Fetch size has set to " + values[1].trim());
+    ctx.getPrinter()
+        .println(
+            String.format(
+                CliMessages.LOG_FETCH_SIZE_HAS_SET_TO_ARG_1EC2519D,
+                Objects.toString(values[1].trim())));
     return CODE_OK;
   }
 
@@ -463,26 +489,25 @@ public abstract class AbstractCli {
   static void displayLogo(CliContext ctx, String logo, String version, String buildInfo) {
     ctx.getPrinter()
         .println(
-            (logo != null
-                    ? logo
-                    : (" _____       _________  ______   ______    \n"
-                        + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
-                        + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
-                        + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
-                        + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
-                        + "|_____|'.__.' |_____|  |______.'|_______/  "))
-                + "version "
-                + version
-                + " (Build: "
-                + (buildInfo != null ? buildInfo : "UNKNOWN")
-                + ")"
-                + "\n"
-                + "                                           \n");
+            String.format(
+                CliMessages.LOG_ARG_VERSION_ARG_BUILD_ARG_73F1169F,
+                Objects.toString(
+                    (logo != null
+                        ? logo
+                        : (" _____       _________  ______   ______    \n"
+                            + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
+                            + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
+                            + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
+                            + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
+                            + "|_____|'.__.' |_____|  |______.'|_______/  "))),
+                Objects.toString(version),
+                Objects.toString(
+                    (buildInfo != null ? buildInfo : CliMessages.LOG_UNKNOWN_696B0310))));
   }
 
   static void echoStarting(CliContext ctx) {
     ctx.getPrinter().println("---------------------");
-    ctx.getPrinter().println("Starting IoTDB Cli");
+    ctx.getPrinter().println(CliMessages.LOG_STARTING_IOTDB_CLI_D08E81B1);
     ctx.getPrinter().println("---------------------");
   }
 
@@ -517,11 +542,17 @@ public abstract class AbstractCli {
       return OperationResult.CONTINUE_OPER;
     }
     if (specialCmd.startsWith(SHOW_TIMESTAMP_DISPLAY)) {
-      ctx.getPrinter().println("Current time format: " + timeFormat);
+      ctx.getPrinter()
+          .println(
+              String.format(
+                  CliMessages.LOG_CURRENT_TIME_FORMAT_ARG_4AF56328, Objects.toString(timeFormat)));
       return OperationResult.CONTINUE_OPER;
     }
     if (specialCmd.startsWith(SHOW_FETCH_SIZE)) {
-      ctx.getPrinter().println("Current fetch size: " + fetchSize);
+      ctx.getPrinter()
+          .println(
+              String.format(
+                  CliMessages.LOG_CURRENT_FETCH_SIZE_ARG_D0149220, Objects.toString(fetchSize)));
       return OperationResult.CONTINUE_OPER;
     }
 
@@ -535,26 +566,33 @@ public abstract class AbstractCli {
   }
 
   private static void showHelp(CliContext ctx) {
-    ctx.getPrinter().println("    <your-sql>\t\t\t execute your sql statment");
+    ctx.getPrinter().println(CliMessages.LOG_YOUR_SQL_EXECUTE_YOUR_SQL_STATMENT_BFC89C6C);
     ctx.getPrinter()
         .println(
             String.format(
-                "    %s\t\t show how many timeseries are in iotdb", SHOW_METADATA_COMMAND));
+                CliMessages.LOG_ARG_SHOW_HOW_MANY_TIMESERIES_ARE_IN_IOTDB_359C5CCB,
+                SHOW_METADATA_COMMAND));
     ctx.getPrinter()
         .println(
             String.format(
-                "    %s=xxx\t eg. long, default, ISO8601, yyyy-MM-dd HH:mm:ss.",
+                CliMessages.LOG_ARG_XXX_EG_LONG_DEFAULT_ISO8601_YYYY_MM_DD_HH_MM_SS_AB86BCB9,
                 SET_TIMESTAMP_DISPLAY));
     ctx.getPrinter()
-        .println(String.format("    %s\t show time display type", SHOW_TIMESTAMP_DISPLAY));
+        .println(
+            String.format(
+                CliMessages.LOG_ARG_SHOW_TIME_DISPLAY_TYPE_F4FDBA29, SHOW_TIMESTAMP_DISPLAY));
     ctx.getPrinter()
-        .println(String.format("    %s=xxx\t\t eg. +08:00, Asia/Shanghai.", SET_TIME_ZONE));
-    ctx.getPrinter().println(String.format("    %s\t\t show cli time zone", SHOW_TIMEZONE));
+        .println(
+            String.format(CliMessages.LOG_ARG_XXX_EG_08_00_ASIA_SHANGHAI_C03D8EBF, SET_TIME_ZONE));
+    ctx.getPrinter()
+        .println(String.format(CliMessages.LOG_ARG_SHOW_CLI_TIME_ZONE_9F84BADC, SHOW_TIMEZONE));
     ctx.getPrinter()
         .println(
             String.format(
-                "    %s=xxx\t\t set fetch size when querying data from server.", SET_FETCH_SIZE));
-    ctx.getPrinter().println(String.format("    %s\t\t show fetch size", SHOW_FETCH_SIZE));
+                CliMessages.LOG_ARG_XXX_SET_FETCH_SIZE_WHEN_QUERYING_DATA_FROM_SERVER_4B58C233,
+                SET_FETCH_SIZE));
+    ctx.getPrinter()
+        .println(String.format(CliMessages.LOG_ARG_SHOW_FETCH_SIZE_58D138A1, SHOW_FETCH_SIZE));
   }
 
   private static int setTimestampDisplay(CliContext ctx, String specialCmd, String cmd) {
@@ -563,17 +601,24 @@ public abstract class AbstractCli {
       ctx.getPrinter()
           .println(
               String.format(
-                  "Time display format error, please input like %s=ISO8601",
+                  CliMessages.LOG_TIME_DISPLAY_FORMAT_ERROR_PLEASE_INPUT_LIKE_ARG_ISO8601_A0F723FB,
                   SET_TIMESTAMP_DISPLAY));
       return CODE_ERROR;
     }
     try {
       timeFormat = RpcUtils.setTimeFormat(cmd.split("=")[1]);
     } catch (Exception e) {
-      ctx.getPrinter().println(String.format("time display format error, %s", e.getMessage()));
+      ctx.getPrinter()
+          .println(
+              String.format(
+                  CliMessages.LOG_TIME_DISPLAY_FORMAT_ERROR_ARG_2BE8FA7D, e.getMessage()));
       return CODE_ERROR;
     }
-    ctx.getPrinter().println("Time display type has set to " + cmd.split("=")[1].trim());
+    ctx.getPrinter()
+        .println(
+            String.format(
+                CliMessages.LOG_TIME_DISPLAY_TYPE_HAS_SET_TO_ARG_1E0B2163,
+                Objects.toString(cmd.split("=")[1].trim())));
     return CODE_OK;
   }
 
@@ -592,24 +637,40 @@ public abstract class AbstractCli {
     if (values.length != 2) {
       ctx.getPrinter()
           .println(
-              String.format("Time zone format error, please input like %s=+08:00", SET_TIME_ZONE));
+              String.format(
+                  CliMessages.LOG_TIME_ZONE_FORMAT_ERROR_PLEASE_INPUT_LIKE_ARG_08_00_26C955E6,
+                  SET_TIME_ZONE));
       return CODE_ERROR;
     }
     try {
       connection.setTimeZone(cmd.split("=")[1].trim());
     } catch (Exception e) {
-      ctx.getPrinter().println(String.format("Time zone format error: %s", e.getMessage()));
+      ctx.getPrinter()
+          .println(
+              String.format(CliMessages.LOG_TIME_ZONE_FORMAT_ERROR_ARG_F356979E, e.getMessage()));
       return CODE_ERROR;
     }
-    ctx.getPrinter().println("Time zone has set to " + values[1].trim());
+    ctx.getPrinter()
+        .println(
+            String.format(
+                CliMessages.LOG_TIME_ZONE_HAS_SET_TO_ARG_4D07E82F,
+                Objects.toString(values[1].trim())));
     return CODE_OK;
   }
 
   private static int showTimeZone(CliContext ctx, IoTDBConnection connection) {
     try {
-      ctx.getPrinter().println("Current time zone: " + connection.getTimeZone());
+      ctx.getPrinter()
+          .println(
+              String.format(
+                  CliMessages.LOG_CURRENT_TIME_ZONE_ARG_A0221687,
+                  Objects.toString(connection.getTimeZone())));
     } catch (Exception e) {
-      ctx.getPrinter().println("Cannot get time zone from server side because: " + e.getMessage());
+      ctx.getPrinter()
+          .println(
+              String.format(
+                  CliMessages.LOG_CANNOT_GET_TIME_ZONE_FROM_SERVER_SIDE_BECAUSE_ARG_E3FE596C,
+                  Objects.toString(e.getMessage())));
       return CODE_ERROR;
     }
     return CODE_OK;
@@ -621,8 +682,8 @@ public abstract class AbstractCli {
     if (values.length != 2) {
       ctx.getPrinter()
           .println(
-              "Please input like: import /User/myfile. "
-                  + "Noted that your file path cannot contain any space character)");
+              CliMessages
+                  .LOG_PLEASE_INPUT_LIKE_IMPORT_USER_MYFILE_NOTED_THAT_YOUR_FILE_PATH_CANNOT_CONTAIN_ANY_SPACE_CHARACTER_F0E1F5B8);
       return CODE_ERROR;
     }
     ctx.getPrinter().println(cmd.split(" ")[1]);
@@ -662,7 +723,8 @@ public abstract class AbstractCli {
           } else {
             output(ctx, lists, maxSizeList);
           }
-          ctx.getPrinter().println(String.format("It costs %.3fs", costTime / 1000.0));
+          ctx.getPrinter()
+              .println(String.format(CliMessages.LOG_IT_COSTS_ARG_S_B7D08F3A, costTime / 1000.0));
           while (!isReachEnd) {
             if (continuePrint) {
               maxSizeList = new ArrayList<>(columnLength);
@@ -672,7 +734,9 @@ public abstract class AbstractCli {
               continue;
             }
             ctx.getPrinter()
-                .println("This display 1000 rows. Press ENTER to show more, input 'q' to quit.");
+                .println(
+                    CliMessages
+                        .LOG_THIS_DISPLAY_1000_ROWS_PRESS_ENTER_TO_SHOW_MORE_INPUT_Q_TO_QUIT_F674ED97);
 
             BufferedReader br = new BufferedReader(new InputStreamReader(ctx.getIn()));
             try {
@@ -704,10 +768,13 @@ public abstract class AbstractCli {
           }
         }
       } else {
-        ctx.getPrinter().println("Msg: " + SUCCESS_MESSAGE);
+        ctx.getPrinter()
+            .println(
+                String.format(CliMessages.LOG_MSG_ARG_240992E0, Objects.toString(SUCCESS_MESSAGE)));
       }
     } catch (Exception e) {
-      ctx.getPrinter().println("Msg: " + e);
+      ctx.getPrinter()
+          .println(String.format(CliMessages.LOG_MSG_ARG_240992E0, Objects.toString(e)));
       executeStatus = CODE_ERROR;
     } finally {
       updateSqlDialectAndUsingDatabase(
@@ -844,7 +911,7 @@ public abstract class AbstractCli {
     lists.add(1, new ArrayList<>());
 
     String activityStr = "Activity";
-    String elapsedTimeStr = "Elapsed Time";
+    String elapsedTimeStr = CliMessages.EXCEPTION_ELAPSED_TIME_7083D10C;
     lists.get(0).add(activityStr);
     lists.get(1).add(elapsedTimeStr);
     maxSizeList.add(0, activityStr.length());
@@ -946,7 +1013,7 @@ public abstract class AbstractCli {
   private static void outputTracingInfo(
       CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) {
     ctx.getPrinter().println();
-    ctx.getPrinter().println("Tracing Activities:");
+    ctx.getPrinter().println(CliMessages.LOG_TRACING_ACTIVITIES_CE1F6C12);
     ctx.getPrinter().printBlockLine(maxSizeList);
     ctx.getPrinter().printRow(lists, 0, maxSizeList);
     ctx.getPrinter().printBlockLine(maxSizeList);

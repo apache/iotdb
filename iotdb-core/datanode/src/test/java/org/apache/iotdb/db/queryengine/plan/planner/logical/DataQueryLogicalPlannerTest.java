@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpress
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
@@ -368,6 +369,32 @@ public class DataQueryLogicalPlannerTest {
 
     PlanNode actualPlan = parseSQLToPlanNode(sql);
     Assert.assertEquals(actualPlan, limitNode);
+  }
+
+  @Test
+  public void testRawDataQueryAlignByDeviceWithAlwaysTruePredicate() {
+    // root.sg.d2 has no s3, so its predicate is always true and only root.sg.d1 needs a FilterNode
+    String sql = "SELECT s1 FROM root.sg.* WHERE s3 IS NULL ALIGN BY DEVICE";
+
+    PlanNode actualPlan = parseSQLToPlanNode(sql);
+    Assert.assertTrue(actualPlan instanceof DeviceViewNode);
+    DeviceViewNode deviceViewNode = (DeviceViewNode) actualPlan;
+    Assert.assertEquals(
+        Arrays.asList(
+            IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"),
+            IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d2")),
+        deviceViewNode.getDevices());
+
+    PlanNode d1SubPlan = deviceViewNode.getChildren().get(0);
+    Assert.assertTrue(d1SubPlan instanceof FilterNode);
+    Assert.assertEquals(
+        new IsNullExpression(new TimeSeriesOperand(schemaMap.get("root.sg.d1.s3")), false),
+        ((FilterNode) d1SubPlan).getPredicate());
+
+    PlanNode d2SubPlan = deviceViewNode.getChildren().get(1);
+    Assert.assertTrue(d2SubPlan instanceof SeriesScanNode);
+    Assert.assertEquals(
+        schemaMap.get("root.sg.d2.s1"), ((SeriesScanNode) d2SubPlan).getSeriesPath());
   }
 
   @Test

@@ -51,6 +51,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
 
   private static final String DATE = "DATE";
   private static final String TIMESTAMP = "TIMESTAMP";
+  private static final String OBJECT = "OBJECT";
 
   /** Constructor of IoTDBResultMetadata. */
   public IoTDBResultMetadata(
@@ -70,12 +71,12 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    return JdbcWrapperUtils.isWrapperFor(this, arg0);
   }
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    return JdbcWrapperUtils.unwrap(this, arg0);
   }
 
   @SuppressWarnings({
@@ -83,6 +84,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   }) // ignore Cognitive Complexity of methods should not be too high
   @Override
   public String getCatalogName(int column) throws SQLException {
+    checkColumnIndex(column);
     String systemSchmea = "_system_schmea";
     String system = "_system";
     String systemUser = "_system_user";
@@ -92,9 +94,6 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     String systemNull = "";
     String columnName = columnInfoList.get(column - 1);
     List<String> listColumns = columnInfoList;
-    if (column < 1 || column > columnInfoList.size()) {
-      throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
-    }
     if ("SHOW".equals(operationType)) {
       if ("count".equals(listColumns.get(0))) {
         return systemDatabase;
@@ -135,16 +134,22 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     } else if (!"FILL".equals(operationType)) {
       return systemNull;
     }
-    if (nonAlign) {
-      return sgColumns.get(column - 1);
-    } else {
-      return sgColumns.get(column - 2);
+    if (sgColumns == null || sgColumns.isEmpty()) {
+      return systemNull;
     }
+    int sgColumnIndex = nonAlign ? column - 1 : column - 2;
+    if (sgColumnIndex < 0 || sgColumnIndex >= sgColumns.size()) {
+      return systemNull;
+    }
+    return sgColumns.get(sgColumnIndex);
   }
 
   @Override
   public String getColumnClassName(int column) throws SQLException {
     String columnTypeName = getColumnTypeName(column);
+    if (columnTypeName == null) {
+      return null;
+    }
     switch (columnTypeName) {
       case TIMESTAMP:
         return Timestamp.class.getName();
@@ -165,6 +170,9 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
         return Date.class.getName();
       case BLOB:
         return "byte[]";
+      case OBJECT:
+        // getObject() describes an OBJECT value with a String such as "(Object) 1.2 MB"
+        return String.class.getName();
       default:
         break;
     }
@@ -210,7 +218,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return Types.TIMESTAMP;
     }
-    String columnType = columnTypeList.get(column - 1);
+    String columnType = getColumnTypeString(column);
 
     switch (columnType.toUpperCase()) {
       case BOOLEAN:
@@ -232,6 +240,8 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
         return Types.TIMESTAMP;
       case BLOB:
         return Types.BLOB;
+      case OBJECT:
+        return Types.OTHER;
       default:
         break;
     }
@@ -244,7 +254,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return TIMESTAMP;
     }
-    String columnType = columnTypeList.get(column - 1);
+    String columnType = getColumnTypeString(column);
     String typeString = columnType.toUpperCase();
     if (BOOLEAN.equals(typeString)
         || INT32.equals(typeString)
@@ -255,7 +265,8 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
         || STRING.equals(typeString)
         || BLOB.equals(typeString)
         || DATE.equals(typeString)
-        || TIMESTAMP.equals(typeString)) {
+        || TIMESTAMP.equals(typeString)
+        || OBJECT.equals(typeString)) {
       return typeString;
     }
     return null;
@@ -267,7 +278,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return 3;
     }
-    String columnType = columnTypeList.get(column - 1);
+    String columnType = getColumnTypeString(column);
     switch (columnType.toUpperCase()) {
       case BOOLEAN:
         return 1;
@@ -282,6 +293,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return Integer.MAX_VALUE;
       case TIMESTAMP:
         return 3;
@@ -299,7 +311,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return 0;
     }
-    String columnType = columnTypeList.get(column - 1);
+    String columnType = getColumnTypeString(column);
     switch (columnType.toUpperCase()) {
       case BOOLEAN:
       case INT32:
@@ -309,6 +321,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       case STRING:
       case TIMESTAMP:
       case DATE:
+      case OBJECT:
         return 0;
       case FLOAT:
         return 6;
@@ -337,47 +350,67 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   }
 
   @Override
-  public boolean isAutoIncrement(int arg0) throws SQLException {
+  public boolean isAutoIncrement(int column) throws SQLException {
+    checkColumnIndex(column);
     return false;
   }
 
   @Override
-  public boolean isCaseSensitive(int arg0) throws SQLException {
+  public boolean isCaseSensitive(int column) throws SQLException {
+    checkColumnIndex(column);
     return true;
   }
 
   @Override
-  public boolean isCurrency(int arg0) throws SQLException {
+  public boolean isCurrency(int column) throws SQLException {
+    checkColumnIndex(column);
     return false;
   }
 
   @Override
-  public boolean isDefinitelyWritable(int arg0) throws SQLException {
+  public boolean isDefinitelyWritable(int column) throws SQLException {
+    checkColumnIndex(column);
     return false;
   }
 
   @Override
-  public int isNullable(int arg0) throws SQLException {
+  public int isNullable(int column) throws SQLException {
+    checkColumnIndex(column);
     return 1;
   }
 
   @Override
-  public boolean isReadOnly(int arg0) throws SQLException {
+  public boolean isReadOnly(int column) throws SQLException {
+    checkColumnIndex(column);
     return true;
   }
 
   @Override
-  public boolean isSearchable(int arg0) throws SQLException {
+  public boolean isSearchable(int column) throws SQLException {
+    checkColumnIndex(column);
     return true;
   }
 
   @Override
-  public boolean isSigned(int arg0) throws SQLException {
+  public boolean isSigned(int column) throws SQLException {
+    checkColumnIndex(column);
     return true;
   }
 
   @Override
-  public boolean isWritable(int arg0) throws SQLException {
+  public boolean isWritable(int column) throws SQLException {
+    checkColumnIndex(column);
     return false;
+  }
+
+  private String getColumnTypeString(int column) throws SQLException {
+    if (columnTypeList == null || column > columnTypeList.size()) {
+      throw new SQLException(String.format(JdbcMessages.COLUMN_DOES_NOT_EXIST, column));
+    }
+    String columnType = columnTypeList.get(column - 1);
+    if (columnType == null) {
+      throw new SQLException(String.format(JdbcMessages.COLUMN_DOES_NOT_EXIST, column));
+    }
+    return columnType;
   }
 }

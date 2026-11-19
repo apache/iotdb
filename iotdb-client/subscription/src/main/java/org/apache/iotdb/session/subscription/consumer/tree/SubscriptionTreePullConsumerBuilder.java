@@ -131,6 +131,42 @@ public class SubscriptionTreePullConsumerBuilder extends AbstractSubscriptionPul
   }
 
   @Override
+  public SubscriptionTreePullConsumerBuilder useSSL(final boolean useSSL) {
+    super.useSSL(useSSL);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTreePullConsumerBuilder trustStore(final String trustStore) {
+    super.trustStore(trustStore);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTreePullConsumerBuilder trustStorePwd(final String trustStorePwd) {
+    super.trustStorePwd(trustStorePwd);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTreePullConsumerBuilder keyStore(final String keyStore) {
+    super.keyStore(keyStore);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTreePullConsumerBuilder keyStorePwd(final String keyStorePwd) {
+    super.keyStorePwd(keyStorePwd);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTreePullConsumerBuilder sslProtocol(final String sslProtocol) {
+    super.sslProtocol(sslProtocol);
+    return this;
+  }
+
+  @Override
   public SubscriptionTreePullConsumerBuilder maxPollParallelism(final int maxPollParallelism) {
     super.maxPollParallelism(maxPollParallelism);
     return this;

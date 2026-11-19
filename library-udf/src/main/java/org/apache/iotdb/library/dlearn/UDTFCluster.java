@@ -74,11 +74,11 @@ public class UDTFCluster implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x > 0,
-            "Parameter l must be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_L_MUST_BE_A_POSITIVE_INTEGER_1DBBDE06,
             validator.getParameters().getInt("l"))
         .validate(
             x -> (int) x >= 2,
-            "Parameter k must be at least 2.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_K_MUST_BE_AT_LEAST_2_D6C929C3,
             validator.getParameters().getInt("k"))
         .validate(
             x -> {
@@ -87,25 +87,26 @@ public class UDTFCluster implements UDTF {
                   || METHOD_KSHAPE.equals(m)
                   || METHOD_MEDOIDSHAPE.equals(m);
             },
-            "Parameter method must be one of: kmeans, kshape, medoidshape.",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_METHOD_MUST_BE_ONE_OF_KMEANS_KSHAPE_MEDOIDSHAPE_1015186E,
             validator.getParameters().getStringOrDefault("method", DEFAULT_METHOD))
         .validate(
             x -> (int) x >= 1,
-            "Parameter maxiter must be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_MAXITER_MUST_BE_A_POSITIVE_INTEGER_D64DD725,
             validator.getParameters().getIntOrDefault("maxiter", DEFAULT_MAX_ITER))
         .validate(
             x -> {
               String o = ((String) x).toLowerCase();
               return OUTPUT_LABEL.equals(o) || OUTPUT_CENTROID.equals(o);
             },
-            "Parameter output must be label or centroid.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_OUTPUT_MUST_BE_LABEL_OR_CENTROID_153DFB81,
             validator.getParameters().getStringOrDefault("output", OUTPUT_LABEL))
         .validate(
             x -> {
               double d = ((Number) x).doubleValue();
               return d > 0 && d <= 1.0;
             },
-            "Parameter sample_rate must be in (0, 1].",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_SAMPLE_RATE_MUST_BE_IN_0_1_79A35554,
             validator.getParameters().getDoubleOrDefault("sample_rate", DEFAULT_SAMPLE_RATE));
   }
 

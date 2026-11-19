@@ -29,6 +29,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMetricPrometheusReporterAsyncUpdate(boolean asyncUpdate) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
     return this;
   }
@@ -88,6 +93,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
 
   @Override
   public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMqttHandlerPoolSize(int mqttHandlerPoolSize) {
     return this;
   }
 

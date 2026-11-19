@@ -134,7 +134,7 @@ public class FragmentInstanceExecutionTest {
   }
 
   @Test
-  public void testTVListOwnerTransfer() throws InterruptedException {
+  public void testTVListOwnerTransfer() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 
@@ -173,8 +173,9 @@ public class FragmentInstanceExecutionTest {
       fragmentInstanceContext2.decrementNumOfUnClosedDriver();
 
       fragmentInstanceContext1.getStateMachine().finished();
-      Thread.sleep(100);
+      instanceNotificationExecutor.submit(() -> {}).get(10, TimeUnit.SECONDS);
       fragmentInstanceContext2.getStateMachine().finished();
+      instanceNotificationExecutor.submit(() -> {}).get(10, TimeUnit.SECONDS);
 
       assertTrue(execution1.getInstanceState().isDone());
       assertTrue(execution2.getInstanceState().isDone());

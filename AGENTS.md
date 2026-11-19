@@ -26,7 +26,58 @@ For setup and compatibility notes, see [Coding agents](CONTRIBUTING.md#coding-ag
 
 ## Project Overview
 
-Apache IoTDB is a time series database for IoT data. It uses a distributed architecture with ConfigNodes (metadata/coordination) and DataNodes (storage/query). Data is stored in TsFile columnar format (separate repo: https://github.com/apache/tsfile). Current version is 2.0.11-SNAPSHOT.
+Apache IoTDB is a time series database for IoT data. It uses a distributed architecture with ConfigNodes (metadata/coordination) and DataNodes (storage/query). Data is stored in TsFile columnar format (separate repo: https://github.com/apache/tsfile). Current version is 2.0.13-SNAPSHOT.
+
+## Pull Request Descriptions
+
+Any PR that implements a new feature or changes an existing feature's definition or
+user-visible behavior must include at least one concrete example in its description. Show
+representative inputs and the resulting outputs or behavior; for a change to existing behavior,
+make the before-and-after difference clear.
+Bug-fix PRs should describe the scenario that triggers the bug, including relevant conditions or
+inputs and the incorrect behavior observed; explain the corrected behavior when it helps clarify
+the fix.
+
+## Branch Relationship and Backports
+
+- `master` is the primary development branch for the 2.x line. `dev/1.3` maintains the 1.3.x
+  line. They have diverged in supported features, implementation, APIs, and dependencies
+  (including TsFile); `dev/1.3` is not a mirror of `master`.
+- A request to cherry-pick (CP) a `master` PR to `dev/1.3` authorizes only that PR's changes and
+  the minimum compatibility adaptations needed to preserve their logic on the target branch.
+  **The backport must be logically and behaviorally equivalent to the original PR. Do not make
+  additional changes or use the backport as an opportunity to improve the surrounding code.**
+
+### Cherry-picking from master to dev/1.3
+
+1. Read the source PR's final diff, relevant surrounding code, and regression tests. Identify
+   the exact source commit(s) and target base revision before editing. Base the backport branch
+   on the requested `dev/1.3` revision, and follow that branch's applicable instructions and
+   build/test configuration.
+2. Prefer `git cherry-pick -x` for the requested commits. When conflicts or branch differences
+   require manual adaptation, preserve source traceability in the commit/PR description and
+   resolve each change by its intended behavior. Do not blindly choose one side of a conflict
+   or copy whole files from `master` over target-branch implementations.
+3. Preserve the source PR's conditions, execution order, return values, exceptions/status codes,
+   side effects, boundary cases, and concurrency/resource-lifecycle guarantees. Adapt package
+   names, method signatures, or APIs only where the target requires it, using equivalent target
+   facilities. A clean cherry-pick or successful compilation alone does not prove equivalence.
+4. Keep the diff limited to the requested backport. Do not add unrelated fixes, refactors,
+   optimizations, renames, formatting changes, dependency upgrades, or configuration changes.
+   Preserve unrelated `dev/1.3` behavior and keep formatter changes limited to the affected code.
+   Do not silently cherry-pick prerequisite PRs or import newer `master` features to make the
+   patch compile.
+5. If a source change has no target counterpart, a prerequisite is missing, or equivalence cannot
+   be established, identify the exact gap and the minimum work needed to resolve it. Obtain
+   direction before expanding scope or dropping part of the source change; do not substitute
+   a weaker fix or describe an incomplete backport as equivalent.
+6. Port the relevant regression tests with equivalent scenarios and assertions, adapting only
+   to the target test framework. Verify the original failure case and affected boundary/error
+   paths on `dev/1.3`; do not weaken assertions or skip failing cases to make the backport pass.
+7. Review the complete diff against the target base before finishing: account for every source
+   change (including any already present on the target), and map every target hunk to a source
+   change or a necessary compatibility adaptation. Report the source PR/commit(s), target base,
+   adaptations and why they preserve semantics, and actual validation results/limitations.
 
 ## Build Commands
 
@@ -56,16 +107,35 @@ mvn spotless:apply
 mvn spotless:check
 ```
 
-## Integration Tests
+## Module-specific Instructions
 
-Before editing or running integration tests, read and follow
-[integration-test/AGENTS.md](integration-test/AGENTS.md). It contains the IT authoring rules,
-formatting and build commands, test profiles, targeted verification, and Edge/IDE instructions.
-Keep IT-specific rules and commands in that module-level file.
+Before editing files or running build/test commands for the areas below, read and follow the
+corresponding instructions. For changes spanning multiple areas, read each applicable file,
+including when the task starts from the repository root.
+
+| Area | Instructions | Module-specific guidance |
+| --- | --- | --- |
+| AINode | [iotdb-core/ainode/AGENTS.md](iotdb-core/ainode/AGENTS.md) | Python environment, generated sources, formatting, tests, and binary packaging |
+| Tree-model SQL grammar | [iotdb-core/antlr/AGENTS.md](iotdb-core/antlr/AGENTS.md) | Lexer keywords, identifier compatibility, and grammar verification |
+| Table-model SQL grammar | [iotdb-core/relational-grammar/AGENTS.md](iotdb-core/relational-grammar/AGENTS.md) | Reserved/non-reserved keywords, identifier compatibility, and grammar verification |
+| Shared node models and infrastructure | [iotdb-core/node-commons/AGENTS.md](iotdb-core/node-commons/AGENTS.md) | Shared paths, schema, partition/auth/configuration models, and RPC/service abstractions |
+| Reusable query computation | [iotdb-core/calc-commons/AGENTS.md](iotdb-core/calc-commons/AGENTS.md) | Reusable operators, column transformations, aggregation, joins, and sorting |
+| Distribution and assembly descriptors | [distribution/AGENTS.md](distribution/AGENTS.md) | Artifact identities, package contents, Edge configuration, and packaging verification |
+| Launchers, environment scripts, and operational tools | [scripts/AGENTS.md](scripts/AGENTS.md) | Platform compatibility, process ownership, cleanup behavior, and script verification |
+| Integration tests | [integration-test/AGENTS.md](integration-test/AGENTS.md) | IT authoring, test profiles, targeted verification, and Edge/IDE runs |
+
+Read both commons guides before adding or moving shared code between these modules. Logic tied to
+a concrete node's storage, lifecycle, or execution scheduling belongs in that node's module.
+
+For changes to `EdgeNode` or Edge configuration defaults outside these directories, also read the
+distribution and scripts instructions. For SQL parsing or keyword changes in DataNode code, also
+read the relevant grammar instructions. Keep shared rules in this file and specialized rules in
+the corresponding module file; link to existing guidance instead of copying it.
 
 ## Code Style
 
-- **Apache License header**: Every new file committed to the repository MUST include the Apache License 2.0 header. Use the comment syntax appropriate for the file type (e.g., `<!-- -->` for `.md`, `/* */` for `.java`, `#` for `.properties`/`.py`). JSON files are exempt (no comment syntax). Refer to existing files in the repo for the exact format.
+- Every new IoTDB-authored file that supports comments MUST include the complete **ASF source header**. Match the comment syntax to the file format. Use `<!-- -->` for Markdown, `/* */` for Java, and `#` for `.properties`, `.py`, Git configuration, and Java SPI descriptors under `META-INF/services`. JSON files are exempt because they have no comment syntax. Preserve third-party license and copyright notices. [ASF source header policy](https://www.apache.org/legal/src-headers.html)
+  - Keep license headers intact during bulk replacements and refactors. When adding or repairing a standard ASF header, copy the complete text from an existing IoTDB-authored file and check that the disclaimer is present. ATR checks the header wording separately from Maven RAT. [ATR license checks](https://releases.apache.org/docs/license-checks#lightweight-license-check)
 - **Spotless** with Google Java Format (GOOGLE style). Import order: `org.apache.iotdb`, blank, `javax`, `java`, static.
 - **Checkstyle** is also configured (see `checkstyle.xml` at project root).
 - Java source/target level is 17 (compiled with `maven.compiler.release=17` on JDK 17+).
@@ -80,12 +150,10 @@ Keep IT-specific rules and commands in that module-level file.
 
 ### Edge Distribution
 
-- `EdgeNode` (`iotdb-core/confignode/src/main/java/org/apache/iotdb/edge/EdgeNode.java`) starts the ConfigNode and DataNode in one JVM for resource-constrained single-node deployments.
-- `distribution/src/assembly/edge.xml` produces the additional `apache-iotdb-<version>-edge-bin.zip` artifact. Keep its `edge-bin` assembly id unique so it cannot replace an existing attached artifact.
-- Edge-specific system defaults live under `iotdb-core/node-commons/src/assembly/resources/conf/edge/`. Standard node, all-in-one, and integration-test assemblies must continue to exclude `edge/**`.
-- Edge launchers must reuse the configuration-aware port checks in `scripts/conf/iotdb-common.sh`. Stop scripts must match both the `EdgeNode` main class and the exact `IOTDB_HOME`; never fall back to a global process-name kill.
-- Package node-independent tools that work with the combined process. Exclude scripts that require standalone node launchers or environment files, including destructive, daemon-management, and health-check scripts.
-- After packaging changes, run a clean distribution build, check that every existing distribution artifact is still produced, and inspect the Edge zip contents and startup/shutdown behavior.
+`EdgeNode` (`iotdb-core/confignode/src/main/java/org/apache/iotdb/edge/EdgeNode.java`) starts the
+ConfigNode and DataNode in one JVM for resource-constrained single-node deployments. Its package
+layout and operational requirements are maintained in the distribution and scripts instructions
+listed above.
 
 ### Dual Data Model
 
@@ -144,9 +212,9 @@ Generated source directories that need to be on the source path:
 
 ### Build
 
-- **Missing Thrift compiler**: The local machine may not have the `thrift` binary installed. Running `mvn clean package -pl <module> -am -DskipTests` will fail at the `iotdb-thrift` module. **Workaround**: To verify your changes compile, use `mvn compile -pl <module>` (without `-am` or `clean`) to leverage existing target caches.
+- **Thrift code generation needs no local `thrift` binary**: the root `pom.xml` carries a self-activating `.thrift-generation` profile. It turns on for any module containing `src/main/thrift`, unpacks `org.apache.iotdb.tools:iotdb-tools-thrift` (version `${iotdb-tools-thrift.version}` in the root pom, currently `0.25.0.0`) with the classifier of the current OS (`mac-aarch64`, `mac-x86_64`, `linux-x86_64`, `linux-aarch64`, `windows-x86_64`, `windows-aarch64`) into that module's `target/thrift/`, and runs `thrift-maven-plugin` against it. So `mvn clean package -pl <module> -am -DskipTests` succeeds on a machine with no `thrift` on `PATH`, and no compile workaround is needed. The zip is downloaded once and cached in the local Maven repository, so the first build on a machine (and any offline `-o` build) still requires that download to have happened; a platform without a published classifier cannot generate sources at all.
 - **Pre-existing compilation errors in unrelated modules**: The datanode module may have pre-existing compile errors in other subsystems (e.g., pipe, copyto) that cause `mvn clean test -pl iotdb-core/datanode -Dtest=XxxTest` to fail during compilation. **Workaround**: First run `mvn compile -pl iotdb-core/datanode` to confirm your changed files compile successfully. If the errors are in files you did not modify, they are pre-existing and do not affect your changes.
-- **Single-module / no-`clean` compiles hide cross-module and i18n errors**: `mvn compile -pl <module>` (the thrift workaround above) builds only that module against the **installed** jars in `~/.m2` and the existing `target/` classes; an incremental `mvn test-compile` without `clean` reuses stale `target/*.class`. If you add/rename a `*Messages` constant (or any cross-module API) in module B but `~/.m2`/`target/` still holds B's old artifact, module A referencing the new symbol compiles fine against the stale class — the real `cannot find symbol` only surfaces in CI or a clean build. **Workaround**: for i18n / cross-module edits, verify with a full-reactor compile (no `-pl`, no `clean`): `mvn test-compile -DskipTests` and `mvn test-compile -DskipTests -P with-zh-locale`. Capture the maven exit code directly (`mvn ... ; echo $?`), not via `mvn ... && echo OK` — `set -e` does NOT fail on a command inside a `&&` list, so a `&&` chain can print a false success.
+- **Single-module / no-`clean` compiles hide cross-module and i18n errors**: `mvn compile -pl <module>` (no `-am`) builds only that module against the **installed** jars in `~/.m2` and the existing `target/` classes; an incremental `mvn test-compile` without `clean` reuses stale `target/*.class`. If you add/rename a `*Messages` constant (or any cross-module API) in module B but `~/.m2`/`target/` still holds B's old artifact, module A referencing the new symbol compiles fine against the stale class — the real `cannot find symbol` only surfaces in CI or a clean build. **Workaround**: for i18n / cross-module edits, verify with a full-reactor compile (no `-pl`, no `clean`): `mvn test-compile -DskipTests` and `mvn test-compile -DskipTests -P with-zh-locale`. Capture the maven exit code directly (`mvn ... ; echo $?`), not via `mvn ... && echo OK` — `set -e` does NOT fail on a command inside a `&&` list, so a `&&` chain can print a false success.
 
 ### i18n (Chinese Messages)
 
@@ -164,7 +232,6 @@ The project uses compile-time i18n via the `build-helper-maven-plugin`. The prop
 ### Code Style
 
 - **Always run `mvn spotless:apply` after editing Java files**: Spotless runs `spotless:check` automatically during the `compile` phase. Format violations cause an immediate BUILD FAILURE. Make it a habit to run `mvn spotless:apply -pl <module>` right after editing, not at the end.
-- **Always run `black` and `isort` after editing Python files under `iotdb-core/ainode/`**: The AINode Code Style Check CI runs `black --check .` and `isort --check-only --profile black .` on that directory. Run `cd iotdb-core/ainode && black . && isort --profile black .` before committing. Requires `pip install black==25.1.0 isort==6.0.1`.
 - **Gson version compatibility**: `JsonObject.isEmpty()` / `JsonArray.isEmpty()` may not be available in the Gson version used by this project. Use `size() > 0` instead and add a comment explaining why.
 
 ## Git Commit

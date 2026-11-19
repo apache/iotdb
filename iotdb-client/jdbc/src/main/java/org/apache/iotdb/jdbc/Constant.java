@@ -30,21 +30,28 @@ public class Constant {
   public static final String TREE_DIALECT = "tree";
 
   public static final String METHOD_NOT_SUPPORTED = JdbcMessages.METHOD_NOT_SUPPORTED;
-  static final String PARAMETER_NOT_NULL = "The parameter cannot be null";
+  static final String PARAMETER_NOT_NULL =
+      JdbcMessages.EXCEPTION_THE_PARAMETER_CANNOT_BE_NULL_6CD5B7DE;
   static final String PARAMETER_SUPPORTED =
-      "Parameter only supports BOOLEAN,INT32,INT64,FLOAT,DOUBLE,TEXT data type";
+      JdbcMessages
+          .EXCEPTION_PARAMETER_ONLY_SUPPORTS_BOOLEAN_INT32_INT64_FLOAT_DOUBLE_TEXT_DATA_TYPE_58CD5656;
 
-  public static final String STATISTICS_PATHNUM = "* Num of series paths: %d";
-  public static final String STATISTICS_SEQFILENUM = "* Num of sequence files read: %d";
-  public static final String STATISTICS_UNSEQFILENUM = "* Num of unsequence files read: %d";
+  public static final String STATISTICS_PATHNUM =
+      JdbcMessages.EXCEPTION_NUM_OF_SERIES_PATHS_ARG_5AAACC65;
+  public static final String STATISTICS_SEQFILENUM =
+      JdbcMessages.EXCEPTION_NUM_OF_SEQUENCE_FILES_READ_ARG_002C1609;
+  public static final String STATISTICS_UNSEQFILENUM =
+      JdbcMessages.EXCEPTION_NUM_OF_UNSEQUENCE_FILES_READ_ARG_686A2478;
   public static final String STATISTICS_SEQCHUNKINFO =
-      "* Num of sequence chunks: %d, avg points: %.1f";
+      JdbcMessages.EXCEPTION_NUM_OF_SEQUENCE_CHUNKS_ARG_AVG_POINTS_ARG_B119F7E6;
   public static final String STATISTICS_UNSEQCHUNKINFO =
-      "* Num of unsequence chunks: %d, avg points: %.1f";
+      JdbcMessages.EXCEPTION_NUM_OF_UNSEQUENCE_CHUNKS_ARG_AVG_POINTS_ARG_723DCD8F;
   public static final String STATISTICS_PAGEINFO =
-      "* Num of Pages: %d, overlapped pages: %d (%.1f%%)";
-  public static final String STATISTICS_RESULT_LINES = "* Lines of result: %d";
-  public static final String STATISTICS_PRC_INFO = "* Num of RPC: %d, avg cost: %d ms";
+      JdbcMessages.EXCEPTION_NUM_OF_PAGES_ARG_OVERLAPPED_PAGES_ARG_ARG_ARG_9F985997;
+  public static final String STATISTICS_RESULT_LINES =
+      JdbcMessages.EXCEPTION_LINES_OF_RESULT_ARG_26F474C0;
+  public static final String STATISTICS_PRC_INFO =
+      JdbcMessages.EXCEPTION_NUM_OF_RPC_ARG_AVG_COST_ARG_MS_435D62C7;
 
   public static final String TREE = "tree";
   public static final String TABLE = "table";

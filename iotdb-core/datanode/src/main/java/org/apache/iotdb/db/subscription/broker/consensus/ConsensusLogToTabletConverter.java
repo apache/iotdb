@@ -592,8 +592,8 @@ public class ConsensusLogToTabletConverter {
         || Objects.isNull(dataTypes)
         || Objects.isNull(node.getColumns())) {
       LOGGER.warn(
-          "Malformed RelationalInsertTabletNode with null measurements/dataTypes/columns, "
-              + "skipping conversion");
+          DataNodePipeMessages
+              .LOG_MALFORMED_RELATIONALINSERTTABLETNODE_WITH_NULL_MEASUREMENTS_DATATYPES_COLUMNS_SKIPPING_CONVERSION_646E3BEB);
       return Collections.emptyList();
     }
     final Object[] columns = node.getColumns();
@@ -607,8 +607,8 @@ public class ConsensusLogToTabletConverter {
     for (int i = 0; i < measurements.length; i++) {
       if (!isValidColumn(measurements, dataTypes, columns, i, false)) {
         LOGGER.warn(
-            "Skipping malformed RelationalInsertTabletNode column at index {} "
-                + "(measurements={}, dataTypes={}, columns={})",
+            DataNodePipeMessages
+                .LOG_SKIPPING_MALFORMED_RELATIONALINSERTTABLETNODE_COLUMN_AT_INDEX_ARG_MEASUREMENTS_ARG_DATATYPES_ARG_COLUMNS_ARG_ADB81EAD,
             i,
             measurements.length,
             dataTypes.length,

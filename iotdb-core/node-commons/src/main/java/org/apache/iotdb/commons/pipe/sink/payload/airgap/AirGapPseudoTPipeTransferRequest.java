@@ -21,4 +21,17 @@ package org.apache.iotdb.commons.pipe.sink.payload.airgap;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-public class AirGapPseudoTPipeTransferRequest extends TPipeTransferReq {}
+public class AirGapPseudoTPipeTransferRequest extends TPipeTransferReq {
+
+  private boolean strictUnidirectional;
+
+  public boolean isStrictUnidirectional() {
+    return strictUnidirectional;
+  }
+
+  public AirGapPseudoTPipeTransferRequest setStrictUnidirectional(
+      final boolean strictUnidirectional) {
+    this.strictUnidirectional = strictUnidirectional;
+    return this;
+  }
+}

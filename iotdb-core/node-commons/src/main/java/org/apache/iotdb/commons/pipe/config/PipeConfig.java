@@ -379,6 +379,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAirGapReceiverMaxPayloadSizeInBytes();
   }
 
+  public int getPipeAirGapReceiverUdpSocketBufferSizeInBytes() {
+    return COMMON_CONFIG.getPipeAirGapReceiverUdpSocketBufferSizeInBytes();
+  }
+
   public boolean isPipeReceiverLoadConversionEnabled() {
     return COMMON_CONFIG.isPipeReceiverLoadConversionEnabled();
   }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
@@ -35,15 +36,20 @@ public class PipeProcessorSubtaskWorkerManager {
 
   private final PipeProcessorSubtaskWorker[] workers;
 
+  private final ListeningExecutorService workerThreadPoolExecutor;
+
   private final AtomicLong scheduledTaskNumber;
 
   public PipeProcessorSubtaskWorkerManager(
       final ListeningExecutorService workerThreadPoolExecutor,
       final ListeningScheduledExecutorService watcherScheduledExecutor) {
+    this.workerThreadPoolExecutor = workerThreadPoolExecutor;
+
+    // Workers are created eagerly but started only when they are assigned a subtask. A worker
+    // releases its thread when all its subtasks are unregistered.
     workers = new PipeProcessorSubtaskWorker[MAX_THREAD_NUM];
     for (int i = 0; i < MAX_THREAD_NUM; i++) {
-      workers[i] = new PipeProcessorSubtaskWorker();
-      workerThreadPoolExecutor.submit(workers[i]);
+      workers[i] = new PipeProcessorSubtaskWorker(workerThreadPoolExecutor);
     }
 
     scheduledTaskNumber = new AtomicLong(0);
@@ -51,9 +57,24 @@ public class PipeProcessorSubtaskWorkerManager {
         watcherScheduledExecutor, this::watchLongRunningEvents, 1, 1, TimeUnit.MINUTES);
   }
 
-  public void schedule(PipeProcessorSubtask pipeProcessorSubtask) {
+  public void schedule(final PipeProcessorSubtask pipeProcessorSubtask) {
     workers[(int) (scheduledTaskNumber.getAndIncrement() % MAX_THREAD_NUM)].schedule(
         pipeProcessorSubtask);
+  }
+
+  /** Returns whether the worker thread pool has been shut down. */
+  public boolean isShutdown() {
+    return workerThreadPoolExecutor.isShutdown();
+  }
+
+  @VisibleForTesting
+  PipeProcessorSubtaskWorker getWorker(final int index) {
+    return workers[index];
+  }
+
+  @VisibleForTesting
+  int getWorkerNumber() {
+    return MAX_THREAD_NUM;
   }
 
   private void watchLongRunningEvents() {

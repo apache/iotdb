@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
+import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
@@ -34,12 +36,65 @@ import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY;
 
 public class PipeTransferBatchReqBuilderTest {
+
+  @Test
+  public void testBatchesDoNotUseLeaderFromAnotherReceiver() throws Exception {
+    final TEndPoint firstReceiver = new TEndPoint("127.0.0.1", 14667);
+    final TEndPoint secondReceiver = new TEndPoint("127.0.0.1", 15667);
+    final TEndPoint firstLeader = new TEndPoint("127.0.0.1", 14668);
+    final TEndPoint secondLeader = new TEndPoint("127.0.0.1", 15668);
+    final IoTDBDataNodeAsyncClientManager firstManager = createClientManager(firstReceiver);
+    final IoTDBDataNodeAsyncClientManager secondManager = createClientManager(secondReceiver);
+    final PipeParameters parameters =
+        new PipeParameters(Collections.singletonMap(CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY, "0"));
+    final String deviceId = "root.test.device";
+
+    try (final PipeTransferBatchReqBuilder firstBuilder =
+            new PipeTransferBatchReqBuilder(parameters, firstManager::getLeaderEndPoint);
+        final PipeTransferBatchReqBuilder secondBuilder =
+            new PipeTransferBatchReqBuilder(parameters, secondManager::getLeaderEndPoint)) {
+      firstManager.updateLeaderCache(deviceId, firstLeader);
+      firstBuilder.onEvent(createEvent(1));
+      secondBuilder.onEvent(createEvent(2));
+      Assert.assertEquals(
+          firstLeader, firstBuilder.getAllNonEmptyAndShouldEmitBatches().get(0).getLeft());
+      Assert.assertNull(secondBuilder.getAllNonEmptyAndShouldEmitBatches().get(0).getLeft());
+
+      secondManager.updateLeaderCache(deviceId, secondLeader);
+      secondBuilder.onEvent(createEvent(3));
+      final List<Pair<TEndPoint, PipeTabletEventBatch>> secondBatches =
+          secondBuilder.getAllNonEmptyAndShouldEmitBatches();
+      Assert.assertEquals(2, secondBatches.size());
+      Assert.assertNull(secondBatches.get(0).getLeft());
+      Assert.assertEquals(secondLeader, secondBatches.get(1).getLeft());
+      Assert.assertEquals(firstLeader, firstManager.getLeaderEndPoint(deviceId));
+    } finally {
+      firstManager.close();
+      secondManager.close();
+    }
+  }
+
+  private static IoTDBDataNodeAsyncClientManager createClientManager(final TEndPoint receiver) {
+    return new IoTDBDataNodeAsyncClientManager(
+        new ArrayList<>(Collections.singletonList(receiver)),
+        true,
+        "round-robin",
+        new UserEntity(1L, "user", "cli-host"),
+        "password",
+        true,
+        "sync",
+        true,
+        true,
+        false,
+        true);
+  }
 
   @Test
   public void testDetachedBatchCannotClearSubsequentEvent() throws Exception {

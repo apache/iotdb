@@ -213,8 +213,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
       if (i == insertRowNodeList.size() - 1) {
         analysis.setRedirectNodeList(
-            Collections.singletonList(
-                dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint()));
+            Collections.singletonList(dataRegionReplicaSet.getDataNodeLocations().get(0)));
       }
     }
 

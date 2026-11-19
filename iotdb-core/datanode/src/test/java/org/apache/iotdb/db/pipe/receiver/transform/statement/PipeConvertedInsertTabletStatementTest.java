@@ -113,6 +113,38 @@ public class PipeConvertedInsertTabletStatementTest {
     Assert.assertArrayEquals(new double[] {1.0, 2.0}, (double[]) tablet.getValues()[0], 0.0);
   }
 
+  @Test
+  public void testLoadCompatibleTypeUsesInsertTabletCasting() throws Exception {
+    final InsertTabletStatement source = new InsertTabletStatement();
+    source.setDevicePath(new PartialPath("root.sg.d1"));
+    source.setMeasurements(new String[] {"s1"});
+    source.setDataTypes(new TSDataType[] {TSDataType.INT32});
+    source.setMeasurementSchemas(
+        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT64)});
+    source.setTimes(new long[] {1L, 2L});
+    source.setColumns(new Object[] {new int[] {Integer.MIN_VALUE, Integer.MAX_VALUE}});
+    source.setRowCount(2);
+
+    final InsertTabletStatement ordinaryInsert = new InsertTabletStatement();
+    ordinaryInsert.setDevicePath(new PartialPath("root.sg.d1"));
+    ordinaryInsert.setMeasurements(new String[] {"s1"});
+    ordinaryInsert.setDataTypes(new TSDataType[] {TSDataType.INT32});
+    ordinaryInsert.setMeasurementSchemas(
+        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT64)});
+    ordinaryInsert.setTimes(new long[] {1L, 2L});
+    ordinaryInsert.setColumns(new Object[] {new int[] {Integer.MIN_VALUE, Integer.MAX_VALUE}});
+    ordinaryInsert.setRowCount(2);
+    ordinaryInsert.selfCheckDataTypes(0);
+
+    final LoadConvertedInsertTabletStatement loadInsert =
+        new LoadConvertedInsertTabletStatement(source, true);
+    loadInsert.selfCheckDataTypes(0);
+
+    Assert.assertEquals(TSDataType.INT64, loadInsert.getDataTypes()[0]);
+    Assert.assertArrayEquals(
+        (long[]) ordinaryInsert.getColumns()[0], (long[]) loadInsert.getColumns()[0]);
+  }
+
   private static InsertTabletStatement createPartiallyFailedStatementWithMissingColumn()
       throws Exception {
     final InsertTabletStatement source = new InsertTabletStatement();

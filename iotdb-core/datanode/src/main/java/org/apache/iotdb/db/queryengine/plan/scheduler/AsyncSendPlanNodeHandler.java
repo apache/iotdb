@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.UserDataTransferErrorCode;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.audit.DataNodeUserDataTransferAuditor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -99,7 +100,10 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchP
       needRetryInstanceIndex.addAll(instanceIds);
     }
     TSendSinglePlanNodeResp resp = new TSendSinglePlanNodeResp();
-    String errorMsg = String.format("Fail to send plan node, exception message: %s", e);
+    String errorMsg =
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_FAIL_TO_SEND_PLAN_NODE_EXCEPTION_MESSAGE_ARG_011028F9,
+            e);
     resp.setAccepted(false);
     resp.setMessage(errorMsg);
     resp.setStatus(

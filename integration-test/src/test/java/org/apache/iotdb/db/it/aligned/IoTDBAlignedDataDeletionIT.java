@@ -26,8 +26,10 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -46,9 +48,14 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAlignedDataDeletionIT {
 
+  // Missing paths make DELETE TIMESERIES fail, so cleanup tracks which non-fixture paths each test
+  // creates.
+  private boolean nestedDatabaseCreated;
+  private boolean lnSeriesCreated;
+  private boolean lzSeriesCreated;
+
   private static String[] creationSqls =
       new String[] {
-        "CREATE DATABASE root.vehicle",
         "CREATE ALIGNED TIMESERIES root.vehicle.d0(s0 INT32 ENCODING=RLE, s1 INT64 ENCODING=RLE, s2 FLOAT ENCODING=RLE, s3 TEXT ENCODING=PLAIN, s4 BOOLEAN ENCODING=PLAIN)",
       };
 
@@ -57,8 +64,9 @@ public class IoTDBAlignedDataDeletionIT {
           + ") ALIGNED VALUES(%d,%d,%d,%f,%s,%b)";
   private String deleteAllTemplate = "DELETE FROM root.vehicle.d0.* WHERE time <= 10000";
 
-  @Before
-  public void setUp() throws Exception {
+  // Reuse the shared test cluster; recreate the per-method schema and remove each method's paths.
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
     EnvFactory.getEnv()
         .getConfig()
@@ -67,11 +75,39 @@ public class IoTDBAlignedDataDeletionIT {
         // Adjust memstable threshold size to make it flush automatically
         .setMemtableSizeThreshold(10000);
     EnvFactory.getEnv().initClusterEnvironment();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.vehicle");
+    }
+  }
+
+  @Before
+  public void setUp() {
+    nestedDatabaseCreated = false;
+    lnSeriesCreated = false;
+    lzSeriesCreated = false;
     prepareSeries();
   }
 
   @After
   public void tearDown() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      if (nestedDatabaseCreated) {
+        statement.execute("DROP DATABASE root.ln.wf01.wt01");
+      }
+      statement.execute("DELETE TIMESERIES root.vehicle.**");
+      if (lnSeriesCreated) {
+        statement.execute("DELETE TIMESERIES root.ln.d1.**");
+      }
+      if (lzSeriesCreated) {
+        statement.execute("DELETE TIMESERIES root.lz.dev.GPS.**");
+      }
+    }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -80,6 +116,7 @@ public class IoTDBAlignedDataDeletionIT {
    *
    * @throws SQLException
    */
+  // Reject value-filter predicates for three data types and preserve the matching rows.
   @Test
   public void testUnsupportedValueFilter() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -141,6 +178,8 @@ public class IoTDBAlignedDataDeletionIT {
     }
   }
 
+  // Delete inclusive and overlapping time ranges across aligned columns; verify 250, 100, and 50
+  // rows remain.
   @Test
   public void test() throws SQLException {
     prepareData();
@@ -180,11 +219,13 @@ public class IoTDBAlignedDataDeletionIT {
     cleanData();
   }
 
+  // Delete through NOW before and after flush; the query must return no remaining rows.
   @Test
   public void testDelAfterFlush() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.ln.wf01.wt01");
+      nestedDatabaseCreated = true;
       statement.execute(
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN," + " ENCODING=PLAIN");
       statement.execute(
@@ -201,6 +242,8 @@ public class IoTDBAlignedDataDeletionIT {
     }
   }
 
+  // Combine single-column and aligned-range deletes with overlapping bounds; verify each resulting
+  // row count.
   @Test
   public void testRangeDelete() throws SQLException {
     prepareData();
@@ -237,6 +280,7 @@ public class IoTDBAlignedDataDeletionIT {
     cleanData();
   }
 
+  // Delete an entire extended column from sparse aligned rows without returning an error.
   @Test
   public void testDeleteAfterColumnExtended() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -254,6 +298,7 @@ public class IoTDBAlignedDataDeletionIT {
     }
   }
 
+  // Delete all values from one aligned column without a time predicate; its query must be empty.
   @Test
   public void testFullDeleteWithoutWhereClause() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -270,6 +315,8 @@ public class IoTDBAlignedDataDeletionIT {
     }
   }
 
+  // Delete through partial measurement and device paths; verify the remaining counts are 250 and
+  // 150.
   @Test
   public void testPartialPathRangeDelete() throws SQLException {
     prepareData();
@@ -297,6 +344,8 @@ public class IoTDBAlignedDataDeletionIT {
     cleanData();
   }
 
+  // Insert 10,000 aligned rows and delete (1500,9000]; 2,500 values must remain in the target
+  // column.
   @Test
   public void testDelFlushingMemtable() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -319,6 +368,8 @@ public class IoTDBAlignedDataDeletionIT {
     }
   }
 
+  // Delete several ranges across two batches and a flush; 1,100 values must remain in the target
+  // column.
   @Test
   public void testDelMultipleFlushingMemtable() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -351,12 +402,15 @@ public class IoTDBAlignedDataDeletionIT {
     }
   }
 
+  // Delete a quoted measurement containing a comma by range and then fully; counts must go from two
+  // to zero.
   @Test
   public void testDelSeriesWithSpecialSymbol() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "CREATE TIMESERIES root.ln.d1.`status,01` WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      lnSeriesCreated = true;
       statement.execute("INSERT INTO root.ln.d1(timestamp,`status,01`) VALUES(300, true)");
       statement.execute("INSERT INTO root.ln.d1(timestamp,`status,01`) VALUES(500, false)");
 
@@ -390,12 +444,15 @@ public class IoTDBAlignedDataDeletionIT {
     }
   }
 
+  // Insert partial aligned rows at a duplicate timestamp, then delete latitude; both timestamps
+  // must remain.
   @Test
   public void testInsertDuplicatedTimeThenDel() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)");
+      lzSeriesCreated = true;
       statement.execute(
           "insert into root.lz.dev.GPS(time, latitude, longitude) aligned values(9,3.2,9.8)");
       statement.execute("insert into root.lz.dev.GPS(time, latitude) aligned values(11,4.5)");
@@ -421,12 +478,15 @@ public class IoTDBAlignedDataDeletionIT {
     }
   }
 
+  // Delete every series under root.lz after aligned inserts; the subsequent query must return no
+  // rows.
   @Test
   public void testDeleteAll() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)");
+      lzSeriesCreated = true;
       statement.execute(
           "insert into root.lz.dev.GPS(time, latitude, longitude) aligned values(9,3.2,9.8)");
       statement.execute("insert into root.lz.dev.GPS(time, latitude) aligned values(11,4.5)");

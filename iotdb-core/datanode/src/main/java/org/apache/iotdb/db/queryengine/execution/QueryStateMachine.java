@@ -172,13 +172,14 @@ public class QueryStateMachine {
     if (throwable != null) {
       return throwable.getMessage();
     }
-    return "no detailed failure reason in QueryStateMachine";
+    return DataNodeQueryMessages.EXCEPTION_NO_DETAILED_FAILURE_REASON_IN_QUERYSTATEMACHINE_6CE1C60A;
   }
 
   public Throwable getFailureException() {
     Throwable throwable = failureException.get();
     if (throwable == null) {
-      return new IoTDBException(getFailureStatus());
+      TSStatus status = getFailureStatus();
+      return status == null ? null : new IoTDBException(status);
     } else {
       return throwable;
     }

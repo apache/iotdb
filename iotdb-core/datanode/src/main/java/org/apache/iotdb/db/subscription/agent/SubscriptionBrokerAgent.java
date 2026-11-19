@@ -153,7 +153,10 @@ public class SubscriptionBrokerAgent {
 
     if (allEvents.isEmpty() && brokers.isEmpty()) {
       final String errorMessage =
-          String.format("Subscription: no broker bound to consumer group [%s]", consumerGroupId);
+          String.format(
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_NO_BROKER_BOUND_TO_CONSUMER_GROUP_ARG_7198D84A,
+              consumerGroupId);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
@@ -171,7 +174,8 @@ public class SubscriptionBrokerAgent {
     if (Objects.isNull(pipeBroker)) {
       final String errorMessage =
           String.format(
-              "Subscription: pipe broker bound to consumer group [%s] does not exist",
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_PIPE_BROKER_BOUND_TO_CONSUMER_GROUP_ARG_DOES_NOT_EXIST_AC4D1730,
               consumerGroupId);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
@@ -204,7 +208,10 @@ public class SubscriptionBrokerAgent {
     final List<ISubscriptionBroker> brokers = getBrokers(consumerGroupId);
     if (brokers.isEmpty()) {
       final String errorMessage =
-          String.format("Subscription: no broker bound to consumer group [%s]", consumerGroupId);
+          String.format(
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_NO_BROKER_BOUND_TO_CONSUMER_GROUP_ARG_7198D84A,
+              consumerGroupId);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
@@ -343,9 +350,11 @@ public class SubscriptionBrokerAgent {
         && seekType != SubscriptionSeekReq.SEEK_TO_END) {
       final String errorMessage =
           String.format(
-              "Subscription: consensus seek only supports beginning/end or topic progress, "
-                  + "consumerGroup=%s, topic=%s, seekType=%s",
-              consumerGroupId, topicName, seekType);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_CONSENSUS_SEEK_ONLY_SUPPORTS_BEGINNING_END_OR_TOPIC_PROGRESS_CONSUMERGROUP_ARG_TOPIC_ARG_SEEKTYPE_ARG_68165CFF,
+              consumerGroupId,
+              topicName,
+              seekType);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
@@ -389,9 +398,11 @@ public class SubscriptionBrokerAgent {
         topicName, SubscriptionAgent.consumer().isTableModel(consumerGroupId))) {
       final String errorMessage =
           String.format(
-              "Subscription: %s is only supported for consensus-based subscriptions, "
-                  + "consumerGroup=%s, topic=%s",
-              operation, consumerGroupId, topicName);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_ARG_IS_ONLY_SUPPORTED_FOR_CONSENSUS_BASED_SUBSCRIPTIONS_CONSUMERGROUP_ARG_TOPIC_ARG_5E577844,
+              operation,
+              consumerGroupId,
+              topicName);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
@@ -425,9 +436,11 @@ public class SubscriptionBrokerAgent {
         || SubscriptionAgent.runtime().isShutdown()) {
       final String errorMessage =
           String.format(
-              "Subscription: consensus %s is unavailable because subscription runtime is stopped, "
-                  + "consumerGroup=%s, topic=%s",
-              operation, consumerGroupId, topicName);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_CONSENSUS_ARG_IS_UNAVAILABLE_BECAUSE_SUBSCRIPTION_RUNTIME_IS_STOPPED_CONSUMERGROUP_ARG_TOPIC_ARG_904E899B,
+              operation,
+              consumerGroupId,
+              topicName);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
@@ -962,6 +975,33 @@ public class SubscriptionBrokerAgent {
     prefetchingQueueCount.invalidate();
   }
 
+  public Map<String, Set<String>> getConsensusQueueRegionIds(
+      final String consumerGroupId, final Set<String> topicNames) {
+    final Map<String, Set<String>> regionIdsByTopic = new LinkedHashMap<>();
+    final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);
+    if (Objects.nonNull(broker)) {
+      for (final String topicName : topicNames) {
+        regionIdsByTopic.put(topicName, broker.getQueueRegionIds(topicName));
+      }
+    }
+    return regionIdsByTopic;
+  }
+
+  public boolean hasConsensusQueueForRegion(
+      final String consumerGroupId, final String topicName, final String regionId) {
+    final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);
+    return Objects.nonNull(broker) && broker.hasQueueForRegion(topicName, regionId);
+  }
+
+  public void rollbackConsensusPrefetchingQueues(
+      final String consumerGroupId, final String topicName, final Set<String> existingRegionIds) {
+    final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);
+    if (Objects.nonNull(broker)) {
+      broker.rollbackConsensusPrefetchingQueues(topicName, existingRegionIds);
+      prefetchingQueueCount.invalidate();
+    }
+  }
+
   public void unbindByRegion(final ConsensusGroupId regionId) {
     int totalClosed = 0;
     for (final ConsensusSubscriptionBroker broker : getBrokers(ConsensusSubscriptionBroker.class)) {
@@ -1059,6 +1099,14 @@ public class SubscriptionBrokerAgent {
     }
     broker.removeQueue(topicName);
     prefetchingQueueCount.invalidate();
+  }
+
+  public void resetAndRequeuePipeInFlightEvents(
+      final String consumerGroupId, final String topicName) {
+    final SubscriptionBroker broker = getPipeBroker(consumerGroupId);
+    if (Objects.nonNull(broker)) {
+      broker.resetAndRequeueInFlightEvents(topicName);
+    }
   }
 
   public boolean executePrefetch(final String consumerGroupId, final String topicName) {

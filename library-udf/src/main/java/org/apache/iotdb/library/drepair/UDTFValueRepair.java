@@ -50,11 +50,12 @@ public class UDTFValueRepair implements UDTF {
         .validateInputSeriesDataType(0, Type.FLOAT, Type.DOUBLE, Type.INT32, Type.INT64)
         .validate(
             x -> (double) x > 0,
-            "Parameter $sigma$ should be larger than 0.",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_SIGMA_SHOULD_BE_LARGER_THAN_0_48732F14,
             validator.getParameters().getDoubleOrDefault("sigma", 1.0))
         .validate(
             params -> (double) params[0] < (double) params[1],
-            "parameter $minSpeed$ should be smaller than $maxSpeed$.",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_MINSPEED_SHOULD_BE_SMALLER_THAN_MAXSPEED_31BD6787,
             validator.getParameters().getDoubleOrDefault("minSpeed", -1),
             validator.getParameters().getDoubleOrDefault("maxSpeed", 1));
   }

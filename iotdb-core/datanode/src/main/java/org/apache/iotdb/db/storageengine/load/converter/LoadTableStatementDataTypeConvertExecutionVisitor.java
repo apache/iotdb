@@ -69,7 +69,8 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
     if (Objects.isNull(databaseName)) {
       final String errorMsg =
           String.format(
-              "Database name is unexpectedly null for LoadTsFileStatement: %s. Skip data type conversion.",
+              StorageEngineMessages
+                  .MESSAGE_DATABASE_NAME_IS_UNEXPECTEDLY_NULL_FOR_LOADTSFILESTATEMENT_ARG_SKIP_DATA_TYPE_CONVERSION_8D13DC68,
               loadTsFileStatement);
       LOGGER.warn(errorMsg);
       return Optional.of(

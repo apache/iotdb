@@ -613,10 +613,13 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
                     || "stendis".equals(type)
                     || "cos".equals(type)
                     || "prenextdis".equals(type),
-            "Illegal outlier method. Outlier type should be avg, stendis, cos or prenextdis.",
+            CommonMessages
+                .EXCEPTION_ILLEGAL_OUTLIER_METHOD_OUTLIER_TYPE_SHOULD_AVG_STENDIS_COS_PRENEXTDIS_91D1C70A,
             type)
         .validate(
-            number -> (int) number > 0, "Illegal number. Number should be greater than 0.", number);
+            number -> (int) number > 0,
+            CommonMessages.EXCEPTION_ILLEGAL_NUMBER_NUMBER_SHOULD_BE_GREATER_THAN_0_17FCD676,
+            number);
   }
 
   @Override

@@ -47,8 +47,10 @@ import java.util.Objects;
 public class IoTDBJDBCDataSet {
 
   public static final String TIMESTAMP_STR = "Time";
-  public static final String VALUE_IS_NULL = "The value got by %s (column name) is NULL.";
-  public static final String DATA_TYPE_NOT_SUPPORTED = "Data type %s is not supported.";
+  public static final String VALUE_IS_NULL =
+      RpcMessages.EXCEPTION_THE_VALUE_GOT_BY_ARG_COLUMN_NAME_IS_NULL_65408BDE;
+  public static final String DATA_TYPE_NOT_SUPPORTED =
+      RpcMessages.EXCEPTION_DATA_TYPE_ARG_IS_NOT_SUPPORTED_31213160;
   public static final int START_INDEX = 2;
   public String sql;
   public boolean isClosed = false;

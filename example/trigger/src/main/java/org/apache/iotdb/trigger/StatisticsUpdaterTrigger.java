@@ -45,7 +45,7 @@ public class StatisticsUpdaterTrigger implements Trigger {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsUpdaterTrigger.class);
 
-  private static final String TARGET_DEVICE = "root.__system.statistics";
+  private static final String TARGET_DEVICE = "root.statistics";
 
   private static final String TARGET_SERIES = "total_count";
   private String ip;

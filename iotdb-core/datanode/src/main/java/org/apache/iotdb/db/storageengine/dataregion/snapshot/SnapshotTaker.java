@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
@@ -226,6 +227,16 @@ public class SnapshotTaker {
 
   private boolean createSnapshot(List<TsFileResource> resources, String snapshotId) {
     try {
+      // Closing empty files can delete resources after readLockTheFile() captured them.
+      // Remove them from subsequent snapshot processing and balance their captured read locks.
+      resources.removeIf(
+          resource -> {
+            if (resource.isDeleted()) {
+              resource.readUnlock();
+              return true;
+            }
+            return false;
+          });
       for (TsFileResource resource : resources) {
         if (!resource.isClosed()) {
           LOGGER.error(StorageEngineMessages.CANNOT_SNAPSHOT_UNCLOSED_TSFILE, resource);
@@ -265,7 +276,11 @@ public class SnapshotTaker {
       }
       return true;
     } catch (IOException e) {
-      LOGGER.error(StorageEngineMessages.CATCH_IO_EXCEPTION_CREATING_SNAPSHOT, e);
+      LOGGER.error(
+          StorageEngineMessages.LOG_FAILED_TO_CREATE_SNAPSHOT_FOR_DATABASE_ARG_REGION_ARG_1A7C8DEA,
+          dataRegion.getDatabaseName(),
+          dataRegion.getDataRegionIdString(),
+          e);
       return false;
     }
   }
@@ -275,10 +290,10 @@ public class SnapshotTaker {
       LOGGER.error(StorageEngineMessages.HARD_LINK_TARGET_DIR_NOT_EXIST, target.getParentFile());
     }
     if (!checkHardLinkSourceFile(source, 10)) {
-      return;
+      throw new FileNotFoundException(source.getAbsolutePath());
     }
     Files.deleteIfExists(target.toPath());
-    Files.createLink(target.toPath(), source.toPath());
+    SnapshotFileUtils.createLinkOrCopy(target.toPath(), source.toPath());
     snapshotLogger.logFile(source);
   }
 

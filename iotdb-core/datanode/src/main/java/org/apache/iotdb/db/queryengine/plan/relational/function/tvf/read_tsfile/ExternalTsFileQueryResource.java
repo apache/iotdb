@@ -111,12 +111,14 @@ public class ExternalTsFileQueryResource {
       List<String> tsFilePaths,
       Map<Symbol, ColumnSchema> tableColumnSchema,
       long deviceMetadataInfoSwapThreshold) {
-    this.queryContext = requireNonNull(queryContext, "queryContext is null");
+    this.queryContext =
+        requireNonNull(queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_IS_NULL_761DB539);
     this.queryId = queryContext.getQueryId();
     this.externalTsFileResourceMemoryReservationManager =
         new NotThreadSafeMemoryReservationManager(
             queryId, ExternalTsFileQueryResource.class.getName());
-    this.queryTempRoot = requireNonNull(tempRoot, "tempRoot is null");
+    this.queryTempRoot =
+        requireNonNull(tempRoot, DataNodeQueryMessages.EXCEPTION_TEMPROOT_IS_NULL_2A2A7F06);
     this.tableName = tableName;
     this.tsFilePaths = requireNonNull(tsFilePaths, "tsFilePaths");
     this.tableColumnSchema = tableColumnSchema;

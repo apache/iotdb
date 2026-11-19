@@ -39,6 +39,7 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.dual.PipeTestUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -71,8 +72,6 @@ import static org.junit.Assert.fail;
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
 public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
-  private static final double SYNC_LAG_DELTA = 0.001;
-
   @Override
   @Before
   public void setUp() {
@@ -85,6 +84,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        // Retain AUTO expansion when nodes join without scaling tiny IT databases to host CPUs.
+        .setDataRegionPerDataNode(2)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -93,7 +94,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv
         .getConfig()
         .getDataNodeConfig()
-        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
+        .setMetricReporterType(Collections.singletonList("JMX"));
     senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
     receiverEnv
@@ -101,6 +102,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setDatanodeMemoryProportion("3:3:1:1:1:0")
+        .setDataRegionPerDataNode(2)
         .setDataReplicationFactor(2)
         .setSchemaReplicationFactor(3)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -111,14 +113,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     receiverEnv
         .getConfig()
         .getDataNodeConfig()
-        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
+        .setMetricReporterType(Collections.singletonList("JMX"));
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
-    senderEnv.initClusterEnvironment(3, 3, 180);
-    receiverEnv.initClusterEnvironment(3, 3, 180);
+    executeOnBothEnvs(env -> env.initClusterEnvironment(3, 3, 180));
   }
 
   @Test
@@ -295,6 +296,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
+  // Writes after a DataRegion leader restart must reach the receiver; after both clusters restart,
+  // a new pipe on another device must still transfer its row. Read live replication gauges on every
+  // replica before flushing/restarting, so cached zeros cannot hide unreplicated writes.
   @Test
   public void testPipeAfterDataRegionLeaderStop() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -354,13 +358,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           receiverEnv, Collections.singletonList("root.db"));
     }
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (final Throwable e) {
-      e.printStackTrace();
-      return;
-    }
+    executeOnBothEnvs(TestUtils::restartCluster);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -460,7 +458,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     // IoTConsensus accepts writes on any replica, including a previous leader during failover.
     // Check every replica's outgoing replication before flushing or restarting the cluster.
     await()
-        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
         .atMost(2, TimeUnit.MINUTES)
         .untilAsserted(
             () -> {
@@ -471,21 +470,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
                     "No tree DataRegion found for databases " + databases,
                     regionInfoList.isEmpty());
 
-                for (final TRegionInfo regionInfo : regionInfoList) {
-                  final DataNodeWrapper replicaNode =
-                      findDataNodeWrapperByPort(env, regionInfo.getClientRpcPort());
-                  final String metricsUrl =
-                      "http://"
-                          + replicaNode.getIp()
-                          + ":"
-                          + replicaNode.getMetricPort()
-                          + "/metrics";
-                  final String metricsContent = env.getUrlContent(metricsUrl, null);
-                  Assert.assertNotNull(
-                      "Failed to fetch metrics from replica DataNode at " + metricsUrl,
-                      metricsContent);
-                  assertSyncLagIsZero(metricsContent, buildDataRegionTag(regionInfo), metricsUrl);
-                }
+                PipeTestUtils.assertDataRegionReplicationComplete(env, regionInfoList);
               }
             });
   }
@@ -513,40 +498,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     return showRegionResp.getRegionInfoList();
   }
 
-  private DataNodeWrapper findDataNodeWrapperByPort(final BaseEnv env, final int port) {
-    for (final DataNodeWrapper dataNodeWrapper : env.getDataNodeWrapperList()) {
-      if (dataNodeWrapper.getPort() == port) {
-        return dataNodeWrapper;
-      }
-    }
-    fail("Failed to find DataNodeWrapper for client rpc port " + port);
-    return null;
-  }
-
-  private String buildDataRegionTag(final TRegionInfo regionInfo) {
-    return "DataRegion[" + regionInfo.getConsensusGroupId().getId() + "]";
-  }
-
-  private void assertSyncLagIsZero(
-      final String metricsContent, final String dataRegionTag, final String metricsUrl) {
-    for (final String line : metricsContent.split("\\R")) {
-      if (!line.startsWith("iot_consensus{")
-          || !line.contains("type=\"syncLag\"")
-          || !line.contains("region=\"" + dataRegionTag + "\"")) {
-        continue;
-      }
-      final int lastSpaceIndex = line.lastIndexOf(' ');
-      Assert.assertTrue("Malformed syncLag metric line: " + line, lastSpaceIndex > 0);
-      Assert.assertEquals(
-          "Expected syncLag of " + dataRegionTag + " to be 0 at " + metricsUrl + " but got " + line,
-          0.0,
-          Double.parseDouble(line.substring(lastSpaceIndex + 1)),
-          SYNC_LAG_DELTA);
-      return;
-    }
-    fail("No syncLag metric found for " + dataRegionTag + " at " + metricsUrl);
-  }
-
+  // Adding a sender DataNode must preserve replication of writes through that node, and after both
+  // clusters restart, a new pipe must also transfer writes on a second device.
   @Test
   public void testPipeAfterRegisterNewDataNode() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -583,12 +536,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"),
           null);
 
-      try {
-        senderEnv.registerNewDataNode(true);
-      } catch (final Throwable e) {
-        e.printStackTrace();
-        return;
-      }
+      senderEnv.registerNewDataNode(true);
       final DataNodeWrapper newDataNode =
           senderEnv.getDataNodeWrapper(senderEnv.getDataNodeWrapperList().size() - 1);
       TestUtils.tryExecuteNonQueriesOnSpecifiedDataNodeWithRetry(
@@ -602,13 +550,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           Collections.singleton("2,"));
     }
 
-    try {
-      TestUtils.restartCluster(senderEnv);
-      TestUtils.restartCluster(receiverEnv);
-    } catch (final Throwable e) {
-      e.printStackTrace();
-      return;
-    }
+    executeOnBothEnvs(TestUtils::restartCluster);
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {

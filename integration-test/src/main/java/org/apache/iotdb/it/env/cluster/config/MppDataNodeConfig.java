@@ -57,6 +57,13 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMetricPrometheusReporterAsyncUpdate(boolean asyncUpdate) {
+    properties.setProperty(
+        "dn_metric_prometheus_reporter_async_update", String.valueOf(asyncUpdate));
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
     properties.setProperty("metric_prometheus_reporter_username", username);
     return this;
@@ -136,6 +143,12 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   @Override
   public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMqttHandlerPoolSize(int mqttHandlerPoolSize) {
+    setProperty("mqtt_handler_pool_size", String.valueOf(mqttHandlerPoolSize));
     return this;
   }
 

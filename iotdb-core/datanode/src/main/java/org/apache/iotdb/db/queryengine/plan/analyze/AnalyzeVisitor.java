@@ -49,6 +49,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ainode.GetModelInfoException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
@@ -87,6 +88,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillComponent;
@@ -1485,9 +1487,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           deviceToWhereExpression.entrySet()) {
         IDeviceID deviceName = deviceWhereExpressionEntry.getKey();
         Expression whereExpression = deviceWhereExpressionEntry.getValue();
-        deviceToSourceExpressions
-            .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-            .addAll(searchSourceExpressions(whereExpression));
+        // null means the predicate of this device is always true, so it needs no value filter
+        if (whereExpression != null) {
+          deviceToSourceExpressions
+              .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+              .addAll(searchSourceExpressions(whereExpression));
+        }
       }
     }
 
@@ -1529,7 +1534,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   public static final String WHERE_WRONG_TYPE_ERROR_MSG =
-      "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: %s.";
+      DataNodeQueryMessages
+          .EXCEPTION_THE_OUTPUT_TYPE_OF_THE_EXPRESSION_IN_WHERE_CLAUSE_SHOULD_BE_BOOLEAN_ACTUAL_DATA_TYPE_ARG_BC9DD72F;
 
   private void analyzeDeviceToWhere(
       Analysis analysis,
@@ -1547,7 +1553,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     while (deviceIterator.hasNext()) {
       PartialPath devicePath = deviceIterator.next();
       Expression whereExpression =
-          analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree, queryContext);
+          analyzeWhereSplitByDevice(analysis, queryStatement, devicePath, schemaTree, queryContext);
       if (whereExpression.equals(ConstantOperand.FALSE)) {
         deviceIterator.remove();
       } else if (whereExpression.equals(ConstantOperand.TRUE)) {
@@ -1580,7 +1586,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             schemaTree,
             true,
             queryContext);
-    Expression whereExpression = convertConJunctionsToWhereExpression(conJunctions);
+    Expression whereExpression = convertConJunctionsToWhereExpression(analysis, conJunctions);
     if (whereExpression.equals(ConstantOperand.TRUE)) {
       analysis.setWhereExpression(null);
       analysis.setHasValueFilter(false);
@@ -1595,6 +1601,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private Expression analyzeWhereSplitByDevice(
+      final Analysis analysis,
       final QueryStatement queryStatement,
       final PartialPath devicePath,
       final ISchemaTree schemaTree,
@@ -1606,16 +1613,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             schemaTree,
             true,
             queryContext);
-    return convertConJunctionsToWhereExpression(conJunctions);
+    return convertConJunctionsToWhereExpression(analysis, conJunctions);
   }
 
-  private Expression convertConJunctionsToWhereExpression(List<Expression> conJunctions) {
+  private Expression convertConJunctionsToWhereExpression(
+      Analysis analysis, List<Expression> conJunctions) {
     Expression predicate =
         PredicateUtils.combineConjuncts(
             conJunctions.stream().distinct().collect(Collectors.toList()));
     predicate = PredicateUtils.simplifyPredicate(predicate);
     predicate = normalizeExpression(predicate);
-    return predicate;
+    analyzeExpressionType(analysis, predicate);
+    Expression predicateWithoutNot =
+        PredicateUtils.predicateRemoveNot(predicate, analysis::getType);
+    if (predicateWithoutNot != predicate) {
+      predicateWithoutNot = PredicateUtils.simplifyPredicate(predicateWithoutNot);
+      predicateWithoutNot = normalizeExpression(predicateWithoutNot);
+      analyzeExpressionType(analysis, predicateWithoutNot);
+    }
+    return predicateWithoutNot;
   }
 
   private void analyzeDeviceViewOutput(Analysis analysis, QueryStatement queryStatement) {
@@ -2261,6 +2277,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> getTimePartitionSlotList(
       Filter timeFilter, MPPQueryContext context) {
+    checkTimePartitionQueryTimeout(context);
+    context.finishResultSetColumnMemoryTracking();
     if (timeFilter == null) {
       // (-oo, +oo)
       return new Pair<>(Collections.emptyList(), new Pair<>(true, true));
@@ -2304,7 +2322,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     TimeRange currentTimeRange = timeRangeList.get(index);
     reserveMemoryForTimePartitionSlot(
         currentTimeRange.getMax(), currentTimeRange.getMin(), context);
+    int iterations = 0;
     while (index < size) {
+      // Large finite ranges can keep the front-end reservation alive for a long time. Check in
+      // batches so timeout handling does not add a clock read for every partition.
+      if (iterations++ % 1024 == 0) {
+        checkTimePartitionQueryTimeout(context);
+      }
       long curLeft = timeRangeList.get(index).getMin();
       long curRight = timeRangeList.get(index).getMax();
       if (curLeft >= endTime) {
@@ -2339,13 +2363,26 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return new Pair<>(result, new Pair<>(needLeftAll, needRightAll));
   }
 
+  private static void checkTimePartitionQueryTimeout(MPPQueryContext context) {
+    long startTime = context.getStartTime();
+    // Standalone analysis contexts may not have an execution deadline.
+    if (startTime == 0) {
+      return;
+    }
+    long currentTime = System.currentTimeMillis();
+    long timeout = context.getTimeOut();
+    if (currentTime - startTime >= timeout) {
+      throw new QueryTimeoutRuntimeException(startTime, currentTime, timeout);
+    }
+  }
+
   private static void reserveMemoryForTimePartitionSlot(
       long maxTime, long minTime, MPPQueryContext context) {
     if (maxTime == Long.MAX_VALUE || minTime == Long.MIN_VALUE) {
       return;
     }
     long size = TimePartitionUtils.getEstimateTimePartitionSize(minTime, maxTime);
-    context.reserveMemoryForFrontEnd(estimateTimePartitionSlotMemory(size));
+    context.reserveMemoryForTimePartitionSlots(estimateTimePartitionSlotMemory(size));
   }
 
   private static List<TimeRange> normalizeTimeRanges(List<TimeRange> timeRanges) {
@@ -2890,7 +2927,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analysis,
         insertRowStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertRowStatement, context));
-    InsertBaseStatement realInsertStatement = removeLogicalView(analysis, insertRowStatement);
+    InsertBaseStatement realInsertStatement =
+        removeLogicalView(analysis, insertRowStatement, context);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
@@ -2930,7 +2968,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         insertRowsStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertRowsStatement, context));
     InsertRowsStatement realInsertRowsStatement =
-        (InsertRowsStatement) removeLogicalView(analysis, insertRowsStatement);
+        (InsertRowsStatement) removeLogicalView(analysis, insertRowsStatement, context);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
@@ -2955,7 +2993,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         insertMultiTabletsStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertMultiTabletsStatement, context));
     InsertMultiTabletsStatement realStatement =
-        (InsertMultiTabletsStatement) removeLogicalView(analysis, insertMultiTabletsStatement);
+        (InsertMultiTabletsStatement)
+            removeLogicalView(analysis, insertMultiTabletsStatement, context);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
@@ -2980,7 +3019,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         insertRowsOfOneDeviceStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertRowsOfOneDeviceStatement, context));
     InsertBaseStatement realInsertStatement =
-        removeLogicalView(analysis, insertRowsOfOneDeviceStatement);
+        removeLogicalView(analysis, insertRowsOfOneDeviceStatement, context);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
@@ -3037,7 +3076,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } catch (final Exception e) {
       final String exceptionMessage =
           String.format(
-              "Failed to execute load tsfile statement %s. Detail: %s",
+              DataNodeQueryMessages
+                  .EXCEPTION_FAILED_TO_EXECUTE_LOAD_TSFILE_STATEMENT_ARG_DETAIL_ARG_6B99B6D4,
               loadTsFileStatement,
               e.getMessage() == null ? e.getClass().getName() : e.getMessage());
       logger.warn(exceptionMessage, e);
@@ -3712,6 +3752,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
       }
       deleteDataStatement.setPathList(new ArrayList<>(deletePatternSet));
+      // Deletes through a writable view are rewritten to the view's source series as well.
+      final TSStatus systemDatabaseStatus =
+          TreeAccessCheckVisitor.checkSystemDatabaseWrite(
+              context, deleteDataStatement.getPathList());
+      if (systemDatabaseStatus != null) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(systemDatabaseStatus);
+        return analysis;
+      }
     } else {
       for (PartialPath devicePattern : patternTree.getAllDevicePaths()) {
         schemaTree
@@ -4130,7 +4179,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Columns in the query statement is empty. Please check your SQL."));
+              DataNodeQueryMessages
+                  .EXCEPTION_COLUMNS_IN_THE_QUERY_STATEMENT_IS_EMPTY_PLEASE_CHECK_YOUR_SQL_A22B2A40));
       return new Pair<>(null, analysis);
     }
     if (queryAnalysis.useLogicalView()) {
@@ -4138,7 +4188,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Can not create a view based on existing views. Check the query in your SQL."));
+              DataNodeQueryMessages
+                  .EXCEPTION_CAN_NOT_CREATE_A_VIEW_BASED_ON_EXISTING_VIEWS_CHECK_THE_QUERY_IN_YOUR_SQL_23D1E67A));
       return new Pair<>(null, analysis);
     }
     List<Expression> expressionList = new ArrayList<>();
@@ -4157,7 +4208,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.ILLEGAL_PATH.getStatusCode(),
-              "The path " + checkResult.right + " is illegal."));
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_THE_PATH_ARG_IS_ILLEGAL_E45C824B,
+                  Objects.toString(checkResult.right))));
       return;
     }
 
@@ -4168,7 +4221,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
               String.format(
-                  "The number of target paths (%d) and sources (%d) are miss matched! Please check your SQL.",
+                  DataNodeQueryMessages
+                      .EXCEPTION_THE_NUMBER_OF_TARGET_PATHS_ARG_AND_SOURCES_ARG_ARE_MISS_MATCHED_PLEASE_CHECK_YOUR_SQL_9C58A8AF,
                   createLogicalViewStatement.getTargetPathList().size(),
                   createLogicalViewStatement.getSourceExpressionList().size())));
     }
@@ -4193,7 +4247,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Can not create a view based on non-exist time series."));
+              DataNodeQueryMessages
+                  .EXCEPTION_CAN_NOT_CREATE_A_VIEW_BASED_ON_NON_EXIST_TIME_SERIES_F912A900));
       return;
     }
     Pair<List<PartialPath>, PartialPath> viewInSourceCheckResult =
@@ -4204,9 +4259,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Path "
-                  + viewInSourceCheckResult.right.toString()
-                  + " does not exist! You can not create a view based on non-exist time series."));
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_PATH_ARG_DOES_NOT_EXIST_YOU_CAN_NOT_CREATE_A_VIEW_BASED_ON_NON_EXIST_TIME_SERIES_B6595781,
+                  Objects.toString(viewInSourceCheckResult.right.toString()))));
       return;
     }
     if (!viewInSourceCheckResult.left.isEmpty()) {
@@ -4215,7 +4271,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Can not create a view based on existing views."));
+              DataNodeQueryMessages
+                  .EXCEPTION_CAN_NOT_CREATE_A_VIEW_BASED_ON_EXISTING_VIEWS_A9C5E78F));
     }
   }
 
@@ -4282,7 +4339,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.ILLEGAL_PATH.getStatusCode(),
-              "The path " + checkResult.right + " is illegal."));
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_THE_PATH_ARG_IS_ILLEGAL_E45C824B,
+                  Objects.toString(checkResult.right))));
       return;
     }
     // Make sure there are no redundant paths in targets. Note that redundant paths in source
@@ -4296,7 +4355,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analysis.setFailStatus(
             RpcUtils.getStatus(
                 TSStatusCode.ILLEGAL_PATH.getStatusCode(),
-                String.format("Path [%s] is redundant in target paths.", path)));
+                String.format(
+                    DataNodeQueryMessages.EXCEPTION_PATH_ARG_IS_REDUNDANT_IN_TARGET_PATHS_D32B986C,
+                    path)));
         return;
       }
     }
@@ -4310,7 +4371,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Can not create view under template."));
+              DataNodeQueryMessages.EXCEPTION_CAN_NOT_CREATE_VIEW_UNDER_TEMPLATE_1D975F79));
     }
   }
 

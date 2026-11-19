@@ -26,25 +26,31 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
+import org.apache.iotdb.pipe.it.dual.PipeTestUtils.RetryFlushHandler;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
-import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
-import java.util.function.Consumer;
 
+// All pattern cases use the same configuration; reset pipes/databases between methods.
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
-public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualIT {
+public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelSharedClusterIT {
+
+  @Rule public final TestName testName = new TestName();
 
   @Override
   @Before
@@ -52,32 +58,28 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
     super.setUp();
   }
 
+  // A table-name pattern must replicate both matching tables' history and realtime rows [0, 200).
   @Test
   public void testTableNamePattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final RetryFlushHandler handleFailure = new RetryFlushHandler(senderEnv, receiverEnv)) {
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", database("test"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", database("test1"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", database("pattern"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", database("pattern1"));
+      TableModelUtils.insertData(database("test"), "test", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("test1"), "test1", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern"), "pattern", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern1"), "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -104,53 +106,49 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("test"), "test", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("test1"), "test1", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("pattern"), "pattern", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("pattern1"), "pattern1", 100, 200, senderEnv);
 
-      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
-      TableModelUtils.assertData("test1", "test1", 0, 200, receiverEnv, handleFailure);
-      TableModelUtils.hasDataBase("test", receiverEnv);
-      TableModelUtils.hasDataBase("test1", receiverEnv);
+      TableModelUtils.assertData(database("test"), "test", 0, 200, receiverEnv, handleFailure);
+      TableModelUtils.assertData(database("test1"), "test1", 0, 200, receiverEnv, handleFailure);
+      TableModelUtils.hasDataBase(database("test"), receiverEnv);
+      TableModelUtils.hasDataBase(database("test1"), receiverEnv);
     }
   }
 
+  // A table-name pattern with time bounds [0, 49] must load only matching historical rows.
   @Test
   public void testTableNamePatternByHistoryTSFile() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final RetryFlushHandler handleFailure = new RetryFlushHandler(senderEnv, receiverEnv)) {
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", database("test"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", database("test1"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", database("pattern"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", database("pattern1"));
+      TableModelUtils.insertData(database("test"), "test", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("test1"), "test1", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern"), "pattern", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern1"), "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      //      extractorAttributes.put("extractor.database-name", "test.*");
+      //      extractorAttributes.put("extractor.database-name", database("test.*"));
       extractorAttributes.put("extractor.table-name", "test.*");
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
@@ -175,38 +173,35 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.assertData("test", "test", 0, 50, receiverEnv, handleFailure);
-      TableModelUtils.assertData("test1", "test1", 0, 50, receiverEnv, handleFailure);
-      TableModelUtils.hasDataBase("test", receiverEnv);
-      TableModelUtils.hasDataBase("test1", receiverEnv);
+      TableModelUtils.assertData(database("test"), "test", 0, 50, receiverEnv, handleFailure);
+      TableModelUtils.assertData(database("test1"), "test1", 0, 50, receiverEnv, handleFailure);
+      TableModelUtils.hasDataBase(database("test"), receiverEnv);
+      TableModelUtils.hasDataBase(database("test1"), receiverEnv);
     }
   }
 
+  // A table-name pattern with time bounds [100, 149] must filter the rows written after Pipe
+  // creation.
   @Test
   public void testTableNamePatternByRealTime() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final RetryFlushHandler handleFailure = new RetryFlushHandler(senderEnv, receiverEnv)) {
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", database("test"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", database("test1"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", database("pattern"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", database("pattern1"));
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      //      extractorAttributes.put("extractor.database-name", "test.*");
+      //      extractorAttributes.put("extractor.database-name", database("test.*"));
       extractorAttributes.put("extractor.table-name", "test.*");
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
@@ -230,54 +225,50 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("test"), "test", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("test1"), "test1", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("pattern"), "pattern", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("pattern1"), "pattern1", 100, 200, senderEnv);
 
-      TableModelUtils.assertData("test", "test", 100, 150, receiverEnv, handleFailure);
-      TableModelUtils.assertData("test1", "test1", 100, 150, receiverEnv, handleFailure);
-      TableModelUtils.hasDataBase("test", receiverEnv);
-      TableModelUtils.hasDataBase("test1", receiverEnv);
+      TableModelUtils.assertData(database("test"), "test", 100, 150, receiverEnv, handleFailure);
+      TableModelUtils.assertData(database("test1"), "test1", 100, 150, receiverEnv, handleFailure);
+      TableModelUtils.hasDataBase(database("test"), receiverEnv);
+      TableModelUtils.hasDataBase(database("test1"), receiverEnv);
     }
   }
 
+  // A database-name pattern must replicate all rows [0, 200) from both matching databases.
   @Test
   public void testDataBasePattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final RetryFlushHandler handleFailure = new RetryFlushHandler(senderEnv, receiverEnv)) {
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", database("test"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", database("test1"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", database("pattern"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", database("pattern1"));
 
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("test"), "test", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("test1"), "test1", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern"), "pattern", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern1"), "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.database-name", "pattern.*");
+      extractorAttributes.put("extractor.database-name", database("pattern.*"));
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("__system.sql-dialect", "table");
@@ -298,56 +289,54 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("test"), "test", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("test1"), "test1", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("pattern"), "pattern", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("pattern1"), "pattern1", 100, 200, senderEnv);
 
-      TableModelUtils.assertData("pattern", "pattern", 0, 200, receiverEnv, handleFailure);
-      TableModelUtils.assertData("pattern1", "pattern1", 0, 200, receiverEnv, handleFailure);
+      TableModelUtils.assertData(
+          database("pattern"), "pattern", 0, 200, receiverEnv, handleFailure);
+      TableModelUtils.assertData(
+          database("pattern1"), "pattern1", 0, 200, receiverEnv, handleFailure);
 
       HashSet<String> expectedResults = new HashSet();
-      TableModelUtils.hasDataBase("pattern", receiverEnv);
-      TableModelUtils.hasDataBase("pattern1", receiverEnv);
+      TableModelUtils.hasDataBase(database("pattern"), receiverEnv);
+      TableModelUtils.hasDataBase(database("pattern1"), receiverEnv);
     }
   }
 
+  // Creating a Pipe after the writes must load historical rows [0, 100) from matching databases.
   @Test
   public void testDataBasePatternByHistoryTSFile() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final RetryFlushHandler handleFailure = new RetryFlushHandler(senderEnv, receiverEnv)) {
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", database("test"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", database("test1"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", database("pattern"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", database("pattern1"));
 
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("test"), "test", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("test1"), "test1", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern"), "pattern", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern1"), "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.database-name", "pattern.*");
+      extractorAttributes.put("extractor.database-name", database("pattern.*"));
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("__system.sql-dialect", "table");
@@ -368,39 +357,37 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv, handleFailure);
-      TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv, handleFailure);
+      TableModelUtils.assertData(
+          database("pattern"), "pattern", 0, 100, receiverEnv, handleFailure);
+      TableModelUtils.assertData(
+          database("pattern1"), "pattern1", 0, 100, receiverEnv, handleFailure);
 
-      TableModelUtils.hasDataBase("pattern1", receiverEnv);
-      TableModelUtils.hasDataBase("pattern", receiverEnv);
+      TableModelUtils.hasDataBase(database("pattern1"), receiverEnv);
+      TableModelUtils.hasDataBase(database("pattern"), receiverEnv);
     }
   }
 
+  // Creating a Pipe before the writes must replicate realtime rows from both matching databases.
   @Test
   public void testDataBasePatternByRealtime() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-
     try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection();
+        final RetryFlushHandler handleFailure = new RetryFlushHandler(senderEnv, receiverEnv)) {
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", database("test"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", database("test1"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", database("pattern"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", database("pattern1"));
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.database-name", "pattern.*");
+      extractorAttributes.put("extractor.database-name", database("pattern.*"));
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("__system.sql-dialect", "table");
@@ -422,22 +409,25 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern"), "pattern", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern1"), "pattern1", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("test"), "test", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("test1"), "test1", 0, 100, senderEnv);
 
-      TableModelUtils.assertData("pattern", "pattern", 0, 100, receiverEnv, handleFailure);
-      TableModelUtils.assertData("pattern1", "pattern1", 0, 100, receiverEnv, handleFailure);
+      TableModelUtils.assertData(
+          database("pattern"), "pattern", 0, 100, receiverEnv, handleFailure);
+      TableModelUtils.assertData(
+          database("pattern1"), "pattern1", 0, 100, receiverEnv, handleFailure);
 
-      TableModelUtils.hasDataBase("pattern", receiverEnv);
-      TableModelUtils.hasDataBase("pattern1", receiverEnv);
+      TableModelUtils.hasDataBase(database("pattern"), receiverEnv);
+      TableModelUtils.hasDataBase(database("pattern1"), receiverEnv);
     }
   }
 
+  // When no table matches both database/table patterns, the receiver must keep no user databases.
   @Test
   public void testIoTDBPatternWithDataBaseAndTable() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -448,24 +438,24 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", "pattern");
-      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", "pattern1");
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", database("test"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test1", database("test1"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern", database("pattern"));
+      TableModelUtils.createDataBaseAndTable(senderEnv, "pattern1", database("pattern1"));
 
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("test"), "test", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("test1", "test1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("test1"), "test1", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("pattern", "pattern", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern"), "pattern", 0, 100, senderEnv);
 
-      TableModelUtils.insertData("pattern1", "pattern1", 0, 100, senderEnv);
+      TableModelUtils.insertData(database("pattern1"), "pattern1", 0, 100, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.database-name", "pattern.*");
+      extractorAttributes.put("extractor.database-name", database("pattern.*"));
       extractorAttributes.put("extractor.table-name", "test.*");
       extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.capture.table", "true");
@@ -487,13 +477,13 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("test"), "test", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("test1"), "test1", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("pattern", "pattern", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("pattern"), "pattern", 100, 200, senderEnv);
 
-      TableModelUtils.insertData("pattern1", "pattern1", 100, 200, senderEnv);
+      TableModelUtils.insertData(database("pattern1"), "pattern1", 100, 200, senderEnv);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -502,5 +492,10 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
           Collections.singleton("information_schema,INF,null,null,null,"),
           (String) null);
     }
+  }
+
+  private String database(final String name) {
+    // Database deletion is asynchronous; never reuse another method's database incarnation.
+    return name + "_" + testName.getMethodName().toLowerCase(Locale.ROOT);
   }
 }

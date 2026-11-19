@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqualUnordered;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTestUnordered;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -101,16 +102,23 @@ public class IoTDBCollectFanInIT {
         expectedRows.add(row);
       }
     }
-    try (Connection connection = EnvFactory.getEnv().getTableConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("USE " + DATABASE);
-      String sql =
-          "SELECT device, zone, value FROM readings1 UNION ALL "
-              + "SELECT device, zone, value FROM readings1";
-      try (ResultSet result = statement.executeQuery(sql)) {
-        assertResultSetEqualUnordered(result, "device,zone,value,", expectedRows);
-      }
-    }
+    String[] expectedHeader = {"device", "zone", "value"};
+    String[] expectedRetArray = expectedRows.toArray(new String[0]);
+    tableResultSetEqualTestUnordered(
+        "SELECT device, zone, value FROM readings1 UNION ALL "
+            + "SELECT device, zone, value FROM readings1",
+        expectedHeader,
+        expectedRetArray,
+        DATABASE);
+    tableResultSetEqualTestUnordered(
+        "SELECT device, zone, value FROM "
+            + DATABASE
+            + ".readings1 UNION ALL SELECT device, zone, value FROM "
+            + DATABASE
+            + ".readings1",
+        expectedHeader,
+        expectedRetArray,
+        null);
   }
 
   @Test

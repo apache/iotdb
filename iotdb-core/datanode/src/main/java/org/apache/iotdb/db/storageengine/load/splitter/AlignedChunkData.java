@@ -152,7 +152,7 @@ public class AlignedChunkData implements ChunkData {
       final TTimePartitionSlot timePartitionSlot,
       final EncryptParameter encryptParameter) {
     this(device, timePartitionSlot, encryptParameter);
-    chunkHeaderList.add(chunkHeader);
+    chunkHeaderList.add(ChunkData.transportHeader(chunkHeader));
     pageNumbers.add(0);
     currentChunkIndex = 0;
     addAttrDataSize();
@@ -235,7 +235,7 @@ public class AlignedChunkData implements ChunkData {
   }
 
   public void addValueChunk(final ChunkHeader chunkHeader) {
-    this.chunkHeaderList.add(chunkHeader);
+    this.chunkHeaderList.add(ChunkData.transportHeader(chunkHeader));
     this.pageNumbers.add(0);
     currentChunkIndex++;
     dataSize += chunkHeader.getSerializedSize();

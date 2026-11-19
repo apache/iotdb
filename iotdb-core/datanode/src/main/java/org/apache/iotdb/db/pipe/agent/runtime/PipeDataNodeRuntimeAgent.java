@@ -46,6 +46,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStar
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileDirPathResolver;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -57,6 +58,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -85,6 +87,9 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
   public synchronized void preparePipeResources(
       final ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
+    // Resolve the pipe hardlink directories before any pipe task starts.
+    PipeTsFileDirPathResolver.getInstance();
+
     // Clean sender (connector) hardlink file dir and snapshot dir
     PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean(this::registerPeriodicalJob);
 
@@ -174,12 +179,29 @@ public class PipeDataNodeRuntimeAgent implements IService {
     return regionListenerManager.listener(schemaRegionId);
   }
 
+  public SchemaRegionListeningQueue schemaListenerIfPresent(SchemaRegionId schemaRegionId) {
+    return regionListenerManager.listenerIfPresent(schemaRegionId);
+  }
+
+  public SchemaRegionListeningQueue schemaListenerForSnapshotLoad(
+      SchemaRegionId schemaRegionId, File snapshotDir) {
+    return regionListenerManager.listenerForSnapshotLoad(schemaRegionId, snapshotDir);
+  }
+
   public int increaseAndGetSchemaListenerReferenceCount(SchemaRegionId schemaRegionId) {
     return regionListenerManager.increaseAndGetReferenceCount(schemaRegionId);
   }
 
   public int decreaseAndGetSchemaListenerReferenceCount(SchemaRegionId schemaRegionId) {
     return regionListenerManager.decreaseAndGetReferenceCount(schemaRegionId);
+  }
+
+  public void cleanupSchemaListenerIfUnused(SchemaRegionId schemaRegionId) {
+    regionListenerManager.cleanupListenerIfUnused(schemaRegionId);
+  }
+
+  public void clearSchemaRegionState(SchemaRegionId schemaRegionId) {
+    regionListenerManager.clearSchemaRegionState(schemaRegionId);
   }
 
   public void notifySchemaLeaderReady(SchemaRegionId schemaRegionId) {

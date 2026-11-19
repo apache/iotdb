@@ -42,6 +42,18 @@ import java.util.List;
 
 /** Represents chunk-level TsFile data during load splitting. */
 public interface ChunkData extends TsFileData {
+  static ChunkHeader transportHeader(ChunkHeader header) {
+    if (header.getChunkOrdinal() < 0) {
+      return header;
+    }
+    return new ChunkHeader(
+        header.getChunkType(),
+        header.getMeasurementID(),
+        header.getDataSize(),
+        header.getDataType(),
+        header.getCompressionType(),
+        header.getEncodingType());
+  }
 
   ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
 

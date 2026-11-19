@@ -35,6 +35,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.chunk.AbstractChunkReader;
+import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.read.reader.page.LazyLoadPageData;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -55,29 +56,47 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
   private final ByteBuffer chunkDataBuffer;
   private final EncryptParameter encryptParam;
   private final long pageEstimatedMemoryUsageInBytes;
+  private final Chunk ownedChunk;
 
   public SinglePageWholeChunkReader(Chunk chunk) throws IOException {
     super(Long.MIN_VALUE, null, null);
+    ownedChunk = chunk;
 
     this.chunkHeader = chunk.getHeader();
     this.chunkDataBuffer = chunk.getData();
     this.encryptParam = chunk.getEncryptParam();
-    this.pageEstimatedMemoryUsageInBytes =
-        calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(chunk);
-    initAllPageReaders();
+    try {
+      this.pageEstimatedMemoryUsageInBytes =
+          calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(chunk);
+      initAllPageReaders();
+    } catch (IOException | RuntimeException | Error e) {
+      try {
+        chunk.close();
+      } catch (RuntimeException failure) {
+        e.addSuppressed(failure);
+      }
+      throw e;
+    }
+  }
+
+  @Override
+  public void close() {
+    ownedChunk.close();
   }
 
   private void initAllPageReaders() throws IOException {
+    int pageIndex = 0;
     // construct next satisfied page header
     while (chunkDataBuffer.remaining() > 0) {
       pageReaderList.add(
           constructPageReader(
               PageHeader.deserializeFrom(
-                  chunkDataBuffer, (Statistics<? extends Serializable>) null)));
+                  chunkDataBuffer, (Statistics<? extends Serializable>) null),
+              pageIndex++));
     }
   }
 
-  private PageReader constructPageReader(PageHeader pageHeader) throws IOException {
+  private PageReader constructPageReader(PageHeader pageHeader, int pageIndex) throws IOException {
     final int currentPagePosition = chunkDataBuffer.position();
     chunkDataBuffer.position(currentPagePosition + pageHeader.getCompressedSize());
     return new PageReader(
@@ -86,7 +105,9 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
             chunkDataBuffer.array(),
             currentPagePosition,
             IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
-            encryptParam),
+            encryptParam,
+            pageIndex,
+            chunkHeader.getChunkOrdinal()),
         chunkHeader.getDataType(),
         Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType()),
         getConfiguredTimeDecoder(),
@@ -194,11 +215,13 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
     chunkDataBuffer.rewind();
     final PageHeader pageHeader = deserializePageHeader(chunkDataBuffer, chunk.getHeader());
     final ByteBuffer pageData =
-        deserializePageData(
+        ChunkReader.deserializePageData(
             pageHeader,
             chunkDataBuffer,
             chunk.getHeader(),
-            IDecryptor.getDecryptor(chunk.getEncryptParam()));
+            IDecryptor.getDecryptor(chunk.getEncryptParam()),
+            chunk.getEncryptParam(),
+            0);
     final Decoder decoder =
         Decoder.getDecoderByType(chunk.getHeader().getEncodingType(), TSDataType.INT64);
 
