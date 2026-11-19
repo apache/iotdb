@@ -393,7 +393,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         .startExecutor(
             () -> {
               startPipeOnLeaderChangedIfEpochCurrent(epoch);
-              markLeaderServicesReadyIfEpochCurrent(epoch);
             });
     if (!isCurrentLeaderServicesEpoch(epoch)) {
       return;
