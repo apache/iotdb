@@ -121,25 +121,36 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    if (schemaRegion.createSnapshot(snapshotDir)
-        && PipeDataNodeAgent.runtime()
-            .schemaListener(schemaRegion.getSchemaRegionId())
-            .createSnapshot(snapshotDir)) {
-      listen2Snapshot4PipeListener(true);
+    if (!schemaRegion.createSnapshot(snapshotDir)) {
+      return false;
+    }
+
+    final SchemaRegionListeningQueue listener =
+        PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+    if (listener == null) {
       return true;
     }
-    return false;
+
+    if (!listener.createSnapshot(snapshotDir)) {
+      return false;
+    }
+    listen2Snapshot4PipeListener(true);
+    return true;
   }
 
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
     schemaRegion.loadSnapshot(latestSnapshotRootDir);
-    PipeDataNodeAgent.runtime()
-        .schemaListener(schemaRegion.getSchemaRegionId())
-        .loadSnapshot(latestSnapshotRootDir);
-    // We recompute the snapshot for pipe listener when loading snapshot
-    // to recover the newest snapshot in cache
-    listen2Snapshot4PipeListener(false);
+    final SchemaRegionListeningQueue listener =
+        PipeDataNodeAgent.runtime()
+            .schemaListenerForSnapshotLoad(schemaRegion.getSchemaRegionId(), latestSnapshotRootDir);
+    if (listener != null) {
+      listener.loadSnapshot(latestSnapshotRootDir);
+      PipeDataNodeAgent.runtime().cleanupSchemaListenerIfUnused(schemaRegion.getSchemaRegionId());
+      // We recompute the snapshot for pipe listener when loading snapshot
+      // to recover the newest snapshot in cache
+      listen2Snapshot4PipeListener(false);
+    }
   }
 
   public void listen2Snapshot4PipeListener(boolean isTmp) {
@@ -149,8 +160,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
                 .getUuid()
                 .toString(),
             isTmp);
-    SchemaRegionListeningQueue listener =
-        PipeDataNodeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
+    final SchemaRegionListeningQueue listener =
+        PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+    if (listener == null) {
+      return;
+    }
     if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.getLeft())) {
       if (listener.isOpened()) {
         logger.warn(
@@ -173,9 +187,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     try {
       TSStatus result = ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        PipeDataNodeAgent.runtime()
-            .schemaListener(schemaRegion.getSchemaRegionId())
-            .tryListenToNode((PlanNode) request);
+        final SchemaRegionListeningQueue listener =
+            PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegion.getSchemaRegionId());
+        if (listener != null) {
+          listener.tryListenToNode((PlanNode) request);
+        }
       }
       return result;
     } catch (IllegalArgumentException e) {

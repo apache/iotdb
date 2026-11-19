@@ -1,0 +1,283 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.pipe.agent.task.progress;
+
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@RunWith(Parameterized.class)
+public class PipeEventCommitManagerTest {
+
+  private static final String PIPE_NAME = "late-commit-test";
+  private static final long CREATION_TIME = 1L;
+  private static final int REGION_ID = 1;
+
+  private final Level logLevel;
+  private final Logger logger = (Logger) LoggerFactory.getLogger(PipeEventCommitManager.class);
+  private Level originalLogLevel;
+  private PipeEventCommitManager manager;
+
+  public PipeEventCommitManagerTest(final Level logLevel) {
+    this.logLevel = logLevel;
+  }
+
+  @Parameterized.Parameters(name = "{0}")
+  public static Iterable<Level> logLevels() {
+    return Arrays.asList(Level.INFO, Level.DEBUG);
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    originalLogLevel = logger.getLevel();
+    logger.setLevel(logLevel);
+    final Constructor<PipeEventCommitManager> constructor =
+        PipeEventCommitManager.class.getDeclaredConstructor();
+    constructor.setAccessible(true);
+    manager = constructor.newInstance();
+
+    final PipeTaskAgent taskAgent = mock(PipeTaskAgent.class);
+    when(taskAgent.getCommitterKey(eq(PIPE_NAME), eq(CREATION_TIME), eq(REGION_ID), anyInt()))
+        .thenAnswer(
+            invocation ->
+                new CommitterKey(PIPE_NAME, CREATION_TIME, REGION_ID, invocation.getArgument(3)));
+    manager.setTaskAgent(taskAgent);
+    manager.register(PIPE_NAME, CREATION_TIME, REGION_ID, "iotdb-thrift-sink");
+  }
+
+  @After
+  public void tearDown() {
+    try {
+      if (manager != null) {
+        manager.clear(PIPE_NAME, CREATION_TIME);
+      }
+    } finally {
+      logger.setLevel(originalLogLevel);
+    }
+  }
+
+  @Test
+  public void testLateSingleCommitAfterClearDoesNotRestoreState() throws Exception {
+    final CommitterKey key = manager.getCommitterKey(PIPE_NAME, CREATION_TIME, REGION_ID);
+    final Runnable onCommitted = mock(Runnable.class);
+    final TestProgressReportEvent event = createEvent(onCommitted);
+    manager.clear(PIPE_NAME, CREATION_TIME);
+
+    manager.commit(event, key);
+
+    assertTrue(getManagerMap("eventCommitterMap").isEmpty());
+    assertTrue(getManagerMap("eventCommitterRestartTimesMap").isEmpty());
+    verify(onCommitted, never()).run();
+  }
+
+  @Test
+  public void testLateMultipleCommitsAfterClearDoNotRestoreState() throws Exception {
+    final CommitterKey key = manager.getCommitterKey(PIPE_NAME, CREATION_TIME, REGION_ID);
+    final Runnable onCommitted = mock(Runnable.class);
+    final TestProgressReportEvent event = createEvent(onCommitted);
+    event.setCommitIds(Arrays.asList(1L, 2L, 3L));
+    manager.clear(PIPE_NAME, CREATION_TIME);
+
+    manager.commit(event, key);
+
+    assertTrue(getManagerMap("eventCommitterMap").isEmpty());
+    assertTrue(getManagerMap("eventCommitterRestartTimesMap").isEmpty());
+    verify(onCommitted, never()).run();
+  }
+
+  @Test
+  public void testLateEventEnrichmentAfterClearDoesNotRestoreState() throws Exception {
+    final TestProgressReportEvent event = createEvent(mock(Runnable.class));
+    manager.clear(PIPE_NAME, CREATION_TIME);
+
+    manager.enrichWithCommitterKeyAndCommitId(event, CREATION_TIME, REGION_ID);
+
+    assertTrue(getManagerMap("eventCommitterMap").isEmpty());
+    assertTrue(getManagerMap("eventCommitterRestartTimesMap").isEmpty());
+  }
+
+  @Test
+  public void testLateCommitterCheckAfterClearDoesNotRestoreRestartState() throws Exception {
+    final CommitterKey key = manager.getCommitterKey(PIPE_NAME, CREATION_TIME, REGION_ID);
+    final Field eventCommitterMapField =
+        PipeEventCommitManager.class.getDeclaredField("eventCommitterMap");
+    eventCommitterMapField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    final Map<CommitterKey, PipeEventCommitter> originalEventCommitterMap =
+        (Map<CommitterKey, PipeEventCommitter>) eventCommitterMapField.get(manager);
+    final BlockingCommitterMap blockingMap = new BlockingCommitterMap(originalEventCommitterMap);
+    eventCommitterMapField.set(manager, blockingMap);
+
+    final AtomicReference<Boolean> result = new AtomicReference<>();
+    final AtomicReference<Throwable> backgroundFailure = new AtomicReference<>();
+    final Thread checkThread =
+        new Thread(
+            () -> {
+              try {
+                result.set(manager.isCurrentCommitterKey(key));
+              } catch (final Throwable e) {
+                backgroundFailure.compareAndSet(null, e);
+              }
+            });
+
+    try {
+      blockingMap.pauseNextLookup();
+      checkThread.start();
+      assertTrue(blockingMap.lookupPaused.await(10, TimeUnit.SECONDS));
+
+      manager.clear(PIPE_NAME, CREATION_TIME);
+    } finally {
+      blockingMap.resumeLookup.countDown();
+      checkThread.join(TimeUnit.SECONDS.toMillis(10));
+      eventCommitterMapField.set(manager, originalEventCommitterMap);
+    }
+
+    assertFalse(checkThread.isAlive());
+    assertTrue(backgroundFailure.get() == null);
+    assertFalse(result.get());
+    assertTrue(getManagerMap("eventCommitterRestartTimesMap").isEmpty());
+  }
+
+  @Test
+  public void testRestartRejectsStaleCommitAndAcceptsCurrentCommit() throws Exception {
+    final CommitterKey oldKey = manager.getCommitterKey(PIPE_NAME, CREATION_TIME, REGION_ID);
+    final Runnable oldOnCommitted = mock(Runnable.class);
+    manager.deregister(PIPE_NAME, CREATION_TIME, REGION_ID);
+
+    manager.commit(createEvent(oldOnCommitted), oldKey);
+    assertEquals(
+        Integer.valueOf(1),
+        getManagerMap("eventCommitterRestartTimesMap")
+            .get(new CommitterKey(PIPE_NAME, CREATION_TIME, REGION_ID)));
+
+    manager.register(PIPE_NAME, CREATION_TIME, REGION_ID, "iotdb-thrift-sink");
+    final CommitterKey newKey = manager.getCommitterKey(PIPE_NAME, CREATION_TIME, REGION_ID);
+    assertEquals(1, newKey.getRestartTimes());
+    final Runnable newOnCommitted = mock(Runnable.class);
+    manager.commit(createEvent(oldOnCommitted), oldKey);
+    manager.commit(createEvent(newOnCommitted), newKey);
+
+    verify(oldOnCommitted, never()).run();
+    verify(newOnCommitted).run();
+    assertEquals(1, getManagerMap("eventCommitterMap").size());
+    assertEquals(1, getManagerMap("eventCommitterRestartTimesMap").size());
+  }
+
+  private static TestProgressReportEvent createEvent(final Runnable onCommitted) {
+    final TestProgressReportEvent event = new TestProgressReportEvent();
+    event.setCommitterKeyAndCommitId(null, 1L);
+    event.addOnCommittedHook(onCommitted);
+    return event;
+  }
+
+  private static class TestProgressReportEvent extends ProgressReportEvent {
+
+    private List<Long> commitIds = Collections.singletonList(1L);
+
+    private TestProgressReportEvent() {
+      super(PIPE_NAME, CREATION_TIME, null);
+    }
+
+    @Override
+    public boolean hasMultipleCommitIds() {
+      return commitIds.size() > 1;
+    }
+
+    @Override
+    public List<Long> getCommitIds() {
+      return commitIds;
+    }
+
+    private void setCommitIds(final List<Long> commitIds) {
+      this.commitIds = commitIds;
+    }
+  }
+
+  private Map<?, ?> getManagerMap(final String fieldName) throws Exception {
+    final Field field = PipeEventCommitManager.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return (Map<?, ?>) field.get(manager);
+  }
+
+  private static class BlockingCommitterMap
+      extends ConcurrentHashMap<CommitterKey, PipeEventCommitter> {
+
+    private static final long serialVersionUID = 1L;
+
+    private final AtomicBoolean shouldPause = new AtomicBoolean();
+    private final CountDownLatch lookupPaused = new CountDownLatch(1);
+    private final CountDownLatch resumeLookup = new CountDownLatch(1);
+
+    private BlockingCommitterMap(final Map<CommitterKey, PipeEventCommitter> originalMap) {
+      putAll(originalMap);
+    }
+
+    private void pauseNextLookup() {
+      shouldPause.set(true);
+    }
+
+    @Override
+    public PipeEventCommitter get(final Object key) {
+      final PipeEventCommitter committer = super.get(key);
+      if (committer != null && shouldPause.compareAndSet(true, false)) {
+        lookupPaused.countDown();
+        try {
+          if (!resumeLookup.await(10, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Timed out waiting to resume committer lookup");
+          }
+        } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new IllegalStateException(e);
+        }
+      }
+      return committer;
+    }
+  }
+}
