@@ -154,7 +154,8 @@ public class LoadManager {
     loadReady.set(false);
     loadReadyStartTimeMillis.set(System.currentTimeMillis());
     loadReadyReason =
-        ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F;
+        ConfigNodeMessages
+            .MESSAGE_CONFIGNODE_LEADER_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F;
     loadCache.initHeartbeatCache(configManager);
     loadServicesStarted.set(true);
     heartbeatService.startHeartbeatService();
@@ -167,8 +168,7 @@ public class LoadManager {
     loadServicesStarted.set(false);
     loadReadyStartTimeMillis.set(0);
     loadReady.set(false);
-    loadReadyReason =
-        ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_STOPPED_5884BB0F;
+    loadReadyReason = ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_STOPPED_5884BB0F;
     heartbeatService.stopHeartbeatService();
     statisticsService.stopLoadStatisticsService();
     eventService.stopEventService();
@@ -200,8 +200,7 @@ public class LoadManager {
 
     List<String> unreadyReasons = loadCache.getNodeHeartbeatUnreadyReasons();
     if (unreadyReasons.isEmpty()) {
-      loadReadyReason =
-          ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_READY_CC9C90E7;
+      loadReadyReason = ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_READY_CC9C90E7;
       loadReady.set(true);
       return true;
     }
@@ -538,7 +537,8 @@ public class LoadManager {
     loadReady.set(false);
     this.loadReadyStartTimeMillis.set(loadReadyStartTimeMillis);
     loadReadyReason =
-        ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F;
+        ConfigNodeMessages
+            .MESSAGE_CONFIGNODE_LEADER_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F;
   }
 
   @TestOnly

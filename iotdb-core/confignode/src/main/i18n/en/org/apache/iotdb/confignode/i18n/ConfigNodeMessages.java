@@ -130,8 +130,9 @@ public final class ConfigNodeMessages {
           "Skip starting ConfigNode leader services because the leader epoch is stale.";
   public static final String LOG_CONFIGNODE_ARG_AT_ARG_IS_NO_LONGER_LEADER_NEW_LEADER_ARG_5C41D7D7 =
       "ConfigNode %d at %s is no longer the leader; new leader is node %d.";
-  public static final String LOG_CONFIGNODE_ARG_AT_ARG_IS_NO_LONGER_LEADER_CLEANING_SERVICES_37CA9A1A =
-      "ConfigNode %d at %s is no longer the leader; cleaning up leader services.";
+  public static final String
+      LOG_CONFIGNODE_ARG_AT_ARG_IS_NO_LONGER_LEADER_CLEANING_SERVICES_37CA9A1A =
+          "ConfigNode %d at %s is no longer the leader; cleaning up leader services.";
   public static final String LOG_CONFIGNODE_ARG_AT_ARG_BECOMES_CONFIG_REGION_LEADER_2EB9B9E2 =
       "ConfigNode %d at %s becomes ConfigRegion leader.";
   public static final String LOG_CONFIGNODE_ARG_AT_ARG_AS_CONFIG_REGION_LEADER_IS_READY_74DFCB26 =
@@ -139,8 +140,8 @@ public final class ConfigNodeMessages {
   public static final String LOG_CONFIGNODE_ARG_AT_ARG_LEADER_SERVICES_ARE_UNAVAILABLE_0223CF16 =
       "ConfigNode %d at %s is no longer leader; all leader services are unavailable.";
   public static final String
-      LOG_FAILED_TO_START_CONFIGNODE_LEADER_SERVICE_ARG_FOR_NODE_ARG_AT_ARG_THE_NODE_WILL_FINISH_WARMING_UP_BUT_THIS_SERVICE_REMAINS_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_82D6EBBD =
-          "Failed to start ConfigNode leader service %s for node %s at %s; the node will finish warming up, but this service remains unavailable until the next leadership transition.";
+      LOG_FAILED_TO_START_CONFIGNODE_LEADER_SERVICE_ON_NODE_ARG_AT_ARG_ARG_THE_NODE_WILL_FINISH_WARMING_UP_BUT_THIS_SERVICE_REMAINS_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_9E0D12F9 =
+          "Failed to start ConfigNode leader service on node %s at %s: %s; the node will finish warming up, but this service remains unavailable until the next leadership transition.";
 
   public static final String MESSAGE_UNREADY_NODES_ARG_144B31E1 = "nodes=%s";
   public static final String MESSAGE_MORE_UNREADY_NODES_ARG_C7CDA960 = "...(%d more)";

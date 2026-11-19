@@ -414,14 +414,15 @@ public class ConsensusManager {
    *     NEED_REDIRECTION otherwise
    */
   public TSStatus confirmLeader() {
-    return confirmLeader(true);
+    return confirmLeader(false);
   }
 
-  private TSStatus confirmLeader(final boolean checkLoadReady) {
+  private TSStatus confirmLeader(final boolean forInternalProcedure) {
     if (!isLeader()) {
       TSStatus result = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
       result.setMessage(
-          ConfigNodeMessages.MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D);
+          ConfigNodeMessages
+              .MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D);
       TConfigNodeLocation leaderLocation = getLeaderLocation();
       if (leaderLocation != null) {
         result.setRedirectNode(leaderLocation.getInternalEndPoint());
@@ -433,13 +434,15 @@ public class ConsensusManager {
 
     if (!isLeaderReady()) {
       return getLeaderWarmingUpStatus(
-          ConfigNodeMessages.MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_CONSENSUS_NOT_READY_YET_F1FB7C9A);
+          ConfigNodeMessages
+              .MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_CONSENSUS_NOT_READY_YET_F1FB7C9A);
     }
-    if (!stateMachine.areLeaderServicesReady()) {
+    if (!stateMachine.areLeaderServicesReady(forInternalProcedure)) {
       return getLeaderWarmingUpStatus(
-          ConfigNodeMessages.MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_LEADER_SERVICES_NOT_READY_YET_ECC25E1A);
+          ConfigNodeMessages
+              .MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_LEADER_SERVICES_NOT_READY_YET_ECC25E1A);
     }
-    if (checkLoadReady && !configManager.getLoadManager().isLoadReady()) {
+    if (!forInternalProcedure && !configManager.getLoadManager().isLoadReady()) {
       return getLeaderWarmingUpStatus(configManager.getLoadManager().getLoadReadyReason());
     }
 
@@ -447,7 +450,7 @@ public class ConsensusManager {
   }
 
   public TSStatus confirmLeaderForInternalProcedure() {
-    return confirmLeader(false);
+    return confirmLeader(true);
   }
 
   private void waitForLeaderReady() {

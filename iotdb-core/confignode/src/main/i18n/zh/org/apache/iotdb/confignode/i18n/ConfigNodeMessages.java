@@ -129,8 +129,9 @@ public final class ConfigNodeMessages {
           "Leader 任期已过期，跳过启动 ConfigNode Leader 服务。";
   public static final String LOG_CONFIGNODE_ARG_AT_ARG_IS_NO_LONGER_LEADER_NEW_LEADER_ARG_5C41D7D7 =
       "ConfigNode %d（%s）不再是 Leader；新 Leader 为节点 %d。";
-  public static final String LOG_CONFIGNODE_ARG_AT_ARG_IS_NO_LONGER_LEADER_CLEANING_SERVICES_37CA9A1A =
-      "ConfigNode %d（%s）不再是 Leader，正在清理 Leader 服务。";
+  public static final String
+      LOG_CONFIGNODE_ARG_AT_ARG_IS_NO_LONGER_LEADER_CLEANING_SERVICES_37CA9A1A =
+          "ConfigNode %d（%s）不再是 Leader，正在清理 Leader 服务。";
   public static final String LOG_CONFIGNODE_ARG_AT_ARG_BECOMES_CONFIG_REGION_LEADER_2EB9B9E2 =
       "ConfigNode %d（%s）成为 ConfigRegion Leader。";
   public static final String LOG_CONFIGNODE_ARG_AT_ARG_AS_CONFIG_REGION_LEADER_IS_READY_74DFCB26 =
@@ -138,7 +139,7 @@ public final class ConfigNodeMessages {
   public static final String LOG_CONFIGNODE_ARG_AT_ARG_LEADER_SERVICES_ARE_UNAVAILABLE_0223CF16 =
       "ConfigNode %d（%s）不再是 Leader，所有 Leader 服务均不可用。";
   public static final String
-      LOG_FAILED_TO_START_CONFIGNODE_LEADER_SERVICE_ARG_FOR_NODE_ARG_AT_ARG_THE_NODE_WILL_FINISH_WARMING_UP_BUT_THIS_SERVICE_REMAINS_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_82D6EBBD =
+      LOG_FAILED_TO_START_CONFIGNODE_LEADER_SERVICE_ON_NODE_ARG_AT_ARG_ARG_THE_NODE_WILL_FINISH_WARMING_UP_BUT_THIS_SERVICE_REMAINS_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_9E0D12F9 =
           "启动节点 %s（地址 %s）的 ConfigNode Leader 服务 %s 失败；节点仍将完成预热，但该服务在下一次 Leader 切换前不可用。";
 
   public static final String MESSAGE_UNREADY_NODES_ARG_144B31E1 = "未就绪节点：%s";

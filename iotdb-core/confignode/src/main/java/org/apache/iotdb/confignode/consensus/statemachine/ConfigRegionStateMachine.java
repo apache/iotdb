@@ -66,7 +66,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** {@link IStateMachine} for ConfigRegion. */
@@ -81,9 +80,30 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.CONFIG_NODE_RECOVER.getName());
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private final ConfigPlanExecutor executor;
-  private final AtomicBoolean leaderServicesReady;
+
+  /**
+   * Readiness of leader services in the {@link #leaderServicesEpoch current epoch}. Recovered
+   * procedures can run once the Pipe callback has completed, but external requests must also wait
+   * for worker startup to finish.
+   */
+  private volatile LeaderServicesReadiness leaderServicesReadiness =
+      LeaderServicesReadiness.WARMING_UP;
+
+  /**
+   * Monotonically increasing leadership generation. Every become-leader / resign-leader transition
+   * bumps it, so any work submitted for an older epoch can detect it is stale and bail out.
+   */
   private final AtomicLong leaderServicesEpoch;
+
+  /** Guards {@link #leaderServicesReadiness} and {@link #leaderServicesEpoch} as a unit. */
   private final Object leaderServicesLock;
+
+  private enum LeaderServicesReadiness {
+    WARMING_UP,
+    READY_FOR_PROCEDURES,
+    READY
+  }
+
   private ConfigManager configManager;
 
   /** Variables for {@link ConfigNode} Simple Consensus. */
@@ -107,7 +127,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   public ConfigRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
-    this.leaderServicesReady = new AtomicBoolean(false);
     this.leaderServicesEpoch = new AtomicLong(0);
     this.leaderServicesLock = new Object();
     this.configManager = configManager;
@@ -313,10 +332,23 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     if (!isCurrentLeaderServicesEpoch(epoch)) {
       return;
     }
+    final boolean procedureExecutorWasRunning =
+        configManager.getProcedureManager().getExecutor().isRunning();
     configManager
         .getProcedureManager()
-        .startExecutor(() -> markLeaderServicesReadyIfEpochCurrent(epoch));
-    markLeaderServicesReadyIfEpochCurrent(epoch);
+        .startExecutor(
+            () -> {
+              startPipeOnLeaderChangedIfEpochCurrent(epoch);
+              markLeaderServicesReadyIfEpochCurrent(
+                  epoch, LeaderServicesReadiness.READY_FOR_PROCEDURES);
+            });
+    if (!isCurrentLeaderServicesEpoch(epoch)) {
+      return;
+    }
+    if (procedureExecutorWasRunning) {
+      startPipeOnLeaderChangedIfEpochCurrent(epoch);
+    }
+    markLeaderServicesReadyIfEpochCurrent(epoch, LeaderServicesReadiness.READY);
 
     boolean loadReady = waitForLoadReady(epoch);
     if (!isCurrentLeaderServicesEpoch(epoch)) {
@@ -340,11 +372,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         () -> configManager.getCQManager().startCQScheduler(),
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync(),
         () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat(),
-        () ->
-            configManager
-                .getPipeManager()
-                .getPipeRuntimeCoordinator()
-                .onConfigRegionGroupLeaderChanged(),
         () ->
             configManager
                 .getSubscriptionManager()
@@ -384,10 +411,34 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         leaderServicesStartupPool);
   }
 
-  private void markLeaderServicesReadyIfEpochCurrent(final long epoch) {
+  private void startPipeOnLeaderChangedIfEpochCurrent(final long epoch) {
+    startInParallelIfEpochCurrent(
+            epoch,
+            () -> {
+              try {
+                configManager
+                    .getPipeManager()
+                    .getPipeRuntimeCoordinator()
+                    .onConfigRegionGroupLeaderChanged();
+              } catch (final Exception e) {
+                LOGGER.error(
+                    String.format(
+                        ConfigNodeMessages
+                            .LOG_FAILED_TO_START_CONFIGNODE_LEADER_SERVICE_ON_NODE_ARG_AT_ARG_ARG_THE_NODE_WILL_FINISH_WARMING_UP_BUT_THIS_SERVICE_REMAINS_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_9E0D12F9,
+                        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+                        currentNodeTEndPoint,
+                        "PipeOnLeaderChanged"),
+                    e);
+              }
+            })
+        .join();
+  }
+
+  private void markLeaderServicesReadyIfEpochCurrent(
+      final long epoch, final LeaderServicesReadiness readiness) {
     synchronized (leaderServicesLock) {
       if (isCurrentLeaderServicesEpoch(epoch)) {
-        leaderServicesReady.set(true);
+        leaderServicesReadiness = readiness;
       }
     }
   }
@@ -406,7 +457,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private boolean waitForLoadReady(final long epoch) {
     long startTime = System.currentTimeMillis();
     long timeout = CommonDescriptor.getInstance().getConfig().getCnConnectionTimeoutInMS() / 2;
-    while (isCurrentLeaderServicesEpoch(epoch) && System.currentTimeMillis() - startTime < timeout) {
+    while (isCurrentLeaderServicesEpoch(epoch)
+        && System.currentTimeMillis() - startTime < timeout) {
       if (configManager.getLoadManager().isLoadReady()) {
         return true;
       }
@@ -431,20 +483,22 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
   }
 
-  public boolean areLeaderServicesReady() {
-    return leaderServicesReady.get();
+  public boolean areLeaderServicesReady(final boolean forInternalProcedure) {
+    final LeaderServicesReadiness readiness = leaderServicesReadiness;
+    return readiness == LeaderServicesReadiness.READY
+        || (forInternalProcedure && readiness == LeaderServicesReadiness.READY_FOR_PROCEDURES);
   }
 
   private long nextLeaderServicesEpoch() {
     synchronized (leaderServicesLock) {
-      leaderServicesReady.set(false);
+      leaderServicesReadiness = LeaderServicesReadiness.WARMING_UP;
       return leaderServicesEpoch.incrementAndGet();
     }
   }
 
   private void invalidateLeaderServices() {
     synchronized (leaderServicesLock) {
-      leaderServicesReady.set(false);
+      leaderServicesReadiness = LeaderServicesReadiness.WARMING_UP;
       leaderServicesEpoch.incrementAndGet();
     }
   }
