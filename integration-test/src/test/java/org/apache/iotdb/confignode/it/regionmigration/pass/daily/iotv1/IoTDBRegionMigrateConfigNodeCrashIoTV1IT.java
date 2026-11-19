@@ -32,7 +32,6 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -57,7 +56,6 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV1IT
   }
 
   @Test
-  @Ignore
   public void cnCrashDuringPreCheckTest() throws Exception {
     successTest(
         1,
