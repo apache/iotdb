@@ -96,15 +96,17 @@ public class TCompressedElasticFramedTransportTest {
 
       byte[] actual = new byte[payload.length];
       transport.readAll(actual, 0, 100);
-      assertEquals(payload.length - 100, transport.getBytesRemainingInBuffer());
-      assertEquals(payload.length, transport.getBuffer().length);
+      assertEquals(-1, transport.getBytesRemainingInBuffer());
+      assertEquals(payload.length - 100, transport.readBuffer.getBytesRemainingInBuffer());
+      assertTrue(transport.getBuffer().length >= payload.length);
       for (AutoResizingBuffer buffer : reusableBuffers(transport)) {
         assertEquals(INITIAL_CAPACITY, buffer.array().length);
       }
-      assertEquals(4L * INITIAL_CAPACITY, usedMemory.get());
+      assertEquals(4L * INITIAL_CAPACITY + transport.getBuffer().length, usedMemory.get());
       transport.readAll(actual, 100, actual.length - 100);
       assertArrayEquals(payload, actual);
       assertEquals(INITIAL_CAPACITY, transport.getBuffer().length);
+      assertEquals(4L * INITIAL_CAPACITY, usedMemory.get());
 
       roundTrip(transport, randomBytes(64));
       for (AutoResizingBuffer buffer : reusableBuffers(transport)) {
@@ -135,13 +137,14 @@ public class TCompressedElasticFramedTransportTest {
       input.fill(wire, payload.length);
       assertEquals(payload.length, input.getBuffer().length);
       assertEquals(INITIAL_CAPACITY, reusableBuffer(input).array().length);
-      assertEquals(INITIAL_CAPACITY, usedMemory.get());
+      assertEquals(INITIAL_CAPACITY + input.getBuffer().length, usedMemory.get());
       actual = new byte[payload.length];
       input.readAll(actual, 0, 100);
       input.readAll(actual, 100, actual.length - 100);
       assertArrayEquals(payload, actual);
       assertEquals(0, input.getBytesRemainingInBuffer());
       assertEquals(INITIAL_CAPACITY, input.getBuffer().length);
+      assertEquals(INITIAL_CAPACITY, usedMemory.get());
     }
     assertEquals(0, usedMemory.get());
   }
@@ -162,11 +165,12 @@ public class TCompressedElasticFramedTransportTest {
       assertEquals(payload.length, output.getPos());
       assertArrayEquals(payload, Arrays.copyOf(output.getBuffer(), output.getPos()));
       assertEquals(INITIAL_CAPACITY, reusableBuffer(output).array().length);
-      assertEquals(INITIAL_CAPACITY, usedMemory.get());
+      assertEquals(INITIAL_CAPACITY + output.getBuffer().length, usedMemory.get());
 
       output.reset();
       assertEquals(0, output.getPos());
       assertEquals(INITIAL_CAPACITY, output.getBuffer().length);
+      assertEquals(INITIAL_CAPACITY, usedMemory.get());
       output.write(payload, 0, 64);
       assertSame(reusableBuffer(output).array(), output.getBuffer());
       assertArrayEquals(Arrays.copyOf(payload, 64), Arrays.copyOf(output.getBuffer(), 64));

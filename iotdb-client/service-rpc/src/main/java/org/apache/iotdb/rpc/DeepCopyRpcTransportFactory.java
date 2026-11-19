@@ -29,8 +29,8 @@ public class DeepCopyRpcTransportFactory extends BaseRpcTransportFactory {
     reInit();
   }
 
-  private DeepCopyRpcTransportFactory(TTransportFactory inner) {
-    super(inner);
+  private DeepCopyRpcTransportFactory(TTransportFactory inner, TTransportFactory serverInner) {
+    super(inner, serverInner);
   }
 
   public static void reInit() {
@@ -58,12 +58,18 @@ public class DeepCopyRpcTransportFactory extends BaseRpcTransportFactory {
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
       int maxReusableBufferSize) {
+    int serverMaxReusableBufferSize =
+        Math.max(thriftDefaultBufferSize, SERVER_MAX_REUSABLE_BUFFER_SIZE);
     return useSnappy
         ? new DeepCopyRpcTransportFactory(
             new TimeoutChangeableTSnappyFramedTransport.Factory(
-                thriftDefaultBufferSize, thriftMaxFrameSize, true, maxReusableBufferSize))
+                thriftDefaultBufferSize, thriftMaxFrameSize, true, maxReusableBufferSize),
+            new TimeoutChangeableTSnappyFramedTransport.Factory(
+                thriftDefaultBufferSize, thriftMaxFrameSize, true, serverMaxReusableBufferSize))
         : new DeepCopyRpcTransportFactory(
             new TimeoutChangeableTFastFramedTransport.Factory(
-                thriftDefaultBufferSize, thriftMaxFrameSize, true, maxReusableBufferSize));
+                thriftDefaultBufferSize, thriftMaxFrameSize, true, maxReusableBufferSize),
+            new TimeoutChangeableTFastFramedTransport.Factory(
+                thriftDefaultBufferSize, thriftMaxFrameSize, true, serverMaxReusableBufferSize));
   }
 }

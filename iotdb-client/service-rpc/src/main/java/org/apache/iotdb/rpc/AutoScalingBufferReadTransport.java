@@ -29,7 +29,7 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
 
   private final AutoResizingBuffer buf;
   private final int maxReusableBufferSize;
-  private byte[] temporaryBuffer;
+  private AutoResizingBuffer temporaryBuffer;
   private int pos = 0;
   private int limit = 0;
 
@@ -49,7 +49,12 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
     } catch (IOException e) {
       throw new TTransportException(e);
     }
-    inTrans.readAll(getBuffer(), 0, length);
+    try {
+      inTrans.readAll(getBuffer(), 0, length);
+    } catch (TTransportException e) {
+      releaseTemporaryBuffer();
+      throw e;
+    }
     pos = 0;
     limit = length;
   }
@@ -71,8 +76,7 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
   public final void consumeBuffer(int len) {
     pos += len;
     if (pos == limit && temporaryBuffer != null) {
-      // Protocols may keep their own reference to a consumed binary value. Drop only our reference.
-      temporaryBuffer = null;
+      releaseTemporaryBuffer();
       pos = 0;
       limit = 0;
     }
@@ -96,7 +100,7 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
 
   @Override
   public final byte[] getBuffer() {
-    return temporaryBuffer == null ? buf.array() : temporaryBuffer;
+    return temporaryBuffer == null ? buf.array() : temporaryBuffer.array();
   }
 
   @Override
@@ -109,13 +113,34 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
     return limit - pos;
   }
 
+  boolean isUsingTemporaryBuffer() {
+    return temporaryBuffer != null;
+  }
+
   public void resizeIfNecessary(int size) throws IOException {
     if (size > maxReusableBufferSize) {
-      byte[] newBuffer = new byte[size];
-      buf.resetToInitialCapacity();
-      temporaryBuffer = newBuffer;
+      AutoResizingBuffer newBuffer = temporaryBuffer;
+      if (newBuffer == null) {
+        newBuffer = new AutoResizingBuffer(0);
+      }
+      try {
+        newBuffer.ensureCapacity(size, AutoResizingBuffer.MAX_ARRAY_SIZE);
+        buf.resetToInitialCapacity();
+        temporaryBuffer = newBuffer;
+      } catch (IOException | RuntimeException | Error e) {
+        newBuffer.close();
+        temporaryBuffer = null;
+        throw e;
+      }
     } else {
+      releaseTemporaryBuffer();
       buf.resizeIfNecessary(size);
+    }
+  }
+
+  private void releaseTemporaryBuffer() {
+    if (temporaryBuffer != null) {
+      temporaryBuffer.close();
       temporaryBuffer = null;
     }
   }
@@ -123,7 +148,7 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
   @Override
   public void close() {
     super.close();
-    temporaryBuffer = null;
+    releaseTemporaryBuffer();
     pos = 0;
     limit = 0;
     buf.close();

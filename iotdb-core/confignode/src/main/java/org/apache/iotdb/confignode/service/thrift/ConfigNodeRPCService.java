@@ -82,7 +82,7 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
                   commonConfig.getKeyStorePwd(),
                   commonConfig.getTrustStorePath(),
                   commonConfig.getTrustStorePwd(),
-                  DeepCopyRpcTransportFactory.INSTANCE)
+                  DeepCopyRpcTransportFactory.INSTANCE.getServerTransportFactory())
               : new ThriftServiceThread(
                   processor,
                   getID().getName(),
@@ -93,7 +93,7 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
                   configConf.getThriftServerAwaitTimeForStopService(),
                   new ConfigNodeRPCServiceHandler(),
                   commonConfig.isRpcThriftCompressionEnabled(),
-                  DeepCopyRpcTransportFactory.INSTANCE);
+                  DeepCopyRpcTransportFactory.INSTANCE.getServerTransportFactory());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

@@ -29,6 +29,8 @@ import org.apache.thrift.transport.TTransportFactory;
 @SuppressWarnings("java:S1135") // ignore todos
 public class BaseRpcTransportFactory extends TTransportFactory {
 
+  static final int SERVER_MAX_REUSABLE_BUFFER_SIZE = 64 * 1024;
+
   // TODO: make it a config
   public static boolean USE_SNAPPY = false;
 
@@ -36,15 +38,31 @@ public class BaseRpcTransportFactory extends TTransportFactory {
   protected static int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
 
   protected final TTransportFactory inner;
+  private final TTransportFactory serverTransportFactory;
 
   protected BaseRpcTransportFactory(TTransportFactory inner) {
+    this(inner, inner);
+  }
+
+  protected BaseRpcTransportFactory(TTransportFactory inner, TTransportFactory serverInner) {
     this.inner = inner;
+    this.serverTransportFactory =
+        new TTransportFactory() {
+          @Override
+          public TTransport getTransport(TTransport trans) throws TTransportException {
+            updateConfigurationForAsyncServerIfNecessary(trans);
+            return serverInner.getTransport(trans);
+          }
+        };
   }
 
   @Override
   public TTransport getTransport(TTransport trans) throws TTransportException {
-    updateConfigurationForAsyncServerIfNecessary(trans);
     return inner.getTransport(trans);
+  }
+
+  public TTransportFactory getServerTransportFactory() {
+    return serverTransportFactory;
   }
 
   /**

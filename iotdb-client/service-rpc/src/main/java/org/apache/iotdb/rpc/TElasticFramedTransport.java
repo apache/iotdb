@@ -233,11 +233,21 @@ public class TElasticFramedTransport extends TTransport {
 
   protected void readFrame() throws TTransportException {
     // Discard the previous frame's budget before reading the next frame header and payload.
-    resetMessageSizeAndConsumedBytes();
-    underlying.readAll(i32buf, 0, 4);
+    try {
+      resetMessageSizeAndConsumedBytes();
+      underlying.readAll(i32buf, 0, 4);
+    } catch (TTransportException e) {
+      close();
+      throw e;
+    }
     int size = TFramedTransport.decodeFrameSize(i32buf);
     validateFrame(size);
-    readBuffer.fill(underlying, size);
+    try {
+      readBuffer.fill(underlying, size);
+    } catch (TTransportException e) {
+      close();
+      throw e;
+    }
     // Bind subsequent protocol reads to the current frame size.
     resetMessageSizeAndConsumedBytes(size);
   }
@@ -328,15 +338,19 @@ public class TElasticFramedTransport extends TTransport {
   public void flush() throws TTransportException {
     int length = writeBuffer.getPos();
     checkWriteFrameSize(length);
-    TFramedTransport.encodeFrameSize(length, i32buf);
-    underlying.write(i32buf, 0, 4);
-    underlying.write(writeBuffer.getBuffer(), 0, length);
     try {
+      TFramedTransport.encodeFrameSize(length, i32buf);
+      underlying.write(i32buf, 0, 4);
+      underlying.write(writeBuffer.getBuffer(), 0, length);
       writeBuffer.resetAndResize();
+      underlying.flush();
+    } catch (TTransportException e) {
+      close();
+      throw e;
     } catch (IOException e) {
+      close();
       throw new TTransportException(e);
     }
-    underlying.flush();
   }
 
   @Override
@@ -386,9 +400,6 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void write(byte[] buf, int off, int len) throws TTransportException {
-    if (writeBuffer.tryWriteWithinCapacity(buf, off, len)) {
-      return;
-    }
     long size = (long) writeBuffer.getPos() + len;
     int maxSize = getMaxWriteBufferSize();
     if (size > maxSize) {
@@ -425,6 +436,9 @@ public class TElasticFramedTransport extends TTransport {
       }
       throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
     }
+    if (writeBuffer.tryWriteWithinCapacity(buf, off, len, maxSize)) {
+      return;
+    }
     writeBuffer.write(buf, off, len, maxSize);
   }
 
@@ -439,7 +453,9 @@ public class TElasticFramedTransport extends TTransport {
   @Override
   public int getBytesRemainingInBuffer() {
     // return -1 can make the caller protocol to copy binary data from the underlying transport.
-    return copyBinary ? -1 : readBuffer.getBytesRemainingInBuffer();
+    return copyBinary || readBuffer.isUsingTemporaryBuffer()
+        ? -1
+        : readBuffer.getBytesRemainingInBuffer();
   }
 
   @Override

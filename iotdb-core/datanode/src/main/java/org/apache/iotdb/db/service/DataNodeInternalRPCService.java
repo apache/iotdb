@@ -107,7 +107,7 @@ public class DataNodeInternalRPCService extends ThriftService
                   commonConfig.getKeyStorePwd(),
                   commonConfig.getTrustStorePath(),
                   commonConfig.getTrustStorePwd(),
-                  DeepCopyRpcTransportFactory.INSTANCE)
+                  DeepCopyRpcTransportFactory.INSTANCE.getServerTransportFactory())
               : new ThriftServiceThread(
                   processor,
                   getID().getName(),
@@ -118,7 +118,7 @@ public class DataNodeInternalRPCService extends ThriftService
                   config.getThriftServerAwaitTimeForStopService(),
                   new InternalServiceThriftHandler(getClientImpl()),
                   config.isRpcThriftCompressionEnable(),
-                  DeepCopyRpcTransportFactory.INSTANCE);
+                  DeepCopyRpcTransportFactory.INSTANCE.getServerTransportFactory());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

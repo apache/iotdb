@@ -76,7 +76,7 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
               60,
               serverEventHandler,
               false,
-              DeepCopyRpcTransportFactory.INSTANCE);
+              DeepCopyRpcTransportFactory.INSTANCE.getServerTransportFactory());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

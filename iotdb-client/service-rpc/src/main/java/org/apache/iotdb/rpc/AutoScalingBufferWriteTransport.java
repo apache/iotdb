@@ -25,7 +25,6 @@ import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 /**
  * Note that this class is mainly copied from class {@link
@@ -36,7 +35,7 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
 
   private final AutoResizingBuffer buf;
   private final int maxReusableBufferSize;
-  private byte[] temporaryBuffer;
+  private AutoResizingBuffer temporaryBuffer;
   private int pos;
 
   public AutoScalingBufferWriteTransport(int initialCapacity) throws IOException {
@@ -85,13 +84,16 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
 
   // Framed callers keep capacity within their limit. A fitting write needs no further limit
   // checks; compare remaining space rather than adding pos and len, which could overflow.
-  boolean tryWriteWithinCapacity(byte[] toWrite, int off, int len) {
+  boolean tryWriteWithinCapacity(byte[] toWrite, int off, int len, int maxCapacity) {
     byte[] array = getBuffer();
-    // A closed reusable buffer must reserve its memory again. Crossing the reuse threshold
-    // must also go through ensureCapacity so the large frame uses temporary storage.
+    int limit = Math.min(maxCapacity, AutoResizingBuffer.MAX_ARRAY_SIZE);
+    // A closed reusable buffer must reserve its memory again.
     if (buf.isClosed()
+        || pos > limit
+        || len > limit - pos
         || len > array.length - pos
-        || (temporaryBuffer == null && len > maxReusableBufferSize - pos)) {
+        || (temporaryBuffer == null
+            && (pos > maxReusableBufferSize || len > maxReusableBufferSize - pos))) {
       return false;
     }
     System.arraycopy(toWrite, off, array, pos, len);
@@ -105,7 +107,7 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
 
   public void reset() {
     pos = 0;
-    temporaryBuffer = null;
+    releaseTemporaryBuffer();
   }
 
   void resetAndResize() throws IOException {
@@ -126,40 +128,46 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
 
   public void resizeIfNecessary(int size) throws IOException {
     if (size > maxReusableBufferSize) {
-      ensureCapacity(size);
+      ensureCapacity(size, AutoResizingBuffer.MAX_ARRAY_SIZE);
     } else {
+      releaseTemporaryBuffer();
       buf.resizeIfNecessary(size);
-      temporaryBuffer = null;
     }
-  }
-
-  private void ensureCapacity(int size) throws IOException {
-    ensureCapacity(size, AutoResizingBuffer.MAX_ARRAY_SIZE);
   }
 
   private void ensureCapacity(int size, int maxCapacity) throws IOException {
     if (size > maxReusableBufferSize) {
-      if (temporaryBuffer == null || temporaryBuffer.length < size) {
-        // Preserve an unfinished frame when incremental serialization crosses the threshold.
-        // Keep amortized growth for subsequent small writes within the same temporary frame.
-        int capacity =
-            temporaryBuffer == null
-                ? size
-                : Math.min(
-                    AutoResizingBuffer.calculateNewCapacity(temporaryBuffer.length, size),
-                    maxCapacity);
-        byte[] newBuffer = Arrays.copyOf(getBuffer(), capacity);
-        buf.resetToInitialCapacity();
-        temporaryBuffer = newBuffer;
+      if (temporaryBuffer == null) {
+        byte[] currentBuffer = getBuffer();
+        AutoResizingBuffer newBuffer = new AutoResizingBuffer(0);
+        try {
+          newBuffer.ensureCapacity(size, maxCapacity);
+          System.arraycopy(currentBuffer, 0, newBuffer.array(), 0, pos);
+          buf.resetToInitialCapacity();
+          temporaryBuffer = newBuffer;
+        } catch (IOException | RuntimeException | Error e) {
+          newBuffer.close();
+          throw e;
+        }
+      } else if (temporaryBuffer.array().length < size) {
+        temporaryBuffer.ensureCapacity(size, maxCapacity);
       }
     } else {
+      releaseTemporaryBuffer();
       buf.ensureCapacity(size, maxCapacity);
     }
   }
 
   @Override
   public byte[] getBuffer() {
-    return temporaryBuffer == null ? buf.array() : temporaryBuffer;
+    return temporaryBuffer == null ? buf.array() : temporaryBuffer.array();
+  }
+
+  private void releaseTemporaryBuffer() {
+    if (temporaryBuffer != null) {
+      temporaryBuffer.close();
+      temporaryBuffer = null;
+    }
   }
 
   @Override

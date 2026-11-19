@@ -141,7 +141,8 @@ public class InternalSessionProtocolTest {
               new TThreadPoolServer.Args(socket)
                   .processor(processor)
                   .protocolFactory(new TBinaryProtocol.Factory())
-                  .transportFactory(DeepCopyRpcTransportFactory.INSTANCE)
+                  .transportFactory(
+                      DeepCopyRpcTransportFactory.INSTANCE.getServerTransportFactory())
                   .executorService(workers));
       final CountDownLatch ready = new CountDownLatch(1);
       thread =
