@@ -967,4 +967,34 @@ public class AlignedTVListTest {
       Assert.assertEquals((long) (i * 100), tvList.getLongByValueIndex(i, 2));
     }
   }
+
+  @Test
+  public void testAccountedRamSizeLifecycleOnDeserializeAndClear() throws IOException {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT32));
+    Assert.assertFalse(tvList.isRamSizeAccounted());
+    tvList.putAlignedValue(10L, new Object[] {1L, 2});
+    tvList.putAlignedValue(5L, new Object[] {3L, 4});
+
+    ByteBuffer buffer = ByteBuffer.allocate(tvList.serializedSize());
+    tvList.serializeToWAL(new WALByteBufferForTest(buffer));
+    buffer.flip();
+
+    AlignedTVList restored =
+        AlignedTVList.deserialize(new DataInputStream(new ByteArrayInputStream(buffer.array())));
+    Assert.assertTrue(restored.isRamSizeAccounted());
+    Assert.assertEquals(restored.getArrayRamSize(), restored.getAccountedArrayRamSize());
+    Assert.assertEquals(restored.getStructureRamSize(), restored.getAccountedStructureRamSize());
+
+    restored.setAccountedRamSize(128L, 256L);
+    Assert.assertTrue(restored.isRamSizeAccounted());
+    Assert.assertEquals(128L, restored.getAccountedArrayRamSize());
+    Assert.assertEquals(256L, restored.getAccountedStructureRamSize());
+
+    restored.clear();
+    Assert.assertFalse(restored.isRamSizeAccounted());
+    Assert.assertEquals(0L, restored.getAccountedArrayRamSize());
+    Assert.assertEquals(0L, restored.getAccountedStructureRamSize());
+    tvList.clear();
+  }
 }

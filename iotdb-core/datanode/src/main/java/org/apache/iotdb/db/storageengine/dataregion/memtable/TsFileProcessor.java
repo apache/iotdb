@@ -1414,7 +1414,7 @@ public class TsFileProcessor {
       return;
     }
 
-    long totalCorrection = snapshot.getMemoryCorrection(estimatedMemTableIncrement);
+    long totalCorrection = snapshot.reconcileAndGetMemoryCorrection(estimatedMemTableIncrement);
     long structureIncrement = snapshot.structureRamCost - snapshot.structureRamCostBeforeWrite;
     WriteMemoryBlock structureBlock = snapshot.memTable.getStructureMemoryBlock();
     if (structureIncrement > 0) {
@@ -1503,7 +1503,7 @@ public class TsFileProcessor {
       this.memTable = memTable;
       this.deviceId = deviceId;
       this.deviceIds = null;
-      this.ramCostBeforeWrite = getRamCost(memTable, deviceId);
+      this.ramCostBeforeWrite = getRamCostBeforeWrite(memTable, deviceId);
       this.structureRamCostBeforeWrite = structureRamCost;
     }
 
@@ -1511,26 +1511,56 @@ public class TsFileProcessor {
       this.memTable = memTable;
       this.deviceId = null;
       this.deviceIds = deviceIds;
-      this.ramCostBeforeWrite = getRamCost(memTable, deviceIds);
+      this.ramCostBeforeWrite = getRamCostBeforeWrite(memTable, deviceIds);
       this.structureRamCostBeforeWrite = structureRamCost;
     }
 
     long getMemoryCorrection(long estimatedMemTableIncrement) {
+      return getMemoryCorrection(estimatedMemTableIncrement, false);
+    }
+
+    long reconcileAndGetMemoryCorrection(long estimatedMemTableIncrement) {
+      return getMemoryCorrection(estimatedMemTableIncrement, true);
+    }
+
+    private long getMemoryCorrection(long estimatedMemTableIncrement, boolean commitAccounted) {
       structureRamCost = 0;
-      return (deviceId == null ? getRamCost(memTable, deviceIds) : getRamCost(memTable, deviceId))
+      return (deviceId == null
+              ? getRamCost(memTable, deviceIds, commitAccounted)
+              : getRamCost(memTable, deviceId, commitAccounted))
           - ramCostBeforeWrite
           - estimatedMemTableIncrement;
     }
 
-    private long getRamCost(IMemTable memTable, Set<IDeviceID> deviceIds) {
+    private long getRamCostBeforeWrite(IMemTable memTable, Set<IDeviceID> deviceIds) {
       long ramCost = 0;
       for (IDeviceID currentDeviceId : deviceIds) {
-        ramCost += getRamCost(memTable, currentDeviceId);
+        ramCost += getRamCostBeforeWrite(memTable, currentDeviceId);
       }
       return ramCost;
     }
 
-    private long getRamCost(IMemTable memTable, IDeviceID deviceId) {
+    private long getRamCostBeforeWrite(IMemTable memTable, IDeviceID deviceId) {
+      return getRamCostForDevice(memTable, deviceId, true, false);
+    }
+
+    private long getRamCost(IMemTable memTable, Set<IDeviceID> deviceIds, boolean commitAccounted) {
+      long ramCost = 0;
+      for (IDeviceID currentDeviceId : deviceIds) {
+        ramCost += getRamCost(memTable, currentDeviceId, commitAccounted);
+      }
+      return ramCost;
+    }
+
+    private long getRamCost(IMemTable memTable, IDeviceID deviceId, boolean commitAccounted) {
+      return getRamCostForDevice(memTable, deviceId, false, commitAccounted);
+    }
+
+    private long getRamCostForDevice(
+        IMemTable memTable,
+        IDeviceID deviceId,
+        boolean useAccountedBaseline,
+        boolean commitAccounted) {
       IWritableMemChunk memChunk =
           memTable.getWritableMemChunk(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
       if (!(memChunk instanceof AlignedWritableMemChunk)) {
@@ -1538,18 +1568,31 @@ public class TsFileProcessor {
       }
 
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
-      long ramCost = getRamCost(alignedMemChunk.getWorkingTVList());
+      long ramCost =
+          getListRamCost(alignedMemChunk.getWorkingTVList(), useAccountedBaseline, commitAccounted);
       for (AlignedTVList sortedTVList : alignedMemChunk.getSortedList()) {
-        ramCost += getRamCost(sortedTVList);
+        ramCost += getListRamCost(sortedTVList, useAccountedBaseline, commitAccounted);
       }
       return ramCost;
     }
 
-    private long getRamCost(AlignedTVList list) {
+    private long getListRamCost(
+        AlignedTVList list, boolean useAccountedBaseline, boolean commitAccounted) {
       synchronized (list) {
-        long structureBytes = list.getStructureRamSize();
+        final long structureBytes;
+        final long arrayBytes;
+        if (useAccountedBaseline && list.isRamSizeAccounted()) {
+          structureBytes = list.getAccountedStructureRamSize();
+          arrayBytes = list.getAccountedArrayRamSize();
+        } else {
+          structureBytes = list.getStructureRamSize();
+          arrayBytes = list.getArrayRamSize();
+          if (commitAccounted) {
+            list.setAccountedRamSize(arrayBytes, structureBytes);
+          }
+        }
         structureRamCost += structureBytes;
-        return list.getArrayRamSize() + structureBytes;
+        return arrayBytes + structureBytes;
       }
     }
   }

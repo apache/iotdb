@@ -91,6 +91,13 @@ public abstract class AlignedTVList extends TVList {
   private long materializedValueArrayMemCost;
   private long materializedBitmapMemoryCost;
   private long arrayMemCostWithoutPrimitiveArraysAndIndex;
+  // Last array/structure RAM sizes reconciled into the owning MemTable's WriteMemoryBlocks.
+  // Query-side sort() may allocate indices/segmentMovedMap without charging the write blocks, so
+  // TsFileProcessor must diff post-write actual RAM against what was previously accounted rather
+  // than against a live pre-write snapshot.
+  private boolean ramSizeAccounted;
+  private long accountedArrayRamSize;
+  private long accountedStructureRamSize;
 
   /**
    * A fully prepared partial clone. All allocations and validations are completed before this plan
@@ -1066,6 +1073,11 @@ public abstract class AlignedTVList extends TVList {
     }
     Arrays.fill(materializedValueArrayCounts, 0);
     materializedValueArrayMemCost = 0;
+    synchronized (this) {
+      ramSizeAccounted = false;
+      accountedArrayRamSize = 0;
+      accountedStructureRamSize = 0;
+    }
   }
 
   @Override
@@ -1428,6 +1440,24 @@ public abstract class AlignedTVList extends TVList {
 
   public synchronized long getStructureRamSize() {
     return calculateContainerRamCost(null);
+  }
+
+  public synchronized boolean isRamSizeAccounted() {
+    return ramSizeAccounted;
+  }
+
+  public synchronized long getAccountedArrayRamSize() {
+    return accountedArrayRamSize;
+  }
+
+  public synchronized long getAccountedStructureRamSize() {
+    return accountedStructureRamSize;
+  }
+
+  public synchronized void setAccountedRamSize(long arrayRamSize, long structureRamSize) {
+    this.accountedArrayRamSize = arrayRamSize;
+    this.accountedStructureRamSize = structureRamSize;
+    this.ramSizeAccounted = true;
   }
 
   public synchronized long getRamSize(Set<Integer> columnsToClone) {
@@ -1951,6 +1981,7 @@ public abstract class AlignedTVList extends TVList {
       tvList.timeColDeletedMap = new BitMap(rowCount, bytes);
     }
 
+    tvList.setAccountedRamSize(tvList.getArrayRamSize(), tvList.getStructureRamSize());
     return tvList;
   }
 
