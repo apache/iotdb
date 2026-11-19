@@ -733,11 +733,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         }
         return status;
 
+      case ACCOUNT_UNLOCK:
+        return checkGlobalAuth(
+            context.setAuditLogOperation(AuditLogOperation.DDL),
+            PrivilegeType.SECURITY,
+            statement::getUserName);
+
       case REVOKE_USER:
       case GRANT_USER:
       case GRANT_ROLE:
       case REVOKE_ROLE:
-      case ACCOUNT_UNLOCK:
         auditObject =
             () ->
                 authorType == AuthorType.REVOKE_USER || authorType == AuthorType.GRANT_USER

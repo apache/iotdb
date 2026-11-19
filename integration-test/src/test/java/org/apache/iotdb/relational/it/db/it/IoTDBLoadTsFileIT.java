@@ -75,6 +75,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -296,6 +297,43 @@ public class IoTDBLoadTsFileIT {
     }
   }
 
+  @Test
+  public void testLoadWithCompatibleDataType() throws Exception {
+    final String tableName = "load_compatible_type";
+    final MeasurementSchema fileSchema = new MeasurementSchema("f", TSDataType.INT32);
+    final MeasurementSchema targetSchema = new MeasurementSchema("f", TSDataType.INT64);
+    final List<ColumnCategory> columnCategories = Collections.singletonList(ColumnCategory.FIELD);
+    final long seed = 42L;
+    final long expectedValue = new Random(seed).nextInt();
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(tableName, Collections.singletonList(fileSchema), columnCategories);
+      generator.resetRandom(seed);
+      generator.generateData(tableName, 1, 1000L);
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create database if not exists %s", database));
+      statement.execute(String.format("use %s", database));
+      statement.execute(
+          convert2TableSQL(tableName, Collections.singletonList(targetSchema), columnCategories));
+      statement.execute(
+          String.format(
+              "load '%s' with ('database'='%s', 'tablet-conversion-threshold'='-1')",
+              file.getAbsolutePath(), database));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("select f from %s order by time", tableName))) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(expectedValue, resultSet.getLong(1));
+        Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
+
   /**
    * Generate two tables with 10,000 rows each and delete all rows from the second through TsFile
    * mods; after loading, expect 10,000 rows in the first table and only that table to be visible.
@@ -461,10 +499,10 @@ public class IoTDBLoadTsFileIT {
         final Statement statement = connection.createStatement()) {
       statement.execute(String.format("create database if not exists %s", database));
       statement.execute(String.format("use %s", database));
-      ResultSet resultSetOld = null;
+      List<List<String>> oldTableDescription = null;
       if (Objects.nonNull(schemaList1)) {
         statement.execute(convert2TableSQL(SchemaConfig.TABLE_0, schemaList1, columnCategories));
-        resultSetOld = statement.executeQuery("desc " + SchemaConfig.TABLE_0);
+        oldTableDescription = getTableDescription(statement, SchemaConfig.TABLE_0);
       }
       statement.execute(
           String.format("load '%s' with ('database'='%s')", file.getAbsolutePath(), database));
@@ -483,21 +521,27 @@ public class IoTDBLoadTsFileIT {
       }
 
       // Time column's difference shall not affect the old column
-      if (Objects.nonNull(resultSetOld)) {
-        try (final ResultSet resultSet = statement.executeQuery("desc " + SchemaConfig.TABLE_0)) {
-          while (resultSet.next() && resultSetOld.next()) {
-            Assert.assertEquals(resultSet.getString(1), resultSetOld.getString(1));
-            Assert.assertEquals(resultSet.getString(2), resultSetOld.getString(2));
-            Assert.assertEquals(resultSet.getString(3), resultSetOld.getString(3));
-          }
-          if (resultSet.next() || resultSetOld.next()) {
-            Assert.fail("The table schema has changed after load.");
-          }
-        }
+      if (Objects.nonNull(oldTableDescription)) {
+        final List<List<String>> newTableDescription =
+            getTableDescription(statement, SchemaConfig.TABLE_0);
+        Assert.assertEquals(
+            "The table schema has changed after load.", oldTableDescription, newTableDescription);
       }
 
       statement.execute(String.format("drop database %s", database));
     }
+  }
+
+  private List<List<String>> getTableDescription(final Statement statement, final String tableName)
+      throws Exception {
+    final List<List<String>> tableDescription = new ArrayList<>();
+    try (final ResultSet resultSet = statement.executeQuery("desc " + tableName)) {
+      while (resultSet.next()) {
+        tableDescription.add(
+            Arrays.asList(resultSet.getString(1), resultSet.getString(2), resultSet.getString(3)));
+      }
+    }
+    return tableDescription;
   }
 
   private List<ColumnCategory> generateTabletColumnCategory(final int fieldNum) {

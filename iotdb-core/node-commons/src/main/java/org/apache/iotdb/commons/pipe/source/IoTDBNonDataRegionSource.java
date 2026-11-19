@@ -46,6 +46,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -75,6 +78,8 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   private final AtomicBoolean hasWarnedUnexpectedHybridProgressIndex = new AtomicBoolean(false);
 
   protected PipeWritePlanEvent lastEvent = null;
+  private final Deque<PipeWritePlanEvent> pendingEvents = new ArrayDeque<>();
+  private ProgressIndex pendingEventsProgressIndex;
 
   protected abstract AbstractPipeListeningQueue getListeningQueue();
 
@@ -172,9 +177,13 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
       }
     }
 
+    if (!pendingEvents.isEmpty()) {
+      return supplyPendingEvent();
+    }
+
     // Check whether snapshot being parsed exists
     PipeWritePlanEvent realtimeEvent = lastEvent;
-    if (hasNextEventInCurrentSnapshot()) {
+    if (Objects.isNull(realtimeEvent) && hasNextEventInCurrentSnapshot()) {
       realtimeEvent = getNextEventInCurrentSnapshot();
     }
 
@@ -228,14 +237,18 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
     }
     lastEvent = realtimeEvent;
 
-    realtimeEvent =
+    final List<PipeWritePlanEvent> trimmedEvents =
         trimRealtimeEventByPipePattern(realtimeEvent)
-            .flatMap(this::trimRealtimeEventByPrivilege)
-            .orElse(null);
+            .map(this::trimRealtimeEventByPrivilege)
+            .orElseGet(Collections::emptyList);
+    for (final PipeWritePlanEvent trimmedEvent : trimmedEvents) {
+      if (isTypeListened(trimmedEvent)
+          && (isForwardingPipeRequests || !trimmedEvent.isGeneratedByPipe())) {
+        pendingEvents.addLast(trimmedEvent);
+      }
+    }
 
-    if (Objects.isNull(realtimeEvent)
-        || !isTypeListened(realtimeEvent)
-        || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
+    if (pendingEvents.isEmpty()) {
       final ProgressReportEvent event =
           new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
       if (shouldBindIndex) {
@@ -246,25 +259,35 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
       return event;
     }
 
-    realtimeEvent =
+    pendingEventsProgressIndex =
+        shouldBindIndex ? new MetaProgressIndex(iterator.getNextIndex() - 1) : null;
+    lastEvent = null;
+    return supplyPendingEvent();
+  }
+
+  private PipeWritePlanEvent supplyPendingEvent() {
+    final PipeWritePlanEvent realtimeEvent =
         (PipeWritePlanEvent)
-            realtimeEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-                pipeName,
-                creationTime,
-                pipeTaskMeta,
-                treePattern,
-                tablePattern,
-                userId,
-                userName,
-                cliHostname,
-                skipIfNoPrivileges,
-                Long.MIN_VALUE,
-                Long.MAX_VALUE);
-    if (shouldBindIndex) {
-      realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+            pendingEvents
+                .getFirst()
+                .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+                    pipeName,
+                    creationTime,
+                    pipeTaskMeta,
+                    treePattern,
+                    tablePattern,
+                    userId,
+                    userName,
+                    cliHostname,
+                    skipIfNoPrivileges,
+                    Long.MIN_VALUE,
+                    Long.MAX_VALUE);
+    // The original event is complete only after all authorized intersections have been sent.
+    if (pendingEvents.size() == 1 && Objects.nonNull(pendingEventsProgressIndex)) {
+      realtimeEvent.bindProgressIndex(pendingEventsProgressIndex);
     }
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionSource.class.getName());
-    lastEvent = null;
+    pendingEvents.removeFirst();
     return realtimeEvent;
   }
 
@@ -279,7 +302,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
   protected abstract PipeWritePlanEvent getNextEventInCurrentSnapshot();
 
-  protected abstract Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
+  protected abstract List<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
       final PipeWritePlanEvent event) throws AccessDeniedException;
 
   // The trimmed event shall be non-null.
@@ -294,6 +317,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   public void close() throws Exception {
     getListeningQueue().returnIterator(iterator);
     historicalEvents.clear();
+    pendingEvents.clear();
+    pendingEventsProgressIndex = null;
+    lastEvent = null;
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

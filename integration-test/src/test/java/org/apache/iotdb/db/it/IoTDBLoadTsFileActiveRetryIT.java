@@ -407,7 +407,7 @@ public class IoTDBLoadTsFileActiveRetryIT {
       statement.execute(
           String.format(
               "create timeseries %s.%s %s",
-              COLLISION_DEVICE, COLLISION_MEASUREMENT, TSDataType.INT64.name()));
+              COLLISION_DEVICE, COLLISION_MEASUREMENT, TSDataType.BOOLEAN.name()));
       for (final File tsFile : sourceTsFiles) {
         statement.execute(
             String.format(

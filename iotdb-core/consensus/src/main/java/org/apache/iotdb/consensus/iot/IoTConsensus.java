@@ -471,6 +471,7 @@ public class IoTConsensus implements IConsensus {
         // step 6: active new Peer
         logger.info(IoTConsensusMessages.ACTIVATE_NEW_PEER);
         impl.activePeer(peer);
+        impl.waitNewPeerUntilSyncLogCompleted(peer);
 
         // step 7: notify remote peer to clean up transferred snapshot
         logger.info(IoTConsensusMessages.CLEANUP_REMOTE_SNAPSHOT);
