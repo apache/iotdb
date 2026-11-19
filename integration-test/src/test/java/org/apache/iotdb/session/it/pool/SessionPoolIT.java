@@ -533,6 +533,7 @@ public class SessionPoolIT {
     try {
       try (SessionDataSetWrapper held =
           pool.executeQueryStatement("SELECT pool_recovery FROM root.sg1.d1")) {
+        ISession heldSession = held.getSession();
         assertEquals(0, pool.currentAvailableSize());
         assertEquals(1, pool.currentOccupiedSize());
         borrower.start();
@@ -566,7 +567,7 @@ public class SessionPoolIT {
         try (SessionDataSetWrapper result =
             pool.executeQueryStatement(
                 "SELECT pool_recovery FROM root.sg1.d1 WHERE time >= 1 AND time <= 4")) {
-          assertSame(held.getSession(), result.getSession());
+          assertSame(heldSession, result.getSession());
           long[][] expected = {{1, 11}, {3, 33}, {4, 44}};
           for (long[] point : expected) {
             assertTrue(result.hasNext());
