@@ -51,11 +51,6 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDatabaseMetadata.class);
 
-  private static final String DATABASE_VERSION =
-      IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion() != null
-          ? IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion()
-          : "UNKNOWN";
-
   private static final String[] allIotdbSQLKeywords = {
     "ALTER",
     "ADD",
@@ -252,7 +247,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
 
   @Override
   public String getDriverVersion() throws SQLException {
-    return DATABASE_VERSION;
+    return Config.DRIVER_VERSION;
   }
 
   @Override

@@ -751,7 +751,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
                 type.getName()));
       }
       return type.cast(value);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -767,7 +767,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
     return getObject(findColumnIndex(columnLabel), type);
   }
 
-  // findColumn() fails with an unchecked exception for an unknown label
+  // Resolve labels with a SQLException for an unknown label
   private int findColumnIndex(String columnLabel) throws SQLException {
     int index = ioTDBRpcDataSet.getColumnNameList().indexOf(columnLabel);
     if (index < 0) {

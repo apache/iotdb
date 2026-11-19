@@ -36,6 +36,8 @@ import org.junit.Test;
 
 import javax.sql.DataSource;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -59,14 +61,52 @@ import static org.mockito.Mockito.when;
 public class IoTDBDataSourceTest {
 
   @Test
-  public void testAllowsNullCredentials() {
+  public void testDataSourceExplicitUrlTakesPrecedenceOverStandardProperties() {
     IoTDBDataSource dataSource = new IoTDBDataSource();
 
+    dataSource.setUrl("jdbc:iotdb://explicit:6667/root.explicit");
+    dataSource.setServerName("127.0.0.1");
+    dataSource.setPortNumber(6688);
+    dataSource.setDatabaseName("root.sg");
+
+    assertEquals("jdbc:iotdb://explicit:6667/root.explicit", dataSource.getConnectionUrl());
+  }
+
+  @Test
+  public void testConnectionUrlFormatsIpv6ServerName() {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+
+    dataSource.setServerName("::1");
+    assertEquals("jdbc:iotdb://[::1]:6667", dataSource.getConnectionUrl());
+
+    dataSource.setServerName("[::1]");
+    assertEquals("jdbc:iotdb://[::1]:6667", dataSource.getConnectionUrl());
+  }
+
+  @Test
+  public void testDataSourceAllowsClearingUserAndPassword() {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+
+    dataSource.setUser("root");
+    dataSource.setPassword("root");
     dataSource.setUser(null);
     dataSource.setPassword(null);
 
     assertNull(dataSource.getUser());
     assertNull(dataSource.getPassword());
+  }
+
+  @Test
+  public void testDataSourceConstructorAllowsNullPort() {
+    IoTDBDataSource dataSource =
+        new IoTDBDataSource("jdbc:iotdb://localhost:6667", null, null, null);
+
+    assertEquals(Integer.valueOf(6667), dataSource.getPort());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testDataSourceRejectsInvalidDirectPort() {
+    new IoTDBDataSource().setPortNumber(65536);
   }
 
   @Test
@@ -80,7 +120,7 @@ public class IoTDBDataSourceTest {
   }
 
   @Test
-  public void testWrapperMethods() throws SQLException {
+  public void testDataSourceWrapperMethods() throws SQLException {
     IoTDBDataSource dataSource = new IoTDBDataSource();
 
     assertTrue(dataSource.isWrapperFor(IoTDBDataSource.class));
@@ -92,13 +132,25 @@ public class IoTDBDataSourceTest {
   }
 
   @Test(expected = SQLException.class)
-  public void testUnwrapRejectsUnsupportedClass() throws SQLException {
+  public void testDataSourceUnwrapRejectsUnsupportedClass() throws SQLException {
     new IoTDBDataSource().unwrap(String.class);
   }
 
   @Test(expected = SQLFeatureNotSupportedException.class)
-  public void testParentLoggerIsUnsupported() throws SQLException {
+  public void testDataSourceParentLoggerIsUnsupported() throws SQLException {
     new IoTDBDataSource().getParentLogger();
+  }
+
+  @Test
+  public void testDataSourceStoresLogWriterAndLoginTimeout() throws SQLException {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+    PrintWriter logWriter = new PrintWriter(new StringWriter());
+
+    dataSource.setLogWriter(logWriter);
+    dataSource.setLoginTimeout(10);
+
+    assertSame(logWriter, dataSource.getLogWriter());
+    assertEquals(10, dataSource.getLoginTimeout());
   }
 
   @Test(expected = SQLException.class)
@@ -161,13 +213,12 @@ public class IoTDBDataSourceTest {
                 return null;
               });
       IoTDBDataSource dataSource = new IoTDBDataSource();
-      String url =
-          "jdbc:iotdb://" + server.getInetAddress().getHostAddress() + ":" + server.getLocalPort();
-      if (configuredTimeout != null) {
-        url += "/?" + Config.NETWORK_TIMEOUT + "=" + configuredTimeout;
-      }
-      dataSource.setUrl(url);
+      dataSource.setServerName(server.getInetAddress().getHostAddress());
+      dataSource.setPortNumber(server.getLocalPort());
       dataSource.setLoginTimeout(2);
+      if (configuredTimeout != null) {
+        dataSource.setConnectionProperty(Config.NETWORK_TIMEOUT, configuredTimeout);
+      }
       try (IoTDBConnection connection = (IoTDBConnection) dataSource.getConnection()) {
         assertEquals(expectedTimeout, connection.getNetworkTimeout());
         Field transportField = IoTDBConnection.class.getDeclaredField("transport");

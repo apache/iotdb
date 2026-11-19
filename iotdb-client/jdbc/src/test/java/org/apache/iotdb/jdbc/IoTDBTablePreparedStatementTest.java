@@ -20,9 +20,11 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerde.DeserializedParam;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -48,11 +50,14 @@ import org.mockito.stubbing.Answer;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.sql.Date;
 import java.sql.ParameterMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
@@ -276,11 +281,23 @@ public class IoTDBTablePreparedStatementTest {
 
     SQLException unsupportedException =
         assertThrows(SQLException.class, () -> ps.setArray(1, null));
-    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    assertEquals(
+        String.format(
+            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C,
+            JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0),
+        unsupportedException.getMessage());
     unsupportedException = assertThrows(SQLException.class, () -> ps.setRowId(1, null));
-    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    assertEquals(
+        String.format(
+            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C,
+            JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0),
+        unsupportedException.getMessage());
     unsupportedException = assertThrows(SQLException.class, () -> ps.setObject(1, new Object()));
-    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    assertEquals(
+        String.format(
+            JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C,
+            JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0),
+        unsupportedException.getMessage());
   }
 
   @SuppressWarnings("resource")
@@ -759,6 +776,33 @@ public class IoTDBTablePreparedStatementTest {
     }
   }
 
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedNullSettersSerializeNulls() throws Exception {
+    String sql = "SELECT * FROM users WHERE a=? AND b=? AND c=? AND d=? AND e=? AND f=?";
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, sql, zoneId);
+
+    ps.setObject(1, null);
+    ps.setBytes(2, null);
+    ps.setDate(3, (Date) null);
+    ps.setTime(4, (Time) null);
+    ps.setTimestamp(5, (Timestamp) null);
+    ps.setBinaryStream(6, (InputStream) null, 0);
+    ps.execute();
+
+    ArgumentCaptor<TSExecutePreparedReq> argument =
+        ArgumentCaptor.forClass(TSExecutePreparedReq.class);
+    verify(client).executePreparedStatement(argument.capture());
+    List<DeserializedParam> parameters =
+        PreparedParameterSerde.deserialize(ByteBuffer.wrap(argument.getValue().getParameters()));
+
+    assertEquals(6, parameters.size());
+    for (DeserializedParam parameter : parameters) {
+      assertTrue(parameter.isNull());
+    }
+  }
+
   // ========== Cancel, fetch size and timestamp precision ==========
 
   @SuppressWarnings("resource")
@@ -773,9 +817,9 @@ public class IoTDBTablePreparedStatementTest {
             connection, client, sessionId, "SELECT * FROM t WHERE s1 = ?", zoneId);
     ps.setInt(1, 1);
 
-    ps.execute();
+    assertTrue(ps.execute());
     ps.cancel();
-    ps.execute();
+    assertTrue(ps.execute());
     ps.cancel();
 
     ArgumentCaptor<TSCancelOperationReq> argument =
@@ -787,6 +831,16 @@ public class IoTDBTablePreparedStatementTest {
             .map(TSCancelOperationReq::getQueryId)
             .collect(Collectors.toList()));
     assertEquals(sessionId, argument.getValue().getSessionId());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelSetBinaryStreamRejectsNegativeLength() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+
+    assertThrows(
+        SQLException.class, () -> ps.setBinaryStream(1, new ByteArrayInputStream(new byte[0]), -1));
   }
 
   @SuppressWarnings("resource")
@@ -803,6 +857,27 @@ public class IoTDBTablePreparedStatementTest {
     TSExecutePreparedReq req = lastPreparedExecution();
     assertTrue(req.isSetFetchSize());
     assertEquals(123, req.getFetchSize());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelClientSideNullStringUsesSqlNullLiteral() throws Exception {
+    String sql = "INSERT INTO users(time,email) VALUES(1, ?)";
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, sql, zoneId);
+
+    assertEquals(1, ps.getParameterMetaData().getParameterCount());
+    assertThrows(SQLException.class, () -> ps.setString(0, null));
+    assertThrows(SQLException.class, () -> ps.setString(2, null));
+
+    ps.setString(1, null);
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals(
+        "INSERT INTO users(time,email) VALUES(1, NULL)", argument.getValue().getStatement());
   }
 
   @SuppressWarnings("resource")

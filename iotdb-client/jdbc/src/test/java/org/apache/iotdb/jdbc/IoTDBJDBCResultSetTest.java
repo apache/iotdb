@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -361,6 +362,8 @@ public class IoTDBJDBCResultSetTest {
     Assert.assertThrows(SQLException.class, () -> resultSet.getHoldability());
     Assert.assertThrows(SQLException.class, () -> resultSet.getStatement());
     Assert.assertThrows(SQLException.class, () -> resultSet.getString(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getObject(1, Long.class));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getObject("Time", Long.class));
     Assert.assertThrows(SQLException.class, () -> resultSet.findColumn("Time"));
     Assert.assertThrows(SQLException.class, () -> resultSet.getMetaData());
     Assert.assertThrows(SQLException.class, () -> resultSet.getType());
@@ -377,10 +380,14 @@ public class IoTDBJDBCResultSetTest {
 
     SQLException unsupportedException =
         Assert.assertThrows(SQLException.class, () -> resultSet.absolute(1));
-    Assert.assertEquals("ResultSet has been closed", unsupportedException.getMessage());
+    Assert.assertEquals(
+        JdbcMessages.EXCEPTION_RESULTSET_HAS_BEEN_CLOSED_45F3BF52,
+        unsupportedException.getMessage());
     unsupportedException =
         Assert.assertThrows(SQLException.class, () -> resultSet.updateString(1, "x"));
-    Assert.assertEquals("ResultSet has been closed", unsupportedException.getMessage());
+    Assert.assertEquals(
+        JdbcMessages.EXCEPTION_RESULTSET_HAS_BEEN_CLOSED_45F3BF52,
+        unsupportedException.getMessage());
   }
 
   @SuppressWarnings("resource")

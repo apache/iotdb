@@ -23,7 +23,7 @@ public final class JdbcMessages {
 
   // IoTDBDriver
   public static final String REGISTER_DRIVER_ERROR =
-      "注册 TsFile 驱动时发生错误";
+      "注册 IoTDB 驱动时发生错误";
   public static final String METHOD_NOT_SUPPORTED = "不支持此方法";
 
   // StringUtils
@@ -190,6 +190,45 @@ public final class JdbcMessages {
   public static final String RECONNECT_INTERRUPTED = "重新连接被中断。";
   public static final String SINGLE_QUOTE = "'";
   public static final String RIGHT_PARENTHESIS = ")";
+
+  public static final String EXCEPTION_PORT_MUST_BE_BETWEEN_0_AND_65535_F641E74D =
+      "port 必须在 0 到 65535 之间";
+  public static final String EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_THE_NETWORK_IS_AVAILABLE_OR_THE_SERVER_HAS_STARTED_64F1DA01 =
+      "连接错误，请检查网络是否可用，以及服务端是否已启动。";
+  public static final String MESSAGE_SET_PARAMETER_CFE301D0 =
+      "设置参数";
+  public static final String MESSAGE_USER_NAME_FOR_AUTHENTICATION_77DCB7F1 =
+      "用于身份验证的用户名。";
+  public static final String MESSAGE_PASSWORD_FOR_AUTHENTICATION_4D6EDD1E =
+      "用于身份验证的密码。";
+  public static final String MESSAGE_THRIFT_DEFAULT_BUFFER_CAPACITY_IN_BYTES_58ED1E5F =
+      "Thrift 默认缓冲区容量，单位为字节。";
+  public static final String MESSAGE_THRIFT_MAX_FRAME_SIZE_IN_BYTES_158D5D1C =
+      "Thrift 最大帧大小，单位为字节。";
+  public static final String MESSAGE_CLIENT_COMPATIBILITY_VERSION_9EE5FB89 =
+      "客户端兼容版本。";
+  public static final String MESSAGE_NETWORK_TIMEOUT_IN_MILLISECONDS_2443578F =
+      "网络超时时间，单位为毫秒。";
+  public static final String MESSAGE_CONNECTION_TIME_ZONE_9B0E092D =
+      "连接时区。";
+  public static final String MESSAGE_CONNECTION_CHARSET_F72FB844 =
+      "连接字符集。";
+  public static final String MESSAGE_WHETHER_TO_ENABLE_SSL_F2608B05 =
+      "是否启用 SSL。";
+  public static final String MESSAGE_WHETHER_TO_ENABLE_RPC_THRIFT_COMPRESSION_C65D1138 =
+      "是否启用 RPC Thrift 压缩。";
+  public static final String MESSAGE_SSL_TRUST_STORE_PATH_1D832EA9 =
+      "SSL 信任库路径。";
+  public static final String MESSAGE_SSL_TRUST_STORE_PASSWORD_CDFFB811 =
+      "SSL 信任库密码。";
+  public static final String MESSAGE_SSL_KEY_STORE_PATH_24E4E925 =
+      "SSL 密钥库路径。";
+  public static final String MESSAGE_SSL_KEY_STORE_PASSWORD_8D36E9E7 =
+      "SSL 密钥库密码。";
+  public static final String MESSAGE_SSL_PROTOCOL_7ED42B2B =
+      "SSL 协议。";
+  public static final String MESSAGE_SQL_DIALECT_FOR_THE_CONNECTION_35A5F380 =
+      "连接使用的 SQL 方言。";
 
   private JdbcMessages() {}
   // ---------------------------------------------------------------------------

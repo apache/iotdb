@@ -164,6 +164,25 @@ public class UtilsTest {
   }
 
   @Test
+  public void testParseUrlAppliesCredentialAndBufferQueryProperties() throws IoTDBURLException {
+    Properties properties = new Properties();
+    properties.setProperty(Config.AUTH_USER, "prop-user");
+    properties.setProperty(Config.DEFAULT_BUFFER_CAPACITY, "1");
+
+    IoTDBConnectionParams params =
+        Utils.parseUrl(
+            "jdbc:iotdb://test:6667?user=url-user&password=url-password&thrift_default_buffer_capacity=1024&thrift_max_frame_size=2048",
+            properties);
+
+    assertEquals("url-user", params.getUsername());
+    assertEquals("url-password", params.getPassword());
+    assertEquals(1024, params.getThriftDefaultBufferSize());
+    assertEquals(2048, params.getThriftMaxFrameSize());
+    assertEquals("url-user", properties.getProperty(Config.AUTH_USER));
+    assertEquals("1024", properties.getProperty(Config.DEFAULT_BUFFER_CAPACITY));
+  }
+
+  @Test
   public void testParseUrlAllowsEmptyDatabaseBeforeQuery() throws IoTDBURLException {
     IoTDBConnectionParams params =
         Utils.parseUrl("jdbc:iotdb://test:6667/?use_ssl=true", new Properties());
@@ -268,6 +287,92 @@ public class UtilsTest {
   }
 
   @Test
+  public void testParseUrlParamValueAllowsEqualsSign() throws IoTDBURLException {
+    Properties properties = new Properties();
+
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?trust_store_pwd=a=b=c", properties);
+
+    assertEquals("a=b=c", properties.getProperty(Config.TRUST_STORE_PWD));
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsEmptyValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?use_ssl=", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsTrailingSeparator() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?use_ssl=true&", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidBooleanValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?use_ssl=abc", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidVersionValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?version=bad", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidNetworkTimeoutValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?network_timeout=bad", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsNegativeNetworkTimeoutValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?network_timeout=-1", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidThriftBufferCapacityValue() throws IoTDBURLException {
+    Utils.parseUrl(
+        "jdbc:iotdb://127.0.0.1:6667?thrift_default_buffer_capacity=0", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidThriftFrameMaxSizeValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?thrift_max_frame_size=bad", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidSqlDialectValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?sql_dialect=bad", new Properties());
+  }
+
+  @Test
+  public void testParseUrlRejectsInvalidConnectionProperties() {
+    assertInvalidProperty(Config.DEFAULT_BUFFER_CAPACITY, "bad");
+    assertInvalidProperty(Config.THRIFT_FRAME_MAX_SIZE, "bad");
+    assertInvalidProperty(Config.VERSION, "bad");
+    assertInvalidProperty(Config.NETWORK_TIMEOUT, "bad");
+    assertInvalidProperty(Config.TIME_ZONE, "bad-time-zone");
+    assertInvalidProperty(Config.CHARSET, "bad-charset");
+    assertInvalidProperty(Config.USE_SSL, "bad");
+    assertInvalidProperty(Config.SQL_DIALECT, "bad");
+  }
+
+  @Test
+  public void testParseUrlRejectsInvalidIntegerRanges() {
+    assertInvalidProperty(Config.DEFAULT_BUFFER_CAPACITY, "0");
+    assertInvalidProperty(Config.THRIFT_FRAME_MAX_SIZE, "-1");
+    assertInvalidProperty(Config.NETWORK_TIMEOUT, "-1");
+  }
+
+  private static void assertInvalidProperty(String key, String value) {
+    Properties properties = new Properties();
+    properties.setProperty(key, value);
+    try {
+      Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667", properties);
+    } catch (IoTDBURLException e) {
+      assertTrue(e.getMessage().contains(key));
+      return;
+    }
+    fail("Expected IoTDBURLException for invalid property " + key);
+  }
+
+  @Test
   public void testParseSslConfig() throws IoTDBURLException {
     Properties properties = new Properties();
     properties.setProperty(Config.TRUST_STORE, "/tmp/truststore.p12");
@@ -317,80 +422,5 @@ public class UtilsTest {
     assertEquals(Optional.of("ipv6_db"), params.getDb());
     assertEquals(Constant.TABLE_DIALECT, params.getSqlDialect());
     assertTrue(params.isUseSSL());
-  }
-
-  @Test
-  public void testParseUrlParamValueAllowsEqualsSign() throws IoTDBURLException {
-    Properties properties = new Properties();
-
-    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?trust_store_pwd=a=b=c", properties);
-
-    assertEquals("a=b=c", properties.getProperty(Config.TRUST_STORE_PWD));
-  }
-
-  @Test(expected = IoTDBURLException.class)
-  public void testParseUrlParamRejectsEmptyValue() throws IoTDBURLException {
-    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?use_ssl=", new Properties());
-  }
-
-  @Test(expected = IoTDBURLException.class)
-  public void testParseUrlParamRejectsTrailingSeparator() throws IoTDBURLException {
-    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?use_ssl=true&", new Properties());
-  }
-
-  @Test(expected = IoTDBURLException.class)
-  public void testParseUrlParamRejectsInvalidBooleanValue() throws IoTDBURLException {
-    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?use_ssl=abc", new Properties());
-  }
-
-  @Test(expected = IoTDBURLException.class)
-  public void testParseUrlParamRejectsInvalidVersionValue() throws IoTDBURLException {
-    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?version=bad", new Properties());
-  }
-
-  @Test(expected = IoTDBURLException.class)
-  public void testParseUrlParamRejectsInvalidNetworkTimeoutValue() throws IoTDBURLException {
-    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?network_timeout=bad", new Properties());
-  }
-
-  @Test(expected = IoTDBURLException.class)
-  public void testParseUrlParamRejectsNegativeNetworkTimeoutValue() throws IoTDBURLException {
-    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?network_timeout=-1", new Properties());
-  }
-
-  @Test(expected = IoTDBURLException.class)
-  public void testParseUrlParamRejectsInvalidSqlDialectValue() throws IoTDBURLException {
-    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?sql_dialect=bad", new Properties());
-  }
-
-  @Test
-  public void testParseUrlRejectsInvalidConnectionProperties() {
-    assertInvalidProperty(Config.DEFAULT_BUFFER_CAPACITY, "bad");
-    assertInvalidProperty(Config.THRIFT_FRAME_MAX_SIZE, "bad");
-    assertInvalidProperty(Config.VERSION, "bad");
-    assertInvalidProperty(Config.NETWORK_TIMEOUT, "bad");
-    assertInvalidProperty(Config.TIME_ZONE, "bad-time-zone");
-    assertInvalidProperty(Config.CHARSET, "bad-charset");
-    assertInvalidProperty(Config.USE_SSL, "bad");
-    assertInvalidProperty(Config.SQL_DIALECT, "bad");
-  }
-
-  @Test
-  public void testParseUrlRejectsInvalidIntegerRanges() {
-    assertInvalidProperty(Config.DEFAULT_BUFFER_CAPACITY, "0");
-    assertInvalidProperty(Config.THRIFT_FRAME_MAX_SIZE, "-1");
-    assertInvalidProperty(Config.NETWORK_TIMEOUT, "-1");
-  }
-
-  private static void assertInvalidProperty(String key, String value) {
-    Properties properties = new Properties();
-    properties.setProperty(key, value);
-    try {
-      Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667", properties);
-    } catch (IoTDBURLException e) {
-      assertTrue(e.getMessage().contains(key));
-      return;
-    }
-    fail("Expected IoTDBURLException for invalid property " + key);
   }
 }

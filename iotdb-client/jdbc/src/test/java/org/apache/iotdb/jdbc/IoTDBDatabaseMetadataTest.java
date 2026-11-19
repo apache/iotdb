@@ -204,6 +204,16 @@ public class IoTDBDatabaseMetadataTest {
   }
 
   @Test
+  public void testGetPrimaryKeysBuildsMetadataResultSetAfterClosingInternalStatement()
+      throws SQLException {
+    ResultSet resultSet = databaseMetaData.getPrimaryKeys(null, null, "root.sg.d1");
+
+    Assert.assertEquals("TABLE_CAT", resultSet.getMetaData().getColumnName(1));
+    Assert.assertEquals("TABLE_SCHEM", resultSet.getMetaData().getColumnName(2));
+    Assert.assertEquals("TABLE_NAME", resultSet.getMetaData().getColumnName(3));
+  }
+
+  @Test
   public void testGetColumnsToleratesConnectionWithoutCatalog() throws Exception {
     // A connection that switched to the table dialect reports no catalog
     when(connection.getCatalog()).thenReturn(null);

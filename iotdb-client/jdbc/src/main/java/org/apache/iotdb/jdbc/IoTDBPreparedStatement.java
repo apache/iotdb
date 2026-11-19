@@ -253,13 +253,13 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   private void checkParameterIndex(int param) throws SQLException {
-    checkConnection("set parameter");
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     checkParameterIndexRange(param);
   }
 
   private SQLException unsupportedParameterOperation(int param, String message)
       throws SQLException {
-    checkConnection("set parameter");
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     return new SQLException(message);
   }
 
@@ -484,13 +484,13 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
-    checkConnection("set parameter");
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     throw new SQLException(Constant.PARAMETER_NOT_NULL);
   }
 
   @Override
   public void setObject(int parameterIndex, Object x) throws SQLException {
-    checkConnection("set parameter");
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     if (x == null) {
       setNull(parameterIndex, Types.NULL);
     } else if (x instanceof String) {
@@ -540,7 +540,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   @Override
   public void setObject(int parameterIndex, Object parameterObj, int targetSqlType, int scale)
       throws SQLException {
-    checkConnection("set parameter");
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     if (parameterObj == null) {
       setNull(parameterIndex, java.sql.Types.OTHER);
     } else {

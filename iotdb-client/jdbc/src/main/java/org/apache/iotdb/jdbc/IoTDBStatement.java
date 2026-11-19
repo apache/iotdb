@@ -75,6 +75,8 @@ public class IoTDBStatement implements Statement {
       JdbcMessages.EXCEPTION_NOT_SUPPORT_EXECUTE_24A68DC9;
   private static final String NOT_SUPPORT_EXECUTE_UPDATE =
       JdbcMessages.EXCEPTION_NOT_SUPPORT_EXECUTEUPDATE_157D0E87;
+  private static final String CANNOT_AFTER_STATEMENT_CLOSED =
+      JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C;
 
   /** Keep state so we can fail certain calls made after close(). */
   private boolean isClosed = false;
@@ -275,6 +277,11 @@ public class IoTDBStatement implements Statement {
     if (queryId == closedQueryId) {
       queryId = -1;
     }
+  }
+
+  /** Records the server-side query of the latest execution, which {@link #cancel()} cancels. */
+  protected void setQueryId(long queryId) {
+    this.queryId = queryId;
   }
 
   @Override
@@ -859,9 +866,7 @@ public class IoTDBStatement implements Statement {
       throw new SQLException(String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action));
     }
     if (isClosed) {
-      throw new SQLException(
-          String.format(
-              JdbcMessages.EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C, action));
+      throw new SQLException(String.format(CANNOT_AFTER_STATEMENT_CLOSED, action));
     }
   }
 
@@ -968,11 +973,6 @@ public class IoTDBStatement implements Statement {
   /** Lets {@link #cancel()} reach the server again; called when a new execution starts. */
   void clearCancelled() {
     isCancelled = false;
-  }
-
-  /** Records the server-side query of the latest execution, which {@link #cancel()} cancels. */
-  void setQueryId(long queryId) {
-    this.queryId = queryId;
   }
 
   public long getMilliSecond(long time) {

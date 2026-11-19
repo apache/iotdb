@@ -605,7 +605,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setObject(int parameterIndex, Object x) throws SQLException {
-    checkConnection("set parameter");
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     if (x == null) {
       setNull(parameterIndex, Types.NULL);
     } else if (x instanceof String) {
@@ -651,13 +651,13 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   private void checkParameterIndex(int index) throws SQLException {
-    checkConnection("set parameter");
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     checkParameterIndexRange(index);
   }
 
   private SQLException unsupportedParameterOperation(int index, String message)
       throws SQLException {
-    checkConnection("set parameter");
+    checkConnection(JdbcMessages.MESSAGE_SET_PARAMETER_CFE301D0);
     return new SQLException(message);
   }
 
