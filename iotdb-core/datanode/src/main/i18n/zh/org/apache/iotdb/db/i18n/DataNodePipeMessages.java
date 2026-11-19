@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
+  public static final String
+      LOG_AIR_GAP_UDP_RECEIVE_BUFFER_IS_ARG_BYTES_BELOW_THE_REQUESTED_ARG_BYTES_INCREASE_THE_OPERATING_SYSTEM_RECEIVE_BUFFER_LIMIT_AND_RESTART_THE_DATANODE_TO_REDUCE_PACKET_LOSS_89B20AFC =
+          "Air gap UDP 接收缓冲区实际为 {} 字节，小于请求的 {} 字节。请提高操作系统接收缓冲区上限并重启 DataNode，以减少丢包。";
+
   public static final String LOG_SUBSCRIPTION_REPLAY_STALLED_FOR_ARG_MS_ARG_DIAGNOSTICS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_CB012F98 =
       "订阅回放已停滞 {} ms：{}；diagnostics={}。请检查预取工作线程栈和 WAL I/O。";
 
