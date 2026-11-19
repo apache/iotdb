@@ -994,13 +994,17 @@ public class TimeSeriesMetadataCacheTest {
     // external tsfiles bypass the metadata cache: every requested measurement must still be read
     TsFileResource resource = new TsFileResource(file);
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    String filePath = file.getAbsolutePath();
+    // the external registry keys readers by path and closes one when its last reference is
+    // released, so hold one for the duration of the test
+    FileReaderManager.getInstance().increaseExternalFileReaderReference(filePath);
     EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setQueryDataSourceType(
         QueryDataSourceType.EXTERNAL_TSFILE_SCAN);
     try {
       Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
       Map<String, TimeseriesMetadata> result =
           cache.getTimeseriesMetadata(
-              file.getAbsolutePath(),
+              filePath,
               resource.getTsFileID(),
               deviceID,
               allSensors,
@@ -1019,7 +1023,7 @@ public class TimeSeriesMetadataCacheTest {
           QueryDataSourceType.SERIES_SCAN);
       cache.clear();
       bloomFilterCache.clear();
-      FileReaderManager.getInstance().closeFileAndRemoveReader(resource.getTsFileID());
+      FileReaderManager.getInstance().decreaseExternalFileReaderReference(filePath);
       assertTrue(file.delete());
     }
   }
