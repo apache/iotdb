@@ -229,6 +229,7 @@ public enum Metric {
   SUBSCRIPTION_CONSENSUS_WATERMARK("subscription_consensus_watermark"),
   SUBSCRIPTION_CONSENSUS_SEEK_GENERATION("subscription_consensus_seek_generation"),
   SUBSCRIPTION_CONSENSUS_ACTIVE("subscription_consensus_active"),
+  SUBSCRIPTION_CONSENSUS_ACTIVE_WRITER_COUNT("subscription_consensus_active_writer_count"),
   SUBSCRIPTION_CONSENSUS_INITIALIZED("subscription_consensus_initialized"),
   SUBSCRIPTION_CONSENSUS_REMAINING_EVENT_COUNT("subscription_consensus_remaining_event_count"),
   SUBSCRIPTION_CONSENSUS_RAW_WAL_GAP("subscription_consensus_raw_wal_gap"),

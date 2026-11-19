@@ -237,6 +237,113 @@ public class ConsensusPrefetchingQueueWriterOrderingTest {
   }
 
   @Test
+  public void testLeaderOnlyReplayDropsPreviousWriterAfterRuntimeRetiresIt() throws Exception {
+    newQueue(
+        mock(ConsensusReqReader.class), 1024 * 1024, TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+    queue.applyRuntimeState(new ConsensusRegionRuntimeState(2, 5, true, Set.of(1, 5)));
+    queue.applyRuntimeState(new ConsensusRegionRuntimeState(3, 1, true, Set.of(1, 5)));
+    tracker.observePendingWriterSafeTimeBarrier(3000, 5, 0);
+    assertEquals(Set.of(1, 5), queue.getActiveWriterNodeIds());
+    assertEquals(2L, queue.getActiveWriterCount());
+    assertTrue(pending().offer(request(1, 1, 2000)));
+
+    queue.drivePrefetchOnce();
+
+    assertEvent(1, 2000);
+    assertTrue(pending().offer(request(2, 1, 4000)));
+    queue.drivePrefetchOnce();
+    assertNull(queue.poll("consumer"));
+    assertEquals(Set.of(1, 5), queue.getActiveWriterNodeIds());
+
+    queue.applyRuntimeState(ConsensusRegionRuntimeState.leaderOnly(4, 1, true));
+    queue.drivePrefetchOnce();
+
+    assertEvent(1, 4000);
+    assertEquals(Set.of(1), queue.getActiveWriterNodeIds());
+    assertEquals(1L, queue.getActiveWriterCount());
+  }
+
+  @Test
+  public void testLeaderOnlyReplayKeepsPreviousWriterUntilSafeFrontierIsConsumed()
+      throws Exception {
+    final File directory = temporaryFolder.newFolder("leader-only-delayed-wal");
+    newQueue(walNode(directory, 1), 1024 * 1024, TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+    queue.applyRuntimeState(new ConsensusRegionRuntimeState(2, 5, true, Set.of(1, 5)));
+    queue.applyRuntimeState(new ConsensusRegionRuntimeState(3, 1, true, Set.of(1, 5)));
+    assertTrue(pending().offer(request(1, 1, 2000)));
+    queue.drivePrefetchOnce();
+    assertNull(queue.poll("consumer"));
+
+    tracker.recordAppliedProgress(1000, 5, 1);
+    tracker.observePendingWriterSafeTimeBarrier(3000, 5, 1);
+
+    assertEquals(PrefetchRoundResult.Type.RESCHEDULE_LATER, queue.drivePrefetchOnce().getType());
+    assertNull(queue.poll("consumer"));
+    assertEquals(Set.of(1, 5), queue.getActiveWriterNodeIds());
+
+    queue.applyRuntimeState(ConsensusRegionRuntimeState.leaderOnly(4, 1, true));
+    queue.drivePrefetchOnce();
+    assertNull(queue.poll("consumer"));
+
+    final File data =
+        new File(directory, WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX));
+    try (WALWriter writer = new WALWriter(data, WALFileVersion.V3)) {
+      writeEntry(writer, -1, 5, 1000, 1);
+    }
+    queue.drivePrefetchOnce();
+
+    assertEvent(5, 1000);
+    assertEvent(1, 2000);
+    assertNull(queue.poll("consumer"));
+    assertEquals(2, conversions.get());
+    assertEquals(Set.of(1), queue.getActiveWriterNodeIds());
+  }
+
+  @Test
+  public void testLeaderOnlyReplayKeepsHandoffWritersAcrossRuntimeRefresh() throws Exception {
+    newQueue(
+        mock(ConsensusReqReader.class), 1024 * 1024, TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+    final Set<Integer> writers = Set.of(1, 5, 7);
+    queue.applyRuntimeState(new ConsensusRegionRuntimeState(2, 5, true, writers));
+    queue.applyRuntimeState(new ConsensusRegionRuntimeState(3, 1, true, writers));
+    queue.applyRuntimeState(new ConsensusRegionRuntimeState(4, 7, true, writers));
+    queue.applyRuntimeState(new ConsensusRegionRuntimeState(5, 7, true, writers));
+    tracker.observePendingWriterSafeTimeBarrier(3000, 1, 0);
+    tracker.observePendingWriterSafeTimeBarrier(1000, 5, 0);
+    assertTrue(pending().offer(request(1, 7, 2000)));
+
+    queue.drivePrefetchOnce();
+
+    assertNull(queue.poll("consumer"));
+    assertEquals(writers, queue.getActiveWriterNodeIds());
+
+    tracker.recordAppliedProgress(1500, 5, 1);
+    tracker.observePendingWriterSafeTimeBarrier(3000, 5, 1);
+    assertTrue(pending().offer(request(-1, 5, 1500, 1)));
+    queue.drivePrefetchOnce();
+
+    assertEvent(5, 1500);
+    assertEvent(7, 2000);
+    assertNull(queue.poll("consumer"));
+  }
+
+  @Test
+  public void testLeaderOnlyReplayKeepsPreviousWriterWhenSafeTimeIsUnavailable() throws Exception {
+    newQueue(
+        mock(ConsensusReqReader.class), 1024 * 1024, TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+    queue.setActiveWriterNodeIds(Set.of(5));
+    queue.setPreferredWriterNodeId(5);
+    queue.setPreferredWriterNodeId(1);
+    tracker.recordAppliedProgress(0, 5, 0);
+    assertTrue(pending().offer(request(1, 1, 0)));
+
+    queue.drivePrefetchOnce();
+
+    assertNull(queue.poll("consumer"));
+    assertEquals(Set.of(1, 5), queue.getActiveWriterNodeIds());
+  }
+
+  @Test
   public void testDefaultPendingBatchBoundaryKeepsWriterOrdering() throws Exception {
     config.setSubscriptionConsensusBatchMaxDelayInMs(50);
     newQueue(mock(ConsensusReqReader.class), 16 * 1024 * 1024);
@@ -474,6 +581,11 @@ public class ConsensusPrefetchingQueueWriterOrderingTest {
   }
 
   private void newQueue(final ConsensusReqReader reader, final long memoryBytes) {
+    newQueue(reader, memoryBytes, TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE);
+  }
+
+  private void newQueue(
+      final ConsensusReqReader reader, final long memoryBytes, final String orderMode) {
     final IoTConsensusServerImpl server = mock(IoTConsensusServerImpl.class);
     when(server.getConsensusReqReader()).thenReturn(reader);
     when(server.getWriterSafeFrontierTracker()).thenReturn(tracker);
@@ -489,7 +601,7 @@ public class ConsensusPrefetchingQueueWriterOrderingTest {
         new ConsensusPrefetchingQueue(
             "consumerGroup",
             "topic",
-            TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE,
+            orderMode,
             new DataRegionId(1),
             server,
             new SubscriptionWalRetentionPolicy(
@@ -543,9 +655,17 @@ public class ConsensusPrefetchingQueueWriterOrderingTest {
 
   private static IndexedConsensusRequest request(
       final long searchIndex, final int writerNodeId, final long physicalTime) {
+    return request(searchIndex, writerNodeId, physicalTime, writerNodeId == 8 ? 1 : searchIndex);
+  }
+
+  private static IndexedConsensusRequest request(
+      final long searchIndex,
+      final int writerNodeId,
+      final long physicalTime,
+      final long localSeq) {
     return new IndexedConsensusRequest(
             searchIndex,
-            writerNodeId == 8 ? 1 : searchIndex,
+            localSeq,
             Collections.singletonList(StatementTestUtils.genInsertRowNode(1)))
         .setNodeId(writerNodeId)
         .setPhysicalTime(physicalTime);
