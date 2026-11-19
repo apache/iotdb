@@ -284,6 +284,19 @@ public class QueryDataSetUtils {
     long memorySize = 0;
 
     PendingResultFragment pendingFragment = queryExecution.getPendingResultFragment();
+    if (pendingFragment == null) {
+      // executions without a pending holder (e.g. ConfigExecution) keep the whole-block behavior
+      if (requestOffset != 0) {
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_REQUEST_OFFSET_ARG_IS_INVALID_BECAUSE_NO_RESULT_FRAGMENT_IS_PENDING_C403454F,
+                requestOffset));
+      }
+      Pair<List<ByteBuffer>, Boolean> pair =
+          convertQueryResultByFetchSize(queryExecution, fetchSize);
+      return ResultChunk.complete(pair.left, pair.right);
+    }
     ByteBuffer pendingBlock = pendingFragment.getBlock();
     if (pendingBlock != null) {
       int nextOffset = pendingFragment.getNextOffset();

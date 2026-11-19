@@ -45,7 +45,14 @@ public interface IQueryExecution {
 
   Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException;
 
-  PendingResultFragment getPendingResultFragment();
+  /**
+   * Returns the holder of the tail of the serialized TsBlock that is partially sent to the client,
+   * or null if this execution does not fragment its result (e.g. config tasks, whose results are
+   * small). Implementations that can fragment override it.
+   */
+  default PendingResultFragment getPendingResultFragment() {
+    return null;
+  }
 
   boolean hasNextResult();
 
