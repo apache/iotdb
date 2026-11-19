@@ -573,18 +573,21 @@ public class DataRegion implements IDataRegionForQuery {
     LoadTsFileManager manager = loadTsFileManager;
     if (manager == null) {
       synchronized (this) {
-        manager = loadTsFileManager;
-        if (manager == null) {
-          manager = new LoadTsFileManager(this);
-          loadTsFileManager = manager;
+        // SnapshotTaker takes this monitor before insertLock. Keep that order while still draining
+        // initialization before markDeleted stops the manager and clears its terminal history.
+        insertLock.readLock().lock();
+        try {
+          manager = loadTsFileManager;
+          if (manager == null && !deleted) {
+            manager = new LoadTsFileManager(this);
+            loadTsFileManager = manager;
+          }
+        } finally {
+          insertLock.readLock().unlock();
         }
       }
     }
     if (deleted) {
-      // The region went away: it takes no LOAD work, and the manager is stopped for good. A manager
-      // created in this window stops itself here, the one stopLoadTsFileManager saw was stopped by
-      // it.
-      manager.stop();
       throw new IllegalStateException(
           String.format(
               StorageEngineMessages
@@ -5664,6 +5667,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       deleted = true;
       stopLoadTsFileManager();
+      LoadTsFileManager.clearTerminalHistory(databaseName, dataRegionIdString);
       shutdownUpgradeModFileThreadPool();
       releaseDirectBufferMemory();
       MetricService.getInstance().removeMetricSet(metrics);

@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.load.LoadFileNotReadyException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
@@ -90,6 +91,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
           final boolean prepared =
               dataRegion.writeLoadTsFilePrepare(node, deserializeProgressIndexes(node));
           yield prepared ? StatusUtils.OK : RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR);
+        } catch (final LoadFileNotReadyException e) {
+          yield getLoadFileNotReadyStatus(node, e);
         } catch (final Exception e) {
           LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
           yield RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage());
@@ -100,6 +103,8 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
           final boolean committed =
               dataRegion.writeLoadTsFileCommit(node, deserializeProgressIndexes(node));
           yield committed ? StatusUtils.OK : RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR);
+        } catch (final LoadFileNotReadyException e) {
+          yield getLoadFileNotReadyStatus(node, e);
         } catch (final Exception e) {
           LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
           yield RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage());
@@ -115,6 +120,15 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
         }
       }
     };
+  }
+
+  private TSStatus getLoadFileNotReadyStatus(
+      final LoadTsFileConsensusNode node, final LoadFileNotReadyException exception) {
+    if (node.isGeneratedByRemoteConsensusLeader()) {
+      return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, exception.getMessage());
+    }
+    LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, exception);
+    return RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exception.getMessage());
   }
 
   /** Restores the pipe progress a PREPARE or COMMIT carries, per time partition. */

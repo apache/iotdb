@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.exception.load.LoadFileNotReadyException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
@@ -497,7 +498,7 @@ final class TsFileWriterManager {
           || progress == null
           || !progress.isReady(fileLength)
           || (expectedDataEnd >= 0L && fileLength < expectedDataEnd)) {
-        throw new LoadFileException(
+        throw new LoadFileNotReadyException(
             String.format(
                 StorageEngineMessages.EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_NOT_CONTINUOUS_F9408C19,
                 stagedFile.getAbsolutePath(),
@@ -570,7 +571,7 @@ final class TsFileWriterManager {
       final TsFilePrecalculatedChunkWriter writer = timePartition2Writer.get(entry.getKey());
 
       if (writer != null && !writer.isSealed()) {
-        throw new LoadFileException(
+        throw new LoadFileNotReadyException(
             String.format(
                 StorageEngineMessages.EXCEPTION_LOAD_CONSENSUS_STAGED_FILE_INCOMPLETE_1CDE954B,
                 tsFileResource.getTsFilePath(),
