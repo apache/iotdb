@@ -55,6 +55,11 @@ public class PipeEndPointRateLimiter {
     PipeEndPointRateLimiter.taskAgent = taskAgent;
   }
 
+  public static boolean isPipeAlive(final String pipeName, final long creationTime) {
+    final PipeTaskAgent finalTaskAgent = taskAgent;
+    return Objects.isNull(finalTaskAgent) || finalTaskAgent.isPipeAlive(pipeName, creationTime);
+  }
+
   public void acquire(final TEndPoint endPoint, long bytes) {
     if (endPoint == null) {
       return;
@@ -82,9 +87,7 @@ public class PipeEndPointRateLimiter {
         bytes,
         PipeConfig.getInstance().getRateLimiterHotReloadCheckIntervalMs(),
         TimeUnit.MILLISECONDS)) {
-      final PipeTaskAgent finalTaskAgent = taskAgent;
-      if (Objects.nonNull(finalTaskAgent)
-          && !finalTaskAgent.isPipeExisted(pipeName, creationTime)) {
+      if (!isPipeAlive(pipeName, creationTime)) {
         return false;
       }
     }
