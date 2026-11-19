@@ -319,27 +319,27 @@ final class FsStatistics {
     return result;
   }
 
-  private static final class ValueStats {
+  static final class ValueStats {
     private final String type;
     private long count;
     private String minTime;
     private String maxTime;
     private String min;
     private String max;
-    private String first;
-    private String last;
+    String first;
+    String last;
     private BigInteger integerSum = BigInteger.ZERO;
     private double floatingSum;
     private double floatingCompensation;
     private BigDecimal floatingWideSum;
     private final ExactMedian numericValues;
 
-    private ValueStats(String type, boolean median) {
+    ValueStats(String type, boolean median) {
       this.type = type;
       this.numericValues = median && numeric() ? new ExactMedian(this::compare) : null;
     }
 
-    private void add(String value, String time) {
+    void add(String value, String time) {
       if (value == null) {
         return;
       }
@@ -442,7 +442,7 @@ final class FsStatistics {
       return "STRING";
     }
 
-    private String averageDataType() {
+    String averageDataType() {
       return "INT64".equals(type) ? "STRING" : "DOUBLE";
     }
 
@@ -456,7 +456,7 @@ final class FsStatistics {
       return floating() ? Double.toString(floatingTotal()) : null;
     }
 
-    private String average() {
+    String average() {
       if (!numeric() || count == 0) {
         return null;
       }
@@ -466,7 +466,24 @@ final class FsStatistics {
             .stripTrailingZeros()
             .toPlainString();
       }
-      return Double.toString(floatingTotal() / count);
+      // Divide the wide total before narrowing: a finite mean can have an overflowing sum.
+      if (floatingWideSum != null) {
+        return Double.toString(
+            floatingWideSum
+                .divide(BigDecimal.valueOf(count), MathContext.DECIMAL128)
+                .doubleValue());
+      }
+      double total = floatingTotal();
+      if (!Double.isFinite(total)
+          && Double.isFinite(floatingSum)
+          && Double.isFinite(floatingCompensation)) {
+        return Double.toString(
+            BigDecimal.valueOf(floatingSum)
+                .add(BigDecimal.valueOf(floatingCompensation))
+                .divide(BigDecimal.valueOf(count), MathContext.DECIMAL128)
+                .doubleValue());
+      }
+      return Double.toString(total / count);
     }
 
     private String median() {

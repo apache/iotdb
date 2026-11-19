@@ -20,6 +20,7 @@
 package org.apache.iotdb.cli.fs.virtualdir;
 
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.TemporalOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.path.FsPath;
@@ -86,6 +87,12 @@ public class VirtualDirectorySchemaProvider implements FilesystemSchemaProvider 
   public void scan(FsPath path, ReadOptions options, boolean descending, RowVisitor visitor)
       throws SQLException {
     delegate.scan(canonicalPath(path), options, descending, visitor);
+  }
+
+  @Override
+  public void temporal(FsPath path, TemporalOptions options, RowVisitor visitor)
+      throws SQLException {
+    delegate.temporal(canonicalPath(path), options, visitor);
   }
 
   @Override

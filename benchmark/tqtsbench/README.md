@@ -185,3 +185,40 @@ python3 experiments/fs-streaming-base-20261118/verify_streaming_base.py \
 This check reuses the private read-only accounts of the SQL discovery pilot,
 never invokes an LLM, and records scalar equivalence, window equivalence,
 median checks, wall time, peak RSS and temporary-file cleanup.
+
+## Same-budget streaming FS pilot (2026-11-19)
+
+Use `run_fs_pilot.py --fs-baseline <previous-fs-result>` with a **new** output
+folder to compare the streaming implementation against the frozen FS control.
+This reuses its private provider settings and verifies the same selection and
+FS resource limits. The initial question prompt is unchanged; the current typed
+tool contract advertises multi-window statistics. The CLI jar, tool source and
+settings hashes are frozen before task execution. Never publish the private
+settings or credential directories.
+
+`compare_fs_pilots.py --before <previous-fs-result> --after <new-fs-result>`
+compares saved `summary.json` files without database or model calls. It reports
+paired wall time, model/tool intervals, token categories, errors, and adoption of
+multi-window calls. A historical single-run comparison does not isolate provider,
+cache or host variation, or the contributions of individual implementation changes.
+
+The completed eight-question streaming pilot is documented in
+[FS_STREAMING_PILOT_20261119.md](FS_STREAMING_PILOT_20261119.md).
+
+## Gap/session and associated extreme rows
+
+The [temporal capability protocol](FS_TEMPORAL_PROTOCOL.md) defines entity grain,
+NULL/tie rules, inclusive windows, output pagination and the four-arm validation-set
+ablation. Native `gaps`, `sessions` and `extreme` compute from ordered complete
+streams in the CLI; no aggregate SQL pushdown is introduced. `gaps` returns an
+M4-style first/last/min/max reduction of the fully computed gaps.
+
+Run `verify_temporal_base.py` before `run_temporal_ablation.py`; the orchestrator
+requires a passed SQL-equivalence report matching the deployed CLI hash. Feature
+gates are enforced both in the DSH schema and typed dispatcher. Full traces and
+per-arm frozen protocols are retained. `analyze_temporal_ablation.py` summarizes
+the matrix without issuing database queries or LLM requests.
+
+The completed 32-trial matrix, answer-alignment review, final deployment and
+remaining bottlenecks are recorded in
+[FS_TEMPORAL_ABLATION_20261119.md](FS_TEMPORAL_ABLATION_20261119.md).

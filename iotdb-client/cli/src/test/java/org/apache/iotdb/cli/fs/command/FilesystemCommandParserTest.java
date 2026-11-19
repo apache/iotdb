@@ -779,4 +779,34 @@ public class FilesystemCommandParserTest {
         options.timePredicate());
     assertEquals(5, options.getWindows().size());
   }
+
+  @Test
+  public void temporalCommandsValidateContractBeforeExecution() {
+    assertEquals(
+        FilesystemCommand.Type.GAPS,
+        FilesystemCommandParser.parse(
+                "gaps /root/db/d --field x --windows -10:0,0:10 -n 3 --offset 1 -f ndjson")
+            .getType());
+    assertEquals(
+        FilesystemCommand.Type.SESSIONS,
+        FilesystemCommandParser.parse(
+                "sessions /db/t.csv --field x --gap-ms 14400000 --start 0 --end 10")
+            .getType());
+    assertEquals(
+        FilesystemCommand.Type.EXTREME,
+        FilesystemCommandParser.parse("extreme /root/db/d --field x --mode max -m y").getType());
+    for (String command :
+        new String[] {
+          "gaps /root/db/d",
+          "sessions /root/db/d --field x --gap-ms 0",
+          "sessions /root/db/d --field x --gap-ms 1 --windows 0:1",
+          "extreme /root/db/d --field x --mode top",
+          "gaps /root/db/d --field x --start 10 --end 0",
+          "extreme /root/db/d --field x --mode max --windows 0:1 --end 1"
+        })
+      assertEquals(
+          command,
+          FilesystemCommand.Type.INVALID,
+          FilesystemCommandParser.parse(command).getType());
+  }
 }

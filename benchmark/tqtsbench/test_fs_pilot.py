@@ -17,7 +17,7 @@
 
 import unittest
 
-from fs_tool_runner import build_command, help_text, resource_metrics
+from fs_tool_runner import build_command, command_failed, help_text, resource_metrics
 
 
 class FsBoundaryTest(unittest.TestCase):
@@ -62,6 +62,40 @@ class FsBoundaryTest(unittest.TestCase):
                 build_command({"command": "stats", "windows": bad}, "iotdb_ndbc")
         with self.assertRaises(ValueError):
             build_command({**request, "start_ms": 0}, "iotdb_ndbc")
+
+    def test_feature_gates_and_temporal_contracts(self):
+        scope = "/root/iotdb_ndbc/station_42001"
+        requests = [
+            {"command":"gaps","path":scope,"field":"wspd"},
+            {"command":"sessions","path":scope,"field":"wspd","gap_ms":14400000},
+            {"command":"extreme","path":scope,"field":"wspd","mode":"max","measurements":["wtmp"]},
+        ]
+        for request in requests:
+            with self.assertRaises(ValueError):
+                build_command(request,"iotdb_ndbc")
+            command=build_command({**request,"limit":1,"offset":2},"iotdb_ndbc",["temporal","extreme"])
+            self.assertIn("-n 2",command)
+            self.assertIn("--offset 2",command)
+        for request in [
+            {**requests[0],"field":"wspd;sql"},
+            {**requests[1],"gap_ms":True},
+            {**requests[1],"gap_ms":0},
+            {**requests[1],"gap_ms":2**63},
+            {**requests[1],"windows":[{"start_ms":0,"end_ms":10}]},
+            {**requests[2],"mode":"average"},
+            {"command":"gaps","field":"wspd"},
+        ]:
+            with self.assertRaises(ValueError):
+                build_command(request,"iotdb_ndbc",["temporal","extreme"])
+        self.assertNotIn("extreme",help_text(scope,["temporal"])["commands"])
+        self.assertNotIn("sessions",help_text(scope,["extreme"])["commands"])
+
+    def test_grep_no_match_is_distinct_from_fatal_jvm_exit(self):
+        self.assertFalse(command_failed("grep",1,False,""))
+        self.assertTrue(command_failed("grep",1,False,"java.lang.OutOfMemoryError: Java heap space"))
+        self.assertTrue(command_failed("grep",1,False,'Exception in thread "main" java.lang.RuntimeException'))
+        self.assertTrue(command_failed("grep",1,True,""))
+        self.assertTrue(command_failed("stats",1,False,""))
 
     def test_resource_metrics_preserve_units(self):
         self.assertEqual(resource_metrics("Maximum resident set size (kbytes): 1234\nUser time (seconds): 1.25\nSystem time (seconds): 0.10"), {"peak_rss_kib": 1234.0, "cpu_user_seconds": 1.25, "cpu_system_seconds": 0.1})

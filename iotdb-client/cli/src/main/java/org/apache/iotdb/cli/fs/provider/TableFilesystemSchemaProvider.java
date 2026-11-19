@@ -21,6 +21,7 @@ package org.apache.iotdb.cli.fs.provider;
 
 import org.apache.iotdb.cli.fs.FsRowRenderer;
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.TemporalOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
@@ -201,6 +202,19 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     }
     ensureExists(path, file);
     return file;
+  }
+
+  @Override
+  public void temporal(FsPath path, TemporalOptions options, RowVisitor visitor)
+      throws SQLException {
+    TableFileRef file = tableFile(path);
+    FsTemporal.run(
+        model(),
+        file.database + "." + file.table,
+        columns(file),
+        options,
+        sink -> scan(path, options.scanOptions(), false, sink),
+        visitor);
   }
 
   @Override

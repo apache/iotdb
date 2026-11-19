@@ -146,6 +146,24 @@ public class FilesystemCommandParser {
       case CD:
         args.paths(0, 1);
         return FilesystemCommand.path(type, args.operands.isEmpty() ? "/" : args.operands.get(0));
+      case GAPS:
+      case SESSIONS:
+      case EXTREME:
+        validateScope(args);
+        FilesystemCommand temporal =
+            withReadOptions(
+                    FilesystemCommand.path(type, args.path(true))
+                        .withLimit(
+                            args.has("-n")
+                                ? unsignedInteger(command, "-n", args.value("-n"), false)
+                                : -1),
+                    args,
+                    "-f")
+                .withOptions(args.options);
+        if (args.has("--windows") && args.value("--windows").isEmpty())
+          throw TemporalOptions.invalid();
+        TemporalOptions.from(temporal);
+        return temporal;
       case SCHEMA:
       case META:
       case STATS:
@@ -744,6 +762,23 @@ public class FilesystemCommandParser {
               || "--table".equals(flag)
               || "-m".equals(flag)
               || "--measurements".equals(flag);
+        case "gaps":
+        case "sessions":
+        case "extreme":
+          return "--field".equals(flag)
+              || ("sessions".equals(command) && "--gap-ms".equals(flag))
+              || ("extreme".equals(command)
+                  && ("--mode".equals(flag) || "-m".equals(flag) || "--measurements".equals(flag)))
+              || (!"sessions".equals(command) && "--windows".equals(flag))
+              || "-f".equals(flag)
+              || "--format".equals(flag)
+              || "-n".equals(flag)
+              || "--limit".equals(flag)
+              || "--offset".equals(flag)
+              || "--start".equals(flag)
+              || "--end".equals(flag)
+              || "--tag-filter".equals(flag)
+              || "--tag-match".equals(flag);
         case "stats":
           return "-f".equals(flag)
               || "--format".equals(flag)

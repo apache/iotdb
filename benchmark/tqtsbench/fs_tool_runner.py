@@ -33,6 +33,11 @@ from tool_runner import context_page
 COMMANDS = ("help", "ls", "find", "tree", "schema", "meta", "stats", "count", "cat", "head", "tail", "stat", "file", "grep", "cut", "paste", "join", "wc")
 AGGREGATES = ("count", "min", "max", "sum", "avg", "median", "first", "last", "min_time", "max_time", "null_count")
 READ = {"cat", "head"}
+TEMPORAL = {"gaps", "sessions", "extreme"}
+PAGED = READ | TEMPORAL
+
+def enabled_commands(features):
+    return set(COMMANDS) | ({"gaps", "sessions"} if "temporal" in features else set()) | ({"extreme"} if "extreme" in features else set())
 
 
 def integer(value, name, low, high):
@@ -52,8 +57,8 @@ def path_arg(value, package):
     return value
 
 
-def help_text(scope):
-    return {
+def help_text(scope, features=()):
+    result = {
         "scope": scope,
         "commands": {
             "help": "No other parameters. Returns this complete controlled contract.",
@@ -75,29 +80,46 @@ def help_text(scope):
         },
         "path_mapping": "root.db.device.measurement maps to /root/db/device/measurement. Tree paths are virtual, with no .csv/.tsfile suffix added. Devices/directories can expose several measurements. Paths remain inside assigned root.",
         "limits": "120 admitted tool calls per task shared with dataset_context; 180 seconds per FS process; 8 GiB Java heap; model output capped at 40000 characters. Raw output retained offline and never exposed as spill paths.",
-        "scope_note": "Only native read-only FS commands are exposed. No sql escape, shell, arbitrary local files, writes or export. Native multi-window statistics are supported; session and ranking are not added by this adapter. Aggregation remains in the CLI, with streaming range reads."
+        "scope_note": "Only native read-only FS commands are exposed. No sql escape, shell, arbitrary local files, writes or export. Native multi-window statistics are supported; cross-entity ranking is not added by this adapter. Only commands enumerated here are enabled for this arm. Aggregation remains in the CLI, with streaming range reads."
     }
 
 
-def build_command(args, package):
+    result["commands"]["stats"] += " Statistics remain separate per object/entity and window; cross-entity ranking is not pooled averaging. Preserve object and window keys when combining results."
+    if "temporal" in features:
+        result["commands"]["gaps"] = "Complete non-null successive gaps: required path and field; optional start_ms/end_ms OR windows, limit=1..2000 (default200), offset>=0. Inclusive windows are assigned by LATER observation time; the actual preceding non-null observation may be outside the window. Return distinct first/last/min/max gap samples (earliest tied min/max), observed_at, previous_at, exact decimal gap_ms, selected_as; deduplicate by entity/window/observed_at. Full scan, never sampled. Each device is independent. Empty/no-gap window has no row. Structured pages with next_offset."
+        result["commands"]["sessions"] = "Complete sessionization: required path, numeric field and positive gap_ms. Consecutive non-null target observations split ONLY when their gap > gap_ms; equality stays in session. Optional inclusive start_ms/end_ms filters BEFORE segmentation (clipped sessions, indices restart at0); windows not allowed. Per-device session_index/start/end,count,avg,first,last. Never pool devices. limit/offset paginate output sessions with next_offset. Null target values skipped; non-finite numeric target values rejected. Full scan, not inferred from sampled windows."
+    if "extreme" in features:
+        result["commands"]["extreme"] = "Associated extreme row: required path, numeric field and mode=min|max; optional measurements of associated fields, inclusive start_ms/end_ms OR windows, limit/offset. Independently per device/window; ties choose earliest time. Skip null comparison values, retain null associated values, reject non-finite comparison values. Return object, group_scope=entity, field, window keys, observed_at, extreme_value and value.<field> (target always included). No pooling/global ranking. Empty windows have no row. Structured pages with next_offset."
+    return result
+
+
+def build_command(args, package, features=()):
     if not isinstance(args, dict):
         raise ValueError("Tool arguments must be an object")
     cmd = args.get("command")
-    if cmd not in COMMANDS:
+    if cmd not in enabled_commands(features):
         raise ValueError("Unknown command; use help")
     allowed = {"command"}
     if cmd != "help":
         allowed.add("paths" if cmd in {"paste", "join"} else "path")
-    if cmd in READ | {"stats", "schema", "count"}:
+    if cmd in READ | {"stats", "schema", "count", "extreme"}:
         allowed.add("measurements")
-    if cmd in READ | {"stats"}:
+    if cmd in PAGED | {"stats"}:
         allowed |= {"start_ms", "end_ms"}
-    if cmd in READ | {"tail"}:
+    if cmd in PAGED | {"tail"}:
         allowed.add("limit")
-    if cmd in READ:
+    if cmd in PAGED:
         allowed.add("offset")
     if cmd == "stats":
         allowed |= {"aggregates", "windows"}
+    if cmd in TEMPORAL:
+        allowed.add("field")
+    if cmd in {"gaps", "extreme"}:
+        allowed.add("windows")
+    if cmd == "sessions":
+        allowed.add("gap_ms")
+    if cmd == "extreme":
+        allowed.add("mode")
     if cmd in {"find", "grep"}:
         allowed.add("pattern")
     if cmd in {"tree", "find"}:
@@ -120,7 +142,20 @@ def build_command(args, package):
     else:
         paths = [path_arg(args.get("path", "/root/"+package), package)]
     parts = [cmd]
-    if cmd in {"schema", "meta", "stats", "count", "cat", "head"}:
+    if cmd in TEMPORAL:
+        if "path" not in args:
+            raise ValueError("Analysis commands require an explicit path")
+        field = args.get("field")
+        if not isinstance(field, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", field):
+            raise ValueError("field must be a measurement identifier")
+        parts += ["--field", field]
+    if cmd == "sessions":
+        parts += ["--gap-ms", str(integer(args.get("gap_ms"), "gap_ms", 1, 2**63-1))]
+    if cmd == "extreme":
+        if args.get("mode") not in {"min", "max"}:
+            raise ValueError("mode must be min or max")
+        parts += ["--mode", args["mode"]]
+    if cmd in {"schema", "meta", "stats", "count", "cat", "head"} | TEMPORAL:
         parts += ["-f", "ndjson"]
     elif cmd == "tail":
         parts += ["--format", "ndjson"]
@@ -151,10 +186,10 @@ def build_command(args, package):
                 raise ValueError("Window end_ms must be >= start_ms")
             ranges.append(f"{start}:{end}")
         parts += ["--windows", ",".join(ranges)]
-    if cmd in READ | {"tail"}:
+    if cmd in PAGED | {"tail"}:
         limit = integer(args.get("limit",10 if cmd=="tail" else 200), "limit",1,2000)
-        parts += ["-n", str(limit + (1 if cmd in READ else 0))]
-    if cmd in READ:
+        parts += ["-n", str(limit + (1 if cmd in PAGED else 0))]
+    if cmd in PAGED:
         parts += ["--offset", str(integer(args.get("offset",0),"offset",0,100000000))]
     if "aggregates" in args:
         values = args["aggregates"]
@@ -192,6 +227,12 @@ def build_command(args, package):
     return " ".join(shlex.quote(p) for p in parts)
 
 
+def command_failed(command, exit_code, timed_out, stderr):
+    # grep uses 1 for a valid no-match result, but the JVM also uses 1 for fatal errors.
+    fatal = "OutOfMemoryError" in stderr or "Exception in thread" in stderr
+    return timed_out or fatal or exit_code not in ([0, 1] if command == "grep" else [0])
+
+
 def resource_metrics(text):
     values = {}
     for line in text.splitlines():
@@ -215,9 +256,9 @@ def execute(config, request):
         if kind == "context":
             payload = context_page(json.loads(Path(config["context"]).read_text()), args)
         elif kind == "fs":
-            command = build_command(args,config["package"])
+            command = build_command(args,config["package"],config.get("features",[]))
             if command is None:
-                payload = help_text("/root/"+config["package"])
+                payload = help_text("/root/"+config["package"],config.get("features",[]))
             else:
                 (folder/"native-command.txt").write_text(command)
                 creds=json.loads(Path(config["credentials"]).read_text())
@@ -243,7 +284,7 @@ def execute(config, request):
                             proc.wait()
                         finally:
                             signal.signal(signal.SIGTERM, previous)
-                page_command = args["command"] in READ | {"tail"}
+                page_command = args["command"] in PAGED | {"tail"}
                 if page_command and (folder/"stdout.txt").stat().st_size > 8*1024*1024:
                     raise ValueError("Page output exceeds 8 MiB; select fewer measurements")
                 with (folder/"stdout.txt").open(errors="replace") as stream:
@@ -251,9 +292,9 @@ def execute(config, request):
                 stderr=(folder/"stderr.txt").read_text(errors="replace")
                 metrics=resource_metrics((folder/"resources.txt").read_text()) if (folder/"resources.txt").exists() else {}
                 (folder/"resources.json").write_text(json.dumps(metrics))
-                error=timed_out or proc.returncode not in ([0,1] if args["command"]=="grep" else [0])
+                error=command_failed(args["command"],proc.returncode,timed_out,stderr)
                 payload={"stdout":raw[:40000],"stderr":"\n".join(line for line in stderr.splitlines() if not line.startswith("Picked up _JAVA_OPTIONS:"))[:2000],"truncated":len(raw)>40000,"is_error":error,"exit_code":proc.returncode,"timed_out":timed_out}
-                if not error and args["command"] in READ | {"tail"}:
+                if not error and args["command"] in PAGED | {"tail"}:
                     rows=[json.loads(line) for line in raw.splitlines() if line.strip()]
                     limit=args.get("limit",10 if args["command"]=="tail" else 200)
                     selected=rows[:limit]
@@ -264,7 +305,7 @@ def execute(config, request):
                     if args["command"]=="tail" and len(selected)<len(rows):
                         raise ValueError("Tail page exceeds output budget; use a smaller limit")
                     offset=args.get("offset",0)
-                    more=args["command"] in READ and len(selected)<len(rows)
+                    more=args["command"] in PAGED and len(selected)<len(rows)
                     payload={"rows":selected,"offset":offset,"returned_rows":len(selected),"has_more":more,"next_offset":offset+len(selected) if more else None,"is_error":False}
                 if payload.get("truncated"):
                     payload["continuation"]="Narrow the path or parameters. Raw output is retained offline and cannot be opened by the agent."

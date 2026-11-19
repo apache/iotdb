@@ -170,6 +170,21 @@ public class FsStatisticsTest {
   }
 
   @Test
+  public void floatingAverageStaysFiniteWhenTotalExceedsDoubleRange() {
+    String largest = Double.toString(Double.MAX_VALUE);
+    for (String value : Arrays.asList(largest, "-" + largest)) {
+      List<SqlRow> result =
+          FsStatistics.stats(
+              "tree",
+              "root.db.d",
+              Arrays.asList(new FsColumn("value", "FIELD", "DOUBLE")),
+              SqlRow.list(
+                  SqlRow.of("time", "0", "value", value), SqlRow.of("time", "1", "value", value)));
+      assertEquals(Double.parseDouble(value), Double.parseDouble(result.get(0).get("avg")), 0.0);
+    }
+  }
+
+  @Test
   public void floatingStatisticsRecoverFromIntermediateOverflow() {
     String maximum = Double.toString(Double.MAX_VALUE);
     List<SqlRow> stats =

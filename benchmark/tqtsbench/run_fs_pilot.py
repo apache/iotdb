@@ -40,11 +40,15 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--root",type=Path,required=True)
     parser.add_argument("--sql-baseline",type=Path,required=True)
+    parser.add_argument("--fs-baseline",type=Path,help="Frozen prior FS run for a same-budget streaming comparison")
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument("--prepare-only",action="store_true")
     parser.add_argument("--smoke-only",action="store_true")
     parser.add_argument("--run",action="store_true")
+    parser.add_argument("--features", choices=["base", "temporal", "extreme", "both"], default=None)
+    parser.add_argument("--task-id", help="Run one selected question, retaining the frozen full selection")
     args=parser.parse_args()
+    features={"base":[],"temporal":["temporal"],"extreme":["extreme"],"both":["temporal","extreme"]}[args.features or "base"]
     os.umask(0o077)
     root,output,baseline=args.root.resolve(),args.output.resolve(),args.sql_baseline.resolve()
     output.mkdir(parents=True,exist_ok=True)
@@ -53,12 +57,13 @@ def main():
     # so the larger generation limit is real without changing shared settings.
     private_home=output/"private-dsh-home"
     private_home.mkdir(exist_ok=True,mode=0o700)
-    settings=yaml.safe_load((root/"runtime/dsh-home/settings.yaml").read_text())
+    settings_home=(args.fs_baseline.resolve()/"private-dsh-home") if args.fs_baseline else root/"runtime/dsh-home"
+    settings=yaml.safe_load((settings_home/"settings.yaml").read_text())
     settings["llm-deepseek"]["maxTokens"]=32768
     (private_home/"settings.yaml").write_text(yaml.safe_dump(settings,sort_keys=False))
     (private_home/"settings.yaml").chmod(0o600)
     if not (private_home/".credentials.yaml").exists():
-        shutil.copyfile(root/"runtime/dsh-home/.credentials.yaml",private_home/".credentials.yaml")
+        shutil.copyfile(settings_home/".credentials.yaml",private_home/".credentials.yaml")
         (private_home/".credentials.yaml").chmod(0o600)
     launcher=output/"dsh-exp"
     license_header=Path(__file__).read_text().split('"""',1)[0]
@@ -67,6 +72,7 @@ def main():
     sys.path.insert(0,str(root/"src/iotdb/benchmark/llm-sql-fs-comparison"))
     from dsh_client import DshClient
     selected=json.loads((baseline/"selection.json").read_text())
+    cli_jar=root/"runtime/iotdb/lib/iotdb-cli-2.0.11-SNAPSHOT.jar"
     protocol={
         "created_at":datetime.now(timezone.utc).isoformat(),
         "purpose":"Generous-resource FS diagnostic control; compare bottleneck mechanisms with earlier SQL traces, not equal-budget performance",
@@ -84,6 +90,29 @@ def main():
         "source_sha256":{n:hashlib.sha256((source/n).read_bytes()).hexdigest() for n in ["run_fs_pilot.py","fs_tool_runner.py","fs-discovery-tools.mjs","tool_runner.py"]},
         "selection_sha256":hashlib.sha256((baseline/"selection.json").read_bytes()).hexdigest()
     }
+    if args.fs_baseline:
+        previous=args.fs_baseline.resolve()
+        prior=json.loads((previous/"protocol.json").read_text())
+        if (previous/"selection.json").read_bytes() != (baseline/"selection.json").read_bytes():
+            raise RuntimeError("SQL and prior FS question selections differ")
+        if protocol["limits"] != prior["limits"]:
+            raise RuntimeError("Streaming comparison must retain prior FS resource limits")
+        protocol.update(
+            purpose="Same-question, same-budget FS before/after streaming-base pilot",
+            fs_baseline=str(previous),
+            capability="Frozen streaming CLI; typed multi-window stats and extended aggregates. No SQL escape, local files, shell or external compute. No changes during model execution.",
+            comparison_limits="Single trial per question; historical rather than randomized paired control, provider/cache/host variation not isolated. CLI and tool contract change together; no attribution to individual optimizations or SQL superiority.",
+            cli_jar_sha256=hashlib.sha256(cli_jar.read_bytes()).hexdigest(),
+            settings_sha256=hashlib.sha256((private_home/"settings.yaml").read_bytes()).hexdigest(),
+            fs_baseline_protocol_sha256=hashlib.sha256((previous/"protocol.json").read_bytes()).hexdigest(),
+        )
+    protocol["features"]=features
+    if args.features is not None or args.task_id:
+        protocol.update(purpose="Contemporaneous 2x2 FS temporal/extreme capability ablation",
+                        capability="Same CLI artifact and base commands; enabled additional features: " + str(features),
+                        comparison_limits="One trial per question per arm; rotated serial arm order; same frozen model, public context, question and budget. Provider randomness and prefix cache are not controlled; exploratory mechanism evidence only.")
+    if args.task_id and args.task_id not in {t["id"] for t in selected}:
+        raise ValueError("task-id is not in the frozen selection")
     if not (output/"protocol.json").exists():
         write(output/"protocol.json",protocol)
         (output/"selection.json").write_bytes((baseline/"selection.json").read_bytes())
@@ -91,6 +120,9 @@ def main():
         frozen=json.loads((output/"protocol.json").read_text())
         if frozen["source_sha256"] != protocol["source_sha256"]:
             raise RuntimeError("Frozen source hashes changed; do not mutate a started experiment")
+        for key in ["cli_jar_sha256", "settings_sha256", "selection_sha256", "features"]:
+            if frozen.get(key) != protocol.get(key):
+                raise RuntimeError("Frozen experiment identity changed: " + key)
     disabled=(root/"src/iotdb/benchmark/llm-sql-fs-comparison/dsh-baseline.patch.yml").read_text().split("- insert:",1)[0]
     disabled=disabled.replace("single assigned IoTDB interface tool","assigned read-only filesystem and public-context tools")
     for package in sorted({q["package"] for q in selected}):
@@ -99,9 +131,9 @@ def main():
         target.write_bytes((baseline/"public-context"/(package+".json")).read_bytes())
     def prepare(task,trial):
         trial.mkdir(parents=True,exist_ok=True)
-        config={"package":task["package"],"context":str(output/"public-context"/(task["package"]+".json")),"credentials":str(baseline/"credentials"/(task["package"]+".json")),"cli":str(root/"runtime/iotdb/sbin/start-cli.sh"),"output":str(trial/"tool-output")}
+        config={"features":features,"package":task["package"],"context":str(output/"public-context"/(task["package"]+".json")),"credentials":str(baseline/"credentials"/(task["package"]+".json")),"cli":str(root/"runtime/iotdb/sbin/start-cli.sh"),"output":str(trial/"tool-output")}
         write(trial/"tool-config.json",config)
-        plugin={"toolsModule":(root/"runtime/agent/node_modules/@deepseek-ai/dsh-tools/lib/index.js").as_uri(),"python":sys.executable,"runner":str(source/"fs_tool_runner.py"),"configPath":str(trial/"tool-config.json")}
+        plugin={"features":features,"toolsModule":(root/"runtime/agent/node_modules/@deepseek-ai/dsh-tools/lib/index.js").as_uri(),"python":sys.executable,"runner":str(source/"fs_tool_runner.py"),"configPath":str(trial/"tool-config.json")}
         patch=disabled+"\n- id: llm-deepseek\n  config:\n    maxTokens: 32768\n- insert:\n    - id: tqts-fs-discovery-tools\n      name: "+json.dumps(str(source/"fs-discovery-tools.mjs"))+"\n      inject: [tools]\n      config: "+json.dumps(plugin)+"\n"
         (trial/"tools.patch.yml").write_text(patch)
     for task in selected:
@@ -115,8 +147,11 @@ def main():
         print(json.dumps({k:r.get(k) for k in ["status","resolved_model","tool_calls_by_name","usage","error"]}));return
     if not args.run:return
     for task in selected:
+        if args.task_id and task["id"] != args.task_id:continue
         trial=output/"trials"/task["id"]
         if (trial/"dsh_result.json").exists():continue
+        if args.fs_baseline and hashlib.sha256(cli_jar.read_bytes()).hexdigest()!=protocol["cli_jar_sha256"]:
+            raise RuntimeError("CLI changed during frozen experiment")
         prompt=f"""Answer the following original TQTS-Bench question using observations from your tools.
 Question: {task['question']}
 Assigned database root: root.{task['package']}

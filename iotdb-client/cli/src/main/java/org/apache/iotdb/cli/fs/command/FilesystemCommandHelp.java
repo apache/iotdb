@@ -39,6 +39,9 @@ public final class FilesystemCommandHelp {
           + " [--offset n] [--start time] [--end time]"
           + " [--tag-filter tag op [value]] [--tag-match all|any]";
 
+  private static final String TEMPORAL_READ =
+      "[-f table|ndjson|csv] [--offset n] [--start ms] [--end ms] [--tag-filter tag op [value]] [--tag-match all|any]";
+
   static {
     add("pwd", "pwd", FsHelpMessages.PWD, "pwd");
     add("ls", "ls [-laR] " + FORMAT + " [path]", FsHelpMessages.LS, "ls /\n  ls -la /db1");
@@ -62,6 +65,22 @@ public final class FilesystemCommandHelp {
             + " [--tag-match all|any] [--aggregates count,min,max,sum,avg,median,first,last,min_time,max_time,null_count] [--windows start:end,...] [path]",
         FsHelpMessages.STATS,
         "stats /db1/table1.csv -m temperature --start 0 --end 1000 --aggregates avg,median");
+    add(
+        "gaps",
+        "gaps path --field field [--windows start:end,...] [-n count] " + TEMPORAL_READ,
+        FsHelpMessages.GAPS,
+        "gaps /root/db/device --field value --windows 0:3599999,3600000:7199999 -f ndjson");
+    add(
+        "sessions",
+        "sessions path --field field --gap-ms duration [-n count] " + TEMPORAL_READ,
+        FsHelpMessages.SESSIONS,
+        "sessions /root/db/device --field value --gap-ms 14400000 -f ndjson");
+    add(
+        "extreme",
+        "extreme path --field field --mode min|max [-m field ...] [--windows start:end,...] [-n count] "
+            + TEMPORAL_READ,
+        FsHelpMessages.EXTREME,
+        "extreme /root/db/device --field temperature --mode max -m humidity -f ndjson");
     add(
         "count",
         "count " + SCOPE + " " + FORMAT + " [path]",

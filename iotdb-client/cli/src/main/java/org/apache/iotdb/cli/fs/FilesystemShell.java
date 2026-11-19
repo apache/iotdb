@@ -24,12 +24,14 @@ import org.apache.iotdb.cli.fs.command.FilesystemCommandHelp;
 import org.apache.iotdb.cli.fs.command.FilesystemCommandParser;
 import org.apache.iotdb.cli.fs.command.FsShellWords;
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.TemporalOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.provider.FilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.provider.FsTemporal;
 import org.apache.iotdb.cli.fs.provider.UnsupportedFilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 import org.apache.iotdb.cli.fs.write.TsFileWriteExecutor;
@@ -73,9 +75,43 @@ public class FilesystemShell {
 
   private static final List<String> COMMANDS =
       Arrays.asList(
-          "pwd", "ls", "ll", "cd", "stat", "meta", "schema", "stats", "count", "wc", "cat", "head",
-          "tail", "grep", "find", "less", "more", "file", "mkdir", "rmdir", "rm", "mv", "cp", "cut",
-          "paste", "join", "tree", "help", "exit", "quit", "tee", "write", "export", "sketch",
+          "pwd",
+          "ls",
+          "ll",
+          "cd",
+          "stat",
+          "meta",
+          "schema",
+          "stats",
+          "gaps",
+          "sessions",
+          "extreme",
+          "count",
+          "wc",
+          "cat",
+          "head",
+          "tail",
+          "grep",
+          "find",
+          "less",
+          "more",
+          "file",
+          "mkdir",
+          "rmdir",
+          "rm",
+          "mv",
+          "cp",
+          "cut",
+          "paste",
+          "join",
+          "tree",
+          "help",
+          "exit",
+          "quit",
+          "tee",
+          "write",
+          "export",
+          "sketch",
           "sql");
 
   private final CliContext ctx;
@@ -127,6 +163,11 @@ public class FilesystemShell {
         if (checkExists("stat", node)) {
           printNode(node);
         }
+        return true;
+      case GAPS:
+      case SESSIONS:
+      case EXTREME:
+        printTemporal(command);
         return true;
       case META:
       case SCHEMA:
@@ -735,6 +776,33 @@ public class FilesystemShell {
           expandGlob(node.getPath(), segments, index + 1, result);
       }
     }
+  }
+
+  private void printTemporal(FilesystemCommand command) throws SQLException {
+    TemporalOptions options = TemporalOptions.from(command);
+    FsPath path = resolve(command.getPath());
+    List<FsColumn> columns = FsTemporal.outputColumns(provider.columns(path), options);
+    long[] skipped = {0}, emitted = {0};
+    FsRowRenderer.printStream(
+        ctx.getOut(),
+        columns,
+        options.getRead().getFormat(),
+        sink -> {
+          if (options.getRead().getLimit() == 0) return;
+          provider.temporal(
+              path,
+              options,
+              row -> {
+                if (skipped[0] < options.getRead().getOffset()) {
+                  skipped[0]++;
+                  return true;
+                }
+                emitted[0]++;
+                return sink.visit(row)
+                    && (options.getRead().getLimit() < 0
+                        || emitted[0] < options.getRead().getLimit());
+              });
+        });
   }
 
   private void printMetadata(FilesystemCommand command) throws SQLException {

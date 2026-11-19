@@ -20,6 +20,7 @@
 package org.apache.iotdb.cli.fs.provider;
 
 import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.TemporalOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
@@ -198,6 +199,35 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
                       row -> visitor.visit(normalizer.apply(row)))));
     }
     return result;
+  }
+
+  @Override
+  public void temporal(FsPath path, TemporalOptions options, RowVisitor visitor)
+      throws SQLException {
+    Map<String, List<FsColumn>> devices = new java.util.TreeMap<>();
+    for (SqlRow row : rawSchema(path)) {
+      Path series = new Path(row.get("Timeseries"), true);
+      devices
+          .computeIfAbsent(series.getDeviceString(), ignored -> new ArrayList<>())
+          .add(column(row));
+    }
+    for (List<FsColumn> schema : devices.values()) FsTemporal.validate(schema, options);
+    for (Map.Entry<String, List<FsColumn>> device : devices.entrySet()) {
+      RowNormalizer normalizer = new RowNormalizer(true);
+      if (!FsTemporal.run(
+          model(),
+          device.getKey(),
+          device.getValue(),
+          options,
+          sink ->
+              executor.scan(
+                  "SELECT * FROM "
+                      + device.getKey()
+                      + options.scanOptions().timePredicate()
+                      + " ORDER BY time ASC",
+                  row -> sink.visit(normalizer.apply(row))),
+          visitor)) break;
+    }
   }
 
   @Override
