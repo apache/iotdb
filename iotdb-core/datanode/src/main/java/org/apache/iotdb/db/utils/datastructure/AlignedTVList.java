@@ -86,8 +86,7 @@ public abstract class AlignedTVList extends TVList {
   // Record total memory size of binary column
   protected long[] memoryBinaryChunkSize;
 
-  // Number of non-null values in each column. It is maintained on every write/delete so that flush
-  // can compute the average point size of a column in O(1) instead of scanning the whole list.
+  // Number of non-null values in each column, updated on every write and delete.
   private int[] nonNullValueCounts;
 
   // Number and memory cost of primitive arrays that have been allocated for each value column
@@ -267,8 +266,7 @@ public abstract class AlignedTVList extends TVList {
     cloneAs(cloneList);
     cloneList.timeDeletedCnt = this.timeDeletedCnt;
     cloneList.memoryBinaryChunkSize = this.memoryBinaryChunkSize;
-    // This clone shares the value arrays/bitmaps with the source, so share the counts that
-    // describe them as well.
+    // The clone shares the value arrays and bitmaps, so it shares the counts too.
     cloneList.nonNullValueCounts = this.nonNullValueCounts;
     cloneList.values = this.values;
     cloneList.bitMaps = this.bitMaps;
@@ -1017,8 +1015,7 @@ public abstract class AlignedTVList extends TVList {
     boolean cloneAllColumns = columnsToClone == null;
     System.arraycopy(
         memoryBinaryChunkSize, 0, cloneList.memoryBinaryChunkSize, 0, dataTypes.size());
-    // The clone owns every column after commit: retained columns are deep-cloned and the other
-    // columns are moved without changing their non-null counts.
+    // The clone owns every column after commit, so copy the counts unchanged.
     System.arraycopy(
         nonNullValueCounts, 0, cloneList.nonNullValueCounts, 0, nonNullValueCounts.length);
     boolean hasBitMapsToMove = false;
@@ -1246,8 +1243,7 @@ public abstract class AlignedTVList extends TVList {
         continue;
       }
 
-      // Count the values that survive the null/failure masks. The fast path avoids scanning the
-      // range when no input value is masked.
+      // Count the values that survive the null bitmap and failed statuses.
       BitMap inputBitMap = bitMaps == null ? null : bitMaps[j];
       boolean hasNullMarks = inputBitMap != null && inputBitMap.isRangeAnyMarked(idx, len);
       nonNullValueCounts[j] +=
@@ -2109,7 +2105,7 @@ public abstract class AlignedTVList extends TVList {
     return Math.max(avgPointSizeOfLargestBinaryColumn, largestPrimitivePointSize);
   }
 
-  /** Return the number of non-null values in the column in O(1). */
+  /** Return the non-null value count of a column in O(1). */
   int getColumnValueCnt(int columnIndex) {
     return nonNullValueCounts[columnIndex];
   }
