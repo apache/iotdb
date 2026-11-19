@@ -21,12 +21,14 @@ package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
-import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeCacheLeaderClientManager;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeSyncClientManager;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -39,6 +41,72 @@ public class IoTDBDataNodeAsyncClientManagerTest {
 
   private static final List<String> WILDCARD_ADDRESSES =
       Arrays.asList("0.0.0.0", "::", "[::]", "0:0:0:0:0:0:0:0", "0::0");
+
+  @Test
+  public void testAsyncBorrowDoesNotUseLeaderFromAnotherReceiver() throws Exception {
+    final TEndPoint firstReceiver = new TEndPoint("127.0.0.1", 10667);
+    final TEndPoint secondReceiver = new TEndPoint("127.0.0.1", 11667);
+    final TEndPoint firstLeader = new TEndPoint("127.0.0.1", 10668);
+    final IoTDBDataNodeAsyncClientManager firstManager =
+        createAsyncManager(new ArrayList<>(Collections.singletonList(firstReceiver)));
+    final IoTDBDataNodeAsyncClientManager secondManager =
+        createAsyncManager(new ArrayList<>(Collections.singletonList(secondReceiver)));
+
+    final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clients =
+        Mockito.mock(IClientManager.class);
+    final AsyncPipeDataTransferServiceClient client =
+        Mockito.mock(AsyncPipeDataTransferServiceClient.class);
+    Mockito.when(clients.borrowClient(Mockito.any())).thenReturn(client);
+    Mockito.when(client.isHandshakeFinished()).thenReturn(true);
+    final Field clientManagerField =
+        IoTDBDataNodeAsyncClientManager.class.getDeclaredField("endPoint2Client");
+    clientManagerField.setAccessible(true);
+    clientManagerField.set(secondManager, clients);
+
+    try {
+      firstManager.updateLeaderCache("root.test.shared", firstLeader);
+      Assert.assertSame(client, secondManager.borrowClient("root.test.shared"));
+      Mockito.verify(clients).borrowClient(secondReceiver);
+      Mockito.verify(clients, Mockito.never()).borrowClient(firstLeader);
+    } finally {
+      firstManager.close();
+      secondManager.close();
+    }
+  }
+
+  @Test
+  public void testLeaderCacheIsScopedToConfiguredReceiverEndPoints() {
+    final TEndPoint firstReceiver = new TEndPoint("127.0.0.1", 12667);
+    final TEndPoint secondReceiver = new TEndPoint("127.0.0.1", 12668);
+    final TEndPoint otherReceiver = new TEndPoint("::1", 13667);
+    final TEndPoint firstLeader = new TEndPoint("127.0.0.1", 12669);
+    final TEndPoint otherLeader = new TEndPoint("::1", 13668);
+    final String device = "root.test.scoped";
+    final IoTDBDataNodeAsyncClientManager asyncManager =
+        createAsyncManager(new ArrayList<>(Arrays.asList(firstReceiver, secondReceiver)));
+    final TestIoTDBDataNodeSyncClientManager sameReceiverManager =
+        new TestIoTDBDataNodeSyncClientManager(
+            new ArrayList<>(Arrays.asList(secondReceiver, firstReceiver, firstReceiver)));
+    final TestIoTDBDataNodeSyncClientManager otherManager =
+        new TestIoTDBDataNodeSyncClientManager(
+            new ArrayList<>(Collections.singletonList(otherReceiver)));
+
+    try {
+      asyncManager.updateLeaderCache(device, firstLeader);
+      Assert.assertEquals(firstLeader, asyncManager.getLeaderEndPoint(device));
+      Assert.assertEquals(firstLeader, sameReceiverManager.getLeaderEndPoint(device));
+      Assert.assertNull(otherManager.getLeaderEndPoint(device));
+
+      otherManager.updateLeaderCache(device, otherLeader);
+      Assert.assertEquals(otherLeader, otherManager.getLeaderEndPoint(device));
+      Assert.assertEquals(firstLeader, asyncManager.getLeaderEndPoint(device));
+      Assert.assertEquals(firstLeader, sameReceiverManager.getLeaderEndPoint(device));
+    } finally {
+      asyncManager.close();
+      sameReceiverManager.close();
+      otherManager.close();
+    }
+  }
 
   @Test
   public void testReceiverAttributesShouldDifferentiateSkipIfNoPrivileges() throws Exception {
@@ -134,8 +202,7 @@ public class IoTDBDataNodeAsyncClientManagerTest {
         manager.updateLeaderCache(deviceId, new TEndPoint(WILDCARD_ADDRESSES.get(i), 6667 + i));
 
         Assert.assertEquals(Collections.singletonList(originalEndPoint), endPoints);
-        Assert.assertNull(
-            IoTDBDataNodeCacheLeaderClientManager.LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId));
+        Assert.assertNull(manager.getLeaderEndPoint(deviceId));
       }
 
       final String ipv6DeviceId = "async-ipv6-device";
@@ -143,10 +210,7 @@ public class IoTDBDataNodeAsyncClientManagerTest {
       manager.updateLeaderCache(ipv6DeviceId, ipv6EndPoint);
 
       Assert.assertEquals(Arrays.asList(originalEndPoint, ipv6EndPoint), endPoints);
-      Assert.assertEquals(
-          ipv6EndPoint,
-          IoTDBDataNodeCacheLeaderClientManager.LEADER_CACHE_MANAGER.getLeaderEndPoint(
-              ipv6DeviceId));
+      Assert.assertEquals(ipv6EndPoint, manager.getLeaderEndPoint(ipv6DeviceId));
     } finally {
       manager.close();
     }
@@ -166,8 +230,7 @@ public class IoTDBDataNodeAsyncClientManagerTest {
 
         Assert.assertEquals(Collections.singletonList(originalEndPoint), endPoints);
         Assert.assertEquals(0, manager.getReconstructionCount());
-        Assert.assertNull(
-            IoTDBDataNodeCacheLeaderClientManager.LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId));
+        Assert.assertNull(manager.getLeaderEndPoint(deviceId));
       }
 
       final String ipv6DeviceId = "sync-ipv6-device";
@@ -176,10 +239,7 @@ public class IoTDBDataNodeAsyncClientManagerTest {
 
       Assert.assertEquals(Arrays.asList(originalEndPoint, ipv6EndPoint), endPoints);
       Assert.assertEquals(1, manager.getReconstructionCount());
-      Assert.assertEquals(
-          ipv6EndPoint,
-          IoTDBDataNodeCacheLeaderClientManager.LEADER_CACHE_MANAGER.getLeaderEndPoint(
-              ipv6DeviceId));
+      Assert.assertEquals(ipv6EndPoint, manager.getLeaderEndPoint(ipv6DeviceId));
     } finally {
       manager.close();
     }

@@ -70,6 +70,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -332,6 +333,9 @@ public class TsFileResource implements PersistentResource, Cloneable {
   /** deserialize from disk */
   public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
+      if (inputStream == null) {
+        throw new FileNotFoundException(file + RESOURCE_SUFFIX);
+      }
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
       ReadWriteIOUtils.readByte(inputStream);
       timeIndex =
@@ -1588,21 +1592,33 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public void upgradeModFile(ExecutorService upgradeModFileThreadPool) throws IOException {
+    upgradeModFile(upgradeModFileThreadPool, true);
+  }
+
+  /** Unpublished LOAD installations defer metrics until their data file is published. */
+  public void upgradeModFile(ExecutorService upgradeModFileThreadPool, boolean updateModMetrics)
+      throws IOException {
     ModificationFileV1 oldModFile = ModificationFileV1.getNormalMods(this);
     if (!oldModFile.exists()) {
       return;
     }
 
     if (upgradeModFileThreadPool != null) {
-      exclusiveModFileFuture = upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile));
+      exclusiveModFileFuture =
+          upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile, updateModMetrics));
     } else {
-      exclusiveModFileFuture = CompletableFuture.completedFuture(doUpgradeModFile(oldModFile));
+      exclusiveModFileFuture =
+          CompletableFuture.completedFuture(doUpgradeModFile(oldModFile, updateModMetrics));
     }
   }
 
   @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
-  private ModificationFile doUpgradeModFile(ModificationFileV1 oldModFile) throws IOException {
-    ModificationFile newMFile = ModificationFile.getExclusiveMods(this);
+  private ModificationFile doUpgradeModFile(ModificationFileV1 oldModFile, boolean updateModMetrics)
+      throws IOException {
+    ModificationFile newMFile =
+        updateModMetrics
+            ? ModificationFile.getExclusiveMods(this)
+            : new ModificationFile(ModificationFile.getExclusiveMods(file), false);
     FileUtils.deleteFileIfExist(newMFile.getFile());
     try {
       for (Modification oldMod : oldModFile.getModifications()) {

@@ -34,8 +34,11 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -126,6 +129,39 @@ public class SubscriptionPipeTabletEventBatchTest {
     config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
     if (temporaryDirectory != null) {
       FileUtils.deleteDirectory(temporaryDirectory);
+    }
+  }
+
+  @Test(timeout = 10000)
+  public void testRetainedRedeliveryReleasesPreviousTabletSnapshot() throws Exception {
+    final long baselineTabletMemory = memoryManager.getUsedMemorySizeInBytesOfTablets();
+    batch.enrichedEvents.add(createTsFileEvent("retained.tsfile", 42, false, false));
+    batch.resetForIteration();
+    Mockito.when(batch.prefetchingQueue.generateSubscriptionCommitContext())
+        .thenReturn(new SubscriptionCommitContext(1, 0, "topic", "group", 1L));
+    final SubscriptionEvent event = new SubscriptionEvent(batch, batch.prefetchingQueue);
+    try {
+      for (int i = 0; i < 3; i++) {
+        event.fetchNextResponse(1L);
+        final List<Tablet> tablets =
+            ((TabletsPayload) event.getCurrentResponse().getPayload()).getTablets();
+        Assert.assertEquals(1, tablets.size());
+        Assert.assertEquals(42L, tablets.get(0).getTimestamp(0));
+        event.fetchNextResponse(2L);
+        Assert.assertEquals(
+            -1, ((TabletsPayload) event.getCurrentResponse().getPayload()).getNextOffset());
+        if (i < 2) {
+          event.resetForRedelivery();
+        }
+      }
+      event.ack();
+      event.cleanUp(false);
+      Assert.assertEquals(
+          "Acknowledging a retained replay must release every parsed-tablet snapshot",
+          baselineTabletMemory,
+          memoryManager.getUsedMemorySizeInBytesOfTablets());
+    } finally {
+      event.cleanUp(true);
     }
   }
 

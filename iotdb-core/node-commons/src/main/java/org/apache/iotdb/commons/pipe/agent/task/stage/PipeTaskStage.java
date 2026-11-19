@@ -19,19 +19,20 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.stage;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public abstract class PipeTaskStage {
 
   private static final String MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_STARTED =
-      "The PipeTaskStage has been started";
+      PipeMessages.MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_STARTED_D1041DE5;
   private static final String MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_DROPPED =
-      "The PipeTaskStage has been dropped";
+      PipeMessages.MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_DROPPED_900F76E5;
   private static final String MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_STOPPED =
-      "The PipeTaskStage has been externally stopped";
+      PipeMessages.MESSAGE_THE_PIPETASKSTAGE_HAS_BEEN_EXTERNALLY_STOPPED_E79BC421;
   private static final String MESSAGE_PIPE_TASK_STAGE_HAS_NOT_BEEN_CREATED =
-      "The PipeTaskStage has not been created";
+      PipeMessages.MESSAGE_THE_PIPETASKSTAGE_HAS_NOT_BEEN_CREATED_DCBE2DDD;
 
   protected PipeStatus status = null;
   protected boolean hasBeenExternallyStopped = false;

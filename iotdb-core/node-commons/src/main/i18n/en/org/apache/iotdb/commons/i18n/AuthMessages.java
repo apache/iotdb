@@ -123,4 +123,14 @@ public final class AuthMessages {
   public static final String EXCEPTION_ENCRYPT_DECRYPT_FAILED_163764B5 = "Encrypt or decrypt failed.";
   public static final String EXCEPTION_BACKSLASH_QUOTE_D4C5D637 = "\"";
 
+  public static final String EXCEPTION_ONE_LOWERCASE_LETTER_B49601B4 = " one lowercase letter,";
+
+  public static final String EXCEPTION_ONE_UPPERCASE_LETTER_94B320E6 = " one uppercase letter,";
+
+  public static final String EXCEPTION_ONE_DIGIT_27AFB265 = " one digit,";
+
+  public static final String EXCEPTION_ONE_SPECIAL_CHARACTER_251EE695 = " one special character,";
+
+  public static final String EXCEPTION_INVALID_PASSWORD_MUST_CONTAIN_AT_LEAST_ARG_4A71F1F6 =
+      "Invalid password, must contain at least%s.";
 }

@@ -575,20 +575,24 @@ public class QueryStatement extends AuthorityInformationStatement {
   }
 
   public static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
-      "Raw data and aggregation hybrid query is not supported.";
+      DataNodeQueryMessages
+          .EXCEPTION_RAW_DATA_AND_AGGREGATION_HYBRID_QUERY_IS_NOT_SUPPORTED_575B2166;
 
   public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL =
-      "Count_time aggregation function using with group by level is not supported.";
+      DataNodeQueryMessages
+          .EXCEPTION_COUNT_TIME_AGGREGATION_FUNCTION_USING_WITH_GROUP_BY_LEVEL_IS_NOT_SUPPORTED_0F498050;
 
   public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG =
-      "Count_time aggregation function using with group by tag is not supported.";
+      DataNodeQueryMessages
+          .EXCEPTION_COUNT_TIME_AGGREGATION_FUNCTION_USING_WITH_GROUP_BY_TAG_IS_NOT_SUPPORTED_45A91382;
 
   public static final String COUNT_TIME_CAN_ONLY_EXIST_ALONE =
-      "Count_time aggregation can only exist alone, "
-          + "and cannot used with other queries or aggregations.";
+      DataNodeQueryMessages
+          .EXCEPTION_COUNT_TIME_AGGREGATION_CAN_ONLY_EXIST_ALONE_AND_CANNOT_USED_WITH_OTHER_QUERIES_OR_AGGREGATIONS_E6B5D473;
 
   public static final String COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING =
-      "Count_time aggregation function can not be used with having clause.";
+      DataNodeQueryMessages
+          .EXCEPTION_COUNT_TIME_AGGREGATION_FUNCTION_CAN_NOT_BE_USED_WITH_HAVING_CLAUSE_46FF9CE1;
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void semanticCheck() {

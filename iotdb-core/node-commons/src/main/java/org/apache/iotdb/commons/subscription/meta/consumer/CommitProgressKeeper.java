@@ -119,6 +119,20 @@ public class CommitProgressKeeper {
                     .anyMatch(prefix -> isValidRegionAndDataNodeProgressKey(key, prefix)));
   }
 
+  public synchronized Map<String, ByteBuffer> getTopicProgress(
+      final String consumerGroupId, final String topicName) {
+    final Set<String> prefixes = getTopicProgressKeyPrefixes(consumerGroupId, topicName);
+    final Map<String, ByteBuffer> result = new HashMap<>();
+    regionProgressMap.forEach(
+        (key, value) -> {
+          if (prefixes.stream()
+              .anyMatch(prefix -> isValidRegionAndDataNodeProgressKey(key, prefix))) {
+            result.put(key, copyBuffer(value));
+          }
+        });
+    return result;
+  }
+
   private static Set<String> getTopicProgressKeyPrefixes(
       final String consumerGroupId, final String topicName) {
     final Set<String> prefixes = new HashSet<>();

@@ -131,6 +131,42 @@ public class SubscriptionTablePullConsumerBuilder extends AbstractSubscriptionPu
   }
 
   @Override
+  public SubscriptionTablePullConsumerBuilder useSSL(final boolean useSSL) {
+    super.useSSL(useSSL);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePullConsumerBuilder trustStore(final String trustStore) {
+    super.trustStore(trustStore);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePullConsumerBuilder trustStorePwd(final String trustStorePwd) {
+    super.trustStorePwd(trustStorePwd);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePullConsumerBuilder keyStore(final String keyStore) {
+    super.keyStore(keyStore);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePullConsumerBuilder keyStorePwd(final String keyStorePwd) {
+    super.keyStorePwd(keyStorePwd);
+    return this;
+  }
+
+  @Override
+  public SubscriptionTablePullConsumerBuilder sslProtocol(final String sslProtocol) {
+    super.sslProtocol(sslProtocol);
+    return this;
+  }
+
+  @Override
   public SubscriptionTablePullConsumerBuilder maxPollParallelism(final int maxPollParallelism) {
     super.maxPollParallelism(maxPollParallelism);
     return this;
@@ -150,6 +186,10 @@ public class SubscriptionTablePullConsumerBuilder extends AbstractSubscriptionPu
   }
 
   public ISubscriptionTablePullConsumer build() {
+    return createConsumer();
+  }
+
+  protected ISubscriptionTablePullConsumer createConsumer() {
     return new SubscriptionTablePullConsumer(this);
   }
 }

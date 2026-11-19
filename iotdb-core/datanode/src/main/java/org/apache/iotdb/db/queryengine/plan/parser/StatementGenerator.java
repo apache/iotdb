@@ -94,6 +94,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 
+import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -857,6 +858,9 @@ public class StatementGenerator {
 
       IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
       parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
+      // Any error in this stage falls back to the LL stage below, which reports it, so
+      // the SLL stage needs no recovery; BailErrorStrategy also skips the per-rule sync() checks.
+      parser1.setErrorHandler(new BailErrorStrategy());
       parser1.removeErrorListeners();
       parser1.addErrorListener(SqlParseError.INSTANCE);
 

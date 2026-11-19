@@ -204,7 +204,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   private static final DNAuditLogger AUDIT_LOGGER = DNAuditLogger.getInstance();
 
   private static final String OPERATION_AUDIT_STR =
-      "User %s (ID=%d) requests authority on the %s operation";
+      DataNodeQueryMessages
+          .EXCEPTION_USER_ARG_ID_ARG_REQUESTS_AUTHORITY_ON_THE_ARG_OPERATION_72418079;
 
   @Override
   public TSStatus visitNode(StatementNode node, TreeAccessCheckContext context) {
@@ -312,7 +313,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return checkTimeSeriesPermission(
         context.setAuditLogOperation(AuditLogOperation.DDL),
         statement::getPaths,
-        PrivilegeType.WRITE_SCHEMA);
+        PrivilegeType.WRITE_SCHEMA,
+        statement::getDevicePathList,
+        Object::toString);
   }
 
   @Override
@@ -321,7 +324,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return checkTimeSeriesPermission(
         context.setAuditLogOperation(AuditLogOperation.DDL),
         statement::getPaths,
-        PrivilegeType.WRITE_SCHEMA);
+        PrivilegeType.WRITE_SCHEMA,
+        () -> statement.getDeviceMap().keySet(),
+        Object::toString);
   }
 
   private TSStatus checkTemplateShowRelated(
@@ -728,11 +733,16 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         }
         return status;
 
+      case ACCOUNT_UNLOCK:
+        return checkGlobalAuth(
+            context.setAuditLogOperation(AuditLogOperation.DDL),
+            PrivilegeType.SECURITY,
+            statement::getUserName);
+
       case REVOKE_USER:
       case GRANT_USER:
       case GRANT_ROLE:
       case REVOKE_ROLE:
-      case ACCOUNT_UNLOCK:
         auditObject =
             () ->
                 authorType == AuthorType.REVOKE_USER || authorType == AuthorType.GRANT_USER
@@ -1131,7 +1141,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           .setMessage(getReservedDatabaseNameErrorMsg(TREE_MODEL_AUDIT_DATABASE));
     }
     // The system database is created by the database itself, not through SQL.
-    if (!context.isInternal()
+    if (!context.isInternalDatabaseSession()
         && InternalDatabaseUtils.isSystemDatabasePath(statement.getDatabasePath())) {
       context
           .setDatabase(statement.getDatabasePath().getFullPath())
@@ -1204,7 +1214,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     context
         .setAuditLogOperation(AuditLogOperation.DDL)
         .setDatabase(statement.getPrefixPath().toString());
-    if (!context.isInternal()
+    if (!context.isInternalDatabaseSession()
         && SchemaConstant.SYSTEM_DATABASE.equals(String.join(".", statement.getPrefixPath()))) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setPrivilegeType(PrivilegeType.MANAGE_DATABASE).setResult(false),
@@ -1286,7 +1296,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
    */
   public static TSStatus checkSystemDatabaseWrite(
       final IAuditEntity context, final Collection<? extends PartialPath> checkedPaths) {
-    if (context.isInternal()) {
+    if (context.isInternalDatabaseSession()) {
       return null;
     }
     for (PartialPath path : checkedPaths) {
@@ -1390,7 +1400,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(false),
           () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
-      return new TSStatus(e.getCode().getStatusCode());
+      return new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage());
     }
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         context.setResult(true),
@@ -1422,10 +1432,20 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       Supplier<List<? extends PartialPath>> checkedPathsSupplier,
       PrivilegeType permission,
       Function<List<? extends PartialPath>, String> auditObjectFormatter) {
+    return checkTimeSeriesPermission(
+        context, checkedPathsSupplier, permission, checkedPathsSupplier, auditObjectFormatter);
+  }
+
+  private static TSStatus checkTimeSeriesPermission(
+      IAuditEntity context,
+      Supplier<List<? extends PartialPath>> checkedPathsSupplier,
+      PrivilegeType permission,
+      Supplier<? extends Collection<? extends PartialPath>> systemDatabaseCheckPathsSupplier,
+      Function<List<? extends PartialPath>, String> auditObjectFormatter) {
     context.setPrivilegeType(permission);
     if (permission == PrivilegeType.WRITE_SCHEMA || permission == PrivilegeType.WRITE_DATA) {
       final TSStatus systemDatabaseStatus =
-          checkSystemDatabaseWrite(context, checkedPathsSupplier.get());
+          checkSystemDatabaseWrite(context, systemDatabaseCheckPathsSupplier.get());
       if (systemDatabaseStatus != null) {
         return systemDatabaseStatus;
       }
@@ -2467,9 +2487,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           status =
               AuthorityChecker.getTSStatus(
                   false,
-                  "Has no permission to execute "
-                      + authorType
-                      + ", please ensure you have these privileges and the grant option is TRUE when granted");
+                  String.format(
+                      DataNodeQueryMessages
+                          .EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_PLEASE_ENSURE_YOU_HAVE_THESE_PRIVILEGES_AND_THE_GRANT_OPTION_IS_TRUE_WHEN_GRANTED_6E1AD125,
+                      Objects.toString(authorType)));
           break;
         }
       } else if (privilegeType.isPathPrivilege()) {
@@ -2478,15 +2499,18 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           status =
               AuthorityChecker.getTSStatus(
                   false,
-                  "Has no permission to execute "
-                      + authorType
-                      + ", please ensure you have these privileges and the grant option is TRUE when granted");
+                  String.format(
+                      DataNodeQueryMessages
+                          .EXCEPTION_HAS_NO_PERMISSION_TO_EXECUTE_ARG_PLEASE_ENSURE_YOU_HAVE_THESE_PRIVILEGES_AND_THE_GRANT_OPTION_IS_TRUE_WHEN_GRANTED_6E1AD125,
+                      Objects.toString(authorType)));
           break;
         }
       } else {
         status =
             AuthorityChecker.getTSStatus(
-                false, "Not support Relation statement in tree sql_dialect");
+                false,
+                DataNodeQueryMessages
+                    .EXCEPTION_NOT_SUPPORT_RELATION_STATEMENT_IN_TREE_SQL_DIALECT_088C9ADD);
         break;
       }
     }
@@ -2522,6 +2546,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return SUCCEED;
     }
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(auditEntity.setResult(false), auditObject);
-    return AuthorityChecker.getTSStatus(false, "Only the admin user can perform this operation");
+    return AuthorityChecker.getTSStatus(
+        false,
+        DataNodeQueryMessages.EXCEPTION_ONLY_THE_ADMIN_USER_CAN_PERFORM_THIS_OPERATION_D0C730B6);
   }
 }

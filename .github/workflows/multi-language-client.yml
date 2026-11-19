@@ -168,8 +168,8 @@ jobs:
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
           
-          # Pinned OpenSSL 3.x (Apache-2.0): 'choco install openssl' now installs
-          # OpenSSL 4.0, which removed the legacy TLS-method APIs Thrift uses.
+          # Keep system-OpenSSL validation on the same major version as the
+          # default bundled OpenSSL 3.x (Apache-2.0).
           $sslZip = "$env:RUNNER_TEMP\openssl-3.5.3.zip"
           $sslDir = "$env:RUNNER_TEMP\openssl-3"
           curl.exe -L --fail --retry 3 -o $sslZip 'https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.3.zip'
@@ -186,6 +186,10 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-${{ runner.arch }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-${{ runner.arch }}-m2-
+      - name: Test Boost include resolution
+        if: runner.os != 'Windows'
+        shell: bash
+        run: cmake -DTEST_BINARY_DIR="$RUNNER_TEMP/boost-include-test" -P iotdb-client/client-cpp/test/cmake/FetchBoostTest.cmake
       - name: Check C++ format (Spotless)
         shell: bash
         run: |
@@ -207,6 +211,14 @@ jobs:
           else
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am -Diotdb.openssl.from.source=OFF
           fi
+      - name: Test installed SDK with a C++11 consumer
+        shell: bash
+        run: |
+          cmake -S iotdb-client/client-cpp/test/cmake/cxx11-consumer \
+            -B iotdb-client/client-cpp/target/cxx11-consumer \
+            -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/iotdb-client/client-cpp/target/install"
+          cmake --build iotdb-client/client-cpp/target/cxx11-consumer --config Release
+          ctest --test-dir iotdb-client/client-cpp/target/cxx11-consumer -C Release --output-on-failure
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v6

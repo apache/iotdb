@@ -452,8 +452,10 @@ public class WriteBackSink implements PipeConnector, PipeConnectorWithEventDisca
       throwWriteBackExceptionIfNecessary(
           status,
           String.format(
-              "Write back PipeInsertNodeTabletInsertionEvent %s error, result status %s",
-              pipeInsertNodeTabletInsertionEvent, status));
+              DataNodePipeMessages
+                  .MESSAGE_WRITE_BACK_PIPEINSERTNODETABLETINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_E9256344,
+              pipeInsertNodeTabletInsertionEvent,
+              status));
     }
     recordReceiverRuntimeTransferIfSuccess(
         status,
@@ -507,8 +509,10 @@ public class WriteBackSink implements PipeConnector, PipeConnectorWithEventDisca
       throwWriteBackExceptionIfNecessary(
           status,
           String.format(
-              "Write back PipeRawTabletInsertionEvent %s error, result status %s",
-              pipeRawTabletInsertionEvent, status));
+              DataNodePipeMessages
+                  .MESSAGE_WRITE_BACK_PIPERAWTABLETINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_B2342391,
+              pipeRawTabletInsertionEvent,
+              status));
     }
     recordReceiverRuntimeTransferIfSuccess(
         status,
@@ -566,8 +570,10 @@ public class WriteBackSink implements PipeConnector, PipeConnectorWithEventDisca
       throwWriteBackExceptionIfNecessary(
           status,
           String.format(
-              "Write back PipeStatementInsertionEvent %s error, result status %s",
-              pipeStatementInsertionEvent, status));
+              DataNodePipeMessages
+                  .MESSAGE_WRITE_BACK_PIPESTATEMENTINSERTIONEVENT_ARG_ERROR_RESULT_STATUS_ARG_54D251A9,
+              pipeStatementInsertionEvent,
+              status));
     }
     recordReceiverRuntimeTransferIfSuccess(
         status,

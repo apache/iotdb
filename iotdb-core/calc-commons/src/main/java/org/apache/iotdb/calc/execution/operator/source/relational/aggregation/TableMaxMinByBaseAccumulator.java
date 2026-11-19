@@ -68,7 +68,10 @@ public abstract class TableMaxMinByBaseAccumulator
   // Column should be like: | x | y |
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    checkArgument(arguments.length == 2, "Length of input Column[] for MAX_BY/MIN_BY should be 2");
+    checkArgument(
+        arguments.length == 2,
+        CalcMessages
+            .EXCEPTION_LENGTH_OF_INPUT_COLUMN_LEFT_BRACKET_RIGHT_BRACKET_FOR_MAX_BY_SLASH_MIN_BY_SHOULD_3767E905);
     TypeServices.MAX_MIN_BY_INPUT_SERVICE
         .call(Type.fromTsDataType(yDataType))
         .add(arguments, mask, this);

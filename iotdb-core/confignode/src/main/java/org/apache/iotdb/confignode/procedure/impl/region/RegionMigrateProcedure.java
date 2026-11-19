@@ -114,7 +114,8 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
               .getPartitionManager()
               .isDataNodeContainsRegion(originalDataNode.getDataNodeId(), regionId)) {
             cleanHint =
-                "but you may need to restart the related DataNode to make sure everything is cleaned up. ";
+                ProcedureMessages
+                    .EXCEPTION_BUT_YOU_MAY_NEED_TO_RESTART_THE_RELATED_DATANODE_TO_MAKE_SURE_EVERYTHING_IS_CLEANED_UP_12A12383;
           }
           LOGGER.info(
               ProcedureMessages

@@ -21,9 +21,19 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
+import org.apache.thrift.transport.TSSLTransportFactory;
+import org.apache.thrift.transport.TServerSocket;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocket;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.net.InetAddress;
+import java.security.KeyStore;
 import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -119,6 +129,63 @@ public class RpcUtilsTest {
       Assert.assertEquals("ExplicitProtocol", RpcSslUtils.resolveProtocol(" ExplicitProtocol "));
     } finally {
       RpcSslUtils.configure(originProtocol);
+    }
+  }
+
+  @Test
+  public void testSslServerSocketEnabledProtocols() throws Exception {
+    KeyStore keyStore = KeyStore.getInstance("JKS");
+    keyStore.load(null, null);
+    ByteArrayOutputStream keyStoreBytes = new ByteArrayOutputStream();
+    keyStore.store(keyStoreBytes, new char[0]);
+
+    String originalProtocol = RpcSslUtils.getProtocol();
+    String[][] cases = {
+      {"TLSv1.2", "TLSv1.2"},
+      {"tlsv1.2", "TLSv1.2"},
+      {"TlsV1.2", "TLSv1.2"},
+      {" TLSV1.2 ", "TLSv1.2"},
+      {"TLSv1.3", "TLSv1.3"},
+      {"tlsv1.3", "TLSv1.3"},
+      {"TLSV1.3", "TLSv1.3"},
+      {" tLsV1.3 ", "TLSv1.3"},
+      {"TLS", null},
+      {"SSL", null},
+      {"tls", null},
+      {"ssl", null}
+    };
+    try {
+      for (String[] testCase : cases) {
+        String sslProtocol = testCase[0];
+        RpcSslUtils.configure(sslProtocol);
+        TSSLTransportFactory.TSSLTransportParameters params =
+            RpcSslUtils.createTSSLTransportParameters();
+        params.setKeyStore(
+            new ByteArrayInputStream(keyStoreBytes.toByteArray()),
+            "",
+            KeyManagerFactory.getDefaultAlgorithm(),
+            "JKS");
+        try (TServerSocket transport =
+            RpcSslUtils.createServerSocket(0, 0, InetAddress.getLoopbackAddress(), params)) {
+          SSLServerSocket serverSocket = (SSLServerSocket) transport.getServerSocket();
+          if (testCase[1] == null) {
+            SSLContext context = SSLContext.getInstance(sslProtocol);
+            context.init(null, null, null);
+            try (SSLServerSocket defaultSocket =
+                (SSLServerSocket) context.getServerSocketFactory().createServerSocket()) {
+              Assert.assertArrayEquals(
+                  sslProtocol,
+                  defaultSocket.getEnabledProtocols(),
+                  serverSocket.getEnabledProtocols());
+            }
+          } else {
+            Assert.assertArrayEquals(
+                sslProtocol, new String[] {testCase[1]}, serverSocket.getEnabledProtocols());
+          }
+        }
+      }
+    } finally {
+      RpcSslUtils.configure(originalProtocol);
     }
   }
 

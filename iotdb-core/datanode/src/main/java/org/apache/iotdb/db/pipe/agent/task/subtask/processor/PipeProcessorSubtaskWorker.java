@@ -25,12 +25,14 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
@@ -54,29 +56,111 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   private final Runnable wakeUpCallback = this::wakeUp;
   private boolean isWakeUpRequested;
 
+  private final ListeningExecutorService workerThreadPoolExecutor;
+
+  // Guards the worker-thread life cycle. Emptiness check, state change and submission are atomic,
+  // so a concurrent schedule is never lost and at most one worker thread runs this worker.
+  private final Object lifecycleMonitor = new Object();
+  private boolean isRunning;
+
   private volatile Thread workerThread;
   private volatile PipeProcessorSubtask currentSubtask;
 
   private PipeProcessorSubtask.EventProcessingContext lastReportedEventProcessingContext;
   private long lastEventReportTimeInNanos = Long.MIN_VALUE;
 
-  public PipeProcessorSubtaskWorker() {
-    this(Collections.newSetFromMap(new ConcurrentHashMap<>()));
+  public PipeProcessorSubtaskWorker(final ListeningExecutorService workerThreadPoolExecutor) {
+    this(Collections.newSetFromMap(new ConcurrentHashMap<>()), workerThreadPoolExecutor);
   }
 
   @VisibleForTesting
-  PipeProcessorSubtaskWorker(final Set<PipeProcessorSubtask> subtasks) {
+  PipeProcessorSubtaskWorker(
+      final Set<PipeProcessorSubtask> subtasks,
+      final ListeningExecutorService workerThreadPoolExecutor) {
     this.subtasks = subtasks;
+    this.workerThreadPoolExecutor = workerThreadPoolExecutor;
   }
 
   @Override
-  @SuppressWarnings("squid:S2189")
   public void runMayThrow() {
-    while (true) {
+    final Thread currentThread = Thread.currentThread();
+    boolean exitedNormally = false;
+    try {
+      while (true) {
+        if (workerThreadPoolExecutor.isShutdown()) {
+          // The executor is shut down; release this worker.
+          return;
+        }
+
+        cleanupClosedSubtasksIfNecessary();
+        if (subtasks.isEmpty()) {
+          if (stopIfNoSubtask()) {
+            exitedNormally = true;
+            return;
+          }
+          // A subtask was scheduled meanwhile; keep this worker.
+          continue;
+        }
+
+        final boolean canSleepBeforeNextRound = runSubtasks();
+        sleepIfNecessary(canSleepBeforeNextRound);
+        adjustSleepingTimeIfNecessary();
+      }
+    } finally {
+      if (workerThread == currentThread) {
+        workerThread = null;
+      }
+      if (!exitedNormally) {
+        // Exited abnormally: reset the state and restart if subtasks remain.
+        synchronized (lifecycleMonitor) {
+          if (isRunning) {
+            isRunning = false;
+            startLockedIfNecessary();
+          }
+        }
+      }
+    }
+  }
+
+  /** Stops this worker if it has no subtask left, atomically with {@link #start()}. */
+  private boolean stopIfNoSubtask() {
+    synchronized (lifecycleMonitor) {
       cleanupClosedSubtasksIfNecessary();
-      final boolean canSleepBeforeNextRound = runSubtasks();
-      sleepIfNecessary(canSleepBeforeNextRound);
-      adjustSleepingTimeIfNecessary();
+      if (!subtasks.isEmpty()) {
+        return false;
+      }
+      isRunning = false;
+      return true;
+    }
+  }
+
+  @VisibleForTesting
+  boolean isRunning() {
+    synchronized (lifecycleMonitor) {
+      return isRunning;
+    }
+  }
+
+  private void start() {
+    synchronized (lifecycleMonitor) {
+      startLockedIfNecessary();
+    }
+  }
+
+  private void startLockedIfNecessary() {
+    if (isRunning || subtasks.isEmpty() || workerThreadPoolExecutor.isShutdown()) {
+      return;
+    }
+
+    isRunning = true;
+    try {
+      workerThreadPoolExecutor.submit(this);
+    } catch (final RejectedExecutionException e) {
+      isRunning = false;
+      LOGGER.warn(
+          DataNodePipeMessages
+              .LOG_FAILED_TO_SUBMIT_PIPE_PROCESSOR_WORKER_BECAUSE_THE_WORKER_THREAD_POOL_HAS_BEEN_SHUT_DOWN_CA28ED14,
+          e);
     }
   }
 
@@ -89,9 +173,11 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     ++totalRoundInAdjustmentInterval;
 
     boolean canSleepBeforeNextRound = true;
-
     for (final PipeProcessorSubtask subtask : subtasks) {
-      if (subtask.isClosed() || !subtask.isSubmittingSelf() || subtask.isStoppedByException()) {
+      if (subtask.isClosed()
+          || !subtask.isSubmittingSelf()
+          || subtask.isStoppedByException()
+          || subtask.isWaitingForTsFileParserMemory()) {
         continue;
       }
 
@@ -174,6 +260,8 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
       isWakeUpRequested = true;
       wakeUpMonitor.notifyAll();
     }
+    // The worker may have exited when it had no subtask; start it again on demand.
+    start();
   }
 
   void watchLongRunningEvent() {

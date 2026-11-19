@@ -25,7 +25,25 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
+
 public class ActiveLoadFailedMessageHandlerTest {
+
+  @Test
+  public void testProcedureTimeoutShouldRetryInBothLocales() {
+    final ActiveLoadPendingQueue.ActiveLoadEntry entry =
+        new ActiveLoadPendingQueue.ActiveLoadEntry("test.tsfile", "pending", true, false);
+    for (final String message :
+        Arrays.asList(
+            "Timed out to wait for procedure return. The procedure is still running.",
+            "等待流程返回超时，流程仍在运行中。")) {
+      Assert.assertTrue(
+          message,
+          ActiveLoadFailedMessageHandler.isStatusShouldRetry(
+              entry,
+              new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(message)));
+    }
+  }
 
   @Test
   public void testTemporaryUnavailableStatusShouldRetryWithoutMessageMatch() {

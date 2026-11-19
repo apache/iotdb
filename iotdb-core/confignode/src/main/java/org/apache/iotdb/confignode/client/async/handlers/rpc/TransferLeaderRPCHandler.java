@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 
 public class TransferLeaderRPCHandler
@@ -72,12 +73,11 @@ public class TransferLeaderRPCHandler
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Failed to "
-            + requestType
-            + " on DataNode: "
-            + formattedTargetLocation
-            + ", exception: "
-            + e.getMessage();
+        String.format(
+            ConfigNodeMessages.EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D,
+            Objects.toString(requestType),
+            Objects.toString(formattedTargetLocation),
+            Objects.toString(e.getMessage()));
     LOGGER.error(errorMsg);
 
     responseMap.put(

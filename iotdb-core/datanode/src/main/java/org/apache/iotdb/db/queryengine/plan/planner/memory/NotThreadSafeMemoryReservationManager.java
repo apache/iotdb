@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
@@ -78,7 +79,20 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
 
   @Override
   public void reserveMemoryCumulatively(final long size) {
-    bytesToBeReserved += size;
+    try {
+      bytesToBeReserved = Math.addExact(bytesToBeReserved, size);
+    } catch (ArithmeticException e) {
+      // A saturated partition-size estimate can be Long.MAX_VALUE while an earlier batch is
+      // still pending. Reject it without wrapping the counter or changing that pending batch.
+      throw new OperatorMemoryNotEnoughException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_QUERY_ARG_CANNOT_RESERVE_ARG_BYTES_PENDING_FRONT_END_MEMORY_RESERVATION_EXCEEDS_LONG_MAX_VALUE_BYTES_D38CD6D8,
+              queryId.getId(),
+              size),
+          Long.MAX_VALUE,
+          LOCAL_EXECUTION_PLANNER.getFreeMemoryForOperators());
+    }
     if (bytesToBeReserved >= MEMORY_BATCH_THRESHOLD) {
       try {
         reserveMemoryImmediately();
@@ -168,7 +182,9 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
     fallbackBytesInTotal = 0;
 
     reservedBytesInTotal -= remaining;
-    checkState(reservedBytesInTotal >= 0, "Released bytes has been larger than reserved!");
+    checkState(
+        reservedBytesInTotal >= 0,
+        DataNodeQueryMessages.EXCEPTION_RELEASED_BYTES_HAS_BEEN_LARGER_THAN_RESERVED_69DE5487);
     return remaining;
   }
 

@@ -80,7 +80,10 @@ public abstract class MaxMinByBaseAccumulator
   // Column should be like: | Time | x | y |
   @Override
   public void addInput(Column[] column, BitMap bitMap) {
-    checkArgument(column.length == 3, "Length of input Column[] for MaxBy/MinBy should be 3");
+    checkArgument(
+        column.length == 3,
+        DataNodeQueryMessages
+            .EXCEPTION_LENGTH_OF_INPUT_COLUMN_LEFT_BRACKET_RIGHT_BRACKET_FOR_MAXBY_SLASH_MINBY_SHOULD_B_1F3F2F1C);
     yStrategy.addInput(this, column, bitMap);
   }
 

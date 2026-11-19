@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.cli.utils;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
+
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.io.PrintStream;
 import java.lang.Character.UnicodeScript;
 import java.util.List;
+import java.util.Objects;
 
 public class IoTPrinter {
   private final PrintStream screenPrinter;
@@ -90,9 +93,11 @@ public class IoTPrinter {
 
   public void printCount(int cnt) {
     if (cnt == 0) {
-      println("Empty set.");
+      println(CliMessages.EXCEPTION_EMPTY_SET_A4A8C90D);
     } else {
-      println("Total line number = " + cnt);
+      println(
+          String.format(
+              CliMessages.EXCEPTION_TOTAL_LINE_NUMBER_ARG_43CC83F4, Objects.toString(cnt)));
     }
   }
 

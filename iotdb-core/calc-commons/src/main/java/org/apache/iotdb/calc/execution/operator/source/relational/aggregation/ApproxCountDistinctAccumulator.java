@@ -106,11 +106,19 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
         columnBuilder instanceof BinaryColumnBuilder,
         CalcMessages
             .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_APPROX_COUNT_DISTINCT_SHOULD_BE_BINARYCOLUMN_F444D3BE);
+    if (state.getHyperLogLog() == null) {
+      columnBuilder.appendNull();
+      return;
+    }
     columnBuilder.writeBinary(new Binary(state.getHyperLogLog().serialize()));
   }
 
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
+    if (state.getHyperLogLog() == null) {
+      columnBuilder.writeLong(0);
+      return;
+    }
     columnBuilder.writeLong(state.getHyperLogLog().cardinality());
   }
 
@@ -127,7 +135,9 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
 
   @Override
   public void reset() {
-    state.getHyperLogLog().reset();
+    if (state.getHyperLogLog() != null) {
+      state.getHyperLogLog().reset();
+    }
   }
 
   public void addBooleanInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {

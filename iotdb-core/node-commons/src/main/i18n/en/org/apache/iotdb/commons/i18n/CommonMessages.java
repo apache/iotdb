@@ -353,4 +353,92 @@ public final class CommonMessages {
       "Memory block %s is read-only";
   public static final String EXCEPTION_MEMORY_BLOCK_ARG_ALREADY_USES_MUTABLE_ACCOUNTING_6F7DCB3F =
       "Memory block %s already uses mutable accounting";
+
+  public static final String
+      EXCEPTION_UNTRUSTED_URI_ARG_CURRENT_TRUSTED_URI_PATTERN_IS_ARG_9C06C271 =
+          "Untrusted uri %s, current trusted_uri_pattern is %s";
+
+  public static final String LOG_AN_ERROR_OCCURRED_WHILE_RUNNING_THE_COMMAND_ARG_ABA3D641 =
+      "An error occurred while running the command: %s";
+
+  public static final String EXCEPTION_CONDITION_WAS_NOT_MET_WITHIN_ARG_MS_60098C77 =
+      "Condition was not met within %d ms";
+
+  public static final String
+      EXCEPTION_K_HAS_TO_BE_GREATER_THAN_0_AND_LESS_THAN_OR_EQUAL_TO_1000_AFD17B03 =
+          "k has to be greater than 0 and less than or equal to 1000.";
+
+  public static final String EXCEPTION_PARAMETER_OMEGA_SHOULD_BE_NON_NEGATIVE_6154A6D7 =
+      "Parameter omega should be non-negative.";
+
+  public static final String EXCEPTION_PARAMETER_ETA_SHOULD_BE_LARGER_THAN_0_022CA22F =
+      "Parameter eta should be larger than 0.";
+
+  public static final String EXCEPTION_PARAMETER_K_SHOULD_BE_A_POSITIVE_INTEGER_62AC8458 =
+      "Parameter k should be a positive integer.";
+
+  public static final String
+      EXCEPTION_PARAMETER_OUTPUT_COLUMN_SHOULD_BE_A_POSITIVE_INTEGER_A58CE07F =
+          "Parameter output_column should be a positive integer.";
+
+  public static final String EXCEPTION_UPPER_CAN_NOT_BE_SMALLER_THAN_LOWER_9041B33A =
+      "Upper can not be smaller than lower.";
+
+  public static final String
+      EXCEPTION_ILLEGAL_SAMPLE_PROPORTION_PROPORTION_0_AND_PROPORTION_1_E96EE649 =
+          "Illegal sample proportion. proportion > 0 and proportion <= 1";
+
+  public static final String EXCEPTION_ILLEGAL_NUMBER_NUMBER_SHOULD_BE_GREATER_THAN_0_17FCD676 =
+      "Illegal number. Number should be greater than 0.";
+
+  public static final String EXCEPTION_MAX_CAN_NOT_BE_SMALLER_THAN_MIN_D6EA3271 =
+      "max can not be smaller than min.";
+
+  public static final String EXCEPTION_MIN_CAN_NOT_BE_SMALLER_THAN_ARG_CBF3792E =
+      "min can not be smaller than %s.";
+
+  public static final String EXCEPTION_THE_GIVEN_VALUE_TYPE_IS_NOT_SUPPORTED_C2D711C3 =
+      "the given value type is not supported.";
+
+  public static final String EXCEPTION_TARGET_SHOULD_NOT_BE_EMPTY_1B2C02C6 =
+      "target should not be empty";
+
+  public static final String
+      EXCEPTION_LISTITERATORWRAPPER_DOES_NOT_SUPPORT_OPTIONAL_OPERATIONS_OF_LISTITERATOR_A5C61A70 =
+          "ListIteratorWrapper does not support optional operations of ListIterator.";
+
+  public static final String EXCEPTION_CANNOT_REMOVE_ELEMENT_AT_INDEX_0_42A1988F =
+      "Cannot remove element at index {0}.";
+
+  public static final String EXCEPTION_START_A_NEW_NODE_98ED9767 = "start a new node";
+
+  public static final String
+      EXCEPTION_REMOVE_NODE_WITH_THE_GIVEN_NODEIDS_OR_THE_NODE_STARTED_ON_THE_CURRENT_MACHINE_IF_OMITTED_NOTE_THAT_THE_DATANODE_ALLOWS_FOR_THE_REMOVAL_OF_MULTIPLE_NODES_AT_ONCE_THE_CONFIGNODE_CAN_ONLY_REMOVE_ONE_NODE_AT_A_TIME_B784A43C =
+          "Remove node(with the given nodeIds or the node started on the current machine, if"
+              + " omitted). Note that the DataNode allows for the removal of multiple nodes at"
+              + " once, the ConfigNode can only remove one node at a time.";
+
+  public static final String EXCEPTION_NEW_FIXED_THREAD_POOL_ARG_THREAD_NUMBER_ARG_465A36AF =
+      "new fixed thread pool: {}, thread number: {}";
+
+  public static final String EXCEPTION_NEW_SINGLE_THREAD_POOL_ARG_CB233F2A =
+      "new single thread pool: {}";
+
+  public static final String EXCEPTION_NEW_CACHED_THREAD_POOL_ARG_3169566A =
+      "new cached thread pool: {}";
+
+  public static final String EXCEPTION_NEW_SINGLE_SCHEDULED_THREAD_POOL_ARG_4B7C159F =
+      "new single scheduled thread pool: {}";
+
+  public static final String EXCEPTION_NEW_SCHEDULED_THREAD_POOL_ARG_37283992 =
+      "new scheduled thread pool: {}";
+
+  public static final String EXCEPTION_NEW_SYNCHRONOUSQUEUE_THREAD_POOL_ARG_F3261435 =
+      "new SynchronousQueue thread pool: {}";
+
+  public static final String EXCEPTION_NEW_THREAD_POOL_ARG_E17F65A1 = "new thread pool: {}";
+
+  public static final String
+      EXCEPTION_USER_ARG_ID_ARG_REQUESTS_AUTHORITY_ON_OBJECT_ARG_WITH_RESULT_ARG_F0A4B9C0 =
+          "User %s (ID=%d) requests authority on object %s with result %s";
 }

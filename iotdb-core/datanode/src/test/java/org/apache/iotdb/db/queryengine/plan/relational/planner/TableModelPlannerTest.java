@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -44,7 +45,17 @@ public class TableModelPlannerTest {
         new Analysis(new InsertRows(insertRowsStatement, null), Collections.emptyMap());
     final TEndPoint localEndPoint = new TEndPoint("127.0.0.1", 6667);
     final TEndPoint remoteEndPoint = new TEndPoint("127.0.0.2", 6667);
-    analysis.setRedirectNodeList(Arrays.asList(localEndPoint, remoteEndPoint));
+    analysis.setRedirectNodeList(
+        Arrays.asList(
+            new TDataNodeLocation(
+                0, localEndPoint, localEndPoint, localEndPoint, localEndPoint, localEndPoint),
+            new TDataNodeLocation(
+                1,
+                remoteEndPoint,
+                remoteEndPoint,
+                remoteEndPoint,
+                remoteEndPoint,
+                remoteEndPoint)));
     final TSStatus status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
 
     createPlanner().setRedirectInfo(analysis, localEndPoint, status);

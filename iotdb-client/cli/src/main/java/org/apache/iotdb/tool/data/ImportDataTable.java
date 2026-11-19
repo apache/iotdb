@@ -56,6 +56,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -96,7 +97,10 @@ public class ImportDataTable extends AbstractImportData {
     sessionPool = tableSessionPoolBuilder.build();
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
-      ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
+      ioTPrinter.println(
+          String.format(
+              CliMessages.MESSAGE_SOURCE_FILE_OR_DIRECTORY_ARG_DOES_NOT_EXIST_0299DF95,
+              targetPath));
       System.exit(Constants.CODE_ERROR);
     }
     // checkDataBase
@@ -209,8 +213,10 @@ public class ImportDataTable extends AbstractImportData {
           if (database != null && dbName != null && !dbName.equalsIgnoreCase(database)) {
             ioTPrinter.println(
                 String.format(
-                    "The extracted database '%s' in SQL statement does not match the target database '%s'",
-                    dbName, database));
+                    CliMessages
+                        .LOG_THE_EXTRACTED_DATABASE_ARG_IN_SQL_STATEMENT_DOES_NOT_MATCH_THE_TARGET_DATABASE_ARG_2A442AEB,
+                    dbName,
+                    database));
             failedRecords.add(Collections.singletonList(sql));
             fileFailed = true;
             continue;
@@ -224,7 +230,10 @@ public class ImportDataTable extends AbstractImportData {
       }
     } catch (IOException e) {
       fileFailed = true;
-      ioTPrinter.println("SQL file read exception because: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_SQL_FILE_READ_EXCEPTION_BECAUSE_ARG_1626B867,
+              Objects.toString(e.getMessage())));
     }
     if (fileFailed) {
       markFileFailed();
@@ -240,7 +249,10 @@ public class ImportDataTable extends AbstractImportData {
         }
       } catch (IOException e) {
         markImportFailed();
-        ioTPrinter.println("Cannot dump fail result because: " + e.getMessage());
+        ioTPrinter.println(
+            String.format(
+                CliMessages.EXCEPTION_CANNOT_DUMP_FAIL_RESULT_BECAUSE_ARG_5C6E82E0,
+                Objects.toString(e.getMessage())));
       } finally {
         if (ObjectUtils.isNotEmpty(writer)) {
           try {
@@ -272,12 +284,12 @@ public class ImportDataTable extends AbstractImportData {
         Stream<CSVRecord> records = csvRecords.stream();
         if (headerNames.isEmpty()) {
           markFileFailed();
-          ioTPrinter.println("Empty file!");
+          ioTPrinter.println(CliMessages.LOG_EMPTY_FILE_83778141);
           return;
         }
         if (!timeColumn.toLowerCase().equalsIgnoreCase(filterBomHeader(headerNames.get(0)))) {
           markFileFailed();
-          ioTPrinter.println("The first field of header must be `time`!");
+          ioTPrinter.println(CliMessages.LOG_THE_FIRST_FIELD_OF_HEADER_MUST_BE_TIME_2D6FAABE);
           return;
         }
         String failedFilePath;
@@ -291,11 +303,14 @@ public class ImportDataTable extends AbstractImportData {
         }
       } catch (IOException e) {
         markFileFailed();
-        ioTPrinter.println("CSV file read exception because: " + e.getMessage());
+        ioTPrinter.println(
+            String.format(
+                CliMessages.LOG_CSV_FILE_READ_EXCEPTION_BECAUSE_ARG_5EE7AFBF,
+                Objects.toString(e.getMessage())));
       }
     } else {
       markFileFailed();
-      ioTPrinter.println("The file name must end with \"csv\" or \"txt\"!");
+      ioTPrinter.println(CliMessages.LOG_THE_FILE_NAME_MUST_END_WITH_CSV_OR_TXT_0C020AB3);
     }
   }
 
@@ -352,8 +367,10 @@ public class ImportDataTable extends AbstractImportData {
               tablet.addTimestamp(rowSize, rowTimeStamp);
             } else {
               ioTPrinter.printf(
-                  "Line '%s', column '%s': '%s' unknown type%n",
-                  recordObj.getRecordNumber(), headerName, value);
+                  CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_TYPE_ARG_93D3B31D,
+                  recordObj.getRecordNumber(),
+                  headerName,
+                  value);
               isFail = true;
             }
           }
@@ -363,8 +380,11 @@ public class ImportDataTable extends AbstractImportData {
             if (valueTrans == null) {
               isFail = true;
               ioTPrinter.printf(
-                  "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                  recordObj.getRecordNumber(), headerName, value, type);
+                  CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_CAN_T_CONVERT_TO_ARG_ARG_F85541A2,
+                  recordObj.getRecordNumber(),
+                  headerName,
+                  value,
+                  type);
             } else {
               tablet.addValue(headerName, rowSize, valueTrans);
             }
@@ -464,7 +484,10 @@ public class ImportDataTable extends AbstractImportData {
               .append(");");
         }
         ioTPrinter.println(
-            "These columns do not match the column types in the target table：" + sb.toString());
+            String.format(
+                CliMessages
+                    .LOG_THESE_COLUMNS_DO_NOT_MATCH_THE_COLUMN_TYPES_IN_THE_TARGET_TABLE_ARG_FC76A705,
+                Objects.toString(sb.toString())));
         System.exit(1);
       }
     }

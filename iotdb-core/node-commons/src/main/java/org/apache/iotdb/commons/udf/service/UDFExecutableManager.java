@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.udf.service;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
@@ -89,10 +90,7 @@ public class UDFExecutableManager extends ExecutableManager {
         saveTextAsFileUnderTemporaryRoot(existedMd5, md5FilePath);
       } catch (IOException e) {
         String errorMessage =
-            String.format(
-                "Failed to registered function %s, "
-                    + "because error occurred when trying to compute md5 of jar file for function %s ",
-                functionName, functionName);
+            String.format(PipeMessages.FAILED_TO_COMPUTE_MD5, functionName, functionName);
         LOGGER.warn(errorMessage, e);
         throw new UDFManagementException(errorMessage);
       }

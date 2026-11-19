@@ -35,44 +35,33 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.OptionalInt;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
 
 public class MultilevelPriorityQueueTest {
   @Test
-  public void testPollBlocked() {
+  public void testPollBlocked() throws Exception {
+    IndexedBlockingQueue<DriverTask> queue = new MultilevelPriorityQueue(2, 1000, new DriverTask());
+    FutureTask<DriverTask> result = new FutureTask<>(queue::poll);
+    Thread t1 = new Thread(result);
+    t1.start();
     try {
-      IndexedBlockingQueue<DriverTask> queue =
-          new MultilevelPriorityQueue(2, 1000, new DriverTask());
-      List<DriverTask> res = new ArrayList<>();
-      Thread t1 =
-          new Thread(
-              () -> {
-                try {
-                  DriverTask e = queue.poll();
-                  res.add(e);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                  Assert.fail();
-                }
-              });
-      t1.start();
       await()
-          .atMost(1, TimeUnit.MINUTES)
-          .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, t1.getState()));
+          .atMost(10, TimeUnit.SECONDS)
+          .until(() -> result.isDone() || t1.getState() == Thread.State.WAITING);
+      if (result.isDone()) {
+        Assert.fail("poll completed before an element was pushed: " + result.get());
+      }
       DriverTask e2 = mockDriverTask(mockDriverTaskId(), false);
       queue.push(e2);
-      await()
-          .atMost(1, TimeUnit.MINUTES)
-          .untilAsserted(() -> Assert.assertEquals(Thread.State.TERMINATED, t1.getState()));
-      Assert.assertEquals(1, res.size());
-      Assert.assertEquals(e2.getDriverTaskId().toString(), res.get(0).getDriverTaskId().toString());
-    } catch (Exception e) {
-      Assert.fail();
+      Assert.assertSame(e2, result.get(10, TimeUnit.SECONDS));
+    } finally {
+      t1.interrupt();
+      t1.join(TimeUnit.SECONDS.toMillis(10));
+      Assert.assertFalse(t1.isAlive());
     }
   }
 

@@ -59,7 +59,8 @@ public class UDTFTimestampRepair implements UDTF {
       }
       validator.validate(
           x -> interval > 0,
-          "Invalid time unit input. Supported units are ns, us, ms, s, m, h, d.");
+          LibraryUdfMessages
+              .EXCEPTION_INVALID_TIME_UNIT_INPUT_SUPPORTED_UNITS_ARE_NS_US_MS_S_M_H_D_15CD3A00);
     }
   }
 

@@ -146,18 +146,22 @@ public class AggregateProcessor implements PipeProcessor {
     validator
         .validate(
             arg -> !((String) arg).isEmpty(),
-            String.format("The parameter %s must not be empty.", PROCESSOR_OPERATORS_KEY),
+            String.format(
+                DataNodePipeMessages.EXCEPTION_THE_PARAMETER_ARG_MUST_NOT_BE_EMPTY_CDF15003,
+                PROCESSOR_OPERATORS_KEY),
             parameters.getStringOrDefault(
                 PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE))
         .validate(
             arg -> !((String) arg).isEmpty(),
-            String.format("The parameter %s must not be empty.", PROCESSOR_WINDOWING_STRATEGY_KEY),
+            String.format(
+                DataNodePipeMessages.EXCEPTION_THE_PARAMETER_ARG_MUST_NOT_BE_EMPTY_CDF15003,
+                PROCESSOR_WINDOWING_STRATEGY_KEY),
             parameters.getStringOrDefault(
                 PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE))
         .validate(
             arg -> ((String) arg).isEmpty() || ((String) arg).startsWith("root."),
             String.format(
-                "The output database %s shall start with root.",
+                DataNodePipeMessages.MESSAGE_THE_OUTPUT_DATABASE_ARG_SHALL_START_WITH_ROOT_54921196,
                 parameters.getStringOrDefault(
                     PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE)),
             parameters.getStringOrDefault(
@@ -168,7 +172,8 @@ public class AggregateProcessor implements PipeProcessor {
                     || Arrays.stream(((String) arg).replace(" ", "").split(","))
                         .allMatch(this::isLegalMeasurement),
             String.format(
-                "The output measurements %s contains illegal measurements, the measurements must be the last level of a legal path",
+                DataNodePipeMessages
+                    .MESSAGE_THE_OUTPUT_MEASUREMENTS_ARG_CONTAINS_ILLEGAL_MEASUREMENTS_THE_MEASUREMENTS_MUST_BE_THE_LAST_LEVEL_OF_A_LEGAL_PATH_793FA8AE,
                 parameters.getStringOrDefault(
                     PROCESSOR_OUTPUT_MEASUREMENTS_KEY,
                     PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE)),
@@ -753,12 +758,20 @@ public class AggregateProcessor implements PipeProcessor {
 
   @Override
   public void close() throws Exception {
-    if (Objects.nonNull(pipeName)
-        && pipeName2referenceCountMap.compute(
-                pipeName, (name, count) -> Objects.nonNull(count) ? count - 1 : 0)
-            == 0) {
-      pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).clear();
-      pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
+    boolean isLastReference = false;
+    if (Objects.nonNull(pipeName)) {
+      isLastReference =
+          pipeName2referenceCountMap.computeIfPresent(
+                  pipeName, (name, count) -> count > 1 ? count - 1 : null)
+              == null;
+    }
+    if (isLastReference) {
+      final ConcurrentMap<String, AtomicReference<TimeSeriesRuntimeState>>
+          timeSeries2RuntimeStateMap =
+              pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
+      if (timeSeries2RuntimeStateMap != null) {
+        timeSeries2RuntimeStateMap.clear();
+      }
       pipeName2LastValueReceiveTimeMap.remove(pipeName);
     }
     if (Objects.nonNull(windowingProcessor)) {

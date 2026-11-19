@@ -213,7 +213,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
   @Override
   protected String getActionMessage() {
-    return "drop table";
+    return ProcedureMessages.MESSAGE_DROP_TABLE_F5849AD7;
   }
 
   @Override
@@ -326,7 +326,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     if (!relatedDataRegionGroup.isEmpty()) {
       modProgressRegionCount = relatedDataRegionGroup.size();
       new TableRegionTaskExecutor<>(
-              "delete data for drop table",
+              ProcedureMessages.MESSAGE_DELETE_DATA_FOR_DROP_TABLE_A678391E,
               env,
               relatedDataRegionGroup,
               CnToDnAsyncRequestType.DELETE_DATA_FOR_DROP_TABLE,
@@ -359,7 +359,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
     if (!relatedSchemaRegionGroup.isEmpty()) {
       new TableRegionTaskExecutor<>(
-              "delete devices for drop table",
+              ProcedureMessages.MESSAGE_DELETE_DEVICES_FOR_DROP_TABLE_A4F6E84E,
               env,
               relatedSchemaRegionGroup,
               CnToDnAsyncRequestType.DELETE_DEVICES_FOR_DROP_TABLE,

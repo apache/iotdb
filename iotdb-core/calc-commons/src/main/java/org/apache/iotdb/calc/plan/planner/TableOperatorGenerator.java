@@ -2459,12 +2459,18 @@ public abstract class TableOperatorGenerator<
         String fragmentInstanceId,
         String outerGlobalQueryId,
         long outerQueryDeadlineMs) {
-      checkArgument(factory != null, "IoTDBLocalFactory must not be null for UDF execution");
       checkArgument(
-          fragmentInstanceId != null, "fragmentInstanceId must not be null for UDF execution");
-      checkArgument(outerGlobalQueryId != null, "queryId must not be null for UDF execution");
+          factory != null,
+          CalcMessages.EXCEPTION_IOTDBLOCALFACTORY_MUST_NOT_BE_NULL_FOR_UDF_EXECUTION_97022410);
       checkArgument(
-          outerQueryDeadlineMs > 0, "outerQueryDeadlineMs must be positive for UDF execution");
+          fragmentInstanceId != null,
+          CalcMessages.EXCEPTION_FRAGMENTINSTANCEID_MUST_NOT_BE_NULL_FOR_UDF_EXECUTION_877C90A5);
+      checkArgument(
+          outerGlobalQueryId != null,
+          CalcMessages.EXCEPTION_QUERYID_MUST_NOT_BE_NULL_FOR_UDF_EXECUTION_CF534D6A);
+      checkArgument(
+          outerQueryDeadlineMs > 0,
+          CalcMessages.EXCEPTION_OUTERQUERYDEADLINEMS_MUST_BE_POSITIVE_FOR_UDF_EXECUTION_4A7B2F18);
       return factory.create(
           sessionInfo, fragmentInstanceId, outerGlobalQueryId, outerQueryDeadlineMs);
     }

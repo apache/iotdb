@@ -101,7 +101,8 @@ public class ConfigNodeShutdownHook extends Thread {
     // redirect. If no leader is reachable, the new leader will mark this node Unknown by
     // heartbeat timeout instead.
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Stopped);
-    if (!reportShutdown(localNode, reportTargets)) {
+    // a single ConfigNode has nobody to report to; that is no failure worth an ERROR
+    if (!reportTargets.isEmpty() && !reportShutdown(localNode, reportTargets)) {
       LOGGER.error(
           ConfigNodeMessages.REPORTING_CONFIGNODE_SHUTDOWN_FAILED_THE_CLUSTER_WILL_STILL_TAKE_THE);
     }

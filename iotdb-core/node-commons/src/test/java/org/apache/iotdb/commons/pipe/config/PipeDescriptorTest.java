@@ -33,15 +33,20 @@ public class PipeDescriptorTest {
   private final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private int originalRequestSliceThresholdBytes;
+  private int originalAirGapUdpSocketBufferSizeInBytes;
 
   @Before
   public void setUp() {
     originalRequestSliceThresholdBytes = config.getPipeSinkRequestSliceThresholdBytes();
+    originalAirGapUdpSocketBufferSizeInBytes =
+        config.getPipeAirGapReceiverUdpSocketBufferSizeInBytes();
   }
 
   @After
   public void tearDown() {
     config.setPipeSinkRequestSliceThresholdBytes(originalRequestSliceThresholdBytes);
+    config.setPipeAirGapReceiverUdpSocketBufferSizeInBytes(
+        originalAirGapUdpSocketBufferSizeInBytes);
   }
 
   @Test
@@ -61,5 +66,16 @@ public class PipeDescriptorTest {
     bothProperties.setProperty("pipe_sink_request_slice_threshold_bytes", "456");
     PipeDescriptor.loadPipeInternalConfig(config, bothProperties);
     Assert.assertEquals(456, config.getPipeSinkRequestSliceThresholdBytes());
+  }
+
+  @Test
+  public void testAirGapReceiverUdpSocketBufferIsLoadedFromGlobalProperties() {
+    final TrimProperties properties = new TrimProperties();
+    properties.setProperty("pipe_air_gap_receiver_udp_socket_buffer_size_in_bytes", "1048576");
+
+    PipeDescriptor.loadPipeStaticConfig(config, properties);
+    PipeDescriptor.loadPipeInternalConfig(config, properties);
+
+    Assert.assertEquals(1048576, config.getPipeAirGapReceiverUdpSocketBufferSizeInBytes());
   }
 }

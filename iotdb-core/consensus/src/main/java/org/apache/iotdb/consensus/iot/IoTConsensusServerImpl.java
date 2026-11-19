@@ -151,6 +151,7 @@ public class IoTConsensusServerImpl {
 
   private final Set<Peer> configuration = ConcurrentHashMap.newKeySet();
   private final AtomicLong searchIndex;
+  private final Object retentionPublicationLock = new Object();
   private final LogDispatcher logDispatcher;
   private IoTConsensusConfig config;
   private final ConsensusReqReader consensusReqReader;
@@ -305,9 +306,8 @@ public class IoTConsensusServerImpl {
             return RpcUtils.getStatus(
                 TSStatusCode.WRITE_PROCESS_REJECT,
                 String.format(
-                    "The write is rejected because the wal directory size has reached the "
-                        + "threshold %d bytes. You may need to adjust the flush policy of the "
-                        + "storage storageengine or the IoTConsensus synchronization parameter",
+                    IoTConsensusMessages
+                        .EXCEPTION_THE_WRITE_IS_REJECTED_BECAUSE_THE_WAL_DIRECTORY_SIZE_HAS_REACHED_THE_THRESHOLD_ARG_BYTES_YOU_MAY_NEED_TO_ADJUST_THE_FLUSH_POLICY_OF_THE_STORAGE_STORAGEENGINE_OR_THE_IOTCONSENSUS_SYNCHRONIZATION_PARAMETER_49AB1306,
                     config.getReplication().getWalThrottleThreshold()));
           }
         } catch (InterruptedException e) {
@@ -417,7 +417,11 @@ public class IoTConsensusServerImpl {
       }
       if (!stateMachine.takeSnapshot(snapshotDir)) {
         throw new ConsensusGroupModifyPeerException(
-            IoTConsensusMessages.UNKNOWN_ERROR_TAKING_SNAPSHOT);
+            String.format(
+                IoTConsensusMessages
+                    .EXCEPTION_FAILED_TO_TAKE_SNAPSHOT_FOR_CONSENSUS_GROUP_ARG_IN_ARG_CHECK_STATE_MACHINE_LOGS_FOR_THE_UNDERLYING_CAUSE_74663D2D,
+                thisNode.getGroupId(),
+                snapshotDir));
       }
       clearOldSnapshot();
     } catch (IOException e) {
@@ -899,6 +903,10 @@ public class IoTConsensusServerImpl {
     }
   }
 
+  public void waitNewPeerUntilSyncLogCompleted(Peer peer) throws ConsensusGroupModifyPeerException {
+    logDispatcher.waitUntilSyncLogCompleted(peer, getSearchIndex(), TimeUnit.MINUTES.toMillis(10));
+  }
+
   public boolean hasReleaseAllRegionRelatedResource(ConsensusGroupId groupId) {
     return stateMachine.hasReleaseAllRegionRelatedResource(groupId);
   }
@@ -972,23 +980,34 @@ public class IoTConsensusServerImpl {
 
   /** build SyncLog channel with safeIndex as the default initial sync index. */
   public void buildSyncLogChannel(Peer targetPeer, boolean startNow) {
-    buildSyncLogChannel(targetPeer, getMinSyncIndex(), startNow);
+    // Do not allow writes beyond the initial index until WAL retention protects the new peer.
+    stateMachineLock.lock();
+    try {
+      synchronized (retentionPublicationLock) {
+        buildSyncLogChannel(targetPeer, getMinSyncIndex(), startNow);
+      }
+    } finally {
+      stateMachineLock.unlock();
+    }
   }
 
   public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex, boolean startNow) {
-    KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
-    configuration.add(targetPeer);
-    if (Objects.equals(targetPeer, thisNode)) {
-      return;
+    synchronized (retentionPublicationLock) {
+      KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
+      configuration.add(targetPeer);
+      if (Objects.equals(targetPeer, thisNode)) {
+        return;
+      }
+      logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex, startNow);
+      checkAndUpdateSafeDeletedSearchIndex();
+      logger.info(
+          IoTConsensusMessages.BUILD_SYNC_LOG_CHANNEL_SUCCESS,
+          targetPeer,
+          initialSyncIndex,
+          startNow
+              ? IoTConsensusMessages.SYNC_LOG_CHANNEL_STARTED
+              : IoTConsensusMessages.SYNC_LOG_CHANNEL_START_LATER);
     }
-    logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex, startNow);
-    logger.info(
-        IoTConsensusMessages.BUILD_SYNC_LOG_CHANNEL_SUCCESS,
-        targetPeer,
-        initialSyncIndex,
-        startNow
-            ? IoTConsensusMessages.SYNC_LOG_CHANNEL_STARTED
-            : IoTConsensusMessages.SYNC_LOG_CHANNEL_START_LATER);
   }
 
   /**
@@ -1471,32 +1490,34 @@ public class IoTConsensusServerImpl {
    * configured thresholds.
    */
   public void checkAndUpdateSafeDeletedSearchIndex() {
-    if (configuration.isEmpty()) {
-      logger.error(IoTConsensusMessages.CONFIGURATION_EMPTY_UNEXPECTED);
-      return;
+    synchronized (retentionPublicationLock) {
+      if (configuration.isEmpty()) {
+        logger.error(IoTConsensusMessages.CONFIGURATION_EMPTY_UNEXPECTED);
+        return;
+      }
+
+      final boolean hasSubscriptions = !subscriptionQueueRegistry.isEmpty();
+
+      if (configuration.size() == 1 && !hasSubscriptions) {
+        // Single replica, no subscription consumers => delete all WAL freely
+        consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+        consensusReqReader.setSubscriptionRetainedMinVersionId(Long.MAX_VALUE);
+        return;
+      }
+
+      final long replicationIndex =
+          configuration.size() > 1 ? getMinFlushedSyncIndex() : Long.MAX_VALUE;
+
+      final SubscriptionRetentionBound subscriptionRetentionBound =
+          subscriptionWalRetentionCalculator.calculate(
+              subscriptionQueueRegistry.getRetentionPolicies(),
+              subscriptionQueueRegistry.getRetainedMinVersionIds());
+
+      consensusReqReader.setSafelyDeletedSearchIndex(
+          Math.min(replicationIndex, subscriptionRetentionBound.getSafelyDeletedSearchIndex()));
+      consensusReqReader.setSubscriptionRetainedMinVersionId(
+          subscriptionRetentionBound.getRetainedMinVersionId());
     }
-
-    final boolean hasSubscriptions = !subscriptionQueueRegistry.isEmpty();
-
-    if (configuration.size() == 1 && !hasSubscriptions) {
-      // Single replica, no subscription consumers => delete all WAL freely
-      consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
-      consensusReqReader.setSubscriptionRetainedMinVersionId(Long.MAX_VALUE);
-      return;
-    }
-
-    final long replicationIndex =
-        configuration.size() > 1 ? getMinFlushedSyncIndex() : Long.MAX_VALUE;
-
-    final SubscriptionRetentionBound subscriptionRetentionBound =
-        subscriptionWalRetentionCalculator.calculate(
-            subscriptionQueueRegistry.getRetentionPolicies(),
-            subscriptionQueueRegistry.getRetainedMinVersionIds());
-
-    consensusReqReader.setSafelyDeletedSearchIndex(
-        Math.min(replicationIndex, subscriptionRetentionBound.getSafelyDeletedSearchIndex()));
-    consensusReqReader.setSubscriptionRetainedMinVersionId(
-        subscriptionRetentionBound.getRetainedMinVersionId());
   }
 
   public void checkAndUpdateSearchIndex() {

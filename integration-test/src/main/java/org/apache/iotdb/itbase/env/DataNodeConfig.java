@@ -25,6 +25,8 @@ import java.util.List;
 public interface DataNodeConfig {
   DataNodeConfig setMetricReporterType(List<String> metricReporterTypes);
 
+  DataNodeConfig setMetricPrometheusReporterAsyncUpdate(boolean asyncUpdate);
+
   DataNodeConfig setMetricPrometheusReporterUsername(String username);
 
   DataNodeConfig setMetricPrometheusReporterPassword(String password);
@@ -51,6 +53,8 @@ public interface DataNodeConfig {
   DataNodeConfig setEnableMQTTService(boolean enableMQTTService);
 
   DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
+
+  DataNodeConfig setMqttHandlerPoolSize(int mqttHandlerPoolSize);
 
   DataNodeConfig setLoadLastCacheStrategy(String strategyName);
 

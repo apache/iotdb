@@ -51,6 +51,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -139,17 +140,20 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private String database;
   private String dataRegionId;
+  private EncryptParameter encryptParameter;
 
   protected AbstractMemTable() {
     this.database = null;
     this.dataRegionId = null;
     this.memTableMap = new HashMap<>();
+    this.encryptParameter = EncryptDBUtils.getSecondEncryptParamFromDatabase(null);
   }
 
   protected AbstractMemTable(String database, String dataRegionId) {
     this.database = database;
     this.dataRegionId = dataRegionId;
     this.memTableMap = new HashMap<>();
+    this.encryptParameter = EncryptDBUtils.getSecondEncryptParamFromDatabase(database);
   }
 
   protected AbstractMemTable(
@@ -157,6 +161,7 @@ public abstract class AbstractMemTable implements IMemTable {
     this.database = database;
     this.dataRegionId = dataRegionId;
     this.memTableMap = memTableMap;
+    this.encryptParameter = EncryptDBUtils.getSecondEncryptParamFromDatabase(database);
   }
 
   @Override
@@ -174,11 +179,7 @@ public abstract class AbstractMemTable implements IMemTable {
   private IWritableMemChunkGroup createMemChunkGroupIfNotExistAndGet(
       IDeviceID deviceId, List<IMeasurementSchema> schemaList) {
     IWritableMemChunkGroup memChunkGroup =
-        memTableMap.computeIfAbsent(
-            deviceId,
-            k ->
-                new WritableMemChunkGroup(
-                    EncryptDBUtils.getSecondEncryptParamFromDatabase(database)));
+        memTableMap.computeIfAbsent(deviceId, k -> new WritableMemChunkGroup(encryptParameter));
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementName())) {
         seriesNumber++;
@@ -196,7 +197,7 @@ public abstract class AbstractMemTable implements IMemTable {
             deviceId,
             k -> {
               seriesNumber += filteredSchemaList.size();
-              return new AlignedWritableMemChunkGroup(filteredSchemaList);
+              return new AlignedWritableMemChunkGroup(filteredSchemaList, encryptParameter);
             });
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementName())) {
@@ -1267,8 +1268,21 @@ public abstract class AbstractMemTable implements IMemTable {
   public void setDatabaseAndDataRegionId(String database, String dataRegionId) {
     this.database = database;
     this.dataRegionId = dataRegionId;
+    if (encryptParameter == null || !encryptParameter.isTdePageAead()) {
+      setEncryptParameter(EncryptDBUtils.getSecondEncryptParamFromDatabase(database));
+    }
+  }
+
+  @Override
+  public EncryptParameter getEncryptParameter() {
+    return encryptParameter;
+  }
+
+  @Override
+  public void setEncryptParameter(EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
     for (IWritableMemChunkGroup memChunkGroup : memTableMap.values()) {
-      memChunkGroup.setEncryptParameter(EncryptDBUtils.getSecondEncryptParamFromDatabase(database));
+      memChunkGroup.setEncryptParameter(encryptParameter);
     }
   }
 

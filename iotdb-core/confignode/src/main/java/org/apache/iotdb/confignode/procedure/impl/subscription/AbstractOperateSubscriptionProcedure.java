@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.confignode.client.async.DataNodeTransportFailureUtils;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -54,7 +56,7 @@ public abstract class AbstractOperateSubscriptionProcedure
       LoggerFactory.getLogger(AbstractOperateSubscriptionProcedure.class);
 
   private static final String SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE =
-      "Skip subscription-related operations and do nothing";
+      ProcedureMessages.MESSAGE_SKIP_SUBSCRIPTION_RELATED_OPERATIONS_AND_DO_NOTHING_4EDC76FE;
 
   private static final int RETRY_THRESHOLD = 1;
 
@@ -333,6 +335,18 @@ public abstract class AbstractOperateSubscriptionProcedure
   protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException;
 
+  protected static boolean isOfflineDataNodeTransportFailure(
+      final ConfigNodeProcedureEnv env,
+      final int dataNodeId,
+      final TSStatus status,
+      final int metadataPushErrorCode,
+      final boolean hasExceptionMessages) {
+    return status.getCode() == metadataPushErrorCode
+        && DataNodeTransportFailureUtils.isTransportFailure(status)
+        && !hasExceptionMessages
+        && env.getConfigManager().getLoadManager().getNodeStatus(dataNodeId).isOffline();
+  }
+
   /**
    * Pushing all the topicMeta's to all the dataNodes.
    *
@@ -379,21 +393,41 @@ public abstract class AbstractOperateSubscriptionProcedure
   protected Map<Integer, TPushConsumerGroupMetaResp> pushConsumerGroupMetaToDataNodes(
       ConfigNodeProcedureEnv env) throws IOException {
     final List<ByteBuffer> consumerGroupMetaBinaryList = new ArrayList<>();
+    final List<ConsumerGroupMeta> consumerGroupMetaList = new ArrayList<>();
     for (ConsumerGroupMeta consumerGroupMeta : subscriptionInfo.get().getAllConsumerGroupMeta()) {
+      consumerGroupMetaList.add(consumerGroupMeta);
       consumerGroupMetaBinaryList.add(consumerGroupMeta.serialize());
     }
 
-    return env.pushAllConsumerGroupMetaToDataNodes(consumerGroupMetaBinaryList);
+    final Map<Integer, TPushConsumerGroupMetaResp> responseMap =
+        env.pushAllConsumerGroupMetaToDataNodes(consumerGroupMetaBinaryList);
+    recordFullConsumerGroupMetaPush(env, consumerGroupMetaList, responseMap);
+    return responseMap;
   }
 
   protected Map<Integer, TPushConsumerGroupMetaResp> pushConsumerGroupMetaToDataNodesBestEffort(
       ConfigNodeProcedureEnv env) throws IOException {
     final List<ByteBuffer> consumerGroupMetaBinaryList = new ArrayList<>();
+    final List<ConsumerGroupMeta> consumerGroupMetaList = new ArrayList<>();
     for (ConsumerGroupMeta consumerGroupMeta : subscriptionInfo.get().getAllConsumerGroupMeta()) {
+      consumerGroupMetaList.add(consumerGroupMeta);
       consumerGroupMetaBinaryList.add(consumerGroupMeta.serialize());
     }
 
-    return env.pushAllConsumerGroupMetaToDataNodesBestEffort(consumerGroupMetaBinaryList);
+    final Map<Integer, TPushConsumerGroupMetaResp> responseMap =
+        env.pushAllConsumerGroupMetaToDataNodesBestEffort(consumerGroupMetaBinaryList);
+    recordFullConsumerGroupMetaPush(env, consumerGroupMetaList, responseMap);
+    return responseMap;
+  }
+
+  private void recordFullConsumerGroupMetaPush(
+      final ConfigNodeProcedureEnv env,
+      final List<ConsumerGroupMeta> consumerGroupMetaList,
+      final Map<Integer, TPushConsumerGroupMetaResp> responseMap) {
+    env.getConfigManager()
+        .getSubscriptionManager()
+        .getSubscriptionReadyDataNodeTracker()
+        .replaceFromFullPush(consumerGroupMetaList, responseMap);
   }
 
   public static boolean pushConsumerGroupMetaHasException(

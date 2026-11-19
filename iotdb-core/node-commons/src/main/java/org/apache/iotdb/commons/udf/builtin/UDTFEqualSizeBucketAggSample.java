@@ -424,7 +424,8 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
                 || "sum".equals(type)
                 || "extreme".equals(type)
                 || "variance".equals(type),
-        "Illegal aggregation method. Aggregation type should be avg, min, max, sum, extreme, variance.",
+        CommonMessages
+            .EXCEPTION_ILLEGAL_AGGREGATION_METHOD_AGGREGATION_TYPE_SHOULD_AVG_MIN_MAX_SUM_2D7BEC96,
         aggMethodType);
   }
 

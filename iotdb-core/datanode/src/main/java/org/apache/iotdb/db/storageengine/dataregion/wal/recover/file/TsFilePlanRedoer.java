@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -35,19 +37,24 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * This class helps redo wal logs into a TsFile. Notice: You should update time map in {@link
@@ -79,16 +86,63 @@ public class TsFilePlanRedoer {
           new TreeDeletionEntry(
               path, deleteDataNode.getDeleteStartTime(), deleteDataNode.getDeleteEndTime());
       recoveryMemTable.delete(deletionEntry, ignoreAllNullRows);
-      deletionEntries.add(deletionEntry);
+      deletionEntries.addAll(deletionsForFlushedData(deletionEntry));
     }
-    tsFileResource.getModFileForWrite().write(deletionEntries);
+    if (!deletionEntries.isEmpty()) {
+      tsFileResource.getModFileForWrite().write(deletionEntries);
+    }
   }
 
   void redoDelete(RelationalDeleteDataNode node) throws IOException {
+    List<ModEntry> deletionEntries = new ArrayList<>();
     for (TableDeletionEntry modEntry : node.getModEntries()) {
       recoveryMemTable.delete(modEntry, ignoreAllNullRows);
+      deletionEntries.addAll(deletionsForFlushedData(modEntry));
     }
-    tsFileResource.getModFileForWrite().write(node.getModEntries());
+    if (!deletionEntries.isEmpty()) {
+      tsFileResource.getModFileForWrite().write(deletionEntries);
+    }
+  }
+
+  private List<ModEntry> deletionsForFlushedData(ModEntry deletion) throws IOException {
+    // WAL inserts are replayed into memory and flushed after all deletions have been replayed.
+    // A file-wide deletion would also hide later inserts. The resource still describes only the
+    // data already on disk, and redoInsert skips that data using each device's end time.
+    List<ModEntry> deletions = new ArrayList<>();
+    for (IDeviceID deviceID : tsFileResource.getDevices()) {
+      long startTime = tsFileResource.getStartTime(deviceID).get();
+      long endTime = tsFileResource.getEndTime(deviceID).get();
+      if (startTime > endTime || !deletion.affects(deviceID, startTime, endTime)) {
+        continue;
+      }
+      TimeRange timeRange =
+          new TimeRange(deletion.getStartTime(), Math.min(deletion.getEndTime(), endTime));
+      if (deletion instanceof TreeDeletionEntry) {
+        try {
+          PartialPath pathPattern = ((TreeDeletionEntry) deletion).getPathPattern();
+          deletions.add(
+              new TreeDeletionEntry(
+                  new MeasurementPath(
+                      deviceID,
+                      pathPattern.endWithMultiLevelWildcard()
+                          ? ONE_LEVEL_PATH_WILDCARD
+                          : pathPattern.getMeasurement()),
+                  timeRange));
+        } catch (IllegalPathException e) {
+          throw new IOException(e);
+        }
+      } else {
+        TableDeletionEntry tableDeletion = (TableDeletionEntry) deletion;
+        deletions.add(
+            new TableDeletionEntry(
+                new DeletionPredicate(
+                    tableDeletion.getTableName(),
+                    new FullExactMatch(deviceID),
+                    tableDeletion.getPredicate().getMeasurementNames()),
+                timeRange));
+      }
+    }
+    return deletions;
   }
 
   void redoInsert(InsertNode node) throws WriteProcessException {

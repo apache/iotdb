@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Future;
 
 public class TimePartitionProcessTask {
@@ -58,9 +59,10 @@ public class TimePartitionProcessTask {
     OverlapStatisticTool.processedSeqFileCount += partialRet.totalSequenceFile;
     PrintUtil.printOneStatistics(partialRet, timePartition);
     System.out.printf(
-        "Worker"
-            + Thread.currentThread().getName()
-            + " Time cost: %.2fs, Sequence space cost: %.2fs, Build unsequence space cost: %.2fs.\n",
+        String.format(
+            StorageEngineMessages
+                .LOG_WORKER_ARG_TIME_COST_ARG_2FS_SEQUENCE_SPACE_COST_ARG_2FS_BUILD_UNSEQUENCE_SPACE_COST_ARG_2FS_11CD533E,
+            Objects.toString(Thread.currentThread().getName())),
         ((double) System.currentTimeMillis() - startTime) / 1000,
         ((double) sequenceSpaceCost / 1000),
         ((double) unsequenceSpaceCost / 1000));

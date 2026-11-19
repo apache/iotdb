@@ -64,6 +64,13 @@ public class DataNodeEndPoints {
         LOCAL_SCHEMA_REGION_CONSENSUS_CLIENT_ENDPOINT);
   }
 
+  public static TEndPoint getRedirectEndPoint(
+      final TDataNodeLocation dataNodeLocation, final boolean internalRpcSession) {
+    return internalRpcSession
+        ? dataNodeLocation.getInternalEndPoint()
+        : dataNodeLocation.getClientRpcEndPoint();
+  }
+
   public static boolean isSameNode(TEndPoint endPoint) {
     return endPoint.equals(LOCAL_HOST_DATA_BLOCK_ENDPOINT);
   }

@@ -42,8 +42,10 @@ public class PrimitiveMemTable extends AbstractMemTable {
   @Override
   public IMemTable copy() {
     Map<IDeviceID, IWritableMemChunkGroup> newMap = new HashMap<>(getMemTableMap());
-
-    return new PrimitiveMemTable(getDatabase(), getDataRegionId(), newMap);
+    PrimitiveMemTable copiedMemTable =
+        new PrimitiveMemTable(getDatabase(), getDataRegionId(), newMap);
+    copiedMemTable.setEncryptParameter(getEncryptParameter());
+    return copiedMemTable;
   }
 
   @Override

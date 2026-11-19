@@ -25,6 +25,7 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 
 import org.awaitility.Awaitility;
 import org.junit.AfterClass;
@@ -50,6 +51,40 @@ public class IoTDBSetSystemStatusTableIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testPreparedInsertValuesExecution() throws Exception {
+    try (Connection tableConnection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement table = tableConnection.createStatement();
+        Statement prepared =
+            (tableConnection instanceof ClusterTestConnection
+                    ? ((ClusterTestConnection) tableConnection)
+                        .writeConnection.getUnderlyingConnection()
+                    : tableConnection)
+                .createStatement()) {
+      table.execute("create database prepared_insert_execution");
+      table.execute("use prepared_insert_execution");
+      table.execute("create table prepared_t(d STRING TAG,a STRING ATTRIBUTE,s INT32 FIELD)");
+      prepared.execute(
+          "prepare prepared_insert from insert into prepared_t(time,d,a,s) "
+              + "values(1,'p1','prepared',11),(2,'p2','prepared',12)");
+      prepared.execute("execute prepared_insert");
+      table.execute("update prepared_t set a='changed' where d='p1'");
+      prepared.execute("execute prepared_insert");
+      prepared.execute(
+          "execute immediate 'insert into prepared_t(time,d,a,s) "
+              + "values(3,''p3'',''immediate'',13)'");
+      try (ResultSet result = table.executeQuery("select d,a,s from prepared_t order by time")) {
+        for (int i = 1; i <= 3; i++) {
+          Assert.assertTrue(result.next());
+          Assert.assertEquals("p" + i, result.getString(1));
+          Assert.assertEquals(i == 3 ? "immediate" : "prepared", result.getString(2));
+          Assert.assertEquals(10 + i, result.getInt(3));
+        }
+        Assert.assertFalse(result.next());
+      }
+    }
   }
 
   @Test

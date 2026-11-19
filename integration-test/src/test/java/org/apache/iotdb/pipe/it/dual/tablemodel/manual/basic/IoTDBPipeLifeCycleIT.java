@@ -27,7 +27,7 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
-import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -49,7 +49,15 @@ import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueryWithRetry;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
-public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
+public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelSharedClusterIT {
+
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
+    // Acknowledged writes must survive fast process stops in the restart scenarios.
+    senderEnv.getConfig().getCommonConfig().setWalMode("SYNC");
+    receiverEnv.getConfig().getCommonConfig().setWalMode("SYNC");
+  }
 
   @Override
   @Before
@@ -345,6 +353,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
     }
   }
 
+  // Transfer 200 rows, restart both clusters, then require all 300 rows after another write.
   @Test
   public void testLifeCycleWithClusterRestart() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -647,9 +656,11 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
     TableModelUtils.assertData("test", "test", 0, 500, receiverEnv, handleFailure);
   }
 
+  // An unprivileged user may list pipes but cannot manage pipes/plugins; after granting SYSTEM,
+  // lifecycle operations succeed and plugin installation still validates its URI.
   @Test
   public void testPermission() {
-    createUser(senderEnv, "test", "test123123456");
+    createUser(senderEnv, "test", "IoTDB!Test2024");
 
     assertTableNonQueryTestFail(
         senderEnv,
@@ -661,28 +672,28 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
             + ")",
         "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456",
+        "IoTDB!Test2024",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "drop pipe testPipe",
         "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456",
+        "IoTDB!Test2024",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "start pipe testPipe",
         "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456",
+        "IoTDB!Test2024",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "stop pipe testPipe",
         "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456",
+        "IoTDB!Test2024",
         null);
 
     assertTableNonQueryTestFail(
@@ -690,14 +701,14 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
         "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
         "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456",
+        "IoTDB!Test2024",
         null);
     assertTableNonQueryTestFail(
         senderEnv,
         "drop pipePlugin TestProcessor",
         "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456",
+        "IoTDB!Test2024",
         null);
   }
 }

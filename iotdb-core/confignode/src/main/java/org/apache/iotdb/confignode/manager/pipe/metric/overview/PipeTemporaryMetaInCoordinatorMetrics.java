@@ -69,25 +69,27 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
 
   private void createAutoGauge(final String pipeID) {
     final PipeTemporaryMetaInCoordinator pipeTemporaryMeta = pipeTemporaryMetaMap.get(pipeID);
-    final String[] pipeNameAndCreationTime = pipeID.split("_");
+    final int separatorIndex = pipeID.lastIndexOf('_');
+    final String pipeName = pipeID.substring(0, separatorIndex);
+    final String creationTime = pipeID.substring(separatorIndex + 1);
     metricService.createAutoGauge(
         Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         pipeTemporaryMeta,
         PipeTemporaryMetaInCoordinator::getGlobalRemainingEvents,
         Tag.NAME.toString(),
-        pipeNameAndCreationTime[0],
+        pipeName,
         Tag.CREATION_TIME.toString(),
-        pipeNameAndCreationTime[1]);
+        creationTime);
     metricService.createAutoGauge(
         Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
         MetricLevel.IMPORTANT,
         pipeTemporaryMeta,
         PipeTemporaryMetaInCoordinator::getGlobalRemainingTime,
         Tag.NAME.toString(),
-        pipeNameAndCreationTime[0],
+        pipeName,
         Tag.CREATION_TIME.toString(),
-        pipeNameAndCreationTime[1]);
+        creationTime);
   }
 
   @Override
@@ -102,21 +104,23 @@ public class PipeTemporaryMetaInCoordinatorMetrics implements IMetricSet {
   }
 
   private void removeAutoGauge(final String pipeID) {
-    final String[] pipeNameAndCreationTime = pipeID.split("_");
+    final int separatorIndex = pipeID.lastIndexOf('_');
+    final String pipeName = pipeID.substring(0, separatorIndex);
+    final String creationTime = pipeID.substring(separatorIndex + 1);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT.toString(),
         Tag.NAME.toString(),
-        pipeNameAndCreationTime[0],
+        pipeName,
         Tag.CREATION_TIME.toString(),
-        pipeNameAndCreationTime[1]);
+        creationTime);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
         Tag.NAME.toString(),
-        pipeNameAndCreationTime[0],
+        pipeName,
         Tag.CREATION_TIME.toString(),
-        pipeNameAndCreationTime[1]);
+        creationTime);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////

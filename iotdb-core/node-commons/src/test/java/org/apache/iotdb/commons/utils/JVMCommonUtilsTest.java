@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -32,6 +36,10 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class JVMCommonUtilsTest {
 
@@ -50,6 +58,33 @@ public class JVMCommonUtilsTest {
       Assert.assertEquals(17, JVMCommonUtils.getJdkVersion());
     } catch (Exception e) {
       Assert.fail();
+    }
+  }
+
+  @Test
+  public void hasSpaceWithoutRetrySamplesOnceAndRequiresSpaceAboveThreshold() {
+    String path = "data/sequence";
+    File folder = mock(File.class);
+    when(folder.mkdirs()).thenReturn(true);
+    when(folder.getFreeSpace()).thenReturn(0L, 5L, 6L);
+    when(folder.getTotalSpace()).thenReturn(100L);
+    FSFactory factory = mock(FSFactory.class);
+    when(factory.getFile(path)).thenReturn(folder);
+    FSFactory originalFactory = FSFactoryProducer.getFSFactory();
+    double originalThreshold =
+        CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold();
+    try {
+      JVMCommonUtils.setDiskSpaceWarningThreshold(0.05);
+      FSFactoryProducer.setFsFactory(factory);
+      Assert.assertFalse(JVMCommonUtils.hasSpaceWithoutRetry(path));
+      verify(folder).getFreeSpace();
+      Assert.assertFalse(JVMCommonUtils.hasSpaceWithoutRetry(path));
+      Assert.assertTrue(JVMCommonUtils.hasSpaceWithoutRetry(path));
+      when(folder.getTotalSpace()).thenReturn(0L);
+      Assert.assertFalse(JVMCommonUtils.hasSpaceWithoutRetry(path));
+    } finally {
+      FSFactoryProducer.setFsFactory(originalFactory);
+      JVMCommonUtils.setDiskSpaceWarningThreshold(originalThreshold);
     }
   }
 

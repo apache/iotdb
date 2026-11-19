@@ -111,7 +111,9 @@ public class ImportData extends AbstractDataTool {
         sqlOptions = OptionsUtil.createTableImportSqlOptions();
       } else if (!Constants.SQL_DIALECT_VALUE_TREE.equalsIgnoreCase(sqlDialectValue)) {
         // sql_dialect neither tree nor table
-        ioTPrinter.println(String.format("sql_dialect %s is not support", sqlDialectValue));
+        ioTPrinter.println(
+            String.format(
+                CliMessages.LOG_SQL_DIALECT_ARG_IS_NOT_SUPPORT_5301233A, sqlDialectValue));
         printHelpOptions(
             Constants.IMPORT_CLI_HEAD,
             Constants.IMPORT_CLI_PREFIX,
@@ -139,7 +141,8 @@ public class ImportData extends AbstractDataTool {
         } else if (Constants.SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
           printHelpOptions(null, Constants.IMPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
         } else {
-          ioTPrinter.println(String.format("File type %s is not support", fileType));
+          ioTPrinter.println(
+              String.format(CliMessages.LOG_FILE_TYPE_ARG_IS_NOT_SUPPORT_D210E109, fileType));
           printHelpOptions(
               Constants.IMPORT_CLI_HEAD,
               Constants.IMPORT_CLI_PREFIX,
@@ -169,7 +172,10 @@ public class ImportData extends AbstractDataTool {
           try {
             commandLine = parser.parse(tsFileOptions, args);
           } catch (ParseException e) {
-            ioTPrinter.println("Parse error: " + e.getMessage());
+            ioTPrinter.println(
+                String.format(
+                    CliMessages.EXCEPTION_PARSE_ERROR_ARG_DA103556,
+                    Objects.toString(e.getMessage())));
             printHelpOptions(
                 null, Constants.IMPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
             System.exit(Constants.CODE_ERROR);
@@ -178,7 +184,10 @@ public class ImportData extends AbstractDataTool {
           try {
             commandLine = parser.parse(csvOptions, args);
           } catch (ParseException e) {
-            ioTPrinter.println("Parse error: " + e.getMessage());
+            ioTPrinter.println(
+                String.format(
+                    CliMessages.EXCEPTION_PARSE_ERROR_ARG_DA103556,
+                    Objects.toString(e.getMessage())));
             printHelpOptions(null, Constants.IMPORT_CLI_PREFIX, hf, null, csvOptions, null, false);
             System.exit(Constants.CODE_ERROR);
           }
@@ -186,12 +195,16 @@ public class ImportData extends AbstractDataTool {
           try {
             commandLine = parser.parse(sqlOptions, args);
           } catch (ParseException e) {
-            ioTPrinter.println("Parse error: " + e.getMessage());
+            ioTPrinter.println(
+                String.format(
+                    CliMessages.EXCEPTION_PARSE_ERROR_ARG_DA103556,
+                    Objects.toString(e.getMessage())));
             printHelpOptions(null, Constants.IMPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
             System.exit(Constants.CODE_ERROR);
           }
         } else {
-          ioTPrinter.println(String.format("File type %s is not support", fileType));
+          ioTPrinter.println(
+              String.format(CliMessages.LOG_FILE_TYPE_ARG_IS_NOT_SUPPORT_D210E109, fileType));
           printHelpOptions(
               Constants.IMPORT_CLI_HEAD,
               Constants.IMPORT_CLI_PREFIX,
@@ -224,10 +237,15 @@ public class ImportData extends AbstractDataTool {
       }
       parseSpecialParams(commandLine);
     } catch (ArgsErrorException e) {
-      ioTPrinter.println("Args error: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_ARGS_ERROR_ARG_E49DCA27, Objects.toString(e.getMessage())));
       System.exit(Constants.CODE_ERROR);
     } catch (Exception e) {
-      ioTPrinter.println("Encounter an error, because: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_ENCOUNTER_AN_ERROR_BECAUSE_ARG_49284363,
+              Objects.toString(e.getMessage())));
       System.exit(Constants.CODE_ERROR);
     }
     int resultCode = importFromTargetPathAsync();
@@ -259,7 +277,9 @@ public class ImportData extends AbstractDataTool {
       if (threadNum <= 0) {
         ioTPrinter.println(
             String.format(
-                "error: Invalid thread number '%s'. Please set a positive integer.", threadNum));
+                CliMessages
+                    .LOG_ERROR_INVALID_THREAD_NUMBER_ARG_PLEASE_SET_A_POSITIVE_INTEGER_AFD679CF,
+                threadNum));
         System.exit(Constants.CODE_ERROR);
       }
     }
@@ -297,11 +317,17 @@ public class ImportData extends AbstractDataTool {
       isRemoteLoad = !NodeUrlUtils.containsLocalAddress(Collections.singletonList(host));
       if (!sqlDialectTree && isRemoteLoad && Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
         ioTPrinter.println(
-            "host: " + host + " is remote load,only local load is supported in table model");
+            String.format(
+                CliMessages
+                    .LOG_HOST_ARG_IS_REMOTE_LOAD_ONLY_LOCAL_LOAD_IS_SUPPORTED_IN_TABLE_MODEL_AB4AEC31,
+                Objects.toString(host)));
       }
     } catch (UnknownHostException e) {
       ioTPrinter.println(
-          "Unknown host: " + host + ". Exception: " + e.getMessage() + ". Will use local load.");
+          String.format(
+              CliMessages.LOG_UNKNOWN_HOST_ARG_EXCEPTION_ARG_WILL_USE_LOCAL_LOAD_28E4A226,
+              Objects.toString(host),
+              Objects.toString(e.getMessage())));
     }
     final String os = commandLine.getOptionValue(Constants.ON_SUCCESS_ARGS);
     final String onSuccess = StringUtils.isNotBlank(os) ? os.trim().toLowerCase() : null;
@@ -310,7 +336,8 @@ public class ImportData extends AbstractDataTool {
     if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)
         && (!ImportTsFileOperation.isValidOperation(onSuccess)
             || !ImportTsFileOperation.isValidOperation(onFail))) {
-      ioTPrinter.println("Args error: os/of must be one of none, mv, cp, delete");
+      ioTPrinter.println(
+          CliMessages.LOG_ARGS_ERROR_OS_OF_MUST_BE_ONE_OF_NONE_MV_CP_DELETE_6E478D75);
       System.exit(Constants.CODE_ERROR);
     }
     if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
@@ -344,7 +371,10 @@ public class ImportData extends AbstractDataTool {
       return Objects.equals(
           Files.getFileStore(Paths.get(pathString)), Files.getFileStore(dir.toPath()));
     } catch (IOException e) {
-      ioTPrinter.println("IOException when checking file store: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.LOG_IOEXCEPTION_WHEN_CHECKING_FILE_STORE_ARG_B5302D40,
+              Objects.toString(e.getMessage())));
       return false;
     }
   }
@@ -357,7 +387,10 @@ public class ImportData extends AbstractDataTool {
     if (!file.isDirectory()) {
       if (!file.mkdirs()) {
         ioTPrinter.println(
-            String.format("Failed to create %s %s", Constants.SUCCESS_DIR_NAME, successDir));
+            String.format(
+                CliMessages.LOG_FAILED_TO_CREATE_ARG_ARG_3A4A1CFA,
+                Constants.SUCCESS_DIR_NAME,
+                successDir));
         System.exit(Constants.CODE_ERROR);
       }
     }
@@ -372,7 +405,10 @@ public class ImportData extends AbstractDataTool {
     if (!file.isDirectory()) {
       if (!file.mkdirs()) {
         ioTPrinter.println(
-            String.format("Failed to create %s %s", Constants.FAIL_DIR_NAME, failDir));
+            String.format(
+                CliMessages.LOG_FAILED_TO_CREATE_ARG_ARG_3A4A1CFA,
+                Constants.FAIL_DIR_NAME,
+                failDir));
         System.exit(Constants.CODE_ERROR);
       }
     }
@@ -435,16 +471,21 @@ public class ImportData extends AbstractDataTool {
       importData.init();
       final File file = new File(targetPath);
       if (!file.isFile() && !file.isDirectory()) {
-        ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
+        ioTPrinter.println(
+            String.format(
+                CliMessages.MESSAGE_SOURCE_FILE_OR_DIRECTORY_ARG_DOES_NOT_EXIST_0299DF95,
+                targetPath));
         System.exit(Constants.CODE_ERROR);
       }
       return AbstractImportData.init(importData) ? Constants.CODE_OK : Constants.CODE_ERROR;
     } catch (InterruptedException e) {
-      ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
+      ioTPrinter.println(
+          String.format(CliMessages.LOG_IMPORT_TSFILE_FAIL_ARG_6A83990E, e.getMessage()));
       Thread.currentThread().interrupt();
       return Constants.CODE_ERROR;
     } catch (Exception e) {
-      ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
+      ioTPrinter.println(
+          String.format(CliMessages.LOG_IMPORT_TSFILE_FAIL_ARG_6A83990E, e.getMessage()));
       return Constants.CODE_ERROR;
     }
   }
@@ -496,11 +537,14 @@ public class ImportData extends AbstractDataTool {
           }
         }
       } else {
-        ioTPrinter.println("File not found!");
+        ioTPrinter.println(CliMessages.LOG_FILE_NOT_FOUND_D5ED74DC);
         return Constants.CODE_ERROR;
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      ioTPrinter.println("Encounter an error when connecting to server, because " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.LOG_ENCOUNTER_AN_ERROR_WHEN_CONNECTING_TO_SERVER_BECAUSE_ARG_68D0B497,
+              Objects.toString(e.getMessage())));
       return Constants.CODE_ERROR;
     } finally {
       if (session != null) {
@@ -530,11 +574,11 @@ public class ImportData extends AbstractDataTool {
         List<String> headerNames = csvRecords.getHeaderNames();
         Stream<CSVRecord> records = csvRecords.stream();
         if (headerNames.isEmpty()) {
-          ioTPrinter.println("Empty file!");
+          ioTPrinter.println(CliMessages.LOG_EMPTY_FILE_83778141);
           return;
         }
         if (!timeColumn.equalsIgnoreCase(filterBomHeader(headerNames.get(0)))) {
-          ioTPrinter.println("The first field of header must be `Time`!");
+          ioTPrinter.println(CliMessages.LOG_THE_FIRST_FIELD_OF_HEADER_MUST_BE_TIME_F48E3999);
           return;
         }
         String failedFilePath = null;
@@ -549,10 +593,13 @@ public class ImportData extends AbstractDataTool {
           writeDataAlignedByDevice(session, headerNames, records, failedFilePath);
         }
       } catch (IOException | IllegalPathException e) {
-        ioTPrinter.println("CSV file read exception because: " + e.getMessage());
+        ioTPrinter.println(
+            String.format(
+                CliMessages.LOG_CSV_FILE_READ_EXCEPTION_BECAUSE_ARG_5EE7AFBF,
+                Objects.toString(e.getMessage())));
       }
     } else {
-      ioTPrinter.println("The file name must end with \"csv\" or \"txt\"!");
+      ioTPrinter.println(CliMessages.LOG_THE_FILE_NAME_MUST_END_WITH_CSV_OR_TXT_0C020AB3);
     }
   }
 
@@ -580,9 +627,14 @@ public class ImportData extends AbstractDataTool {
           failedRecords.add(Arrays.asList(sql));
         }
       }
-      ioTPrinter.println(file.getName() + " Import completely!");
+      ioTPrinter.println(
+          String.format(
+              CliMessages.LOG_ARG_IMPORT_COMPLETELY_790B9524, Objects.toString(file.getName())));
     } catch (IOException e) {
-      ioTPrinter.println("SQL file read exception because: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_SQL_FILE_READ_EXCEPTION_BECAUSE_ARG_1626B867,
+              Objects.toString(e.getMessage())));
     }
     if (!failedRecords.isEmpty()) {
       FileWriter writer = null;
@@ -592,7 +644,10 @@ public class ImportData extends AbstractDataTool {
           writer.write(failedRecord.get(0).toString() + "\n");
         }
       } catch (IOException e) {
-        ioTPrinter.println("Cannot dump fail result because: " + e.getMessage());
+        ioTPrinter.println(
+            String.format(
+                CliMessages.EXCEPTION_CANNOT_DUMP_FAIL_RESULT_BECAUSE_ARG_5C6E82E0,
+                Objects.toString(e.getMessage())));
       } finally {
         if (ObjectUtils.isNotEmpty(writer)) {
           try {

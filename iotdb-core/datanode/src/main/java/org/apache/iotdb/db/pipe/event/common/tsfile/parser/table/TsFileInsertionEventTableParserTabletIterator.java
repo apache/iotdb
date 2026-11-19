@@ -58,6 +58,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -66,7 +67,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
 
-public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
+public class TsFileInsertionEventTableParserTabletIterator
+    implements Iterator<Tablet>, AutoCloseable {
 
   private final long startTime;
   private final long endTime;
@@ -188,11 +190,15 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               break;
             }
           case INIT_CHUNK_READER:
+            closeChunkReader();
             if (currentChunkMetadata != null
                 || (chunkMetadataList != null && chunkMetadataList.hasNext())) {
               if (currentChunkMetadata == null) {
                 currentChunkMetadata = chunkMetadataList.next();
-                timeChunk = null;
+                if (timeChunk != null) {
+                  timeChunk.close();
+                  timeChunk = null;
+                }
                 offset = 0;
               }
               initChunkReader(currentChunkMetadata);
@@ -285,6 +291,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               state = State.INIT_CHUNK_METADATA;
               break;
             }
+            close();
             return false;
         }
       }
@@ -422,6 +429,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         Chunk chunk = null;
         if (metadata != null) {
           chunk = reader.readMemChunk((ChunkMetadata) metadata);
+          valueChunkList.add(chunk);
           final long newSize = size + PipeMemoryWeightUtil.calculateChunkRamBytesUsed(chunk);
           if (newSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
             if (!hasSelectedNonNullChunk) {
@@ -429,6 +437,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               size = newSize;
               allocatedMemoryBlockForChunk.forceResize(size);
             } else {
+              valueChunkList.remove(valueChunkList.size() - 1);
+              chunk.close();
               break;
             }
           } else {
@@ -439,10 +449,18 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         columnTypes.add(ColumnCategory.FIELD);
         measurementList.add(measurementName);
         dataTypeList.add(schema.getType());
-        valueChunkList.add(chunk);
+        if (chunk == null) {
+          valueChunkList.add(null);
+        }
         hasSelectedField = true;
       }
     } catch (final PipeRuntimeOutOfMemoryCriticalException | LoadRuntimeOutOfMemoryException e) {
+      valueChunkList.forEach(
+          chunk -> {
+            if (chunk != null) {
+              chunk.close();
+            }
+          });
       // The current field subset has not been published to a chunk reader yet. Restart that subset
       // from the same offset after memory pressure is relieved. Remove fields appended before the
       // failed reservation as well; otherwise the retry would expose duplicate columns in the
@@ -452,6 +470,14 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       dataTypeList.subList(deviceIdSize, dataTypeList.size()).clear();
       offset = initialOffset;
       throw e;
+    } catch (IOException | RuntimeException | Error failure) {
+      valueChunkList.forEach(
+          chunk -> {
+            if (chunk != null) {
+              chunk.close();
+            }
+          });
+      throw failure;
     }
 
     if (offset >= fieldSchemaList.size()) {
@@ -464,9 +490,38 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       return;
     }
 
-    this.chunkReader = new TableChunkReader(timeChunk, valueChunkList, null);
+    Chunk retainedTimeChunk =
+        new Chunk(
+            timeChunk.getHeader(),
+            timeChunk.getData().duplicate(),
+            timeChunk.getDeleteIntervalList(),
+            timeChunk.getChunkStatistic(),
+            timeChunk.getEncryptParam());
+    this.chunkReader = new TableChunkReader(retainedTimeChunk, valueChunkList, null);
     this.modsInfoList =
         ModsOperationUtil.initializeMeasurementMods(deviceID, measurementList, modifications, true);
+  }
+
+  private void closeChunkReader() throws IOException {
+    IChunkReader previous = chunkReader;
+    chunkReader = null;
+    if (previous != null) {
+      previous.close();
+    }
+  }
+
+  @Override
+  public void close() {
+    try {
+      closeChunkReader();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    } finally {
+      if (timeChunk != null) {
+        timeChunk.close();
+        timeChunk = null;
+      }
+    }
   }
 
   private boolean areAllFieldsDeletedByMods(

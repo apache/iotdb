@@ -20,7 +20,9 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.DataNodeTransportFailureUtils;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
@@ -70,18 +72,18 @@ public class ConsumerGroupPushMetaRPCHandler
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Failed to "
-            + requestType
-            + " on DataNode: "
-            + formattedTargetLocation
-            + ", exception: "
-            + e.getMessage();
+        String.format(
+            ConfigNodeMessages.EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D,
+            String.valueOf(requestType),
+            String.valueOf(formattedTargetLocation),
+            String.valueOf(e.getMessage()));
     LOGGER.warn(errorMsg);
 
-    responseMap.put(
-        requestId,
-        new TPushConsumerGroupMetaResp(
-            RpcUtils.getStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR, errorMsg)));
+    final TSStatus status = RpcUtils.getStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR, errorMsg);
+    if (DataNodeTransportFailureUtils.isTransportException(e)) {
+      DataNodeTransportFailureUtils.markTransportFailure(status);
+    }
+    responseMap.put(requestId, new TPushConsumerGroupMetaResp(status));
 
     countDownLatch.countDown();
   }

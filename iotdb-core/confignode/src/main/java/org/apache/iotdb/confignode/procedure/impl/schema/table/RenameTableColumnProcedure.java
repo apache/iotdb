@@ -234,7 +234,7 @@ public class RenameTableColumnProcedure
 
   @Override
   protected String getActionMessage() {
-    return "rename table column";
+    return ProcedureMessages.MESSAGE_RENAME_TABLE_COLUMN_AA1E6913;
   }
 
   @Override

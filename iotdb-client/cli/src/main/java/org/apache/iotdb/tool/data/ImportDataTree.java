@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.data;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
@@ -82,7 +83,10 @@ public class ImportDataTree extends AbstractImportData {
     }
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
-      ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
+      ioTPrinter.println(
+          String.format(
+              CliMessages.MESSAGE_SOURCE_FILE_OR_DIRECTORY_ARG_DOES_NOT_EXIST_0299DF95,
+              targetPath));
       System.exit(Constants.CODE_ERROR);
     }
     if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
@@ -122,7 +126,10 @@ public class ImportDataTree extends AbstractImportData {
       }
     } catch (IOException e) {
       fileFailed = true;
-      ioTPrinter.println("SQL file read exception because: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_SQL_FILE_READ_EXCEPTION_BECAUSE_ARG_1626B867,
+              Objects.toString(e.getMessage())));
     }
     if (fileFailed) {
       markFileFailed();
@@ -136,7 +143,10 @@ public class ImportDataTree extends AbstractImportData {
         }
       } catch (IOException e) {
         markImportFailed();
-        ioTPrinter.println("Cannot dump fail result because: " + e.getMessage());
+        ioTPrinter.println(
+            String.format(
+                CliMessages.EXCEPTION_CANNOT_DUMP_FAIL_RESULT_BECAUSE_ARG_5C6E82E0,
+                Objects.toString(e.getMessage())));
       }
     }
   }
@@ -159,12 +169,12 @@ public class ImportDataTree extends AbstractImportData {
         Stream<CSVRecord> records = csvRecords.stream();
         if (headerNames.isEmpty()) {
           markFileFailed();
-          ioTPrinter.println("Empty file!");
+          ioTPrinter.println(CliMessages.LOG_EMPTY_FILE_83778141);
           return;
         }
         if (!timeColumn.equalsIgnoreCase(filterBomHeader(headerNames.get(0)))) {
           markFileFailed();
-          ioTPrinter.println("The first field of header must be `Time`!");
+          ioTPrinter.println(CliMessages.LOG_THE_FIRST_FIELD_OF_HEADER_MUST_BE_TIME_F48E3999);
           return;
         }
         String failedFilePath;
@@ -181,11 +191,14 @@ public class ImportDataTree extends AbstractImportData {
         processSuccessFile(null);
       } catch (IOException | IllegalPathException e) {
         markFileFailed();
-        ioTPrinter.println("CSV file read exception because: " + e.getMessage());
+        ioTPrinter.println(
+            String.format(
+                CliMessages.LOG_CSV_FILE_READ_EXCEPTION_BECAUSE_ARG_5EE7AFBF,
+                Objects.toString(e.getMessage())));
       }
     } else {
       markFileFailed();
-      ioTPrinter.println("The file name must end with \"csv\" or \"txt\"!");
+      ioTPrinter.println(CliMessages.LOG_THE_FILE_NAME_MUST_END_WITH_CSV_OR_TXT_0C020AB3);
     }
   }
 
@@ -249,8 +262,10 @@ public class ImportDataTree extends AbstractImportData {
                       headerTypeMap.put(header, type);
                     } else {
                       ioTPrinter.printf(
-                          "Line '%s', column '%s': '%s' unknown type%n",
-                          recordObj.getRecordNumber(), header, value);
+                          CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_TYPE_ARG_93D3B31D,
+                          recordObj.getRecordNumber(),
+                          header,
+                          value);
                       isFail = true;
                     }
                   }
@@ -261,8 +276,11 @@ public class ImportDataTree extends AbstractImportData {
                   if (valueTrans == null) {
                     isFail = true;
                     ioTPrinter.printf(
-                        "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                        recordObj.getRecordNumber(), header, value, type);
+                        CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_CAN_T_CONVERT_TO_ARG_ARG_F85541A2,
+                        recordObj.getRecordNumber(),
+                        header,
+                        value,
+                        type);
                   } else {
                     measurements.add(header.replace(deviceId + '.', ""));
                     types.add(type);
@@ -363,8 +381,10 @@ public class ImportDataTree extends AbstractImportData {
                     headerTypeMap.put(headerNameWithoutType, type);
                   } else {
                     ioTPrinter.printf(
-                        "Line '%s', column '%s': '%s' unknown type%n",
-                        recordObj.getRecordNumber(), headerNameWithoutType, value);
+                        CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_TYPE_ARG_93D3B31D,
+                        recordObj.getRecordNumber(),
+                        headerNameWithoutType,
+                        value);
                     isFail.set(true);
                   }
                 }
@@ -375,8 +395,11 @@ public class ImportDataTree extends AbstractImportData {
                 if (valueTrans == null) {
                   isFail.set(true);
                   ioTPrinter.printf(
-                      "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      recordObj.getRecordNumber(), headerNameWithoutType, value, type);
+                      CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_CAN_T_CONVERT_TO_ARG_ARG_F85541A2,
+                      recordObj.getRecordNumber(),
+                      headerNameWithoutType,
+                      value,
+                      type);
                 } else {
                   values.add(valueTrans);
                   measurements.add(headerNameWithoutType);
@@ -476,7 +499,9 @@ public class ImportDataTree extends AbstractImportData {
         }
       } catch (StatementExecutionException | IllegalPathException | IoTDBConnectionException e) {
         ioTPrinter.println(
-            "Meet error when query the type of timeseries because " + e.getMessage());
+            String.format(
+                CliMessages.LOG_MEET_ERROR_WHEN_QUERY_THE_TYPE_OF_TIMESERIES_BECAUSE_ARG_21949119,
+                Objects.toString(e.getMessage())));
         System.exit(1);
       }
     }
@@ -497,7 +522,10 @@ public class ImportDataTree extends AbstractImportData {
         }
       }
     } catch (StatementExecutionException | IoTDBConnectionException e) {
-      ioTPrinter.println("Meet error when query the type of timeseries because " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.LOG_MEET_ERROR_WHEN_QUERY_THE_TYPE_OF_TIMESERIES_BECAUSE_ARG_21949119,
+              Objects.toString(e.getMessage())));
       System.exit(1);
     }
   }
