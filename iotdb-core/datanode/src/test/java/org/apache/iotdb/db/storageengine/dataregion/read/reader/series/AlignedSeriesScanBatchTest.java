@@ -41,6 +41,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -50,6 +51,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -58,6 +60,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.LongConsumer;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createChunkWriter;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeAlignedChunk;
@@ -83,6 +86,9 @@ public class AlignedSeriesScanBatchTest {
         COLUMN_COUNT + 1 > TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
     File file = newFile(1);
     TsFileResource resource = writeWideDevice(file, COLUMN_COUNT);
+    TsFileSequenceReader fileReader = new TsFileSequenceReader(file.getAbsolutePath());
+    TsFileSequenceReader reader = Mockito.spy(fileReader);
+    FileReaderManager.getInstance().setReaderForTest(resource.getTsFileID(), true, reader);
     TimeSeriesMetadataCache metadataCache = TimeSeriesMetadataCache.getInstance();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     metadataCache.clear();
@@ -134,6 +140,15 @@ public class AlignedSeriesScanBatchTest {
               - diskReadsBefore;
       Assert.assertTrue("disk lookups: " + diskReads, diskReads >= 1);
       Assert.assertTrue("disk lookups: " + diskReads, diskReads <= COLUMN_COUNT + 1);
+      // the whole projection is resolved with one reader call for this file, not one per column
+      Mockito.verify(reader)
+          .readTimeseriesMetadataForMeasurements(
+              Mockito.any(),
+              Mockito.<long[]>isNull(),
+              Mockito.anyCollection(),
+              Mockito.anySet(),
+              Mockito.anyBoolean(),
+              Mockito.any(LongConsumer.class));
     } finally {
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(previousIgnoreAllNullRows);
       cleanup(file, resource, metadataCache, bloomFilterCache);
@@ -244,12 +259,13 @@ public class AlignedSeriesScanBatchTest {
   private static boolean hasFile(AlignedFullPath scanPath, TsFileResource resource)
       throws IOException {
     AlignedSeriesScanUtil seriesScanUtil = newScanUtil(scanPath, resource);
-    while (true) {
+    for (int attempt = 0; attempt < 1000; attempt++) {
       Optional<Boolean> hasNextFile = seriesScanUtil.hasNextFile();
       if (hasNextFile.isPresent()) {
         return hasNextFile.get();
       }
     }
+    throw new IllegalStateException("series scan did not advance after 1000 attempts");
   }
 
   private static AlignedSeriesScanUtil newScanUtil(

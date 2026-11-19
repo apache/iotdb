@@ -992,12 +992,12 @@ public class TimeSeriesMetadataCacheTest {
       offset = iterator.getCurrentDeviceMeasurementNodeOffset();
     }
     // external tsfiles bypass the metadata cache: every requested measurement must still be read
+    TsFileResource resource = new TsFileResource(file);
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setQueryDataSourceType(
         QueryDataSourceType.EXTERNAL_TSFILE_SCAN);
     try {
       Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
-      TsFileResource resource = new TsFileResource(file);
-      resource.setStatusForTest(TsFileResourceStatus.NORMAL);
       Map<String, TimeseriesMetadata> result =
           cache.getTimeseriesMetadata(
               file.getAbsolutePath(),
@@ -1019,6 +1019,8 @@ public class TimeSeriesMetadataCacheTest {
           QueryDataSourceType.SERIES_SCAN);
       cache.clear();
       bloomFilterCache.clear();
+      FileReaderManager.getInstance().closeFileAndRemoveReader(resource.getTsFileID());
+      assertTrue(file.delete());
     }
   }
 }

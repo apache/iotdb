@@ -165,6 +165,34 @@ public class TimeSeriesMetadataCache {
       QueryContext queryContext,
       long[] deviceMetadataIndexNodeOffset)
       throws IOException {
+    // a cache hit is the common case for a single series: answer it without building the batch
+    // request (a singleton set, a result map, a pending set) or the device prefix
+    if (CACHE_ENABLE && !queryContext.isExternalTsFileScan()) {
+      long cacheStartTime = System.nanoTime();
+      TimeseriesMetadata cached = lruCache.getIfPresent(key);
+      if (cached != null) {
+        QueryStatistics statistics = queryContext.getQueryStatistics();
+        statistics.getLoadTimeSeriesMetadataFromCacheCount().getAndAdd(1);
+        statistics
+            .getLoadTimeSeriesMetadataFromCacheTime()
+            .getAndAdd(System.nanoTime() - cacheStartTime);
+        if (cached == NULL_EXISTS_CACHE_PLACE_HOLDER) {
+          if (debug) {
+            DEBUG_LOGGER.info(StorageEngineMessages.FILE_NO_SUCH_TIME_SERIES, key);
+          }
+          return null;
+        }
+        if (debug) {
+          DEBUG_LOGGER.info(
+              StorageEngineMessages.STORAGE_LOG_GET_TIMESERIES_METADATA_IN_FILE_FROM_CACHE_36652729,
+              key.device,
+              key.measurement,
+              filePath,
+              cached);
+        }
+        return new TimeseriesMetadata(cached);
+      }
+    }
     return getTimeseriesMetadata(
             filePath,
             key.tsFileID,
@@ -226,7 +254,6 @@ public class TimeSeriesMetadataCache {
         queryContext.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet;
     LongConsumer bloomFilterIoSizeRecorder =
         queryContext.getQueryStatistics().getLoadBloomFilterActualIOSize()::addAndGet;
-    String devicePrefix = device.toString() + IoTDBConstant.PATH_SEPARATOR;
 
     Map<String, TimeseriesMetadata> result = new HashMap<>(requested.size());
     Set<String> pending = new HashSet<>(requested.size());
@@ -243,6 +270,27 @@ public class TimeSeriesMetadataCache {
         // serialize reads of the same device+file (same lock key as get) so threads don't each
         // walk the device metadata index and race on the shared reader
         synchronized (deviceLock(device.toString(), filePath)) {
+          // another thread may have loaded some of these while this one waited for the lock
+          Iterator<String> pendingIterator = pending.iterator();
+          while (pendingIterator.hasNext()) {
+            String measurement = pendingIterator.next();
+            TimeseriesMetadata cached =
+                lruCache.getIfPresent(
+                    new TimeSeriesMetadataCacheKey(tsFileID, device, measurement));
+            if (cached == null) {
+              continue;
+            }
+            pendingIterator.remove();
+            cacheHitCount++;
+            result.put(
+                measurement,
+                cached == NULL_EXISTS_CACHE_PLACE_HOLDER ? null : new TimeseriesMetadata(cached));
+          }
+          if (pending.isEmpty()) {
+            cachePhaseEndTime = System.nanoTime();
+            return result;
+          }
+          String devicePrefix = device.toString() + IoTDBConstant.PATH_SEPARATOR;
           if (debug) {
             for (String measurement : pending) {
               DEBUG_LOGGER.info(
@@ -250,8 +298,13 @@ public class TimeSeriesMetadataCache {
             }
             DEBUG_LOGGER.info(StorageEngineMessages.DEVICE_ALL_SENSORS, device, allSensors);
           }
+          long bloomFilterStartTime = System.nanoTime();
           BloomFilter bloomFilter =
-              loadBloomFilter(filePath, tsFileID, queryContext, bloomFilterIoSizeRecorder, false);
+              deviceMetadataIndexNodeOffset == null
+                  ? loadBloomFilter(
+                      filePath, tsFileID, queryContext, debug, bloomFilterIoSizeRecorder, false)
+                  : null;
+          loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
           if (deviceAbsent(requested, result, bloomFilter, devicePrefix)) {
             fillMissingWithNull(requested, result);
             return result;
@@ -285,12 +338,16 @@ public class TimeSeriesMetadataCache {
 
       // cache disabled or external tsfiles: nothing was resolved from the cache
       pending.addAll(requested);
+      String devicePrefix = device.toString() + IoTDBConstant.PATH_SEPARATOR;
       // offset-addressed external files may not have a bloom filter that covers their series
-      BloomFilter bloomFilter =
-          deviceMetadataIndexNodeOffset == null
-              ? loadBloomFilter(
-                  filePath, tsFileID, queryContext, bloomFilterIoSizeRecorder, externalTsFile)
-              : null;
+      BloomFilter bloomFilter = null;
+      if (deviceMetadataIndexNodeOffset == null) {
+        long bloomFilterStartTime = System.nanoTime();
+        bloomFilter =
+            loadBloomFilter(
+                filePath, tsFileID, queryContext, debug, bloomFilterIoSizeRecorder, externalTsFile);
+        loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
+      }
       if (deviceAbsent(requested, result, bloomFilter, devicePrefix)) {
         fillMissingWithNull(requested, result);
         return result;
@@ -347,13 +404,14 @@ public class TimeSeriesMetadataCache {
       String filePath,
       TsFileID tsFileID,
       QueryContext queryContext,
+      boolean debug,
       LongConsumer bloomFilterIoSizeRecorder,
       boolean externalTsFile)
       throws IOException {
     return BloomFilterCache.getInstance()
         .get(
             new BloomFilterCache.BloomFilterCacheKey(filePath, tsFileID),
-            false,
+            debug,
             bloomFilterIoSizeRecorder,
             queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()::addAndGet,
             queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()::addAndGet,
@@ -432,13 +490,19 @@ public class TimeSeriesMetadataCache {
       Map<String, TimeseriesMetadata> result,
       LongConsumer ioSizeRecorder)
       throws IOException {
-    // cached measurements are already in the result: no need to deserialize them again
+    // cached measurements are already in the result: no need to deserialize them again. `pending`
+    // must be part of what the reader returns, otherwise a miss outside `allSensors` would be
+    // mistaken for an absent series and pollute the negative cache.
     Set<String> returned;
     if (!cacheEnabled || allSensors.equals(requested)) {
       // the aligned batch read requests exactly the set it caches, so only the misses remain
       returned = pending;
+    } else if (result.isEmpty() && allSensors.containsAll(pending)) {
+      // nothing cached to exclude and the selected set covers the misses: use it without copying
+      returned = allSensors;
     } else {
       returned = new HashSet<>(allSensors);
+      returned.addAll(pending);
       returned.removeAll(result.keySet());
     }
     Map<String, TimeseriesMetadata> loaded =
