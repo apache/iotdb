@@ -331,14 +331,18 @@ public class Coordinator {
    * We need to reclaim resources from queries that have exceeded their timeout by more than one
    * minute. This indicates that the associated clients have failed to perform proper resource
    * cleanup.
+   *
+   * <p>Whether an RPC of the query is in progress does not matter here. The timeout bounds the
+   * whole lifetime of a query, so a query without an RPC in progress has been abandoned by its
+   * client, and an RPC that is still in progress this long after the timeout is stuck, e.g. in a
+   * dispatch that never returns, and is only unblocked by stopping the query. Sparing the queries
+   * with an RPC in progress would also keep forever every query whose caller never reports the end
+   * of its RPC through {@link #recordExecutionTime}.
    */
   public void cleanUpStaleQueries() {
     long currentTime = System.currentTimeMillis();
     queryExecutionMap.forEach(
         (queryId, queryExecution) -> {
-          if (queryExecution.isActive()) {
-            return;
-          }
           long timeout = queryExecution.getTimeout();
           long queryStartTime = queryExecution.getStartExecutionTime();
           long executeTime = currentTime - queryStartTime;

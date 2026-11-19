@@ -46,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ConfigExecutionTest {
@@ -154,6 +155,29 @@ public class ConfigExecutionTest {
       ExecutionResult result = execution.getStatus();
       assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
       execution.stop(e);
+    }
+  }
+
+  @Test
+  public void isActiveTellsWhetherAnRpcOfTheQueryIsInProgress() {
+    ExecutorService executor = getExecutor();
+    try {
+      IConfigTask task =
+          (clientManager) -> immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), executor, task);
+      // the execution is created by the RPC that executes the statement
+      assertTrue(execution.isActive());
+      // that RPC returns, and the client has not asked for the result yet
+      execution.recordExecutionTime(1);
+      assertFalse(execution.isActive());
+      // an RPC that fetches the result arrives
+      execution.updateCurrentRpcStartTime(System.nanoTime());
+      assertTrue(execution.isActive());
+      // and returns as well
+      execution.recordExecutionTime(1);
+      assertFalse(execution.isActive());
+    } finally {
+      executor.shutdownNow();
     }
   }
 
