@@ -35,6 +35,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertQueryFails;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -415,7 +416,7 @@ public class IoTDBGroupByCountIT {
   private void errorTest(String sql, String error) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
+      assertEquals(error, assertQueryFails(statement, sql).getMessage());
     } catch (Exception e) {
       assertEquals(error, e.getMessage());
     }
