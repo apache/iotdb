@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.i18n.ServiceMessages;
 import org.apache.iotdb.rpc.RpcSslUtils;
+import org.apache.iotdb.rpc.TElasticFramedTransport;
 
 import org.apache.thrift.TBaseAsyncProcessor;
 import org.apache.thrift.TProcessor;
@@ -41,6 +42,7 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.slf4j.Logger;
@@ -238,8 +240,24 @@ public abstract class AbstractThriftServiceThread extends Thread {
     poolArgs.executorService = executorService;
     poolArgs.processor(processor);
     poolArgs.protocolFactory(protocolFactory);
-    poolArgs.transportFactory(getTTransportFactory());
+    poolArgs.transportFactory(registerServerTransports(getTTransportFactory()));
     return poolArgs;
+  }
+
+  static TTransportFactory registerServerTransports(TTransportFactory transportFactory) {
+    if (transportFactory == null) {
+      return null;
+    }
+    return new TTransportFactory() {
+      @Override
+      public TTransport getTransport(TTransport transport) throws TTransportException {
+        TTransport serverTransport = transportFactory.getTransport(transport);
+        if (serverTransport instanceof TElasticFramedTransport framedTransport) {
+          framedTransport.registerForServerBufferReclamation();
+        }
+        return serverTransport;
+      }
+    };
   }
 
   private TThreadedSelectorServer.Args initAsyncedSelectorPoolArgs(

@@ -25,10 +25,18 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class AutoResizingBufferTest {
@@ -108,6 +116,115 @@ public class AutoResizingBufferTest {
       transport.write(new byte[8]);
       Assert.assertEquals(32, memoryControl.getUsedMemoryInBytes());
       Assert.assertEquals(8, transport.writeBuffer.getPos());
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureReclaimsIdleServerTransportBuffers() throws Exception {
+    memoryControl.setLimit(96);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (TElasticFramedTransport transport =
+        new TElasticFramedTransport(new TMemoryBuffer(0), 8, 128, false)) {
+      transport.registerForServerBufferReclamation();
+      transport.write(new byte[64]);
+      transport.flush();
+      Assert.assertEquals(64, transport.writeBuffer.getBuffer().length);
+      Assert.assertEquals(72, memoryControl.getUsedMemoryInBytes());
+
+      try (AutoResizingBuffer allocation = new AutoResizingBuffer(32)) {
+        Assert.assertEquals(8, transport.writeBuffer.getBuffer().length);
+        Assert.assertEquals(48, memoryControl.getUsedMemoryInBytes());
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureDoesNotReclaimAnActiveServerTransport() throws Exception {
+    memoryControl.setLimit(96);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (TElasticFramedTransport transport =
+        new TElasticFramedTransport(new TMemoryBuffer(0), 8, 128, false)) {
+      transport.registerForServerBufferReclamation();
+      transport.write(new byte[64]);
+      transport.flush();
+      transport.beginServerRequest();
+      try {
+        try (AutoResizingBuffer ignored = new AutoResizingBuffer(32)) {
+          Assert.fail("An active request must keep its buffers reserved");
+        } catch (IOException expected) {
+          Assert.assertEquals(1, AutoResizingBufferMemoryManager.getMemoryAllocationFailureCount());
+        }
+        Assert.assertEquals(64, transport.writeBuffer.getBuffer().length);
+        Assert.assertEquals(72, memoryControl.getUsedMemoryInBytes());
+      } finally {
+        transport.endServerRequest();
+      }
+
+      try (AutoResizingBuffer allocation = new AutoResizingBuffer(32)) {
+        Assert.assertEquals(8, transport.writeBuffer.getBuffer().length);
+        Assert.assertEquals(48, memoryControl.getUsedMemoryInBytes());
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureReclaimsBothServerTransportsWhileWaitingForNextFrame()
+      throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    BlockingServerTransport socket = new BlockingServerTransport();
+    try (TElasticFramedTransport input = new TElasticFramedTransport(socket, 8, 128, false);
+        TElasticFramedTransport output = new TElasticFramedTransport(socket, 8, 128, false)) {
+      input.registerForServerBufferReclamation();
+      output.registerForServerBufferReclamation();
+
+      byte[] firstFrame = new byte[64];
+      Arrays.fill(firstFrame, (byte) 7);
+      socket.offerFrame(firstFrame);
+      byte[] firstRead = new byte[firstFrame.length];
+      input.readAll(firstRead, 0, firstRead.length);
+      Assert.assertArrayEquals(firstFrame, firstRead);
+      output.write(firstFrame, 0, firstFrame.length);
+      output.flush();
+      Assert.assertEquals(64, input.readBuffer.getBuffer().length);
+      Assert.assertEquals(64, output.writeBuffer.getBuffer().length);
+
+      memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+      ExecutorService reader = Executors.newSingleThreadExecutor();
+      try {
+        byte[] secondFrame = new byte[8];
+        Future<byte[]> nextRead =
+            reader.submit(
+                () -> {
+                  byte[] result = new byte[secondFrame.length];
+                  input.readAll(result, 0, result.length);
+                  return result;
+                });
+        Assert.assertTrue(socket.awaitWaitingForNextFrame(5, TimeUnit.SECONDS));
+
+        try (AutoResizingBuffer allocation = new AutoResizingBuffer(8)) {
+          Assert.assertEquals(8, input.readBuffer.getBuffer().length);
+          Assert.assertEquals(8, output.writeBuffer.getBuffer().length);
+          Assert.assertEquals(0, input.readBuffer.getBufferPosition());
+          Assert.assertEquals(0, input.readBuffer.getBytesRemainingInBuffer());
+          Assert.assertEquals(40, memoryControl.getUsedMemoryInBytes());
+        }
+
+        Arrays.fill(secondFrame, (byte) 9);
+        socket.offerFrame(secondFrame);
+        Assert.assertArrayEquals(secondFrame, nextRead.get(5, TimeUnit.SECONDS));
+      } finally {
+        reader.shutdownNow();
+        Assert.assertTrue(reader.awaitTermination(5, TimeUnit.SECONDS));
+      }
     }
     Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
   }
@@ -673,10 +790,93 @@ public class AutoResizingBufferTest {
         : new TElasticFramedTransport(new TMemoryBuffer(0), 100, 2048, true);
   }
 
+  private static class BlockingServerTransport extends org.apache.thrift.transport.TTransport {
+
+    private final BlockingQueue<byte[]> frames = new LinkedBlockingQueue<>();
+    private final ByteArrayOutputStream writes = new ByteArrayOutputStream();
+    private final CountDownLatch waitingForNextFrame = new CountDownLatch(1);
+    private byte[] currentFrame;
+    private int currentFramePosition;
+    private boolean open = true;
+
+    private void offerFrame(byte[] payload) {
+      byte[] frame = new byte[payload.length + Integer.BYTES];
+      frame[0] = (byte) (payload.length >>> 24);
+      frame[1] = (byte) (payload.length >>> 16);
+      frame[2] = (byte) (payload.length >>> 8);
+      frame[3] = (byte) payload.length;
+      System.arraycopy(payload, 0, frame, Integer.BYTES, payload.length);
+      frames.add(frame);
+    }
+
+    private boolean awaitWaitingForNextFrame(long timeout, TimeUnit unit)
+        throws InterruptedException {
+      return waitingForNextFrame.await(timeout, unit);
+    }
+
+    @Override
+    public boolean isOpen() {
+      return open;
+    }
+
+    @Override
+    public void open() {
+      open = true;
+    }
+
+    @Override
+    public void close() {
+      open = false;
+    }
+
+    @Override
+    public int read(byte[] buffer, int offset, int length)
+        throws org.apache.thrift.transport.TTransportException {
+      try {
+        if (currentFrame == null || currentFramePosition == currentFrame.length) {
+          if (frames.isEmpty()) {
+            waitingForNextFrame.countDown();
+          }
+          currentFrame = frames.take();
+          currentFramePosition = 0;
+        }
+        int bytesToRead = Math.min(length, currentFrame.length - currentFramePosition);
+        System.arraycopy(currentFrame, currentFramePosition, buffer, offset, bytesToRead);
+        currentFramePosition += bytesToRead;
+        return bytesToRead;
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new org.apache.thrift.transport.TTransportException(e);
+      }
+    }
+
+    @Override
+    public void write(byte[] buffer, int offset, int length) {
+      writes.write(buffer, offset, length);
+    }
+
+    @Override
+    public void flush() {}
+
+    @Override
+    public org.apache.thrift.TConfiguration getConfiguration() {
+      return null;
+    }
+
+    @Override
+    public void updateKnownMessageSize(long size) {}
+
+    @Override
+    public void checkReadBytesAvailable(long numBytes) {}
+
+    @Override
+    public void resetMessageSizeAndConsumedBytes(long newSize) {}
+  }
+
   private static class TestMemoryControl implements AutoResizingBufferMemoryControl {
 
     private final AtomicLong usedMemoryInBytes = new AtomicLong();
-    private long limit = Long.MAX_VALUE;
+    private volatile long limit = Long.MAX_VALUE;
 
     @Override
     public boolean allocate(long sizeInBytes) {

@@ -114,6 +114,19 @@ class AutoResizingBuffer implements AutoCloseable {
     lastShrinkTime = System.currentTimeMillis();
   }
 
+  long trimToInitialCapacity() {
+    if (closed || array.length <= initialCapacity) {
+      return 0;
+    }
+    long releasedBytes = accountedCapacity - initialCapacity;
+    array = Arrays.copyOf(array, initialCapacity);
+    memoryAccount.release(releasedBytes);
+    accountedCapacity = initialCapacity;
+    bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
+    lastShrinkTime = System.currentTimeMillis();
+    return releasedBytes;
+  }
+
   @Override
   public void close() {
     if (!closed) {

@@ -146,6 +146,8 @@ public class TElasticFramedTransport extends TTransport {
   protected AutoScalingBufferWriteTransport writeBuffer;
   protected final byte[] i32buf = new byte[4];
   private final boolean copyBinary;
+  private boolean serverManaged;
+  private volatile AutoResizingBufferMemoryManager.ServerConnectionState serverConnectionState;
 
   @Override
   public boolean isOpen() {
@@ -153,16 +155,26 @@ public class TElasticFramedTransport extends TTransport {
   }
 
   @Override
-  public void open() throws TTransportException {
+  public synchronized void open() throws TTransportException {
     underlying.open();
+    if (serverManaged) {
+      AutoResizingBufferMemoryManager.registerServerTransport(this);
+    }
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
+    if (serverManaged) {
+      AutoResizingBufferMemoryManager.unregisterServerTransport(this);
+    }
     try {
       underlying.close();
     } finally {
-      closeAllocatedBuffers();
+      try {
+        closeAllocatedBuffers();
+      } finally {
+        serverConnectionState = null;
+      }
     }
   }
 
@@ -172,6 +184,45 @@ public class TElasticFramedTransport extends TTransport {
     }
     if (writeBuffer != null) {
       writeBuffer.close();
+    }
+  }
+
+  public synchronized void registerForServerBufferReclamation() {
+    serverManaged = true;
+    AutoResizingBufferMemoryManager.registerServerTransport(this);
+  }
+
+  public void beginServerRequest() {
+    setServerRequestInProgress(true);
+  }
+
+  public void endServerRequest() {
+    setServerRequestInProgress(false);
+  }
+
+  AutoResizingBufferMemoryManager.ServerConnectionState getServerConnectionState() {
+    return serverConnectionState;
+  }
+
+  void setServerConnectionState(
+      AutoResizingBufferMemoryManager.ServerConnectionState serverConnectionState) {
+    this.serverConnectionState = serverConnectionState;
+  }
+
+  long trimBuffersForReclamation() {
+    return readBuffer.trimToInitialCapacity()
+        + writeBuffer.trimToInitialCapacity()
+        + trimAdditionalBuffers();
+  }
+
+  protected long trimAdditionalBuffers() {
+    return 0;
+  }
+
+  private void setServerRequestInProgress(boolean requestInProgress) {
+    AutoResizingBufferMemoryManager.ServerConnectionState state = serverConnectionState;
+    if (state != null) {
+      state.setRequestInProgress(requestInProgress);
     }
   }
 
@@ -233,8 +284,10 @@ public class TElasticFramedTransport extends TTransport {
 
   protected void readFrame() throws TTransportException {
     // Discard the previous frame's budget before reading the next frame header and payload.
+    endServerRequest();
     resetMessageSizeAndConsumedBytes();
     underlying.readAll(i32buf, 0, 4);
+    beginServerRequest();
     int size = TFramedTransport.decodeFrameSize(i32buf);
     validateFrame(size);
     readBuffer.fill(underlying, size);

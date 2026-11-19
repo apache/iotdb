@@ -21,8 +21,16 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.rpc.i18n.RpcMessages;
 
+import org.apache.thrift.transport.TTransport;
+
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class AutoResizingBufferMemoryManager {
@@ -47,6 +55,11 @@ public final class AutoResizingBufferMemoryManager {
       DEFAULT_MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS;
   private static final AtomicLong memoryAllocationCount = new AtomicLong();
   private static final AtomicLong memoryAllocationFailureCount = new AtomicLong();
+  private static final Set<ServerConnectionState> serverConnections = ConcurrentHashMap.newKeySet();
+  private static final Map<TTransport, ServerConnectionState> serverConnectionsByTransport =
+      new IdentityHashMap<>();
+  private static final Object serverConnectionLock = new Object();
+  private static final AtomicBoolean reclaimingServerBuffers = new AtomicBoolean();
 
   private AutoResizingBufferMemoryManager() {
     // Utility class.
@@ -82,6 +95,9 @@ public final class AutoResizingBufferMemoryManager {
         memoryAllocationCount.incrementAndGet();
         return;
       }
+      if (reclaimIdleServerBuffers() > 0) {
+        continue;
+      }
       try {
         Thread.sleep(memoryAllocateRetryIntervalInMs);
       } catch (InterruptedException e) {
@@ -96,6 +112,52 @@ public final class AutoResizingBufferMemoryManager {
             RpcMessages.AUTO_RESIZING_BUFFER_ALLOCATE_FAILED,
             sizeInBytes,
             MEMORY_ALLOCATE_MAX_RETRIES));
+  }
+
+  static void registerServerTransport(TElasticFramedTransport transport) {
+    synchronized (serverConnectionLock) {
+      if (transport.getServerConnectionState() != null) {
+        return;
+      }
+      TTransport socket = transport.getSocket();
+      ServerConnectionState state = serverConnectionsByTransport.get(socket);
+      if (state == null) {
+        state = new ServerConnectionState();
+        serverConnectionsByTransport.put(socket, state);
+        serverConnections.add(state);
+      }
+      state.registerTransport(transport);
+      transport.setServerConnectionState(state);
+    }
+  }
+
+  static void unregisterServerTransport(TElasticFramedTransport transport) {
+    synchronized (serverConnectionLock) {
+      ServerConnectionState state = transport.getServerConnectionState();
+      if (state == null) {
+        return;
+      }
+      if (state.unregisterTransport(transport)) {
+        serverConnections.remove(state);
+        serverConnectionsByTransport.remove(transport.getSocket());
+      }
+      transport.setServerConnectionState(null);
+    }
+  }
+
+  private static long reclaimIdleServerBuffers() {
+    if (!reclaimingServerBuffers.compareAndSet(false, true)) {
+      return 0;
+    }
+    try {
+      long reclaimedBytes = 0;
+      for (ServerConnectionState connection : serverConnections) {
+        reclaimedBytes += connection.reclaimIdleBuffers();
+      }
+      return reclaimedBytes;
+    } finally {
+      reclaimingServerBuffers.set(false);
+    }
   }
 
   private static void release(AutoResizingBufferMemoryControl memoryControl, long sizeInBytes) {
@@ -138,6 +200,35 @@ public final class AutoResizingBufferMemoryManager {
 
     void release(long sizeInBytes) {
       AutoResizingBufferMemoryManager.release(memoryControl, sizeInBytes);
+    }
+  }
+
+  static final class ServerConnectionState {
+    private final Set<TElasticFramedTransport> transports = new HashSet<>();
+    private boolean requestInProgress;
+
+    private synchronized void registerTransport(TElasticFramedTransport transport) {
+      transports.add(transport);
+    }
+
+    private synchronized boolean unregisterTransport(TElasticFramedTransport transport) {
+      transports.remove(transport);
+      return transports.isEmpty();
+    }
+
+    synchronized void setRequestInProgress(boolean requestInProgress) {
+      this.requestInProgress = requestInProgress;
+    }
+
+    private synchronized long reclaimIdleBuffers() {
+      if (requestInProgress) {
+        return 0;
+      }
+      long reclaimedBytes = 0;
+      for (TElasticFramedTransport transport : transports) {
+        reclaimedBytes += transport.trimBuffersForReclamation();
+      }
+      return reclaimedBytes;
     }
   }
 }

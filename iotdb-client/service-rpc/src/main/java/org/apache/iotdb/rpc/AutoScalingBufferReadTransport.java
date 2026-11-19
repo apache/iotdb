@@ -136,4 +136,14 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
   public void position(int newPosition) {
     this.pos = newPosition;
   }
+
+  long trimToInitialCapacity() {
+    if (pos != limit) {
+      return 0;
+    }
+    temporaryBuffer = null;
+    pos = 0;
+    limit = 0;
+    return buf.trimToInitialCapacity();
+  }
 }
