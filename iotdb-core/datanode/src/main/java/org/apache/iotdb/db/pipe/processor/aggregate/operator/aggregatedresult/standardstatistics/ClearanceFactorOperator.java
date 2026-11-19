@@ -45,17 +45,31 @@ public class ClearanceFactorOperator implements AggregatedResultOperator {
   @Override
   public Set<String> getDeclaredIntermediateValueNames() {
     return Collections.unmodifiableSet(
+        new HashSet<>(Arrays.asList("abs_max", "sum_x0.5", "sum_abs_x0.5", "count")));
+  }
+
+  @Override
+  public boolean supportsLegacyIntermediateResults() {
+    return true;
+  }
+
+  @Override
+  public Set<String> getLegacyIntermediateValueNames() {
+    return Collections.unmodifiableSet(
         new HashSet<>(Arrays.asList("abs_max", "sum_x0.5", "count")));
   }
 
   @Override
   public Pair<TSDataType, Object> terminateWindow(
       TSDataType measurementDataType, CustomizedReadableIntermediateResults intermediateResults) {
+    final String averageSquareRootAbsoluteValueName =
+        intermediateResults.isLegacyStatisticsFormula() ? "sum_x0.5" : "sum_abs_x0.5";
     return new Pair<>(
         TSDataType.DOUBLE,
         intermediateResults.getDouble("abs_max")
             / Math.pow(
-                intermediateResults.getDouble("sum_x0.5") / intermediateResults.getInt("count"),
+                intermediateResults.getDouble(averageSquareRootAbsoluteValueName)
+                    / intermediateResults.getLong("count"),
                 2));
   }
 }

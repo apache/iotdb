@@ -48,6 +48,24 @@ public class PeakOperator implements AggregatedResultOperator {
   @Override
   public Pair<TSDataType, Object> terminateWindow(
       TSDataType measurementDataType, CustomizedReadableIntermediateResults intermediateResults) {
-    return new Pair<>(measurementDataType, intermediateResults.getObject("abs_max"));
+    final Object absoluteMaximum;
+    switch (measurementDataType) {
+      case INT32:
+        absoluteMaximum = intermediateResults.getInt("abs_max");
+        break;
+      case INT64:
+        absoluteMaximum = intermediateResults.getLong("abs_max");
+        break;
+      case FLOAT:
+        absoluteMaximum = intermediateResults.getFloat("abs_max");
+        break;
+      case DOUBLE:
+        absoluteMaximum = intermediateResults.getDouble("abs_max");
+        break;
+      default:
+        absoluteMaximum = intermediateResults.getObject("abs_max");
+        break;
+    }
+    return new Pair<>(measurementDataType, absoluteMaximum);
   }
 }
