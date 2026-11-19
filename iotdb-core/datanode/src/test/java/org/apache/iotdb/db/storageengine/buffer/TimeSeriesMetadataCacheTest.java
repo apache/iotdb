@@ -963,6 +963,86 @@ public class TimeSeriesMetadataCacheTest {
   }
 
   @Test
+  public void testBloomLoadBeforeCachePhaseIsNotSubtractedFromDiskTime() throws Exception {
+    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
+    FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    TsFileID tsFileID = new TsFileID();
+    cache.clear();
+    bloomFilterCache.clear();
+    try {
+      String filePath = "target/batch-bloom-phase.tsfile";
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.device");
+      Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1"));
+
+      TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
+      fileReaderManager.setReaderForTest(tsFileID, true, reader);
+      BloomFilter bloomFilter = BloomFilter.getEmptyBloomFilter(0.05, 2);
+      bloomFilter.add(deviceID.toString() + ".");
+      bloomFilter.add(deviceID.toString() + ".s1");
+      // a slow load makes the accounting visible: if the pre-cache load is subtracted from the
+      // disk interval, the recorded disk time turns negative
+      Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class)))
+          .thenAnswer(
+              invocation -> {
+                Thread.sleep(20);
+                return bloomFilter;
+              });
+
+      Statistics<?> timeStatistics = Statistics.getStatsByType(TSDataType.INT64);
+      timeStatistics.setCount(1);
+      timeStatistics.setStartTime(0);
+      timeStatistics.setEndTime(10);
+      Statistics<?> s1Statistics = Statistics.getStatsByType(TSDataType.INT32);
+      s1Statistics.setCount(1);
+      s1Statistics.setStartTime(0);
+      s1Statistics.setEndTime(10);
+      List<TimeseriesMetadata> group = new ArrayList<>();
+      group.add(
+          new TimeseriesMetadata(
+              (byte) 0, 0, "", TSDataType.INT64, timeStatistics, new PublicBAOS()));
+      group.add(
+          new TimeseriesMetadata(
+              (byte) 0, 0, "s1", TSDataType.INT32, s1Statistics, new PublicBAOS()));
+      stubGroupRead(reader, deviceID, false, group);
+
+      // warm both entries
+      getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+
+      // evict only the time column, and drop the bloom cache so the next call reloads it
+      cache.remove(new TimeSeriesMetadataCacheKey(tsFileID, deviceID, ""));
+      bloomFilterCache.clear();
+
+      QueryContext queryContext = new QueryContext(false, false);
+      Map<String, TimeseriesMetadata> result =
+          cache.getTimeseriesMetadata(
+              filePath,
+              tsFileID,
+              deviceID,
+              allSensors,
+              allSensors,
+              false,
+              false,
+              queryContext,
+              null);
+      assertNotNull(result.get(""));
+      assertNotNull(result.get("s1"));
+      assertTrue(
+          "cache time: "
+              + queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheTime().get(),
+          queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheTime().get() >= 0);
+      assertTrue(
+          "disk time: "
+              + queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskTime().get(),
+          queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskTime().get() >= 0);
+    } finally {
+      cache.clear();
+      bloomFilterCache.clear();
+      fileReaderManager.closeFileAndRemoveReader(tsFileID);
+    }
+  }
+
+  @Test
   public void testExternalTsFileReadsAllRequestedMeasurements() throws Exception {
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();

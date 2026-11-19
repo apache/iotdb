@@ -247,6 +247,8 @@ public class TimeSeriesMetadataCache {
     long startTime = System.nanoTime();
     long cachePhaseEndTime = 0;
     long loadBloomFilterTime = 0;
+    long bloomFilterTimeBeforeCachePhase = 0;
+    long bloomFilterTimeAfterCachePhase = 0;
     long cacheHitCount = 0;
     long diskLookupCount = 0;
     boolean externalTsFile = queryContext.isExternalTsFileScan();
@@ -282,7 +284,8 @@ public class TimeSeriesMetadataCache {
             bloomFilter =
                 loadBloomFilter(
                     filePath, tsFileID, queryContext, debug, bloomFilterIoSizeRecorder, false);
-            loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
+            bloomFilterTimeBeforeCachePhase = System.nanoTime() - bloomFilterStartTime;
+            loadBloomFilterTime += bloomFilterTimeBeforeCachePhase;
             if (bloomFilter != null && !bloomFilter.contains(devicePrefix)) {
               fillMissingWithNull(requested, result);
               return result;
@@ -301,7 +304,8 @@ public class TimeSeriesMetadataCache {
           bloomFilter =
               loadBloomFilter(
                   filePath, tsFileID, queryContext, debug, bloomFilterIoSizeRecorder, false);
-          loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
+          bloomFilterTimeAfterCachePhase = System.nanoTime() - bloomFilterStartTime;
+          loadBloomFilterTime += bloomFilterTimeAfterCachePhase;
         }
         // the filter and the cache are thread-safe, so a rejected measurement never enters the
         // device lock; only the survivors need the locked recheck and the reader
@@ -414,8 +418,10 @@ public class TimeSeriesMetadataCache {
         cacheLookupTime = endTime - startTime - loadBloomFilterTime;
         diskLookupTime = 0;
       } else {
-        cacheLookupTime = cachePhaseEndTime - startTime;
-        diskLookupTime = endTime - cachePhaseEndTime - loadBloomFilterTime;
+        // the pre-cache BloomFilter load belongs to the cache interval; only a load after the
+        // cache phase belongs to the disk interval
+        cacheLookupTime = cachePhaseEndTime - startTime - bloomFilterTimeBeforeCachePhase;
+        diskLookupTime = endTime - cachePhaseEndTime - bloomFilterTimeAfterCachePhase;
       }
       recordLoadStatistics(
           queryContext,
