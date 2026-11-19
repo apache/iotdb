@@ -111,7 +111,7 @@ public class FileLoaderUtils {
                         seriesPath.getDeviceId(),
                         seriesPath.getMeasurement()),
                     allSensors,
-                    context.ignoreNotExistsDevice()
+                    context.isStorageEngineRecovering()
                         || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                     context.isDebug(),
                     context);
@@ -348,7 +348,7 @@ public class FileLoaderUtils {
     // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
     // we should not ignore the non-exist of device in TsFileMetadata
     boolean ignoreNotExists =
-        context.ignoreNotExistsDevice()
+        context.isStorageEngineRecovering()
             || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
 
     Map<String, TimeseriesMetadata> metadata =
@@ -384,44 +384,25 @@ public class FileLoaderUtils {
         for (String measurement : valueMeasurementList) {
           valueTimeSeriesMetadataList.add(metadata.get(measurement));
         }
-        alignedTimeSeriesMetadata =
-            buildAlignedTimeSeriesMetadata(
-                resource,
-                alignedPath,
-                timeColumn,
-                valueTimeSeriesMetadataList,
-                context,
-                globalTimeFilter,
-                ignoreAllNullRows);
+        // if all the queried aligned sensors do not exist, skip the device in this file
+        boolean exist = false;
+        for (TimeseriesMetadata valueColumn : valueTimeSeriesMetadataList) {
+          exist = (exist || (valueColumn != null));
+        }
+        if (!ignoreAllNullRows || exist) {
+          alignedTimeSeriesMetadata =
+              setModifications(
+                  resource,
+                  timeColumn,
+                  valueTimeSeriesMetadataList,
+                  alignedPath,
+                  context,
+                  globalTimeFilter,
+                  ignoreAllNullRows);
+        }
       }
     }
     return alignedTimeSeriesMetadata;
-  }
-
-  private static AbstractAlignedTimeSeriesMetadata buildAlignedTimeSeriesMetadata(
-      TsFileResource resource,
-      AlignedFullPath alignedPath,
-      TimeseriesMetadata timeColumn,
-      List<TimeseriesMetadata> valueTimeSeriesMetadataList,
-      FragmentInstanceContext context,
-      Filter globalTimeFilter,
-      boolean ignoreAllNullRows) {
-    // if all the queried aligned sensors does not exist, we will return null
-    boolean exist = false;
-    for (TimeseriesMetadata valueColumn : valueTimeSeriesMetadataList) {
-      exist = (exist || (valueColumn != null));
-    }
-    if (!ignoreAllNullRows || exist) {
-      return setModifications(
-          resource,
-          timeColumn,
-          valueTimeSeriesMetadataList,
-          alignedPath,
-          context,
-          globalTimeFilter,
-          ignoreAllNullRows);
-    }
-    return null;
   }
 
   private static AbstractAlignedTimeSeriesMetadata setModifications(
