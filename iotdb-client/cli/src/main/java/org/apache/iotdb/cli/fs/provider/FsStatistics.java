@@ -19,13 +19,18 @@
 
 package org.apache.iotdb.cli.fs.provider;
 
+import org.apache.iotdb.cli.fs.FsRowReader;
+import org.apache.iotdb.cli.fs.command.ReadOptions;
+import org.apache.iotdb.cli.fs.command.ReadOptions.Window;
 import org.apache.iotdb.cli.fs.node.FsColumn;
+import org.apache.iotdb.cli.fs.sql.SqlExecutor.RowVisitor;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -33,6 +38,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /** Computes the TsFile CLI's logical statistics from the visible database snapshot. */
 final class FsStatistics {
@@ -67,106 +73,232 @@ final class FsStatistics {
 
   static List<SqlRow> count(
       String model, String object, List<FsColumn> columns, List<SqlRow> rows) {
-    List<FsColumn> tags = tags(columns);
-    Set<List<String>> entities = new LinkedHashSet<>();
-    ValueStats timeline = new ValueStats("TIMESTAMP");
-    for (SqlRow row : rows) {
-      entities.add(key(tags, row));
-      timeline.add(value(row, "time"), value(row, "time"));
+    try (Accumulator accumulator = new Accumulator(model, object, columns, true, false)) {
+      for (SqlRow row : rows) accumulator.add(row);
+      return accumulator.finish();
     }
-    List<SqlRow> result = new ArrayList<>();
-    for (FsColumn column : columns) {
-      if (!"TAG".equals(column.getCategory()) && !"FIELD".equals(column.getCategory())) {
-        continue;
-      }
-      ValueStats statistic = new ValueStats(column.getDataType());
-      for (SqlRow row : rows) {
-        statistic.add(value(row, column.getName()), value(row, "time"));
-      }
-      boolean table = "table".equals(model);
-      Map<String, String> cells = new LinkedHashMap<>();
-      cells.put("model", model);
-      cells.put("object", object);
-      cells.put("column", column.getName());
-      cells.put("category", column.getCategory());
-      cells.put("row_count", Integer.toString(rows.size()));
-      cells.put("entity_count", table ? Integer.toString(entities.size()) : null);
-      cells.put("non_null_count", Long.toString(statistic.count));
-      cells.put("null_count", Long.toString(rows.size() - statistic.count));
-      cells.put("min_time", table ? timeline.minTime : statistic.minTime);
-      cells.put("max_time", table ? timeline.maxTime : statistic.maxTime);
-      cells.put("time_source", (table ? timeline.count : statistic.count) == 0 ? null : "scan");
-      Map<String, String> types = new LinkedHashMap<>();
-      for (String name : cells.keySet()) {
-        types.put(name, name.endsWith("_count") || name.endsWith("_time") ? "INT64" : "STRING");
-      }
-      result.add(new SqlRow(cells, types));
-    }
-    return result;
   }
 
   static List<SqlRow> stats(
       String model, String object, List<FsColumn> columns, List<SqlRow> rows) {
-    List<FsColumn> tags = tags(columns);
-    Map<List<String>, List<SqlRow>> devices = new LinkedHashMap<>();
-    for (SqlRow row : rows) {
-      devices.computeIfAbsent(key(tags, row), ignored -> new ArrayList<>()).add(row);
+    try (Accumulator accumulator = new Accumulator(model, object, columns, false, true)) {
+      for (SqlRow row : rows) accumulator.add(row);
+      return accumulator.finish();
     }
-    if (rows.isEmpty() && "tree".equals(model)) {
-      devices.put(new ArrayList<>(), rows);
-    }
-    List<SqlRow> result = new ArrayList<>();
-    for (Map.Entry<List<String>, List<SqlRow>> device : devices.entrySet()) {
-      ValueStats timeline = new ValueStats("TIMESTAMP");
-      for (SqlRow row : device.getValue()) {
-        timeline.add(value(row, "time"), value(row, "time"));
+  }
+
+  @FunctionalInterface
+  interface Scan {
+    void visit(RowVisitor visitor) throws SQLException;
+  }
+
+  static List<SqlRow> scan(
+      String model,
+      String object,
+      List<FsColumn> schema,
+      ReadOptions options,
+      boolean count,
+      Scan scan)
+      throws SQLException {
+    List<FsColumn> selected =
+        count ? schema : FsRowReader.selectColumns(schema, options.getColumns());
+    Predicate<SqlRow> predicate = FsRowReader.predicate(schema, options);
+    List<Window> windows = options.getWindows();
+    boolean median =
+        !count && (options.getAggregates().isEmpty() || options.getAggregates().contains("median"));
+    List<Accumulator> accumulators = new ArrayList<>();
+    try {
+      for (int i = 0; i < Math.max(1, windows.size()); i++)
+        accumulators.add(new Accumulator(model, object, selected, count, median));
+      scan.visit(
+          row -> {
+            if (!predicate.test(row)) return true;
+            if (windows.isEmpty()) accumulators.get(0).add(row);
+            else {
+              String timestamp = value(row, "time");
+              if (timestamp != null) {
+                long time = Long.parseLong(timestamp);
+                for (int i = 0; i < windows.size(); i++)
+                  if (windows.get(i).contains(time)) accumulators.get(i).add(row);
+              }
+            }
+            return true;
+          });
+      List<SqlRow> result = new ArrayList<>();
+      for (int i = 0; i < accumulators.size(); i++) {
+        for (SqlRow row : accumulators.get(i).finish()) {
+          if (windows.isEmpty()) result.add(row);
+          else {
+            Map<String, String> cells = new LinkedHashMap<>(), types = new LinkedHashMap<>();
+            cells.put("window_index", Integer.toString(i));
+            types.put("window_index", "INT32");
+            cells.put("window_start", Long.toString(windows.get(i).getStart()));
+            types.put("window_start", "INT64");
+            cells.put("window_end", Long.toString(windows.get(i).getEnd()));
+            types.put("window_end", "INT64");
+            for (Map.Entry<String, String> cell : row.asMap().entrySet()) {
+              cells.put(cell.getKey(), cell.getValue());
+              types.put(cell.getKey(), row.getDataType(cell.getKey()));
+            }
+            result.add(new SqlRow(cells, types));
+          }
+        }
       }
-      for (FsColumn column : columns) {
-        if (!"FIELD".equals(column.getCategory())) {
-          continue;
+      return result;
+    } finally {
+      RuntimeException failure = null;
+      for (Accumulator accumulator : accumulators) {
+        try {
+          accumulator.close();
+        } catch (RuntimeException e) {
+          if (failure == null) failure = e;
+          else failure.addSuppressed(e);
         }
-        ValueStats statistic = new ValueStats(column.getDataType());
-        for (SqlRow row : device.getValue()) {
-          statistic.add(value(row, column.getName()), value(row, "time"));
-        }
-        Map<String, String> cells = new LinkedHashMap<>();
-        cells.put("model", model);
-        cells.put("object", object);
-        for (int i = 0; i < tags.size(); i++) {
-          cells.put("tag." + tags.get(i).getName(), device.getKey().get(i));
-        }
-        cells.put("field", column.getName());
-        cells.put("data_type", column.getDataType());
-        cells.put("non_null_count", Long.toString(statistic.count));
-        cells.put("null_count", Long.toString(device.getValue().size() - statistic.count));
-        boolean useTimeline = "table".equals(model) && statistic.count == 0;
-        cells.put("min_time", useTimeline ? timeline.minTime : statistic.minTime);
-        cells.put("max_time", useTimeline ? timeline.maxTime : statistic.maxTime);
-        cells.put("min", statistic.min);
-        cells.put("max", statistic.max);
-        cells.put("first", statistic.first);
-        cells.put("last", statistic.last);
-        cells.put("sum", statistic.sum());
-        cells.put("avg", statistic.average());
-        cells.put("median", statistic.median());
-        cells.put("stats_source", timeline.count == 0 ? null : "scan");
-        Map<String, String> types = new LinkedHashMap<>();
-        for (String name : cells.keySet()) {
-          types.put(name, "STRING");
-        }
-        for (String name : new String[] {"non_null_count", "null_count", "min_time", "max_time"}) {
-          types.put(name, "INT64");
-        }
-        for (String name : new String[] {"min", "max", "first", "last"}) {
-          types.put(name, column.getDataType());
-        }
-        types.put("sum", statistic.sumDataType());
-        types.put("avg", statistic.averageDataType());
-        types.put("median", statistic.averageDataType());
-        result.add(new SqlRow(cells, types));
+      }
+      if (failure != null) throw failure;
+    }
+  }
+
+  /** State grows with result groups/fields, never with the number of input rows. */
+  static final class Accumulator implements AutoCloseable {
+    private final String model;
+    private final String object;
+    private final List<FsColumn> columns;
+    private final List<FsColumn> tags;
+    private final boolean countOnly;
+    private final boolean median;
+    private final Map<List<String>, Group> groups = new LinkedHashMap<>();
+    private final Set<List<String>> entities = new LinkedHashSet<>();
+
+    Accumulator(
+        String model, String object, List<FsColumn> columns, boolean countOnly, boolean median) {
+      this.model = model;
+      this.object = object;
+      this.columns = columns;
+      this.tags = tags(columns);
+      this.countOnly = countOnly;
+      this.median = median;
+      if (countOnly || "tree".equals(model)) groups.put(Collections.emptyList(), new Group());
+    }
+
+    void add(SqlRow row) {
+      List<String> key = key(tags, row);
+      if (countOnly) entities.add(key);
+      Group group =
+          groups.computeIfAbsent(countOnly ? Collections.emptyList() : key, ignored -> new Group());
+      group.rowCount++;
+      String time = value(row, "time");
+      group.timeline.add(time, time);
+      for (Map.Entry<String, ValueStats> entry : group.values.entrySet()) {
+        entry.getValue().add(value(row, entry.getKey()), time);
       }
     }
-    return result;
+
+    List<SqlRow> finish() {
+      List<SqlRow> result = new ArrayList<>();
+      for (Map.Entry<List<String>, Group> entry : groups.entrySet()) {
+        Group group = entry.getValue();
+        ValueStats timeline = group.timeline;
+        long rowCount = group.rowCount;
+        for (FsColumn column : columns) {
+          ValueStats statistic = group.values.get(column.getName());
+          if (statistic == null) continue;
+          if (countOnly) {
+            boolean table = "table".equals(model);
+            Map<String, String> cells = new LinkedHashMap<>();
+            cells.put("model", model);
+            cells.put("object", object);
+            cells.put("column", column.getName());
+            cells.put("category", column.getCategory());
+            cells.put("row_count", Long.toString(rowCount));
+            cells.put("entity_count", table ? Integer.toString(entities.size()) : null);
+            cells.put("non_null_count", Long.toString(statistic.count));
+            cells.put("null_count", Long.toString(rowCount - statistic.count));
+            cells.put("min_time", table ? timeline.minTime : statistic.minTime);
+            cells.put("max_time", table ? timeline.maxTime : statistic.maxTime);
+            cells.put(
+                "time_source", (table ? timeline.count : statistic.count) == 0 ? null : "scan");
+            Map<String, String> types = new LinkedHashMap<>();
+            for (String name : cells.keySet()) {
+              types.put(
+                  name, name.endsWith("_count") || name.endsWith("_time") ? "INT64" : "STRING");
+            }
+            result.add(new SqlRow(cells, types));
+
+          } else {
+            Map<String, String> cells = new LinkedHashMap<>();
+            cells.put("model", model);
+            cells.put("object", object);
+            for (int i = 0; i < tags.size(); i++) {
+              cells.put("tag." + tags.get(i).getName(), entry.getKey().get(i));
+            }
+            cells.put("field", column.getName());
+            cells.put("data_type", column.getDataType());
+            cells.put("non_null_count", Long.toString(statistic.count));
+            cells.put("null_count", Long.toString(group.rowCount - statistic.count));
+            boolean useTimeline = "table".equals(model) && statistic.count == 0;
+            cells.put("min_time", useTimeline ? timeline.minTime : statistic.minTime);
+            cells.put("max_time", useTimeline ? timeline.maxTime : statistic.maxTime);
+            cells.put("min", statistic.min);
+            cells.put("max", statistic.max);
+            cells.put("first", statistic.first);
+            cells.put("last", statistic.last);
+            cells.put("sum", statistic.sum());
+            cells.put("avg", statistic.average());
+            cells.put("median", statistic.median());
+            cells.put("stats_source", timeline.count == 0 ? null : "scan");
+            Map<String, String> types = new LinkedHashMap<>();
+            for (String name : cells.keySet()) {
+              types.put(name, "STRING");
+            }
+            for (String name :
+                new String[] {"non_null_count", "null_count", "min_time", "max_time"}) {
+              types.put(name, "INT64");
+            }
+            for (String name : new String[] {"min", "max", "first", "last"}) {
+              types.put(name, column.getDataType());
+            }
+            types.put("sum", statistic.sumDataType());
+            types.put("avg", statistic.averageDataType());
+            types.put("median", statistic.averageDataType());
+            result.add(new SqlRow(cells, types));
+          }
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public void close() {
+      RuntimeException failure = null;
+      for (Group group : groups.values())
+        for (ValueStats value : group.values.values()) {
+          if (value.numericValues != null) {
+            try {
+              value.numericValues.close();
+            } catch (RuntimeException e) {
+              if (failure == null) failure = e;
+              else failure.addSuppressed(e);
+            }
+          }
+        }
+      if (failure != null) throw failure;
+    }
+
+    private final class Group {
+      private long rowCount;
+      private final ValueStats timeline = new ValueStats("TIMESTAMP", false);
+      private final Map<String, ValueStats> values = new LinkedHashMap<>();
+
+      private Group() {
+        for (FsColumn column : columns) {
+          if ("FIELD".equals(column.getCategory())
+              || (countOnly && "TAG".equals(column.getCategory())))
+            values.put(
+                column.getName(), new ValueStats(column.getDataType(), median && !countOnly));
+        }
+      }
+    }
   }
 
   private static List<FsColumn> tags(List<FsColumn> columns) {
@@ -200,10 +332,11 @@ final class FsStatistics {
     private double floatingSum;
     private double floatingCompensation;
     private BigDecimal floatingWideSum;
-    private final List<String> numericValues = new ArrayList<>();
+    private final ExactMedian numericValues;
 
-    private ValueStats(String type) {
+    private ValueStats(String type, boolean median) {
       this.type = type;
+      this.numericValues = median && numeric() ? new ExactMedian(this::compare) : null;
     }
 
     private void add(String value, String time) {
@@ -236,7 +369,7 @@ final class FsStatistics {
           max = value;
         }
       }
-      if (numeric()) {
+      if (numericValues != null) {
         numericValues.add(value);
       }
       if ("BOOLEAN".equals(type)) {
@@ -324,7 +457,7 @@ final class FsStatistics {
     }
 
     private String average() {
-      if (!numeric() || numericValues.isEmpty()) {
+      if (!numeric() || count == 0) {
         return null;
       }
       if (integer()) {
@@ -337,23 +470,17 @@ final class FsStatistics {
     }
 
     private String median() {
-      if (!numeric() || numericValues.isEmpty()) {
-        return null;
-      }
-      List<String> sorted = new ArrayList<>(numericValues);
-      Collections.sort(sorted, this::compare);
-      int middle = sorted.size() / 2;
-      if (sorted.size() % 2 != 0) {
-        return sorted.get(middle);
-      }
+      if (numericValues == null || count == 0) return null;
+      String[] middle = numericValues.middle();
+      if (count % 2 != 0) return middle[1];
       if (integer()) {
-        return new BigDecimal(sorted.get(middle))
-            .add(new BigDecimal(sorted.get(middle - 1)))
+        return new BigDecimal(middle[0])
+            .add(new BigDecimal(middle[1]))
             .divide(BigDecimal.valueOf(2))
             .stripTrailingZeros()
             .toPlainString();
       }
-      return floatingMidpoint(sorted.get(middle - 1), sorted.get(middle));
+      return floatingMidpoint(middle[0], middle[1]);
     }
 
     private static String floatingMidpoint(String left, String right) {

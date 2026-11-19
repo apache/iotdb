@@ -22,6 +22,7 @@ import org.apache.iotdb.cli.fs.command.ReadOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.sql.SqlExecutor.RowVisitor;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.i18n.FsReadMessages;
@@ -31,7 +32,9 @@ import org.apache.tsfile.read.common.parser.PathNodesGenerator;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -82,38 +85,54 @@ public final class FsRowReader {
     }
     List<FsColumn> schema = provider.columns(path);
     List<FsColumn> projected = selectColumns(schema, options.getColumns());
-    boolean filtered =
-        options.getStart() != null
-            || options.getEnd() != null
-            || !options.getTagFilters().isEmpty();
-    long requested =
-        options.getLimit() < 0 || filtered
-            ? -1
-            : Math.min(
-                Integer.MAX_VALUE,
-                options.getLimit() + Math.min(Integer.MAX_VALUE, options.getOffset()));
-    List<SqlRow> rows =
-        tail ? provider.tail(path, (int) requested) : provider.read(path, (int) requested);
-    return new Result(projected, filterRows(rows, schema, options, tail));
+    List<SqlRow> rows = new ArrayList<>();
+    scan(
+        input,
+        options,
+        tail,
+        row -> {
+          rows.add(row);
+          return true;
+        });
+    if (tail) Collections.reverse(rows);
+    return new Result(projected, rows);
   }
 
-  public static List<SqlRow> filterRows(
-      List<SqlRow> rows, List<FsColumn> schema, ReadOptions options) {
-    return filterRows(rows, schema, options, false);
+  /** Emits only the requested page, in scan order (descending for tail). */
+  public void scan(FsPath input, ReadOptions options, boolean tail, RowVisitor visitor)
+      throws SQLException {
+    FsPath path = scope(input, options);
+    if (path.isRoot()) throw invalid(FsReadMessages.INVALID_SCOPE, path);
+    List<FsColumn> schema = provider.columns(path);
+    selectColumns(schema, options.getColumns());
+    Predicate<SqlRow> predicate = predicate(schema, options);
+    if (options.getLimit() == 0) return;
+    long[] skipped = {0}, emitted = {0};
+    provider.scan(
+        path,
+        options,
+        tail,
+        row -> {
+          if (!predicate.test(row)) return true;
+          if (skipped[0] < options.getOffset()) {
+            skipped[0]++;
+            return true;
+          }
+          emitted[0]++;
+          return visitor.visit(row) && (options.getLimit() < 0 || emitted[0] < options.getLimit());
+        });
   }
 
-  private static List<SqlRow> filterRows(
-      List<SqlRow> rows, List<FsColumn> schema, ReadOptions options, boolean tail) {
+  public static Predicate<SqlRow> predicate(List<FsColumn> schema, ReadOptions options) {
     List<TagPredicate> predicates = new ArrayList<>();
     for (String filter : options.getTagFilters()) predicates.add(new TagPredicate(filter, schema));
-    List<SqlRow> matching = new ArrayList<>();
-    for (SqlRow row : rows) {
+    return row -> {
       if (options.getStart() != null || options.getEnd() != null) {
         String timestamp = FsRowRenderer.value(row, "time");
-        if (timestamp == null) continue;
+        if (timestamp == null) return false;
         long time = Long.parseLong(timestamp);
-        if (options.getStart() != null && time < options.getStart()) continue;
-        if (options.getEnd() != null && time > options.getEnd()) continue;
+        if (options.getStart() != null && time < options.getStart()) return false;
+        if (options.getEnd() != null && time > options.getEnd()) return false;
       }
       boolean any = "any".equals(options.getTagMatch());
       boolean match = !any || predicates.isEmpty();
@@ -121,16 +140,25 @@ public final class FsRowReader {
         if (any) match |= predicate.matches(row);
         else match &= predicate.matches(row);
       }
-      if (match) matching.add(row);
+      return match;
+    };
+  }
+
+  public static List<SqlRow> filterRows(
+      List<SqlRow> rows, List<FsColumn> schema, ReadOptions options) {
+    Predicate<SqlRow> predicate = predicate(schema, options);
+    List<SqlRow> result = new ArrayList<>();
+    long skipped = 0;
+    for (SqlRow row : rows) {
+      if (!predicate.test(row)) continue;
+      if (skipped < options.getOffset()) {
+        skipped++;
+        continue;
+      }
+      if (options.getLimit() >= 0 && result.size() >= options.getLimit()) break;
+      result.add(row);
     }
-    int offset = (int) Math.min(options.getOffset(), matching.size());
-    int from = tail ? 0 : offset;
-    int end = tail ? matching.size() - offset : matching.size();
-    if (options.getLimit() >= 0) {
-      if (tail) from = (int) Math.max(0, end - options.getLimit());
-      else end = (int) Math.min(end, (long) from + options.getLimit());
-    }
-    return new ArrayList<>(matching.subList(from, end));
+    return result;
   }
 
   public static void validateTextOptions(ReadOptions options) {
@@ -146,7 +174,7 @@ public final class FsRowReader {
     }
   }
 
-  private static List<FsColumn> selectColumns(List<FsColumn> schema, List<String> requested) {
+  public static List<FsColumn> selectColumns(List<FsColumn> schema, List<String> requested) {
     List<FsColumn> selected = new ArrayList<>();
     for (FsColumn column : schema) {
       if ("TIME".equalsIgnoreCase(column.getCategory())

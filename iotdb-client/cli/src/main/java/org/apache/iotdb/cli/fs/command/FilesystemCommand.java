@@ -525,6 +525,16 @@ public class FilesystemCommand {
     Long startValue = start == null ? null : Long.valueOf(start);
     Long endValue = end == null ? null : Long.valueOf(end);
     return new ReadOptions(
-        format, device, table, columns, limit, offset, startValue, endValue, tagFilters, tagMatch);
+            format,
+            device,
+            table,
+            columns,
+            limit,
+            offset,
+            startValue,
+            endValue,
+            tagFilters,
+            tagMatch)
+        .withStatistics(optionValue("--aggregates", ""), optionValue("--windows", ""));
   }
 }

@@ -154,7 +154,16 @@ public class FilesystemCommandParser {
         if (type == FilesystemCommand.Type.STATS && args.has("--aggregates")) {
           validateAggregates(args.value("--aggregates"));
         }
-        return withReadOptions(FilesystemCommand.path(type, args.path(false)), args, "-f");
+        FilesystemCommand metadata =
+            withReadOptions(FilesystemCommand.path(type, args.path(false)), args, "-f");
+        if (args.has("--windows")) {
+          String windows = args.value("--windows");
+          if (windows.isEmpty())
+            throw invalid(
+                CliMessages.EXCEPTION_ARG_UNEXPECTED_ARGUMENT_ARG_3EF9EC3F, "stats", windows);
+          metadata.getReadOptions().withStatistics("", windows);
+        }
+        return metadata;
       case SKETCH:
         if (args.has("--force") && !args.has("-o")) {
           throw invalid(CliMessages.EXCEPTION_ARG_MISSING_VALUE_FOR_ARG_695999CB, command, "-o");
@@ -470,7 +479,12 @@ public class FilesystemCommandParser {
               || "max".equals(aggregate)
               || "sum".equals(aggregate)
               || "avg".equals(aggregate)
-              || "median".equals(aggregate))
+              || "median".equals(aggregate)
+              || "first".equals(aggregate)
+              || "last".equals(aggregate)
+              || "min_time".equals(aggregate)
+              || "max_time".equals(aggregate)
+              || "null_count".equals(aggregate))
           || seen.contains(aggregate)) {
         throw invalid(CliMessages.EXCEPTION_ARG_UNEXPECTED_ARGUMENT_ARG_3EF9EC3F, "stats", value);
       }
@@ -743,7 +757,8 @@ public class FilesystemCommandParser {
               || "--end".equals(flag)
               || "--tag-filter".equals(flag)
               || "--tag-match".equals(flag)
-              || "--aggregates".equals(flag);
+              || "--aggregates".equals(flag)
+              || "--windows".equals(flag);
         case "sketch":
           return "-o".equals(flag) || "--output".equals(flag);
         case "export":

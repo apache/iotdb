@@ -24,6 +24,7 @@ import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.sql.SqlExecutor.RowVisitor;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 import org.apache.iotdb.cli.i18n.FsVirtualMessages;
 
@@ -79,6 +80,12 @@ public class VirtualDirectorySchemaProvider implements FilesystemSchemaProvider 
   @Override
   public List<SqlRow> stats(FsPath path, ReadOptions options) throws SQLException {
     return delegate.stats(canonicalPath(path), options);
+  }
+
+  @Override
+  public void scan(FsPath path, ReadOptions options, boolean descending, RowVisitor visitor)
+      throws SQLException {
+    delegate.scan(canonicalPath(path), options, descending, visitor);
   }
 
   @Override

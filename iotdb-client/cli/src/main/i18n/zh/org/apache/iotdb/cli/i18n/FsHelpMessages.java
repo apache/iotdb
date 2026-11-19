@@ -51,8 +51,10 @@ public final class FsHelpMessages {
   };
   public static final String[] META = {"输出可用数据库对象元数据；描述远端对象，不代表本地 TsFile。", CURRENT};
   public static final String[] STATS = {
-    "按设备输出类型相关的 FIELD 统计、TAG 值、真实空值数和非空时间范围；聚合前应用时间/TAG 过滤，stats_source 为 scan。",
-    "默认当前范围的全部 FIELD 和统计项；--aggregates 接受 count、min、max、sum、avg 和 median。BOOLEAN 的 sum 为 true 数量，非数值 avg/median 为 NULL；INT64 的 sum/avg/median 使用精确十进制字符串。"
+    "按设备输出类型相关的 FIELD 统计及真实空值数；聚合前应用时间/TAG 过滤。",
+    "--aggregates 接受 count,min,max,sum,avg,median,first,last,min_time,max_time,null_count；省略时返回全部统计，仅累积所选字段。min_time/max_time 为首末非空时间，不是极值所在时间。"
+    + " " + "--windows start:end,... 接受按输入顺序排列的 1..256 个 epoch 闭区间，可重叠或重复，与 --start/--end 互斥。每个设备/表只扫描一次合并后的区间并集，返回从零开始的 window_index、window_start、window_end；空 Tree 窗口保留零计数，空 Table 窗口无实体行。"
+    + " " + "标量统计流式计算；精确 median 使用有界缓冲和私有临时磁盘文件，完成或失败时清理。BOOLEAN sum 为 true 数量；INT64 sum/avg/median 保留精确十进制字符串。"
   };
   public static final String[] COUNT = {
     "输出 TAG 和 FIELD 的行数、设备数、非空数、空值数及时间范围；排除 TIME 和 ATTRIBUTE。",

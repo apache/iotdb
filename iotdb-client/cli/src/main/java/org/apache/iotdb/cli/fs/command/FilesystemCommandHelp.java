@@ -59,7 +59,7 @@ public final class FilesystemCommandHelp {
             + " "
             + FORMAT
             + " [--start time] [--end time] [--tag-filter tag op [value]]"
-            + " [--tag-match all|any] [--aggregates count,min,max,sum,avg,median] [path]",
+            + " [--tag-match all|any] [--aggregates count,min,max,sum,avg,median,first,last,min_time,max_time,null_count] [--windows start:end,...] [path]",
         FsHelpMessages.STATS,
         "stats /db1/table1.csv -m temperature --start 0 --end 1000 --aggregates avg,median");
     add(

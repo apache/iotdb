@@ -76,11 +76,10 @@ public final class FsHelpMessages {
     CURRENT
   };
   public static final String[] STATS = {
-    "Print typed FIELD statistics per device, with TAG values, real null counts and non-null time"
-        + " ranges; time/TAG filters are applied before aggregation and stats_source is scan.",
-    "Current scope; all FIELD columns and statistics. --aggregates accepts count, min, max, sum,"
-        + " avg and median. BOOLEAN sum counts true; non-numeric avg/median are NULL. INT64"
-        + " sum/avg/median use exact decimal strings."
+    "Print typed FIELD statistics per device with real null counts; time/TAG filters precede aggregation.",
+    "--aggregates accepts count,min,max,sum,avg,median,first,last,min_time,max_time,null_count. Omit for all. Only requested fields are accumulated. min_time/max_time are first/last non-null times, not argmin/argmax."
+    + " " + "--windows start:end,... accepts 1..256 inclusive epoch ranges in input order, including overlapping or duplicate windows; excludes --start/--end. One scan per device/table reads their merged union. Output adds zero-based window_index, window_start, window_end; empty Tree windows retain zero counts, empty Table windows have no entities."
+    + " " + "Scalar aggregates stream; exact median uses bounded buffers and private temporary disk runs cleaned on completion/failure. BOOLEAN sum counts true; INT64 sum/avg/median use exact decimal strings."
   };
   public static final String[] COUNT = {
     "Print row/entity/non-null/null counts and time ranges for TAG and FIELD columns. TIME and"

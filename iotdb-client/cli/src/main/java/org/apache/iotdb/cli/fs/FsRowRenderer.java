@@ -19,11 +19,22 @@
 package org.apache.iotdb.cli.fs;
 
 import org.apache.iotdb.cli.fs.node.FsColumn;
+import org.apache.iotdb.cli.fs.sql.SqlExecutor.RowVisitor;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -73,6 +84,96 @@ public final class FsRowRenderer {
       List<String> cells = new ArrayList<>();
       for (FsColumn column : columns) cells.add(value(row, column.getName()));
       out.print(tableLine(cells, widths) + "\n");
+    }
+  }
+
+  @FunctionalInterface
+  public interface RowSource {
+    void scan(RowVisitor visitor) throws SQLException;
+  }
+
+  /** Streams textual formats; exact table widths use a private disk spool, never a row list. */
+  public static void printStream(
+      PrintStream out, List<FsColumn> columns, String format, RowSource source)
+      throws SQLException {
+    if (!"table".equals(format)) {
+      print(out, columns, Collections.emptyList(), format);
+      source.scan(
+          row -> {
+            printRow(out, columns, row, format);
+            return !out.checkError();
+          });
+      return;
+    }
+    Path path = null;
+    try {
+      path = Files.createTempFile("iotdb-fs-table-", ".rows");
+      int[] widths = new int[columns.size()];
+      List<String> header = new ArrayList<>();
+      for (int i = 0; i < columns.size(); i++) {
+        header.add(columns.get(i).getName());
+        widths[i] = width(display(header.get(i)));
+      }
+      long[] count = {0};
+      try (DataOutputStream spool =
+          new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(path)))) {
+        source.scan(
+            row -> {
+              try {
+                for (int i = 0; i < columns.size(); i++) {
+                  String value = value(row, columns.get(i).getName());
+                  widths[i] = Math.max(widths[i], width(display(value)));
+                  if (value == null) spool.writeInt(-1);
+                  else {
+                    byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+                    spool.writeInt(bytes.length);
+                    spool.write(bytes);
+                  }
+                }
+                count[0]++;
+                return true;
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            });
+      }
+      if (!columns.isEmpty()) out.print(tableLine(header, widths) + "\n");
+      try (DataInputStream spool =
+          new DataInputStream(new BufferedInputStream(Files.newInputStream(path)))) {
+        for (long i = 0; i < count[0] && !out.checkError(); i++) {
+          List<String> cells = new ArrayList<>();
+          for (int j = 0; j < columns.size(); j++) {
+            int length = spool.readInt();
+            if (length < 0) cells.add(null);
+            else {
+              byte[] bytes = new byte[length];
+              spool.readFully(bytes);
+              cells.add(new String(bytes, StandardCharsets.UTF_8));
+            }
+          }
+          out.print(tableLine(cells, widths) + "\n");
+        }
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    } finally {
+      if (path != null) {
+        try {
+          Files.deleteIfExists(path);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+      }
+    }
+  }
+
+  public static void printRow(PrintStream out, List<FsColumn> columns, SqlRow row, String format) {
+    if ("csv".equals(format)) {
+      List<String> cells = new ArrayList<>();
+      for (FsColumn column : columns) cells.add(csvValue(value(row, column.getName())));
+      out.print(String.join(",", cells) + "\n");
+    } else {
+      print(out, columns, Collections.singletonList(row), format);
     }
   }
 

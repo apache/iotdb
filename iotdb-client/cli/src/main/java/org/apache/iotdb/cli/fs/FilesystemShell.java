@@ -483,8 +483,15 @@ public class FilesystemShell {
       ctx.getOut().write(bytes, start, end - start);
       return;
     }
-    FsRowReader.Result result = new FsRowReader(provider).read(resolvedPath, options, false);
-    FsRowRenderer.print(ctx.getOut(), result.getColumns(), result.getRows(), options.getFormat());
+    FsRowReader reader = new FsRowReader(provider);
+    List<FsColumn> columns =
+        FsRowReader.selectColumns(
+            provider.columns(reader.scope(resolvedPath, options)), options.getColumns());
+    FsRowRenderer.printStream(
+        ctx.getOut(),
+        columns,
+        options.getFormat(),
+        visitor -> reader.scan(resolvedPath, options, false, visitor));
   }
 
   private static int skipLines(byte[] bytes, int start, long count) {
@@ -800,6 +807,8 @@ public class FilesystemShell {
                 "time_source"));
         break;
       case STATS:
+        if (command.hasOption("--windows"))
+          names.addAll(Arrays.asList("window_index", "window_start", "window_end"));
         names.add("model");
         names.add("object");
         for (FsColumn column : provider.columns(path)) {
@@ -843,6 +852,7 @@ public class FilesystemShell {
         if ("model".equals(name)
             || "object".equals(name)
             || name.startsWith("tag.")
+            || name.startsWith("window_")
             || "field".equals(name)
             || "data_type".equals(name)) {
           cells.put(name, row.get(name));

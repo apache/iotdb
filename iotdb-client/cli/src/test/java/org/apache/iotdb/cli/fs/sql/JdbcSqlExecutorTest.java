@@ -113,4 +113,41 @@ public class JdbcSqlExecutorTest {
     assertEquals(0, executor.executeQueryOrUpdate("CREATE DATABASE db2").size());
     verify(statement).execute("CREATE DATABASE db2");
   }
+
+  @Test
+  public void streamingStopsAndClosesAtConsumerBoundary() throws Exception {
+    when(connection.createStatement()).thenReturn(statement);
+    when(statement.executeQuery("scan")).thenReturn(resultSet);
+    when(resultSet.getMetaData()).thenReturn(metaData);
+    when(metaData.getColumnCount()).thenReturn(1);
+    when(metaData.getColumnLabel(1)).thenReturn("x");
+    when(resultSet.next()).thenReturn(true);
+    when(resultSet.getString(1)).thenReturn("1");
+    new JdbcSqlExecutor(connection).scan("scan", row -> false);
+    verify(resultSet).next();
+    verify(statement).setFetchSize(1024);
+    verify(resultSet).close();
+    verify(statement).close();
+  }
+
+  @Test
+  public void streamingClosesWhenConsumerFails() throws Exception {
+    when(connection.createStatement()).thenReturn(statement);
+    when(statement.executeQuery("scan")).thenReturn(resultSet);
+    when(resultSet.getMetaData()).thenReturn(metaData);
+    when(metaData.getColumnCount()).thenReturn(0);
+    when(resultSet.next()).thenReturn(true);
+    try {
+      new JdbcSqlExecutor(connection)
+          .scan(
+              "scan",
+              row -> {
+                throw new java.sql.SQLException();
+              });
+      org.junit.Assert.fail();
+    } catch (java.sql.SQLException expected) {
+      verify(resultSet).close();
+      verify(statement).close();
+    }
+  }
 }

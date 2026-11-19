@@ -26,6 +26,18 @@ public interface SqlExecutor {
 
   List<SqlRow> query(String sql) throws SQLException;
 
+  /** Streams rows until the visitor returns false; implementations must close on early stop. */
+  default void scan(String sql, RowVisitor visitor) throws SQLException {
+    for (SqlRow row : query(sql)) {
+      if (!visitor.visit(row)) break;
+    }
+  }
+
+  @FunctionalInterface
+  interface RowVisitor {
+    boolean visit(SqlRow row) throws SQLException;
+  }
+
   void execute(String sql) throws SQLException;
 
   default List<SqlRow> executeQueryOrUpdate(String sql) throws SQLException {

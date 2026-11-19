@@ -55,6 +55,11 @@ public class FsLocalCommandsTest {
   private final FilesystemSchemaProvider provider = mock(FilesystemSchemaProvider.class);
   private final FsLocalCommands local = new FsLocalCommands(new PrintStream(output), provider);
 
+  @org.junit.Before
+  public void installScan() throws Exception {
+    BufferedScanFixture.install(provider);
+  }
+
   @Test
   public void sketchMatchesTsFileMarkersAndModelFromActualFile() throws Exception {
     Path table = createTable();

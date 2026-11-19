@@ -77,8 +77,9 @@ public class FilesystemShellTest {
   private FilesystemShell shell;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
+    BufferedScanFixture.install(provider);
     out = new ByteArrayOutputStream();
     err = new ByteArrayOutputStream();
     CliContext ctx =

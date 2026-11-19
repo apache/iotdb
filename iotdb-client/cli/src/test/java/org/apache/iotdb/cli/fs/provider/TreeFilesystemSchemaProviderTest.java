@@ -45,8 +45,18 @@ public class TreeFilesystemSchemaProviderTest {
   private TreeFilesystemSchemaProvider provider;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
+    org.mockito.Mockito.doAnswer(
+            invocation -> {
+              org.apache.iotdb.cli.fs.sql.SqlExecutor.RowVisitor visitor =
+                  invocation.getArgument(1);
+              for (SqlRow row : executor.query(invocation.getArgument(0)))
+                if (!visitor.visit(row)) break;
+              return null;
+            })
+        .when(executor)
+        .scan(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
     provider = new TreeFilesystemSchemaProvider(executor);
   }
 

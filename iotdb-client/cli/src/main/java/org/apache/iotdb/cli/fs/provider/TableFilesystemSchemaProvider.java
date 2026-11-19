@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cli.fs.provider;
 
-import org.apache.iotdb.cli.fs.FsRowReader;
 import org.apache.iotdb.cli.fs.FsRowRenderer;
 import org.apache.iotdb.cli.fs.command.ReadOptions;
 import org.apache.iotdb.cli.fs.node.FsColumn;
@@ -27,6 +26,7 @@ import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
 import org.apache.iotdb.cli.fs.path.FsPath;
 import org.apache.iotdb.cli.fs.sql.SqlExecutor;
+import org.apache.iotdb.cli.fs.sql.SqlExecutor.RowVisitor;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 
 import java.sql.SQLException;
@@ -161,24 +161,32 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
 
   @Override
   public List<SqlRow> stats(FsPath path) throws SQLException {
-    TableFileRef file = tableFile(path);
-    List<FsColumn> columns = columns(file);
-    return FsStatistics.stats(model(), file.table, columns, read(file, columns, -1, false));
+    return stats(path, ReadOptions.defaults());
   }
 
   @Override
   public List<SqlRow> stats(FsPath path, ReadOptions options) throws SQLException {
     TableFileRef file = tableFile(path);
-    List<FsColumn> columns = columns(file);
-    List<SqlRow> rows = new FsRowReader(this).read(path, options, false).getRows();
-    return FsStatistics.stats(model(), file.table, columns, rows);
+    return FsStatistics.scan(
+        model(),
+        file.table,
+        columns(file),
+        options,
+        false,
+        visitor -> scan(path, options, false, visitor));
   }
 
   @Override
   public List<SqlRow> countRows(FsPath path) throws SQLException {
     TableFileRef file = tableFile(path);
-    List<FsColumn> columns = columns(file);
-    return FsStatistics.count(model(), file.table, columns, read(file, columns, -1, false));
+    ReadOptions options = ReadOptions.defaults();
+    return FsStatistics.scan(
+        model(),
+        file.table,
+        columns(file),
+        options,
+        true,
+        visitor -> scan(path, options, false, visitor));
   }
 
   private TableFileRef tableFile(FsPath path) throws SQLException {
@@ -199,6 +207,24 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
   public List<SqlRow> read(FsPath path, int limit) throws SQLException {
     TableFileRef file = tableFile(path);
     return read(file, columns(file), limit, false);
+  }
+
+  @Override
+  public void scan(FsPath path, ReadOptions options, boolean descending, RowVisitor visitor)
+      throws SQLException {
+    TableFileRef file = tableFile(path);
+    String direction = descending ? " DESC" : " ASC";
+    StringBuilder order = new StringBuilder(" ORDER BY time").append(direction);
+    for (FsColumn column : columns(file)) {
+      if ("TAG".equals(column.getCategory())) {
+        order
+            .append(", ")
+            .append(TableFilesystemSql.identifier(column.getName()))
+            .append(direction)
+            .append(descending ? " NULLS FIRST" : " NULLS LAST");
+      }
+    }
+    executor.scan("SELECT * FROM " + file.toTablePath() + options.timePredicate() + order, visitor);
   }
 
   private List<SqlRow> read(
