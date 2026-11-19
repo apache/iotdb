@@ -1746,6 +1746,42 @@ public class IoTDBAuthIT {
   }
 
   @Test
+  public void testAccountUnlockPermission() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER unlock_user 'abcdef123456'");
+      String[] unlockStatements = {
+        "ALTER USER unlock_user ACCOUNT UNLOCK",
+        "ALTER USER root ACCOUNT UNLOCK",
+        "ALTER USER unlock_user @ '127.0.0.1' ACCOUNT UNLOCK"
+      };
+      try (Connection userCon = EnvFactory.getEnv().getConnection("unlock_user", "abcdef123456");
+          Statement userStmt = userCon.createStatement()) {
+        for (String sql : unlockStatements) {
+          SQLException exception =
+              Assert.assertThrows(SQLException.class, () -> userStmt.execute(sql));
+          assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), exception.getErrorCode());
+          assertTrue(exception.getMessage(), exception.getMessage().contains("SECURITY"));
+          adminStmt.execute(sql);
+        }
+
+        adminStmt.execute("GRANT SECURITY ON root.** TO USER unlock_user");
+        for (String sql : unlockStatements) {
+          userStmt.execute(sql);
+        }
+
+        adminStmt.execute("REVOKE SECURITY ON root.** FROM USER unlock_user");
+        for (String sql : unlockStatements) {
+          SQLException exception =
+              Assert.assertThrows(SQLException.class, () -> userStmt.execute(sql));
+          assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), exception.getErrorCode());
+          assertTrue(exception.getMessage(), exception.getMessage().contains("SECURITY"));
+        }
+      }
+    }
+  }
+
+  @Test
   public void testAudit() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

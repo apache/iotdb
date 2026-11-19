@@ -77,6 +77,9 @@ public final class UtilMessages {
       "创建硬链接 %s 失败（源文件 %s）：无法创建父目录 %s";
   public static final String FAILED_TO_COPY_FILE_PARENT_DIR =
       "复制文件 %s 到 %s 失败：无法创建父目录 %s";
+  public static final String
+      LOG_FAILED_TO_CREATE_THE_HARDLINK_OF_THE_FILE_ARG_TO_ARG_FALLING_BACK_TO_COPYING_THE_FILE_89FED96B =
+          "为文件 {} 创建到 {} 的硬链接失败，改为拷贝该文件";
   public static final String DELETED_DUPLICATE_FILE =
       "已删除文件 {}，因为目标目录 {} 中已存在同名文件";
   public static final String FAILED_TO_CREATE_TARGET_DIRECTORY =

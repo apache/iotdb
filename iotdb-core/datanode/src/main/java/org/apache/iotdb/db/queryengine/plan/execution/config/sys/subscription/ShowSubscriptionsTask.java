@@ -141,6 +141,12 @@ public class ShowSubscriptionsTask implements IConfigTask {
           progressInfo.isSetReadyOnDns()
               ? progressInfo.getReadyOnDns().toString()
               : Collections.emptyList().toString());
+      writeText(
+          builder,
+          21,
+          progressInfo.isSetQueuesBoundOnDns()
+              ? progressInfo.getQueuesBoundOnDns().toString()
+              : Collections.emptyList().toString());
       builder.declarePosition();
     }
 

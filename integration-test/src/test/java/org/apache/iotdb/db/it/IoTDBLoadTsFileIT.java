@@ -75,6 +75,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -627,6 +628,39 @@ public class IoTDBLoadTsFileIT {
         } else {
           Assert.fail("This ResultSet is empty.");
         }
+      }
+    }
+  }
+
+  @Test
+  public void testLoadWithCompatibleDataType() throws Exception {
+    registerSchema();
+
+    final String device = "root.sg.test_0.compatible_type";
+    final MeasurementSchema fileSchema = new MeasurementSchema("s", TSDataType.INT32);
+    final MeasurementSchema targetSchema = new MeasurementSchema("s", TSDataType.INT64);
+    final long seed = 42L;
+    final long expectedValue = new Random(seed).nextInt();
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    try (final TsFileGenerator generator = new TsFileGenerator(file)) {
+      generator.registerTimeseries(device, Collections.singletonList(fileSchema));
+      generator.resetRandom(seed);
+      generator.generateData(device, 1, 1000L, false);
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(convert2SQL(device, targetSchema));
+      statement.execute(
+          String.format(
+              "load \"%s\" with ('tablet-conversion-threshold'='-1')", file.getAbsolutePath()));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("select s from %s where time=1000", device))) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(expectedValue, resultSet.getLong(2));
+        Assert.assertFalse(resultSet.next());
       }
     }
   }

@@ -209,6 +209,8 @@ public class PipeSinkConstant {
   public static final String SINK_AIR_GAP_UDP_PACKET_SIZE_KEY =
       "sink.air-gap.udp.packet-size-bytes";
   public static final int CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_DEFAULT_VALUE = 60 * 1024;
+  // Leave room for IP/UDP headers and common encapsulation on a 1500-byte MTU link.
+  public static final int CONNECTOR_AIR_GAP_STRICT_UDP_PACKET_SIZE_DEFAULT_VALUE = 1400;
   public static final int CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MIN_VALUE = 1024;
   public static final int CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_MAX_VALUE = 65_507;
   public static final String CONNECTOR_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY =

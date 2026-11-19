@@ -130,6 +130,7 @@ public class SessionConnection {
   private int timeFactor = 1_000;
 
   private boolean supportsDatabaseScopedTablet;
+  private volatile boolean forceClosed;
 
   // TestOnly
   public SessionConnection(String sqlDialect) {
@@ -361,6 +362,7 @@ public class SessionConnection {
   }
 
   protected void forceCloseTransport() {
+    forceClosed = true;
     if (transport == null) {
       return;
     }
@@ -958,6 +960,11 @@ public class SessionConnection {
     TSStatus status = null;
     int i;
     for (i = 0; i <= maxRetryCount; i++) {
+      if (forceClosed) {
+        status = null;
+        lastTException = new TException(SessionMessages.SESSION_NOT_OPEN);
+        break;
+      }
       if (i > 0) {
         // re-init the TException and TSStatus
         lastTException = null;
@@ -989,6 +996,11 @@ public class SessionConnection {
       } catch (TException e) {
         // all network exception need retry until reaching maxRetryCount
         lastTException = e;
+      }
+      if (forceClosed) {
+        status = null;
+        lastTException = new TException(SessionMessages.SESSION_NOT_OPEN);
+        break;
       }
     }
 
@@ -1030,6 +1042,9 @@ public class SessionConnection {
     int retryAttempt;
     int maxRetryCountRead = 10;
     for (retryAttempt = 0; retryAttempt <= maxRetryCountRead; retryAttempt++) {
+      if (forceClosed) {
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+      }
       // 1. try to execute the rpc
       try {
         result = rpc.run();
@@ -1037,6 +1052,10 @@ public class SessionConnection {
       } catch (TException e) {
         result = null;
         lastTException = e;
+      }
+
+      if (forceClosed) {
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
       }
 
       // success, return immediately
@@ -1160,9 +1179,15 @@ public class SessionConnection {
     "squid:S3776"
   }) // ignore Cognitive Complexity of methods should not be too high
   private boolean reconnect() {
+    if (forceClosed) {
+      return false;
+    }
     boolean connectedSuccess = false;
     SecureRandom random = new SecureRandom();
     for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
+      if (forceClosed) {
+        return false;
+      }
       if (transport != null) {
         transport.close();
         List<TEndPoint> discoveredNodes = availableNodes.get();
@@ -1180,6 +1205,9 @@ public class SessionConnection {
         // Try every discovered endpoint before falling back to seeds, once per endpoint per round.
         endPointList = new ArrayList<>(new LinkedHashSet<>(endPointList));
         for (TEndPoint candidate : endPointList) {
+          if (forceClosed) {
+            return false;
+          }
           this.endPoint = candidate;
           try {
             init(
@@ -1190,6 +1218,10 @@ public class SessionConnection {
                 session.keyStore,
                 session.keyStorePwd,
                 session.sslProtocol);
+            if (forceClosed) {
+              forceCloseTransport();
+              return false;
+            }
             connectedSuccess = true;
             if (!discoveredNodes.contains(endPoint) && availableNodes instanceof INodeSupplier) {
               ((INodeSupplier) availableNodes).requestRefresh();
@@ -1204,6 +1236,10 @@ public class SessionConnection {
         }
       }
       if (connectedSuccess) {
+        if (forceClosed) {
+          forceCloseTransport();
+          return false;
+        }
         // remove the broken end point
         session.removeBrokenSessionConnection(this);
         session.defaultEndPoint = this.endPoint;

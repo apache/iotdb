@@ -270,7 +270,7 @@ public class ConsensusPrefetchingQueue {
 
   private volatile int preferredWriterNodeId = -1;
 
-  private volatile int previousPreferredWriterNodeId = -1;
+  private final Set<Integer> handoffWriterNodeIds = new LinkedHashSet<>();
 
   // ======================== Routing Runtime Version ========================
 
@@ -327,6 +327,8 @@ public class ConsensusPrefetchingQueue {
   private volatile PendingSeekRequest pendingSeekRequest;
 
   private final Object runtimeActivationLock = new Object();
+
+  private final Object runtimeWriterStateLock = new Object();
 
   /** Active runtime state waiting for an explicitly available ConfigNode frontier. */
   private volatile ConsensusRegionRuntimeState pendingActivationRuntimeState;
@@ -2067,6 +2069,7 @@ public class ConsensusPrefetchingQueue {
       final int batchMaxDelayMs,
       final ProgressWALIterator.ScanBudget walScanBudget)
       throws IOException {
+    final Set<Integer> replayActiveWriterNodeIds = activeWriterNodeIds;
     if (orderedReplayStartSearchIndex == Long.MIN_VALUE) {
       orderedReplayStartSearchIndex = nextExpectedSearchIndex.get();
       if (!lingerBatch.isEmpty()) {
@@ -2089,7 +2092,9 @@ public class ConsensusPrefetchingQueue {
     }
     final Map<Integer, SafeFrontier> safeFrontiers =
         serverImpl.getWriterSafeFrontierTracker().snapshotSafeFrontiers();
-    activeWriterNodeIds.forEach(this::getOrCreateWriterReplay);
+    for (final int writerNodeId : replayActiveWriterNodeIds) {
+      getOrCreateWriterReplay(writerNodeId).wasRuntimeActive = true;
+    }
     safeFrontiers.keySet().forEach(this::getOrCreateWriterReplay);
     recoveryWriterProgressByWriter.keySet().forEach(id -> getOrCreateWriterReplay(id.getNodeId()));
     realtimeEntriesByWriter.keySet().forEach(this::getOrCreateWriterReplay);
@@ -2124,6 +2129,9 @@ public class ConsensusPrefetchingQueue {
       if (orderedWriterReplay.size() != writerCount && remainingEntryBudget[0] > 0) {
         continue;
       }
+      if (replayActiveWriterNodeIds != activeWriterNodeIds) {
+        return PrefetchRoundResult.rescheduleNow();
+      }
 
       final PriorityQueue<WriterFrontier> frontiers = new PriorityQueue<>();
       for (final Map.Entry<Integer, WriterReplayState> writer : orderedWriterReplay.entrySet()) {
@@ -2139,10 +2147,17 @@ public class ConsensusPrefetchingQueue {
                   writerNodeId,
                   new OrderingKey(head.getPhysicalTime(), writerNodeId, head.getProgressLocalSeq()),
                   false));
-        } else if (isWriterRuntimeActive(writerNodeId) || !state.caughtUp) {
+        } else {
           final SafeFrontier safe = safeFrontiers.get(writerNodeId);
+          final boolean hasUnreadAppliedProgress =
+              Objects.nonNull(safe) && state.consumedLocalSeq < safe.getLocalSeq();
+          if (!isWriterRuntimeActive(replayActiveWriterNodeIds, writerNodeId)
+              && state.caughtUp
+              && !(state.wasRuntimeActive && hasUnreadAppliedProgress)) {
+            continue;
+          }
           final long safePt =
-              Objects.nonNull(safe) && state.consumedLocalSeq >= safe.getLocalSeq()
+              Objects.nonNull(safe) && safe.getPhysicalTime() > 0 && !hasUnreadAppliedProgress
                   ? safe.getPhysicalTime()
                   : Long.MIN_VALUE;
           frontiers.add(WriterFrontier.forBarrier(writerNodeId, safePt));
@@ -2422,6 +2437,7 @@ public class ConsensusPrefetchingQueue {
     private IndexedConsensusRequest head;
     private boolean fromPending;
     private boolean caughtUp;
+    private boolean wasRuntimeActive;
 
     private WriterReplayState(final ProgressWALIterator iterator, final long consumedLocalSeq) {
       this.iterator = iterator;
@@ -3758,10 +3774,10 @@ public class ConsensusPrefetchingQueue {
       }
 
       final SubscriptionEvent event = outstandingEventsByCommitContext.get(commitContext);
-      // A recycled event may already have been claimed by another consumer. Only an event that is
-      // still queued can be committed by the previous consumer's late ACK.
+      // A recycled event may already have been claimed by another consumer. Accept the late ACK as
+      // a no-op and leave the event for its current owner to commit.
       if (Objects.nonNull(event) && !prefetchingQueue.remove(event)) {
-        return false;
+        return true;
       }
 
       final WriterId commitWriterId = extractCommitWriterId(commitContext);
@@ -4292,7 +4308,7 @@ public class ConsensusPrefetchingQueue {
             }
             ev.nack();
             nacked.set(true);
-            if (ev.isPoisoned()) {
+            if (ev.isPoisoned() && commitPoisonedEvent(ev)) {
               LOGGER.error(
                   DataNodePipeMessages
                       .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_NACKCOUNT_3A9255FB,
@@ -4330,7 +4346,7 @@ public class ConsensusPrefetchingQueue {
 
           ev.nack();
           nacked.set(true);
-          if (ev.isPoisoned()) {
+          if (ev.isPoisoned() && commitPoisonedEvent(ev)) {
             LOGGER.error(
                 DataNodePipeMessages
                     .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_NACKCOUNT_3A9255FB,
@@ -4351,6 +4367,15 @@ public class ConsensusPrefetchingQueue {
 
   // ======================== Recycle ========================
 
+  private boolean commitPoisonedEvent(final SubscriptionEvent event) {
+    // Forced ACKs must consume the outstanding mapping before discarding the event. Otherwise,
+    // later ACKs stay behind a gap that can no longer be redelivered. A failed commit leaves the
+    // event queued for retry, just as an ordinary ACK keeps its in-flight event on failure.
+    return commitAndRefreshWalRetention(
+        extractCommitWriterId(event.getCommitContext()),
+        extractCommitWriterProgress(event.getCommitContext()));
+  }
+
   /** Recycles in-flight events that are pollable (timed out) back to the prefetching queue. */
   private void recycleInFlightEvents() {
     for (final InFlightEventKey key : new ArrayList<>(inFlightEvents.keySet())) {
@@ -4366,7 +4391,7 @@ public class ConsensusPrefetchingQueue {
             }
             if (ev.pollable(getRecycleUncommittedEventIntervalMs())) {
               ev.nack();
-              if (ev.isPoisoned()) {
+              if (ev.isPoisoned() && commitPoisonedEvent(ev)) {
                 LOGGER.error(
                     DataNodePipeMessages
                         .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_DURING_23159F02,
@@ -5684,6 +5709,10 @@ public class ConsensusPrefetchingQueue {
     return isActive ? 1L : 0L;
   }
 
+  public long getActiveWriterCount() {
+    return activeWriterNodeIds.size();
+  }
+
   public long getInitializedStatus() {
     return prefetchInitialized ? 1L : 0L;
   }
@@ -5805,10 +5834,12 @@ public class ConsensusPrefetchingQueue {
   }
 
   public void setActiveWriterNodeIds(final Set<Integer> activeWriterNodeIds) {
-    this.runtimeActiveWriterNodeIds =
-        Collections.unmodifiableSet(
-            new LinkedHashSet<>(Objects.requireNonNull(activeWriterNodeIds)));
-    refreshEffectiveActiveWriterNodeIds();
+    synchronized (runtimeWriterStateLock) {
+      updateRuntimeActiveWritersUnderLock(
+          Collections.unmodifiableSet(
+              new LinkedHashSet<>(Objects.requireNonNull(activeWriterNodeIds))));
+      refreshEffectiveActiveWriterNodeIds();
+    }
     LOGGER.info(
         DataNodePipeMessages
             .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_RUNTIMEACTIVEWRITERNODEIDS_EFFECTIVEACTIVEWRITERNODEIDS_246519D2,
@@ -5819,6 +5850,11 @@ public class ConsensusPrefetchingQueue {
         orderMode,
         preferredWriterNodeId);
     requestPrefetch();
+  }
+
+  private void updateRuntimeActiveWritersUnderLock(final Set<Integer> writerNodeIds) {
+    runtimeActiveWriterNodeIds = writerNodeIds;
+    handoffWriterNodeIds.retainAll(writerNodeIds);
   }
 
   private void refreshEffectiveActiveWriterNodeIds() {
@@ -5840,24 +5876,23 @@ public class ConsensusPrefetchingQueue {
         if (preferredWriterNodeId >= 0) {
           effectiveWriterNodeIds.add(preferredWriterNodeId);
         }
-        if (previousPreferredWriterNodeId >= 0
-            && previousPreferredWriterNodeId != preferredWriterNodeId
-            && runtimeActiveWriterNodeIds.contains(previousPreferredWriterNodeId)) {
-          effectiveWriterNodeIds.add(previousPreferredWriterNodeId);
+        for (final int writerNodeId : handoffWriterNodeIds) {
+          if (runtimeActiveWriterNodeIds.contains(writerNodeId)) {
+            effectiveWriterNodeIds.add(writerNodeId);
+          }
         }
         break;
     }
-    this.activeWriterNodeIds = Collections.unmodifiableSet(effectiveWriterNodeIds);
+    if (!activeWriterNodeIds.equals(effectiveWriterNodeIds)) {
+      this.activeWriterNodeIds = Collections.unmodifiableSet(effectiveWriterNodeIds);
+    }
   }
 
   public void setPreferredWriterNodeId(final int preferredWriterNodeId) {
-    if (this.preferredWriterNodeId != preferredWriterNodeId) {
-      previousPreferredWriterNodeId = this.preferredWriterNodeId;
-    } else {
-      previousPreferredWriterNodeId = -1;
+    synchronized (runtimeWriterStateLock) {
+      updatePreferredWriterUnderLock(preferredWriterNodeId);
+      refreshEffectiveActiveWriterNodeIds();
     }
-    this.preferredWriterNodeId = preferredWriterNodeId;
-    refreshEffectiveActiveWriterNodeIds();
     LOGGER.info(
         DataNodePipeMessages
             .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFERREDWRITERNODEID_SET_TO_EFFECTIVEACTIVEWRITERNODEIDS_B08E8180,
@@ -5869,17 +5904,29 @@ public class ConsensusPrefetchingQueue {
     requestPrefetch();
   }
 
+  private void updatePreferredWriterUnderLock(final int writerNodeId) {
+    if (preferredWriterNodeId != writerNodeId) {
+      if (preferredWriterNodeId >= 0) {
+        handoffWriterNodeIds.add(preferredWriterNodeId);
+      }
+      handoffWriterNodeIds.remove(writerNodeId);
+      preferredWriterNodeId = writerNodeId;
+    }
+  }
+
   public Set<Integer> getActiveWriterNodeIds() {
     return activeWriterNodeIds;
   }
 
   public void setOrderMode(final String orderMode) {
     final String normalizedOrderMode = TopicConfig.normalizeOrderMode(orderMode);
-    if (Objects.equals(this.orderMode, normalizedOrderMode)) {
-      return;
+    synchronized (runtimeWriterStateLock) {
+      if (Objects.equals(this.orderMode, normalizedOrderMode)) {
+        return;
+      }
+      this.orderMode = normalizedOrderMode;
+      refreshEffectiveActiveWriterNodeIds();
     }
-    this.orderMode = normalizedOrderMode;
-    refreshEffectiveActiveWriterNodeIds();
     LOGGER.info(
         DataNodePipeMessages
             .PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ORDERMODE_SET_TO_EFFECTIVEACTIVEWRITERNODEIDS_CDD3C86E,
@@ -5897,7 +5944,11 @@ public class ConsensusPrefetchingQueue {
   }
 
   private boolean isWriterRuntimeActive(final int writerNodeId) {
-    final Set<Integer> writerNodeIds = activeWriterNodeIds;
+    return isWriterRuntimeActive(activeWriterNodeIds, writerNodeId);
+  }
+
+  private static boolean isWriterRuntimeActive(
+      final Set<Integer> writerNodeIds, final int writerNodeId) {
     return writerNodeIds.isEmpty() || writerNodeIds.contains(writerNodeId);
   }
 
@@ -5917,8 +5968,11 @@ public class ConsensusPrefetchingQueue {
           DataNodePipeMessages.PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_APPLIED_RUNTIMEVERSION_36E05B80,
           this,
           runtimeState.getRuntimeVersion());
-      setPreferredWriterNodeId(runtimeState.getPreferredWriterNodeId());
-      setActiveWriterNodeIds(runtimeState.getActiveWriterNodeIds());
+      synchronized (runtimeWriterStateLock) {
+        updatePreferredWriterUnderLock(runtimeState.getPreferredWriterNodeId());
+        updateRuntimeActiveWritersUnderLock(runtimeState.getActiveWriterNodeIds());
+        refreshEffectiveActiveWriterNodeIds();
+      }
       // "active" decides whether this replica should serve subscription traffic on the current
       // node.
       // In multi-writer mode, activeWriterNodeIds may intentionally include follower replicas for
@@ -5928,7 +5982,9 @@ public class ConsensusPrefetchingQueue {
         pendingActivationRuntimeState = null;
       }
       if (requiresAuthoritativeActivation) {
-        tryActivatePendingRuntimeState();
+        if (!tryActivatePendingRuntimeState()) {
+          requestPrefetch();
+        }
       } else {
         setActive(runtimeState.isActive() && Objects.isNull(pendingActivationRuntimeState));
       }

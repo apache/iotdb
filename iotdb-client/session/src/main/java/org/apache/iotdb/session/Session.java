@@ -162,6 +162,7 @@ public class Session implements ISession {
   protected TEndPoint defaultEndPoint;
   protected SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
+  private volatile boolean closing;
 
   // this field only take effect in write request, nothing to do with any other type requests,
   // like query, load and so on.
@@ -571,6 +572,7 @@ public class Session implements ISession {
     }
 
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    closing = false;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
     isClosed = false;
@@ -653,6 +655,7 @@ public class Session implements ISession {
     this.availableNodes = nodesSupplier;
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    closing = false;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
     isClosed = false;
@@ -701,6 +704,7 @@ public class Session implements ISession {
     this.availableNodes = nodesSupplier;
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    closing = false;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
     isClosed = false;
@@ -714,33 +718,16 @@ public class Session implements ISession {
 
   @Override
   public synchronized void close() throws IoTDBConnectionException {
+    closing = true;
     Throwable closeException = null;
     try {
       if (isClosed) {
         return;
       }
 
-      Set<SessionConnection> closedConnections = Collections.newSetFromMap(new IdentityHashMap<>());
-      if (endPointToSessionConnection != null) {
-        for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
-          if (sessionConnection != null && closedConnections.add(sessionConnection)) {
-            try {
-              sessionConnection.close();
-            } catch (IoTDBConnectionException | RuntimeException e) {
-              if (closeException == null) {
-                closeException = e;
-              } else if (closeException != e) {
-                closeException.addSuppressed(e);
-              }
-            }
-          }
-        }
-      }
-
-      SessionConnection defaultSessionConnection = getDefaultSessionConnection();
-      if (defaultSessionConnection != null && closedConnections.add(defaultSessionConnection)) {
+      for (SessionConnection sessionConnection : getSessionConnections()) {
         try {
-          defaultSessionConnection.close();
+          sessionConnection.close();
         } catch (IoTDBConnectionException | RuntimeException e) {
           if (closeException == null) {
             closeException = e;
@@ -750,23 +737,7 @@ public class Session implements ISession {
         }
       }
     } finally {
-      if (!isClosed) {
-        if (endPointToSessionConnection != null) {
-          endPointToSessionConnection.clear();
-        }
-        setDefaultSessionConnection(null);
-      }
-      // if executorService is null, it means that availableNodes is got from SessionPool and we
-      // shouldn't clean that
-      if (this.executorService != null) {
-        this.executorService.shutdown();
-        this.executorService = null;
-        if (!this.availableNodes.isCallerManaged()) {
-          this.availableNodes.close();
-        }
-        this.availableNodes = null;
-      }
-      isClosed = true;
+      finishClose();
     }
 
     if (closeException instanceof IoTDBConnectionException) {
@@ -774,6 +745,58 @@ public class Session implements ISession {
     }
     if (closeException instanceof RuntimeException) {
       throw (RuntimeException) closeException;
+    }
+  }
+
+  /** Closes the underlying transports without waiting for a close-session RPC. */
+  public synchronized void forceClose() {
+    closing = true;
+    if (isClosed) {
+      return;
+    }
+    try {
+      for (SessionConnection sessionConnection : getSessionConnections()) {
+        sessionConnection.forceCloseTransport();
+      }
+    } finally {
+      finishClose();
+    }
+  }
+
+  private List<SessionConnection> getSessionConnections() {
+    List<SessionConnection> connections = new ArrayList<>();
+    Set<SessionConnection> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+    if (endPointToSessionConnection != null) {
+      for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
+        if (sessionConnection != null && seen.add(sessionConnection)) {
+          connections.add(sessionConnection);
+        }
+      }
+    }
+    if (defaultSessionConnection != null && seen.add(defaultSessionConnection)) {
+      connections.add(defaultSessionConnection);
+    }
+    return connections;
+  }
+
+  private void finishClose() {
+    if (!isClosed) {
+      if (endPointToSessionConnection != null) {
+        // Do not wait for a concurrent computeIfAbsent that is still opening a connection.
+        endPointToSessionConnection = new ConcurrentHashMap<>();
+      }
+      setDefaultSessionConnection(null);
+    }
+    isClosed = true;
+    // if executorService is null, it means that availableNodes is got from SessionPool and we
+    // shouldn't clean that
+    if (this.executorService != null) {
+      this.executorService.shutdown();
+      this.executorService = null;
+      if (!this.availableNodes.isCallerManaged()) {
+        this.availableNodes.close();
+      }
+      this.availableNodes = null;
     }
   }
 
@@ -1083,6 +1106,9 @@ public class Session implements ISession {
   }
 
   private SessionConnection getQuerySessionConnection() throws IoTDBConnectionException {
+    if (closing) {
+      throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+    }
     Optional<TEndPoint> endPoint =
         availableNodes == null ? Optional.empty() : availableNodes.getQueryEndPoint();
     if (!endPoint.isPresent() || endPointToSessionConnection == null) {
@@ -1092,12 +1118,27 @@ public class Session implements ISession {
         endPointToSessionConnection.computeIfAbsent(
             endPoint.get(),
             k -> {
+              if (closing) {
+                return null;
+              }
               try {
-                return constructSessionConnection(this, endPoint.get(), zoneId);
+                SessionConnection newConnection =
+                    constructSessionConnection(this, endPoint.get(), zoneId);
+                if (closing) {
+                  newConnection.forceCloseTransport();
+                  return null;
+                }
+                return newConnection;
               } catch (IoTDBConnectionException ex) {
                 return null;
               }
             });
+    if (closing) {
+      if (connection != null) {
+        connection.forceCloseTransport();
+      }
+      throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+    }
     return connection == null ? getDefaultSessionConnection() : connection;
   }
 
@@ -1513,6 +1554,9 @@ public class Session implements ISession {
 
   private void handleRedirection(String deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
+      if (closing) {
+        return;
+      }
       // no need to redirection
       if (UrlUtils.isWildcardAddress(endpoint.ip)) {
         return;
@@ -1525,12 +1569,28 @@ public class Session implements ISession {
           endPointToSessionConnection.computeIfAbsent(
               endpoint,
               k -> {
+                if (closing) {
+                  return null;
+                }
                 try {
-                  return constructSessionConnection(this, endpoint, zoneId);
+                  SessionConnection newConnection =
+                      constructSessionConnection(this, endpoint, zoneId);
+                  if (closing) {
+                    newConnection.forceCloseTransport();
+                    return null;
+                  }
+                  return newConnection;
                 } catch (IoTDBConnectionException ex) {
                   return null;
                 }
               });
+      if (closing) {
+        if (connection != null) {
+          connection.forceCloseTransport();
+        }
+        deviceIdToEndpoint.remove(deviceId);
+        return;
+      }
       if (connection == null) {
         deviceIdToEndpoint.remove(deviceId);
       }
@@ -1539,6 +1599,9 @@ public class Session implements ISession {
 
   private void handleRedirection(String routeDatabase, IDeviceID deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
+      if (closing) {
+        return;
+      }
       // no need to redirection
       if (UrlUtils.isWildcardAddress(endpoint.ip)) {
         return;
@@ -1553,12 +1616,28 @@ public class Session implements ISession {
           endPointToSessionConnection.computeIfAbsent(
               endpoint,
               k -> {
+                if (closing) {
+                  return null;
+                }
                 try {
-                  return constructSessionConnection(this, endpoint, zoneId);
+                  SessionConnection newConnection =
+                      constructSessionConnection(this, endpoint, zoneId);
+                  if (closing) {
+                    newConnection.forceCloseTransport();
+                    return null;
+                  }
+                  return newConnection;
                 } catch (IoTDBConnectionException ex) {
                   return null;
                 }
               });
+      if (closing) {
+        if (connection != null) {
+          connection.forceCloseTransport();
+        }
+        tableModelDeviceIdToEndpoint.remove(deviceId);
+        return;
+      }
       if (connection == null) {
         resolvedDatabaseToEndpoint.remove(deviceId, endpoint);
       }
@@ -1592,14 +1671,24 @@ public class Session implements ISession {
 
   private void handleQueryRedirection(TEndPoint endPoint) throws IoTDBConnectionException {
     if (enableQueryRedirection) {
+      if (closing) {
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+      }
       AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       SessionConnection connection =
           endPointToSessionConnection.computeIfAbsent(
               endPoint,
               k -> {
+                if (closing) {
+                  return null;
+                }
                 try {
                   SessionConnection sessionConnection =
                       constructSessionConnection(this, endPoint, zoneId);
+                  if (closing) {
+                    sessionConnection.forceCloseTransport();
+                    return null;
+                  }
                   sessionConnection.setEnableRedirect(enableQueryRedirection);
                   return sessionConnection;
                 } catch (IoTDBConnectionException ex) {
@@ -1607,6 +1696,12 @@ public class Session implements ISession {
                   return null;
                 }
               });
+      if (closing) {
+        if (connection != null) {
+          connection.forceCloseTransport();
+        }
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+      }
       if (connection == null) {
         throw new IoTDBConnectionException(exceptionReference.get());
       }
@@ -3910,10 +4005,15 @@ public class Session implements ISession {
     return true;
   }
 
+  public void sortTablet(Tablet tablet) {
+    sortTabletInMemory(tablet);
+  }
+
+  /** Sorts the rows of the tablet by timestamp without using a server connection. */
   @SuppressWarnings({
     "squid:S3776"
   }) // ignore Cognitive Complexity of methods should not be too high
-  public void sortTablet(Tablet tablet) {
+  public static void sortTabletInMemory(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
@@ -3956,7 +4056,7 @@ public class Session implements ISession {
    * @param index index
    * @return sorted list
    */
-  private Object sortList(Object valueList, TSDataType dataType, int[] index) {
+  private static Object sortList(Object valueList, TSDataType dataType, int[] index) {
     return SessionUtils.sortValueList(valueList, dataType, index);
   }
 
@@ -3967,7 +4067,7 @@ public class Session implements ISession {
    * @param index index
    * @return sorted bitMap
    */
-  private BitMap sortBitMap(BitMap bitMap, int[] index) {
+  private static BitMap sortBitMap(BitMap bitMap, int[] index) {
     BitMap sortedBitMap = new BitMap(bitMap.getSize());
     for (int i = 0; i < index.length; i++) {
       if (bitMap.isMarked(index[i])) {
