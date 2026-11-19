@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -143,6 +144,53 @@ public class MaterializedResultExecutionTest {
         QueryDataSetUtils.convertQueryResultByFetchSize(execution, 10, 0, 64);
     assertTrue(chunk.hasNextOffset());
     assertEquals(smallCapacity, memoryPool.getReservedBytes());
+    execution.stopAndCleanup(null);
+    assertEquals(0L, memoryPool.getReservedBytes());
+  }
+
+  @Test(timeout = 60_000)
+  public void testReservationWaitsUntilMemoryIsAvailable() throws Exception {
+    ByteBuffer serialized = new TsBlockSerde().serialize(buildTsBlock());
+    int totalLength = serialized.remaining();
+    long capacity = 4096L;
+    assertTrue(totalLength < capacity);
+    MemoryPool memoryPool = new MemoryPool("test", new MemoryManager(capacity), capacity);
+    // occupy the whole pool so that the reservation of the pending block has to wait
+    memoryPool.registerPlanNodeIdToQueryMemoryMap("holder", "holder", "holder", MemorySide.OUTPUT);
+    assertTrue(memoryPool.tryReserve("holder", "holder", "holder", capacity, capacity));
+
+    LocalMemoryManager localMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    Mockito.when(localMemoryManager.getQueryPool()).thenReturn(memoryPool);
+    MaterializedResultExecution execution =
+        new MaterializedResultExecution(
+            new QueryId("20261119_050035_03054_4"),
+            serialized.duplicate(),
+            DatasetHeaderFactory.getLastQueryHeader(),
+            "FAST_LAST_QUERY",
+            "SELECT LAST root.sg.d1.s1",
+            60_000L,
+            "root",
+            "127.0.0.1",
+            localMemoryManager);
+
+    Thread transfer =
+        new Thread(
+            () -> {
+              try {
+                QueryDataSetUtils.convertQueryResultByFetchSize(execution, 10, 0, 64);
+              } catch (Exception e) {
+                throw new IllegalStateException(e);
+              }
+            });
+    transfer.start();
+    Thread.sleep(200);
+    assertTrue("the transfer must wait while the pool is exhausted", transfer.isAlive());
+
+    memoryPool.free("holder", "holder", "holder", capacity);
+    transfer.join(30_000);
+    assertFalse(transfer.isAlive());
+    // the pending block is accounted now that memory is available
+    assertEquals(totalLength, memoryPool.getReservedBytes());
     execution.stopAndCleanup(null);
     assertEquals(0L, memoryPool.getReservedBytes());
   }

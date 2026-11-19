@@ -356,10 +356,8 @@ public class IoTDBRpcDataSet {
   }
 
   /**
-   * Adds the blocks of one response to {@link #queryResult}. If the response ends with a fragment,
-   * the fragment is either appended to the pending {@link ResultFragmentBuffer} or starts a new
-   * one; the corresponding TsBlock is only added to {@link #queryResult} once all of its bytes have
-   * been received.
+   * Adds the blocks of one response to {@link #queryResult}, reassembling the fragment that ends
+   * the response before the block is consumed.
    */
   private void addResponse(
       List<ByteBuffer> blocks, boolean offsetSet, int nextOffset, int totalLength) {

@@ -403,12 +403,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   /**
-   * Transfers an oversized materialized result in fragments. The execution is registered so that
-   * {@code fetchResultsV2} can continue from the pending fragment, and it is cleaned up once the
-   * last fragment is sent or the query is closed.
+   * Transfers an oversized materialized result in fragments; the registered execution lets {@code
+   * fetchResultsV2} continue from the pending fragment.
    *
-   * @param maxPayloadSize the payload bound read once by the caller, so that the decision to
-   *     fragment and the transfer itself use the same hot-reloadable value
+   * @param maxPayloadSize the bound read once by the caller, so that the decision to fragment and
+   *     the transfer use the same hot-reloadable value
    */
   private TSExecuteStatementResp respondWithFragmentedResult(
       long queryId,
@@ -1730,9 +1729,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       statementType = queryExecution.getStatementType();
 
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
-        // the chunking capability is announced once at openSession, so the continuation path
-        // must not decide by the presence of offset: a request without offset while a fragment is
-        // pending then fails the offset check loudly instead of silently dropping the tail
+        // decide by the session capability, so a continuation without offset fails the offset
+        // check instead of silently dropping the tail of a pending fragment
         QueryDataSetUtils.ResultChunk chunk =
             fetchResultChunk(
                 queryExecution,

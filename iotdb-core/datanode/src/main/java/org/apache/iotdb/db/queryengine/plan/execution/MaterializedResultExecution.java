@@ -36,9 +36,7 @@ import java.util.Optional;
 
 /**
  * An already materialized serialized result (e.g. a Fast LAST cache hit) registered as a query
- * execution, so that {@code fetchResultsV2} can continue the fragmented transfer of an oversized
- * block. Like other pending fragments, the serialized bytes are reserved from the query memory pool
- * (best effort) until the last fragment is sent or the query is cleaned up.
+ * execution, so that {@code fetchResultsV2} can continue its fragmented transfer.
  */
 public class MaterializedResultExecution implements IQueryExecution {
 
@@ -112,12 +110,8 @@ public class MaterializedResultExecution implements IQueryExecution {
     }
     cleanedUp = true;
     pendingResultFragment.clear();
-    serializeResult(null);
+    serializedResult = null;
     fragmentAccount.deregister();
-  }
-
-  private synchronized void serializeResult(ByteBuffer result) {
-    serializedResult = result;
   }
 
   @Override

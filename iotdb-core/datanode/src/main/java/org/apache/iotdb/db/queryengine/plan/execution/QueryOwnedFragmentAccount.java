@@ -23,14 +23,17 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
 import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
+import com.google.common.util.concurrent.Futures;
+
 /**
- * Reserves the memory of a pending result fragment under an account owned by the query. The account
- * outlives the result handle that produced the block, so a block waiting for the following RPCs
- * stays accounted from the moment it becomes pending until the last fragment is sent. Reservations
- * are best effort: a block larger than the budget is still transferred.
+ * Reserves the memory of a pending result fragment under an account owned by the query, so that a
+ * block waiting for the following RPCs stays accounted after its result handle released it. When
+ * the query pool is short of memory, the reservation waits until other queries release theirs; only
+ * the part of a block that exceeds the whole pool cannot be accounted.
  */
 public class QueryOwnedFragmentAccount implements PendingResultFragment.Account {
 
@@ -70,16 +73,16 @@ public class QueryOwnedFragmentAccount implements PendingResultFragment.Account 
     MemoryPool queryPool = getLocalMemoryManager().getQueryPool();
     long maxBytesCanReserve = queryPool.getMaxBytes();
     long bytesToReserve = Math.min(bytes, maxBytesCanReserve);
-    if (bytesToReserve <= 0) {
-      return 0;
-    }
     queryPool.registerPlanNodeIdToQueryMemoryMap(
         queryId, fragmentInstanceId, PLAN_NODE_ID, MemorySide.OUTPUT);
-    if (queryPool.tryReserve(
-        queryId, fragmentInstanceId, PLAN_NODE_ID, bytesToReserve, maxBytesCanReserve)) {
-      return bytesToReserve;
+    MemoryReservationResult result =
+        queryPool.reserveWithPriority(
+            queryId, fragmentInstanceId, PLAN_NODE_ID, bytesToReserve, maxBytesCanReserve, false);
+    if (!result.isReserveSuccess()) {
+      // the block is already in memory, so waiting for the pool is the only way to account it
+      Futures.getUnchecked(result.getFuture());
     }
-    return 0;
+    return result.getReservedBytes();
   }
 
   @Override

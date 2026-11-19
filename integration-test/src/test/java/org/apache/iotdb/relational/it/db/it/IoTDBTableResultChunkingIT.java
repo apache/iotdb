@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 
+import org.apache.tsfile.utils.Binary;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -87,6 +90,25 @@ public class IoTDBTableResultChunkingIT {
   @AfterClass
   public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testOversizedRowsThroughTableSession() throws Exception {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "SELECT payload FROM chunk_it_table.blob_table ORDER BY time");
+      try {
+        for (int i = 0; i < 4; i++) {
+          assertTrue("missing row " + i, dataSet.hasNext());
+          Binary value = dataSet.next().getFields().get(0).getBinaryV();
+          assertArrayEquals(i == 3 ? new byte[] {1, 2, 3} : LARGE_BLOB, value.getValues());
+        }
+        assertFalse(dataSet.hasNext());
+      } finally {
+        dataSet.closeOperationHandle();
+      }
+    }
   }
 
   private static Connection getRealTableConnection() throws SQLException, IOException {

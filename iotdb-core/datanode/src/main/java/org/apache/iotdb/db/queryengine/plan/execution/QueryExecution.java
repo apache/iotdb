@@ -113,8 +113,7 @@ public class QueryExecution implements IQueryExecution {
   // used for cleaning resultHandle up exactly once
   private final AtomicBoolean resultHandleCleanUp;
 
-  // the serialized TsBlock that is partially sent to the client and waits for the next RPC; its
-  // memory is reserved under the account below, which lives as long as the query
+  // the serialized TsBlock partially sent to the client, accounted by the query-owned account
   private final PendingResultFragment pendingResultFragment;
   private final QueryOwnedFragmentAccount pendingFragmentAccount;
 
@@ -556,8 +555,7 @@ public class QueryExecution implements IQueryExecution {
    */
   private void releaseResource(Throwable t, boolean isRetry) {
     context.recordDeviceEntryDiskIOMetricsOnRelease();
-    // the query will not serve any more fetch requests, release the pending fragment's memory and
-    // make sure a retried execution does not continue a stale fragment
+    // release the pending fragment, so that a retried execution does not continue a stale one
     pendingResultFragment.clear();
     if (!isRetry) {
       pendingFragmentAccount.deregister();
