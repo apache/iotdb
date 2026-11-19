@@ -55,6 +55,36 @@ public class IoTDBTableModelSessionPoolIT {
   }
 
   @Test
+  public void testClosePoolClosesOccupiedSession() throws Exception {
+    ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1);
+    ITableSession session = sessionPool.getSession();
+
+    sessionPool.close();
+
+    try {
+      session.executeNonQueryStatement("use information_schema");
+      fail("The session should be closed with its pool");
+    } catch (IoTDBConnectionException expected) {
+      // expected
+    } finally {
+      session.close();
+    }
+  }
+
+  @Test(timeout = 10_000)
+  public void testTableSessionCloseIsIdempotentAndKeepsCapacity() throws Exception {
+    try (ITableSessionPool sessionPool = EnvFactory.getEnv().getTableSessionPool(1)) {
+      ITableSession session = sessionPool.getSession();
+      session.close();
+      session.close();
+
+      try (ITableSession nextSession = sessionPool.getSession()) {
+        nextSession.executeNonQueryStatement("use information_schema");
+      }
+    }
+  }
+
+  @Test
   public void testUseDatabase() {
 
     final String[] table1Names = new String[] {"table1"};
