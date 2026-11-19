@@ -841,6 +841,37 @@ public class AlignedTVListTest {
   }
 
   @Test
+  public void testColumnValueCountTracksUnalignedBatchRange() {
+    assertUnalignedRangeCount(5, 95);
+    assertUnalignedRangeCount(7, 32);
+  }
+
+  private void assertUnalignedRangeCount(final int start, final int end) {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));
+    long[] times = new long[end];
+    long[][] values = new long[2][end];
+    for (int i = 0; i < end; i++) {
+      times[i] = i;
+      values[0][i] = i;
+      values[1][i] = i;
+    }
+    BitMap bitMap = new BitMap(end);
+    for (int i = start; i < end; i += 3) {
+      bitMap.mark(i);
+    }
+    tvList.putAlignedValues(times, values, new BitMap[] {bitMap, null}, start, end, null);
+    int marked = 0;
+    for (int i = start; i < end; i++) {
+      if (bitMap.isMarked(i)) {
+        marked++;
+      }
+    }
+    Assert.assertEquals(end - start - marked, tvList.getColumnValueCnt(0));
+    Assert.assertEquals(end - start, tvList.getColumnValueCnt(1));
+  }
+
+  @Test
   public void testColumnValueCountTracksDeletesAndClones() {
     AlignedTVList tvList =
         AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT64));

@@ -1276,6 +1276,10 @@ public abstract class AlignedTVList extends TVList {
     if (!hasNullMarks && !hasFailedStatus) {
       return len;
     }
+    if (!hasFailedStatus) {
+      return len - countMarkedBits(inputBitMap, idx, len);
+    }
+    // Null marks and failed statuses may overlap, so scan the range once.
     int nonNullCount = 0;
     for (int i = idx; i < idx + len; i++) {
       if (inputBitMap != null && inputBitMap.isMarked(i)) {
@@ -1289,6 +1293,20 @@ public abstract class AlignedTVList extends TVList {
       nonNullCount++;
     }
     return nonNullCount;
+  }
+
+  /** Count marked bits in the range with one popcount per byte. */
+  private static int countMarkedBits(final BitMap bitMap, final int start, final int len) {
+    final byte[] bytes = bitMap.getByteArray();
+    final int end = start + len;
+    int marked = 0;
+    for (int i = start; i < end; ) {
+      final int bitOffset = i & 7;
+      final int bitsInByte = Math.min(8 - bitOffset, end - i);
+      marked += Integer.bitCount(bytes[i >>> 3] & (((1 << bitsInByte) - 1) << bitOffset));
+      i += bitsInByte;
+    }
+    return marked;
   }
 
   private static boolean containsFailedStatus(TSStatus[] results, int start, int length) {
