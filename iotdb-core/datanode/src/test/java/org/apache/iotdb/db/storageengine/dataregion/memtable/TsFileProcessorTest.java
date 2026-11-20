@@ -1074,6 +1074,45 @@ public class TsFileProcessorTest {
   }
 
   @Test
+  public void alignedStructureMemoryAccountingSurvivesCloneAndPartialCloneReplacement()
+      throws ExecutionException, WriteProcessException, IOException, IllegalPathException {
+    processor = newTestProcessor(filePath + ".clone-sort-structure-accounting");
+    insertAlignedRow(processor, deviceId, 100L, false);
+    insertAlignedRow(processor, deviceId, 50L, false);
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    // Simulate query-side clone-on-write replacing the working TVList, followed by query sort and
+    // an out-of-order write that clears segmentMovedMap.
+    AlignedWritableMemChunk memChunk = getAlignedMemChunk(deviceId);
+    AlignedTVList original = memChunk.getWorkingTVList();
+    AlignedTVList fullClone = original.clone();
+    memChunk.setWorkingTVList(fullClone);
+    fullClone.sort();
+    Assert.assertNotNull(fullClone.getSegmentMovedMap());
+
+    insertAlignedRow(processor, deviceId, 40L, false);
+    Assert.assertNull(fullClone.getSegmentMovedMap());
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    // Repeat for partial clone replacement.
+    AlignedTVList.PartialClonePlan plan = fullClone.preparePartialClone(Collections.singleton(0));
+    plan.commit();
+    AlignedTVList partialClone = plan.getCloneList();
+    memChunk.setWorkingTVList(partialClone);
+    partialClone.sort();
+    Assert.assertNotNull(partialClone.getSegmentMovedMap());
+
+    insertAlignedRow(processor, deviceId, 30L, false);
+    Assert.assertNull(partialClone.getSegmentMovedMap());
+    assertAlignedTvListRamCostMatchesActual(deviceId);
+
+    original.clear();
+    fullClone.clear();
+    processor.syncClose();
+    assertEquals(0, sgInfo.getMemCost());
+  }
+
+  @Test
   public void alignedTabletRamCostSnapshotUsesSingleDeviceFastPath() {
     IMemTable memTable = new PrimitiveMemTable("root.snapshot", "0");
     IDeviceID firstDevice = IDeviceID.Factory.DEFAULT_FACTORY.create("root.snapshot.d0");

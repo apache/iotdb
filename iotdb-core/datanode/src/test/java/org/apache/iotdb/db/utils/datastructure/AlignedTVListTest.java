@@ -997,4 +997,35 @@ public class AlignedTVListTest {
     Assert.assertEquals(0L, restored.getAccountedStructureRamSize());
     tvList.clear();
   }
+
+  @Test
+  public void testAccountedRamSizePreservedAcrossCloneAndPartialClone() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT32));
+    tvList.putAlignedValue(10L, new Object[] {1L, 2});
+    tvList.putAlignedValue(5L, new Object[] {3L, 4});
+
+    // Unaccounted TVList stays unaccounted across clone.
+    AlignedTVList unaccountedClone = tvList.clone();
+    Assert.assertFalse(unaccountedClone.isRamSizeAccounted());
+    unaccountedClone.clear();
+
+    // Accounted TVList carries its reconciled MemTable baseline onto both full and partial clones.
+    tvList.setAccountedRamSize(512L, 1024L);
+    AlignedTVList fullClone = tvList.clone();
+    Assert.assertTrue(fullClone.isRamSizeAccounted());
+    Assert.assertEquals(512L, fullClone.getAccountedArrayRamSize());
+    Assert.assertEquals(1024L, fullClone.getAccountedStructureRamSize());
+
+    AlignedTVList.PartialClonePlan plan = tvList.preparePartialClone(Collections.singleton(0));
+    plan.commit();
+    AlignedTVList partialClone = plan.getCloneList();
+    Assert.assertTrue(partialClone.isRamSizeAccounted());
+    Assert.assertEquals(512L, partialClone.getAccountedArrayRamSize());
+    Assert.assertEquals(1024L, partialClone.getAccountedStructureRamSize());
+
+    fullClone.clear();
+    partialClone.clear();
+    tvList.clear();
+  }
 }

@@ -288,6 +288,9 @@ public abstract class AlignedTVList extends TVList {
     cloneList.materializedValueArrayCounts =
         Arrays.copyOf(materializedValueArrayCounts, materializedValueArrayCounts.length);
     cloneList.materializedValueArrayMemCost = materializedValueArrayMemCost;
+    if (this.ramSizeAccounted) {
+      cloneList.setAccountedRamSize(this.accountedArrayRamSize, this.accountedStructureRamSize);
+    }
     return cloneList;
   }
 
@@ -415,6 +418,10 @@ public abstract class AlignedTVList extends TVList {
     // Refresh the cached per-block cost after the retained columns changed on both lists.
     refreshArrayMemCostWithoutPrimitiveArrays();
     plan.cloneList.refreshArrayMemCostWithoutPrimitiveArrays();
+    if (this.ramSizeAccounted) {
+      plan.cloneList.setAccountedRamSize(
+          this.accountedArrayRamSize, this.accountedStructureRamSize);
+    }
   }
 
   /**
