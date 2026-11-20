@@ -120,6 +120,11 @@
             <source>${maven.multiModuleProjectDirectory}/external-service-impl/rest/target/rest-${project.version}-jar-with-dependencies.jar</source>
             <outputDirectory>lib</outputDirectory>
         </file>
+        <file>
+            <!-- in lib, not in ext/external_service: its catalog tables are found through the class path -->
+            <source>${maven.multiModuleProjectDirectory}/external-service-impl/postgresql/target/postgresql-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>lib</outputDirectory>
+        </file>
     </files>
     <componentDescriptors>
         <componentDescriptor>common-files.xml</componentDescriptor>

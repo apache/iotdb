@@ -1,0 +1,19 @@
+--
+-- Licensed to the Apache Software Foundation (ASF) under one
+-- or more contributor license agreements.  See the NOTICE file
+-- distributed with this work for additional information
+-- regarding copyright ownership.  The ASF licenses this file
+-- to you under the Apache License, Version 2.0 (the
+-- "License"); you may not use this file except in compliance
+-- with the License.  You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing,
+-- software distributed under the License is distributed on an
+-- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+-- KIND, either express or implied.  See the License for the
+-- specific language governing permissions and limitations
+-- under the License.
+--
+SELECT "n"."nspname" AS "Schema", "c"."relname" AS "Name", CASE "c"."relkind" WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' WHEN 'm' THEN 'materialized view' WHEN 'i' THEN 'index' WHEN 'S' THEN 'sequence' WHEN 's' THEN 'special' WHEN 't' THEN 'TOAST table' WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table' WHEN 'I' THEN 'partitioned index' END AS "Type", 'admin' AS "Owner" FROM information_schema."pg_class" AS "c" LEFT JOIN information_schema."pg_namespace" AS "n" ON "n"."oid" = "c"."relnamespace" LEFT JOIN information_schema."pg_am" AS "am" ON "am"."oid" = "c"."relam" WHERE "c"."relkind" IN ('r', 'p', 't', 's', '') ORDER BY 1 NULLS LAST, 2 NULLS LAST
