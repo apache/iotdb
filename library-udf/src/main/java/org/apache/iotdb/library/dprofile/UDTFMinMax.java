@@ -84,9 +84,11 @@ public class UDTFMinMax implements UDTF {
       collector.putDouble(row.getTime(), (Util.getValueAsDouble(row) - min) / (max - min));
     } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
-      if (Double.isFinite(v)) {
-        value.add(v);
+      if (!Double.isFinite(v)) {
+        // skip non-finite values entirely so that the timestamp and value lists stay in lockstep
+        return;
       }
+      value.add(v);
       timestamp.add(row.getTime());
       if (flag) {
         min = v;

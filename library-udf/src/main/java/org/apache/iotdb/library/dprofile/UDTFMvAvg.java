@@ -36,6 +36,7 @@ public class UDTFMvAvg implements UDTF {
   int windowSize;
   Type dataType;
   DoubleCircularQueue v;
+  double windowSum = 0.0d;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -55,12 +56,12 @@ public class UDTFMvAvg implements UDTF {
     dataType = parameters.getDataType(0);
     windowSize = parameters.getIntOrDefault("window", 10);
     v = new DoubleCircularQueue(windowSize);
+    windowSum = 0.0d;
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     long t = row.getTime();
-    double windowSum = 0d;
     if (v.isFull()) {
       windowSum -= v.pop();
     }
