@@ -59,6 +59,7 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
   private final long endTime;
 
   protected long currentTime;
+  private boolean timeIteratorExhausted;
   private SortKey lastGroupKey = null;
 
   AbstractGapFillOperator(
@@ -140,6 +141,14 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
 
   private void resetTimeIterator() {
     currentTime = startTime;
+    timeIteratorExhausted = false;
+  }
+
+  private void advanceTimeIterator() {
+    long previousTime = currentTime;
+    nextTime();
+    // Saturation leaves no later timestamp to mark the consumed window across next() calls.
+    timeIteratorExhausted |= currentTime <= previousTime;
   }
 
   private void writeCurrentRow(TsBlock block, int rowIndex) {
@@ -153,7 +162,7 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
         columnBuilder.write(column, rowIndex);
       }
     }
-    nextTime();
+    advanceTimeIterator();
   }
 
   private void fillGaps(TsBlock block, int rowIndex, long currentEndTime) {
@@ -162,13 +171,10 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
 
   private void fillGaps(
       TsBlock block, int rowIndex, long currentEndTime, boolean endTimeInclusive) {
-    while (currentTime < currentEndTime || (endTimeInclusive && currentTime == currentEndTime)) {
-      long previousTime = currentTime;
+    while (!timeIteratorExhausted
+        && (currentTime < currentEndTime || (endTimeInclusive && currentTime == currentEndTime))) {
       gapFillRow(currentTime, block, rowIndex);
-      nextTime();
-      if (currentTime <= previousTime) {
-        break;
-      }
+      advanceTimeIterator();
     }
   }
 
@@ -224,7 +230,7 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
   }
 
   private boolean hasRemainingGapInPreviousGroup() {
-    return lastGroupKey != null && currentTime < endTime;
+    return lastGroupKey != null && !timeIteratorExhausted && currentTime <= endTime;
   }
 
   @Override
