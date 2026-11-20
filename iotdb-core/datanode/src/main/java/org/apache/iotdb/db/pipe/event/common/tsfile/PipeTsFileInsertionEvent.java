@@ -415,6 +415,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return tsFile;
   }
 
+  /**
+   * Returns the original TsFile path stored in the resource. Unlike {@link #getTsFile()}, this path
+   * is not replaced by the hard-linked file in the pipe directory after the reference count is
+   * increased.
+   */
+  public File getSourceTsFile() {
+    return resource.getTsFile();
+  }
+
   public File getModFile() {
     return modFile;
   }
@@ -470,7 +479,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     File increasedTsFile = null;
     boolean increased = false;
     try {
-      if (isGeneratedByHistoricalExtractor) {
+      if (isTsFileAlreadyInPipeDir()) {
         tsFile =
             PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
                 tsFile, pipeTsFileResourcePipeName);
@@ -480,6 +489,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           if (!isWithMod) {
             modFile = null;
           }
+        }
+      }
+      if (isWithMod && shouldCheckModFileExistence()) {
+        isWithMod = modFile.exists();
+        if (!isWithMod) {
+          modFile = null;
         }
       }
       increasedTsFile =
@@ -525,6 +540,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         }
       }
     }
+  }
+
+  protected boolean isTsFileAlreadyInPipeDir() {
+    return isGeneratedByHistoricalExtractor;
+  }
+
+  protected boolean shouldCheckModFileExistence() {
+    return false;
   }
 
   @Override

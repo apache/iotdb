@@ -25,9 +25,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
@@ -45,17 +47,28 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -68,7 +81,15 @@ public class IoTDBPipeSourceIT extends AbstractPipeTreeModelSharedClusterIT {
     senderEnv
         .getConfig()
         .getDataNodeConfig()
-        .setMetricReporterType(Collections.singletonList("JMX"));
+        .setMetricReporterType(Collections.singletonList("JMX"))
+        .setCompactionScheduleInterval(100);
+    // Keep a backlog at the oldest end while one file is being sent. Compaction stays disabled
+    // for the other source tests; only the concurrent-compaction scenario enables it temporarily.
+    final Properties queueProperties = new Properties();
+    queueProperties.setProperty("pipe_realTime_queue_max_waiting_tsFile_size", "1");
+    queueProperties.setProperty("pipe_realtime_queue_poll_historical_tsfile_threshold", "1000000");
+    ((MppCommonConfig) senderEnv.getConfig().getDataNodeCommonConfig())
+        .updateProperties(queueProperties);
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -80,6 +101,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeTreeModelSharedClusterIT {
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
+        .setTimePartitionInterval(TimeUnit.DAYS.toMillis(7))
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
@@ -1112,6 +1134,136 @@ public class IoTDBPipeSourceIT extends AbstractPipeTreeModelSharedClusterIT {
             }
           });
     }
+  }
+
+  @Test
+  public void testConcurrentSendingAndCompaction() throws Exception {
+    final String pipeName = "compaction_correctness";
+    final String device = "root.compaction_correctness.d1";
+    final String query = "select s1 from " + device;
+    final String header = "Time," + device + ".s1,";
+    final Set<String> expectedRows = new HashSet<>();
+    final DataNodeWrapper receiver = receiverEnv.getDataNodeWrapper(0);
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement();
+        final SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      statement.execute("create timeseries " + device + ".s1 with datatype=INT64,encoding=RLE");
+      for (int file = 0; file < 24; file++) {
+        final StringBuilder insert =
+            new StringBuilder("insert into " + device + "(time,s1) values ");
+        for (int point = 0; point < 64; point++) {
+          final int value = file * 64 + point;
+          if (point > 0) {
+            insert.append(',');
+          }
+          insert.append('(').append(value).append(',').append(value).append(')');
+          expectedRows.add(value + "," + value + ",");
+        }
+        statement.execute(insert.toString());
+        statement.execute("flush");
+      }
+
+      // The newest files occupy the send slot in a separate time partition. This leaves every
+      // source of the older compaction queued, including while the first send finishes.
+      final long blockerTime = TimeUnit.DAYS.toMillis(7);
+      statement.execute(
+          "create timeseries " + device + ".payload with datatype=TEXT,encoding=PLAIN");
+      final byte[] payload = new byte[65536];
+      final Random random = new Random(0);
+      for (int blocker = 0; blocker < 2; blocker++) {
+        random.nextBytes(payload);
+        final long time = blockerTime + blocker;
+        final int value = 1536 + blocker;
+        statement.execute(
+            "insert into "
+                + device
+                + "(time,s1,payload) values ("
+                + time
+                + ","
+                + value
+                + ",'"
+                + Base64.getEncoder().encodeToString(payload)
+                + "')");
+        statement.execute("flush");
+        expectedRows.add(time + "," + value + ",");
+      }
+
+      final Map<String, String> sinkAttributes = new HashMap<>();
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiver.getIp());
+      sinkAttributes.put("sink.port", Integer.toString(receiver.getPort()));
+      sinkAttributes.put("sink.enable-compaction", "true");
+      sinkAttributes.put("sink.parallel.tasks", "1");
+      // Keep a send in flight while the remaining historical files are compacted.
+      sinkAttributes.put("sink.rate-limit-bytes-per-second", "8192");
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .createPipe(
+                  new TCreatePipeReq(pipeName, sinkAttributes)
+                      .setExtractorAttributes(
+                          Map.of(
+                              "source.path", "root.compaction_correctness.**",
+                              "source.inclusion", "data.insert",
+                              "source.realtime.mode", "batch")))
+              .getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe(pipeName).getCode());
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          query + " where time = " + (blockerTime + 1),
+          header,
+          Collections.singleton((blockerTime + 1) + ",1537,"));
+
+      try {
+        statement.execute("set configuration 'enable_seq_space_compaction'='true'");
+        final Pattern replacementMessage =
+            Pattern.compile(
+                Pattern.quote(DataNodePipeMessages.REGION_REPLACED_TSFILEINSERTIONEVENTS_WITH)
+                    .replace("{}", "\\E.*\\Q"));
+        await()
+            .alias("A real queued compaction replacement for " + pipeName)
+            .atMost(60, TimeUnit.SECONDS)
+            .until(() -> hasCompactionReplacement(pipeName, replacementMessage));
+
+        PipeTestUtils.awaitDataPipeCompletion(senderEnv, pipeName);
+        TestUtils.assertDataEventuallyOnEnv(senderEnv, query, header, expectedRows);
+        TestUtils.assertDataEventuallyOnEnv(receiverEnv, query, header, expectedRows);
+
+        // A later overwrite must also arrive and commit after the compacted backlog is drained.
+        statement.execute("insert into " + device + "(time,s1) values (0,-1),(1536,1536)");
+        statement.execute("flush");
+        expectedRows.remove("0,0,");
+        expectedRows.add("0,-1,");
+        expectedRows.add("1536,1536,");
+        PipeTestUtils.awaitDataPipeCompletion(senderEnv, pipeName);
+        TestUtils.assertDataEventuallyOnEnv(senderEnv, query, header, expectedRows);
+        TestUtils.assertDataEventuallyOnEnv(receiverEnv, query, header, expectedRows);
+      } finally {
+        statement.execute("set configuration 'enable_seq_space_compaction'='false'");
+      }
+    }
+  }
+
+  private boolean hasCompactionReplacement(final String pipeName, final Pattern replacementMessage)
+      throws Exception {
+    for (final DataNodeWrapper node : senderEnv.getDataNodeWrapperList()) {
+      try (final Stream<Path> logs = Files.walk(Path.of(node.getLogDirPath()))) {
+        for (final Path log :
+            logs.filter(Files::isRegularFile)
+                .filter(path -> path.toString().endsWith(".log"))
+                .collect(Collectors.toList())) {
+          try (final Stream<String> lines = Files.lines(log)) {
+            if (lines.anyMatch(
+                line -> line.contains(pipeName) && replacementMessage.matcher(line).find())) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
   }
 
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {

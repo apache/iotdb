@@ -84,6 +84,7 @@ public class PipeSinkSubtaskManager {
     final boolean isDataRegionSink = isDataRegionSink(environment.getRegionId());
     final int sinkNum = calculateSinkSubtaskNum(pipeSinkParameters, isDataRegionSink, connectorKey);
     boolean realTimeFirst = false;
+    boolean enableCompaction = false;
     final String attributeSortedString =
         generateAttributeSortedString(pipeSinkParameters, environment.getRegionId());
     final String attributeDisplayString = generateAttributeDisplayString(pipeSinkParameters);
@@ -94,6 +95,13 @@ public class PipeSinkSubtaskManager {
                   PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
                   PipeSinkConstant.SINK_REALTIME_FIRST_KEY),
               PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
+      enableCompaction =
+          pipeSinkParameters.getBooleanOrDefault(
+              Arrays.asList(
+                  PipeSinkConstant.CONNECTOR_ENABLE_COMPACTION_KEY,
+                  PipeSinkConstant.SINK_ENABLE_COMPACTION_KEY),
+              PipeSinkConstant.CONNECTOR_ENABLE_COMPACTION_DEFAULT_VALUE);
+      realTimeFirst |= enableCompaction;
     }
     final String attributeDisplayStringWithPrefix =
         isDataRegionSink
@@ -114,7 +122,7 @@ public class PipeSinkSubtaskManager {
       // Shared pending queue for all subtasks
       final UnboundedBlockingPendingQueue<Event> pendingQueue =
           realTimeFirst
-              ? new PipeRealtimePriorityBlockingQueue()
+              ? new PipeRealtimePriorityBlockingQueue(enableCompaction)
               : new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
       if (realTimeFirst) {
@@ -140,6 +148,13 @@ public class PipeSinkSubtaskManager {
         try {
           if (pipeSink instanceof IoTDBDataRegionAsyncSink) {
             ((IoTDBDataRegionAsyncSink) pipeSink).setTransferTsFileCounter(counter);
+            if (pendingQueue instanceof PipeRealtimePriorityBlockingQueue) {
+              final PipeRealtimePriorityBlockingQueue realtimeQueue =
+                  (PipeRealtimePriorityBlockingQueue) pendingQueue;
+              realtimeQueue.enableTsFileStartupReservation();
+              ((IoTDBDataRegionAsyncSink) pipeSink)
+                  .setTransferTsFileStartupReservationQueue(realtimeQueue);
+            }
           }
           pipeSink.validate(new PipeParameterValidator(pipeSinkParameters));
           pipeSink.customize(pipeSinkParameters, new PipeTaskRuntimeConfiguration(environment));
