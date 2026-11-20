@@ -34,12 +34,21 @@ public class FilesystemCommandHelpTest {
   @Test
   public void generalHelpListsAllCommandsAndBatchContract() throws Exception {
     String help = help("");
+    java.util.EnumSet<FilesystemCommand.Type> statsModes =
+        java.util.EnumSet.of(
+            FilesystemCommand.Type.REDUCE,
+            FilesystemCommand.Type.GAPS,
+            FilesystemCommand.Type.SESSIONS,
+            FilesystemCommand.Type.EXTREME);
     for (FilesystemCommand.Type type : FilesystemCommand.Type.values()) {
-      if (type != FilesystemCommand.Type.INVALID) {
-        assertTrue(
-            type.name(), help.contains("  " + type.name().toLowerCase(java.util.Locale.ROOT)));
+      String name = "  " + type.name().toLowerCase(java.util.Locale.ROOT);
+      if (statsModes.contains(type)) {
+        assertFalse(type.name(), help.contains(name + " "));
+      } else if (type != FilesystemCommand.Type.INVALID) {
+        assertTrue(type.name(), help.contains(name));
       }
     }
+    assertFalse(help.contains("  windows "));
     assertTrue(help.contains("--fs_write_mode enabled"));
     assertTrue(help.contains("stdout"));
     assertTrue(help.contains("stderr"));

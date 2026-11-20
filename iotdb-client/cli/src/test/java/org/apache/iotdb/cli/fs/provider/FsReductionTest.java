@@ -183,9 +183,7 @@ public class FsReductionTest {
   public void globalRankingNotPoolingAndDeterministicTies() throws Exception {
     FsReduction e =
         new FsReduction(
-            "tree",
-            "/root/db",
-            options("--aggregates avg --sort-by avg --windows 0:10,20:30"));
+            "tree", "/root/db", options("--aggregates avg --sort-by avg --windows 0:10,20:30"));
     feed(e, "b", SqlRow.of("time", "0", "x", "5"), SqlRow.of("time", "20", "x", "6"));
     feed(e, "a", SqlRow.of("time", "0", "x", "5"), SqlRow.of("time", "20", "x", "6"));
     List<SqlRow> r = e.finish();
@@ -198,7 +196,8 @@ public class FsReductionTest {
   @Test
   public void endpointDifferenceAndSpanAvoidInt64Overflow() throws Exception {
     FsReduction e =
-        new FsReduction("tree", "x", options("--aggregates first,last,delta,elapsed_ms,rate_per_ms"));
+        new FsReduction(
+            "tree", "x", options("--aggregates first,last,delta,elapsed_ms,rate_per_ms"));
     feed(
         e,
         "a",
@@ -214,7 +213,9 @@ public class FsReductionTest {
   public void zeroSpanNullLastAndAscendingRank() throws Exception {
     FsReduction e =
         new FsReduction(
-            "tree", "x", options("--aggregates delta,rate_per_ms --sort-by rate_per_ms --order asc"));
+            "tree",
+            "x",
+            options("--aggregates delta,rate_per_ms --sort-by rate_per_ms --order asc"));
     feed(e, "a", SqlRow.of("time", "0", "x", "3"));
     feed(e, "b", SqlRow.of("time", "0", "x", "4"), SqlRow.of("time", "2", "x", "2"));
     List<SqlRow> r = e.finish();
