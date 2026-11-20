@@ -100,8 +100,7 @@ public final class GroupedNaiveIntegralAccumulator extends AbstractGroupedIntegr
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder output) {
     TimeValueBuffer buffer = samples.get(groupId);
-    output.writeDouble(
-        normalizeArea(buffer == null ? 0.0 : IntegralFunctionUtils.calculateArea(buffer)));
+    output.writeDouble(IntegralFunctionUtils.calculateArea(buffer, timeUnit));
   }
 
   @Override

@@ -41,6 +41,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -325,11 +326,28 @@ public class DerivativeTableFunction implements TableFunction {
         if (startValue == null || endValue == null) {
           builder.appendNull();
         } else {
-          double valueDelta =
-              ((Number) endValue).doubleValue() - ((Number) startValue).doubleValue();
-          builder.writeDouble(valueDelta * unit / timeDelta);
+          double valueDelta = calculateValueDelta((Number) startValue, (Number) endValue);
+          builder.writeDouble(valueDelta * ((double) unit / timeDelta));
         }
       }
+    }
+
+    private static double calculateValueDelta(Number startValue, Number endValue) {
+      if (startValue instanceof Long && endValue instanceof Long) {
+        long start = startValue.longValue();
+        long end = endValue.longValue();
+        // Subtract before converting to double to preserve small changes in large values.
+        long delta = end - start;
+        // Overflow requires opposite operand signs and a result sign different from end.
+        if (((end ^ start) & (end ^ delta)) < 0) {
+          return BigInteger.valueOf(end).subtract(BigInteger.valueOf(start)).doubleValue();
+        }
+        return delta;
+      }
+      if (startValue instanceof Integer && endValue instanceof Integer) {
+        return (long) endValue.intValue() - startValue.intValue();
+      }
+      return endValue.doubleValue() - startValue.doubleValue();
     }
 
     private static final class Point {

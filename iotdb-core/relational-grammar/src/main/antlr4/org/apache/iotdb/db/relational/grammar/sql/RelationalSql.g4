@@ -1302,7 +1302,7 @@ primaryExpression
     | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
     | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
-    | INTEGRAL '(' expression ',' timeDuration (',' expression)? ')'                      #integralCall
+    | INTEGRAL '(' setQuantifier? expression ',' timeDuration (',' expression)? ')' over? #integralCall
     | '(' expression ')'                                                                  #parenthesizedExpression
     ;
 

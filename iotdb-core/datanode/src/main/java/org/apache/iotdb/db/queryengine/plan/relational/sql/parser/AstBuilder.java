@@ -3723,7 +3723,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.expression().size() > 1) {
       arguments.add((Expression) visit(ctx.expression(1)));
     }
-    return new FunctionCall(getLocation(ctx), QualifiedName.of("integral"), arguments);
+    // DISTINCT and OVER are parsed by this dedicated alternative too, so they must be carried
+    // into the node exactly as visitFunctionCall does for the generic call form
+    return new FunctionCall(
+        getLocation(ctx),
+        QualifiedName.of("integral"),
+        visitIfPresent(ctx.over(), Window.class),
+        Optional.empty(),
+        isDistinct(ctx.setQuantifier()),
+        arguments);
   }
 
   private long parseTimeValue(RelationalSqlParser.TimeValueContext ctx, long currentTime) {

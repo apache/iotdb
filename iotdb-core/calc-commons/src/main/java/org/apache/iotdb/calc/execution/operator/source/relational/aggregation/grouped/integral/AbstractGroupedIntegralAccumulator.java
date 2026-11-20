@@ -67,11 +67,6 @@ abstract class AbstractGroupedIntegralAccumulator implements GroupedAccumulator 
     timeUnit = 0;
   }
 
-  protected final double normalizeArea(double area) {
-    // timeUnit stays 0 when no input has ever been added
-    return timeUnit == 0 ? 0.0 : area / timeUnit;
-  }
-
   protected final SemanticException invalidTimeUnit(String text) {
     return IntegralFunctionUtils.invalidTimeUnit(text);
   }

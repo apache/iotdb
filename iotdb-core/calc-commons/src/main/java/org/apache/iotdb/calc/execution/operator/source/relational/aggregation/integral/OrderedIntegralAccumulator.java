@@ -37,6 +37,7 @@ public final class OrderedIntegralAccumulator extends AbstractIntegralTableAccum
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(OrderedIntegralAccumulator.class);
 
+  // only distinguishes zero, one and at least two distinct timestamps, so it saturates at two
   private int sampleCount;
   // "start" is the last point whose value can no longer change, "end" is the newest point. The
   // area of the segment between them is added only once a larger timestamp proves that "end" will
@@ -90,13 +91,17 @@ public final class OrderedIntegralAccumulator extends AbstractIntegralTableAccum
         endValue = value;
       } else {
         if (sampleCount >= 2) {
-          area += (startValue + endValue) / 2.0 * (endTime - startTime);
+          area +=
+              IntegralFunctionUtils.calculateNormalizedTrapezoid(
+                  startValue, endValue, endTime - startTime, timeUnit);
         }
         startTime = endTime;
         startValue = endValue;
         endTime = time;
         endValue = value;
-        sampleCount++;
+        if (sampleCount < 2) {
+          sampleCount++;
+        }
       }
     }
   }
@@ -119,8 +124,11 @@ public final class OrderedIntegralAccumulator extends AbstractIntegralTableAccum
       return;
     }
     // the newest point is final because there is no later input to overwrite it
-    double finalArea = area + (startValue + endValue) / 2.0 * (endTime - startTime);
-    columnBuilder.writeDouble(finalArea / timeUnit);
+    double finalArea =
+        area
+            + IntegralFunctionUtils.calculateNormalizedTrapezoid(
+                startValue, endValue, endTime - startTime, timeUnit);
+    columnBuilder.writeDouble(finalArea);
   }
 
   @Override

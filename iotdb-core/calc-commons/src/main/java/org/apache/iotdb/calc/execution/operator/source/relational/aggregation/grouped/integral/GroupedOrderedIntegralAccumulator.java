@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ag
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.integral.IntegralFunctionUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -38,6 +39,7 @@ public final class GroupedOrderedIntegralAccumulator extends AbstractGroupedInte
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedOrderedIntegralAccumulator.class);
 
+  // only distinguishes zero, one and at least two distinct timestamps, so it saturates at two
   private final IntBigArray sampleCounts = new IntBigArray();
   // "start" is the last point whose value can no longer change, "end" is the newest point. The
   // area of the segment between them is added only once a larger timestamp proves that "end" will
@@ -109,12 +111,14 @@ public final class GroupedOrderedIntegralAccumulator extends AbstractGroupedInte
       return;
     }
     // the newest point is final because there is no later input to overwrite it
-    double area =
+    double normalizedArea =
         areas.get(groupId)
-            + (startValues.get(groupId) + endValues.get(groupId))
-                / 2.0
-                * (endTimes.get(groupId) - startTimes.get(groupId));
-    output.writeDouble(normalizeArea(area));
+            + IntegralFunctionUtils.calculateNormalizedTrapezoid(
+                startValues.get(groupId),
+                endValues.get(groupId),
+                endTimes.get(groupId) - startTimes.get(groupId),
+                timeUnit);
+    output.writeDouble(normalizedArea);
   }
 
   @Override
@@ -152,14 +156,18 @@ public final class GroupedOrderedIntegralAccumulator extends AbstractGroupedInte
       areas.set(
           groupId,
           areas.get(groupId)
-              + (startValues.get(groupId) + endValues.get(groupId))
-                  / 2.0
-                  * (endTime - startTimes.get(groupId)));
+              + IntegralFunctionUtils.calculateNormalizedTrapezoid(
+                  startValues.get(groupId),
+                  endValues.get(groupId),
+                  endTime - startTimes.get(groupId),
+                  timeUnit));
     }
     startTimes.set(groupId, endTime);
     startValues.set(groupId, endValues.get(groupId));
     endTimes.set(groupId, time);
     endValues.set(groupId, value);
-    sampleCounts.set(groupId, Math.incrementExact(sampleCount));
+    if (sampleCount < 2) {
+      sampleCounts.set(groupId, sampleCount + 1);
+    }
   }
 }

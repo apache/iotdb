@@ -21,10 +21,12 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.i
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.TimeValueBuffer;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.INTEGRAL;
 
@@ -38,19 +40,17 @@ public final class IntegralFunctionUtils {
 
   public static double readValue(TSDataType valueDataType, Column column, int position) {
     final double value =
-        switch (valueDataType) {
-          case INT32 -> column.getInt(position);
-          case INT64 -> column.getLong(position);
-          case FLOAT -> column.getFloat(position);
-          case DOUBLE -> column.getDouble(position);
-          default ->
-              throw new SemanticException(
-                  String.format(
-                      CalcMessages
-                          .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_VALUE_TYPE_ARG_9DD7388D,
-                      INTEGRAL,
-                      valueDataType));
-        };
+        TypeServices.AGGREGATION_NUMERIC_COLUMN_TO_DOUBLE_CONVERTER_SERVICE
+            .call(Type.fromTsDataType(valueDataType))
+            .create(
+                () ->
+                    new SemanticException(
+                        String.format(
+                            CalcMessages
+                                .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_VALUE_TYPE_ARG_9DD7388D,
+                            INTEGRAL,
+                            valueDataType)))
+            .convert(column, position);
     if (!Double.isFinite(value)) {
       throw new SemanticException(
           String.format(
@@ -62,8 +62,8 @@ public final class IntegralFunctionUtils {
     return value;
   }
 
-  /** Sorts the samples by time and sums the trapezoidal area of adjacent distinct timestamps. */
-  public static double calculateArea(TimeValueBuffer samples) {
+  /** Sorts samples and sums normalized trapezoidal areas between adjacent distinct timestamps. */
+  public static double calculateArea(TimeValueBuffer samples, long timeUnit) {
     // fewer than two effective points have no time span, so the area is 0
     if (samples == null || samples.size() < 2) {
       return 0.0;
@@ -87,7 +87,7 @@ public final class IntegralFunctionUtils {
         continue;
       }
       if (effectiveSampleCount >= 2) {
-        area += (startValue + endValue) / 2.0 * (endTime - startTime);
+        area += calculateNormalizedTrapezoid(startValue, endValue, endTime - startTime, timeUnit);
       }
       startTime = endTime;
       startValue = endValue;
@@ -99,7 +99,15 @@ public final class IntegralFunctionUtils {
       return 0.0;
     }
     // the newest point is final because there is no later sample to overwrite it
-    return area + (startValue + endValue) / 2.0 * (endTime - startTime);
+    return area + calculateNormalizedTrapezoid(startValue, endValue, endTime - startTime, timeUnit);
+  }
+
+  public static double calculateNormalizedTrapezoid(
+      double startValue, double endValue, long timeDelta, long timeUnit) {
+    double valueSum = startValue + endValue;
+    double averageValue =
+        Double.isFinite(valueSum) ? valueSum / 2.0 : startValue / 2.0 + endValue / 2.0;
+    return averageValue * ((double) timeDelta / timeUnit);
   }
 
   public static SemanticException invalidTimeUnit(String text) {

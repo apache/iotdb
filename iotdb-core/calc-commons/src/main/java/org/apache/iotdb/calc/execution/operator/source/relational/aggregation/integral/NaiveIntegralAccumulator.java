@@ -102,8 +102,8 @@ public final class NaiveIntegralAccumulator extends AbstractIntegralTableAccumul
   @Override
   public void evaluateFinal(ColumnBuilder output) {
     // timeUnit stays 0 when no input has ever been added
-    double area = IntegralFunctionUtils.calculateArea(samples);
-    output.writeDouble(timeUnit == 0 ? 0.0 : area / timeUnit);
+    output.writeDouble(
+        timeUnit == 0 ? 0.0 : IntegralFunctionUtils.calculateArea(samples, timeUnit));
   }
 
   @Override

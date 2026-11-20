@@ -1156,6 +1156,11 @@ public class ExpressionAnalyzer {
 
       int argumentsNum = node.getArguments().size();
       RelationType relationType = context.getContext().getScope().getRelationType();
+      // The explicit time argument is validated only after the argument types are resolved, so
+      // that a qualified column is checked against its own type instead of the first visible
+      // field with the same name, which depends on the JOIN order. -1 means no check is needed.
+      int timeArgumentIndex = -1;
+      String invalidTimeArgumentMessage = null;
       // Syntactic sugar: first(s1) => first(s1,time), first_by(s1,s2) => first_by(s1,s2,time)
       // So do last and last_by.
       switch (functionName.toLowerCase()) {
@@ -1164,14 +1169,9 @@ public class ExpressionAnalyzer {
           if (argumentsNum == 1) {
             addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
           } else if (argumentsNum == 2) {
-            if (!checkArgumentIsTimestamp(
-                node.getArguments().get(1), (List<Field>) relationType.getVisibleFields())) {
-              throw new SemanticException(
-                  String.format(
-                      DataNodeQueryMessages
-                          .THE_SECOND_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME,
-                      functionName));
-            }
+            timeArgumentIndex = 1;
+            invalidTimeArgumentMessage =
+                DataNodeQueryMessages.THE_SECOND_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME;
           }
           break;
         case FIRST_BY_AGGREGATION:
@@ -1179,14 +1179,9 @@ public class ExpressionAnalyzer {
           if (argumentsNum == 2) {
             addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
           } else if (argumentsNum == 3) {
-            if (!checkArgumentIsTimestamp(
-                node.getArguments().get(2), (List<Field>) relationType.getVisibleFields())) {
-              throw new SemanticException(
-                  String.format(
-                      DataNodeQueryMessages
-                          .THE_THIRD_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME,
-                      functionName));
-            }
+            timeArgumentIndex = 2;
+            invalidTimeArgumentMessage =
+                DataNodeQueryMessages.THE_THIRD_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME;
           }
           break;
         case INTEGRAL:
@@ -1202,14 +1197,9 @@ public class ExpressionAnalyzer {
           } else if (argumentsNum == 2) {
             addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
           } else if (argumentsNum == 3) {
-            if (!checkArgumentIsTimestamp(
-                node.getArguments().get(2), (List<Field>) relationType.getVisibleFields())) {
-              throw new SemanticException(
-                  String.format(
-                      DataNodeQueryMessages
-                          .THE_THIRD_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME,
-                      functionName));
-            }
+            timeArgumentIndex = 2;
+            invalidTimeArgumentMessage =
+                DataNodeQueryMessages.THE_THIRD_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME;
           } else {
             throw new SemanticException(
                 String.format(
@@ -1232,6 +1222,9 @@ public class ExpressionAnalyzer {
       }
 
       List<Type> argumentTypes = getCallArgumentTypes(node.getArguments(), context);
+      if (timeArgumentIndex >= 0 && !TIMESTAMP.equals(argumentTypes.get(timeArgumentIndex))) {
+        throw new SemanticException(String.format(invalidTimeArgumentMessage, functionName));
+      }
 
       if (node.getArguments().size() > 127) {
         throw new SemanticException(
@@ -1326,34 +1319,6 @@ public class ExpressionAnalyzer {
       } else {
         arguments.add(new Identifier(actualTimeField.toLowerCase(Locale.ENGLISH)));
       }
-    }
-
-    private boolean checkArgumentIsTimestamp(Expression argument, List<Field> visibleFields) {
-
-      String argumentName =
-          (argument instanceof DereferenceExpression)
-              ? ((DereferenceExpression) argument)
-                  .getField()
-                  .orElseThrow(
-                      () ->
-                          new SemanticException(
-                              DataNodeQueryMessages.THE_INPUT_FIELD_DOES_NOT_EXIST))
-                  .toString()
-              : argument.toString();
-
-      for (Field field : visibleFields) {
-        if (field
-            .getName()
-            .orElseThrow(
-                () ->
-                    new SemanticException(
-                        DataNodeQueryMessages.THE_FIELD_IN_TABLE_DOES_NOT_HAVE_A_NAME))
-            .equalsIgnoreCase(argumentName)) {
-          return field.getType() == TIMESTAMP;
-        }
-      }
-      // should never reach here
-      throw new SemanticException(DataNodeQueryMessages.THE_INPUT_ARGUMENT_DOES_NOT_EXIST);
     }
 
     /** Retrieves the effective time column name from the relation's visible fields. */

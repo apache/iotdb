@@ -3400,17 +3400,24 @@ public class TableDistributedPlanGenerator
     return result;
   }
 
-  private boolean canSplitTableFunctionProcessor(TableFunctionProcessorNode node) {
+  static boolean canSplitTableFunctionProcessor(TableFunctionProcessorNode node) {
     if (node.isRowSemantic()) {
       return true;
     }
     if (!isPartitionedGroup(node.getChild())) {
       return false;
     }
-    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(node.getName());
+    // A partitioned GroupNode only guarantees that its children are partitioned, not that one
+    // logical partition lives in one child. SAMPLE has to draw N rows for the whole partition and
+    // DERIVATIVE needs the adjacent pairs crossing fragment boundaries, so neither may run once
+    // per child.
+    String functionName = node.getName();
+    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName)
+        && !TableBuiltinTableFunction.SAMPLE.getFunctionName().equalsIgnoreCase(functionName)
+        && !TableBuiltinTableFunction.DERIVATIVE.getFunctionName().equalsIgnoreCase(functionName);
   }
 
-  private boolean isPartitionedGroup(PlanNode node) {
+  private static boolean isPartitionedGroup(PlanNode node) {
     return node instanceof GroupNode && ((GroupNode) node).getPartitionKeyCount() > 0;
   }
 

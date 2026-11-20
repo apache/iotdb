@@ -59,6 +59,13 @@ public class IoTDBIntegralTableIT {
             + "(0, 'n', -1.0), (1000, 'n', -3.0)",
         "CREATE TABLE integral_invalid(device_id STRING TAG, s STRING FIELD)",
         "INSERT INTO integral_invalid(time, device_id, s) VALUES (0, 'd1', 'a'), (1000, 'd1', 'b')",
+        // both tables have a ts column, but only integral_join_ts.ts is TIMESTAMP
+        "CREATE TABLE integral_join_ts(device_id STRING TAG, v DOUBLE FIELD, ts TIMESTAMP FIELD)",
+        "INSERT INTO integral_join_ts(time, device_id, v, ts) VALUES "
+            + "(0, 'd1', 1.0, 2021-01-01T00:00:00), (1000, 'd1', 3.0, 2021-01-01T00:00:01)",
+        "CREATE TABLE integral_join_int(device_id STRING TAG, v DOUBLE FIELD, ts INT64 FIELD)",
+        "INSERT INTO integral_join_int(time, device_id, v, ts) VALUES "
+            + "(0, 'd1', 1.0, 0), (1000, 'd1', 3.0, 1000)",
       };
 
   @BeforeClass
@@ -147,6 +154,38 @@ public class IoTDBIntegralTableIT {
             + "GROUP BY device_id ORDER BY device_id",
         expectedHeader,
         retArray,
+        DATABASE);
+  }
+
+  @Test
+  public void testIntegralTimeColumnOfJoin() {
+    String[] expectedHeader = new String[] {"area"};
+    String[] retArray = new String[] {"2.0,"};
+    // a.ts is TIMESTAMP while b.ts is INT64: the third argument is validated by the column it
+    // resolves to, so the same query is accepted whichever side of the join that column is on
+    tableResultSetEqualTest(
+        "SELECT integral(a.v, 1s, a.ts) AS area FROM integral_join_ts a "
+            + "JOIN integral_join_int b ON a.device_id = b.device_id AND a.time = b.time",
+        expectedHeader,
+        retArray,
+        DATABASE);
+    tableResultSetEqualTest(
+        "SELECT integral(a.v, 1s, a.ts) AS area FROM integral_join_int b "
+            + "JOIN integral_join_ts a ON a.device_id = b.device_id AND a.time = b.time",
+        expectedHeader,
+        retArray,
+        DATABASE);
+    // the INT64 column is rejected in both join orders instead of silently producing a wrong
+    // result when a TIMESTAMP column with the same name comes first in the visible fields
+    tableAssertTestFail(
+        "SELECT integral(a.v, 1s, b.ts) FROM integral_join_ts a "
+            + "JOIN integral_join_int b ON a.device_id = b.device_id AND a.time = b.time",
+        "must be actual time name",
+        DATABASE);
+    tableAssertTestFail(
+        "SELECT integral(a.v, 1s, b.ts) FROM integral_join_int b "
+            + "JOIN integral_join_ts a ON a.device_id = b.device_id AND a.time = b.time",
+        "must be actual time name",
         DATABASE);
   }
 
