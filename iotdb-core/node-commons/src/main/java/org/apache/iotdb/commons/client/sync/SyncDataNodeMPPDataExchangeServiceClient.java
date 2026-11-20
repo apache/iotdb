@@ -26,57 +26,128 @@ import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.ServiceMessages;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
-import org.apache.iotdb.rpc.TConfigurationConst;
+import org.apache.iotdb.rpc.RpcSslUtils;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
+import com.google.common.net.InetAddresses;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.SocketException;
+import java.nio.channels.SocketChannel;
+import java.security.GeneralSecurityException;
 
 public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeService.Client
     implements ThriftClient, AutoCloseable {
 
-  private final boolean printLogWhenEncounterException;
-  private final TEndPoint endpoint;
-  private final ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager;
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  public SyncDataNodeMPPDataExchangeServiceClient(
+  private final ThriftClientProperty property;
+  private final TEndPoint endpoint;
+  private final MPPDataExchangeClientManager clientManager;
+  private boolean invalidated;
+  private boolean restoreTimeout;
+
+  // The pool allocates the client before connecting so a stalled connect cannot block other
+  // borrowers inside Commons Pool's per-key makeObjectCountLock.
+  protected SyncDataNodeMPPDataExchangeServiceClient(
       ThriftClientProperty property,
       TEndPoint endpoint,
-      ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientManager)
-      throws TTransportException {
-    super(
-        property
-            .getProtocolFactory()
-            .getProtocol(
-                commonConfig.isEnableInternalSSL()
-                    ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-                        endpoint.getIp(),
-                        endpoint.getPort(),
-                        property.getConnectionTimeoutMs(),
-                        commonConfig.getTrustStorePath(),
-                        commonConfig.getTrustStorePwd(),
-                        commonConfig.getKeyStorePath(),
-                        commonConfig.getKeyStorePwd(),
-                        commonConfig.getSslProtocol())
-                    : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-                        new TSocket(
-                            TConfigurationConst.defaultTConfiguration,
-                            endpoint.getIp(),
-                            endpoint.getPort(),
-                            property.getConnectionTimeoutMs()))));
-    this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
+      MPPDataExchangeClientManager clientManager) {
+    super(null);
+    this.property = property;
     this.endpoint = endpoint;
     this.clientManager = clientManager;
-    if (!getInputProtocol().getTransport().isOpen()) {
-      getInputProtocol().getTransport().open();
+  }
+
+  final void prepare(long deadlineMs) throws TTransportException, IOException {
+    if (iprot_ == null) {
+      // A channel-backed socket makes blocking connects, writes and reads interruptible,
+      // including reads during the TLS handshake.
+      TTransport transport = connect(SocketChannel.open().socket(), deadlineMs);
+      try {
+        iprot_ = oprot_ = property.getProtocolFactory().getProtocol(transport);
+      } catch (RuntimeException | Error e) {
+        transport.close();
+        throw e;
+      }
     }
+    if (deadlineMs != Long.MAX_VALUE) {
+      setTimeout(rpcTimeout(deadlineMs));
+    }
+  }
+
+  private record Peer(InetSocketAddress address, SSLSocketFactory sslFactory) {}
+
+  private Peer resolvePeer(long deadlineMs) throws TTransportException {
+    String host = endpoint.getIp();
+    int port = endpoint.getPort();
+    boolean ssl = commonConfig.isEnableInternalSSL();
+    if (!ssl && InetAddresses.isInetAddress(host)) {
+      return new Peer(new InetSocketAddress(InetAddresses.forString(host), port), null);
+    }
+    return clientManager.prepareConnection(
+        () -> new Peer(new InetSocketAddress(host, port), ssl ? sslSocketFactory() : null),
+        rpcTimeout(deadlineMs));
+  }
+
+  final TTransport connect(Socket socket, long deadlineMs) throws IOException, TTransportException {
+    try {
+      Peer peer = resolvePeer(deadlineMs);
+      socket.connect(peer.address(), rpcTimeout(deadlineMs));
+      if (peer.sslFactory() != null) {
+        SSLSocket ssl =
+            (SSLSocket)
+                peer.sslFactory().createSocket(socket, endpoint.getIp(), endpoint.getPort(), true);
+        socket = ssl;
+        SSLParameters params = ssl.getSSLParameters();
+        params.setEndpointIdentificationAlgorithm("HTTPS");
+        ssl.setSSLParameters(params);
+      }
+      socket.setSoTimeout(rpcTimeout(deadlineMs));
+      return DeepCopyRpcTransportFactory.INSTANCE.getTransport(new TSocket(socket));
+    } catch (IOException | TTransportException | RuntimeException | Error e) {
+      socket.close();
+      throw e;
+    }
+  }
+
+  private static SSLSocketFactory sslSocketFactory()
+      throws GeneralSecurityException, IOException, TTransportException {
+    if (StringUtils.isBlank(commonConfig.getKeyStorePath())
+        && StringUtils.isBlank(commonConfig.getTrustStorePath())) {
+      throw new TTransportException(ServiceMessages.KEYSTORE_OR_TRUSTSTORE_NOT_FOUND);
+    }
+    return RpcSslUtils.createSSLContext(
+            commonConfig.getKeyStorePath(),
+            commonConfig.getKeyStorePwd(),
+            commonConfig.getTrustStorePath(),
+            commonConfig.getTrustStorePwd(),
+            commonConfig.getSslProtocol())
+        .getSocketFactory();
+  }
+
+  private int rpcTimeout(long deadlineMs) {
+    int configured = property.getConnectionTimeoutMs();
+    if (deadlineMs == Long.MAX_VALUE) {
+      return configured;
+    }
+    long remaining = MPPDataExchangeClientManager.remainingMillis(deadlineMs);
+    return (int) Math.min(remaining, configured > 0 ? configured : Integer.MAX_VALUE);
   }
 
   public int getTimeout() throws SocketException {
@@ -84,6 +155,7 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
   }
 
   public void setTimeout(int timeout) {
+    restoreTimeout = timeout != property.getConnectionTimeoutMs();
     // the same transport is used in both input and output
     ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
@@ -95,17 +167,25 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
 
   @Override
   public void invalidate() {
-    getInputProtocol().getTransport().close();
+    if (!invalidated) {
+      invalidated = true;
+      if (iprot_ != null) {
+        iprot_.getTransport().close();
+      }
+    }
   }
 
   @Override
   public void invalidateAll() {
-    clientManager.clear(endpoint);
+    // An interrupt closes just this channel. Other clients to the same peer remain usable.
+    if (!Thread.currentThread().isInterrupted()) {
+      clientManager.clear(endpoint);
+    }
   }
 
   @Override
   public boolean printLogWhenEncounterException() {
-    return printLogWhenEncounterException;
+    return property.isPrintLogWhenEncounterException();
   }
 
   @Override
@@ -113,7 +193,7 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
     return String.format("SyncDataNodeMPPDataExchangeServiceClient{%s}", endpoint);
   }
 
-  public static class Factory
+  static class Factory
       extends ThriftClientFactory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> {
 
     public Factory(
@@ -134,17 +214,28 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncDataNodeMPPDataExchangeServiceClient.class,
-              SyncDataNodeMPPDataExchangeServiceClient.class.getConstructor(
-                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
+              SyncDataNodeMPPDataExchangeServiceClient.class.getDeclaredConstructor(
+                  ThriftClientProperty.class, TEndPoint.class, MPPDataExchangeClientManager.class),
               thriftClientProperty,
               endpoint,
               clientManager));
     }
 
     @Override
+    public void passivateObject(
+        TEndPoint endpoint, PooledObject<SyncDataNodeMPPDataExchangeServiceClient> pooledObject) {
+      SyncDataNodeMPPDataExchangeServiceClient client = pooledObject.getObject();
+      if (client.restoreTimeout) {
+        client.setTimeout(thriftClientProperty.getConnectionTimeoutMs());
+      }
+    }
+
+    @Override
     public boolean validateObject(
         TEndPoint endpoint, PooledObject<SyncDataNodeMPPDataExchangeServiceClient> pooledObject) {
-      return pooledObject.getObject().getInputProtocol().getTransport().isOpen();
+      SyncDataNodeMPPDataExchangeServiceClient client = pooledObject.getObject();
+      return !client.invalidated
+          && (client.iprot_ == null || client.iprot_.getTransport().isOpen());
     }
   }
 }

@@ -38,7 +38,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   private final GenericKeyedObjectPool<K, V> pool;
 
-  ClientManager(IClientPoolFactory<K, V> factory) {
+  protected ClientManager(IClientPoolFactory<K, V> factory) {
     pool = factory.createClientPool(this);
   }
 
@@ -49,11 +49,22 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public V borrowClient(K node) throws ClientManagerException {
+    return borrowClientWithTimeout(node, Long.MAX_VALUE);
+  }
+
+  protected V borrowClientWithTimeout(K node, long maxWaitMs) throws ClientManagerException {
     if (node == null) {
       throw new BorrowNullClientManagerException();
     }
     try {
-      return pool.borrowObject(node);
+      if (maxWaitMs == Long.MAX_VALUE) {
+        return pool.borrowObject(node);
+      }
+      long poolWaitMs = pool.getMaxWaitDuration().toMillis();
+      return pool.borrowObject(node, poolWaitMs < 0 ? maxWaitMs : Math.min(poolWaitMs, maxWaitMs));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ClientManagerException(e);
     } catch (Exception e) {
       throw new ClientManagerException(e);
     }

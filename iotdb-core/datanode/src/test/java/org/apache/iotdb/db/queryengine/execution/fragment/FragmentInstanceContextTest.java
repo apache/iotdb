@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
@@ -74,6 +75,23 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class FragmentInstanceContextTest {
+
+  @Test
+  public void exchangeDeadlineHonorsBothCoordinatorAndLegacyFragmentLimits() {
+    FragmentInstanceId id =
+        new FragmentInstanceId(new PlanFragmentId(new QueryId("deadline"), 0), "0");
+    FragmentInstanceStateMachine state = new FragmentInstanceStateMachine(id, Runnable::run);
+    long localDeadline = System.currentTimeMillis() + 30_000;
+    FragmentInstanceContext context =
+        FragmentInstanceContext.createFragmentInstanceContext(
+            id, state, null, localDeadline, false, false);
+    assertEquals(localDeadline, context.getExchangeDeadlineMs());
+    context.setExchangeDeadlineMs(localDeadline - 1000);
+    assertEquals(localDeadline - 1000, context.getExchangeDeadlineMs());
+    assertEquals(localDeadline, context.getOuterQueryDeadlineMs());
+    context.setExchangeDeadlineMs(Long.MAX_VALUE);
+    assertEquals(localDeadline, context.getExchangeDeadlineMs());
+  }
 
   @Test
   public void testConcurrentQueryDataSourceStatistics() throws InterruptedException {

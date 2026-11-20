@@ -90,6 +90,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
+import static com.google.common.math.LongMath.saturatedAdd;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.DISPATCH_READ;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onThriftFrameOversizeException;
@@ -508,6 +509,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException, TException {
     checkNotAborted();
+    if (queryContext.getTimeOut() > 0) {
+      instance.setQueryDeadlineMs(
+          saturatedAdd(queryContext.getStartTime(), queryContext.getTimeOut()));
+    }
     TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
     if (isDispatchedToLocal(endPoint)) {
       prepareAdmission(instance, endPoint, null);
@@ -539,6 +544,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         case READ:
           final TSendFragmentInstanceReq sendFragmentInstanceReq =
               new TSendFragmentInstanceReq(new TFragmentInstance(instance.serializeToByteBuffer()));
+          if (instance.getQueryDeadlineMs() >= 0) {
+            sendFragmentInstanceReq.setQueryDeadlineMs(instance.getQueryDeadlineMs());
+          }
           prepareAdmission(instance, endPoint, client);
           if (instance.hasQueryAttempt()) {
             sendFragmentInstanceReq

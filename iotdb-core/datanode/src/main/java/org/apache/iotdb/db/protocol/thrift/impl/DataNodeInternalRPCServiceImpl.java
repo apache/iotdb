@@ -565,6 +565,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       FragmentInstance.deserializeFrom(
                           fragmentInstanceId, req.fragmentInstance.body));
       fragmentInstance.attachUDFQueryScope(queryScope);
+      if (req.isSetQueryDeadlineMs()) {
+        fragmentInstance.setQueryDeadlineMs(req.getQueryDeadlineMs());
+      }
       if (req.isSetQueryAttemptId() && req.isSetAdmissionToken()) {
         fragmentInstance.setQueryAttempt(req.getQueryAttemptId(), req.getAdmissionToken());
       }

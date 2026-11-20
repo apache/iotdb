@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.client.sync.MPPDataExchangeClientManager;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -92,7 +90,7 @@ public class MPPDataExchangeManagerTest {
               localMemoryManager,
               new TsBlockSerdeFactory(),
               exchangeExecutor,
-              Mockito.mock(IClientManager.class));
+              Mockito.mock(MPPDataExchangeClientManager.class));
       ISourceHandle sourceHandle =
           exchangeManager.createSourceHandle(
               targetFragmentInstanceId,
@@ -147,9 +145,7 @@ public class MPPDataExchangeManagerTest {
             mockLocalMemoryManager,
             new TsBlockSerdeFactory(),
             Executors.newSingleThreadExecutor(),
-            new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
-                .createClientManager(
-                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+            new MPPDataExchangeClientManager());
 
     ISinkHandle shuffleSinkHandle =
         mppDataExchangeManager.createShuffleSinkHandle(
@@ -211,9 +207,7 @@ public class MPPDataExchangeManagerTest {
             mockLocalMemoryManager,
             new TsBlockSerdeFactory(),
             Executors.newSingleThreadExecutor(),
-            new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
-                .createClientManager(
-                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+            new MPPDataExchangeClientManager());
 
     ISourceHandle localSourceHandle =
         mppDataExchangeManager.createLocalSourceHandleForFragment(

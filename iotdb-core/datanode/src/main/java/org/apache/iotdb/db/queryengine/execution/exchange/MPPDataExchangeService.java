@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.client.sync.MPPDataExchangeClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -76,9 +74,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
             new LocalMemoryManager(),
             new TsBlockSerdeFactory(),
             executorService,
-            new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
-                .createClientManager(
-                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+            new MPPDataExchangeClientManager());
     LOGGER.info(DataNodeQueryMessages.MPPDATAEXCHANGEMANAGER_INIT_SUCCESSFULLY);
   }
 
@@ -153,6 +149,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   public void stop() {
     super.stop();
     executorService.shutdown();
+    mppDataExchangeManager.getMppDataExchangeServiceClientManager().close();
   }
 
   public static MPPDataExchangeService getInstance() {
