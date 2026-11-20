@@ -32,10 +32,12 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -293,13 +295,14 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   private static ByteBuffer serializeTabletWithAlignment(
-      final Tablet tablet, final boolean isAligned) {
-    final ByteBuffer buffer =
-        ByteBuffer.allocate(Math.addExact(tablet.serializedSize(), Byte.BYTES));
-    tablet.serialize(buffer);
-    ReadWriteIOUtils.write(isAligned, buffer);
-    buffer.flip();
-    return buffer;
+      final Tablet tablet, final boolean isAligned) throws IOException {
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(Math.addExact(tablet.serializedSize(), Byte.BYTES));
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      tablet.serialize(outputStream);
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
   }
 
   static boolean mayAppendTablet(final Tablet target, final Tablet source) {

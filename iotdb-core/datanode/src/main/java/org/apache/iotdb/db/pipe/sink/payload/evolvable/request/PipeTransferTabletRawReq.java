@@ -272,12 +272,15 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       throw new IOException(DataNodePipeMessages.CANNOT_SERIALIZE_BOTH_TABLET_AND_STATEMENT_ARE);
     }
 
-    final ByteBuffer buffer = ByteBuffer.allocate(calculateAirGapSerializedSize(tabletToSerialize));
-    ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), buffer);
-    ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_RAW.getType(), buffer);
-    tabletToSerialize.serialize(buffer);
-    ReadWriteIOUtils.write(isAlignedToSerialize, buffer);
-    return buffer.array();
+    try (final PublicBAOS byteArrayOutputStream =
+            new PublicBAOS(calculateAirGapSerializedSize(tabletToSerialize));
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_RAW.getType(), outputStream);
+      tabletToSerialize.serialize(outputStream);
+      ReadWriteIOUtils.write(isAlignedToSerialize, outputStream);
+      return byteArrayOutputStream.toByteArray();
+    }
   }
 
   /**

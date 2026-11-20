@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskChunkLoader;
@@ -47,7 +46,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.TableDeviceTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -62,6 +60,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -112,7 +111,7 @@ public class FileLoaderUtils {
                         seriesPath.getDeviceId(),
                         seriesPath.getMeasurement()),
                     allSensors,
-                    context.ignoreNotExistsDevice()
+                    context.isStorageEngineRecovering()
                         || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                     context.isDebug(),
                     context);
@@ -341,23 +340,29 @@ public class FileLoaderUtils {
     // the order of timeSeriesMetadata list is same as subSensorList's order
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     List<String> valueMeasurementList = alignedPath.getMeasurementList();
+    // resolves the time column and every selected sensor in one call: the cache reads each leaf
+    // group that holds one of them once and answers the whole group from that read, so a wide
+    // projection does not walk the device metadata index once per column
     Set<String> allSensors = alignedPath.getAllSensors();
-    boolean isDebug = context.isDebug();
-    String filePath = resource.getTsFilePath();
-    IDeviceID deviceId = alignedPath.getDeviceId();
 
     // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
     // we should not ignore the non-exist of device in TsFileMetadata
-    TimeseriesMetadata timeColumn =
-        cache.get(
-            filePath,
-            new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
+    boolean ignoreNotExists =
+        context.isStorageEngineRecovering()
+            || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
+
+    Map<String, TimeseriesMetadata> metadata =
+        cache.getDeviceTimeseriesMetadata(
+            resource.getTsFilePath(),
+            resource.getTsFileID(),
+            alignedPath.getDeviceId(),
             allSensors,
-            context.ignoreNotExistsDevice()
-                || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
-            isDebug,
+            ignoreNotExists,
+            context.isDebug(),
             context,
             rootMeasurementMetadataIndexNodeOffset);
+
+    TimeseriesMetadata timeColumn = metadata.get("");
     if (timeColumn != null) {
       // only need time column, like count_time aggregation
       if (valueMeasurementList.isEmpty()) {
@@ -375,21 +380,13 @@ public class FileLoaderUtils {
       } else {
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             new ArrayList<>(valueMeasurementList.size());
-        // if all the queried aligned sensors does not exist, we will return null
-        boolean exist = false;
         for (String measurement : valueMeasurementList) {
-          TimeseriesMetadata valueColumn =
-              cache.get(
-                  filePath,
-                  new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, measurement),
-                  allSensors,
-                  context.ignoreNotExistsDevice()
-                      || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
-                  isDebug,
-                  context,
-                  rootMeasurementMetadataIndexNodeOffset);
+          valueTimeSeriesMetadataList.add(metadata.get(measurement));
+        }
+        // if all the queried aligned sensors do not exist, skip the device in this file
+        boolean exist = false;
+        for (TimeseriesMetadata valueColumn : valueTimeSeriesMetadataList) {
           exist = (exist || (valueColumn != null));
-          valueTimeSeriesMetadataList.add(valueColumn);
         }
         if (!ignoreAllNullRows || exist) {
           alignedTimeSeriesMetadata =
