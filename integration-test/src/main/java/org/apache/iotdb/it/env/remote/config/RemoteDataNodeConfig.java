@@ -92,6 +92,31 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setEnablePostgreSqlService(boolean enablePostgreSqlService) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setPostgreSqlServiceAddress(String address) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setPostgreSqlServicePort(int port) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setPostgreSqlServiceMaxConnections(int maxConnections) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setPostgreSqlServiceWriteTimeoutInMs(long writeTimeoutInMs) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     return this;
   }

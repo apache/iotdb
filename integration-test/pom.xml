@@ -270,6 +270,19 @@
             <!--We will integrate rest-jar-with-dependencies into lib by assembly plugin-->
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>2.0.13-SNAPSHOT</version>
+            <!--We will integrate postgresql-jar-with-dependencies into lib by assembly plugin-->
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <!-- client of the PostgreSQL wire protocol ITs -->
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

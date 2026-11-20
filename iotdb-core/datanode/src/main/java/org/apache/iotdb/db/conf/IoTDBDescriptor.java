@@ -915,6 +915,12 @@ public class IoTDBDescriptor {
 
     // mqtt
     loadMqttProps(properties);
+    conf.setEnablePostgreSqlService(
+        Boolean.parseBoolean(
+            properties
+                .getProperty(
+                    "enable_postgresql_service", Boolean.toString(conf.isEnablePostgreSqlService()))
+                .trim()));
 
     conf.setIntoOperationBufferSizeInByte(
         Long.parseLong(

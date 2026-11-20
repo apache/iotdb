@@ -32,7 +32,11 @@ public enum BuiltinExternalServices {
   REST(
       "REST",
       "org.apache.iotdb.rest.RestService",
-      IoTDBRestServiceDescriptor.getInstance().getConfig()::isEnableRestService);
+      IoTDBRestServiceDescriptor.getInstance().getConfig()::isEnableRestService),
+  POSTGRESQL(
+      "POSTGRESQL",
+      "org.apache.iotdb.postgresql.PostgreSqlService",
+      IoTDBDescriptor.getInstance().getConfig()::isEnablePostgreSqlService);
 
   private final String serviceName;
   private final String className;
