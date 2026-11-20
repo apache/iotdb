@@ -197,7 +197,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       // the type is inferred and can be inconsistent with the existing one
       innerTreeStatement.setDataType(existingColumn.getDataType(), index);
     } else if (!existingColumn.getDataType().isCompatible(dataType)
-        && !innerTreeStatement.isForceTypeConversion()) {
+        && !innerTreeStatement.isForceTypeConversion()
+        && !innerTreeStatement.isInsertTypeCastEnabled()) {
       processTypeConflictColumn(
           measurement, dataType, columnCategory, existingColumn, index, innerTreeStatement);
       return;

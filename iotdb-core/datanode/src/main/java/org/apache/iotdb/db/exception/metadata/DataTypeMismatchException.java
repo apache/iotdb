@@ -36,7 +36,30 @@ public class DataTypeMismatchException extends MetadataException {
       TSDataType typeInSchema,
       long time,
       Object value) {
+    this(deviceName, measurementName, insertType, typeInSchema, time, value, null);
+  }
+
+  public DataTypeMismatchException(
+      String deviceName,
+      String measurementName,
+      TSDataType insertType,
+      TSDataType typeInSchema,
+      long time,
+      Object value,
+      String reason) {
     super(
+        formatMessage(deviceName, measurementName, insertType, typeInSchema, time, value, reason));
+  }
+
+  private static String formatMessage(
+      String deviceName,
+      String measurementName,
+      TSDataType insertType,
+      TSDataType typeInSchema,
+      long time,
+      Object value,
+      String reason) {
+    final String message =
         String.format(
             DataNodeSchemaMessages.DATA_TYPE_MISMATCH_REGISTERED_TYPE_FMT,
             deviceName,
@@ -45,7 +68,13 @@ public class DataTypeMismatchException extends MetadataException {
             typeInSchema,
             insertType,
             time,
-            value == null ? DataNodeSchemaMessages.NULL_VALUE : processValue(value.toString())));
+            value == null ? DataNodeSchemaMessages.NULL_VALUE : processValue(value.toString()));
+    return reason == null || reason.isEmpty()
+        ? message
+        : String.format(
+            DataNodeSchemaMessages.EXCEPTION_ARG_CONVERSION_FAILED_DUE_TO_ARG_0F55A66E,
+            message,
+            processValue(reason));
   }
 
   public DataTypeMismatchException(

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
@@ -37,11 +38,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInter
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.NoOpSymbolResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement.PendingInsertCast;
 
 import com.google.common.graph.SuccessorsFunction;
 import com.google.common.graph.Traverser;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
 
 import java.time.ZoneId;
@@ -134,10 +138,44 @@ public final class AstUtil {
 
   public static Object expressionToTsValue(
       Expression expression, PlannerContext plannerContext, SessionInfo session) {
+    return expressionToTsValue(expression, plannerContext, session, null);
+  }
+
+  public static Object expressionToTsValue(
+      Expression expression,
+      PlannerContext plannerContext,
+      SessionInfo session,
+      TSDataType castTarget) {
     if (expression instanceof Literal) {
-      return expressionToTsValue(expression);
+      Object value = expressionToTsValue(expression);
+      if (castTarget == null || value == null) {
+        return value;
+      }
+      if (expression instanceof StringLiteral) {
+        return withInsertSourceType(TSDataType.STRING, castTarget, value);
+      }
+      if (expression instanceof BinaryLiteral) {
+        return withInsertSourceType(TSDataType.BLOB, castTarget, value);
+      }
+      if (expression instanceof LongLiteral) {
+        long number = (Long) value;
+        if (number >= Integer.MIN_VALUE && number <= Integer.MAX_VALUE) {
+          return withInsertSourceType(TSDataType.INT32, castTarget, (int) number);
+        }
+        return withInsertSourceType(TSDataType.INT64, castTarget, value);
+      }
+      if (value instanceof Double) {
+        return withInsertSourceType(TSDataType.DOUBLE, castTarget, value);
+      }
+      if (value instanceof Float) {
+        return withInsertSourceType(TSDataType.FLOAT, castTarget, value);
+      }
+      if (value instanceof Boolean) {
+        return withInsertSourceType(TSDataType.BOOLEAN, castTarget, value);
+      }
+      return value;
     }
-    return evaluateInsertConstantExpression(expression, plannerContext, session);
+    return evaluateInsertConstantExpression(expression, plannerContext, session, castTarget);
   }
 
   public static long expressionToTimestamp(Expression expression, ZoneId zoneId) {
@@ -164,7 +202,7 @@ public final class AstUtil {
       return expressionToTimestamp(expression, zoneId);
     }
 
-    Object value = evaluateInsertConstantExpression(expression, plannerContext, session);
+    Object value = evaluateInsertConstantExpression(expression, plannerContext, session, null);
     if (value == null) {
       throw new SemanticException(DataNodeQueryMessages.TIMESTAMP_CANNOT_BE_NULL);
     }
@@ -181,7 +219,10 @@ public final class AstUtil {
   }
 
   private static Object evaluateInsertConstantExpression(
-      Expression expression, PlannerContext plannerContext, SessionInfo session) {
+      Expression expression,
+      PlannerContext plannerContext,
+      SessionInfo session,
+      TSDataType castTarget) {
     if (preOrder(expression).anyMatch(Parameter.class::isInstance)) {
       throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + expression);
     }
@@ -206,6 +247,15 @@ public final class AstUtil {
                 expression,
                 value));
       }
+      if (castTarget != null && value != null) {
+        TypeEnum type = types.get(NodeRef.of(expression)).getTypeEnum();
+        if (type == TypeEnum.DATE && castTarget == TSDataType.DATE) {
+          return new PendingInsertCast(TSDataType.DATE, value);
+        }
+        if (type != TypeEnum.UNKNOWN && type != TypeEnum.ROW && type != TypeEnum.VECTOR) {
+          return withInsertSourceType(TSDataType.valueOf(type.name()), castTarget, value);
+        }
+      }
       return value;
     } catch (SemanticException e) {
       throw e;
@@ -217,6 +267,10 @@ public final class AstUtil {
               expression,
               e.getMessage()));
     }
+  }
+
+  private static Object withInsertSourceType(TSDataType source, TSDataType target, Object value) {
+    return source == target ? value : new PendingInsertCast(source, value);
   }
 
   private AstUtil() {}

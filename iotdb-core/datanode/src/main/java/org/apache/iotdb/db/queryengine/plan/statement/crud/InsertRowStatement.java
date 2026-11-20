@@ -45,6 +45,7 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -60,6 +61,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,6 +70,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 public class InsertRowStatement extends InsertBaseStatement implements ISchemaValidation {
 
@@ -82,6 +85,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   protected long time;
   protected Object[] values;
   protected boolean isNeedInferType = false;
+
+  private boolean treeSqlValues;
 
   /**
    * This param record whether the source of logical view is aligned. Only used when there are
@@ -141,6 +146,10 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     return isNeedInferType;
   }
 
+  public void setTreeSqlValues(boolean treeSqlValues) {
+    this.treeSqlValues = treeSqlValues;
+  }
+
   public void setNeedInferType(boolean needInferType) {
     isNeedInferType = needInferType;
   }
@@ -194,7 +203,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   }
 
   @Override
-  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType)
+      throws DataTypeMismatchException {
     if (dataTypes == null
         || values == null
         || columnIndex < 0
@@ -203,13 +213,29 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         || dataTypes[columnIndex] == null) {
       return false;
     }
-    if (dataType.isCompatible(dataTypes[columnIndex])) {
+    if (dataType.isCompatible(dataTypes[columnIndex])
+        && !shouldFormatTimestampAsText(dataTypes[columnIndex], dataType)) {
       values[columnIndex] =
           dataType.castFromSingleValue(dataTypes[columnIndex], values[columnIndex]);
       dataTypes[columnIndex] = dataType;
       return true;
     }
-    return false;
+    final Function<Object, Object> cast = prepareInsertCast(dataTypes[columnIndex], dataType);
+    if (cast == null) {
+      return false;
+    }
+    final Object value = values[columnIndex];
+    values[columnIndex] = castInsertValue(cast, columnIndex, dataType, time, value);
+    dataTypes[columnIndex] = dataType;
+    return true;
+  }
+
+  public record PendingInsertCast(TSDataType sourceType, Object value) {
+
+    @Override
+    public String toString() {
+      return value.toString();
+    }
   }
 
   /**
@@ -250,9 +276,33 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       // parse string value to specific type
       dataTypes[i] = measurementSchemas[i].getType();
       try {
+        if (values[i] instanceof PendingInsertCast) {
+          final PendingInsertCast pending = (PendingInsertCast) values[i];
+          values[i] = pending.value();
+          if (getColumnCategory(i) == TsTableColumnCategory.FIELD) {
+            if (pending.sourceType() == dataTypes[i]) {
+              if (dataTypes[i] == TSDataType.DATE) {
+                validateEncodedDate((Integer) pending.value());
+              }
+              continue;
+            }
+            final Function<Object, Object> cast =
+                prepareInsertCast(pending.sourceType(), dataTypes[i]);
+            if (cast != null) {
+              values[i] = cast.apply(pending.value());
+              continue;
+            }
+          }
+        }
         // if the type is binary and the value is already binary, do not convert
         if (values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
-          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
+          try {
+            values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
+          } catch (QueryProcessException e) {
+            if (!castAfterParseFailure(i, zoneId)) {
+              throw e;
+            }
+          }
         } else if (dataTypes[i] == TSDataType.OBJECT && values[i] instanceof Binary) {
           if (((Binary) values[i]).getValues().length < 9
               || ((Binary) values[i]).getValues()[0] != 0
@@ -283,6 +333,40 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       }
     }
     isNeedInferType = false;
+  }
+
+  private boolean castAfterParseFailure(int index, ZoneId zoneId) {
+    if (!isInsertTypeCastEnabled()
+        || (isWriteToTable() && getColumnCategory(index) != TsTableColumnCategory.FIELD)) {
+      return false;
+    }
+    final Object value = values[index];
+    final TSDataType source =
+        TypeInferenceUtils.getPredictedDataType(value, treeSqlValues && value instanceof String);
+    final TSDataType target = dataTypes[index];
+    if (source == null || source == target) {
+      return false;
+    }
+    final Function<Object, Object> cast = prepareInsertCast(source, target);
+    if (cast == null) {
+      return false;
+    }
+    try {
+      Object input = value;
+      if (value instanceof String) {
+        input =
+            treeSqlValues
+                ? CommonUtils.parseValue(source, (String) value, zoneId)
+                : new Binary((String) value, TSFileConfig.STRING_CHARSET);
+      }
+      values[index] = cast.apply(input);
+      return true;
+    } catch (QueryProcessException
+        | SemanticException
+        | DateTimeException
+        | IllegalArgumentException e) {
+      return false;
+    }
   }
 
   @Override
@@ -372,6 +456,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       InsertRowStatement statement = new InsertRowStatement();
       statement.setTime(this.time);
       statement.setNeedInferType(this.isNeedInferType);
+      statement.setTreeSqlValues(treeSqlValues);
       statement.setDevicePath(entry.getKey());
       statement.setAligned(this.isAligned);
       Object[] copiedValues = new Object[pairList.size()];

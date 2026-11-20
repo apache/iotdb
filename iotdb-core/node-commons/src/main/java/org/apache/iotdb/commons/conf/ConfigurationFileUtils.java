@@ -71,7 +71,8 @@ public class ConfigurationFileUtils {
                   "default_data_region_group_num_per_database",
                   "schema_region_per_data_node",
                   "data_region_per_data_node",
-                  "read_consistency_level")));
+                  "read_consistency_level",
+                  "enable_insert_type_cast")));
   private static final String lineSeparator = "\n";
   private static final String license =
       new StringJoiner(lineSeparator)

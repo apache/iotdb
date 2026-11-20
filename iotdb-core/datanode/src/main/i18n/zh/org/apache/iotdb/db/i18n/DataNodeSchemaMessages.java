@@ -695,6 +695,8 @@ public final class DataNodeSchemaMessages {
       "时间序列 [%s] 不存在或不是由设备模板表示";
   public static final String VIEW_NOT_EXIST_WRONG_MESSAGE = "视图 [%s] 不存在";
   public static final String PATH_LIST_ELLIPSIS_SEPARATOR = " ... ";
+  public static final String EXCEPTION_ARG_CONVERSION_FAILED_DUE_TO_ARG_0F55A66E =
+      "%s 类型转换失败，原因是 %s。";
   public static final String REGISTERED_TYPE_STRING = "注册类型";
   public static final String NULL_VALUE = "null";
   public static final String DATA_TYPE_MISMATCH_REGISTERED_TYPE_FMT =
