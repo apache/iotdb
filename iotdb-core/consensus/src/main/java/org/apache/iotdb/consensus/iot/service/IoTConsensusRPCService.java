@@ -103,7 +103,7 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
                   config.getRpc().getSslKeyStorePassword(),
                   config.getRpc().getSslTrustStorePath(),
                   config.getRpc().getSslTrustStorePassword(),
-                  ZeroCopyRpcTransportFactory.INSTANCE)
+                  ZeroCopyRpcTransportFactory.INSTANCE.getServerTransportFactory())
               : new ThriftServiceThread(
                   processor,
                   getID().getName(),
@@ -114,7 +114,7 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
                   config.getRpc().getThriftServerAwaitTimeForStopService(),
                   new IoTConsensusRPCServiceHandler(iotConsensusRPCServiceProcessor),
                   config.getRpc().isRpcThriftCompressionEnabled(),
-                  ZeroCopyRpcTransportFactory.INSTANCE);
+                  ZeroCopyRpcTransportFactory.INSTANCE.getServerTransportFactory());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

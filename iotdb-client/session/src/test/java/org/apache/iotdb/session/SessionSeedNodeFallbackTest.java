@@ -841,7 +841,8 @@ public class SessionSeedNodeFallbackTest {
               new TThreadPoolServer.Args(socket)
                   .processor(new IClientRPCService.Processor<>(handler))
                   .protocolFactory(new TBinaryProtocol.Factory())
-                  .transportFactory(DeepCopyRpcTransportFactory.INSTANCE)
+                  .transportFactory(
+                      DeepCopyRpcTransportFactory.INSTANCE.getServerTransportFactory())
                   .executorService(workers));
       server.setServerEventHandler(
           new TServerEventHandler() {

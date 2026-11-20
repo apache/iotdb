@@ -81,7 +81,7 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
                 config.getThriftServerAwaitTimeForStopService(),
                 new RPCServiceThriftHandler(impl),
                 config.isRpcThriftCompressionEnable(),
-                ZeroCopyRpcTransportFactory.INSTANCE);
+                ZeroCopyRpcTransportFactory.INSTANCE.getServerTransportFactory());
       } else if (commonConfig.isThriftSSLClientAuth()) {
         if (!hasText(commonConfig.getTrustStorePath())) {
           throw new IllegalAccessException(
@@ -103,7 +103,7 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
                 commonConfig.getKeyStorePwd(),
                 commonConfig.getTrustStorePath(),
                 commonConfig.getTrustStorePwd(),
-                ZeroCopyRpcTransportFactory.INSTANCE);
+                ZeroCopyRpcTransportFactory.INSTANCE.getServerTransportFactory());
       } else {
         thriftServiceThread =
             new ThriftServiceThread(
@@ -118,7 +118,7 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
                 config.isRpcThriftCompressionEnable(),
                 commonConfig.getKeyStorePath(),
                 commonConfig.getKeyStorePwd(),
-                ZeroCopyRpcTransportFactory.INSTANCE);
+                ZeroCopyRpcTransportFactory.INSTANCE.getServerTransportFactory());
       }
     } catch (RPCServiceException e) {
       IllegalAccessException exception = new IllegalAccessException(e.getMessage());

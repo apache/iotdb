@@ -29,18 +29,30 @@ public class ZeroCopyRpcTransportFactory extends BaseRpcTransportFactory {
     reInit();
   }
 
-  private ZeroCopyRpcTransportFactory(TTransportFactory inner) {
-    super(inner);
+  private ZeroCopyRpcTransportFactory(TTransportFactory inner, TTransportFactory serverInner) {
+    super(inner, serverInner);
   }
 
   public static void reInit() {
+    int serverMaxReusableBufferSize =
+        Math.max(thriftDefaultBufferSize, SERVER_MAX_REUSABLE_BUFFER_SIZE);
     INSTANCE =
         USE_SNAPPY
             ? new ZeroCopyRpcTransportFactory(
                 new TimeoutChangeableTSnappyFramedTransport.Factory(
-                    thriftDefaultBufferSize, thriftMaxFrameSize, false))
+                    thriftDefaultBufferSize, thriftMaxFrameSize, false),
+                new TimeoutChangeableTSnappyFramedTransport.Factory(
+                    thriftDefaultBufferSize,
+                    thriftMaxFrameSize,
+                    false,
+                    serverMaxReusableBufferSize))
             : new ZeroCopyRpcTransportFactory(
                 new TimeoutChangeableTFastFramedTransport.Factory(
-                    thriftDefaultBufferSize, thriftMaxFrameSize, false));
+                    thriftDefaultBufferSize, thriftMaxFrameSize, false),
+                new TimeoutChangeableTFastFramedTransport.Factory(
+                    thriftDefaultBufferSize,
+                    thriftMaxFrameSize,
+                    false,
+                    serverMaxReusableBufferSize));
   }
 }

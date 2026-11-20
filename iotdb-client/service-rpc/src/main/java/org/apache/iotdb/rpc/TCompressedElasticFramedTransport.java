@@ -87,11 +87,21 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   @Override
   protected void readFrame() throws TTransportException {
     // Discard the previous frame's budget before reading the next frame header and payload.
-    resetMessageSizeAndConsumedBytes();
-    underlying.readAll(i32buf, 0, 4);
+    try {
+      resetMessageSizeAndConsumedBytes();
+      underlying.readAll(i32buf, 0, 4);
+    } catch (TTransportException e) {
+      close();
+      throw e;
+    }
     int size = TFramedTransport.decodeFrameSize(i32buf);
     validateFrame(size);
-    readBuffer.fill(underlying, size);
+    try {
+      readBuffer.fill(underlying, size);
+    } catch (TTransportException e) {
+      close();
+      throw e;
+    }
     // Bind subsequent protocol reads to the current compressed frame size.
     resetMessageSizeAndConsumedBytes(size);
     RpcStat.readCompressedBytes.addAndGet(size);
@@ -105,7 +115,11 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       readCompressBuffer.position(0);
       readBuffer.fill(readCompressBuffer, uncompressedLength);
     } catch (IOException e) {
+      close();
       throw new TTransportException(e);
+    } catch (TTransportException e) {
+      close();
+      throw e;
     }
   }
 
@@ -124,19 +138,17 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       TFramedTransport.encodeFrameSize(compressedLength, i32buf);
       underlying.write(i32buf, 0, 4);
       underlying.write(writeCompressBuffer.getBuffer(), 0, compressedLength);
+      writeBuffer.resetAndResize();
+      underlying.flush();
+    } catch (TTransportException e) {
+      close();
+      throw e;
     } catch (IOException e) {
+      close();
       throw new TTransportException(e);
     } finally {
-      // The compressed output has been handed to the underlying transport, so do not retain it.
       writeCompressBuffer.reset();
     }
-
-    try {
-      writeBuffer.resetAndResize();
-    } catch (IOException e) {
-      throw new TTransportException(e);
-    }
-    underlying.flush();
   }
 
   private void checkBufferSize(int size) throws TTransportException {

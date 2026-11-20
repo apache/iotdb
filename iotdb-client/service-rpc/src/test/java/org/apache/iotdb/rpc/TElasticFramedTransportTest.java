@@ -20,8 +20,10 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.thrift.TConfiguration;
+import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TMemoryBuffer;
+import org.apache.thrift.transport.TMemoryInputTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
@@ -137,6 +139,77 @@ public class TElasticFramedTransportTest {
       assertTrue(failure.getMessage(), failure.getMessage().contains("at least 1048584 bytes"));
       assertEquals(limit, transport.writeBuffer.getBuffer().length);
     }
+  }
+
+  @Test
+  public void testTemporaryBufferGrowthStopsAtConfiguredFrameLimit() throws Exception {
+    int maxFrameSize = 17;
+    byte[] payload = new byte[maxFrameSize];
+    Arrays.fill(payload, (byte) 42);
+    TMemoryBuffer underlying = new TMemoryBuffer(0);
+
+    try (TElasticFramedTransport transport =
+        new TElasticFramedTransport(underlying, 8, maxFrameSize, false, 8)) {
+      transport.write(payload, 0, 9);
+      assertTrue(transport.writeBuffer.getBuffer().length <= maxFrameSize);
+      transport.write(payload, 9, 5);
+      assertTrue(transport.writeBuffer.getBuffer().length <= maxFrameSize);
+      transport.write(payload, 14, 3);
+      assertEquals(maxFrameSize, transport.writeBuffer.getBuffer().length);
+      transport.flush();
+
+      byte[] actual = new byte[payload.length];
+      transport.readAll(actual, 0, actual.length);
+      assertArrayEquals(payload, actual);
+    }
+
+    TMemoryBuffer oversizedUnderlying = new TMemoryBuffer(0);
+    try (TElasticFramedTransport transport =
+        new TElasticFramedTransport(oversizedUnderlying, 8, maxFrameSize, false, 8)) {
+      transport.write(new byte[maxFrameSize]);
+      assertEquals(maxFrameSize, transport.writeBuffer.getBuffer().length);
+      TTransportException failure =
+          assertThrows(TTransportException.class, () -> transport.write(new byte[1]));
+      assertEquals(TTransportException.CORRUPTED_DATA, failure.getType());
+      assertEquals(8, transport.writeBuffer.getBuffer().length);
+      assertEquals(0, oversizedUnderlying.length());
+    }
+  }
+
+  @Test
+  public void testOversizedTemporaryFrameCopiesZeroCopyBinaryValues() throws Exception {
+    byte[] firstPayload = new byte[32];
+    byte[] secondPayload = new byte[40];
+    Arrays.fill(firstPayload, (byte) 1);
+    Arrays.fill(secondPayload, (byte) 2);
+    byte[] firstFrame = frameBinary(firstPayload);
+    byte[] secondFrame = frameBinary(secondPayload);
+    byte[] wire =
+        ByteBuffer.allocate(firstFrame.length + secondFrame.length)
+            .put(firstFrame)
+            .put(secondFrame)
+            .array();
+
+    try (TElasticFramedTransport transport =
+        new TElasticFramedTransport(new TMemoryInputTransport(wire), 8, 1024, false, 8)) {
+      TBinaryProtocol protocol = new TBinaryProtocol(transport);
+      assertEquals(0, transport.read(new byte[0], 0, 0));
+      assertEquals(-1, transport.getBytesRemainingInBuffer());
+
+      ByteBuffer first = protocol.readBinary();
+      ByteBuffer second = protocol.readBinary();
+
+      assertEquals(ByteBuffer.wrap(firstPayload), first);
+      assertEquals(ByteBuffer.wrap(secondPayload), second);
+    }
+  }
+
+  private byte[] frameBinary(byte[] payload) {
+    return ByteBuffer.allocate(Integer.BYTES * 2 + payload.length)
+        .putInt(Integer.BYTES + payload.length)
+        .putInt(payload.length)
+        .put(payload)
+        .array();
   }
 
   @Test
