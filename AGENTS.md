@@ -26,7 +26,7 @@ For setup and compatibility notes, see [Coding agents](CONTRIBUTING.md#coding-ag
 
 ## Project Overview
 
-Apache IoTDB is a time series database for IoT data. It uses a distributed architecture with ConfigNodes (metadata/coordination) and DataNodes (storage/query). Data is stored in TsFile columnar format (separate repo: https://github.com/apache/tsfile). Current version is 2.0.11-SNAPSHOT.
+Apache IoTDB is a time series database for IoT data. It uses a distributed architecture with ConfigNodes (metadata/coordination) and DataNodes (storage/query). Data is stored in TsFile columnar format (separate repo: https://github.com/apache/tsfile). Current version is 2.0.13-SNAPSHOT.
 
 ## Pull Request Descriptions
 

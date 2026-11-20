@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.BatchExecutionException;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -49,6 +50,8 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
@@ -56,6 +59,12 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.server.ServerContext;
+import org.apache.thrift.server.TServerEventHandler;
+import org.apache.thrift.server.TThreadPoolServer;
+import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransport;
 import org.junit.After;
 import org.junit.Assert;
@@ -66,10 +75,18 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.powermock.reflect.Whitebox;
 
+import java.net.ServerSocket;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -219,6 +236,116 @@ public class SessionConnectionTest {
 
     sessionConnection.forceCloseTransport();
     Mockito.verify(timeoutTransport).close();
+  }
+
+  @Test
+  public void testForceClosePreventsReplayOfInFlightStatement() throws Exception {
+    CountDownLatch rpcStarted = new CountDownLatch(1);
+    CountDownLatch continueRpc = new CountDownLatch(1);
+    try (ForceCloseTestServer server = new ForceCloseTestServer(rpcStarted, continueRpc)) {
+      Session forceClosedSession =
+          new Session.Builder()
+              .nodeUrls(
+                  Collections.singletonList(
+                      server.getEndpoint().getIp() + ":" + server.getEndpoint().getPort()))
+              .username("root")
+              .password("root")
+              .enableAutoFetch(false)
+              .build();
+      ExecutorService executor = Executors.newSingleThreadExecutor();
+      try {
+        forceClosedSession.open(false, 1000);
+        Future<Void> rpcFuture =
+            executor.submit(
+                () -> {
+                  forceClosedSession.executeNonQueryStatement("flush");
+                  return null;
+                });
+        Assert.assertTrue("RPC did not start", rpcStarted.await(5, TimeUnit.SECONDS));
+
+        forceClosedSession.forceClose();
+        continueRpc.countDown();
+
+        try {
+          rpcFuture.get(5, TimeUnit.SECONDS);
+          Assert.fail("Expected the force-closed RPC to fail");
+        } catch (ExecutionException e) {
+          Assert.assertTrue(e.getCause() instanceof IoTDBConnectionException);
+        }
+        Assert.assertEquals(1, server.getOpenSessionCount());
+        Assert.assertEquals(1, server.getStatementExecutionCount());
+        Assert.assertTrue(
+            "The force-closed transport is still connected",
+            server.awaitNoActiveConnections(5, TimeUnit.SECONDS));
+      } finally {
+        continueRpc.countDown();
+        executor.shutdownNow();
+        forceClosedSession.forceClose();
+      }
+    }
+  }
+
+  @Test
+  public void testCloseDoesNotWaitForRedirectConnectionCreation() throws Exception {
+    CountDownLatch redirectOpenStarted = new CountDownLatch(1);
+    CountDownLatch continueRedirectOpen = new CountDownLatch(1);
+    try (ForceCloseTestServer redirectedServer =
+            new ForceCloseTestServer(redirectOpenStarted, continueRedirectOpen, null, null, null);
+        ForceCloseTestServer primaryServer =
+            new ForceCloseTestServer(null, null, redirectedServer.getEndpoint(), null, null)) {
+      Session session =
+          new Session.Builder()
+              .nodeUrls(
+                  Collections.singletonList(
+                      primaryServer.getEndpoint().getIp()
+                          + ":"
+                          + primaryServer.getEndpoint().getPort()))
+              .username("root")
+              .password("root")
+              .enableAutoFetch(false)
+              .build();
+      ExecutorService executor = Executors.newFixedThreadPool(2);
+      try {
+        session.open(false, 1000);
+        Future<Void> queryFuture =
+            executor.submit(
+                () -> {
+                  session.executeQueryStatement("select * from root.**");
+                  return null;
+                });
+        Assert.assertTrue(
+            "Redirected openSession did not start", redirectOpenStarted.await(5, TimeUnit.SECONDS));
+
+        executor
+            .submit(
+                () -> {
+                  session.close();
+                  return null;
+                })
+            .get(1, TimeUnit.SECONDS);
+
+        continueRedirectOpen.countDown();
+        try {
+          queryFuture.get(5, TimeUnit.SECONDS);
+          Assert.fail("Expected the redirected query to fail after close");
+        } catch (ExecutionException e) {
+          Assert.assertTrue(e.getCause() instanceof IoTDBConnectionException);
+        }
+
+        Assert.assertEquals(1, primaryServer.getOpenSessionCount());
+        Assert.assertEquals(1, redirectedServer.getOpenSessionCount());
+        Assert.assertTrue(
+            "The primary transport is still connected",
+            primaryServer.awaitNoActiveConnections(5, TimeUnit.SECONDS));
+        Assert.assertTrue(
+            "The redirected transport is still connected",
+            redirectedServer.awaitNoActiveConnections(5, TimeUnit.SECONDS));
+      } finally {
+        continueRedirectOpen.countDown();
+        session.forceClose();
+        executor.shutdownNow();
+      }
+    }
   }
 
   @Test
@@ -473,5 +600,138 @@ public class SessionConnectionTest {
     sessionConnection.setEndPoint(new TEndPoint("localhost", 1234));
     Assert.assertEquals("localhost", sessionConnection.getEndPoint().getIp());
     sessionConnection.toString();
+  }
+
+  private static class ForceCloseTestServer implements AutoCloseable {
+
+    private final TEndPoint endpoint;
+    private final TServerSocket socket;
+    private final TThreadPoolServer server;
+    private final ExecutorService workers = Executors.newCachedThreadPool();
+    private final Thread thread;
+    private final AtomicInteger openSessionCount = new AtomicInteger();
+    private final AtomicInteger statementExecutionCount = new AtomicInteger();
+    private final AtomicInteger activeConnections = new AtomicInteger();
+
+    private ForceCloseTestServer(CountDownLatch rpcStarted, CountDownLatch continueRpc)
+        throws Exception {
+      this(null, null, null, rpcStarted, continueRpc);
+    }
+
+    private ForceCloseTestServer(
+        CountDownLatch openSessionStarted,
+        CountDownLatch continueOpenSession,
+        TEndPoint redirectEndpoint,
+        CountDownLatch rpcStarted,
+        CountDownLatch continueRpc)
+        throws Exception {
+      ServerSocket listener = new ServerSocket(0);
+      endpoint = new TEndPoint("127.0.0.1", listener.getLocalPort());
+      socket = new TServerSocket(listener);
+      IClientRPCService.Iface handler = Mockito.mock(IClientRPCService.Iface.class);
+      Mockito.when(handler.openSession(any()))
+          .thenAnswer(
+              ignored -> {
+                openSessionCount.incrementAndGet();
+                if (openSessionStarted != null) {
+                  openSessionStarted.countDown();
+                  continueOpenSession.await(5, TimeUnit.SECONDS);
+                }
+                return new TSOpenSessionResp(
+                        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+                        TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3)
+                    .setSessionId(1);
+              });
+      Mockito.when(handler.requestStatementId(anyLong())).thenReturn(1L);
+      Mockito.when(handler.closeSession(any()))
+          .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      Mockito.doAnswer(
+              ignored -> {
+                if (rpcStarted != null && statementExecutionCount.incrementAndGet() == 1) {
+                  rpcStarted.countDown();
+                  continueRpc.await(5, TimeUnit.SECONDS);
+                }
+                return new TSExecuteStatementResp(
+                    new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+              })
+          .when(handler)
+          .executeUpdateStatementV2(any());
+      Mockito.when(handler.executeQueryStatementV2(any()))
+          .thenAnswer(
+              ignored -> {
+                if (redirectEndpoint == null) {
+                  return new TSExecuteStatementResp(
+                      new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+                }
+                return new TSExecuteStatementResp(
+                    new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
+                        .setRedirectNode(redirectEndpoint));
+              });
+
+      server =
+          new TThreadPoolServer(
+              new TThreadPoolServer.Args(socket)
+                  .processor(new IClientRPCService.Processor<>(handler))
+                  .protocolFactory(new TBinaryProtocol.Factory())
+                  .transportFactory(DeepCopyRpcTransportFactory.INSTANCE)
+                  .executorService(workers));
+      CountDownLatch serving = new CountDownLatch(1);
+      server.setServerEventHandler(
+          new TServerEventHandler() {
+            @Override
+            public void preServe() {
+              serving.countDown();
+            }
+
+            @Override
+            public ServerContext createContext(TProtocol input, TProtocol output) {
+              activeConnections.incrementAndGet();
+              return Mockito.mock(ServerContext.class);
+            }
+
+            @Override
+            public void processContext(
+                ServerContext context, TTransport input, TTransport output) {}
+
+            @Override
+            public void deleteContext(ServerContext context, TProtocol input, TProtocol output) {
+              activeConnections.decrementAndGet();
+            }
+          });
+      thread = new Thread(server::serve, "force-close-test-server");
+      thread.setDaemon(true);
+      thread.start();
+      Assert.assertTrue("Fake server did not start", serving.await(5, TimeUnit.SECONDS));
+    }
+
+    private TEndPoint getEndpoint() {
+      return endpoint;
+    }
+
+    private int getOpenSessionCount() {
+      return openSessionCount.get();
+    }
+
+    private int getStatementExecutionCount() {
+      return statementExecutionCount.get();
+    }
+
+    private boolean awaitNoActiveConnections(long timeout, TimeUnit unit)
+        throws InterruptedException {
+      long deadline = System.nanoTime() + unit.toNanos(timeout);
+      while (activeConnections.get() != 0 && System.nanoTime() < deadline) {
+        TimeUnit.MILLISECONDS.sleep(10);
+      }
+      return activeConnections.get() == 0;
+    }
+
+    @Override
+    public void close() throws Exception {
+      server.stop();
+      socket.close();
+      workers.shutdownNow();
+      thread.join(5000);
+      workers.awaitTermination(5, TimeUnit.SECONDS);
+    }
   }
 }

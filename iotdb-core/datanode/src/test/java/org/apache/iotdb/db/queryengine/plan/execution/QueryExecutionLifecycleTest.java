@@ -38,6 +38,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -148,6 +149,28 @@ public class QueryExecutionLifecycleTest {
       org.junit.Assert.assertEquals(original, execution.getStatus().status);
     } finally {
       execution.stopAndCleanup(null);
+      notifications.shutdownNow();
+      assertTrue(notifications.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void isActiveTellsWhetherAnRpcOfTheQueryIsInProgress() throws Exception {
+    ExecutorService notifications = Executors.newSingleThreadExecutor();
+    try {
+      QueryExecution execution = new QueryExecution(planner(), context(), notifications);
+      // the execution is created by the RPC that executes the statement
+      assertTrue(execution.isActive());
+      // that RPC returns, and the client has not asked for the result yet
+      execution.recordExecutionTime(1);
+      assertFalse(execution.isActive());
+      // an RPC that fetches the result arrives
+      execution.updateCurrentRpcStartTime(System.nanoTime());
+      assertTrue(execution.isActive());
+      // and returns as well
+      execution.recordExecutionTime(1);
+      assertFalse(execution.isActive());
+    } finally {
       notifications.shutdownNow();
       assertTrue(notifications.awaitTermination(10, TimeUnit.SECONDS));
     }

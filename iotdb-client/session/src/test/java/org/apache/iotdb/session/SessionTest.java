@@ -135,7 +135,9 @@ public class SessionTest {
 
     Mockito.verify(sessionConnection).close();
     Mockito.verify(redirectedConnection).close();
-    Assert.assertTrue(connections.isEmpty());
+    Map<TEndPoint, SessionConnection> closedConnections =
+        Whitebox.getInternalState(session, "endPointToSessionConnection");
+    Assert.assertTrue(closedConnections.isEmpty());
     Assert.assertNull(Whitebox.getInternalState(session, "defaultSessionConnection"));
     Assert.assertNull(Whitebox.getInternalState(session, "executorService"));
     Assert.assertNull(Whitebox.getInternalState(session, "availableNodes"));
@@ -162,7 +164,9 @@ public class SessionTest {
 
     Mockito.verify(sessionConnection).close();
     Mockito.verify(redirectedConnection).close();
-    Assert.assertTrue(connections.isEmpty());
+    Map<TEndPoint, SessionConnection> closedConnections =
+        Whitebox.getInternalState(session, "endPointToSessionConnection");
+    Assert.assertTrue(closedConnections.isEmpty());
   }
 
   @Test
@@ -174,6 +178,17 @@ public class SessionTest {
     session.close();
 
     Mockito.verify(availableNodes, Mockito.never()).close();
+  }
+
+  @Test
+  public void testForceCloseDoesNotWaitForCloseSessionRpc() throws IoTDBConnectionException {
+    Whitebox.setInternalState(session, "isClosed", false);
+
+    ((Session) session).forceClose();
+
+    Mockito.verify(sessionConnection).forceCloseTransport();
+    Mockito.verify(sessionConnection, Mockito.never()).close();
+    Assert.assertNull(Whitebox.getInternalState(session, "defaultSessionConnection"));
   }
 
   @Test

@@ -181,7 +181,7 @@ public class IoTDBAuthIT {
         }
       }
       for (String path : timeseries) {
-        statement.execute("DELETE TIMESERIES " + path);
+        TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES " + path);
       }
 
       unsetDeviceTemplatePaths(statement, "t1");

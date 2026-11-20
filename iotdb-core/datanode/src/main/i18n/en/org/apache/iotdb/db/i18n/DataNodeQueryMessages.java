@@ -4989,6 +4989,23 @@ public final class DataNodeQueryMessages {
   public static final String
       EXCEPTION_PROPERTIES_ARE_NOT_SUPPORTED_FOR_ALIGNED_TIME_SERIES_ARG_695D2CD7 =
           "Properties are not supported for aligned time series: %s.";
+
+  public static final String
+      EXCEPTION_REQUEST_OFFSET_ARG_DOES_NOT_MATCH_THE_PENDING_RESULT_FRAGMENT_OFFSET_ARG_A1B13DBC =
+          "Request offset %d does not match the pending result fragment offset %d";
+  public static final String
+      EXCEPTION_REQUEST_OFFSET_ARG_IS_INVALID_BECAUSE_NO_RESULT_FRAGMENT_IS_PENDING_C403454F =
+          "Request offset %d is invalid because no result fragment is pending";
+
+  public static final String
+      EXCEPTION_WAITING_FOR_THE_MEMORY_OF_A_PENDING_RESULT_FRAGMENT_WAS_ABORTED_BECAUSE_THE_QUERY_WAS_CLEANED_UP_D51EC67C =
+          "Waiting for the memory of a pending result fragment was aborted because the query was cleaned up";
+
+  public static final String MESSAGE_COLUMN_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_OR_COLUMN_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_08F7DB64 =
+      "Column deletion is asynchronous. The specified table or column does not exist; no task was submitted.";
+  public static final String MESSAGE_TABLE_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_74E6521A =
+      "Table deletion is asynchronous. The specified table does not exist; no task was submitted.";
+
   public static final String EXCEPTION_NOT_ENOUGH_MEMORY_WHILE_ANALYZING_TIME_PARTITIONS_NARROW_THE_QUERY_TIME_RANGE_OR_INCREASE_QUERY_MEMORY_MEMORY_DETAILS_REQUESTED_THIS_TIME_ARG_CURRENT_FREE_MEMORY_ARG_ORIGINAL_ERROR_ARG_37676B2A =
       "Not enough memory while analyzing time partitions. Narrow the query time range or increase query memory. Memory details: requested this time %s, current free memory %s. Original error: %s";
 
@@ -4997,5 +5014,4 @@ public final class DataNodeQueryMessages {
 
   public static final String LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9 =
       "[QueryFailed] queryId: {}, sql: {}";
-
 }

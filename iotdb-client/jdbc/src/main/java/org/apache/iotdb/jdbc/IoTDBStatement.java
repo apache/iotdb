@@ -471,7 +471,10 @@ public class IoTDBStatement implements Statement {
                   zoneId,
                   charset,
                   execResp.isSetTableModel() && execResp.isTableModel(),
-                  execResp.getColumnIndex2TsBlockColumnIndexList());
+                  execResp.getColumnIndex2TsBlockColumnIndexList(),
+                  execResp.isSetOffset(),
+                  execResp.offset,
+                  execResp.totalLength);
         } catch (SQLException | RuntimeException e) {
           throw closeQueryOperationOnResultSetCreationFailure(queryId, e);
         }
@@ -617,7 +620,10 @@ public class IoTDBStatement implements Statement {
                 zoneId,
                 charset,
                 execResp.isSetTableModel() && execResp.isTableModel(),
-                execResp.getColumnIndex2TsBlockColumnIndexList());
+                execResp.getColumnIndex2TsBlockColumnIndexList(),
+                execResp.isSetOffset(),
+                execResp.offset,
+                execResp.totalLength);
       } catch (SQLException | RuntimeException e) {
         throw closeQueryOperationOnResultSetCreationFailure(queryId, e);
       }

@@ -335,7 +335,7 @@ public class LoadTsFileDataTypeConverter {
             new UserEntity(session.getUserId(), session.getUsername(), session.getClientAddress()),
             ZoneId.systemDefault(),
             session.getClientVersion(),
-            session.getDatabaseName(),
+            null,
             SqlDialect.TREE,
             allowAutoCreateSchema
                 && session.isEnableAutoCreateSchema()

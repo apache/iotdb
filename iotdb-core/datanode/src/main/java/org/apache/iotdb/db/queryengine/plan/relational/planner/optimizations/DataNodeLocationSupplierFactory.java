@@ -147,6 +147,7 @@ public class DataNodeLocationSupplierFactory {
         case InformationSchema.DATABASES:
         case InformationSchema.TABLES:
         case InformationSchema.DROP_TABLE_PROCEDURES:
+        case InformationSchema.DROP_TABLE_COLUMN_PROCEDURES:
         case InformationSchema.COLUMNS:
         case InformationSchema.REGIONS:
         case InformationSchema.PIPES:
