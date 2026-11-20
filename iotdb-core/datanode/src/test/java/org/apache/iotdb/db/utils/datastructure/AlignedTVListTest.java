@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -27,6 +28,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.ArrayUtils;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -415,7 +417,8 @@ public class AlignedTVListTest {
     Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE + 2, 2));
     Assert.assertEquals(2, tvList.getIntByValueIndex(ARRAY_SIZE + 2, 2));
     // Materializing the extended column charges its primitive array, the lazily created bitmap
-    // (slot references + bitmap) and the container of the new bitmap structure.
+    // (slot references + bitmap) and the container of the new bitmap structure. The implicit null
+    // prefix before the first value is represented by the bitmap only, never by an Object[] prefix.
     Assert.assertEquals(
         AlignedTVList.primitiveArrayMemCost(TSDataType.INT32)
             + 2L * AlignedTVList.bitmapReferenceRamCost()
@@ -966,5 +969,205 @@ public class AlignedTVListTest {
       Assert.assertEquals((long) i, tvList.getLongByValueIndex(i, 0));
       Assert.assertEquals((long) (i * 100), tvList.getLongByValueIndex(i, 2));
     }
+  }
+
+  @Test
+  public void testSparseAlignedValuesMapColumnsBitmapsAndResults() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            new ArrayList<>(Arrays.asList(TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.TEXT)));
+    int rowCount = ARRAY_SIZE + 2;
+    long[] times = new long[rowCount];
+    long[] first = new long[rowCount];
+    Binary[] third = new Binary[rowCount];
+    BitMap thirdBitmap = new BitMap(rowCount);
+    for (int i = 0; i < rowCount; i++) {
+      times[i] = i;
+      first[i] = i * 10L;
+      third[i] = new Binary("v" + i, TSFileConfig.STRING_CHARSET);
+    }
+    thirdBitmap.mark(1);
+    thirdBitmap.mark(ARRAY_SIZE + 1);
+    TSStatus[] results = new TSStatus[rowCount];
+    results[ARRAY_SIZE] = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+
+    tvList.putAlignedValues(
+        times,
+        new Object[] {first, third},
+        new BitMap[] {null, thirdBitmap},
+        new int[] {0, 2},
+        0,
+        rowCount,
+        results);
+
+    Assert.assertEquals(rowCount, tvList.rowCount());
+    for (int i = 0; i < rowCount; i++) {
+      if (i == ARRAY_SIZE) {
+        // A failed row is masked in every column written by this call.
+        Assert.assertTrue(tvList.isNullValue(i, 0));
+      } else {
+        Assert.assertEquals(i * 10L, tvList.getLongByValueIndex(i, 0));
+      }
+      Assert.assertTrue(tvList.isNullValue(i, 1));
+      if (i == 1 || i == ARRAY_SIZE || i == ARRAY_SIZE + 1) {
+        Assert.assertTrue(tvList.isNullValue(i, 2));
+      } else {
+        Assert.assertEquals("v" + i, tvList.getBinaryByValueIndex(i, 2).toString());
+      }
+    }
+    tvList.clear();
+  }
+
+  @Test
+  public void testStructureRamCostCacheTracksStructuralChanges() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            new ArrayList<>(Arrays.asList(TSDataType.INT64, TSDataType.INT32)));
+    assertStructureRamCostMatches(tvList);
+
+    tvList.putAlignedValue(0, new Object[] {1L, 2});
+    assertStructureRamCostMatches(tvList);
+
+    tvList.extendColumn(TSDataType.TEXT);
+    assertStructureRamCostMatches(tvList);
+
+    // Materialize a bitmap container for both existing columns.
+    tvList.putAlignedValue(1, new Object[] {null, null, null});
+    assertStructureRamCostMatches(tvList);
+
+    // Cross a block boundary to change the value-column container sizes.
+    for (int i = 2; i <= ARRAY_SIZE; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i, i, null});
+    }
+    Assert.assertFalse(tvList.getValues().get(0).isEmpty());
+    assertStructureRamCostMatches(tvList);
+
+    tvList.releaseNonQueryColumns(Collections.singleton(0));
+    assertStructureRamCostMatches(tvList);
+
+    tvList.clear();
+    assertStructureRamCostMatches(tvList);
+  }
+
+  private static void assertStructureRamCostMatches(AlignedTVList tvList) {
+    long expected = tvList.calculateContainerRamCost(null);
+    Assert.assertEquals(expected, tvList.getStructureRamSize());
+    // The second call exercises the cached path.
+    Assert.assertEquals(expected, tvList.getStructureRamSize());
+  }
+
+  @Test
+  public void testExtendedColumnsOverManyBlocksPreserveNulls() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
+    int rows = ARRAY_SIZE * 3 + 7;
+    for (int i = 0; i < rows; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i});
+    }
+
+    int newColumns = 512;
+    tvList.extendColumns(Collections.nCopies(newColumns, TSDataType.INT32));
+
+    // Only the last new column is written; the other new columns stay null in every block.
+    tvList.putAlignedValue(rows, new Object[] {7}, new int[] {newColumns});
+    for (int column = 1; column <= newColumns; column++) {
+      Assert.assertNull(tvList.getValues().get(column).get(0));
+    }
+    Assert.assertEquals(7, tvList.getIntByValueIndex(rows, newColumns));
+    for (int column = 1; column < newColumns; column++) {
+      Assert.assertTrue(tvList.isNullValue(rows, column));
+    }
+    tvList.clear();
+  }
+
+  @Test
+  public void testStructureRamCostIncludesWriteMetadata() {
+    int columns = 1024;
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            new ArrayList<>(Collections.nCopies(columns, TSDataType.INT64)));
+
+    // The per-column open-block state (last written row per column and the touched-column bitset)
+    // must be reported by the container cost, not only the pre-existing accounting arrays.
+    long expected =
+        AlignedTVList.listRamCostWithReferences(tvList.getTsDataTypes())
+            + RamUsageEstimator.sizeOfLongArray(columns)
+            + RamUsageEstimator.sizeOfIntArray(columns)
+            + RamUsageEstimator.sizeOfShortArray(columns)
+            + RamUsageEstimator.sizeOfLongArray((columns + 63) >>> 6)
+            + AlignedTVList.listRamCostWithoutReferences(tvList.getTimestamps())
+            + AlignedTVList.listRamCostWithReferences(tvList.getValues())
+            + (long) columns * AlignedTVList.listRamCostWithReferences(Collections.emptyList());
+    Assert.assertEquals(expected, tvList.getStructureRamSize());
+    tvList.clear();
+  }
+
+  @Test
+  public void testLazyColumnPrefixIsAccountedOnlyWhenMaterialized() {
+    // With many blocks the lazy wrapper is cheaper than one reference per block, which is the
+    // scenario the representation is meant for.
+    int blocks = 64;
+    int rows = blocks * ARRAY_SIZE - 1;
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
+    for (int i = 0; i < rows; i++) {
+      tvList.putAlignedValue(i, new Object[] {(long) i});
+    }
+    Assert.assertNull(tvList.getBitMaps());
+
+    int extended = 64;
+    int columnsAfterExtension = 1 + extended;
+    long beforeExtension = tvList.getStructureRamSize();
+    tvList.extendColumns(Collections.nCopies(extended, TSDataType.INT32));
+    long afterExtension = tvList.getStructureRamSize();
+
+    long expectedExtension =
+        2L
+                * (RamUsageEstimator.sizeOfObjectArray(columnsAfterExtension)
+                    - RamUsageEstimator.sizeOfObjectArray(1))
+            + (RamUsageEstimator.sizeOfLongArray(columnsAfterExtension)
+                - RamUsageEstimator.sizeOfLongArray(1))
+            + (RamUsageEstimator.sizeOfIntArray(columnsAfterExtension)
+                - RamUsageEstimator.sizeOfIntArray(1))
+            + (RamUsageEstimator.sizeOfShortArray(columnsAfterExtension)
+                - RamUsageEstimator.sizeOfShortArray(1))
+            + (RamUsageEstimator.sizeOfLongArray((columnsAfterExtension + 63) >>> 6)
+                - RamUsageEstimator.sizeOfLongArray(1))
+            + (long) extended * lazyColumnContainerRamCost();
+    // Each lazy column also carries one null slot for the open block, so allow a small per-column
+    // slack instead of pinning the exact wrapper capacity.
+    long extensionGrowth = afterExtension - beforeExtension;
+    Assert.assertTrue(extensionGrowth >= expectedExtension);
+    Assert.assertTrue(extensionGrowth <= expectedExtension + 16L * extended);
+    // The lazy wrapper costs less than a dense array of block references at this block count.
+    Assert.assertTrue(lazyColumnContainerRamCost() < RamUsageEstimator.sizeOfObjectArray(blocks));
+    assertStructureRamCostMatches(tvList);
+
+    long beforeMaterialization = tvList.getStructureRamSize();
+    tvList.putAlignedValue(rows, new Object[] {7}, new int[] {extended});
+    long afterMaterialization = tvList.getStructureRamSize();
+
+    // The implicit null prefix is never materialized; only the bitmap for the written block is
+    // allocated, and the cached cost must be refreshed.
+    Assert.assertNull(tvList.getValues().get(extended).get(0));
+    Assert.assertNotNull(tvList.getBitMaps());
+    long expectedMaterialization = 0;
+    expectedMaterialization += AlignedTVList.listRamCostWithReferences(tvList.getBitMaps());
+    for (List<BitMap> columnBitMaps : tvList.getBitMaps()) {
+      if (columnBitMaps != null) {
+        expectedMaterialization += AlignedTVList.listRamCostWithoutReferences(columnBitMaps);
+      }
+    }
+    long materializationGrowth = afterMaterialization - beforeMaterialization;
+    Assert.assertTrue(materializationGrowth >= expectedMaterialization);
+    Assert.assertTrue(materializationGrowth <= expectedMaterialization + 1024);
+    assertStructureRamCostMatches(tvList);
+    tvList.clear();
+  }
+
+  private static long lazyColumnContainerRamCost() {
+    return MemoryEstimationHelper.ARRAY_LIST_INSTANCE_SIZE
+        + NUM_BYTES_OBJECT_REF
+        + AlignedTVList.listRamCostWithReferences(Collections.emptyList());
   }
 }

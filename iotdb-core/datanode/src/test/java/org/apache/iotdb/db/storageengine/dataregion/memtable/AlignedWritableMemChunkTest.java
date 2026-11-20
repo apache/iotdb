@@ -288,4 +288,34 @@ public class AlignedWritableMemChunkTest {
       }
     }
   }
+
+  @Test
+  public void testSingleMeasurementWriteToWideDevice() {
+    int columnCount = 10_000;
+    List<IMeasurementSchema> schemas = new ArrayList<>(columnCount);
+    for (int column = 0; column < columnCount; column++) {
+      schemas.add(new MeasurementSchema("s" + column, TSDataType.INT64));
+    }
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas);
+    IMeasurementSchema lastSchema = schemas.get(columnCount - 1);
+
+    chunk.writeAlignedPoints(0, new Object[] {10L}, Collections.singletonList(lastSchema));
+
+    AlignedTVList list = chunk.getWorkingTVList();
+    Assert.assertEquals(1, list.rowCount());
+    Assert.assertEquals(10L, list.getLongByValueIndex(0, columnCount - 1));
+    for (int column = 0; column < columnCount - 1; column++) {
+      Assert.assertTrue(list.isNullValue(0, column));
+    }
+    // A second write to a new measurement must not disturb the first row.
+    IMeasurementSchema newSchema = new MeasurementSchema("new", TSDataType.INT32);
+    chunk.writeAlignedPoints(1, new Object[] {7}, Collections.singletonList(newSchema));
+    Assert.assertEquals(columnCount, chunk.getMeasurementIndex("new"));
+    Assert.assertEquals(7, list.getIntByValueIndex(1, columnCount));
+    for (int column = 0; column < columnCount; column++) {
+      Assert.assertTrue(list.isNullValue(1, column));
+    }
+    Assert.assertEquals(10L, list.getLongByValueIndex(0, columnCount - 1));
+    chunk.release();
+  }
 }

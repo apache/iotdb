@@ -224,9 +224,20 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   @Override
   public void writeAlignedPoints(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    Object[] reorderedValue =
-        checkAndReorderColumnValuesInInsertPlan(schemaList, objectValue, null).left;
-    putAlignedRow(insertTime, reorderedValue);
+    int columnCount = ensureColumnsAndCount(schemaList);
+    int[] destColumns = new int[columnCount];
+    Object[] sparseValues = new Object[columnCount];
+    int position = 0;
+    for (int i = 0; i < schemaList.size(); i++) {
+      IMeasurementSchema measurementSchema = schemaList.get(i);
+      if (measurementSchema == null) {
+        continue;
+      }
+      destColumns[position] = measurementIndexMap.get(measurementSchema.getMeasurementName());
+      sparseValues[position] = objectValue[i];
+      position++;
+    }
+    list.putAlignedValue(insertTime, sparseValues, destColumns);
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverAlignedTvList();
     }
@@ -241,49 +252,56 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       int start,
       int end,
       TSStatus[] results) {
-    Pair<Object[], BitMap[]> pair =
-        checkAndReorderColumnValuesInInsertPlan(schemaList, valueList, bitMaps);
-    Object[] reorderedColumnValues = pair.left;
-    BitMap[] reorderedBitMaps = pair.right;
-    putAlignedTablet(times, reorderedColumnValues, reorderedBitMaps, start, end, results);
+    int columnCount = ensureColumnsAndCount(schemaList);
+    int[] destColumns = new int[columnCount];
+    Object[] sparseValues = new Object[columnCount];
+    BitMap[] sparseBitMaps = bitMaps == null ? null : new BitMap[columnCount];
+    int position = 0;
+    for (int i = 0; i < schemaList.size(); i++) {
+      IMeasurementSchema measurementSchema = schemaList.get(i);
+      if (measurementSchema == null) {
+        continue;
+      }
+      destColumns[position] = measurementIndexMap.get(measurementSchema.getMeasurementName());
+      sparseValues[position] = valueList[i];
+      if (sparseBitMaps != null) {
+        sparseBitMaps[position] = bitMaps[i];
+      }
+      position++;
+    }
+    list.putAlignedValues(times, sparseValues, sparseBitMaps, destColumns, start, end, results);
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverAlignedTvList();
     }
   }
 
   /**
-   * Register missing measurements in insertion order, then reorder values and bitmaps into the
-   * memchunk's column order.
+   * Register missing measurements in insertion order and return the number of columns written by
+   * this insert plan.
+   *
+   * <p>Only the written columns are materialized by the caller, so a single-measurement write to a
+   * wide aligned device no longer allocates device-wide value and bitmap arrays.
    *
    * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
    *     have been deleted, there will be null in its slot.
-   * @return values and bitmaps aligned with this memchunk's schema list
    */
-  private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
-      List<IMeasurementSchema> schemaListInInsertPlan, Object[] columnValues, BitMap[] bitMaps) {
-    Object[] reorderedColumnValues = new Object[schemaList.size()];
-    BitMap[] reorderedBitMaps = bitMaps == null ? null : new BitMap[schemaList.size()];
+  private int ensureColumnsAndCount(List<IMeasurementSchema> schemaListInInsertPlan) {
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
       IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
-      if (measurementSchema != null) {
-        Integer index = measurementIndexMap.get(measurementSchema.getMeasurementName());
-        if (index == null) {
-          // Keep writes without new measurements on a single-pass path. Only the first missing
-          // measurement triggers a batch extension and one resize of the reordered arrays.
-          extendColumnsInInsertPlan(schemaListInInsertPlan, i);
-          reorderedColumnValues = Arrays.copyOf(reorderedColumnValues, schemaList.size());
-          if (reorderedBitMaps != null) {
-            reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, schemaList.size());
-          }
-          index = measurementIndexMap.get(measurementSchema.getMeasurementName());
-        }
-        reorderedColumnValues[index] = columnValues[i];
-        if (bitMaps != null) {
-          reorderedBitMaps[index] = bitMaps[i];
-        }
+      if (measurementSchema != null
+          && !measurementIndexMap.containsKey(measurementSchema.getMeasurementName())) {
+        // Only the first missing measurement triggers a batch extension.
+        extendColumnsInInsertPlan(schemaListInInsertPlan, i);
+        break;
       }
     }
-    return new Pair<>(reorderedColumnValues, reorderedBitMaps);
+    int columnCount = 0;
+    for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
+      if (schemaListInInsertPlan.get(i) != null) {
+        columnCount++;
+      }
+    }
+    return columnCount;
   }
 
   private void extendColumnsInInsertPlan(
@@ -589,6 +607,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     if (activeSchemaList.isEmpty() && ignoreAllNullRows) {
       return;
     }
+    // Flush reads the raw value/bitmap containers, so the null tails of the open block must be
+    // materialized before encoding.
+    ((AlignedTVList) workingListForFlush).materializeOpenBlockForRead();
 
     BitMap allValueColDeletedMap;
     AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
@@ -1000,6 +1021,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     if (activeSchemaList.isEmpty() && ignoreAllNullRows) {
       return;
     }
+    // Flush reads the raw value/bitmap containers, so the null tails of the open block must be
+    // materialized before encoding.
+    ((AlignedTVList) workingListForFlush).materializeOpenBlockForRead();
 
     AlignedChunkWriterImpl alignedChunkWriter =
         new AlignedChunkWriterImpl(activeSchemaList, encryptParameter);
