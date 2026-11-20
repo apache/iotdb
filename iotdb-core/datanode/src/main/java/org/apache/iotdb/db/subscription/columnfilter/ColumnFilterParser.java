@@ -51,7 +51,9 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -208,26 +210,47 @@ public class ColumnFilterParser {
     @Override
     public Expression visitLogicalBinary(
         final SubscriptionColumnFilterParser.LogicalBinaryContext context) {
-      final LogicalExpression.Operator operator =
-          Objects.nonNull(context.AND())
-              ? LogicalExpression.Operator.AND
-              : LogicalExpression.Operator.OR;
+      final LogicalExpression.Operator operator = logicalOperator(context);
       final List<Expression> terms = new ArrayList<>();
-      appendLogicalTerms(terms, operator, visit(context.booleanExpression(0)));
-      appendLogicalTerms(terms, operator, visit(context.booleanExpression(1)));
+      final Deque<SubscriptionColumnFilterParser.BooleanExpressionContext> stack =
+          new ArrayDeque<>();
+      stack.push(context.booleanExpression(1));
+      stack.push(context.booleanExpression(0));
+      while (!stack.isEmpty()) {
+        final SubscriptionColumnFilterParser.BooleanExpressionContext current =
+            unwrapParenthesized(stack.pop());
+        if (current instanceof SubscriptionColumnFilterParser.LogicalBinaryContext) {
+          final SubscriptionColumnFilterParser.LogicalBinaryContext binary =
+              (SubscriptionColumnFilterParser.LogicalBinaryContext) current;
+          if (logicalOperator(binary) == operator) {
+            stack.push(binary.booleanExpression(1));
+            stack.push(binary.booleanExpression(0));
+            continue;
+          }
+        }
+        terms.add(visit(current));
+      }
       return new LogicalExpression(operator, terms);
     }
 
-    private static void appendLogicalTerms(
-        final List<Expression> terms,
-        final LogicalExpression.Operator operator,
-        final Expression expression) {
-      if (expression instanceof LogicalExpression
-          && ((LogicalExpression) expression).getOperator() == operator) {
-        terms.addAll(((LogicalExpression) expression).getTerms());
-      } else {
-        terms.add(expression);
+    private static LogicalExpression.Operator logicalOperator(
+        final SubscriptionColumnFilterParser.LogicalBinaryContext context) {
+      return Objects.nonNull(context.AND())
+          ? LogicalExpression.Operator.AND
+          : LogicalExpression.Operator.OR;
+    }
+
+    private static SubscriptionColumnFilterParser.BooleanExpressionContext unwrapParenthesized(
+        SubscriptionColumnFilterParser.BooleanExpressionContext context) {
+      while (context instanceof SubscriptionColumnFilterParser.PredicateExpressionContext) {
+        final SubscriptionColumnFilterParser.PredicateContext predicate =
+            ((SubscriptionColumnFilterParser.PredicateExpressionContext) context).predicate();
+        if (Objects.isNull(predicate.booleanExpression())) {
+          break;
+        }
+        context = predicate.booleanExpression();
       }
+      return context;
     }
 
     @Override

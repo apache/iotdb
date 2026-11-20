@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.subscription.columnfilter;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.subscription.columnfilter.ColumnMetadata;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
@@ -85,18 +87,52 @@ public class ColumnFilterParserTest {
 
   @Test
   public void testFlattenedOrChainParsesIntoSingleLogicalExpression() throws Exception {
+    final int termCount = 500;
     final String orChain =
-        IntStream.range(0, 40)
+        IntStream.range(0, termCount)
             .mapToObj(i -> "column_name = \"s" + i + "\"")
             .collect(Collectors.joining(" OR "));
     final Expression parsed = PARSER.parseAndValidate(orChain);
     Assert.assertTrue(parsed instanceof LogicalExpression);
-    Assert.assertEquals(LogicalExpression.Operator.OR, ((LogicalExpression) parsed).getOperator());
-    Assert.assertEquals(40, ((LogicalExpression) parsed).getTerms().size());
+    final LogicalExpression logical = (LogicalExpression) parsed;
+    Assert.assertEquals(LogicalExpression.Operator.OR, logical.getOperator());
+    Assert.assertEquals(termCount, logical.getTerms().size());
+    Assert.assertEquals(
+        "s0",
+        ((StringLiteral) ((ComparisonExpression) logical.getTerms().get(0)).getRight()).getValue());
+    Assert.assertEquals(
+        "s" + (termCount - 1),
+        ((StringLiteral) ((ComparisonExpression) logical.getTerms().get(termCount - 1)).getRight())
+            .getValue());
     Assert.assertTrue(
         ColumnFilterEvaluator.evaluate(
-            parsed, new ColumnMetadata("db1", "weather", "s39", "DOUBLE", "FIELD")));
+            parsed, new ColumnMetadata("db1", "weather", "s499", "DOUBLE", "FIELD")));
     Assert.assertFalse(ColumnFilterEvaluator.evaluate(parsed, TEMPERATURE));
+  }
+
+  @Test
+  public void testParenthesizedSameOperatorFlattensWhilePreservingMixedPrecedence()
+      throws Exception {
+    final Expression parsed =
+        PARSER.parseAndValidate(
+            "(column_name = \"s0\" OR (column_name = \"s1\" OR column_name = \"s2\"))"
+                + " OR (column_name = \"s3\" AND datatype = \"DOUBLE\")");
+    Assert.assertTrue(parsed instanceof LogicalExpression);
+    final LogicalExpression root = (LogicalExpression) parsed;
+    Assert.assertEquals(LogicalExpression.Operator.OR, root.getOperator());
+    Assert.assertEquals(4, root.getTerms().size());
+    Assert.assertTrue(root.getTerms().get(3) instanceof LogicalExpression);
+    Assert.assertEquals(
+        LogicalExpression.Operator.AND, ((LogicalExpression) root.getTerms().get(3)).getOperator());
+    Assert.assertTrue(
+        ColumnFilterEvaluator.evaluate(
+            parsed, new ColumnMetadata("db1", "weather", "s2", "INT32", "FIELD")));
+    Assert.assertTrue(
+        ColumnFilterEvaluator.evaluate(
+            parsed, new ColumnMetadata("db1", "weather", "s3", "DOUBLE", "FIELD")));
+    Assert.assertFalse(
+        ColumnFilterEvaluator.evaluate(
+            parsed, new ColumnMetadata("db1", "weather", "s3", "INT32", "FIELD")));
   }
 
   @Test
