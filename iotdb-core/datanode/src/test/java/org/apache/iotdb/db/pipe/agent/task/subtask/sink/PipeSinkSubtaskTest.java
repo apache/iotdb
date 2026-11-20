@@ -40,6 +40,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import com.google.common.util.concurrent.Uninterruptibles;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -47,6 +48,7 @@ import org.mockito.Mockito;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.awaitility.Awaitility.await;
@@ -108,6 +110,7 @@ public class PipeSinkSubtaskTest {
 
     final PipeSinkSubtask subtask =
         new PipeSinkSubtask(
+            null,
             "PipeSinkSubtaskTest",
             System.currentTimeMillis(),
             "data_test",
@@ -258,6 +261,7 @@ public class PipeSinkSubtaskTest {
 
     final PipeSinkSubtask subtask =
         new PipeSinkSubtask(
+            null,
             "PipeSinkSubtaskTest",
             System.currentTimeMillis(),
             "data_test",
@@ -269,12 +273,11 @@ public class PipeSinkSubtaskTest {
     final Thread failureThread =
         new Thread(() -> subtask.onFailure(new PipeConnectionException("connection broken")));
     failureThread.setDaemon(true);
-    final FutureTask<Long> closeTask =
+    final FutureTask<Void> closeTask =
         new FutureTask<>(
             () -> {
-              final long startTime = System.nanoTime();
               subtask.close();
-              return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
+              return null;
             });
     final Thread closeThread = new Thread(closeTask);
     closeThread.setDaemon(true);
@@ -287,7 +290,7 @@ public class PipeSinkSubtaskTest {
       closeThread.start();
       closeStarted = true;
 
-      Assert.assertTrue(closeTask.get(30, TimeUnit.SECONDS) < 1000);
+      closeTask.get(1, TimeUnit.SECONDS);
       Assert.assertFalse(closeEntered.await(100, TimeUnit.MILLISECONDS));
       Assert.assertFalse(closeDuringHandshake.get());
     } finally {
@@ -313,17 +316,18 @@ public class PipeSinkSubtaskTest {
   public void testExternalSinkCloseDoesNotWaitForeverForConnectorClose() throws Exception {
     final int originalTimeout =
         CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
-    CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(30);
 
     final PipeConnector connector = mock(PipeConnector.class);
     final UnboundedBlockingPendingQueue<?> pendingQueue = mock(UnboundedBlockingPendingQueue.class);
     final CountDownLatch closeEntered = new CountDownLatch(1);
     final CountDownLatch releaseClose = new CountDownLatch(1);
+    final CountDownLatch connectorCloseReturned = new CountDownLatch(1);
 
     doAnswer(
             invocation -> {
               closeEntered.countDown();
-              releaseClose.await(2, TimeUnit.SECONDS);
+              Uninterruptibles.awaitUninterruptibly(releaseClose);
+              connectorCloseReturned.countDown();
               return null;
             })
         .when(connector)
@@ -339,25 +343,38 @@ public class PipeSinkSubtaskTest {
             (UnboundedBlockingPendingQueue) pendingQueue,
             connector);
 
-    try {
-      final long startTime = System.currentTimeMillis();
-      subtask.close();
-      final long closeDuration = System.currentTimeMillis() - startTime;
+    final FutureTask<Void> closeTask =
+        new FutureTask<>(
+            () -> {
+              subtask.close();
+              return null;
+            });
+    final Thread closeThread = new Thread(closeTask);
+    closeThread.setDaemon(true);
 
-      Assert.assertTrue(closeDuration < 1000);
+    try {
+      CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(30);
+      closeThread.start();
       Assert.assertTrue(closeEntered.await(30, TimeUnit.SECONDS));
+      closeTask.get(1, TimeUnit.SECONDS);
+      Assert.assertEquals(1L, connectorCloseReturned.getCount());
     } finally {
       releaseClose.countDown();
-      CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(originalTimeout);
+      try {
+        closeThread.join(30_000);
+      } finally {
+        CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(originalTimeout);
+      }
     }
+
+    Assert.assertFalse(closeThread.isAlive());
+    Assert.assertTrue(connectorCloseReturned.await(30, TimeUnit.SECONDS));
   }
 
   @Test
   public void testBuiltinSinkCloseWaitsForConnectorClose() throws Exception {
     final int originalTimeout =
         CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
-    CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(30);
-
     final PipeConnector connector = mock(PipeConnector.class);
     final UnboundedBlockingPendingQueue<?> pendingQueue = mock(UnboundedBlockingPendingQueue.class);
     final CountDownLatch closeEntered = new CountDownLatch(1);
@@ -383,22 +400,20 @@ public class PipeSinkSubtaskTest {
             (UnboundedBlockingPendingQueue) pendingQueue,
             connector,
             false);
-    final CountDownLatch closeReturned = new CountDownLatch(1);
-    final Thread closeThread =
-        new Thread(
+    final FutureTask<Void> closeTask =
+        new FutureTask<>(
             () -> {
-              try {
-                subtask.close();
-              } finally {
-                closeReturned.countDown();
-              }
+              subtask.close();
+              return null;
             });
+    final Thread closeThread = new Thread(closeTask);
     closeThread.setDaemon(true);
 
     try {
+      CommonDescriptor.getInstance().getConfig().setDnConnectionTimeoutInMS(30);
       closeThread.start();
       Assert.assertTrue(closeEntered.await(30, TimeUnit.SECONDS));
-      Assert.assertFalse(closeReturned.await(100, TimeUnit.MILLISECONDS));
+      Assert.assertThrows(TimeoutException.class, () -> closeTask.get(100, TimeUnit.MILLISECONDS));
     } finally {
       releaseClose.countDown();
       try {
@@ -409,7 +424,7 @@ public class PipeSinkSubtaskTest {
     }
 
     Assert.assertFalse(closeThread.isAlive());
-    Assert.assertEquals(0L, closeReturned.getCount());
+    closeTask.get();
   }
 
   @Test

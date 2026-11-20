@@ -39,25 +39,26 @@ public class ShowSubscriptionsTaskTest {
   public void testBuildDetailsTSBlock() throws Exception {
     final TSubscriptionProgressInfo progressInfo =
         new TSubscriptionProgressInfo(
-            "topic",
-            "group",
-            "DataRegion[1]",
-            3,
-            true,
-            true,
-            "CATCHING_UP",
-            5L,
-            20L,
-            6L,
-            2L,
-            1L,
-            2L,
-            100L,
-            81L,
-            123L,
-            120L,
-            "consumer",
-            4L);
+                "topic",
+                "group",
+                "DataRegion[1]",
+                3,
+                true,
+                true,
+                "CATCHING_UP",
+                5L,
+                20L,
+                6L,
+                2L,
+                1L,
+                2L,
+                100L,
+                81L,
+                123L,
+                120L,
+                "consumer",
+                4L)
+            .setQueuesBoundOnDns(Collections.singletonList(3));
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     ShowSubscriptionsTask.buildDetailsTSBlock(Collections.singletonList(progressInfo), future);
@@ -71,6 +72,9 @@ public class ShowSubscriptionsTaskTest {
         ColumnHeaderConstant.SEEK_GENERATION, result.getResultSetHeader().getRespColumns().get(19));
     assertEquals(
         ColumnHeaderConstant.READY_ON_DNS, result.getResultSetHeader().getRespColumns().get(20));
+    assertEquals(
+        ColumnHeaderConstant.QUEUES_BOUND_ON_DNS,
+        result.getResultSetHeader().getRespColumns().get(21));
     assertEquals(1, resultSet.getPositionCount());
     assertEquals("topic_group", resultSet.getColumn(0).getBinary(0).toString());
     assertEquals("CATCHING_UP", resultSet.getColumn(5).getBinary(0).toString());
@@ -79,5 +83,6 @@ public class ShowSubscriptionsTaskTest {
     assertEquals(20L, resultSet.getColumn(9).getLong(0));
     assertEquals(4L, resultSet.getColumn(19).getLong(0));
     assertEquals("[]", resultSet.getColumn(20).getBinary(0).toString());
+    assertEquals("[3]", resultSet.getColumn(21).getBinary(0).toString());
   }
 }

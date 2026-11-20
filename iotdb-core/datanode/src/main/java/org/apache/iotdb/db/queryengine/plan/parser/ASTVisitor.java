@@ -250,6 +250,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDeleteTimeSeriesProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
@@ -3874,6 +3875,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitRepairDataPartitionTable(
       IoTDBSqlParser.RepairDataPartitionTableContext ctx) {
     return new RepairDataPartitionTable();
+  }
+
+  @Override
+  public Statement visitShowDeleteTimeSeriesProgress(
+      IoTDBSqlParser.ShowDeleteTimeSeriesProgressContext ctx) {
+    return new ShowDeleteTimeSeriesProgressStatement();
   }
 
   @Override

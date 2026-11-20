@@ -167,6 +167,48 @@ public class IoTDBInsertQueryIT {
     }
   }
 
+  /** A batch has no result set to fetch, so the rows must be written when the batch returns. */
+  @Test
+  public void testInsertQueryInBatch() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      List<String> expectedHeader = new ArrayList<>();
+      List<String> expectedRetArray = new ArrayList<>();
+
+      statement.execute("USE test");
+      ResultSet resultSet =
+          statement.executeQuery("select * from vehicle0 order by time, deviceId, manufacturer");
+      buildExpectedResult(resultSet, expectedHeader, expectedRetArray);
+
+      statement.execute(String.format(createTableTemplate, 1));
+      String insertQuery = String.format(insertIntoQuery, 1);
+      statement.addBatch(insertQuery);
+      statement.executeBatch();
+      statement.clearBatch();
+
+      // 3 devices with 400 rows each, see prepareData
+      try (ResultSet countResult = statement.executeQuery("SELECT count(*) FROM vehicle1")) {
+        Assert.assertTrue(countResult.next());
+        assertEquals(1200, countResult.getLong(1));
+      }
+      ResultSet r1 =
+          statement.executeQuery(
+              String.format("SELECT * FROM vehicle%d order by time, deviceId, manufacturer", 1));
+      resultSetEqualTest(r1, expectedHeader, expectedRetArray);
+
+      // Nobody can fetch or close the statement of a batch, so it must not stay registered.
+      try (ResultSet queries =
+          statement.executeQuery(
+              "SELECT statement FROM information_schema.queries WHERE statement = '"
+                  + insertQuery
+                  + "'")) {
+        assertFalse(queries.next());
+      }
+
+      statement.execute(String.format(dropTableTemplate, 1));
+    }
+  }
+
   /** Insert a table's own rows at shifted timestamps and verify that its row count doubles. */
   @Test
   public void testInsertIntoSourceTable() throws SQLException {

@@ -212,6 +212,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDeleteTimeSeriesProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -1507,8 +1508,18 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TShowDeleteTimeSeriesProceduresResp showDeleteTimeSeriesProcedures() {
+    return configManager.showDeleteTimeSeriesProcedures();
+  }
+
+  @Override
   public TShowDropTableProceduresResp showDropTableProcedures() {
     return configManager.showDropTableProcedures();
+  }
+
+  @Override
+  public TShowDropTableProceduresResp showDropTableColumnProcedures() {
+    return configManager.showDropTableColumnProcedures();
   }
 
   @Override

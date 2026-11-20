@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -71,6 +72,10 @@ public class IoTDBExecuteBatchIT {
         statement.addBatch(
             "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600001,2.3)");
         statement.addBatch("delete timeseries root.ln.wf01.wt01.**");
+        statement.executeBatch();
+        statement.clearBatch();
+        TestUtils.waitForTimeSeriesDeletion(
+            EnvFactory.getEnv(), "delete timeseries root.ln.wf01.wt01.**");
         statement.addBatch(
             "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600002,3.4)");
         statement.executeBatch();
@@ -94,6 +99,37 @@ public class IoTDBExecuteBatchIT {
   }
 
   @Test
+  public void testJDBCExecuteBatchWithSelectInto() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.addBatch("insert into root.batch_into.src(timestamp,s1) values(1,1.0)");
+        statement.addBatch("insert into root.batch_into.src(timestamp,s1) values(2,2.0)");
+        statement.addBatch("select s1 into root.batch_into.dst(s1) from root.batch_into.src");
+        statement.executeBatch();
+        statement.clearBatch();
+        // A batch has no result set to fetch, so the rows must be written when it returns.
+        ResultSet resultSet = statement.executeQuery("select s1 from root.batch_into.dst");
+        int count = 0;
+
+        long[] timestamps = {1, 2};
+        double[] values = {1.0, 2.0};
+
+        while (resultSet.next()) {
+          assertEquals(timestamps[count], resultSet.getLong(ColumnHeaderConstant.TIME));
+          assertEquals(values[count], resultSet.getDouble("root.batch_into.dst.s1"), 0.0);
+          count++;
+        }
+        assertEquals(timestamps.length, count);
+      } finally {
+        executeQuietly(statement, "DELETE DATABASE root.batch_into");
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testJDBCExecuteBatchForCreateMultiTimeSeriesPlan() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -104,6 +140,10 @@ public class IoTDBExecuteBatchIT {
         statement.addBatch(
             "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600001,2.3)");
         statement.addBatch("delete timeseries root.ln.wf01.wt01.**");
+        statement.executeBatch();
+        statement.clearBatch();
+        TestUtils.waitForTimeSeriesDeletion(
+            EnvFactory.getEnv(), "delete timeseries root.ln.wf01.wt01.**");
         statement.addBatch(
             "create timeseries root.turbine.d1.s1(s1) with datatype=boolean, encoding=plain , compression=snappy "
                 + "tags('tag1'='v1', 'tag2'='v2') attributes('attr1'='v3', 'attr2'='v4')");
