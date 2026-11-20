@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupCache;
@@ -54,6 +55,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +79,7 @@ public class LoadCache {
       Math.max(
           ProcedureManager.PROCEDURE_WAIT_TIME_OUT - TimeUnit.SECONDS.toMillis(2),
           TimeUnit.SECONDS.toMillis(10));
+  private static final int MAX_UNREADY_ENTITY_PRINT = 10;
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -480,6 +483,36 @@ public class LoadCache {
             consensusGroupStatisticsMap.put(
                 regionGroupId, consensusGroupCache.getCurrentStatistics()));
     return consensusGroupStatisticsMap;
+  }
+
+  public List<String> getNodeHeartbeatUnreadyReasons() {
+    List<Integer> unreadyNodes = new ArrayList<>();
+    nodeCacheMap.forEach(
+        (nodeId, nodeCache) -> {
+          if (nodeId == ConfigNodeHeartbeatCache.CURRENT_NODE_ID) {
+            return;
+          }
+          if ((nodeCache instanceof ConfigNodeHeartbeatCache
+                  || nodeCache instanceof DataNodeHeartbeatCache)
+              && !nodeCache.hasHeartbeatSample()) {
+            unreadyNodes.add(nodeId);
+          }
+        });
+    if (unreadyNodes.isEmpty()) {
+      return Collections.emptyList();
+    }
+    Collections.sort(unreadyNodes);
+    List<Integer> nodesToPrint =
+        unreadyNodes.subList(0, Math.min(MAX_UNREADY_ENTITY_PRINT, unreadyNodes.size()));
+    String suffix =
+        unreadyNodes.size() > MAX_UNREADY_ENTITY_PRINT
+            ? String.format(
+                ConfigNodeMessages.MESSAGE_MORE_UNREADY_NODES_ARG_C7CDA960,
+                unreadyNodes.size() - MAX_UNREADY_ENTITY_PRINT)
+            : "";
+    return Collections.singletonList(
+        String.format(ConfigNodeMessages.MESSAGE_UNREADY_NODES_ARG_144B31E1, nodesToPrint)
+            + suffix);
   }
 
   /**

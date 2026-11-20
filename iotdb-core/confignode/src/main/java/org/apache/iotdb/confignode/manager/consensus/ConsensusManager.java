@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.exception.AddPeerException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -76,12 +77,14 @@ public class ConsensusManager {
       new ConfigRegionId(CONF.getConfigRegionId());
 
   private final IManager configManager;
+  private final ConfigRegionStateMachine stateMachine;
   private IConsensus consensusImpl;
 
   private boolean isInitialized;
 
   public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine) {
     this.configManager = configManager;
+    this.stateMachine = stateMachine;
     setConsensusLayer(stateMachine);
   }
 
@@ -411,38 +414,64 @@ public class ConsensusManager {
    *     NEED_REDIRECTION otherwise
    */
   public TSStatus confirmLeader() {
-    TSStatus result = new TSStatus();
-    if (isLeaderReady()) {
-      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
-      result.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
-      if (isLeader()) {
-        long startTime = System.currentTimeMillis();
-        while (System.currentTimeMillis() - startTime < MAX_WAIT_READY_TIME_MS) {
-          if (isLeaderReady()) {
-            result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-            return result;
-          }
-          try {
-            Thread.sleep(RETRY_WAIT_TIME_MS);
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.warn("Unexpected interruption during waiting for configNode leader ready.");
-            break;
-          }
-        }
-        result.setMessage(
-            "The current ConfigNode is leader but not ready yet, please try again later.");
-      } else {
-        result.setMessage(
-            "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
-      }
+    return confirmLeader(false);
+  }
+
+  private TSStatus confirmLeader(final boolean forInternalProcedure) {
+    if (!isLeader()) {
+      TSStatus result = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+      result.setMessage(
+          ConfigNodeMessages
+              .MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D);
       TConfigNodeLocation leaderLocation = getLeaderLocation();
       if (leaderLocation != null) {
         result.setRedirectNode(leaderLocation.getInternalEndPoint());
       }
+      return result;
     }
-    return result;
+
+    waitForLeaderReady();
+
+    if (!isLeaderReady()) {
+      return getLeaderWarmingUpStatus(
+          ConfigNodeMessages
+              .MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_CONSENSUS_NOT_READY_YET_F1FB7C9A);
+    }
+    if (!stateMachine.areLeaderServicesReady(forInternalProcedure)) {
+      return getLeaderWarmingUpStatus(
+          ConfigNodeMessages
+              .MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_LEADER_SERVICES_NOT_READY_YET_ECC25E1A);
+    }
+    if (!forInternalProcedure && !configManager.getLoadManager().isLoadReady()) {
+      return getLeaderWarmingUpStatus(configManager.getLoadManager().getLoadReadyReason());
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public TSStatus confirmLeaderForInternalProcedure() {
+    return confirmLeader(true);
+  }
+
+  private void waitForLeaderReady() {
+    long startTime = System.currentTimeMillis();
+    while (!isLeaderReady() && System.currentTimeMillis() - startTime < MAX_WAIT_READY_TIME_MS) {
+      try {
+        Thread.sleep(RETRY_WAIT_TIME_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn(
+            ConfigNodeMessages
+                .LOG_UNEXPECTED_INTERRUPTION_WHILE_WAITING_FOR_CONFIGNODE_LEADER_LOAD_WARM_UP_BB5AA4F7,
+            e);
+        return;
+      }
+    }
+  }
+
+  private TSStatus getLeaderWarmingUpStatus(String message) {
+    return new TSStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode())
+        .setMessage(message);
   }
 
   public ConsensusGroupId getConsensusGroupId() {
