@@ -1150,11 +1150,20 @@ public class ConsensusSubscriptionCommitStateTest {
       // Delayed mapping, commits, and async cleanup from owner1 cannot touch owner2's live state.
       assertTrue(manager.isSupersededTransientOwner("cg", "topic", regionId, owner1));
       assertFalse(manager.isSupersededTransientOwner("cg", "topic", regionId, owner2));
-      manager.recordMapping(
-          "cg", "topic", regionId, writerId, new WriterProgress(1064L, 64L), owner1);
+      assertFalse(
+          manager.recordMapping(
+              "cg", "topic", regionId, writerId, new WriterProgress(1064L, 64L), owner1));
+      assertFalse(
+          manager.commit(
+              "cg", "topic", regionId, writerId, new WriterProgress(1075L, 75L), owner1));
+      assertFalse(
+          manager.commitWithoutOutstanding(
+              "cg", "topic", regionId, writerId, new WriterProgress(1075L, 75L), owner1));
       manager.clearTransientInFlightState("cg", "topic", regionId, owner1);
 
-      assertTrue(manager.commit("cg", "topic", regionId, writerId, new WriterProgress(1075L, 75L)));
+      assertTrue(
+          manager.commit(
+              "cg", "topic", regionId, writerId, new WriterProgress(1075L, 75L), owner2));
       assertEquals(
           new WriterProgress(1075L, 75L),
           manager

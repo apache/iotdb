@@ -3437,10 +3437,8 @@ public class ConsensusPrefetchingQueue {
     final SubscriptionCommitContext commitContext = buildWriterCommitContext(commitLocalSeq);
     final WriterId writerId = commitContext.getWriterId();
     final WriterProgress writerProgress = commitContext.getWriterProgress();
-    commitManager.recordMapping(
-        consumerGroupId, topicName, consensusGroupId, writerId, writerProgress, this);
-    if (commitManager.isSupersededTransientOwner(
-        consumerGroupId, topicName, consensusGroupId, this)) {
+    if (!commitManager.recordMapping(
+        consumerGroupId, topicName, consensusGroupId, writerId, writerProgress, this)) {
       return false;
     }
     if (tablets.isEmpty()) {
@@ -4933,13 +4931,9 @@ public class ConsensusPrefetchingQueue {
 
   private boolean commitWriterProgress(
       final WriterId writerId, final WriterProgress writerProgress) {
-    if (commitManager.isSupersededTransientOwner(
-        consumerGroupId, topicName, consensusGroupId, this)) {
-      return false;
-    }
     final boolean committed =
         commitManager.commit(
-            consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+            consumerGroupId, topicName, consensusGroupId, writerId, writerProgress, this);
     if (committed) {
       lastProgressTimeMs = System.currentTimeMillis();
     }
@@ -4948,13 +4942,9 @@ public class ConsensusPrefetchingQueue {
 
   private boolean commitWithoutOutstandingAndRefreshWalRetention(
       final WriterId writerId, final WriterProgress writerProgress) {
-    if (commitManager.isSupersededTransientOwner(
-        consumerGroupId, topicName, consensusGroupId, this)) {
-      return false;
-    }
     final boolean committed =
         commitManager.commitWithoutOutstanding(
-            consumerGroupId, topicName, consensusGroupId, writerId, writerProgress);
+            consumerGroupId, topicName, consensusGroupId, writerId, writerProgress, this);
     if (committed) {
       lastProgressTimeMs = System.currentTimeMillis();
       refreshCommittedWalRetentionBoundAndNotify();

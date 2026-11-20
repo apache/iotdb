@@ -768,7 +768,7 @@ public class ConsensusSubscriptionCommitManager {
     recordMapping(consumerGroupId, topicName, regionId, writerId, writerProgress, null);
   }
 
-  void recordMapping(
+  boolean recordMapping(
       final String consumerGroupId,
       final String topicName,
       final ConsensusGroupId regionId,
@@ -777,7 +777,7 @@ public class ConsensusSubscriptionCommitManager {
       final Object owner) {
     final ConsensusSubscriptionCommitState state =
         getOrCreateState(consumerGroupId, topicName, regionId);
-    state.recordMapping(writerId, writerProgress, owner);
+    return state.recordMapping(writerId, writerProgress, owner);
   }
 
   public boolean commit(
@@ -786,6 +786,16 @@ public class ConsensusSubscriptionCommitManager {
       final ConsensusGroupId regionId,
       final WriterId writerId,
       final WriterProgress writerProgress) {
+    return commit(consumerGroupId, topicName, regionId, writerId, writerProgress, null);
+  }
+
+  boolean commit(
+      final String consumerGroupId,
+      final String topicName,
+      final ConsensusGroupId regionId,
+      final WriterId writerId,
+      final WriterProgress writerProgress,
+      final Object owner) {
     final CommitStateKey stateKey =
         getCommitStateKey(consumerGroupId, topicName, regionId.toString());
     final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.encodedStateKey);
@@ -800,7 +810,7 @@ public class ConsensusSubscriptionCommitManager {
           writerProgress);
       return false;
     }
-    final CommitOperationResult result = state.commitAndGetResult(writerId, writerProgress);
+    final CommitOperationResult result = state.commitAndGetResult(writerId, writerProgress, owner);
     if (result.isHandled()) {
       // Periodically persist progress
       persistProgressIfNeeded(stateKey, state);
@@ -823,6 +833,17 @@ public class ConsensusSubscriptionCommitManager {
       final ConsensusGroupId regionId,
       final WriterId writerId,
       final WriterProgress writerProgress) {
+    return commitWithoutOutstanding(
+        consumerGroupId, topicName, regionId, writerId, writerProgress, null);
+  }
+
+  boolean commitWithoutOutstanding(
+      final String consumerGroupId,
+      final String topicName,
+      final ConsensusGroupId regionId,
+      final WriterId writerId,
+      final WriterProgress writerProgress,
+      final Object owner) {
     final CommitStateKey stateKey =
         getCommitStateKey(consumerGroupId, topicName, regionId.toString());
     final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.encodedStateKey);
@@ -838,7 +859,7 @@ public class ConsensusSubscriptionCommitManager {
       return false;
     }
     final CommitOperationResult result =
-        state.commitWithoutOutstandingAndGetResult(writerId, writerProgress);
+        state.commitWithoutOutstandingAndGetResult(writerId, writerProgress, owner);
     if (result.isHandled()) {
       persistProgressIfNeeded(stateKey, state);
       if (result.hasAdvancedWriter()) {
@@ -2169,8 +2190,12 @@ public class ConsensusSubscriptionCommitManager {
 
     boolean isSupersededTransientOwner(final Object owner) {
       synchronized (this) {
-        return Objects.nonNull(owner) && Objects.nonNull(transientOwner) && transientOwner != owner;
+        return isSupersededTransientOwnerUnderLock(owner);
       }
+    }
+
+    private boolean isSupersededTransientOwnerUnderLock(final Object owner) {
+      return Objects.nonNull(owner) && Objects.nonNull(transientOwner) && transientOwner != owner;
     }
 
     private void clearTransientInFlightStateUnderLock() {
@@ -2229,7 +2254,7 @@ public class ConsensusSubscriptionCommitManager {
       recordMapping(writerId, writerProgress, null);
     }
 
-    void recordMapping(
+    boolean recordMapping(
         final WriterId writerId, final WriterProgress writerProgress, final Object owner) {
       if (Objects.isNull(writerId) || Objects.isNull(writerProgress)) {
         LOGGER.warn(
@@ -2237,7 +2262,7 @@ public class ConsensusSubscriptionCommitManager {
                 .PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_IGNORE_MAPPING_WITHOUT_3E66A74D,
             writerId,
             writerProgress);
-        return;
+        return false;
       }
       final ProgressKey key = new ProgressKey(writerId, writerProgress);
       final ProgressSlot slot = ProgressSlot.from(key);
@@ -2246,7 +2271,7 @@ public class ConsensusSubscriptionCommitManager {
           if (Objects.isNull(transientOwner)) {
             transientOwner = owner;
           } else if (transientOwner != owner) {
-            return;
+            return false;
           }
         }
         final ProgressKey previous = outstandingKeys.put(slot, key);
@@ -2274,6 +2299,7 @@ public class ConsensusSubscriptionCommitManager {
               getCommittedWriterNodeId());
         }
       }
+      return true;
     }
 
     /**
@@ -2288,6 +2314,11 @@ public class ConsensusSubscriptionCommitManager {
 
     CommitOperationResult commitAndGetResult(
         final WriterId writerId, final WriterProgress writerProgress) {
+      return commitAndGetResult(writerId, writerProgress, null);
+    }
+
+    CommitOperationResult commitAndGetResult(
+        final WriterId writerId, final WriterProgress writerProgress, final Object owner) {
       if (Objects.isNull(writerId) || Objects.isNull(writerProgress)) {
         LOGGER.warn(
             DataNodePipeMessages
@@ -2299,6 +2330,9 @@ public class ConsensusSubscriptionCommitManager {
       final ProgressKey key = new ProgressKey(writerId, writerProgress);
 
       synchronized (this) {
+        if (isSupersededTransientOwnerUnderLock(owner)) {
+          return CommitOperationResult.unhandled();
+        }
         final ProgressKey recordedKey = removeOutstandingKey(key);
         if (recordedKey == null) {
           if (recentlyCommittedKeys.contains(key)) {
@@ -2338,6 +2372,11 @@ public class ConsensusSubscriptionCommitManager {
 
     CommitOperationResult commitWithoutOutstandingAndGetResult(
         final WriterId writerId, final WriterProgress writerProgress) {
+      return commitWithoutOutstandingAndGetResult(writerId, writerProgress, null);
+    }
+
+    CommitOperationResult commitWithoutOutstandingAndGetResult(
+        final WriterId writerId, final WriterProgress writerProgress, final Object owner) {
       if (Objects.isNull(writerId) || Objects.isNull(writerProgress)) {
         LOGGER.warn(
             DataNodePipeMessages
@@ -2349,6 +2388,9 @@ public class ConsensusSubscriptionCommitManager {
       final ProgressKey incomingKey = new ProgressKey(writerId, writerProgress);
 
       synchronized (this) {
+        if (isSupersededTransientOwnerUnderLock(owner)) {
+          return CommitOperationResult.unhandled();
+        }
         if (recentlyCommittedKeys.contains(incomingKey)) {
           LOGGER.debug(
               DataNodePipeMessages
