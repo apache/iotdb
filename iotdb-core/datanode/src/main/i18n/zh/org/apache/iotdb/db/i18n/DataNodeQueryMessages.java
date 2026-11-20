@@ -67,4 +67,7 @@ public final class DataNodeQueryMessages {
   public static final String LOG_DELETE_AFTER_LOADING_ARG_ERROR_C606A060 = "加载后删除 {} 时出错。";
   public static final String LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F =
       "CQ {} 的用户 {} 鉴权失败：{}";
+  public static final String
+      EXCEPTION_QUERY_IS_NOT_FOUND_IT_MAY_BE_KILLED_BY_OTHERS_TIMEOUT_OR_SOME_OTHER_RUNTIME_ERRORS_YOU_CAN_SEE_MORE_DETAILS_IN_SERVER_LOG_90BD085E =
+          "未找到查询，可能已被其他用户终止、超时或发生其他运行时错误，更多详情请查看服务器日志。";
 }

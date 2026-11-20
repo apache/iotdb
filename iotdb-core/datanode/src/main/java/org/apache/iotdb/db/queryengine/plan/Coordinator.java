@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
@@ -32,6 +33,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -50,6 +52,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,6 +167,19 @@ public class Coordinator {
         // if it's write request and the result status needs to retry
         result.status.setNeedRetry(true);
       }
+      if (execution.isQuery()
+          && queryExecutionMap.get(queryId) != execution
+          && isSuccessful(result.status)) {
+        // The query was removed while it was being started, for example by cleanUpStaleQueries
+        // during a dispatch that took too long. Removing a query does not fail its state, so its
+        // status still says success, but nobody can fetch its result any more.
+        return new ExecutionResult(
+            result.queryId,
+            RpcUtils.getStatus(
+                TSStatusCode.QUERY_WAS_KILLED,
+                DataNodeQueryMessages
+                    .EXCEPTION_QUERY_IS_NOT_FOUND_IT_MAY_BE_KILLED_BY_OTHERS_TIMEOUT_OR_SOME_OTHER_RUNTIME_ERRORS_YOU_CAN_SEE_MORE_DETAILS_IN_SERVER_LOG_90BD085E));
+      }
       return result;
     } catch (RuntimeException | Error e) {
       // Analysis can fail before registration. Only link the query ID to its SQL here; callers
@@ -176,6 +193,12 @@ public class Coordinator {
       }
       DataNodeSchemaLockManager.getInstance().releaseReadLock(queryContext);
     }
+  }
+
+  private static boolean isSuccessful(TSStatus status) {
+    return status != null
+        && (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
   }
 
   /** This method is called by the write method. So it does not set the timeout parameter. */
