@@ -5708,4 +5708,7 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_WHOLE_FILE_LOAD_HAS_NO_SINGLE_RESOLVED_REGION_FOR_S_DAC09CDC =
       "Whole-file load 未解析出唯一的 region：%s。";
 
+  public static final String LOAD_ANALYSIS_STAGE_ARG_ARG_TSFILES_HAVE_BEEN_ANALYZED_PROGRESS_ARG_PERCENT =
+      "加载 - 分析阶段：已分析 {}/{} 个 TsFile，进度：{}%";
+
 }
