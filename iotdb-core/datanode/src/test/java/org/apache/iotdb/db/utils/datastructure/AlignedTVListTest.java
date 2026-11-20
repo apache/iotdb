@@ -967,4 +967,71 @@ public class AlignedTVListTest {
       Assert.assertEquals((long) (i * 100), tvList.getLongByValueIndex(i, 2));
     }
   }
+
+  @Test
+  public void testAccountedRamSizeLifecycleOnDeserializeAndClear() throws IOException {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT32));
+    Assert.assertFalse(tvList.isRamSizeAccounted());
+    tvList.putAlignedValue(10L, new Object[] {1L, 2});
+    tvList.putAlignedValue(5L, new Object[] {3L, 4});
+
+    ByteBuffer buffer = ByteBuffer.allocate(tvList.serializedSize());
+    tvList.serializeToWAL(new WALByteBufferForTest(buffer));
+    buffer.flip();
+
+    AlignedTVList restored =
+        AlignedTVList.deserialize(
+            new DataInputStream(new ByteArrayInputStream(buffer.array(), 0, buffer.limit())));
+    Assert.assertTrue(restored.isRamSizeAccounted());
+    Assert.assertEquals(restored.getArrayRamSize(), restored.getAccountedArrayRamSize());
+    Assert.assertEquals(restored.getStructureRamSize(), restored.getAccountedStructureRamSize());
+
+    Assert.assertThrows(
+        IllegalArgumentException.class, () -> restored.setAccountedRamSize(-1L, 0L));
+    Assert.assertThrows(
+        IllegalArgumentException.class, () -> restored.setAccountedRamSize(0L, -1L));
+
+    restored.setAccountedRamSize(128L, 256L);
+    Assert.assertTrue(restored.isRamSizeAccounted());
+    Assert.assertEquals(128L, restored.getAccountedArrayRamSize());
+    Assert.assertEquals(256L, restored.getAccountedStructureRamSize());
+
+    restored.clear();
+    Assert.assertFalse(restored.isRamSizeAccounted());
+    Assert.assertEquals(0L, restored.getAccountedArrayRamSize());
+    Assert.assertEquals(0L, restored.getAccountedStructureRamSize());
+    tvList.clear();
+  }
+
+  @Test
+  public void testAccountedRamSizePreservedAcrossCloneAndPartialClone() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(Arrays.asList(TSDataType.INT64, TSDataType.INT32));
+    tvList.putAlignedValue(10L, new Object[] {1L, 2});
+    tvList.putAlignedValue(5L, new Object[] {3L, 4});
+
+    // Unaccounted TVList stays unaccounted across clone.
+    AlignedTVList unaccountedClone = tvList.clone();
+    Assert.assertFalse(unaccountedClone.isRamSizeAccounted());
+    unaccountedClone.clear();
+
+    // Accounted TVList carries its reconciled MemTable baseline onto both full and partial clones.
+    tvList.setAccountedRamSize(512L, 1024L);
+    AlignedTVList fullClone = tvList.clone();
+    Assert.assertTrue(fullClone.isRamSizeAccounted());
+    Assert.assertEquals(512L, fullClone.getAccountedArrayRamSize());
+    Assert.assertEquals(1024L, fullClone.getAccountedStructureRamSize());
+
+    AlignedTVList.PartialClonePlan plan = tvList.preparePartialClone(Collections.singleton(0));
+    plan.commit();
+    AlignedTVList partialClone = plan.getCloneList();
+    Assert.assertTrue(partialClone.isRamSizeAccounted());
+    Assert.assertEquals(512L, partialClone.getAccountedArrayRamSize());
+    Assert.assertEquals(1024L, partialClone.getAccountedStructureRamSize());
+
+    fullClone.clear();
+    partialClone.clear();
+    tvList.clear();
+  }
 }
