@@ -20,9 +20,11 @@
 package org.apache.iotdb.postgresql.execution;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -152,10 +154,10 @@ public final class RunningQuery implements AutoCloseable {
         return ((org.apache.iotdb.commons.exception.IoTDBRuntimeException) t).getErrorCode();
       }
     }
-    if (error.getClass().getSimpleName().equals("SemanticException")) {
+    if (error instanceof SemanticException) {
       return TSStatusCode.SEMANTIC_ERROR.getStatusCode();
     }
-    if (error.getClass().getSimpleName().equals("ParsingException")) {
+    if (error instanceof ParsingException) {
       return TSStatusCode.SQL_PARSE_ERROR.getStatusCode();
     }
     return TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();

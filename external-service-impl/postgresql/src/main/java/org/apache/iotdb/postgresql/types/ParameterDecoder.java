@@ -54,7 +54,7 @@ public final class ParameterDecoder {
   private static final Pattern DECIMAL =
       Pattern.compile("[+-]?(\\d+\\.\\d*|\\.\\d+|\\d+)([eE][+-]?\\d+)?");
   private static final Pattern TIMESTAMP =
-      Pattern.compile("\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?.*");
+      Pattern.compile("\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d++)?+)?+.*");
 
   /** PostgreSQL's text form: {@code 2026-11-19 10:15:30.123456+01}, offset optional. */
   private static final DateTimeFormatter PG_TIMESTAMP =

@@ -293,9 +293,9 @@ final class DateTimeRules {
   // ---------------------------------------------------------------------------- intervals
 
   private static final Pattern PART =
-      Pattern.compile("([+-]?\\d+(?:\\.\\d+)?)\\s*([a-z]+)", Pattern.CASE_INSENSITIVE);
+      Pattern.compile("([+-]?+\\d++(?:\\.\\d++)?+)\\s*+([a-z]++)", Pattern.CASE_INSENSITIVE);
   private static final Pattern CLOCK =
-      Pattern.compile("([+-]?)(\\d+):(\\d{2})(?::(\\d{2}(?:\\.\\d+)?))?");
+      Pattern.compile("([+-]?+)(\\d++):(\\d{2})(?::(\\d{2}(?:\\.\\d++)?+))?+");
 
   /**
    * The length of an interval literal in timestamp units, for arithmetic with timestamps. Only

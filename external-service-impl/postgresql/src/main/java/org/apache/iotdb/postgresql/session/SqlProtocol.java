@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The query layer: session commands, and queries translated to table-model SQL and run by the
@@ -126,7 +127,7 @@ public final class SqlProtocol implements QueryProtocol {
   private final Map<String, Portal> portals = new HashMap<>();
   private final Map<String, SqlCursor> cursors = new HashMap<>();
   private boolean skipUntilSync;
-  private volatile ResultCursor running;
+  private final AtomicReference<ResultCursor> running = new AtomicReference<>();
   private volatile boolean cancelRequested;
   private volatile boolean busy;
 
@@ -647,7 +648,7 @@ public final class SqlProtocol implements QueryProtocol {
     if (describe) {
       BackendMessages.rowDescription(out, portal.cursor.fields());
     }
-    running = portal.cursor;
+    running.set(portal.cursor);
     long sent;
     try {
       sent = portal.cursor.send(channel, out, maxRows, writeTimeout);
@@ -658,7 +659,7 @@ public final class SqlProtocol implements QueryProtocol {
       }
       throw e;
     } finally {
-      running = null;
+      running.set(null);
     }
     if (portal.cursor.exhausted()) {
       closeCursor(portal);
@@ -795,7 +796,7 @@ public final class SqlProtocol implements QueryProtocol {
   /** Sends ({@code out != null}) or skips up to {@code count} rows (0 = all). */
   private long moveOrFetch(String name, SqlCursor cursor, Channel channel, ByteBuf out, long count)
       throws PgException, ResultCursor.WriteTimeoutException {
-    running = cursor.rows;
+    running.set(cursor.rows);
     try {
       return out == null
           ? cursor.rows.skip(count)
@@ -808,7 +809,7 @@ public final class SqlProtocol implements QueryProtocol {
       }
       throw e;
     } finally {
-      running = null;
+      running.set(null);
     }
   }
 
@@ -914,7 +915,7 @@ public final class SqlProtocol implements QueryProtocol {
 
   @Override
   public void cancel() {
-    ResultCursor cursor = running;
+    ResultCursor cursor = running.get();
     if (cursor != null) {
       cancelRequested = true;
       cursor.cancel();

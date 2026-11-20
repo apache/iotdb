@@ -43,7 +43,7 @@ public final class CursorCommand {
   }
 
   private static final int FLAGS = Pattern.CASE_INSENSITIVE | Pattern.DOTALL;
-  private static final String NAME = "(\"(?:[^\"]|\"\")+\"|[A-Za-z_][\\w$]*)";
+  private static final String NAME = "(\"(?:[^\"]++|\"\")++\"|[A-Za-z_][\\w$]*+)";
 
   private static final Pattern DECLARE =
       Pattern.compile(

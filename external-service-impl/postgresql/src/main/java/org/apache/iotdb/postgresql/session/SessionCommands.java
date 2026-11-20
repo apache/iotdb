@@ -124,14 +124,15 @@ public final class SessionCommands {
       Pattern.compile("SET\\s+SESSION\\s+AUTHORIZATION\\s+DEFAULT", FLAGS);
   private static final Pattern SET =
       Pattern.compile(
-          "SET\\s+(?:SESSION\\s+|LOCAL\\s+)?([A-Za-z_][\\w.]*)\\s*(?:=|\\s+TO\\s+)\\s*(.+)", FLAGS);
-  private static final Pattern RESET = Pattern.compile("RESET\\s+(ALL|[A-Za-z_][\\w.]*)", FLAGS);
-  private static final Pattern SHOW = Pattern.compile("SHOW\\s+([A-Za-z_][\\w.]*|ALL)", FLAGS);
+          "SET\\s++(?:SESSION\\s++|LOCAL\\s++)?+([A-Za-z_][\\w.]*+)(?:\\s*+=|\\s++TO\\s)\\s*+(.+)",
+          FLAGS);
+  private static final Pattern RESET = Pattern.compile("RESET\\s+([A-Za-z_][\\w.]*)", FLAGS);
+  private static final Pattern SHOW = Pattern.compile("SHOW\\s+([A-Za-z_][\\w.]*)", FLAGS);
   private static final Pattern DISCARD =
       Pattern.compile("DISCARD\\s+(ALL|TEMP|TEMPORARY|SEQUENCES|PLANS)", FLAGS);
   private static final Pattern UNLISTEN = Pattern.compile("UNLISTEN\\s+\\*", FLAGS);
   private static final Pattern DEALLOCATE =
-      Pattern.compile("DEALLOCATE\\s+(?:PREPARE\\s+)?(ALL|[A-Za-z_\"][\\w\"]*)", FLAGS);
+      Pattern.compile("DEALLOCATE\\s+(?:PREPARE\\s+)?([A-Za-z_\"][\\w\"]*)", FLAGS);
   private static final Pattern ADVISORY_UNLOCK_ALL =
       Pattern.compile("SELECT\\s+(?:pg_catalog\\.)?pg_advisory_unlock_all\\s*\\(\\s*\\)", FLAGS);
 
