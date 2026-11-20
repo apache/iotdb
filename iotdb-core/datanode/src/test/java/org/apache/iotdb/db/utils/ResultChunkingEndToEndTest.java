@@ -184,12 +184,12 @@ public class ResultChunkingEndToEndTest {
         new PendingResultFragment(
             new PendingResultFragment.Account() {
               @Override
-              public long reserve(long bytes) {
-                return bytes;
+              public void reserve(long bytes) {
+                // nothing to reserve in this simulation
               }
 
               @Override
-              public void free(long bytes) {
+              public void release() {
                 releaseCount.incrementAndGet();
               }
             });

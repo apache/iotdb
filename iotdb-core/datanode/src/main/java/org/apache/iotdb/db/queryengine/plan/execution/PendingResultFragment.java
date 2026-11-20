@@ -30,41 +30,59 @@ import java.nio.ByteBuffer;
  * Account} owned by the query, and released when the fragment is {@link #clear() cleared}. The
  * account lives with the query rather than with the result handle, so the reservation covers the
  * whole lifetime of the fragment on the local, the remote and the in-memory result paths.
+ *
+ * <p>Reserving under memory pressure waits outside every lock of this class, and {@link #clear()}
+ * cancels such a wait, so cleanup never blocks behind a pending reservation.
  */
 public class PendingResultFragment {
 
   /** Reserves and releases the memory of a pending block; {@code null} disables accounting. */
   public interface Account {
 
-    /** Returns the bytes actually reserved, which may be fewer than requested. */
-    long reserve(long bytes);
+    /**
+     * Reserves {@code bytes}, waiting for memory if the pool is exhausted. Throws {@link
+     * IllegalStateException} if the wait is cancelled by {@link #release()}.
+     */
+    void reserve(long bytes);
 
-    void free(long bytes);
+    /** Releases all bytes reserved through {@link #reserve(long)}, cancelling a waiting one. */
+    void release();
   }
 
   private final Account account;
 
   private ByteBuffer block;
   private int nextOffset;
-  private long reservedBytes;
 
   public PendingResultFragment(Account account) {
     this.account = account;
   }
 
-  /**
-   * Records that {@code block} has been sent up to {@code nextOffset} bytes. When a new block
-   * becomes pending, its serialized length is reserved from the query memory pool.
-   */
-  public synchronized void reset(ByteBuffer block, int nextOffset) {
-    if (block != this.block) {
-      release();
+  /** Records that {@code block} has been sent up to {@code nextOffset} bytes. */
+  public void reset(ByteBuffer block, int nextOffset) {
+    boolean newBlock;
+    boolean hadPending;
+    synchronized (this) {
+      hadPending = this.block != null;
+      newBlock = block != this.block;
       this.block = block;
-      if (account != null) {
-        reservedBytes = account.reserve(block.remaining());
-      }
+      this.nextOffset = nextOffset;
     }
-    this.nextOffset = nextOffset;
+    if (!newBlock || account == null) {
+      return;
+    }
+    if (hadPending) {
+      account.release();
+    }
+    account.reserve(block.remaining());
+    boolean cleared;
+    synchronized (this) {
+      cleared = this.block == null;
+    }
+    if (cleared) {
+      // the fragment was cleared while the reservation waited, which released it already
+      account.release();
+    }
   }
 
   public synchronized ByteBuffer getBlock() {
@@ -76,20 +94,17 @@ public class PendingResultFragment {
   }
 
   /**
-   * Discards the pending fragment and releases the memory of the pending block. It is also called
-   * right after a complete block has been added to a response, when nothing is pending. Calling it
-   * repeatedly is a no-op.
+   * Discards the pending fragment and releases the memory of the pending block, cancelling a
+   * reservation that is still waiting. It is also called right after a complete block has been
+   * added to a response, when nothing is pending. Calling it repeatedly is a no-op.
    */
-  public synchronized void clear() {
-    block = null;
-    nextOffset = 0;
-    release();
-  }
-
-  private void release() {
-    if (reservedBytes > 0) {
-      account.free(reservedBytes);
-      reservedBytes = 0;
+  public void clear() {
+    synchronized (this) {
+      block = null;
+      nextOffset = 0;
+    }
+    if (account != null) {
+      account.release();
     }
   }
 }
