@@ -45,6 +45,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -250,7 +251,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private static final String NO_QUERY_EXECUTION_ERR_MSG =
-      "Query is not found, it may be killed by others, timeout or some other runtime errors, you can see more details in server log.";
+      DataNodeQueryMessages
+          .EXCEPTION_QUERY_IS_NOT_FOUND_IT_MAY_BE_KILLED_BY_OTHERS_TIMEOUT_OR_SOME_OTHER_RUNTIME_ERRORS_YOU_CAN_SEE_MORE_DETAILS_IN_SERVER_LOG_90BD085E;
 
   @FunctionalInterface
   public interface SelectResult {

@@ -71,4 +71,8 @@ public final class DataNodeQueryMessages {
       "Delete After Loading {} error.";
   public static final String LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F =
       "Failed to authorize CQ {} for user {}: {}";
+  public static final String
+      EXCEPTION_QUERY_IS_NOT_FOUND_IT_MAY_BE_KILLED_BY_OTHERS_TIMEOUT_OR_SOME_OTHER_RUNTIME_ERRORS_YOU_CAN_SEE_MORE_DETAILS_IN_SERVER_LOG_90BD085E =
+          "Query is not found, it may be killed by others, timeout or some other runtime errors,"
+              + " you can see more details in server log.";
 }
