@@ -89,9 +89,13 @@ public class CompactionScheduleContext {
 
   public void addResourceDeviceTimeIndex(
       TsFileResource tsFileResource, ArrayDeviceTimeIndex deviceTimeIndex) {
-    partitionFileDeviceInfoCache.put(tsFileResource, deviceTimeIndex);
+    ArrayDeviceTimeIndex previous =
+        partitionFileDeviceInfoCache.put(tsFileResource, deviceTimeIndex);
+    if (previous == deviceTimeIndex) {
+      return;
+    }
     long deviceTimeIndexSize =
-        tsFileResource.getDeviceTimeIndexRamSize().orElse(deviceTimeIndex.calculateRamSize());
+        deviceTimeIndex.calculateRamSize() - (previous == null ? 0 : previous.calculateRamSize());
     cachedDeviceInfoSize += deviceTimeIndexSize;
     CompactionMetrics.getInstance().addSelectionCachedDeviceTimeIndexSize(deviceTimeIndexSize);
   }

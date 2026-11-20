@@ -30,6 +30,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
@@ -41,10 +42,43 @@ import org.apache.tsfile.write.record.datapoint.StringDataPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.List;
 
 // Notice : methods in this class may not be accurate.
 public class MemUtils {
+
+  private static final long FILE_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(File.class);
+
+  private static final ClassValue<Long> PRIMITIVE_INSTANCE_SIZE =
+      new ClassValue<Long>() {
+        @Override
+        protected Long computeValue(Class<?> type) {
+          return RamUsageEstimator.shallowSizeOfInstance(type);
+        }
+      };
+
+  public static long getTsPrimitiveTypeRamBytes(TsPrimitiveType value) {
+    long bytes = PRIMITIVE_INSTANCE_SIZE.get(value.getClass());
+    if (value instanceof TsPrimitiveType.TsBinary && value.getBinary() != null) {
+      bytes += value.getBinary().ramBytesUsed();
+    } else if (value instanceof TsPrimitiveType.TsVector && value.getVector() != null) {
+      TsPrimitiveType[] elements = value.getVector();
+      bytes += RamUsageEstimator.shallowSizeOf(elements);
+      for (TsPrimitiveType element : elements) {
+        if (element != null) {
+          bytes += getTsPrimitiveTypeRamBytes(element);
+        }
+      }
+    }
+    return bytes;
+  }
+
+  /** Heap occupied by a file handle and its stored path. */
+  public static long getFileRamBytes(File file) {
+    return file == null ? 0 : FILE_INSTANCE_SIZE + RamUsageEstimator.sizeOf(file.getPath());
+  }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MemUtils.class);
 

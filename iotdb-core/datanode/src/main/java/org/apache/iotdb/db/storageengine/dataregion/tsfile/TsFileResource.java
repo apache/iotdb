@@ -48,8 +48,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDevice
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDeviceTimeIndex;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager.Registration;
+import org.apache.iotdb.db.utils.MemUtils;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -95,6 +96,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -104,8 +106,17 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TsFileResource.class)
-          + RamUsageEstimator.shallowSizeOfInstance(TsFileRepairStatus.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TsFileLock.class)
+          + 3L * RamUsageEstimator.shallowSizeOfInstance(AtomicReference.class)
+          + RamUsageEstimator.shallowSizeOfInstance(AtomicBoolean.class)
           + TsFileID.SHALLOW_SIZE;
+  private static final long TIER_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AtomicInteger.class);
+  private static final long PAIR_SIZE = RamUsageEstimator.shallowSizeOfInstance(Pair.class);
+  private static final long TIME_VALUE_PAIR_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TimeValuePair.class);
+  private static final AtomicReferenceFieldUpdater<TsFileResource, ITimeIndex> TIME_INDEX_UPDATER =
+      AtomicReferenceFieldUpdater.newUpdater(TsFileResource.class, ITimeIndex.class, "timeIndex");
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResource.class);
 
@@ -174,7 +185,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   private TsFileID tsFileID;
 
-  private long deviceTimeIndexRamSize;
+  private volatile Registration memoryRegistration;
 
   private AtomicInteger tierLevel;
 
@@ -213,7 +224,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
 
-  private Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
+  private volatile Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
 
   @TestOnly
   public TsFileResource() {
@@ -371,6 +382,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
             break;
         }
       }
+    } finally {
+      updateMemoryCostIfRegistered(true);
     }
   }
 
@@ -396,10 +409,12 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   public void updateStartTime(IDeviceID device, long time) {
     timeIndex.updateStartTime(device, time);
+    updateMemoryCostIfRegistered(true);
   }
 
   public void updateEndTime(IDeviceID device, long time) {
     timeIndex.updateEndTime(device, time);
+    updateMemoryCostIfRegistered(true);
   }
 
   public boolean resourceFileExists() {
@@ -560,6 +575,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
         } else {
           exclusiveModFile = ModificationFile.getExclusiveMods(this);
         }
+        updateMemoryCostIfRegistered();
       }
     }
     return exclusiveModFile;
@@ -570,6 +586,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       synchronized (this) {
         if (compactionModFile == null) {
           compactionModFile = ModificationFile.getCompactionMods(this);
+          updateMemoryCostIfRegistered();
         }
       }
     }
@@ -580,7 +597,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     if (compactionModFileExists() && !useSharedModFile) {
       getCompactionModFile().remove();
     }
-    compactionModFile = null;
+    setCompactionModFile(null);
   }
 
   @TestOnly
@@ -589,6 +606,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       synchronized (this) {
         exclusiveModFile.close();
         exclusiveModFile = null;
+        updateMemoryCostIfRegistered();
       }
     }
   }
@@ -596,6 +614,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   public void setFile(File file) {
     this.file = file;
     this.tsFileID = new TsFileID(file.getAbsolutePath());
+    updateMemoryCostIfRegistered();
   }
 
   public File getTsFile() {
@@ -794,6 +813,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     pathToReadOnlyMemChunkMap = null;
     pathToTimeSeriesMetadataMap = null;
     timeIndex.close();
+    updateMemoryCostIfRegistered(true);
   }
 
   public TsFileProcessor getProcessor() {
@@ -885,7 +905,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     // Note that pipe can safely handle the case that the time index does not exist
     isEmpty();
     if (getStatus() != TsFileResourceStatus.UNCLOSED) {
-      degradeTimeIndex();
+      replaceDeviceTimeIndexWithFileTimeIndex();
     }
     forceMarkDeleted();
     try {
@@ -1167,33 +1187,108 @@ public class TsFileResource implements PersistentResource, Cloneable {
   public void setExclusiveModFile(ModificationFile exclusiveModFile) {
     synchronized (this) {
       this.exclusiveModFile = exclusiveModFile;
+      updateMemoryCostIfRegistered();
     }
   }
 
-  /**
-   * @return resource map size
-   */
+  /** Estimated resident metadata of the file, excluding shared managers and query snapshot data. */
   public long calculateRamSize() {
-    final ProgressIndex progressIndex = maxProgressIndex.get();
-    if (timeIndex.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
-      return INSTANCE_SIZE
-          + timeIndex.calculateRamSize()
-          + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
-    }
-    if (deviceTimeIndexRamSize == 0) {
-      deviceTimeIndexRamSize = timeIndex.calculateRamSize();
-    }
-    return INSTANCE_SIZE
-        + deviceTimeIndexRamSize
-        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
+    ITimeIndex index = timeIndex;
+    return calculateMetadataRamSize() + (index == null ? 0 : index.calculateRamSize());
   }
 
-  // used for compaction
-  public Optional<Long> getDeviceTimeIndexRamSize() {
-    if (!this.isClosed()) {
-      return Optional.empty();
+  /** The part that remains resident after a device index is replaced. */
+  public long calculateMetadataRamSize() {
+    final ProgressIndex progress = maxProgressIndex.get();
+    final ModificationFile exclusive = exclusiveModFile;
+    final ModificationFile compaction = compactionModFile;
+    long size =
+        INSTANCE_SIZE
+            + (tierLevel == null ? 0 : TIER_SIZE)
+            + MemUtils.getFileRamBytes(file)
+            + (progress == null || progress == MinimumProgressIndex.INSTANCE
+                ? 0
+                : progress.ramBytesUsed())
+            + (exclusive == null ? 0 : exclusive.ramBytesUsed())
+            + (compaction == null || compaction == exclusive ? 0 : compaction.ramBytesUsed());
+    final Future<ModificationFile> upgrade = exclusiveModFileFuture;
+    final CompletableFuture<String> recovery = sharedModFilePathFuture;
+    if (upgrade != null) {
+      size += RamUsageEstimator.shallowSizeOf(upgrade);
     }
-    return Optional.of(deviceTimeIndexRamSize);
+    if (recovery != null) {
+      size += RamUsageEstimator.shallowSizeOf(recovery);
+    }
+    if (originTsFileResource == null) {
+      // LOAD and asynchronous recovery can mark the file sealed without calling close().
+      if (pathToChunkMetadataListMap != null) {
+        size += RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP;
+      }
+      if (pathToReadOnlyMemChunkMap != null) {
+        size += RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP;
+      }
+      if (pathToTimeSeriesMetadataMap != null) {
+        size += RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP;
+      }
+    }
+    return size + estimateLastValuesSize(lastValues);
+  }
+
+  private static long estimateLastValuesSize(
+      Map<IDeviceID, List<Pair<String, TimeValuePair>>> values) {
+    if (values == null) {
+      return 0;
+    }
+    long size = RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP;
+    for (Map.Entry<IDeviceID, List<Pair<String, TimeValuePair>>> entry : values.entrySet()) {
+      List<Pair<String, TimeValuePair>> series = entry.getValue();
+      size +=
+          RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY
+              + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+              + entry.getKey().ramBytesUsed()
+              + RamUsageEstimator.ARRAY_LIST_INSTANCE_SIZE
+              + RamUsageEstimator.sizeOfObjectArray(series.size());
+      for (Pair<String, TimeValuePair> pair : series) {
+        if (pair == null) {
+          continue;
+        }
+        size += PAIR_SIZE + RamUsageEstimator.sizeOf(pair.left);
+        if (pair.right != null) {
+          size += TIME_VALUE_PAIR_SIZE;
+          if (pair.right.getValue() != null) {
+            size += MemUtils.getTsPrimitiveTypeRamBytes(pair.right.getValue());
+          }
+        }
+      }
+    }
+    return size;
+  }
+
+  /** A rebuilt device index must be measured by its owner when the resident index is file-level. */
+  public Optional<Long> getDeviceTimeIndexRamSize() {
+    ITimeIndex index = timeIndex;
+    return isClosed() && index instanceof ArrayDeviceTimeIndex
+        ? Optional.of(index.calculateRamSize())
+        : Optional.empty();
+  }
+
+  public Registration getMemoryRegistration() {
+    return memoryRegistration;
+  }
+
+  public void setMemoryRegistration(Registration registration) {
+    memoryRegistration = registration;
+  }
+
+  private void updateMemoryCostIfRegistered() {
+    updateMemoryCostIfRegistered(false);
+  }
+
+  private void updateMemoryCostIfRegistered(boolean indexChanged) {
+    Registration registration = memoryRegistration;
+    if (registration != null) {
+      registration.refresh(indexChanged);
+    }
   }
 
   public long getMaxPlanIndex() {
@@ -1273,6 +1368,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   public void setTimeIndex(ITimeIndex timeIndex) {
     this.timeIndex = timeIndex;
+    updateMemoryCostIfRegistered(true);
   }
 
   /**
@@ -1389,13 +1485,13 @@ public class TsFileResource implements PersistentResource, Cloneable {
   public void setTimeIndexType(byte type) {
     switch (type) {
       case ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE:
-        this.timeIndex = new ArrayDeviceTimeIndex();
+        setTimeIndex(new ArrayDeviceTimeIndex());
         break;
       case ITimeIndex.FILE_TIME_INDEX_TYPE:
-        this.timeIndex = new FileTimeIndex();
+        setTimeIndex(new FileTimeIndex());
         break;
       case ITimeIndex.PLAIN_DEVICE_TIME_INDEX_TYPE:
-        this.timeIndex = new PlainDeviceTimeIndex();
+        setTimeIndex(new PlainDeviceTimeIndex());
         break;
       default:
         throw new UnsupportedOperationException();
@@ -1404,19 +1500,23 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
   public long degradeTimeIndex() {
-    TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(getTimeIndexType());
-    // if current timeIndex is FileTimeIndex, no need to degrade
-    if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) {
-      return 0;
+    ITimeIndex previous = replaceDeviceTimeIndexWithFileTimeIndex();
+    return previous == null ? 0 : previous.calculateRamSize() - FileTimeIndex.INSTANCE_SIZE;
+  }
+
+  /** Drops the device index without scanning it. The caller may measure the previous index. */
+  public ITimeIndex replaceDeviceTimeIndexWithFileTimeIndex() {
+    ITimeIndex current = timeIndex;
+    while (current.getTimeIndexType() != ITimeIndex.FILE_TIME_INDEX_TYPE) {
+      FileTimeIndex replacement =
+          new FileTimeIndex(current.getMinStartTime(), current.getMaxEndTime());
+      if (TIME_INDEX_UPDATER.compareAndSet(this, current, replacement)) {
+        updateMemoryCostIfRegistered(true);
+        return current;
+      }
+      current = timeIndex;
     }
-    // get the minimum startTime
-    long startTime = timeIndex.getMinStartTime();
-    // get the maximum endTime
-    long endTime = timeIndex.getMaxEndTime();
-    // replace the DeviceTimeIndex with FileTimeIndex
-    timeIndex = new FileTimeIndex(startTime, endTime);
-    // deviceTimeIndexRamSize has already been calculated before
-    return deviceTimeIndexRamSize - timeIndex.calculateRamSize();
+    return null;
   }
 
   public void deleteRemovedDeviceAndUpdateEndTime(Map<IDeviceID, Long> lastTimeForEachDevice) {
@@ -1431,12 +1531,14 @@ public class TsFileResource implements PersistentResource, Cloneable {
               });
     }
     timeIndex = newTimeIndex;
+    updateMemoryCostIfRegistered(true);
   }
 
   public void updateEndTime(Map<IDeviceID, Long> lastTimeForEachDevice) {
     for (Map.Entry<IDeviceID, Long> entry : lastTimeForEachDevice.entrySet()) {
       timeIndex.updateEndTime(entry.getKey(), entry.getValue());
     }
+    updateMemoryCostIfRegistered(true);
   }
 
   /**
@@ -1455,6 +1557,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       maxProgressIndex.updateAndGet(
           index -> index.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
     }
+    updateMemoryCostIfRegistered();
   }
 
   public void setProgressIndex(ProgressIndex progressIndex) {
@@ -1463,6 +1566,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     }
 
     maxProgressIndex.set(progressIndex);
+    updateMemoryCostIfRegistered();
   }
 
   @Override
@@ -1610,6 +1714,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       exclusiveModFileFuture =
           CompletableFuture.completedFuture(doUpgradeModFile(oldModFile, updateModMetrics));
     }
+    updateMemoryCostIfRegistered();
   }
 
   @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
@@ -1641,6 +1746,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   public void setSharedModFilePathFuture(CompletableFuture<String> sharedModFilePathFuture) {
     this.sharedModFilePathFuture = sharedModFilePathFuture;
+    updateMemoryCostIfRegistered();
   }
 
   public boolean isUseSharedModFile() {
@@ -1657,6 +1763,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   public void setCompactionModFile(ModificationFile compactionModFile) {
     this.compactionModFile = compactionModFile;
+    updateMemoryCostIfRegistered();
   }
 
   public Map<IDeviceID, List<Pair<String, TimeValuePair>>> getLastValues() {
@@ -1665,6 +1772,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   public void setLastValues(Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues) {
     this.lastValues = lastValues;
+    updateMemoryCostIfRegistered();
   }
 
   public TsFileResource shallowClone() {
@@ -1684,7 +1792,6 @@ public class TsFileResource implements PersistentResource, Cloneable {
     cloned.isRecordedByMetric = this.isRecordedByMetric;
     cloned.tsFileRepairStatus = this.tsFileRepairStatus;
     cloned.settleTsFileCallBack = this.settleTsFileCallBack;
-    cloned.deviceTimeIndexRamSize = this.deviceTimeIndexRamSize;
     cloned.tsFileSize = this.tsFileSize;
     cloned.processor = this.processor;
     cloned.originTsFileResource = this.originTsFileResource;
@@ -1706,6 +1813,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public TsFileResource shallowCloneForNative() throws CloneNotSupportedException {
-    return (TsFileResource) clone();
+    TsFileResource cloned = (TsFileResource) clone();
+    cloned.memoryRegistration = null;
+    return cloned;
   }
 }

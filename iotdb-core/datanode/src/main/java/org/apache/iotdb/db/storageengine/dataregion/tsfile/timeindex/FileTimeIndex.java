@@ -48,7 +48,7 @@ import java.util.Set;
 
 public class FileTimeIndex implements ITimeIndex {
 
-  private static final long INSTANCE_SIZE =
+  public static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(FileTimeIndex.class);
 
   private static final Logger logger = LoggerFactory.getLogger(FileTimeIndex.class);
