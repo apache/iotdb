@@ -827,6 +827,8 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   // if enable partial insert, one measurement failure will not impact other measurements
   private boolean enablePartialInsert = true;
 
+  private volatile boolean enableInsertTypeCast;
+
   private boolean enable13DataInsertAdapt = false;
 
   /**
@@ -2333,6 +2335,14 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setWriteMemoryVariationReportProportion(double writeMemoryVariationReportProportion) {
     this.writeMemoryVariationReportProportion = writeMemoryVariationReportProportion;
+  }
+
+  public boolean isEnableInsertTypeCast() {
+    return enableInsertTypeCast;
+  }
+
+  public void setEnableInsertTypeCast(boolean enableInsertTypeCast) {
+    this.enableInsertTypeCast = enableInsertTypeCast;
   }
 
   public boolean isEnablePartialInsert() {

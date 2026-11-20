@@ -1538,6 +1538,11 @@ flush_thread_count=0
 # Datatype: boolean
 enable_partial_insert=true
 
+# Allow explicit query CAST conversions for conflicting insert value types.
+# effectiveMode: hot_reload
+# Datatype: boolean
+enable_insert_type_cast=false
+
 # the interval to log recover progress of each vsg when starting iotdb
 # effectiveMode: restart
 # Datatype: int

@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
@@ -39,15 +41,22 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.time.DateTimeException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -60,6 +69,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -113,6 +123,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   @TableModel protected String databaseName;
 
   protected long ramBytesUsed = Long.MIN_VALUE;
+
+  private ZoneId insertTypeCastZone;
 
   /** Flag to indicate if semantic check has been performed */
   private boolean hasSemanticChecked = false;
@@ -258,6 +270,65 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {}
 
+  public void setInsertTypeCastZone(ZoneId zoneId) {
+    insertTypeCastZone = zoneId;
+  }
+
+  public boolean isInsertTypeCastEnabled() {
+    return insertTypeCastZone != null;
+  }
+
+  protected boolean shouldFormatTimestampAsText(TSDataType source, TSDataType target) {
+    return isInsertTypeCastEnabled()
+        && !isForceTypeConversion()
+        && source == TSDataType.TIMESTAMP
+        && (target == TSDataType.TEXT || target == TSDataType.STRING);
+  }
+
+  protected Function<Object, Object> prepareInsertCast(TSDataType source, TSDataType target) {
+    if (!isInsertTypeCastEnabled()
+        || isForceTypeConversion()
+        || source == TSDataType.OBJECT
+        || target == TSDataType.OBJECT
+        || source == TSDataType.UNKNOWN
+        || target == TSDataType.UNKNOWN
+        || source == TSDataType.VECTOR
+        || target == TSDataType.VECTOR) {
+      return null;
+    }
+    final TypeServices.CastObjectInputService input =
+        TypeServices.CAST_OBJECT_INPUT_SERVICE.call(Type.fromTsDataType(source));
+    final TypeServices.CastObjectValueService output =
+        TypeServices.CAST_OBJECT_VALUE_SERVICE.call(Type.fromTsDataType(target));
+    // The column CAST parses BLOB values using their hexadecimal representation.
+    final boolean decodeBlob = source == TSDataType.BLOB && !target.isBinary();
+    // Tree-model column CAST uses the server time zone (see CastFunctionHelper).
+    final ZoneId castZone =
+        !isWriteToTable() && shouldFormatTimestampAsText(source, target)
+            ? ZoneId.systemDefault()
+            : insertTypeCastZone;
+    return value -> {
+      final Object converted =
+          input.cast(
+              decodeBlob
+                  ? new Binary(
+                      BytesUtils.parseBlobByteArrayToString(((Binary) value).getValues()),
+                      TSFileConfig.STRING_CHARSET)
+                  : value,
+              output,
+              castZone);
+      if (target == TSDataType.DATE) {
+        // Downstream DATE readers require the encoded integer to represent a valid date.
+        validateEncodedDate((Integer) converted);
+      }
+      return converted;
+    };
+  }
+
+  protected static void validateEncodedDate(int value) {
+    DateUtils.parseDateExpressionToInt(DateUtils.parseIntToLocalDate(value));
+  }
+
   /** Check whether data types are matched with measurement schemas */
   public void selfCheckDataTypes(int index)
       throws DataTypeMismatchException, PathNotExistException {
@@ -274,37 +345,66 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         measurement == null
             ? devicePath.getFullPath()
             : devicePath.concatNode(measurement).getFullPath();
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-      // if enable partial insert, mark failed measurements with exception
-      if (measurementSchema == null) {
-        markFailedMeasurement(index, createPathNotExistException(fullPath, dataType));
-      } else if ((dataType != measurementSchema.getType()
-          && !checkAndCastDataType(index, measurementSchema.getType()))) {
-        markFailedMeasurement(
-            index,
-            new DataTypeMismatchException(
-                devicePath.getFullPath(),
-                measurement,
-                dataType,
-                measurementSchema.getType(),
-                getMinTime(),
-                getFirstValueOfIndex(index)));
-      }
+    Exception failure;
+    if (measurementSchema == null) {
+      failure = createPathNotExistException(fullPath, dataType);
     } else {
-      // if not enable partial insert, throw the exception directly
-      if (measurementSchema == null) {
-        throw createPathNotExistException(fullPath, dataType);
-      } else if ((dataType != measurementSchema.getType()
-          && !checkAndCastDataType(index, measurementSchema.getType()))) {
-        throw new DataTypeMismatchException(
-            devicePath.getFullPath(),
-            measurement,
-            dataType,
-            measurementSchema.getType(),
-            getMinTime(),
-            getFirstValueOfIndex(index));
+      final TSDataType targetType = measurementSchema.getType();
+      if (dataType == targetType) {
+        return;
+      }
+      try {
+        if (checkAndCastDataType(index, targetType)) {
+          return;
+        }
+        failure = typeMismatch(index, targetType, getMinTime(), getFirstValueOfIndex(index));
+      } catch (DataTypeMismatchException e) {
+        failure = e;
       }
     }
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+      markFailedMeasurement(index, failure);
+    } else if (failure instanceof PathNotExistException) {
+      throw (PathNotExistException) failure;
+    } else {
+      throw (DataTypeMismatchException) failure;
+    }
+  }
+
+  protected Object castInsertValue(
+      Function<Object, Object> cast, int column, TSDataType target, long time, Object value)
+      throws DataTypeMismatchException {
+    if (value == null) {
+      return null;
+    }
+    try {
+      return cast.apply(value);
+    } catch (IoTDBRuntimeException e) {
+      if (!(e instanceof SemanticException)
+          && e.getErrorCode() != TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()) {
+        throw e;
+      }
+      throw typeMismatch(column, target, time, value, e.getMessage());
+    } catch (ArithmeticException | DateTimeException | IllegalArgumentException e) {
+      throw typeMismatch(column, target, time, value, e.getMessage());
+    }
+  }
+
+  private DataTypeMismatchException typeMismatch(
+      int column, TSDataType target, long time, Object value) {
+    return typeMismatch(column, target, time, value, null);
+  }
+
+  private DataTypeMismatchException typeMismatch(
+      int column, TSDataType target, long time, Object value, String reason) {
+    return new DataTypeMismatchException(
+        devicePath.getFullPath(),
+        measurements[column],
+        getDataType(column),
+        target,
+        time,
+        value,
+        reason);
   }
 
   protected PathNotExistException createPathNotExistException(
@@ -314,7 +414,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         : new PathNotExistException(fullPath);
   }
 
-  protected abstract boolean checkAndCastDataType(int columnIndex, TSDataType dataType);
+  protected abstract boolean checkAndCastDataType(int columnIndex, TSDataType dataType)
+      throws DataTypeMismatchException;
 
   public abstract long getMinTime();
 

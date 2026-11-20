@@ -49,6 +49,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
@@ -123,6 +124,11 @@ public class InsertValues extends InsertRows {
   }
 
   public void materialize(PlannerContext plannerContext, SessionInfo session) {
+    materialize(plannerContext, session, null);
+  }
+
+  public void materialize(
+      PlannerContext plannerContext, SessionInfo session, ZoneId insertTypeCastZone) {
     if (materialized) {
       return;
     }
@@ -130,8 +136,8 @@ public class InsertValues extends InsertRows {
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(
         columnNames == null
-            ? toInsertRowStatementsWithTableSchema(plannerContext, session)
-            : toInsertRowStatementsWithColumns(plannerContext, session));
+            ? toInsertRowStatementsWithTableSchema(plannerContext, session, insertTypeCastZone)
+            : toInsertRowStatementsWithColumns(plannerContext, session, insertTypeCastZone));
     insertRowsStatement.setWriteToTable(true);
     // All rows of an INSERT VALUES statement share the same table and columns.
     insertRowsStatement.setUniformTargets(true);
@@ -161,17 +167,18 @@ public class InsertValues extends InsertRows {
   }
 
   private List<InsertRowStatement> toInsertRowStatementsWithTableSchema(
-      PlannerContext plannerContext, SessionInfo session) {
+      PlannerContext plannerContext, SessionInfo session, ZoneId insertTypeCastZone) {
     final TsTable table = getTable();
     return rows.stream()
-        .map(row -> toInsertRowStatement(row, table, plannerContext, session))
+        .map(row -> toInsertRowStatement(row, table, plannerContext, session, insertTypeCastZone))
         .collect(Collectors.toList());
   }
 
   private List<InsertRowStatement> toInsertRowStatementsWithColumns(
-      PlannerContext plannerContext, SessionInfo session) {
+      PlannerContext plannerContext, SessionInfo session, ZoneId insertTypeCastZone) {
+    final TsTable table = getTable();
     final List<String> nonTimeColumnNames = new ArrayList<>(columnNames);
-    final int timeColumnIndex = findTimeColumnIndex(nonTimeColumnNames);
+    final int timeColumnIndex = findTimeColumnIndex(table, nonTimeColumnNames);
     if (timeColumnIndex != -1) {
       nonTimeColumnNames.remove(timeColumnIndex);
     }
@@ -180,11 +187,27 @@ public class InsertValues extends InsertRows {
     }
 
     final String[] nonTimeColumnArray = nonTimeColumnNames.toArray(new String[0]);
+    final TSDataType[] castTargets =
+        insertTypeCastZone == null ? null : new TSDataType[nonTimeColumnArray.length];
+    if (castTargets != null) {
+      for (int i = 0; i < nonTimeColumnArray.length; i++) {
+        TsTableColumnSchema column =
+            table.getColumnSchema(nonTimeColumnArray[i].toLowerCase(Locale.ENGLISH));
+        if (column != null && column.getColumnCategory() == TsTableColumnCategory.FIELD) {
+          castTargets[i] = column.getDataType();
+        }
+      }
+    }
     return rows.stream()
         .map(
             row ->
                 toInsertRowStatement(
-                    row, timeColumnIndex, nonTimeColumnArray.clone(), plannerContext, session))
+                    row,
+                    timeColumnIndex,
+                    nonTimeColumnArray.clone(),
+                    plannerContext,
+                    session,
+                    castTargets))
         .collect(Collectors.toList());
   }
 
@@ -200,9 +223,9 @@ public class InsertValues extends InsertRows {
     return table;
   }
 
-  private int findTimeColumnIndex(final List<String> columnNames) {
+  private int findTimeColumnIndex(TsTable table, final List<String> columnNames) {
     List<TsTableColumnSchema> timeColumnCandidates =
-        getTable().getColumnList().stream()
+        table.getColumnList().stream()
             .filter(column -> column.getColumnCategory() == TIME)
             .collect(Collectors.toList());
     if (timeColumnCandidates.size() != 1) {
@@ -229,7 +252,8 @@ public class InsertValues extends InsertRows {
       List<Expression> expressions,
       TsTable table,
       PlannerContext plannerContext,
-      SessionInfo session) {
+      SessionInfo session,
+      ZoneId insertTypeCastZone) {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     insertRowStatement.setWriteToTable(true);
     insertRowStatement.setDevicePath(new PartialPath(new String[] {table.getTableName()}));
@@ -259,7 +283,15 @@ public class InsertValues extends InsertRows {
       if (columnSchema.getColumnCategory().equals(TIME)) {
         timestamp = AstUtil.expressionToTimestamp(expression, zoneId, plannerContext, session);
       } else {
-        Object value = AstUtil.expressionToTsValue(expression, plannerContext, session);
+        Object value =
+            AstUtil.expressionToTsValue(
+                expression,
+                plannerContext,
+                session,
+                insertTypeCastZone != null
+                        && columnSchema.getColumnCategory() == TsTableColumnCategory.FIELD
+                    ? columnSchema.getDataType()
+                    : null);
         nonTimeValues[nonTimeColumnIndex] = value;
         nonTimeColumnNames[nonTimeColumnIndex] = columnSchema.getColumnName();
         dataTypes[nonTimeColumnIndex] = columnSchema.getDataType();
@@ -280,6 +312,7 @@ public class InsertValues extends InsertRows {
     insertRowStatement.setNeedInferType(false);
     insertRowStatement.setDatabaseName(databaseName);
 
+    insertRowStatement.setInsertTypeCastZone(insertTypeCastZone);
     try {
       insertRowStatement.transferType(zoneId);
     } catch (QueryProcessException e) {
@@ -293,7 +326,8 @@ public class InsertValues extends InsertRows {
       int timeColumnIndex,
       String[] nonTimeColumnNames,
       PlannerContext plannerContext,
-      SessionInfo session) {
+      SessionInfo session,
+      TSDataType[] castTargets) {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     insertRowStatement.setWriteToTable(true);
     insertRowStatement.setDevicePath(new PartialPath(new String[] {tableName}));
@@ -333,8 +367,13 @@ public class InsertValues extends InsertRows {
     int valuePosition = 0;
     for (int i = 0; i < expressions.size(); i++) {
       if (i != timeColumnIndex) {
-        values[valuePosition++] =
-            AstUtil.expressionToTsValue(expressions.get(i), plannerContext, session);
+        values[valuePosition] =
+            AstUtil.expressionToTsValue(
+                expressions.get(i),
+                plannerContext,
+                session,
+                castTargets == null ? null : castTargets[valuePosition]);
+        valuePosition++;
       }
     }
 

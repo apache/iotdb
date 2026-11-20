@@ -72,6 +72,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
   private static final Logger LOGGER = LoggerFactory.getLogger(InsertTabletStatement.class);
@@ -288,7 +289,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   @Override
-  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType)
+      throws DataTypeMismatchException {
     if (dataTypes == null
         || columns == null
         || columnIndex < 0
@@ -298,12 +300,69 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         || columns[columnIndex] == null) {
       return false;
     }
-    if (dataType.isCompatible(dataTypes[columnIndex])) {
-      columns[columnIndex] = dataType.castFromArray(dataTypes[columnIndex], columns[columnIndex]);
-      dataTypes[columnIndex] = dataType;
+    final TSDataType source = dataTypes[columnIndex];
+    if (!shouldFormatTimestampAsText(source, dataType)
+        && castCompatibleColumn(columnIndex, dataType)) {
       return true;
     }
-    return false;
+    final Function<Object, Object> cast = prepareInsertCast(source, dataType);
+    if (cast == null) {
+      return false;
+    }
+    final Type sourceType = Type.fromTsDataType(source);
+    final Object input = columns[columnIndex];
+    final Type targetType = Type.fromTsDataType(dataType);
+    // Server-side DATE columns use the encoded integer representation.
+    final Object result =
+        dataType == TSDataType.DATE ? new int[rowCount] : targetType.createArray(rowCount);
+    if (result instanceof Binary[]) {
+      Arrays.fill((Binary[]) result, Binary.EMPTY_VALUE);
+    }
+    final BitMap originalNulls =
+        nullBitMaps == null || columnIndex >= nullBitMaps.length ? null : nullBitMaps[columnIndex];
+    BitMap convertedNulls = null;
+    for (int row = 0; row < rowCount; row++) {
+      if (originalNulls != null && originalNulls.isMarked(row)) {
+        continue;
+      }
+      final Object value = sourceType.getValue(input, row);
+      final Object converted = castInsertValue(cast, columnIndex, dataType, times[row], value);
+      if (converted == null) {
+        if (convertedNulls == null) {
+          convertedNulls = originalNulls == null ? new BitMap(rowCount) : originalNulls.clone();
+        }
+        convertedNulls.mark(row);
+      } else {
+        targetType.addValue(row, converted, result);
+      }
+    }
+    if (convertedNulls != null) {
+      if (nullBitMaps == null) {
+        nullBitMaps = new BitMap[columns.length];
+      } else if (columnIndex >= nullBitMaps.length) {
+        nullBitMaps = Arrays.copyOf(nullBitMaps, columns.length);
+      }
+      nullBitMaps[columnIndex] = convertedNulls;
+    }
+    columns[columnIndex] = result;
+    dataTypes[columnIndex] = dataType;
+    return true;
+  }
+
+  protected boolean castCompatibleColumn(int columnIndex, TSDataType dataType) {
+    if (dataTypes == null
+        || columns == null
+        || columnIndex < 0
+        || columnIndex >= dataTypes.length
+        || columnIndex >= columns.length
+        || dataTypes[columnIndex] == null
+        || columns[columnIndex] == null
+        || !dataType.isCompatible(dataTypes[columnIndex])) {
+      return false;
+    }
+    columns[columnIndex] = dataType.castFromArray(dataTypes[columnIndex], columns[columnIndex]);
+    dataTypes[columnIndex] = dataType;
+    return true;
   }
 
   @Override

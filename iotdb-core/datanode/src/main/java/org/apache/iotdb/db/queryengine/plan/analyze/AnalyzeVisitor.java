@@ -2601,6 +2601,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       insertRowStatement.setDataTypes(new TSDataType[measurementList.length]);
       insertRowStatement.setValues(insertStatement.getValuesList().get(0));
       insertRowStatement.setNeedInferType(true);
+      insertRowStatement.setTreeSqlValues(true);
       insertRowStatement.setAligned(insertStatement.isAligned());
       return insertRowStatement.accept(this, context);
     } else {
@@ -2634,6 +2635,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         statement.setValues(insertStatement.getValuesList().get(i));
         statement.setAligned(insertStatement.isAligned());
         statement.setNeedInferType(true);
+        statement.setTreeSqlValues(true);
         insertRowStatementList.add(statement);
       }
       insertRowsOfOneDeviceStatement.setInsertRowStatementList(insertRowStatementList);
