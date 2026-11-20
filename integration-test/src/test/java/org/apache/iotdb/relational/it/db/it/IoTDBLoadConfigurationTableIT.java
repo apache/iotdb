@@ -119,13 +119,19 @@ public class IoTDBLoadConfigurationTableIT {
 
     // Case 2: a valid value is not rewritten, so display must equal the file value (regression).
     Map<String, String> afterValidReload =
-        appendLinesLoadAndShow(dataNodeId, confPath, "cte_buffer_size_in_bytes=262144");
+        appendLinesLoadAndShow(
+            dataNodeId,
+            confPath,
+            "cte_buffer_size_in_bytes=262144",
+            "lttb_buffer_size_in_bytes=262144");
     Assert.assertEquals("262144", afterValidReload.get("cte_buffer_size_in_bytes"));
+    Assert.assertEquals("262144", afterValidReload.get("lttb_buffer_size_in_bytes"));
 
     // Case 3: params whose template default is 0 are always rewritten to a computed default,
     // so they must never display 0 (this was always wrong, even without a bad file value).
     Map<String, String> defaultsReload = appendLinesLoadAndShow(dataNodeId, confPath);
     assertPositiveNonZero(defaultsReload, "sort_buffer_size_in_bytes");
+    assertPositiveNonZero(defaultsReload, "lttb_buffer_size_in_bytes");
     assertPositiveNonZero(defaultsReload, "mods_cache_size_limit_per_fi_in_bytes");
   }
 
