@@ -86,6 +86,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -325,6 +326,167 @@ public class ConsensusPrefetchingQueueDeliveryTest {
     assertEquals(first.getPayload(), deliver(event).getPayload());
     assertEquals(0L, queue.getRetainedTabletBytes());
     assertTrue(queue.ack(CONSUMER, event.getCommitContext()));
+  }
+
+  @Test
+  public void testFilteredEmptyEntriesMergeIntoLingerBatchOnOrderedReplayAndRedeliverCleanly()
+      throws Exception {
+    config.setSubscriptionConsensusBatchMaxTabletCount(8);
+    config.setSubscriptionConsensusBatchMaxDelayInMs(60_000);
+    memoryManager = new SubscriptionMemoryManager(tabletBytes * 8);
+    doAnswer(
+            invocation -> {
+              final long physicalTime = ((InsertNode) invocation.getArgument(0)).getPhysicalTime();
+              if (physicalTime >= 1002L && physicalTime <= 1004L) {
+                return Collections.emptyList();
+              }
+              return Collections.singletonList(tablet(physicalTime));
+            })
+        .when(converter)
+        .convert(any());
+    writeWal(5, true);
+    final ConsensusPrefetchingQueue queue = newQueue();
+    queue.setOrderMode(TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE);
+    queue.setActiveWriterNodeIds(Set.of(WRITER, 8));
+    writerSafeFrontierTracker.observePendingWriterSafeTimeBarrier(2000, 8, 0);
+    assertNull(queue.poll(CONSUMER));
+
+    // Process all 5 entries; filtered-empty entries 2..4 must merge into the active linger batch
+    // instead of flushing entry 1 prematurely.
+    for (int round = 0; round < 5; round++) {
+      queue.drivePrefetchOnce();
+    }
+    assertEquals(0, queue.getPrefetchedEventCount());
+    assertNull(queue.poll(CONSUMER));
+    assertEquals(tabletBytes * 2, queue.getRetainedTabletBytes());
+    assertTrue(committedProgress().getWriterPositions().isEmpty());
+
+    config.setSubscriptionConsensusBatchMaxDelayInMs(0);
+    writerSafeFrontierTracker.recordAppliedProgress(1005, WRITER, 5);
+    writerSafeFrontierTracker.observePendingWriterSafeTimeBarrier(2000, WRITER, 5);
+    for (int round = 0; round < 20 && queue.getPrefetchedEventCount() == 0; round++) {
+      queue.drivePrefetchOnce();
+    }
+
+    final SubscriptionEvent event = queue.poll(CONSUMER);
+    assertNotNull(event);
+    assertNull(queue.poll(CONSUMER));
+    assertEquals(new WriterProgress(1005, 5), event.getCommitContext().getWriterProgress());
+    final SubscriptionPollResponse first = deliver(event);
+    assertEquals(Arrays.asList(1001L, 1005L), timestamps(first));
+    assertTrue(event.isPayloadDetached());
+    assertEquals(0L, queue.getRetainedTabletBytes());
+
+    assertTrue(queue.nack(CONSUMER, event.getCommitContext()));
+    assertSame(event, queue.poll(CONSUMER));
+    assertEquals(first.getPayload(), deliver(event).getPayload());
+    assertTrue(queue.ack(CONSUMER, event.getCommitContext()));
+    assertEquals(
+        new WriterProgress(1005, 5), committedProgress().getWriterPositions().get(writerId()));
+  }
+
+  @Test
+  public void testFilteredEmptyEntriesMergeIntoLingerBatchOnRealtimeDrain() throws Exception {
+    config.setSubscriptionConsensusBatchMaxTabletCount(8);
+    config.setSubscriptionConsensusBatchMaxDelayInMs(60_000);
+    memoryManager = new SubscriptionMemoryManager(tabletBytes * 8);
+    doAnswer(
+            invocation -> {
+              final long physicalTime = ((InsertNode) invocation.getArgument(0)).getPhysicalTime();
+              if (physicalTime == 1001L
+                  || physicalTime == 1003L
+                  || physicalTime == 1004L
+                  || physicalTime == 1006L) {
+                return Collections.emptyList();
+              }
+              return Collections.singletonList(tablet(physicalTime));
+            })
+        .when(converter)
+        .convert(any());
+
+    final ConsensusPrefetchingQueue queue = newQueue();
+    assertNull(queue.poll(CONSUMER));
+
+    // 1. A leading empty entry when the linger batch is empty commits immediately.
+    assertTrue(pendingEntries(queue).offer(request(-1, 1, WRITER)));
+    queue.drivePrefetchOnce();
+    assertEquals(0, queue.getPrefetchedEventCount());
+    assertEquals(
+        new WriterProgress(1001, 1), committedProgress().getWriterPositions().get(writerId()));
+
+    // 2. Filtered-empty entries from the same writer ride along inside the active linger batch.
+    assertTrue(pendingEntries(queue).offer(request(-1, 2, WRITER)));
+    assertTrue(pendingEntries(queue).offer(request(-1, 3, WRITER)));
+    assertTrue(pendingEntries(queue).offer(request(-1, 4, WRITER)));
+    assertTrue(pendingEntries(queue).offer(request(-1, 5, WRITER)));
+    queue.drivePrefetchOnce();
+    assertEquals(0, queue.getPrefetchedEventCount());
+    assertNull(queue.poll(CONSUMER));
+    assertEquals(tabletBytes * 2, queue.getRetainedTabletBytes());
+    // Filtered-empty entries must not inflate lag or remaining event count.
+    assertEquals(2L, queue.getRemainingEventCount());
+    assertEquals(2L, queue.getLag());
+
+    // 3. An empty entry from a different writer must flush WRITER's linger batch before committing.
+    final int otherWriter = WRITER + 1;
+    final IndexedConsensusRequest otherEmpty =
+        new IndexedConsensusRequest(
+                -1, 1, Collections.singletonList(StatementTestUtils.genInsertRowNode(1)))
+            .setPhysicalTime(1006L)
+            .setNodeId(otherWriter);
+    assertTrue(pendingEntries(queue).offer(otherEmpty));
+    queue.drivePrefetchOnce();
+
+    final SubscriptionEvent event = queue.poll(CONSUMER);
+    assertNotNull(event);
+    assertNull(queue.poll(CONSUMER));
+    assertEquals(new WriterProgress(1005, 5), event.getCommitContext().getWriterProgress());
+    assertEquals(Arrays.asList(1002L, 1005L), timestamps(deliver(event)));
+    assertTrue(queue.ack(CONSUMER, event.getCommitContext()));
+    assertEquals(
+        new WriterProgress(1005, 5), committedProgress().getWriterPositions().get(writerId()));
+    assertEquals(
+        new WriterProgress(1006, 1),
+        committedProgress().getWriterPositions().get(new WriterId(REGION.toString(), otherWriter)));
+  }
+
+  @Test
+  public void testFullLingerBatchFlushesImmediatelyBeforeTrailingFilteredEmptyEntry()
+      throws Exception {
+    config.setSubscriptionConsensusBatchMaxTabletCount(2);
+    config.setSubscriptionConsensusBatchMaxDelayInMs(60_000);
+    memoryManager = new SubscriptionMemoryManager(tabletBytes * 8);
+    doAnswer(
+            invocation -> {
+              final long physicalTime = ((InsertNode) invocation.getArgument(0)).getPhysicalTime();
+              if (physicalTime >= 1003L) {
+                return Collections.emptyList();
+              }
+              return Collections.singletonList(tablet(physicalTime));
+            })
+        .when(converter)
+        .convert(any());
+
+    final ConsensusPrefetchingQueue queue = newQueue();
+    assertNull(queue.poll(CONSUMER));
+
+    // Fill the batch to maxTablets=2, followed by filtered-empty entries from the same writer.
+    // Because the batch is already full, entry 3 must flush [1001, 1002] immediately instead of
+    // holding the full batch until batchMaxDelayMs expires.
+    assertTrue(pendingEntries(queue).offer(request(-1, 1, WRITER)));
+    assertTrue(pendingEntries(queue).offer(request(-1, 2, WRITER)));
+    assertTrue(pendingEntries(queue).offer(request(-1, 3, WRITER)));
+    assertTrue(pendingEntries(queue).offer(request(-1, 4, WRITER)));
+    queue.drivePrefetchOnce();
+
+    final SubscriptionEvent event = queue.poll(CONSUMER);
+    assertNotNull(event);
+    assertNull(queue.poll(CONSUMER));
+    assertEquals(new WriterProgress(1002, 2), event.getCommitContext().getWriterProgress());
+    assertEquals(Arrays.asList(1001L, 1002L), timestamps(deliver(event)));
+    assertTrue(queue.ack(CONSUMER, event.getCommitContext()));
+    assertEquals(
+        new WriterProgress(1004, 4), committedProgress().getWriterPositions().get(writerId()));
   }
 
   @Test

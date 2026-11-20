@@ -30,6 +30,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -132,6 +133,59 @@ public class TabletTagFilterTest {
 
     Assert.assertSame(tablet, TabletTagFilter.filter(tablet, matcher(" TRUE ")));
     Assert.assertNull(TabletTagFilter.filter(tablet, TagFilterMatcher.matchNone()));
+  }
+
+  @Test
+  public void testInPredicateWithMaxValuesAndNullSemantics() throws Exception {
+    final int maxInLiterals = TagFilterValidator.MAX_IN_VALUES;
+    final List<String> literals = new ArrayList<>(maxInLiterals);
+    for (int i = 0; i < maxInLiterals; i++) {
+      literals.add(String.format("\"d_%03d\"", i));
+    }
+    final TagFilterMatcher compiledMatcher =
+        matcher("device IN (" + String.join(", ", literals) + ")");
+
+    final List<String> columnNames = Arrays.asList("region", "device", "temperature");
+    final List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.DOUBLE);
+    final List<ColumnCategory> categories =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.TAG, ColumnCategory.FIELD);
+    final Tablet tablet = new Tablet("weather", columnNames, dataTypes, categories, 5);
+
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue(0, 0, "north");
+    tablet.addValue(0, 1, "d_000");
+    tablet.addValue(0, 2, 10.0);
+
+    tablet.addTimestamp(1, 2L);
+    tablet.addValue(1, 0, "south");
+    tablet.addValue(1, 1, "d_255");
+    tablet.addValue(1, 2, 20.0);
+
+    tablet.addTimestamp(2, 3L);
+    tablet.addValue(2, 0, "west");
+    tablet.addValue(2, 1, "d_999");
+    tablet.addValue(2, 2, 30.0);
+
+    tablet.addTimestamp(3, 4L);
+    tablet.addValue(3, 0, "east");
+    tablet.addValue(3, 2, 40.0);
+
+    tablet.addTimestamp(4, 5L);
+    tablet.addValue(4, 0, "north");
+    tablet.addValue(4, 1, "d_128");
+    tablet.addValue(4, 2, 50.0);
+    tablet.setRowSize(5);
+
+    final Tablet filtered = TabletTagFilter.filter(tablet, compiledMatcher);
+    Assert.assertNotNull(filtered);
+    Assert.assertEquals(3, filtered.getRowSize());
+    Assert.assertEquals(1L, filtered.getTimestamp(0));
+    Assert.assertEquals(2L, filtered.getTimestamp(1));
+    Assert.assertEquals(5L, filtered.getTimestamp(2));
+    Assert.assertEquals("d_000", filtered.getValue(0, 1).toString());
+    Assert.assertEquals("d_255", filtered.getValue(1, 1).toString());
+    Assert.assertEquals("d_128", filtered.getValue(2, 1).toString());
   }
 
   private static TagFilterMatcher matcher(final String filter) throws Exception {

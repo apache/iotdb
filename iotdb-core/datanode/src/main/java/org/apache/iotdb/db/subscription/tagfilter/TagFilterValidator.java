@@ -37,9 +37,11 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -55,6 +57,7 @@ public class TagFilterValidator implements CommonQueryAstVisitor<Void, Void> {
 
   private final List<Identifier> referencedFields = new ArrayList<>();
   private final Map<Expression, Pattern> compiledPatterns = new IdentityHashMap<>();
+  private final Map<Expression, Set<String>> compiledInSets = new IdentityHashMap<>();
   private int depth;
   private int nodeCount;
 
@@ -67,7 +70,8 @@ public class TagFilterValidator implements CommonQueryAstVisitor<Void, Void> {
     validator.process(expression);
     return new ValidationResult(
         Collections.unmodifiableList(new ArrayList<>(validator.referencedFields)),
-        Collections.unmodifiableMap(new IdentityHashMap<>(validator.compiledPatterns)));
+        Collections.unmodifiableMap(new IdentityHashMap<>(validator.compiledPatterns)),
+        Collections.unmodifiableMap(new IdentityHashMap<>(validator.compiledInSets)));
   }
 
   @Override
@@ -141,10 +145,15 @@ public class TagFilterValidator implements CommonQueryAstVisitor<Void, Void> {
               MAX_IN_VALUES));
     }
     accountNode(node.getValueList());
+    final Set<String> inValues = new HashSet<>(Math.max(16, (int) (values.size() / 0.75f) + 1));
     for (final Expression expression : values) {
-      accountNode(expression);
-      requireStringLiteral(expression, DataNodeMiscMessages.COLUMN_FILTER_IN_ELEMENT);
+      // IN list cardinality is already bounded by MAX_IN_VALUES above; do not also charge each
+      // literal against MAX_AST_NODES so the documented MAX_IN_VALUES limit remains reachable.
+      inValues.add(
+          requireStringLiteral(expression, DataNodeMiscMessages.COLUMN_FILTER_IN_ELEMENT)
+              .getValue());
     }
+    compiledInSets.put(node, Collections.unmodifiableSet(inValues));
     return null;
   }
 
@@ -234,11 +243,15 @@ public class TagFilterValidator implements CommonQueryAstVisitor<Void, Void> {
 
     private final List<Identifier> referencedFields;
     private final Map<Expression, Pattern> compiledPatterns;
+    private final Map<Expression, Set<String>> compiledInSets;
 
     private ValidationResult(
-        final List<Identifier> referencedFields, final Map<Expression, Pattern> compiledPatterns) {
+        final List<Identifier> referencedFields,
+        final Map<Expression, Pattern> compiledPatterns,
+        final Map<Expression, Set<String>> compiledInSets) {
       this.referencedFields = referencedFields;
       this.compiledPatterns = compiledPatterns;
+      this.compiledInSets = compiledInSets;
     }
 
     public List<Identifier> getReferencedFields() {
@@ -247,6 +260,10 @@ public class TagFilterValidator implements CommonQueryAstVisitor<Void, Void> {
 
     public Map<Expression, Pattern> getCompiledPatterns() {
       return compiledPatterns;
+    }
+
+    public Map<Expression, Set<String>> getCompiledInSets() {
+      return compiledInSets;
     }
   }
 }

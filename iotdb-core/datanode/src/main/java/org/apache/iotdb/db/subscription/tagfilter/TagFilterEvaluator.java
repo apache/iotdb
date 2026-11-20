@@ -38,6 +38,7 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /** Evaluates a validated tag-filter with SQL three-valued NULL semantics. */
@@ -52,13 +53,22 @@ public class TagFilterEvaluator
   }
 
   private final Map<Expression, Pattern> compiledPatterns;
+  private final Map<Expression, Set<String>> compiledInSets;
 
   private TagFilterEvaluator() {
-    this(Collections.emptyMap());
+    this(Collections.emptyMap(), Collections.emptyMap());
   }
 
   private TagFilterEvaluator(final Map<Expression, Pattern> compiledPatterns) {
-    this.compiledPatterns = compiledPatterns;
+    this(compiledPatterns, Collections.emptyMap());
+  }
+
+  TagFilterEvaluator(
+      final Map<Expression, Pattern> compiledPatterns,
+      final Map<Expression, Set<String>> compiledInSets) {
+    this.compiledPatterns =
+        Objects.nonNull(compiledPatterns) ? compiledPatterns : Collections.emptyMap();
+    this.compiledInSets = Objects.nonNull(compiledInSets) ? compiledInSets : Collections.emptyMap();
   }
 
   @FunctionalInterface
@@ -70,15 +80,31 @@ public class TagFilterEvaluator
   public static boolean evaluate(final Expression expression, final ValueProvider valueProvider) {
     final TagFilterValidator.ValidationResult validation =
         TagFilterValidator.validateAndCompile(expression);
-    return evaluate(expression, valueProvider, validation.getCompiledPatterns());
+    return evaluate(
+        expression,
+        valueProvider,
+        validation.getCompiledPatterns(),
+        validation.getCompiledInSets());
   }
 
   public static boolean evaluate(
       final Expression expression,
       final ValueProvider valueProvider,
       final Map<Expression, Pattern> compiledPatterns) {
-    return new TagFilterEvaluator(compiledPatterns).process(expression, valueProvider)
-        == TruthValue.TRUE;
+    return evaluate(expression, valueProvider, compiledPatterns, Collections.emptyMap());
+  }
+
+  public static boolean evaluate(
+      final Expression expression,
+      final ValueProvider valueProvider,
+      final Map<Expression, Pattern> compiledPatterns,
+      final Map<Expression, Set<String>> compiledInSets) {
+    return new TagFilterEvaluator(compiledPatterns, compiledInSets)
+        .matches(expression, valueProvider);
+  }
+
+  boolean matches(final Expression expression, final ValueProvider valueProvider) {
+    return process(expression, valueProvider) == TruthValue.TRUE;
   }
 
   @Override
@@ -146,6 +172,10 @@ public class TagFilterEvaluator
     final String left = context.getValue((Identifier) node.getValue());
     if (Objects.isNull(left)) {
       return TruthValue.UNKNOWN;
+    }
+    final Set<String> compiledValues = compiledInSets.get(node);
+    if (Objects.nonNull(compiledValues)) {
+      return booleanValue(compiledValues.contains(left));
     }
     for (final Expression expression : ((InListExpression) node.getValueList()).getValues()) {
       if (left.equals(((StringLiteral) expression).getValue())) {
