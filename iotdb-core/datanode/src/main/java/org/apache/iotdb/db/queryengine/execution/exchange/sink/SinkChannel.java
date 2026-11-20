@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.MPPDataExchangeClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -41,6 +42,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.thrift.TApplicationException;
+import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -51,11 +53,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
@@ -99,6 +105,10 @@ public class SinkChannel implements ISinkChannel {
   private final SinkListener sinkListener;
   private final String threadName;
   private long retryIntervalInMs;
+  private final long queryDeadlineMs;
+  private final Set<Thread> runningNotifications = new HashSet<>();
+  private volatile CompletableFuture<Void> deadlineAlarm;
+  private volatile boolean notificationsStopped;
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
@@ -111,8 +121,7 @@ public class SinkChannel implements ISinkChannel {
   // size for current TsBlock to reserve and free
   private long currentTsBlockSize;
 
-  private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
-      mppDataExchangeServiceClientManager;
+  private final MPPDataExchangeClientManager mppDataExchangeServiceClientManager;
 
   @SuppressWarnings("squid:S3077")
   private volatile ListenableFuture<Void> blocked;
@@ -157,8 +166,7 @@ public class SinkChannel implements ISinkChannel {
       ExecutorService executorService,
       TsBlockSerde serde,
       SinkListener sinkListener,
-      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
-          mppDataExchangeServiceClientManager) {
+      MPPDataExchangeClientManager mppDataExchangeServiceClientManager) {
     this(
         remoteEndpoint,
         remoteFragmentInstanceId,
@@ -170,6 +178,7 @@ public class SinkChannel implements ISinkChannel {
         serde,
         sinkListener,
         false,
+        Long.MAX_VALUE,
         mppDataExchangeServiceClientManager);
   }
 
@@ -185,8 +194,8 @@ public class SinkChannel implements ISinkChannel {
       TsBlockSerde serde,
       SinkListener sinkListener,
       boolean isHighestPriority,
-      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
-          mppDataExchangeServiceClientManager) {
+      long queryDeadlineMs,
+      MPPDataExchangeClientManager mppDataExchangeServiceClientManager) {
     this.remoteEndpoint =
         Validate.notNull(
             remoteEndpoint,
@@ -224,6 +233,7 @@ public class SinkChannel implements ISinkChannel {
             sinkListener,
             DataNodeQueryMessages.EXCEPTION_SINKLISTENER_CAN_NOT_BE_NULL_DOT_32C9E7C0);
     this.isHighestPriority = isHighestPriority;
+    this.queryDeadlineMs = queryDeadlineMs < 0 ? Long.MAX_VALUE : queryDeadlineMs;
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
     this.threadName =
@@ -319,6 +329,7 @@ public class SinkChannel implements ISinkChannel {
     if (aborted || closed) {
       return false;
     }
+    stopNotifications();
     sequenceIdToTsBlock.clear();
     if (blocked != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
@@ -349,6 +360,7 @@ public class SinkChannel implements ISinkChannel {
     if (closed || aborted) {
       return false;
     }
+    stopNotifications();
     sequenceIdToTsBlock.clear();
     if (blocked != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
@@ -581,6 +593,130 @@ public class SinkChannel implements ISinkChannel {
 
   // endregion
 
+  @FunctionalInterface
+  private interface Notification {
+    void send(SyncDataNodeMPPDataExchangeServiceClient client) throws TException;
+  }
+
+  private void checkNotificationActive() throws InterruptedException {
+    if (deadlineReached()) {
+      throw new QueryTimeoutException();
+    }
+    if (notificationsStopped || Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException();
+    }
+  }
+
+  private boolean deadlineReached() {
+    return System.currentTimeMillis() >= queryDeadlineMs
+        || (deadlineAlarm != null && deadlineAlarm.isCompletedExceptionally());
+  }
+
+  private void registerNotification() throws InterruptedException {
+    synchronized (runningNotifications) {
+      checkNotificationActive();
+      if (queryDeadlineMs != Long.MAX_VALUE && deadlineAlarm == null) {
+        deadlineAlarm = new CompletableFuture<>();
+        deadlineAlarm
+            .orTimeout(
+                MPPDataExchangeClientManager.remainingMillis(queryDeadlineMs),
+                TimeUnit.MILLISECONDS)
+            .whenComplete(
+                (unused, failure) -> {
+                  if (failure != null) {
+                    interruptNotifications();
+                  }
+                });
+      }
+      runningNotifications.add(Thread.currentThread());
+    }
+  }
+
+  private void interruptNotifications() {
+    synchronized (runningNotifications) {
+      runningNotifications.forEach(Thread::interrupt);
+    }
+  }
+
+  /** Wake blocking borrows, socket I/O and retry waits when the channel or FI terminates. */
+  public boolean stopNotifications() {
+    synchronized (runningNotifications) {
+      if (notificationsStopped) {
+        return false;
+      }
+      notificationsStopped = true;
+      if (deadlineAlarm != null) {
+        deadlineAlarm.complete(null);
+      }
+      interruptNotifications();
+      return true;
+    }
+  }
+
+  private boolean sendNotification(Notification notification, int blockCount) {
+    if (notificationsStopped) {
+      return false;
+    }
+    try {
+      registerNotification();
+      try {
+        sendWithRetry(notification, blockCount);
+        return true;
+      } finally {
+        synchronized (runningNotifications) {
+          runningNotifications.remove(Thread.currentThread());
+        }
+      }
+    } catch (Exception e) {
+      if (stopNotifications()) {
+        if (deadlineReached()) {
+          sinkListener.onFailure(this, new QueryTimeoutException());
+        } else {
+          if (e instanceof InterruptedException) {
+            Thread.currentThread().interrupt();
+          }
+          sinkListener.onFailure(this, e);
+        }
+      }
+      return false;
+    }
+  }
+
+  private void sendWithRetry(Notification notification, int blockCount) throws Exception {
+    for (int attempt = 1; ; attempt++) {
+      checkNotificationActive();
+      long startTime = System.nanoTime();
+      try (SyncDataNodeMPPDataExchangeServiceClient client =
+          mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint, queryDeadlineMs)) {
+        checkNotificationActive();
+        notification.send(client);
+        checkNotificationActive();
+        return;
+      } catch (Exception e) {
+        checkNotificationActive();
+        LOGGER.warn(
+            blockCount == 0
+                ? DataNodeQueryMessages.FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT
+                : DataNodeQueryMessages.FAILED_TO_SEND_NEW_DATA_BLOCK_EVENT_ATTEMPT,
+            attempt,
+            e);
+        if (attempt == MAX_ATTEMPT_TIMES || (blockCount > 0 && containsTApplicationException(e))) {
+          throw e;
+        }
+        Thread.sleep(
+            Math.min(
+                retryIntervalInMs, MPPDataExchangeClientManager.remainingMillis(queryDeadlineMs)));
+      } finally {
+        if (blockCount > 0) {
+          DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
+              SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER, System.nanoTime() - startTime);
+          DATA_EXCHANGE_COUNT_METRIC_SET.recordDataBlockNum(
+              SEND_NEW_DATA_BLOCK_NUM_CALLER, blockCount);
+        }
+      }
+    }
+  }
+
   // region ============ inner class ============
   /**
    * Send a {@link org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent} to downstream fragment
@@ -613,7 +749,6 @@ public class SinkChannel implements ISinkChannel {
               remoteFragmentInstanceId,
               remotePlanNodeId);
         }
-        int attempt = 0;
         TNewDataBlockEvent newDataBlockEvent =
             new TNewDataBlockEvent(
                 remoteFragmentInstanceId,
@@ -621,33 +756,8 @@ public class SinkChannel implements ISinkChannel {
                 localFragmentInstanceId,
                 startSequenceId,
                 blockSizes);
-        while (attempt < MAX_ATTEMPT_TIMES) {
-          attempt += 1;
-          long startTime = System.nanoTime();
-          try (SyncDataNodeMPPDataExchangeServiceClient client =
-              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
-            client.onNewDataBlockEvent(newDataBlockEvent);
-            break;
-          } catch (Exception e) {
-            LOGGER.warn(
-                DataNodeQueryMessages.FAILED_TO_SEND_NEW_DATA_BLOCK_EVENT_ATTEMPT, attempt, e);
-            if (containsTApplicationException(e) || attempt == MAX_ATTEMPT_TIMES) {
-              sinkListener.onFailure(SinkChannel.this, e);
-              return;
-            }
-            try {
-              Thread.sleep(retryIntervalInMs);
-            } catch (InterruptedException ex) {
-              Thread.currentThread().interrupt();
-              sinkListener.onFailure(SinkChannel.this, e);
-            }
-          } finally {
-            DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
-                SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER, System.nanoTime() - startTime);
-            DATA_EXCHANGE_COUNT_METRIC_SET.recordDataBlockNum(
-                SEND_NEW_DATA_BLOCK_NUM_CALLER, blockSizes.size());
-          }
-        }
+        sendNotification(
+            client -> client.onNewDataBlockEvent(newDataBlockEvent), blockSizes.size());
       }
     }
   }
@@ -664,35 +774,21 @@ public class SinkChannel implements ISinkChannel {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(DataNodeQueryMessages.NOTIFY_NO_MORE_TSBLOCK);
         }
-        int attempt = 0;
         TEndOfDataBlockEvent endOfDataBlockEvent =
             new TEndOfDataBlockEvent(
                 remoteFragmentInstanceId,
                 remotePlanNodeId,
                 localFragmentInstanceId,
                 nextSequenceId - 1);
-        while (attempt < MAX_ATTEMPT_TIMES) {
-          attempt += 1;
-          try (SyncDataNodeMPPDataExchangeServiceClient client =
-              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
-            client.onEndOfDataBlockEvent(endOfDataBlockEvent);
-            break;
-          } catch (Exception e) {
-            LOGGER.warn(DataNodeQueryMessages.FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT, attempt, e);
-            if (attempt == MAX_ATTEMPT_TIMES) {
-              LOGGER.warn(DataNodeQueryMessages.FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT_2, e);
-              sinkListener.onFailure(SinkChannel.this, e);
-              return;
-            }
-            try {
-              Thread.sleep(retryIntervalInMs);
-            } catch (InterruptedException ex) {
-              Thread.currentThread().interrupt();
-              sinkListener.onFailure(SinkChannel.this, e);
-            }
-          }
+        if (!sendNotification(client -> client.onEndOfDataBlockEvent(endOfDataBlockEvent), 0)) {
+          return;
         }
-        noMoreTsBlocks = true;
+        synchronized (SinkChannel.this) {
+          if (notificationsStopped) {
+            return;
+          }
+          noMoreTsBlocks = true;
+        }
         if (isFinished()) {
           invokeOnFinished();
         }

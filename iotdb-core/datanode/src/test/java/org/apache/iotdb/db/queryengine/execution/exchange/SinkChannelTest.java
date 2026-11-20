@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.client.sync.MPPDataExchangeClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -67,13 +67,14 @@ public class SinkChannelTest {
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryPool mockMemoryPool = Utils.createMockNonBlockedMemoryPool();
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
-    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
-        Mockito.mock(IClientManager.class);
+    MPPDataExchangeClientManager mockClientManager =
+        Mockito.mock(MPPDataExchangeClientManager.class);
     // Construct a mock client.
     SyncDataNodeMPPDataExchangeServiceClient mockClient =
         Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
     try {
-      Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
+      Mockito.when(mockClientManager.borrowClient(remoteEndpoint, Long.MAX_VALUE))
+          .thenReturn(mockClient);
       Mockito.doNothing()
           .when(mockClient)
           .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
@@ -232,13 +233,14 @@ public class SinkChannelTest {
     SinkListener mockSinkListener = Mockito.mock(SinkListener.class);
     // Construct several mock TsBlock(s).
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
-    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
-        Mockito.mock(IClientManager.class);
+    MPPDataExchangeClientManager mockClientManager =
+        Mockito.mock(MPPDataExchangeClientManager.class);
     // Construct a mock client.
     SyncDataNodeMPPDataExchangeServiceClient mockClient =
         Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
     try {
-      Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
+      Mockito.when(mockClientManager.borrowClient(remoteEndpoint, Long.MAX_VALUE))
+          .thenReturn(mockClient);
       Mockito.doNothing()
           .when(mockClient)
           .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
@@ -436,14 +438,15 @@ public class SinkChannelTest {
     SinkListener mockSinkListener = Mockito.mock(SinkListener.class);
     // Construct several mock TsBlock(s).
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
-    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
-        Mockito.mock(IClientManager.class);
+    MPPDataExchangeClientManager mockClientManager =
+        Mockito.mock(MPPDataExchangeClientManager.class);
     // Construct a mock client.
     SyncDataNodeMPPDataExchangeServiceClient mockClient =
         Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
     TException mockException = new TException("Mock exception");
     try {
-      Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
+      Mockito.when(mockClientManager.borrowClient(remoteEndpoint, Long.MAX_VALUE))
+          .thenReturn(mockClient);
       Mockito.doThrow(mockException)
           .when(mockClient)
           .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
@@ -547,13 +550,14 @@ public class SinkChannelTest {
     SinkListener mockSinkListener = Mockito.mock(SinkListener.class);
     // Construct several mock TsBlock(s).
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
-    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
-        Mockito.mock(IClientManager.class);
+    MPPDataExchangeClientManager mockClientManager =
+        Mockito.mock(MPPDataExchangeClientManager.class);
     // Construct a mock client.
     SyncDataNodeMPPDataExchangeServiceClient mockClient =
         Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
     try {
-      Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
+      Mockito.when(mockClientManager.borrowClient(remoteEndpoint, Long.MAX_VALUE))
+          .thenReturn(mockClient);
       Mockito.doNothing()
           .when(mockClient)
           .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));

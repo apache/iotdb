@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty.DefaultProp
 import org.apache.iotdb.commons.client.sync.SyncAINodeClient;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -243,30 +242,6 @@ public class ClientPoolFactory {
                       .build(),
                   ThreadName.ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>()
-                  .build()
-                  .getConfig());
-      ClientManagerMetrics.getInstance()
-          .registerClientManager(this.getClass().getSimpleName(), clientPool);
-      return clientPool;
-    }
-  }
-
-  public static class SyncDataNodeMPPDataExchangeServiceClientPoolFactory
-      implements IClientPoolFactory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> {
-
-    @Override
-    public GenericKeyedObjectPool<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
-        createClientPool(
-            ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> manager) {
-      GenericKeyedObjectPool<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientPool =
-          new GenericKeyedObjectPool<>(
-              new SyncDataNodeMPPDataExchangeServiceClient.Factory(
-                  manager,
-                  new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
-                      .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .build()),
-              new ClientPoolProperty.Builder<SyncDataNodeMPPDataExchangeServiceClient>()
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()

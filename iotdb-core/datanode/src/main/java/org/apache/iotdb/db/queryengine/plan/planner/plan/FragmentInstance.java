@@ -65,6 +65,8 @@ public class FragmentInstance implements IConsensusRequest {
   private final TimePredicate globalTimePredicate;
 
   private final long timeOut;
+  // Carried in the optional dispatch envelope. Older coordinators only send the FI timeOut.
+  private long queryDeadlineMs = -1;
 
   private boolean isRoot;
 
@@ -362,6 +364,14 @@ public class FragmentInstance implements IConsensusRequest {
     this.hostDataNode =
         executorType.getRegionReplicaSet().getDataNodeLocations().get(nextRetryIndex);
     return hostDataNode;
+  }
+
+  public void setQueryDeadlineMs(long queryDeadlineMs) {
+    this.queryDeadlineMs = queryDeadlineMs;
+  }
+
+  public long getQueryDeadlineMs() {
+    return queryDeadlineMs;
   }
 
   public long getTimeOut() {

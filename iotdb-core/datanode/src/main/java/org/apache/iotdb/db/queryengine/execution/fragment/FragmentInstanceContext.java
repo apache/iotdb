@@ -181,6 +181,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   // Outer query deadline (startTime + timeout) for IoTDBLocal UDF
   private long outerQueryDeadlineMs = -1L;
+  private long exchangeDeadlineMs = -1L;
 
   private QueryAttemptRegistry.Registration queryAttemptRegistration;
   private boolean executionInitialized;
@@ -660,6 +661,17 @@ public class FragmentInstanceContext extends QueryContext {
 
   public long getOuterQueryDeadlineMs() {
     return outerQueryDeadlineMs;
+  }
+
+  void setExchangeDeadlineMs(long coordinatorDeadlineMs) {
+    exchangeDeadlineMs = coordinatorDeadlineMs;
+  }
+
+  public long getExchangeDeadlineMs() {
+    // Legacy coordinators only send the remaining FI timeout. Also honor an earlier local FI limit.
+    return exchangeDeadlineMs < 0
+        ? outerQueryDeadlineMs
+        : Math.min(outerQueryDeadlineMs, exchangeDeadlineMs);
   }
 
   public Optional<Throwable> getFailureCause() {

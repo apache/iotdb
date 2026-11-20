@@ -119,6 +119,8 @@ public class FragmentInstanceDispatcherLifecycleTest {
   public void transportRetryReusesTokenAndStopFreezesIssuedTokens() throws Exception {
     FragmentInstanceDispatcherImpl dispatcher = dispatcher();
     context.prepareForRetry();
+    context.setTimeOut(30_000);
+    context.setStartTime(System.currentTimeMillis() - 3_200);
     List<TSendFragmentInstanceReq> requests = new ArrayList<>();
     when(client.sendFragmentInstance(any()))
         .thenAnswer(
@@ -133,6 +135,8 @@ public class FragmentInstanceDispatcherLifecycleTest {
     FragmentInstance instance = instance(0);
     assertTrue(dispatcher.dispatch(null, Collections.singletonList(instance)).get().isSuccessful());
     assertEquals(2, requests.size());
+    assertEquals(context.getStartTime() + 30_000, requests.get(0).getQueryDeadlineMs());
+    assertEquals(requests.get(0).getQueryDeadlineMs(), requests.get(1).getQueryDeadlineMs());
     assertEquals(0, requests.get(0).getQueryAttemptId());
     assertEquals(token, requests.get(0).getAdmissionToken());
     assertEquals(requests.get(0).getAdmissionToken(), requests.get(1).getAdmissionToken());

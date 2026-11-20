@@ -49,6 +49,7 @@ public class QueryAttemptProtocolTest {
     assertEquals(original, received);
     assertFalse(received.isSetQueryAttemptId());
     assertFalse(received.isSetAdmissionToken());
+    assertFalse(received.isSetQueryDeadlineMs());
     TCancelQueryReq cancel = new TCancelQueryReq("query", Collections.emptyList(), true);
     TCancelQueryReq receivedCancel = new TCancelQueryReq();
     new TDeserializer().deserialize(receivedCancel, new TSerializer().serialize(cancel));
@@ -62,6 +63,7 @@ public class QueryAttemptProtocolTest {
     TFragmentInstance body = new TFragmentInstance(ByteBuffer.wrap(new byte[] {1, 2, 3}));
     TSendFragmentInstanceReq request =
         new TSendFragmentInstanceReq(body)
+            .setQueryDeadlineMs(123456789L)
             .setQueryAttemptId(2)
             .setAdmissionToken(new TQueryAdmissionToken("receiver", 123450L, 1000L));
     byte[] serialized = new TSerializer().serialize(request);
