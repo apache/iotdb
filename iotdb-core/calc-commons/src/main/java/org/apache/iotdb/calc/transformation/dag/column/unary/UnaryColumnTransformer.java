@@ -25,6 +25,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.function.Consumer;
+
 public abstract class UnaryColumnTransformer extends ColumnTransformer {
   protected ColumnTransformer childColumnTransformer;
 
@@ -77,5 +79,10 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
   public void close() {
     super.close();
     childColumnTransformer.close();
+  }
+
+  @Override
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    action.accept(childColumnTransformer);
   }
 }

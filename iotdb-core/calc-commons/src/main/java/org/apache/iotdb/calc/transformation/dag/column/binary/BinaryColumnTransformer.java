@@ -25,6 +25,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.function.Consumer;
+
 public abstract class BinaryColumnTransformer extends ColumnTransformer {
 
   protected final ColumnTransformer leftTransformer;
@@ -42,11 +44,11 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
   @Override
   public void evaluate() {
     leftTransformer.tryEvaluate();
-    rightTransformer.tryEvaluate();
-    // attention: get positionCount before calling getColumn
-    int positionCount = leftTransformer.getColumnCachePositionCount();
+    // A later CASE child may clear the shared input's cache.
     Column leftColumn = leftTransformer.getColumn();
+    rightTransformer.tryEvaluate();
     Column rightColumn = rightTransformer.getColumn();
+    int positionCount = leftColumn.getPositionCount();
 
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     doTransform(leftColumn, rightColumn, builder, positionCount);
@@ -101,5 +103,11 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
     super.close();
     this.leftTransformer.close();
     this.rightTransformer.close();
+  }
+
+  @Override
+  protected void forEachChild(Consumer<ColumnTransformer> action) {
+    action.accept(leftTransformer);
+    action.accept(rightTransformer);
   }
 }
