@@ -268,16 +268,22 @@ public class TCompressedElasticFramedTransportTest {
   @Test
   public void testMemoryPressureReclaimsAllCompressedServerBuffers() throws Exception {
     AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
-    try (TSnappyElasticFramedTransport transport =
-        new TSnappyElasticFramedTransport(
-            new TMemoryBuffer(0), INITIAL_CAPACITY, MAX_FRAME_SIZE, false)) {
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+            AutoResizingBufferMemoryManager.createServerBufferPool();
+        TSnappyElasticFramedTransport transport =
+            (TSnappyElasticFramedTransport)
+                pool.wrapTransportFactory(
+                        new TSnappyElasticFramedTransport.Factory(
+                            INITIAL_CAPACITY, MAX_FRAME_SIZE, false))
+                    .getTransport(new TMemoryBuffer(0))) {
       roundTrip(transport, randomBytes(1024));
       for (AutoResizingBuffer buffer : reusableBuffers(transport)) {
         assertTrue(buffer.array().length > INITIAL_CAPACITY);
       }
+      transport.endServerRequest();
 
       memoryLimit.set(5L * INITIAL_CAPACITY);
-      transport.registerForServerBufferReclamation();
+      assertTrue(pool.reclaimIdleBuffers(INITIAL_CAPACITY) >= INITIAL_CAPACITY);
       try (AutoResizingBuffer allocation = new AutoResizingBuffer(INITIAL_CAPACITY)) {
         for (AutoResizingBuffer buffer : reusableBuffers(transport)) {
           assertEquals(INITIAL_CAPACITY, buffer.array().length);

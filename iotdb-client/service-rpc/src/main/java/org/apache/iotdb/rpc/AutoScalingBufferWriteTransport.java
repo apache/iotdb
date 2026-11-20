@@ -178,6 +178,14 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
     // do Nothing
   }
 
+  int getAccountedBufferBytes() {
+    return buf.getAccountedCapacity();
+  }
+
+  int getReclaimableBufferBytes() {
+    return pos == 0 ? buf.getReclaimableBytes() : 0;
+  }
+
   long trimToInitialCapacity() {
     if (pos != 0) {
       return 0;

@@ -114,6 +114,14 @@ class AutoResizingBuffer implements AutoCloseable {
     lastShrinkTime = System.currentTimeMillis();
   }
 
+  int getAccountedCapacity() {
+    return accountedCapacity;
+  }
+
+  int getReclaimableBytes() {
+    return Math.max(0, accountedCapacity - initialCapacity);
+  }
+
   long trimToInitialCapacity() {
     if (closed || array.length <= initialCapacity) {
       return 0;
@@ -161,8 +169,7 @@ class AutoResizingBuffer implements AutoCloseable {
 
   private void reserveCurrentCapacityIfReleased() throws IOException {
     if (closed) {
-      AutoResizingBufferMemoryManager.MemoryAccount newMemoryAccount =
-          AutoResizingBufferMemoryManager.createMemoryAccount();
+      AutoResizingBufferMemoryManager.MemoryAccount newMemoryAccount = memoryAccount.reopen();
       newMemoryAccount.allocate(array.length);
       memoryAccount = newMemoryAccount;
       accountedCapacity = array.length;

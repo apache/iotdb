@@ -137,6 +137,14 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
     this.pos = newPosition;
   }
 
+  int getAccountedBufferBytes() {
+    return buf.getAccountedCapacity();
+  }
+
+  int getReclaimableBufferBytes() {
+    return pos == limit ? buf.getReclaimableBytes() : 0;
+  }
+
   long trimToInitialCapacity() {
     if (pos != limit) {
       return 0;

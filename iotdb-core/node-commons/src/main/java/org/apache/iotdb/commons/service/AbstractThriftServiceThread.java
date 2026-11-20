@@ -24,8 +24,9 @@ import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.i18n.ServiceMessages;
+import org.apache.iotdb.rpc.AutoResizingBufferMemoryManager;
+import org.apache.iotdb.rpc.AutoResizingBufferMemoryManager.ServerBufferPool;
 import org.apache.iotdb.rpc.RpcSslUtils;
-import org.apache.iotdb.rpc.TElasticFramedTransport;
 
 import org.apache.thrift.TBaseAsyncProcessor;
 import org.apache.thrift.TProcessor;
@@ -42,7 +43,6 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
-import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.slf4j.Logger;
@@ -67,6 +67,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
   private TProtocolFactory protocolFactory;
 
   private TTransportFactory transportFactory;
+  private volatile ServerBufferPool serverBufferPool;
 
   // currently, we can reuse the ProtocolFactory instance.
   private static TCompactProtocol.Factory compactProtocolFactory = new TCompactProtocol.Factory();
@@ -240,24 +241,13 @@ public abstract class AbstractThriftServiceThread extends Thread {
     poolArgs.executorService = executorService;
     poolArgs.processor(processor);
     poolArgs.protocolFactory(protocolFactory);
-    poolArgs.transportFactory(registerServerTransports(getTTransportFactory()));
-    return poolArgs;
-  }
-
-  static TTransportFactory registerServerTransports(TTransportFactory transportFactory) {
-    if (transportFactory == null) {
-      return null;
+    TTransportFactory factory = getTTransportFactory();
+    if (factory != null) {
+      serverBufferPool = AutoResizingBufferMemoryManager.createServerBufferPool();
+      factory = serverBufferPool.wrapTransportFactory(factory);
     }
-    return new TTransportFactory() {
-      @Override
-      public TTransport getTransport(TTransport transport) throws TTransportException {
-        TTransport serverTransport = transportFactory.getTransport(transport);
-        if (serverTransport instanceof TElasticFramedTransport framedTransport) {
-          framedTransport.registerForServerBufferReclamation();
-        }
-        return serverTransport;
-      }
-    };
+    poolArgs.transportFactory(factory);
+    return poolArgs;
   }
 
   private TThreadedSelectorServer.Args initAsyncedSelectorPoolArgs(
@@ -352,6 +342,10 @@ public abstract class AbstractThriftServiceThread extends Thread {
   }
 
   public synchronized void close() {
+    if (serverBufferPool != null) {
+      serverBufferPool.retire();
+      serverBufferPool = null;
+    }
     if (poolServer != null) {
       poolServer.setShouldStop(true);
       poolServer.stop();
@@ -366,6 +360,16 @@ public abstract class AbstractThriftServiceThread extends Thread {
     if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
       threadStopLatch.countDown();
     }
+  }
+
+  public long reclaimIdleServerBuffers(long targetBytes) {
+    ServerBufferPool pool = serverBufferPool;
+    return pool == null ? 0 : pool.reclaimIdleBuffers(targetBytes);
+  }
+
+  public long reclaimOneIdleServerConnection() {
+    ServerBufferPool pool = serverBufferPool;
+    return pool == null ? 0 : pool.reclaimOneIdleConnection();
   }
 
   public boolean isServing() {

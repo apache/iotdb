@@ -78,6 +78,20 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   }
 
   @Override
+  long getAccountedBufferBytes() {
+    return super.getAccountedBufferBytes()
+        + writeCompressBuffer.getAccountedBufferBytes()
+        + readCompressBuffer.getAccountedBufferBytes();
+  }
+
+  @Override
+  long getReclaimableBufferBytes() {
+    return super.getReclaimableBufferBytes()
+        + writeCompressBuffer.getReclaimableBufferBytes()
+        + readCompressBuffer.getReclaimableBufferBytes();
+  }
+
+  @Override
   protected long trimAdditionalBuffers() {
     return (writeCompressBuffer == null ? 0 : writeCompressBuffer.trimToInitialCapacity())
         + (readCompressBuffer == null ? 0 : readCompressBuffer.trimToInitialCapacity());
