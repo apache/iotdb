@@ -142,6 +142,7 @@ final class TsFileWriterManager {
   private long wholeFileTimePartitionStart = Long.MIN_VALUE;
   private boolean wholeFileGeneratedByPipe;
   private ModificationFile wholeFileModificationFile;
+  private LoadTsFileProgress wholeFileModsProgress;
   private TsFileResource wholeFileResource;
   private LoadTsFileProgress wholeFileProgress;
   private TTimePartitionSlot wholeFileTimePartition;
@@ -295,6 +296,8 @@ final class TsFileWriterManager {
 
     ensureWholeFile(data);
     appendWholeFile(wholeFile, wholeFileChannel, data);
+    wholeFileProgress.recordWholeFileRange(
+        data.getOffset(), data.getPayload().length, currentSearchIndex);
   }
 
   /**
@@ -317,7 +320,13 @@ final class TsFileWriterManager {
       }
       wholeFileModificationFile = new ModificationFile(modsFile, false);
     }
+    final long before = wholeFileModificationFile.getFile().length();
     deletionData.writeToModificationFile(wholeFileModificationFile);
+    if (wholeFileModsProgress == null) {
+      wholeFileModsProgress = new LoadTsFileProgress(wholeFileModificationFile.getFile());
+    }
+    wholeFileModsProgress.recordWholeFileRange(
+        before, wholeFileModificationFile.getFile().length() - before, currentSearchIndex);
   }
 
   private void ensureWholeFile(final WholeFileData data) throws IOException {
@@ -1184,9 +1193,27 @@ final class TsFileWriterManager {
     wholeFileTimePartition = new TTimePartitionSlot(wholeFileTimePartitionStart);
     wholeFileGeneratedByPipe = meta.generatedByPipe;
     wholeFileProgress = new LoadTsFileProgress(wholeFile);
+    wholeFileProgress.readAllRecordsRepairingTornTail();
+    final long appliedTsFileLength = wholeFileProgress.getWholeFileAppliedLength();
+    if (appliedTsFileLength >= 0L) {
+      if (wholeFile.length() > appliedTsFileLength) {
+        truncateTo(wholeFile, appliedTsFileLength);
+      }
+    } else if (wholeFile.length() > 0L) {
+      // A snapshot may have copied the first slice before its range record was durable; replay
+      // the task from offset 0 instead of keeping a possibly torn prefix.
+      truncateTo(wholeFile, 0L);
+    }
+
     final File modsFile = ModificationFile.getExclusiveMods(wholeFile);
     if (modsFile.isFile()) {
       wholeFileModificationFile = new ModificationFile(modsFile, false);
+      wholeFileModsProgress = new LoadTsFileProgress(modsFile);
+      wholeFileModsProgress.readAllRecordsRepairingTornTail();
+      final long appliedModsLength = wholeFileModsProgress.getWholeFileAppliedLength();
+      if (appliedModsLength >= 0L && modsFile.length() > appliedModsLength) {
+        truncateTo(modsFile, appliedModsLength);
+      }
     }
 
     if (new File(wholeFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).isFile()) {
@@ -1304,6 +1331,16 @@ final class TsFileWriterManager {
               e);
         }
       }
+      if (wholeFileModsProgress != null) {
+        try {
+          deleteIfExistsWithRetry(wholeFileModsProgress.getProgressFile().toPath());
+        } catch (final IOException e) {
+          LOGGER.warn(
+              StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD,
+              wholeFileModsProgress.getProgressFile().getAbsolutePath(),
+              e);
+        }
+      }
     }
 
     for (final TsFilePrecalculatedChunkWriter writer : timePartition2Writer.values()) {
@@ -1362,6 +1399,7 @@ final class TsFileWriterManager {
     timePartition2ModificationFile.clear();
     wholeFile = null;
     wholeFileModificationFile = null;
+    wholeFileModsProgress = null;
     wholeFileResource = null;
     wholeFileProgress = null;
     wholeFileTimePartition = null;
@@ -1383,6 +1421,12 @@ final class TsFileWriterManager {
   private void ensureDir(final File dir) {
     if (!dir.exists() && dir.mkdirs()) {
       LOGGER.info(StorageEngineMessages.LOAD_TSFILE_DIR_CREATED, dir.getPath());
+    }
+  }
+
+  private static void truncateTo(final File file, final long length) throws IOException {
+    try (final FileChannel channel = FileChannel.open(file.toPath(), StandardOpenOption.WRITE)) {
+      channel.truncate(length);
     }
   }
 

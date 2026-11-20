@@ -73,6 +73,9 @@ public class TsFileWriterManagerWholeFileTest {
     Assert.assertTrue(staged.isFile());
     Assert.assertArrayEquals(source, Files.readAllBytes(staged.toPath()));
     Assert.assertTrue(writerManager.hasStagedData());
+    final LoadTsFileProgress progress = new LoadTsFileProgress(staged);
+    progress.readAllRecordsRepairingTornTail();
+    Assert.assertEquals(source.length, progress.getWholeFileAppliedLength());
   }
 
   @Test

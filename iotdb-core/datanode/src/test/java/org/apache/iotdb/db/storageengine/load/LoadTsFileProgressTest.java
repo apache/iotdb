@@ -85,6 +85,29 @@ public class LoadTsFileProgressTest {
   }
 
   @Test
+  public void testWholeFileRangeKeepsTheContiguousAppliedLength() throws Exception {
+    final File tsFile = Files.createTempFile("load-progress-whole-file", ".tsfile").toFile();
+    try {
+      final LoadTsFileProgress progress = new LoadTsFileProgress(tsFile);
+      progress.recordWholeFileRange(0L, 3L, 1L);
+      progress.recordWholeFileRange(3L, 5L, 2L);
+      Assert.assertEquals(8L, progress.getWholeFileAppliedLength());
+
+      // A slice beyond the contiguous prefix does not extend the applied length.
+      progress.recordWholeFileRange(10L, 2L, 3L);
+      Assert.assertEquals(8L, progress.getWholeFileAppliedLength());
+
+      final LoadTsFileProgress recovered = new LoadTsFileProgress(tsFile);
+      recovered.readAllRecordsRepairingTornTail();
+      Assert.assertEquals(8L, recovered.getWholeFileAppliedLength());
+      Assert.assertEquals(3L, recovered.getLastRecordedSearchIndex());
+    } finally {
+      Files.deleteIfExists(tsFile.toPath());
+      Files.deleteIfExists(LoadTsFileProgress.progressFileFor(tsFile).toPath());
+    }
+  }
+
+  @Test
   public void testAnEntryOfAnUnknownVersionIsSteppedOver() throws Exception {
     final File tsFile = Files.createTempFile("load-progress-unknown", ".tsfile").toFile();
     try {

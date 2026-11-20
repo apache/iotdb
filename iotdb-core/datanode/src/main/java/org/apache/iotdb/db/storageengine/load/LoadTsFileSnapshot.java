@@ -230,13 +230,21 @@ public final class LoadTsFileSnapshot {
     }
   }
 
-  private static long recordedLengthOf(final File snapshotStagedFile) {
+  static long recordedLengthOf(final File snapshotStagedFile) {
     try {
-      return new LoadTsFileProgress(snapshotStagedFile)
-          .readAllRecordsRepairingTornTail().stream()
-              .mapToLong(LoadTsFileProgress.ChunkRangeRecord::physicalEnd)
-              .max()
-              .orElse(-1L);
+      final LoadTsFileProgress progress = new LoadTsFileProgress(snapshotStagedFile);
+      final List<LoadTsFileProgress.ChunkRangeRecord> records =
+          progress.readAllRecordsRepairingTornTail();
+      // A whole-file staging records byte ranges instead of chunks; its applied end is what the
+      // snapshot has to reach.
+      final long wholeFileAppliedLength = progress.getWholeFileAppliedLength();
+      if (wholeFileAppliedLength >= 0L) {
+        return wholeFileAppliedLength;
+      }
+      return records.stream()
+          .mapToLong(LoadTsFileProgress.ChunkRangeRecord::physicalEnd)
+          .max()
+          .orElse(-1L);
     } catch (final IOException e) {
       LOGGER.warn(
           StorageEngineMessages.LOG_LOAD_CONSENSUS_SNAPSHOT_PROGRESS_UNREADABLE_ARG_ARG_770B7481,

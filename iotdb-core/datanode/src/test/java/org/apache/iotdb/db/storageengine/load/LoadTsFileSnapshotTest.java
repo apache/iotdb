@@ -851,4 +851,17 @@ public class LoadTsFileSnapshotTest {
     }
     file.delete();
   }
+
+  @Test
+  public void testRecordedLengthOfWholeFileRange() throws Exception {
+    final File staged = Files.createTempFile("snapshot-whole-file", ".tsfile").toFile();
+    try {
+      final LoadTsFileProgress progress = new LoadTsFileProgress(staged);
+      progress.recordWholeFileRange(0L, 5L, 1L);
+      assertEquals(5L, LoadTsFileSnapshot.recordedLengthOf(staged));
+    } finally {
+      Files.deleteIfExists(staged.toPath());
+      Files.deleteIfExists(LoadTsFileProgress.progressFileFor(staged).toPath());
+    }
+  }
 }

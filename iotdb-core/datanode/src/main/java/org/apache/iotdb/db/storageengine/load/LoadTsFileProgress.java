@@ -84,6 +84,9 @@ public class LoadTsFileProgress {
   // Unified Version 1 entry markers
   private static final byte ENTRY_VERSION_CHUNK = 1;
   private static final byte ENTRY_VERSION_TERMINAL = 2;
+  private static final byte ENTRY_VERSION_WHOLE_FILE_RANGE = 3;
+
+  private static final int WHOLE_FILE_RANGE_ENTRY_BODY_SIZE = Byte.BYTES + 3 * Long.BYTES;
 
   private static final long TS_FILE_HEADER_SIZE = 7L;
 
@@ -92,6 +95,11 @@ public class LoadTsFileProgress {
 
   private final List<ChunkRangeRecord> records = new ArrayList<>();
   private final Set<Long> recordedChunkOffsets = new HashSet<>();
+
+  /** Ranges of a whole-file staging, whose unit is a byte range rather than a chunk. */
+  private final List<WholeFileRangeRecord> wholeFileRanges = new ArrayList<>();
+
+  private long wholeFileAppliedLength = -1L;
 
   /**
    * Records built by {@link #queueChunk} and not yet appended by {@link #flushQueuedRecords}. The
@@ -263,6 +271,47 @@ public class LoadTsFileProgress {
   }
 
   /**
+   * Appends one applied whole-file range. Unlike a chunk record this has no device or chunk
+   * metadata: the receiver only needs to know which bytes of the staged file are durable, both for
+   * snapshot catch-up and for recovery.
+   */
+  public void recordWholeFileRange(final long offset, final long length, final long searchIndex)
+      throws IOException {
+    ensureActivated();
+    try (final FileOutputStream fos = new FileOutputStream(progressFile, true);
+        final DataOutputStream out = new DataOutputStream(new BufferedOutputStream(fos))) {
+      ReadWriteIOUtils.write(WHOLE_FILE_RANGE_ENTRY_BODY_SIZE, out);
+      out.writeByte(ENTRY_VERSION_WHOLE_FILE_RANGE);
+      ReadWriteIOUtils.write(offset, out);
+      ReadWriteIOUtils.write(length, out);
+      ReadWriteIOUtils.write(searchIndex, out);
+      out.flush();
+    }
+    wholeFileRanges.add(new WholeFileRangeRecord(offset, length, searchIndex));
+    recomputeWholeFileAppliedLength();
+    lastRecordedSearchIndex = Math.max(lastRecordedSearchIndex, searchIndex);
+  }
+
+  /** The contiguous end of the whole-file ranges written so far, or -1 when there is none. */
+  public long getWholeFileAppliedLength() {
+    return wholeFileAppliedLength;
+  }
+
+  private void recomputeWholeFileAppliedLength() {
+    wholeFileRanges.sort(Comparator.comparingLong(WholeFileRangeRecord::offset));
+    long contiguousEnd = 0L;
+    boolean any = false;
+    for (final WholeFileRangeRecord range : wholeFileRanges) {
+      if (range.offset > contiguousEnd) {
+        break;
+      }
+      contiguousEnd = Math.max(contiguousEnd, range.offset + range.length);
+      any = true;
+    }
+    wholeFileAppliedLength = any ? contiguousEnd : -1L;
+  }
+
+  /**
    * Appends the command a task ended with to the tail of this progress file, and forces it: it is
    * the last entry of the file, and what a restart reads to release the directory instead of
    * resuming a finished task. Both fields matter: the op cannot be told from the records, since a
@@ -399,6 +448,8 @@ public class LoadTsFileProgress {
     }
 
     final List<ChunkRangeRecord> loadedRecords = new ArrayList<>();
+    wholeFileRanges.clear();
+    wholeFileAppliedLength = -1L;
     try (final CountingInputStream countingIn =
             new CountingInputStream(new BufferedInputStream(new FileInputStream(progressFile)));
         final DataInputStream in = new DataInputStream(countingIn)) {
@@ -426,6 +477,12 @@ public class LoadTsFileProgress {
           final ChunkRangeRecord record = ChunkRangeRecord.deserializePayload(in);
           loadedRecords.add(record);
           lastRecordedSearchIndex = Math.max(lastRecordedSearchIndex, record.searchIndex());
+        } else if (version == ENTRY_VERSION_WHOLE_FILE_RANGE) {
+          final long offset = ReadWriteIOUtils.readLong(in);
+          final long length = ReadWriteIOUtils.readLong(in);
+          final long searchIndex = ReadWriteIOUtils.readLong(in);
+          wholeFileRanges.add(new WholeFileRangeRecord(offset, length, searchIndex));
+          lastRecordedSearchIndex = Math.max(lastRecordedSearchIndex, searchIndex);
         }
         // Step over whatever is left of the entry: a version this build does not know, or a known
         // one that gained a field, is skipped instead of being misread as the next entry.
@@ -450,6 +507,7 @@ public class LoadTsFileProgress {
       recordedChunkOffsets.add(pending.chunkOffset());
       maxPhysicalEnd = Math.max(maxPhysicalEnd, pending.physicalEnd());
     }
+    recomputeWholeFileAppliedLength();
     recordsLoaded = true;
     return loadedRecords;
   }
@@ -686,6 +744,9 @@ public class LoadTsFileProgress {
   // -------------------------------------------------------------------------
   // Records & Stream Helpers
   // -------------------------------------------------------------------------
+
+  /** One applied byte range of a whole-file staging. */
+  private record WholeFileRangeRecord(long offset, long length, long searchIndex) {}
 
   /** Represents a physically placed chunk interval and the metadata needed to rebuild it. */
   public static final class ChunkRangeRecord {
