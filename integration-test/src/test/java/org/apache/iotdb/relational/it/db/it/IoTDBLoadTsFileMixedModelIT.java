@@ -329,9 +329,9 @@ public class IoTDBLoadTsFileMixedModelIT {
           "failure_probe",
           Arrays.asList(
               new MeasurementSchema("site", TSDataType.STRING),
-              new MeasurementSchema("reading", TSDataType.INT32)),
+              new MeasurementSchema("reading", TSDataType.BOOLEAN)),
           Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
-          Collections.singletonList(new Object[] {10L, "station", 10}));
+          Collections.singletonList(new Object[] {10L, "station", true}));
     }
     writeTreeFile(new File(loadDir, "03-tree-after.tsfile"), TREE_DATABASE + ".after", 3, 303);
     assertTsFileOrder(
@@ -349,7 +349,7 @@ public class IoTDBLoadTsFileMixedModelIT {
       try {
         statement.execute(
             String.format(
-                "load '%s' with ('database'='%s','database-level'='2',"
+                "load '%s' with ('database'='%s','database-level'='2','verify'='true',"
                     + "'tablet-conversion-threshold'='-1','convert-on-type-mismatch'='false',"
                     + "'auto-create-schema'='false',"
                     + "'on-success'='none')",

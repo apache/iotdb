@@ -273,7 +273,8 @@ public class IoTDBLoadTsFileTableBoundaryIT {
             if (missingSchema && file == 2) {
               continue;
             }
-            final String fieldType = !verify || (failure && file == 2) ? "DOUBLE" : "INT64";
+            final String fieldType =
+                failure && file == 2 ? "BOOLEAN" : !verify ? "DOUBLE" : "INT64";
             statement.execute(
                 "create table "
                     + database
@@ -322,7 +323,7 @@ public class IoTDBLoadTsFileTableBoundaryIT {
                         "f",
                         "t2",
                         TSDataType.INT64,
-                        TSDataType.DOUBLE);
+                        TSDataType.BOOLEAN);
             Assert.assertTrue(error.getMessage(), error.getMessage().contains(expectedCause));
           } else {
             statement.execute(sql);
