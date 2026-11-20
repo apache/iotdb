@@ -512,6 +512,9 @@ public class ProcedureManager {
         .filter(p -> p instanceof DeleteTimeSeriesProcedure)
         .map(p -> (DeleteTimeSeriesProcedure) p)
         .forEach(p -> procedures.put(p.getProcId(), p));
+    procedures.values().stream()
+        .filter(procedure -> !procedure.isFinished() || procedure.hasPendingCleanup())
+        .forEach(DeleteTimeSeriesProcedure::updateModFileProgress);
     return procedures.values().stream()
         .sorted(Comparator.comparingLong(Procedure::getProcId))
         .map(
@@ -539,6 +542,16 @@ public class ProcedureManager {
                           + ": "
                           + p.getException().getMessage());
                 }
+              }
+              final TDropTableModProgress modProgress = p.getModFileProgress();
+              if (modProgress != null) {
+                info.setWrittenModFileCount(modProgress.getWrittenModFileCount());
+                if (modProgress.isSetRemainingModFileCount()) {
+                  info.setRemainingModFileCount(modProgress.getRemainingModFileCount());
+                }
+              }
+              if (p.isSuccess()) {
+                info.setRemainingModFileCount(0);
               }
               return info;
             })
@@ -2996,7 +3009,7 @@ public class ProcedureManager {
         .map(procedure -> (DropTableProcedure) procedure)
         .forEach(procedure -> dropProcedures.put(procedure.getProcId(), procedure));
     dropProcedures.values().stream()
-        .filter(procedure -> !procedure.isFinished())
+        .filter(procedure -> !procedure.isFinished() || procedure.hasPendingCleanup())
         .forEach(DropTableProcedure::updateModFileProgress);
     return dropProcedures.values().stream()
         .map(
@@ -3014,6 +3027,9 @@ public class ProcedureManager {
                 if (modProgress.isSetRemainingModFileCount()) {
                   info.setRemainingModFileCount(modProgress.getRemainingModFileCount());
                 }
+              }
+              if (procedure.isSuccess()) {
+                info.setRemainingModFileCount(0);
               }
               if (procedure.hasException()) {
                 info.setErrorMessage(procedure.getException().getMessage());
@@ -3034,7 +3050,7 @@ public class ProcedureManager {
         .map(procedure -> (DropTableColumnProcedure) procedure)
         .forEach(procedure -> dropProcedures.put(procedure.getProcId(), procedure));
     dropProcedures.values().stream()
-        .filter(procedure -> !procedure.isFinished())
+        .filter(procedure -> !procedure.isFinished() || procedure.hasPendingCleanup())
         .forEach(DropTableColumnProcedure::updateModFileProgress);
     return dropProcedures.values().stream()
         .map(
@@ -3059,6 +3075,9 @@ public class ProcedureManager {
                 if (modProgress.isSetRemainingModFileCount()) {
                   info.setRemainingModFileCount(modProgress.getRemainingModFileCount());
                 }
+              }
+              if (procedure.isSuccess()) {
+                info.setRemainingModFileCount(0);
               }
               if (procedure.hasException()) {
                 info.setErrorMessage(procedure.getException().getMessage());

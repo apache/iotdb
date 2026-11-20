@@ -67,19 +67,22 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
 
   @Test
   public void testAsynchronousDeletionProgress() throws Exception {
-    final String path = "root.async_progress.d.s";
-    final String sql = "DELETE TIMESERIES " + path;
+    final String device = "root.async_progress.d";
+    final String firstPath = device + ".s1";
+    final String secondPath = device + ".s2";
+    final String sql = "DELETE TIMESERIES " + firstPath + ", " + secondPath;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = TestUtils.createSingleNodeStatement(connection)) {
-      statement.execute("INSERT INTO root.async_progress.d(time,s) VALUES(1,1)");
+      statement.execute("INSERT INTO " + device + "(time,s1,s2) VALUES(1,1,2)");
+      statement.execute("FLUSH");
       statement.execute(sql);
-      boolean found = false;
+      long procedureId = -1;
       try (ResultSet result = statement.executeQuery("SHOW DELETE TIMESERIES PROGRESS")) {
-        Assert.assertEquals(6, result.getMetaData().getColumnCount());
+        Assert.assertEquals(8, result.getMetaData().getColumnCount());
         while (result.next()) {
-          if (("[" + path + "]").equals(result.getString("Paths"))) {
-            found = true;
-            Assert.assertTrue(result.getLong("ProcedureId") >= 0);
+          final String paths = result.getString("Paths");
+          if (paths.contains(firstPath) && paths.contains(secondPath)) {
+            procedureId = result.getLong("ProcedureId");
             Assert.assertNotNull(result.getString("QueryId"));
             Assert.assertNotNull(result.getString("Progress"));
             Assert.assertTrue(
@@ -89,9 +92,23 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
           }
         }
       }
-      Assert.assertTrue("Accepted deletion must be visible immediately", found);
+      Assert.assertTrue("Accepted deletion must be visible immediately", procedureId >= 0);
       TestUtils.waitForTimeSeriesDeletion(statement, sql);
-      try (ResultSet result = statement.executeQuery("SHOW TIMESERIES " + path)) {
+      boolean foundCompleted = false;
+      try (ResultSet result = statement.executeQuery("SHOW DELETE TIMESERIES PROGRESS")) {
+        while (result.next()) {
+          if (result.getLong("ProcedureId") == procedureId) {
+            foundCompleted = true;
+            Assert.assertEquals("SUCCESS", result.getString("State"));
+            Assert.assertEquals(1, result.getLong("WrittenModFileCount"));
+            Assert.assertEquals(0, result.getLong("RemainingModFileCount"));
+            Assert.assertFalse(result.wasNull());
+            break;
+          }
+        }
+      }
+      Assert.assertTrue("Completed deletion must retain its mod file counts", foundCompleted);
+      try (ResultSet result = statement.executeQuery("SHOW TIMESERIES " + device + ".*")) {
         Assert.assertFalse(result.next());
       }
       // A nonexistent path is accepted too; the error belongs to the asynchronous task.
