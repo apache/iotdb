@@ -1028,6 +1028,9 @@ public abstract class AlignedTVList extends TVList {
 
   protected void updateSegmentMovedMap() {
     segmentMovedMap = null;
+    // Sorting may have materialized the lazily created indices container (and this method may
+    // materialize the moved-segment bitmap), both of which are charged by the container cost.
+    invalidateStructureRamCost();
     if (indices == null) {
       return;
     }
@@ -1047,7 +1050,6 @@ public abstract class AlignedTVList extends TVList {
         }
       }
     }
-    invalidateStructureRamCost();
   }
 
   private BitMap cloneSegmentMovedMap() {

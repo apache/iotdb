@@ -1057,6 +1057,30 @@ public class AlignedTVListTest {
   }
 
   @Test
+  public void testStructureRamCostTracksLazyIndicesAfterSort() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
+    // Out-of-order rows force sort() to lazily materialize the indices container and the
+    // moved-segment bitmap, both of which are part of the container cost.
+    long[] times = {5, 3, 4, 1, 2};
+    for (long time : times) {
+      tvList.putAlignedValue(time, new Object[] {time});
+    }
+    assertStructureRamCostMatches(tvList);
+    long beforeSort = tvList.getStructureRamSize();
+
+    tvList.sort();
+    assertStructureRamCostMatches(tvList);
+    Assert.assertTrue(tvList.getStructureRamSize() >= beforeSort);
+    Assert.assertNotNull(tvList.getSegmentMovedMap());
+
+    // Sorting an already sorted list must keep the cached cost valid.
+    tvList.sort();
+    assertStructureRamCostMatches(tvList);
+    tvList.clear();
+  }
+
+  @Test
   public void testExtendedColumnsOverManyBlocksPreserveNulls() {
     AlignedTVList tvList =
         AlignedTVList.newAlignedList(new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
