@@ -148,6 +148,100 @@ public class AlignedWritableMemChunkTest {
   }
 
   @Test
+  public void testWriteScenariosKeepSparseAndConsecutiveNulls() {
+    // One test covering the write patterns users hit in practice: dense rows, a single sparse
+    // measurement, a long run of consecutive nulls for an earlier column, rotating sparse columns,
+    // explicit nulls and a block boundary; then the flush snapshot and both clone flavours must
+    // report exactly the same nulls and values.
+    int originalThreshold = IoTDBDescriptor.getInstance().getConfig().getTvListSortThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(0);
+    int columns = 9;
+    int writtenColumns = 8;
+    int rows = 1220;
+    List<IMeasurementSchema> schemas = new ArrayList<>(columns);
+    for (int column = 0; column < columns; column++) {
+      schemas.add(new MeasurementSchema("s" + column, TSDataType.INT64));
+    }
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(new ArrayList<>(schemas));
+    Long[][] expected = new Long[rows][columns];
+    try {
+      // Dense rows.
+      Object[] denseValues = new Object[writtenColumns];
+      for (int row = 0; row < 200; row++) {
+        for (int column = 0; column < writtenColumns; column++) {
+          denseValues[column] = (long) row * 100 + column;
+          expected[row][column] = (Long) denseValues[column];
+        }
+        chunk.writeAlignedPoints(row, denseValues, schemas.subList(0, writtenColumns));
+      }
+      // One sparse measurement per row.
+      for (int row = 200; row < 400; row++) {
+        write(chunk, schemas, row, 0, (long) row, expected);
+      }
+      // Column 0 is null for 600 consecutive rows while only column 1 is written.
+      for (int row = 400; row < 1000; row++) {
+        write(chunk, schemas, row, 1, (long) row, expected);
+      }
+      // Rotating sparse columns across the block boundary.
+      for (int row = 1000; row < 1200; row++) {
+        write(chunk, schemas, row, (row - 1000) % writtenColumns, (long) row, expected);
+      }
+      // Explicit nulls must stay null.
+      for (int row = 1200; row < rows; row++) {
+        write(chunk, schemas, row, 2, null, expected);
+      }
+
+      AlignedTVList list = chunk.getWorkingTVList();
+      Assert.assertEquals(rows, list.rowCount());
+      // Column 3 is never written: every block must stay a null block instead of a default-value
+      // array, exactly like before the sparse-write rework.
+      Assert.assertNull(list.getValues().get(writtenColumns).get(0));
+      Assert.assertNull(list.getValues().get(writtenColumns).get(1));
+      assertContent(list, expected);
+      // The flush snapshot must materialize the same representation the encoder reads.
+      list.materializeOpenBlockForRead();
+      assertContent(list, expected);
+      assertContent(list.clone(), expected);
+      assertContent(list.cloneForFlushSort(), expected);
+    } finally {
+      chunk.release();
+      IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(originalThreshold);
+    }
+  }
+
+  private static void write(
+      AlignedWritableMemChunk chunk,
+      List<IMeasurementSchema> schemas,
+      int row,
+      int column,
+      Long value,
+      Long[][] expected) {
+    chunk.writeAlignedPoints(
+        row, new Object[] {value}, Collections.singletonList(schemas.get(column)));
+    expected[row][column] = value;
+  }
+
+  private static void assertContent(AlignedTVList list, Long[][] expected) {
+    for (int row = 0; row < expected.length; row++) {
+      for (int column = 0; column < expected[row].length; column++) {
+        Long value = expected[row][column];
+        if (value == null) {
+          Assert.assertTrue(
+              "row " + row + " column " + column + " must be null", list.isNullValue(row, column));
+        } else {
+          Assert.assertFalse(
+              "row " + row + " column " + column + " must not be null",
+              list.isNullValue(row, column));
+          Assert.assertEquals(
+              "row " + row + " column " + column,
+              value.longValue(),
+              list.getLongByValueIndex(row, column));
+        }
+      }
+    }
+  }
+
+  @Test
   public void testPointsExtendColumnsAfterRemovalAndHandover() {
     IMeasurementSchema original = new MeasurementSchema("original", TSDataType.INT64);
     IMeasurementSchema added = new MeasurementSchema("added", TSDataType.INT32);
@@ -287,5 +381,35 @@ public class AlignedWritableMemChunkTest {
         chunk.release();
       }
     }
+  }
+
+  @Test
+  public void testSingleMeasurementWriteToWideDevice() {
+    int columnCount = 10_000;
+    List<IMeasurementSchema> schemas = new ArrayList<>(columnCount);
+    for (int column = 0; column < columnCount; column++) {
+      schemas.add(new MeasurementSchema("s" + column, TSDataType.INT64));
+    }
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas);
+    IMeasurementSchema lastSchema = schemas.get(columnCount - 1);
+
+    chunk.writeAlignedPoints(0, new Object[] {10L}, Collections.singletonList(lastSchema));
+
+    AlignedTVList list = chunk.getWorkingTVList();
+    Assert.assertEquals(1, list.rowCount());
+    Assert.assertEquals(10L, list.getLongByValueIndex(0, columnCount - 1));
+    for (int column = 0; column < columnCount - 1; column++) {
+      Assert.assertTrue(list.isNullValue(0, column));
+    }
+    // A second write to a new measurement must not disturb the first row.
+    IMeasurementSchema newSchema = new MeasurementSchema("new", TSDataType.INT32);
+    chunk.writeAlignedPoints(1, new Object[] {7}, Collections.singletonList(newSchema));
+    Assert.assertEquals(columnCount, chunk.getMeasurementIndex("new"));
+    Assert.assertEquals(7, list.getIntByValueIndex(1, columnCount));
+    for (int column = 0; column < columnCount; column++) {
+      Assert.assertTrue(list.isNullValue(1, column));
+    }
+    Assert.assertEquals(10L, list.getLongByValueIndex(0, columnCount - 1));
+    chunk.release();
   }
 }
