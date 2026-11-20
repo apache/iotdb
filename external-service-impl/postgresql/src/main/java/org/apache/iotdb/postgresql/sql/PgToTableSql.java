@@ -1668,11 +1668,8 @@ public final class PgToTableSql {
     }
 
     private void appendCurrentSchema() {
-      for (String schema : writer.context.searchPath()) {
-        builder.append(Identifiers.literal(schema));
-        return;
-      }
-      builder.append("NULL");
+      List<String> searchPath = writer.context.searchPath();
+      builder.append(searchPath.isEmpty() ? "NULL" : Identifiers.literal(searchPath.get(0)));
     }
 
     private static boolean isQuoted(String identifier) {

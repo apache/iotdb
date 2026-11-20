@@ -37,10 +37,6 @@ final class BindAddresses {
       Pattern.compile(
           "^(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}$");
 
-  /** Hex digits, colons and an optional embedded IPv4 tail or zone id. */
-  private static final Pattern IPV6 =
-      Pattern.compile("^[0-9A-Fa-f:]*:[0-9A-Fa-f:.]*(%[\\w.\\-]+)?$");
-
   private BindAddresses() {}
 
   /**
@@ -85,7 +81,7 @@ final class BindAddresses {
     if (candidate.startsWith("[") && candidate.endsWith("]")) {
       candidate = candidate.substring(1, candidate.length() - 1);
     }
-    if (!IPV4.matcher(candidate).matches() && !IPV6.matcher(candidate).matches()) {
+    if (!IPV4.matcher(candidate).matches() && !looksLikeIpv6(candidate)) {
       return null;
     }
     try {
@@ -94,5 +90,43 @@ final class BindAddresses {
     } catch (UnknownHostException | SecurityException e) {
       return null;
     }
+  }
+
+  /** Hex digits and colons (at least one), an optional embedded IPv4 tail and zone id. */
+  private static boolean looksLikeIpv6(String value) {
+    int percent = value.indexOf('%');
+    String address = percent < 0 ? value : value.substring(0, percent);
+    if (address.indexOf(':') < 0) {
+      return false;
+    }
+    for (int i = 0; i < address.length(); i++) {
+      char c = address.charAt(i);
+      if (!(c == ':' || c == '.' || isAsciiHexDigit(c))) {
+        return false;
+      }
+    }
+    if (percent < 0) {
+      return true;
+    }
+    String zone = value.substring(percent + 1);
+    if (zone.isEmpty()) {
+      return false;
+    }
+    for (int i = 0; i < zone.length(); i++) {
+      char c = zone.charAt(i);
+      if (!(isAsciiHexDigit(c)
+          || (c >= 'g' && c <= 'z')
+          || (c >= 'G' && c <= 'Z')
+          || c == '_'
+          || c == '.'
+          || c == '-')) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean isAsciiHexDigit(char c) {
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
   }
 }

@@ -59,7 +59,7 @@ public class PostgreSqlService implements IExternalService {
   /** The reported server version: 14, so that clients take their standard paths. */
   static final String SERVER_VERSION = "14.0 (IoTDB " + IoTDBConstant.VERSION + ")";
 
-  private volatile PgServerContext context;
+  private PgServerContext context;
   private PgServer server;
   private ExecutorService workers;
 
