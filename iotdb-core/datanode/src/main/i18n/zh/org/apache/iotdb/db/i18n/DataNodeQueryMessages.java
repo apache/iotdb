@@ -5675,6 +5675,11 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s：%s ms，调用 %s 次，应用 %s 次";
+  public static final String MESSAGE_COLUMN_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_OR_COLUMN_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_08F7DB64 =
+      "列删除采用异步执行。指定的表或列不存在，未提交任务。";
+  public static final String MESSAGE_TABLE_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_74E6521A =
+      "表删除采用异步执行。指定的表不存在，未提交任务。";
+
   public static final String EXCEPTION_NOT_ENOUGH_MEMORY_WHILE_ANALYZING_TIME_PARTITIONS_NARROW_THE_QUERY_TIME_RANGE_OR_INCREASE_QUERY_MEMORY_MEMORY_DETAILS_REQUESTED_THIS_TIME_ARG_CURRENT_FREE_MEMORY_ARG_ORIGINAL_ERROR_ARG_37676B2A =
       "分析时间分区时内存不足。请缩小查询时间范围或增加查询内存。内存详情：本次请求 %s，当前空闲内存 %s。原始错误：%s";
 
@@ -5683,5 +5688,4 @@ public final class DataNodeQueryMessages {
 
   public static final String LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9 =
       "[QueryFailed] queryId: {}, SQL：{}";
-
 }

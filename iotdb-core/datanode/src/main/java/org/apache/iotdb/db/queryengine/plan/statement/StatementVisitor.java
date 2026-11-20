@@ -147,6 +147,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDeleteTimeSeriesProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
@@ -528,6 +529,11 @@ public abstract class StatementVisitor<R, C> {
   public R visitRepairDataPartitionTable(
       RepairDataPartitionTable repairDataPartitionTable, C context) {
     return visitStatement(repairDataPartitionTable, context);
+  }
+
+  public R visitShowDeleteTimeSeriesProgress(
+      ShowDeleteTimeSeriesProgressStatement statement, C context) {
+    return visitStatement(statement, context);
   }
 
   public R visitShowRepairDataPartitionTableProgress(
