@@ -43,8 +43,10 @@ public class Resampler {
   private final String aggregator; // method to aggregate
   private final String interpolator; // method to interpolate
   private long currentTime; // start time of the window, left close & right open
+  private boolean hasCurrentTime;
   private long startTime;
   private long endTime; // start time (contained) and end time (not contained) of resampling
+  private final boolean hasEndTime;
   private boolean outer = true; // if to use outer interpolate
 
   public Resampler(long newPeriod, String aggregator, String interpolator) {
@@ -58,20 +60,23 @@ public class Resampler {
     this.interpolator = interpolator;
     this.startTime = startTime;
     this.endTime = endTime;
+    this.hasEndTime = endTime >= 0;
     this.currentTime = this.startTime;
+    this.hasCurrentTime = startTime >= 0;
   }
 
   /** 加入新的数据点 insert new datapoint. */
   public void insert(long time, double value) {
     if (Double.isNaN(value)
         || (startTime > 0 && time < startTime)
-        || (endTime > 0 && time >= endTime)) {
+        || (hasEndTime && time >= endTime)) {
       return;
     }
-    if (currentTime < 0) {
+    if (!hasCurrentTime) {
       currentTime = time;
+      hasCurrentTime = true;
     }
-    while (time >= currentTime + newPeriod) {
+    while (canAdvanceCurrentTime() && time >= currentTime + newPeriod) {
       downSample();
       upSample();
       currentTime += newPeriod;
@@ -84,10 +89,17 @@ public class Resampler {
   public void flush() {
     do { // process data in the last window in first cycle
       downSample();
+      if (!canAdvanceCurrentTime()) {
+        break;
+      }
       currentTime += newPeriod;
-    } while (endTime >= currentTime);
+    } while (hasEndTime && endTime >= currentTime);
     outer = true;
     upSample();
+  }
+
+  private boolean canAdvanceCurrentTime() {
+    return currentTime <= Long.MAX_VALUE - newPeriod;
   }
 
   /** Upsampling. Interpolate at NaN points. */
@@ -102,7 +114,7 @@ public class Resampler {
         if (!outer && source.get(1).time < t) { // no enough data for inner interpolate
           break;
         }
-        if (endTime < 0 || t < endTime) { // no output for timestamp larger than end time
+        if (!hasEndTime || t < endTime) { // no output for timestamp larger than end time
           timeBuffer.push(t);
           valueBuffer.push(interpolate(t)); // interpolate
         }
@@ -181,15 +193,24 @@ public class Resampler {
         }
         break;
       case "linear":
+        // Subtract timestamps before conversion, and scale before multiplying the values.
+        double span = timeDifference(source.get(1).time, source.get(0).time);
         ret =
-            source.get(0).value * (source.get(1).time - t)
-                + source.get(1).value * (t - source.get(0).time);
-        ret = ret / (source.get(1).time - source.get(0).time);
+            source.get(0).value * (timeDifference(source.get(1).time, t) / span)
+                + source.get(1).value * (timeDifference(t, source.get(0).time) / span);
         break;
       default:
         throw new IllegalArgumentException(LibraryUdfMessages.ILLEGAL_INTERPOLATION_ALGORITHM);
     }
     return ret;
+  }
+
+  private double timeDifference(long endTime, long startTime) {
+    try {
+      return Math.subtractExact(endTime, startTime);
+    } catch (ArithmeticException ignored) {
+      return (double) endTime - (double) startTime;
+    }
   }
 
   /** judge if there is a next point in the buffer. */

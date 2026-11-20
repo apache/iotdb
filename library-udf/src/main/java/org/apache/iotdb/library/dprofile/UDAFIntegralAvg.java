@@ -29,6 +29,9 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+
 /**
  * calculate the integral or the area under the curve of input series $unit$ is the time scale for
  * the area calculation, chosen from 1s(second, default), 1m(minute), 1h(hour), 1d(day).
@@ -37,8 +40,9 @@ public class UDAFIntegralAvg implements UDTF {
 
   long startTime = -1;
   long lastTime = -1;
+  boolean hasValue;
   double lastValue = 0;
-  double integralValue = 0;
+  BigDecimal integralValue = BigDecimal.ZERO;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -51,36 +55,51 @@ public class UDAFIntegralAvg implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
+    startTime = -1;
+    lastTime = -1;
+    hasValue = false;
+    lastValue = 0;
+    integralValue = BigDecimal.ZERO;
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     long nowTime = row.getTime();
     double nowValue = Util.getValueAsDouble(row);
-    if (startTime < 0) {
-      startTime = nowTime;
-    }
     if (Double.isFinite(nowValue)) {
-      // calculate the ladder-shaped area between last point and this one
-      // skip and initialize the memory if no existing previous point is available
-      if (lastTime >= 0) {
-        integralValue += (lastValue + nowValue) * (nowTime - lastTime) / 2.0;
+      if (!hasValue) {
+        startTime = nowTime;
+      } else {
+        // calculate the ladder-shaped area between last point and this one
+        // Normalize before conversion to double so extreme areas retain a finite average.
+        BigDecimal timeSpan = BigDecimal.valueOf(nowTime).subtract(BigDecimal.valueOf(lastTime));
+        BigDecimal area =
+            new BigDecimal(lastValue)
+                .add(new BigDecimal(nowValue))
+                .multiply(timeSpan)
+                .divide(BigDecimal.valueOf(2));
+        integralValue = integralValue.add(area);
       }
       lastTime = nowTime;
       lastValue = nowValue;
+      hasValue = true;
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    if (startTime < 0) {
+    if (!hasValue) {
       // empty input
       collector.putDouble(0, 0);
     } else if (startTime == lastTime) {
       // one single point
       collector.putDouble(0, lastValue);
     } else {
-      collector.putDouble(0, integralValue / (lastTime - startTime)); // 所有UDAF函数的时间戳都默认为0
+      BigDecimal timeSpan = BigDecimal.valueOf(lastTime).subtract(BigDecimal.valueOf(startTime));
+      collector.putDouble(0, integralValue.divide(timeSpan, MathContext.DECIMAL128).doubleValue());
     }
   }
 }

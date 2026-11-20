@@ -34,10 +34,10 @@ import org.apache.iotdb.udf.api.type.Type;
 
 /** This function detects outliers which lies over average +/- k * sigma. */
 public class UDTFKSigma implements UDTF {
+  private static final int DEFAULT_WINDOW_SIZE = 10000;
+
   private double mean = 0.0;
-  private double variance = 0.0;
-  private double sumX2 = 0.0;
-  private double sumX1 = 0.0;
+  private double sumSquaredDeviation = 0.0;
   private double multipleK;
   private int windowSize = 0;
   private CircularQueue<Object> v;
@@ -55,10 +55,10 @@ public class UDTFKSigma implements UDTF {
         .validate(
             x -> (int) x > 0,
             LibraryUdfMessages.EXCEPTION_WINDOW_SIZE_SHOULD_BE_LARGER_THAN_0_F4C2184C,
-            validator.getParameters().getIntOrDefault("window", 10))
+            validator.getParameters().getIntOrDefault("window", DEFAULT_WINDOW_SIZE))
         .validate(
-            x -> (double) x > 0,
-            LibraryUdfMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_LARGER_THAN_0_9F12BFC9,
+            x -> Double.isFinite((double) x) && (double) x > 0,
+            LibraryUdfMessages.EXCEPTION_PARAMETER_K_SHOULD_BE_FINITE_AND_LARGER_THAN_0_ECE1B163,
             validator.getParameters().getDoubleOrDefault("k", 3));
   }
 
@@ -73,43 +73,45 @@ public class UDTFKSigma implements UDTF {
     valueReader = TypeServices.ROW_VALUE_READER_SERVICE.call(TypeServices.toReadType(dataType));
     numericReader = TypeServices.NUMERIC_ROW_READER_SERVICE.call(TypeServices.toReadType(dataType));
     valueWriter = TypeServices.rowValueWriter(dataType);
-    this.windowSize = udfParameters.getIntOrDefault("window", 10000);
+    this.windowSize = udfParameters.getIntOrDefault("window", DEFAULT_WINDOW_SIZE);
+    this.mean = 0.0;
+    this.sumSquaredDeviation = 0.0;
     this.v = new CircularQueue<>(windowSize);
     this.t = new LongCircularQueue(windowSize);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double value = numericReader.read(row);
     long timestamp = row.getTime();
     if (Double.isFinite(value) && !Double.isNaN(value)) {
       if (v.isFull()) {
         final double frontValue = Double.parseDouble(v.pop().toString());
-        v.push(valueReader.read(row));
         t.pop();
+        removeValue(frontValue);
+        Object storedValue = valueReader.read(row);
+        v.push(storedValue);
         t.push(timestamp);
-        this.sumX1 = this.sumX1 - frontValue + value;
-        this.sumX2 = this.sumX2 - frontValue * frontValue + value * value;
-        this.mean = this.sumX1 / v.getSize();
-        this.variance = this.sumX2 / v.getSize() - this.mean * this.mean;
-        if (Math.abs(value - mean)
-            > multipleK * Math.sqrt(this.variance * v.getSize() / (v.getSize() - 1))) {
-          valueWriter.write(collector, timestamp, valueReader.read(row));
+        addValue(value);
+        if (v.getSize() > 1 && Math.abs(value - mean) > multipleK * sampleStandardDeviation()) {
+          valueWriter.write(collector, timestamp, storedValue);
         }
       } else {
-        v.push(valueReader.read(row));
+        Object storedValue = valueReader.read(row);
+        v.push(storedValue);
         t.push(timestamp);
-        this.sumX1 = this.sumX1 + value;
-        this.sumX2 = this.sumX2 + value * value;
-        this.mean = this.sumX1 / v.getSize();
-        this.variance = this.sumX2 / v.getSize() - this.mean * this.mean;
+        addValue(value);
         if (v.getSize() == this.windowSize) {
-          double stddev = Math.sqrt(this.variance * v.getSize() / (v.getSize() - 1));
+          double standardDeviation = sampleStandardDeviation();
           for (int i = 0; i < v.getSize(); i++) {
-            Object vi = this.v.get(i);
+            Object windowValue = this.v.get(i);
             timestamp = this.t.get(i);
-            if (Math.abs(Double.parseDouble(vi.toString()) - mean) > multipleK * stddev) {
-              valueWriter.write(collector, timestamp, vi);
+            if (Math.abs(Double.parseDouble(windowValue.toString()) - mean)
+                > multipleK * standardDeviation) {
+              valueWriter.write(collector, timestamp, windowValue);
             }
           }
         }
@@ -120,14 +122,54 @@ public class UDTFKSigma implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (!v.isFull() && v.getSize() > 1) {
-      double stddev = Math.sqrt(this.variance * v.getSize() / (v.getSize() - 1));
+      double standardDeviation = sampleStandardDeviation();
       for (int i = 0; i < v.getSize(); i++) {
-        Object vi = this.v.get(i);
+        Object windowValue = this.v.get(i);
         long timestamp = this.t.get(i);
-        if (Math.abs(Double.parseDouble(vi.toString()) - mean) > multipleK * stddev) {
-          valueWriter.write(collector, timestamp, vi);
+        if (Math.abs(Double.parseDouble(windowValue.toString()) - mean)
+            > multipleK * standardDeviation) {
+          valueWriter.write(collector, timestamp, windowValue);
         }
       }
     }
+  }
+
+  private void addValue(double value) {
+    int newCount = v.getSize();
+    double delta = value - mean;
+    mean += delta / newCount;
+    sumSquaredDeviation += delta * (value - mean);
+  }
+
+  private void removeValue(double value) {
+    int remainingCount = v.getSize();
+    if (remainingCount == 0) {
+      mean = 0;
+      sumSquaredDeviation = 0;
+      return;
+    }
+    double delta = value - mean;
+    double updatedMean = mean - delta / remainingCount;
+    sumSquaredDeviation -= delta * (value - updatedMean);
+    mean = updatedMean;
+    if (sumSquaredDeviation < 0 || !Double.isFinite(sumSquaredDeviation)) {
+      recomputeStatistics();
+    }
+  }
+
+  private void recomputeStatistics() {
+    mean = 0;
+    sumSquaredDeviation = 0;
+    for (int i = 0; i < v.getSize(); i++) {
+      double value = Double.parseDouble(v.get(i).toString());
+      int count = i + 1;
+      double delta = value - mean;
+      mean += delta / count;
+      sumSquaredDeviation += delta * (value - mean);
+    }
+  }
+
+  private double sampleStandardDeviation() {
+    return Math.sqrt(Math.max(0, sumSquaredDeviation) / (v.getSize() - 1));
   }
 }

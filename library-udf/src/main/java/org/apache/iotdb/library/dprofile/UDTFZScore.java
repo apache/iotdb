@@ -44,8 +44,6 @@ public class UDTFZScore implements UDTF {
   String compute = BATCH_COMPUTE;
   double avg = 0.0d;
   double sd = 0.0d;
-  double sum = 0.0d;
-  double squareSum = 0.0d;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -60,10 +58,20 @@ public class UDTFZScore implements UDTF {
                 .EXCEPTION_PARAMETER_COMPUTE_IS_ILLEGAL_PLEASE_USE_BATCH_FOR_DEFAULT_OR_STREAM_C46DD729,
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
-            x -> ((Double) x) > 0,
+            x -> Double.isFinite((double) x),
+            LibraryUdfMessages.EXCEPTION_PARAMETER_AVG_IS_ILLEGAL_IT_SHOULD_BE_FINITE_D4B6B4FF,
+            validator.getParameters().getDoubleOrDefault("avg", 0.0))
+        .validate(
+            x -> Double.isFinite((double) x) && (double) x > 0,
             LibraryUdfMessages
-                .EXCEPTION_PARAMETER_SD_IS_ILLEGAL_IT_SHOULD_BE_LARGER_THAN_0_61264233,
+                .EXCEPTION_PARAMETER_SD_IS_ILLEGAL_IT_SHOULD_BE_FINITE_AND_LARGER_THAN_0_CCE0B275,
             validator.getParameters().getDoubleOrDefault("sd", 1.0));
+    if (validator
+        .getParameters()
+        .getStringOrDefault("compute", BATCH_COMPUTE)
+        .equalsIgnoreCase(STREAM_COMPUTE)) {
+      validator.validateRequiredAttribute("avg").validateRequiredAttribute("sd");
+    }
   }
 
   @Override
@@ -71,8 +79,6 @@ public class UDTFZScore implements UDTF {
       throws Exception {
     value.clear();
     timestamp.clear();
-    sum = 0.0d;
-    squareSum = 0.0d;
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     compute = parameters.getStringOrDefault("compute", BATCH_COMPUTE);
     if (compute.equalsIgnoreCase(STREAM_COMPUTE)) {
@@ -83,15 +89,26 @@ public class UDTFZScore implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (compute.equalsIgnoreCase(STREAM_COMPUTE) && sd > 0) {
-      collector.putDouble(row.getTime(), (Util.getValueAsDouble(row) - avg) / sd);
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        double zScore = (v - avg) / sd;
+        if (!Double.isFinite(zScore)) {
+          double scale = Math.max(Math.max(Math.abs(v), Math.abs(avg)), sd);
+          zScore = (v / scale - avg / scale) / (sd / scale);
+        }
+        if (Double.isFinite(zScore)) {
+          collector.putDouble(row.getTime(), zScore);
+        }
+      }
     } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
         value.add(v);
         timestamp.add(row.getTime());
-        sum += v;
-        squareSum += v * v;
       }
     }
   }
@@ -99,10 +116,37 @@ public class UDTFZScore implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
-      avg = sum / value.size();
-      sd = Math.sqrt(squareSum / value.size() - avg * avg);
+      if (value.isEmpty()) {
+        return;
+      }
+      double scale = 0;
+      for (double v : value) {
+        scale = Math.max(scale, Math.abs(v));
+      }
+      if (scale == 0) {
+        return;
+      }
+
+      double mean = 0;
+      double squaredDeviationSum = 0;
+      int count = 0;
+      for (double v : value) {
+        double scaledValue = v / scale;
+        count++;
+        double delta = scaledValue - mean;
+        mean += delta / count;
+        squaredDeviationSum += delta * (scaledValue - mean);
+      }
+      double variance = squaredDeviationSum / count;
+      if (!Double.isFinite(variance) || variance <= 0) {
+        return;
+      }
+      double standardDeviation = Math.sqrt(variance);
       for (int i = 0; i < value.size(); i++) {
-        collector.putDouble(timestamp.get(i), (value.get(i) - avg) / sd);
+        double zScore = (value.get(i) / scale - mean) / standardDeviation;
+        if (Double.isFinite(zScore)) {
+          collector.putDouble(timestamp.get(i), zScore);
+        }
       }
     }
   }

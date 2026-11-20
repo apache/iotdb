@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.NoNumberException;
 import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
@@ -28,6 +29,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
@@ -46,6 +48,7 @@ public class UDAFSpread implements UDTF {
   float floatMax = -Float.MAX_VALUE;
   double doubleMin = Double.MAX_VALUE;
   double doubleMax = -Double.MAX_VALUE;
+  boolean hasValue;
   private SpreadTransformer transformer;
   private SpreadTerminator terminator;
 
@@ -56,9 +59,26 @@ public class UDAFSpread implements UDTF {
   private static final SpreadTransformer UNSUPPORTED_TRANSFORMER = (target, row) -> {};
 
   private static final SpreadTerminator INT_TERMINATOR =
-      (target, collector) -> collector.putInt(0, target.intMax - target.intMin);
+      (target, collector) -> {
+        long spread = (long) target.intMax - target.intMin;
+        if (spread > Integer.MAX_VALUE) {
+          throw new UDFException(
+              LibraryUdfMessages
+                  .EXCEPTION_SPREAD_EXCEEDS_THE_SUPPORTED_OUTPUT_RANGE_FOR_THE_INPUT_TYPE_AF96EC95);
+        }
+        collector.putInt(0, (int) spread);
+      };
   private static final SpreadTerminator LONG_TERMINATOR =
-      (target, collector) -> collector.putLong(0, target.longMax - target.longMin);
+      (target, collector) -> {
+        try {
+          collector.putLong(0, Math.subtractExact(target.longMax, target.longMin));
+        } catch (ArithmeticException e) {
+          throw new UDFException(
+              LibraryUdfMessages
+                  .EXCEPTION_SPREAD_EXCEEDS_THE_SUPPORTED_OUTPUT_RANGE_FOR_THE_INPUT_TYPE_AF96EC95,
+              e);
+        }
+      };
   private static final SpreadTerminator FLOAT_TERMINATOR =
       (target, collector) -> collector.putFloat(0, target.floatMax - target.floatMin);
   private static final SpreadTerminator DOUBLE_TERMINATOR =
@@ -80,6 +100,15 @@ public class UDAFSpread implements UDTF {
       throws Exception {
     Type dataType = parameters.getDataType(0);
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
+    intMin = Integer.MAX_VALUE;
+    intMax = Integer.MIN_VALUE;
+    longMin = Long.MAX_VALUE;
+    longMax = Long.MIN_VALUE;
+    floatMin = Float.MAX_VALUE;
+    floatMax = -Float.MAX_VALUE;
+    doubleMin = Double.MAX_VALUE;
+    doubleMax = -Double.MAX_VALUE;
+    hasValue = false;
     org.apache.tsfile.read.common.type.Type type = TypeServices.toReadType(dataType);
     transformer =
         TypeServices.numericService(
@@ -101,11 +130,17 @@ public class UDAFSpread implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector pc) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     transformer.transform(this, row);
   }
 
   @Override
   public void terminate(PointCollector pc) throws Exception {
+    if (!hasValue) {
+      return;
+    }
     terminator.terminate(this, pc);
   }
 
@@ -113,12 +148,14 @@ public class UDAFSpread implements UDTF {
     int v = row.getInt(0);
     intMin = Math.min(intMin, v);
     intMax = Math.max(intMax, v);
+    hasValue = true;
   }
 
   private void transformLong(Row row) throws IOException {
     long v = row.getLong(0);
     longMin = Math.min(longMin, v);
     longMax = Math.max(longMax, v);
+    hasValue = true;
   }
 
   private void transformFloat(Row row) throws IOException {
@@ -126,6 +163,7 @@ public class UDAFSpread implements UDTF {
     if (Float.isFinite(v)) {
       floatMin = Math.min(floatMin, v);
       floatMax = Math.max(floatMax, v);
+      hasValue = true;
     }
   }
 
@@ -134,6 +172,7 @@ public class UDAFSpread implements UDTF {
     if (Double.isFinite(v)) {
       doubleMin = Math.min(doubleMin, v);
       doubleMax = Math.max(doubleMax, v);
+      hasValue = true;
     }
   }
 
@@ -145,6 +184,6 @@ public class UDAFSpread implements UDTF {
   @FunctionalInterface
   private interface SpreadTerminator {
     void terminate(UDAFSpread target, PointCollector collector)
-        throws IOException, NoNumberException;
+        throws IOException, NoNumberException, UDFException;
   }
 }

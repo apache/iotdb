@@ -37,6 +37,7 @@ import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /** This function replaces substring according to regex parameter from an input series. */
 public class UDTFRegexReplace implements UDTF {
@@ -53,9 +54,12 @@ public class UDTFRegexReplace implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.TEXT)
+        .validateRequiredAttribute("regex")
+        .validateRequiredAttribute("replace")
         .validate(
-            regex -> ((String) regex).length() > 0,
-            LibraryUdfMessages.EXCEPTION_REGEX_SHOULD_NOT_BE_EMPTY_AED1BC73,
+            regex -> ((String) regex).length() > 0 && isValidRegex((String) regex),
+            LibraryUdfMessages
+                .EXCEPTION_REGEX_SHOULD_NOT_BE_EMPTY_AND_HAS_TO_BE_A_VALID_REGULAR_EXPRESSION_751072ED,
             validator.getParameters().getString("regex"))
         .validate(
             limit -> (int) limit >= -1,
@@ -67,6 +71,15 @@ public class UDTFRegexReplace implements UDTF {
             LibraryUdfMessages
                 .EXCEPTION_OFFSET_HAS_TO_BE_NON_NEGATIVE_TO_SKIP_FIRST_SEVERAL_MATCHES_2284C622,
             validator.getParameters().getIntOrDefault("offset", 0));
+  }
+
+  private static boolean isValidRegex(String regex) {
+    try {
+      Pattern.compile(regex);
+      return true;
+    } catch (PatternSyntaxException e) {
+      return false;
+    }
   }
 
   @Override
@@ -85,6 +98,9 @@ public class UDTFRegexReplace implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     String origin = row.getString(0);
     Matcher matcher = pattern.matcher(origin);
     String result = getResult(origin, matcher);

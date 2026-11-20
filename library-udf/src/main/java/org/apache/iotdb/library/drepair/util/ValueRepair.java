@@ -39,8 +39,12 @@ public abstract class ValueRepair {
     ArrayList<Double> originList = new ArrayList<>();
     while (dataIterator.hasNextRow()) {
       Row row = dataIterator.next();
-      Double v = Util.getValueAsDouble(row);
       timeList.add(row.getTime());
+      if (row.isNull(0)) {
+        originList.add(Double.NaN);
+        continue;
+      }
+      Double v = Util.getValueAsDouble(row);
       if (!Double.isFinite(v)) {
         originList.add(Double.NaN);
       } else {

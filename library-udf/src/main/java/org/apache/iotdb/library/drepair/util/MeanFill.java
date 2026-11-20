@@ -24,7 +24,9 @@ import org.apache.iotdb.udf.api.access.RowIterator;
 public class MeanFill extends ValueFill {
   public MeanFill(RowIterator dataIterator) throws Exception {
     super(dataIterator);
-    calMeanAndVar();
+    if (hasValidValue()) {
+      calMeanAndVar();
+    }
   }
 
   @Override

@@ -33,6 +33,10 @@ public class DoubleCircularQueue {
   private double[] data;
 
   public DoubleCircularQueue(int capacity) {
+    if (capacity <= 0) {
+      throw new IllegalArgumentException(
+          LibraryUdfMessages.EXCEPTION_CAPACITY_SHOULD_BE_LARGER_THAN_0_055372C7);
+    }
     head = tail = size = 0;
     data = new double[capacity];
     minLen = Math.max(INITCAP, capacity);
