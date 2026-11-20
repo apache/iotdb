@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertQueryFails;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -106,11 +107,7 @@ public class AINodeTestUtils {
   }
 
   public static void errorTest(Statement statement, String sql, String errorMessage) {
-    try (ResultSet ignored = statement.executeQuery(sql)) {
-      fail("There should be an exception");
-    } catch (SQLException e) {
-      assertEquals(errorMessage, e.getMessage());
-    }
+    assertEquals(errorMessage, assertQueryFails(statement, sql).getMessage());
   }
 
   public static void concurrentInference(

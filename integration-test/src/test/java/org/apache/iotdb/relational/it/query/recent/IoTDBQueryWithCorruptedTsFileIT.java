@@ -51,7 +51,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.drainResultSet;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -198,23 +200,25 @@ public class IoTDBQueryWithCorruptedTsFileIT {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
-      try {
-        try (ResultSet resultSet =
-            statement.executeQuery("SELECT * FROM " + tableName + " ORDER BY time")) {
-          while (resultSet.next()) {
-            // Consume all rows because corruption may be detected while fetching later result
-            // blocks.
-          }
-        }
-        fail("Expected query on corrupted TsFile to fail");
-      } catch (SQLException e) {
-        assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Failed to read chunk data or load page reader. The TsFile may be corrupted,"
-                        + " please check the logs for the corrupted file path."));
-      }
+      statement.setFetchSize(1);
+      SQLException exception =
+          assertThrows(
+              SQLException.class,
+              () -> {
+                try (ResultSet resultSet =
+                    statement.executeQuery("SELECT * FROM " + tableName + " ORDER BY time")) {
+                  assertTrue(
+                      "Expected an initial row before the corrupted batch", resultSet.next());
+                  drainResultSet(resultSet);
+                }
+              });
+      assertTrue(
+          exception.getMessage(),
+          exception
+              .getMessage()
+              .contains(
+                  "Failed to read chunk data or load page reader. The TsFile may be corrupted,"
+                      + " please check the logs for the corrupted file path."));
     }
   }
 
