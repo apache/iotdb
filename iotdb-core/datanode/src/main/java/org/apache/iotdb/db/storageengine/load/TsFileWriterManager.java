@@ -141,6 +141,7 @@ final class TsFileWriterManager {
   private long wholeFileSealedLength = -1L;
   private long wholeFileTimePartitionStart = Long.MIN_VALUE;
   private boolean wholeFileGeneratedByPipe;
+  private ModificationFile wholeFileModificationFile;
   private TsFileResource wholeFileResource;
   private LoadTsFileProgress wholeFileProgress;
   private TTimePartitionSlot wholeFileTimePartition;
@@ -165,6 +166,11 @@ final class TsFileWriterManager {
 
   File getTaskDir() {
     return taskDir;
+  }
+
+  /** Whether this task stages a complete source TsFile instead of per-partition chunks. */
+  boolean isWholeFileTask() {
+    return wholeFile != null;
   }
 
   boolean hasPendingTsFiles() {
@@ -228,7 +234,11 @@ final class TsFileWriterManager {
           write(chunkData.getTimePartitionSlot(), chunkData);
           break;
         case DELETION:
-          writeDeletion((DeletionData) tsFileData);
+          if (wholeFile != null) {
+            writeWholeFileDeletion((DeletionData) tsFileData);
+          } else {
+            writeDeletion((DeletionData) tsFileData);
+          }
           break;
         default:
           throw new IOException(
@@ -285,6 +295,29 @@ final class TsFileWriterManager {
 
     ensureWholeFile(data);
     appendWholeFile(wholeFile, wholeFileChannel, data);
+  }
+
+  /**
+   * Writes one deletion of a whole-file task to the sidecar of the staged TsFile. {@code
+   * loadNewTsFile} picks that sidecar up on COMMIT, exactly as it does for a chunk-staged file.
+   */
+  private void writeWholeFileDeletion(final DeletionData deletionData) throws IOException {
+    if (wholeFile == null) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_WHOLE_FILE_STAGING_IS_MISSING_THE_TSFILE_OF_TASK_S_AC2FAD2C,
+              taskDir.getAbsolutePath()));
+    }
+    if (wholeFileModificationFile == null) {
+      final File modsFile = ModificationFile.getExclusiveMods(wholeFile);
+      if (!modsFile.exists() && !modsFile.createNewFile()) {
+        throw new IOException(
+            StorageEngineMessages.EXCEPTION_FAILED_TO_CREATE_MODIFICATION_FILE_0D020A0C);
+      }
+      wholeFileModificationFile = new ModificationFile(modsFile, false);
+    }
+    deletionData.writeToModificationFile(wholeFileModificationFile);
   }
 
   private void ensureWholeFile(final WholeFileData data) throws IOException {
@@ -825,6 +858,10 @@ final class TsFileWriterManager {
       wholeFileChannel.close();
       wholeFileChannel = null;
     }
+    if (wholeFileModificationFile != null) {
+      wholeFileModificationFile.close();
+      wholeFileModificationFile = null;
+    }
 
     final TsFileResource resource = new TsFileResource(wholeFile);
     try (final TsFileSequenceReader reader =
@@ -1147,6 +1184,10 @@ final class TsFileWriterManager {
     wholeFileTimePartition = new TTimePartitionSlot(wholeFileTimePartitionStart);
     wholeFileGeneratedByPipe = meta.generatedByPipe;
     wholeFileProgress = new LoadTsFileProgress(wholeFile);
+    final File modsFile = ModificationFile.getExclusiveMods(wholeFile);
+    if (modsFile.isFile()) {
+      wholeFileModificationFile = new ModificationFile(modsFile, false);
+    }
 
     if (new File(wholeFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).isFile()) {
       wholeFileSealedLength = wholeFile.length();
@@ -1225,8 +1266,24 @@ final class TsFileWriterManager {
       }
       wholeFileChannel = null;
     }
+    if (wholeFileModificationFile != null) {
+      try {
+        wholeFileModificationFile.close();
+      } catch (final IOException e) {
+        LOGGER.warn(
+            StorageEngineMessages.CLOSE_MODIFICATION_FILE_ERROR,
+            wholeFileModificationFile.getFile(),
+            e);
+      }
+      wholeFileModificationFile = null;
+    }
     if (!retainStagedFiles) {
-      for (final File staged : new File[] {wholeFile, new File(taskDir, WHOLE_FILE_META_NAME)}) {
+      for (final File staged :
+          new File[] {
+            wholeFile,
+            wholeFile == null ? null : ModificationFile.getExclusiveMods(wholeFile),
+            new File(taskDir, WHOLE_FILE_META_NAME)
+          }) {
         if (staged == null) {
           continue;
         }
@@ -1304,6 +1361,7 @@ final class TsFileWriterManager {
     timePartition2Progress.clear();
     timePartition2ModificationFile.clear();
     wholeFile = null;
+    wholeFileModificationFile = null;
     wholeFileResource = null;
     wholeFileProgress = null;
     wholeFileTimePartition = null;

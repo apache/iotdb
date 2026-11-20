@@ -32,9 +32,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
+import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
 import org.apache.iotdb.db.storageengine.load.splitter.WholeFileData;
@@ -53,6 +56,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -391,6 +395,55 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
         .put(timePartitionSlot, sourceLength);
 
     return dispatchWholeFileSlices(sourceFile, sourceLength, timePartitionSlot, replicaSet, node);
+  }
+
+  /** How many deletion bytes one PIECE carries; the mods themselves are usually small. */
+  private static final int WHOLE_FILE_DELETION_PIECE_SIZE = 1024 * 1024;
+
+  /**
+   * Sends the deletion sidecar of the source TsFile as the existing {@code DeletionData} records.
+   * They are part of the same consensus LOAD transaction, so the receiver stages them next to the
+   * whole-file bytes and {@code loadNewTsFile} applies them on COMMIT.
+   */
+  private boolean dispatchWholeFileDeletions(
+      final File sourceFile,
+      final TTimePartitionSlot timePartitionSlot,
+      final TRegionReplicaSet replicaSet,
+      final LoadSingleTsFileNode node) {
+    final List<ModEntry> deletions;
+    try {
+      deletions = ModificationFile.readAllModifications(sourceFile, true);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          String.format(
+              DataNodeQueryMessages.PARSE_OR_SEND_TSFILE_S_ERROR, sourceFile.getAbsolutePath()),
+          e);
+      return false;
+    }
+    if (deletions.isEmpty()) {
+      return true;
+    }
+
+    long pieceIndex = regionPieceCounts.getOrDefault(replicaSet.getRegionId(), 0L);
+    LoadTsFilePieceNode pieceNode = null;
+    long pieceBytes = 0L;
+    for (final ModEntry deletion : deletions) {
+      final DeletionData data = new DeletionData(deletion);
+      if (pieceNode == null) {
+        pieceNode =
+            LoadTsFilePieceNode.wholeFilePiece(node.getPlanNodeId(), sourceFile, pieceIndex++);
+      } else if (pieceBytes + data.getDataSize() > WHOLE_FILE_DELETION_PIECE_SIZE) {
+        if (!dispatchOnePieceNode(pieceNode, replicaSet)) {
+          return false;
+        }
+        pieceNode =
+            LoadTsFilePieceNode.wholeFilePiece(node.getPlanNodeId(), sourceFile, pieceIndex++);
+        pieceBytes = 0L;
+      }
+      pieceNode.addTsFileData(data);
+      pieceBytes += data.getDataSize();
+    }
+    return pieceNode == null || dispatchOnePieceNode(pieceNode, replicaSet);
   }
 
   private boolean dispatchWholeFileSlices(

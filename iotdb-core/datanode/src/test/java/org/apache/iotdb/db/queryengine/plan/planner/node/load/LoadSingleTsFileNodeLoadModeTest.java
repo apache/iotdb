@@ -95,7 +95,7 @@ public class LoadSingleTsFileNodeLoadModeTest {
   }
 
   @Test
-  public void deletionSidecarKeepsTheSplitPath() throws Exception {
+  public void deletionSidecarStillUsesWholeFileConsensus() throws Exception {
     final TRegionReplicaSet region = region(1, 1, 2, 3);
     final File tsFile = Files.createTempFile("load-mode", ".tsfile").toFile();
     final File mods = ModificationFile.getExclusiveMods(tsFile);
@@ -104,7 +104,7 @@ public class LoadSingleTsFileNodeLoadModeTest {
       final LoadSingleTsFileNode node = nodeWithFile(tsFile, 0L, 1L, false, device("root.sg.d1"));
       final LoadSingleTsFileNode.LoadMode mode =
           node.resolveLoadMode(ignored -> Collections.singletonList(region));
-      Assert.assertEquals(LoadSingleTsFileNode.LoadMode.CONSENSUS_SPLIT, mode);
+      Assert.assertEquals(LoadSingleTsFileNode.LoadMode.CONSENSUS_WHOLE_FILE, mode);
     } finally {
       Files.deleteIfExists(mods.toPath());
       Files.deleteIfExists(tsFile.toPath());

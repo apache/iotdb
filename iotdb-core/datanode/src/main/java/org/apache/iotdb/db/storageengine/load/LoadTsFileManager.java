@@ -338,19 +338,20 @@ public class LoadTsFileManager {
     // of
     // a staged file can be read back command by command.
     final List<LoadTsFileConsensusNode.PieceRef> refs;
+    final boolean wholeFileTask;
     if (stopped) {
       throw newStoppedIOException();
     }
     final Lock readLock = writersLock.readLock();
     readLock.lock();
     try {
-      refs =
-          getOrCreateWriterManager(node.getLoadId())
-              .writePiece(node.getTsFileDataList(), node.getSearchIndex());
+      final TsFileWriterManager writerManager = getOrCreateWriterManager(node.getLoadId());
+      wholeFileTask = writerManager.isWholeFileTask();
+      refs = writerManager.writePiece(node.getTsFileDataList(), node.getSearchIndex());
     } finally {
       readLock.unlock();
     }
-    if (!node.hasWholeFileData() && node.getPieceRefs().isEmpty()) {
+    if (!wholeFileTask && !node.hasWholeFileData() && node.getPieceRefs().isEmpty()) {
       // The chunks of this piece have just been written into the staged file, which recorded where
       // the payload of each of them landed. The WAL entry keeps everything the leader received -
       // device, headers, statistics and layout - and only replaces the payload with those
