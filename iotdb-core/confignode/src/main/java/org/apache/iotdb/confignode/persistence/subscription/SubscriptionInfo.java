@@ -60,6 +60,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicProperty;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.thrift.annotation.Nullable;
@@ -116,6 +117,9 @@ public class SubscriptionInfo implements SnapshotProcessor {
           TopicConstant.START_TIME_KEY,
           TopicConstant.END_TIME_KEY,
           TopicConstant.MODE_KEY,
+          TopicConstant.REALTIME_MODE_KEY,
+          PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY,
+          PipeSourceConstant.SOURCE_REALTIME_MODE_KEY,
           TopicConstant.ORDER_MODE_KEY,
           TopicConstant.FORMAT_KEY,
           TopicConstant.LOOSE_RANGE_KEY,
@@ -235,8 +239,12 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private boolean checkBeforeCreateTopicInternal(TCreateTopicReq createTopicReq)
       throws SubscriptionException {
-    final TopicConfig topicConfig =
-        new TopicConfig(safeTopicAttributes(createTopicReq.getTopicAttributes()));
+    final Map<String, String> topicAttributes =
+        new HashMap<>(safeTopicAttributes(createTopicReq.getTopicAttributes()));
+    final TopicConfig topicConfig = new TopicConfig(topicAttributes);
+    validateDuplicateTopicAttributes(topicConfig);
+    canonicalizeTopicAttributes(topicAttributes);
+    createTopicReq.setTopicAttributes(topicAttributes);
     validateTopicConfig(topicConfig);
 
     if (!isTopicExisted(createTopicReq.getTopicName(), topicConfig.isTableTopic())) {
@@ -329,9 +337,14 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   public void validateBeforeAlteringTopic(TopicMeta topicMeta) throws SubscriptionException {
+    validateBeforeAlteringTopic(topicMeta, false);
+  }
+
+  public void validateBeforeAlteringTopic(
+      TopicMeta topicMeta, final boolean hasExistingSubscriptionPipe) throws SubscriptionException {
     acquireReadLock();
     try {
-      checkBeforeAlteringTopicInternal(topicMeta);
+      checkBeforeAlteringTopicInternal(topicMeta, hasExistingSubscriptionPipe);
     } finally {
       releaseReadLock();
     }
@@ -342,17 +355,22 @@ public class SubscriptionInfo implements SnapshotProcessor {
     validateDuplicateTopicAttributes(new TopicConfig(safeTopicAttributes(updatedAttributes)));
   }
 
-  private void checkBeforeAlteringTopicInternal(TopicMeta topicMeta) throws SubscriptionException {
-    validateTopicConfig(topicMeta.getConfig());
-
+  private void checkBeforeAlteringTopicInternal(
+      TopicMeta topicMeta, final boolean hasExistingSubscriptionPipe) throws SubscriptionException {
     final boolean isTableModel = topicMeta.visibleUnderTableModel();
     if (isTopicExisted(topicMeta.getTopicName(), isTableModel)) {
       final TopicMeta existedTopicMeta =
           topicMetaKeeper.getTopicMeta(topicMeta.getTopicName(), isTableModel);
+      validateTopicConfig(topicMeta.getConfig());
       validateUnsupportedHotUpdatedTopicConfig(
-          topicMeta.getTopicName(), existedTopicMeta.getConfig(), topicMeta.getConfig());
+          topicMeta.getTopicName(),
+          existedTopicMeta.getConfig(),
+          topicMeta.getConfig(),
+          hasExistingSubscriptionPipe);
       return;
     }
+
+    validateTopicConfig(topicMeta.getConfig());
 
     final String exceptionMessage =
         String.format(
@@ -364,6 +382,14 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private Map<String, String> safeTopicAttributes(@Nullable final Map<String, String> attributes) {
     return Objects.nonNull(attributes) ? attributes : Collections.emptyMap();
+  }
+
+  private void canonicalizeTopicAttributes(final Map<String, String> attributes) {
+    final Map<String, String> canonicalAttributes = new HashMap<>();
+    attributes.forEach(
+        (key, value) -> canonicalAttributes.put(TopicProperty.canonicalizeKey(key), value));
+    attributes.clear();
+    attributes.putAll(canonicalAttributes);
   }
 
   private void validateTopicConfig(final TopicConfig topicConfig) throws SubscriptionException {
@@ -387,6 +413,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     validateIncrementalTopicAttributes(topicConfig);
     validateIncrementalProtocolSupport(topicConfig);
+    validateRealtimeMode(topicConfig);
 
     if (topicConfig.isIncrementalMode() && !topicConfig.isRecordFormat()) {
       final String exceptionMessage =
@@ -435,6 +462,48 @@ public class SubscriptionInfo implements SnapshotProcessor {
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
+  }
+
+  private void validateRealtimeMode(final TopicConfig topicConfig) throws SubscriptionException {
+    final String realtimeMode = topicConfig.getRealtimeMode();
+    validateRealtimeModeValue(realtimeMode);
+
+    for (final Map.Entry<String, String> entry : topicConfig.getAttribute().entrySet()) {
+      final String key = entry.getKey();
+      if (Objects.isNull(key)
+          || (!PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY.equalsIgnoreCase(key.trim())
+              && !PipeSourceConstant.SOURCE_REALTIME_MODE_KEY.equalsIgnoreCase(key.trim()))) {
+        continue;
+      }
+
+      final String aliasMode = TopicConfig.normalizeRealtimeMode(entry.getValue());
+      validateRealtimeModeValue(aliasMode);
+      if (!Objects.equals(realtimeMode, aliasMode)) {
+        final String exceptionMessage =
+            String.format(
+                ManagerMessages
+                    .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_REALTIME_MODE_ARG_CONFLICTS_WITH_ARG_ARG_D08CF59B,
+                realtimeMode,
+                key.trim(),
+                aliasMode);
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
+    }
+  }
+
+  private void validateRealtimeModeValue(final String realtimeMode) throws SubscriptionException {
+    if (TopicConfig.isValidRealtimeMode(realtimeMode)) {
+      return;
+    }
+
+    final String exceptionMessage =
+        String.format(
+            ManagerMessages
+                .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_UNSUPPORTED_REALTIME_MODE_ARG_EXPECTED_ONE_OF_STREAM_BATCH_79399284,
+            realtimeMode);
+    LOGGER.warn(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
   }
 
   private void validateTopicDoesNotOnlySelectAuditDatabase(final TopicConfig topicConfig)
@@ -753,7 +822,10 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private void validateUnsupportedHotUpdatedTopicConfig(
-      final String topicName, final TopicConfig existedConfig, final TopicConfig updatedConfig)
+      final String topicName,
+      final TopicConfig existedConfig,
+      final TopicConfig updatedConfig,
+      final boolean hasExistingSubscriptionPipe)
       throws SubscriptionException {
     final String existedMode = existedConfig.getMode();
     final String updatedMode = updatedConfig.getMode();
@@ -764,6 +836,19 @@ public class SubscriptionInfo implements SnapshotProcessor {
                   .EXCEPTION_FAILED_TO_ALTER_TOPIC_ARG_CHANGING_ARG_IS_NOT_SUPPORTED_BECAUSE_EXISTING_SUBSCRIPTION_RUNTIMES_DO_NOT_HOT_REFRESH_SOURCE_MODE_F27410E6,
               topicName,
               TopicConstant.MODE_KEY);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+
+    if (hasExistingSubscriptionPipe
+        && !Objects.equals(
+            existedConfig.getEffectiveRealtimeMode(), updatedConfig.getEffectiveRealtimeMode())) {
+      final String exceptionMessage =
+          String.format(
+              ManagerMessages
+                  .EXCEPTION_FAILED_TO_ALTER_TOPIC_ARG_CHANGING_ARG_IS_NOT_SUPPORTED_BECAUSE_EXISTING_SUBSCRIPTION_RUNTIMES_DO_NOT_HOT_REFRESH_SOURCE_MODE_F27410E6,
+              topicName,
+              TopicConstant.REALTIME_MODE_KEY);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }

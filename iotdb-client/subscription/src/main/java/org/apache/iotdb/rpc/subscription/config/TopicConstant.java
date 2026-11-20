@@ -52,6 +52,13 @@ public class TopicConstant {
   public static final String MODE_INCREMENTAL_VALUE = "incremental";
   public static final String MODE_DEFAULT_VALUE = MODE_INITIAL_VALUE;
 
+  public static final String REALTIME_MODE_KEY = "realtime.mode";
+  public static final String REALTIME_MODE_STREAM_VALUE = "stream";
+  public static final String REALTIME_MODE_BATCH_VALUE = "batch";
+  public static final String REALTIME_MODE_DEFAULT_VALUE = REALTIME_MODE_STREAM_VALUE;
+  public static final String EXTRACTOR_REALTIME_MODE_KEY = "extractor.realtime.mode";
+  public static final String SOURCE_REALTIME_MODE_KEY = "source.realtime.mode";
+
   static final String LEGACY_MODE_LIVE_VALUE = "live";
   static final String LEGACY_MODE_CONSENSUS_VALUE = "consensus";
 

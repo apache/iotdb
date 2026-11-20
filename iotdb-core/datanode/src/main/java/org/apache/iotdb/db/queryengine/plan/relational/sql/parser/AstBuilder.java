@@ -273,6 +273,7 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
+import org.apache.iotdb.rpc.subscription.config.TopicProperty;
 
 import com.google.common.collect.ImmutableList;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -1205,9 +1206,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       List<RelationalSqlParser.TopicAttributeClauseContext> contexts) {
     final Map<String, String> tppicMap = new HashMap<>();
     for (RelationalSqlParser.TopicAttributeClauseContext context : contexts) {
-      tppicMap.put(
-          ((StringLiteral) visit(context.topicKey)).getValue(),
-          ((StringLiteral) visit(context.topicValue)).getValue());
+      final String key =
+          TopicProperty.canonicalizeKey(((StringLiteral) visit(context.topicKey)).getValue());
+      if (tppicMap.containsKey(key)) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578,
+                key));
+      }
+      tppicMap.put(key, ((StringLiteral) visit(context.topicValue)).getValue());
     }
     return tppicMap;
   }

@@ -137,6 +137,19 @@ public class StatementGeneratorTest {
   }
 
   @Test
+  public void testDuplicateRealtimeModeAttributesAreRejected() {
+    for (final String statement :
+        new String[] {
+          "CREATE TOPIC topic1 WITH ('realtime.mode'='hybrid','REALTIME.MODE'='batch')",
+          "ALTER TOPIC topic1 WITH ('realtime.mode'='hybrid','REALTIME.MODE'='batch')"
+        }) {
+      Assert.assertThrows(
+          SemanticException.class,
+          () -> StatementGenerator.createStatement(statement, ZonedDateTime.now().getOffset()));
+    }
+  }
+
+  @Test
   public void testAlterTopicStatement() {
     final Statement statement =
         StatementGenerator.createStatement(

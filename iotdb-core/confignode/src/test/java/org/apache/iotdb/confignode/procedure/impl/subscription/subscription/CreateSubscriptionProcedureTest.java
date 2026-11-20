@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
@@ -71,6 +72,67 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class CreateSubscriptionProcedureTest {
+  @Test
+  public void realtimeModeIsPreservedInCreatedSubscriptionPipe() throws Exception {
+    for (final String[] modeAndExpectedValue :
+        new String[][] {
+          {null, TopicConstant.REALTIME_MODE_STREAM_VALUE},
+          {TopicConstant.REALTIME_MODE_BATCH_VALUE, TopicConstant.REALTIME_MODE_BATCH_VALUE}
+        }) {
+      final Map<String, String> topicAttributes = new HashMap<>();
+      topicAttributes.put(TopicConstant.PATH_KEY, "root.**");
+      if (modeAndExpectedValue[0] != null) {
+        topicAttributes.put(TopicConstant.REALTIME_MODE_KEY, modeAndExpectedValue[0]);
+      }
+      final TopicMeta topicMeta = new TopicMeta("test_topic", 1L, topicAttributes);
+      final Map<String, String> consumerAttributes = new HashMap<>();
+      consumerAttributes.put("username", "user");
+      consumerAttributes.put("password", "password");
+      final ConsumerGroupMeta consumerGroupMeta =
+          new ConsumerGroupMeta(
+              "test_consumer_group", 1L, new ConsumerMeta("old_consumer", 1L, consumerAttributes));
+
+      final SubscriptionInfo subscriptionInfo = Mockito.mock(SubscriptionInfo.class);
+      Mockito.when(subscriptionInfo.getConsumerGroupMeta("test_consumer_group"))
+          .thenReturn(consumerGroupMeta);
+      Mockito.when(subscriptionInfo.deepCopyConsumerGroupMeta("test_consumer_group"))
+          .thenAnswer(invocation -> consumerGroupMeta.deepCopy());
+      Mockito.when(subscriptionInfo.deepCopyTopicMeta("test_topic", false)).thenReturn(topicMeta);
+
+      final PipeTaskInfo pipeTaskInfo = Mockito.mock(PipeTaskInfo.class);
+      Mockito.when(pipeTaskInfo.checkBeforeCreatePipe(Mockito.any(TCreatePipeReq.class)))
+          .thenReturn(true);
+
+      final CreateSubscriptionProcedure procedure =
+          new CreateSubscriptionProcedure(
+              new TSubscribeReq(
+                  "old_consumer", "test_consumer_group", Collections.singleton("test_topic")));
+      setField(procedure, "subscriptionInfo", new AtomicReference<>(subscriptionInfo));
+      setField(procedure, "pipeTaskInfo", new AtomicReference<>(pipeTaskInfo));
+      procedure.executeFromValidate(mockCreateSubscriptionValidationEnv());
+
+      Assert.assertEquals(1, procedure.getCreatePipeProcedures().size());
+      Assert.assertEquals(
+          modeAndExpectedValue[1],
+          procedure
+              .getCreatePipeProcedures()
+              .get(0)
+              .getPipeStaticMeta()
+              .getSourceParameters()
+              .getStringByKeys(
+                  PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY,
+                  PipeSourceConstant.SOURCE_REALTIME_MODE_KEY));
+      Assert.assertFalse(
+          procedure
+              .getCreatePipeProcedures()
+              .get(0)
+              .getPipeStaticMeta()
+              .getSourceParameters()
+              .getAttribute()
+              .containsKey(PipeSourceConstant.SOURCE_REALTIME_MODE_KEY));
+    }
+  }
+
   @Test
   public void serializeDeserializeTest() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();

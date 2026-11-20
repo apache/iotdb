@@ -43,6 +43,7 @@ public enum TopicProperty {
   RETENTION_MS(TopicConstant.RETENTION_MS_KEY, false),
   RETAIN_PROGRESS_AFTER_UNSUBSCRIBE(TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, false),
   MODE(TopicConstant.MODE_KEY, false),
+  REALTIME_MODE(TopicConstant.REALTIME_MODE_KEY, false),
   ORDER_MODE(TopicConstant.ORDER_MODE_KEY, false),
   FORMAT(TopicConstant.FORMAT_KEY, false),
   RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS(
