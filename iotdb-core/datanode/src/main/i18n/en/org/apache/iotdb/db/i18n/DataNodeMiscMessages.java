@@ -30,6 +30,10 @@ public final class DataNodeMiscMessages {
   public static final String MESSAGE_MISSING_LOAD_TSFILE_SLICE_METADATA_ARG_DE4333DA =
       "Missing Load TsFile slice metadata: %s";
 
+  public static final String
+      EXCEPTION_ACCOUNTED_RAM_SIZES_MUST_BE_NON_NEGATIVE_ARRAYRAMSIZE_ARG_STRUCTURERAMSIZE_ARG_76917547 =
+          "Accounted RAM sizes must be non-negative: arrayRamSize=%d, structureRamSize=%d";
+
     public static final String INVALID_PIPE_NAME =
       "Invalid pipeName";
   public static final String READ_OBJECT_CONTENT_FROM_REMOTE_FILE =

@@ -1461,7 +1461,23 @@ public abstract class AlignedTVList extends TVList {
     return accountedStructureRamSize;
   }
 
+  /**
+   * Records the array and structure RAM sizes (in bytes) that have already been reconciled into the
+   * owning MemTable's WriteMemoryBlocks.
+   *
+   * @param arrayRamSize non-negative accounted array RAM size in bytes
+   * @param structureRamSize non-negative accounted structure RAM size in bytes
+   * @throws IllegalArgumentException if either size is negative
+   */
   public synchronized void setAccountedRamSize(long arrayRamSize, long structureRamSize) {
+    if (arrayRamSize < 0 || structureRamSize < 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_ACCOUNTED_RAM_SIZES_MUST_BE_NON_NEGATIVE_ARRAYRAMSIZE_ARG_STRUCTURERAMSIZE_ARG_76917547,
+              arrayRamSize,
+              structureRamSize));
+    }
     this.accountedArrayRamSize = arrayRamSize;
     this.accountedStructureRamSize = structureRamSize;
     this.ramSizeAccounted = true;

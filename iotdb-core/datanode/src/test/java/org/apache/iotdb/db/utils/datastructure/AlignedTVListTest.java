@@ -981,10 +981,16 @@ public class AlignedTVListTest {
     buffer.flip();
 
     AlignedTVList restored =
-        AlignedTVList.deserialize(new DataInputStream(new ByteArrayInputStream(buffer.array())));
+        AlignedTVList.deserialize(
+            new DataInputStream(new ByteArrayInputStream(buffer.array(), 0, buffer.limit())));
     Assert.assertTrue(restored.isRamSizeAccounted());
     Assert.assertEquals(restored.getArrayRamSize(), restored.getAccountedArrayRamSize());
     Assert.assertEquals(restored.getStructureRamSize(), restored.getAccountedStructureRamSize());
+
+    Assert.assertThrows(
+        IllegalArgumentException.class, () -> restored.setAccountedRamSize(-1L, 0L));
+    Assert.assertThrows(
+        IllegalArgumentException.class, () -> restored.setAccountedRamSize(0L, -1L));
 
     restored.setAccountedRamSize(128L, 256L);
     Assert.assertTrue(restored.isRamSizeAccounted());

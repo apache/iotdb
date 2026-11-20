@@ -1519,10 +1519,6 @@ public class TsFileProcessor {
       return getMemoryCorrection(estimatedMemTableIncrement, false);
     }
 
-    long reconcileAndGetMemoryCorrection(long estimatedMemTableIncrement) {
-      return getMemoryCorrection(estimatedMemTableIncrement, true);
-    }
-
     private long getMemoryCorrection(long estimatedMemTableIncrement, boolean commitAccounted) {
       structureRamCost = 0;
       return (deviceId == null
@@ -1530,6 +1526,10 @@ public class TsFileProcessor {
               : getRamCost(memTable, deviceId, commitAccounted))
           - ramCostBeforeWrite
           - estimatedMemTableIncrement;
+    }
+
+    long reconcileAndGetMemoryCorrection(long estimatedMemTableIncrement) {
+      return getMemoryCorrection(estimatedMemTableIncrement, true);
     }
 
     private long getRamCostBeforeWrite(IMemTable memTable, Set<IDeviceID> deviceIds) {
