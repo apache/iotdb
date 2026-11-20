@@ -364,7 +364,7 @@ public class WALNode implements IWALNode {
   private class DeleteOutdatedFileTask implements Runnable {
     private File[] sortedWalFilesExcludingLast;
 
-    private List<MemTableInfo> activeOrPinnedMemTables;
+    private List<MemTableInfo> activeMemTables;
     private long cachedSafelyDeletedSearchIndex;
     private int fileIndexAfterFilterSafelyDeleteIndex;
 
@@ -396,7 +396,7 @@ public class WALNode implements IWALNode {
       }
       this.sortedWalFilesExcludingLast =
           Arrays.copyOfRange(allWalFilesOfOneNode, 0, allWalFilesOfOneNode.length - 1);
-      this.activeOrPinnedMemTables = checkpointManager.activeOrPinnedMemTables();
+      this.activeMemTables = checkpointManager.activeMemTables();
       updateFileIndexAfterFilterSafelyDeleteIndex();
       this.successfullyDeleted = new ArrayList<>();
       this.deleteFileSize = 0;
@@ -450,15 +450,15 @@ public class WALNode implements IWALNode {
     private void updateEffectiveInfoRationAndUpdateMetric() {
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
-      MemTableInfo oldestUnpinnedMemTableInfo = checkpointManager.getOldestMemTableInfo();
+      MemTableInfo oldestMemTableInfo = checkpointManager.getOldestMemTableInfo();
       long avgFileSize =
           getFileNum() != 0
               ? getDiskUsage() / getFileNum()
               : config.getWalFileSizeThresholdInByte();
       long totalCost =
-          oldestUnpinnedMemTableInfo == null
+          oldestMemTableInfo == null
               ? costOfActiveMemTables
-              : (getCurrentWALFileVersion() - oldestUnpinnedMemTableInfo.getFirstFileVersionId())
+              : (getCurrentWALFileVersion() - oldestMemTableInfo.getFirstFileVersionId())
                   * avgFileSize;
       if (costOfActiveMemTables == 0 || totalCost == 0) {
         effectiveInfoRatio = 1.0d;
@@ -676,7 +676,7 @@ public class WALNode implements IWALNode {
       }
     }
 
-    public boolean isContainsActiveOrPinnedMemTable(Long versionId) {
+    public boolean isContainsActiveMemTable(Long versionId) {
       Set<Long> memTableIdsOfCurrentWal = buffer.getMemTableIds(versionId);
       // A null result means that the WAL is still being written or its metadata could not be read.
       // Keep the file in either case because its memTable ids are unknown.
@@ -684,9 +684,7 @@ public class WALNode implements IWALNode {
         return true;
       }
       return !Collections.disjoint(
-          activeOrPinnedMemTables.stream()
-              .map(MemTableInfo::getMemTableId)
-              .collect(Collectors.toSet()),
+          activeMemTables.stream().map(MemTableInfo::getMemTableId).collect(Collectors.toSet()),
           memTableIdsOfCurrentWal);
     }
 
@@ -698,7 +696,7 @@ public class WALNode implements IWALNode {
       return (fileArrIdx < fileIndexAfterFilterSafelyDeleteIndex
               || walFileStatus == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)
           && versionId < subscriptionRetainedMinVersionId
-          && !isContainsActiveOrPinnedMemTable(versionId);
+          && !isContainsActiveMemTable(versionId);
     }
   }
 
