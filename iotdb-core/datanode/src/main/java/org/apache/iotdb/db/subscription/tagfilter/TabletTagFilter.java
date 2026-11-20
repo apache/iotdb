@@ -70,9 +70,11 @@ public class TabletTagFilter {
     // Upstream event conversion supplies a structurally valid Tablet. Only check the metadata
     // needed to bind the predicate here; do not rescan every value array and null bitmap.
     final List<ColumnCategory> categories = getColumnCategories(tablet, schemas.size());
-    validateBinding(effectiveMatcher, databaseName, tablet.getTableName());
+    final boolean schemaBound =
+        validateBinding(effectiveMatcher, databaseName, tablet.getTableName());
     final Map<String, Integer> resolvedFields =
-        resolveReferencedTagColumns(effectiveMatcher.getReferencedFields(), schemas, categories);
+        resolveReferencedTagColumns(
+            effectiveMatcher.getReferencedFields(), schemas, categories, schemaBound);
 
     final int[] selectedRows = new int[tablet.getRowSize()];
     int selectedRowCount = 0;
@@ -114,13 +116,20 @@ public class TabletTagFilter {
     return copySelectedRows(tablet, schemas, categories, selectedRows, selectedRowCount);
   }
 
-  private static void validateBinding(
+  private static boolean validateBinding(
       final TagFilterMatcher matcher, final String databaseName, final String tableName) {
-    if (!matcher.isBindingEnforced()) {
-      return;
-    }
     final TagFilterMatcher.TableBinding binding =
         matcher.getTableBindings().get(TagFilterMatcher.TableKey.of(databaseName, tableName));
+    if (!matcher.isBindingEnforced()) {
+      if (binding == null) {
+        return false;
+      }
+      if (binding.isFailed()) {
+        throw TagFilterEvaluationException.schemaBinding(binding.getFailureReason());
+      }
+      validateBindingTagColumns(matcher, binding);
+      return true;
+    }
     if (binding == null) {
       throw TagFilterEvaluationException.schemaBinding(
           DataNodeMiscMessages.EXCEPTION_TABLE_BINDING_IS_NOT_AVAILABLE_882C5F2F);
@@ -128,6 +137,12 @@ public class TabletTagFilter {
     if (binding.isFailed()) {
       throw TagFilterEvaluationException.schemaBinding(binding.getFailureReason());
     }
+    validateBindingTagColumns(matcher, binding);
+    return true;
+  }
+
+  private static void validateBindingTagColumns(
+      final TagFilterMatcher matcher, final TagFilterMatcher.TableBinding binding) {
     for (final Identifier identifier : matcher.getReferencedFields()) {
       final String normalizedName = identifier.getValue().toLowerCase(Locale.ROOT);
       if (!binding.getTagNames().contains(normalizedName)) {
@@ -140,7 +155,8 @@ public class TabletTagFilter {
   private static Map<String, Integer> resolveReferencedTagColumns(
       final List<Identifier> referencedFields,
       final List<IMeasurementSchema> schemas,
-      final List<ColumnCategory> categories) {
+      final List<ColumnCategory> categories,
+      final boolean schemaBound) {
     final Map<String, Integer> exactColumns = new HashMap<>();
     final Map<String, Integer> normalizedColumns = new HashMap<>();
     for (int i = 0; i < schemas.size(); i++) {
@@ -156,6 +172,11 @@ public class TabletTagFilter {
               ? exactColumns.get(identifier.getValue())
               : normalizedColumns.get(identifier.getValue().toLowerCase(Locale.ROOT));
       if (Objects.isNull(columnIndex)) {
+        if (schemaBound) {
+          // Table schema binding already confirmed this identifier is a valid TAG column; older
+          // tablets written before ALTER TABLE ADD COLUMN treat the absent TAG column as NULL.
+          continue;
+        }
         throw TagFilterEvaluationException.schemaBinding(
             DataNodeMiscMessages.EXCEPTION_REFERENCED_TAG_COLUMN_IS_MISSING_55E07377);
       }
