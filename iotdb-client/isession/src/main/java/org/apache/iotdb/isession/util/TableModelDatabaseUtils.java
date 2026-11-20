@@ -24,6 +24,8 @@ import java.util.regex.Pattern;
 /** Utilities for table-model database names. */
 public final class TableModelDatabaseUtils {
 
+  public static final int MAX_DATABASE_NAME_LENGTH = 64;
+
   private static final Pattern DATABASE_NAME_PATTERN =
       Pattern.compile("([a-zA-Z0-9`_\\-\\u2E80-\\u9FFF]+)");
 

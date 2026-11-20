@@ -178,7 +178,6 @@ public class Session implements ISession {
   private static final double CONVERT_THRESHOLD = 0.5;
   private static final double SAMPLE_PROPORTION = 0.05;
   private static final int MIN_RECORDS_SIZE = 40;
-  private static final int MAX_TABLE_MODEL_DATABASE_NAME_LENGTH = 64;
   private static final String UNSPECIFIED_DATABASE_KEY = "";
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
@@ -1635,7 +1634,7 @@ public class Session implements ISession {
         if (connection != null) {
           connection.forceCloseTransport();
         }
-        tableModelDeviceIdToEndpoint.remove(deviceId);
+        resolvedDatabaseToEndpoint.remove(deviceId, endpoint);
         return;
       }
       if (connection == null) {
@@ -1658,13 +1657,14 @@ public class Session implements ISession {
     }
     String normalizedDatabase = database.toLowerCase(Locale.ENGLISH);
     if (!TableModelDatabaseUtils.isValidDatabaseName(
-        normalizedDatabase, MAX_TABLE_MODEL_DATABASE_NAME_LENGTH)) {
+        normalizedDatabase, TableModelDatabaseUtils.MAX_DATABASE_NAME_LENGTH)) {
       throw new StatementExecutionException(
           new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode())
               .setMessage(
                   String.format(
-                      SessionMessages.EXCEPTION_INVALID_TABLE_MODEL_DATABASE_NAME_ARG_30813145,
-                      database)));
+                      SessionMessages.EXCEPTION_INVALID_TABLE_MODEL_DATABASE_NAME_ARG_ARG_BC5566E2,
+                      database,
+                      TableModelDatabaseUtils.MAX_DATABASE_NAME_LENGTH)));
     }
     return normalizedDatabase;
   }
@@ -3149,19 +3149,14 @@ public class Session implements ISession {
       }
     }
     if (relationalTabletGroup.size() == 1) {
-      insertRelationalTabletOnce(
-          relationalTabletGroup, database, routeDatabase, databaseToEndpoint);
+      insertRelationalTabletOnce(relationalTabletGroup, database, routeDatabase);
     } else {
-      insertRelationalTabletByGroup(
-          relationalTabletGroup, database, routeDatabase, databaseToEndpoint);
+      insertRelationalTabletByGroup(relationalTabletGroup, database, routeDatabase);
     }
   }
 
   private void insertRelationalTabletOnce(
-      Map<SessionConnection, Tablet> relationalTabletGroup,
-      String database,
-      String routeDatabase,
-      Map<IDeviceID, TEndPoint> databaseToEndpoint)
+      Map<SessionConnection, Tablet> relationalTabletGroup, String database, String routeDatabase)
       throws IoTDBConnectionException, StatementExecutionException {
     Map.Entry<SessionConnection, Tablet> entry = relationalTabletGroup.entrySet().iterator().next();
     SessionConnection connection = entry.getKey();
@@ -3207,10 +3202,7 @@ public class Session implements ISession {
     "squid:S3776"
   }) // ignore Cognitive Complexity of methods should not be too high
   private void insertRelationalTabletByGroup(
-      Map<SessionConnection, Tablet> relationalTabletGroup,
-      String database,
-      String routeDatabase,
-      Map<IDeviceID, TEndPoint> databaseToEndpoint)
+      Map<SessionConnection, Tablet> relationalTabletGroup, String database, String routeDatabase)
       throws IoTDBConnectionException, StatementExecutionException {
     List<CompletableFuture<Void>> completableFutures =
         relationalTabletGroup.entrySet().stream()
