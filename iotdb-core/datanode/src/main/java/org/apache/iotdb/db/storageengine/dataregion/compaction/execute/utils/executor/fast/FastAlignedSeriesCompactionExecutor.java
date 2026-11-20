@@ -448,8 +448,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
    * PARTIAL_DELETED means that there is data on this page been deleted. <br>
    * ALL_DELETED means that all data on this page has been deleted.
    *
-   * <p>Notice: If is aligned page, return ALL_DELETED if and only if all value pages are deleted.
-   * Return NONE_DELETED if and only if no data exists on all value pages is deleted
+   * <p>Notice: fully deleted value pages are written as empty pages when flushing directly.
    */
   protected ModifiedStatus isPageModified(PageElement pageElement) {
     long startTime = pageElement.getStartTime();

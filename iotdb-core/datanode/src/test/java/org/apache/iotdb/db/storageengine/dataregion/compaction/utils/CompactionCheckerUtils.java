@@ -648,7 +648,7 @@ public class CompactionCheckerUtils {
       while (reader.hasNextBatch()) {
         TsBlock batchData = reader.nextBatch();
         IPointReader pointReader;
-        if (path instanceof AlignedPath) {
+        if (path instanceof AlignedPath || path instanceof AlignedFullPath) {
           pointReader = batchData.getTsBlockAlignedRowIterator();
         } else {
           pointReader = batchData.getTsBlockSingleColumnIterator();
