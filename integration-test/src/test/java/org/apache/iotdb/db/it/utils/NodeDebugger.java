@@ -195,6 +195,14 @@ public final class NodeDebugger implements AutoCloseable {
     }
   }
 
+  /** Stops new entry pauses while keeping the currently matched thread suspended. */
+  public void disableFurtherEntryPauses() {
+    Assert.assertNotNull("A matched entry pause is required", pausedThread);
+    vm.eventRequestManager().breakpointRequests().forEach(EventRequest::disable);
+    vm.eventRequestManager().classPrepareRequests().forEach(EventRequest::disable);
+    vm.eventRequestManager().methodEntryRequests().forEach(EventRequest::disable);
+  }
+
   /** Changes an entry pause into an exit pause on the same method and connection. */
   public void pauseOnExit() {
     vm.eventRequestManager()

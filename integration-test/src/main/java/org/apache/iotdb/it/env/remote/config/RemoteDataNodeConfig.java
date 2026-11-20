@@ -65,6 +65,12 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setLoadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber(
+      int loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad) {
     return this;
   }
