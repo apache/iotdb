@@ -352,11 +352,10 @@ public class FileLoaderUtils {
             || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
 
     Map<String, TimeseriesMetadata> metadata =
-        cache.getTimeseriesMetadata(
+        cache.getDeviceTimeseriesMetadata(
             resource.getTsFilePath(),
             resource.getTsFileID(),
             alignedPath.getDeviceId(),
-            allSensors,
             allSensors,
             ignoreNotExists,
             context.isDebug(),

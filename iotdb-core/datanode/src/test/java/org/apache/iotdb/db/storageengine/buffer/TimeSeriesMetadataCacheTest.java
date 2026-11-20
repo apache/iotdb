@@ -297,7 +297,7 @@ public class TimeSeriesMetadataCacheTest {
     }
   }
 
-  private static Map<String, TimeseriesMetadata> getTimeseriesMetadata(
+  private static Map<String, TimeseriesMetadata> getDeviceTimeseriesMetadata(
       TimeSeriesMetadataCache cache,
       String filePath,
       TsFileID tsFileID,
@@ -305,11 +305,10 @@ public class TimeSeriesMetadataCacheTest {
       Set<String> allSensors,
       boolean ignoreNotExists)
       throws IOException {
-    return cache.getTimeseriesMetadata(
+    return cache.getDeviceTimeseriesMetadata(
         filePath,
         tsFileID,
         deviceID,
-        allSensors,
         allSensors,
         ignoreNotExists,
         false,
@@ -389,7 +388,7 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> result =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
 
       assertNotNull(result.get(""));
       assertEquals("", result.get("").getMeasurementId());
@@ -402,7 +401,7 @@ public class TimeSeriesMetadataCacheTest {
       // a second lookup of cached measurements must be served without touching the reader again
       Set<String> cachedSensors = new HashSet<>(Arrays.asList("", "s1"));
       Map<String, TimeseriesMetadata> cachedResult =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, cachedSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, cachedSensors, false);
       assertNotNull(cachedResult.get("s1"));
       Mockito.verify(reader, Mockito.times(1))
           .readTimeseriesMetadataForMeasurements(
@@ -464,7 +463,7 @@ public class TimeSeriesMetadataCacheTest {
           .thenReturn(BloomFilter.getEmptyBloomFilter(0.05, 1));
 
       Map<String, TimeseriesMetadata> result =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNull(result.get(""));
       Mockito.verify(reader, Mockito.never())
           .readTimeseriesMetadataForMeasurements(
@@ -514,7 +513,7 @@ public class TimeSeriesMetadataCacheTest {
 
       // ignoreNotExists keeps the missing device silent, but caches nothing
       Map<String, TimeseriesMetadata> ignored =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true);
       assertNull(ignored.get(""));
       assertNull(ignored.get("s1"));
       assertNull(ignored.get("s2"));
@@ -522,7 +521,8 @@ public class TimeSeriesMetadataCacheTest {
       // a normal query must surface the reader's failure instead of a silently empty device
       assertThrows(
           IOException.class,
-          () -> getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
+          () ->
+              getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
     } finally {
       cache.clear();
       bloomFilterCache.clear();
@@ -580,7 +580,7 @@ public class TimeSeriesMetadataCacheTest {
       cache.clear();
 
       Map<String, TimeseriesMetadata> batch =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
 
       assertEquals(allSensors.size(), batch.size());
       for (String measurement : allSensors) {
@@ -651,7 +651,7 @@ public class TimeSeriesMetadataCacheTest {
       Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class))).thenReturn(bloomFilter);
 
       Map<String, TimeseriesMetadata> result =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
 
       assertNull(result.get(""));
       assertNull(result.get("s1"));
@@ -712,14 +712,14 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> first =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNotNull(first.get("s2"));
 
       // evict one measurement: the next call reads only the group that holds it, and that one
       // read also resolves the other members of the group
       cache.remove(new TimeSeriesMetadataCacheKey(tsFileID, deviceID, "s2"));
       Map<String, TimeseriesMetadata> second =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
 
       assertNotNull(second.get("s2"));
       Mockito.verify(reader, Mockito.times(2))
@@ -764,14 +764,15 @@ public class TimeSeriesMetadataCacheTest {
           .thenThrow(new IOException("device absent"));
 
       Map<String, TimeseriesMetadata> ignored =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true);
       assertNull(ignored.get(""));
       assertNull(ignored.get("s1"));
 
       // ignoreNotExists must not write NULL placeholders: a normal query still has to read
       assertThrows(
           IOException.class,
-          () -> getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
+          () ->
+              getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
       // the empty group read resolves the time column as absent, which ends the load for the
       // device, plus the failing normal query
       Mockito.verify(reader, Mockito.times(2))
@@ -819,7 +820,7 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> first =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNotNull(first.get("s5"));
 
       // evict three measurements: they share one leaf group, so a single read must resolve them
@@ -828,7 +829,7 @@ public class TimeSeriesMetadataCacheTest {
       }
 
       Map<String, TimeseriesMetadata> second =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNotNull(second.get("s2"));
       assertNotNull(second.get("s3"));
       assertNotNull(second.get("s4"));
@@ -886,12 +887,12 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> first =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNull(first.get("s2"));
 
       // the reader confirmed s2 absent, so the second query is answered from the cache alone
       Map<String, TimeseriesMetadata> second =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNull(second.get("s2"));
       Mockito.verify(reader, Mockito.times(1))
           .readTimeseriesMetadataForMeasurements(
@@ -939,13 +940,13 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> first =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNull(first.get("s1"));
 
       // s1 was excluded by the bloom filter, not read, so it is probed again instead of being
       // remembered; the second query still needs no reader call
       Map<String, TimeseriesMetadata> second =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNull(second.get("s1"));
       Mockito.verify(reader, Mockito.times(1))
           .readTimeseriesMetadataForMeasurements(
@@ -1007,7 +1008,7 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       // warm both entries
-      getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+      getDeviceTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
 
       // evict only the time column, and drop the bloom cache so the next call reloads it
       cache.remove(new TimeSeriesMetadataCacheKey(tsFileID, deviceID, ""));
@@ -1015,16 +1016,8 @@ public class TimeSeriesMetadataCacheTest {
 
       QueryContext queryContext = new QueryContext(false, false);
       Map<String, TimeseriesMetadata> result =
-          cache.getTimeseriesMetadata(
-              filePath,
-              tsFileID,
-              deviceID,
-              allSensors,
-              allSensors,
-              false,
-              false,
-              queryContext,
-              null);
+          cache.getDeviceTimeseriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, false, false, queryContext, null);
       assertNotNull(result.get(""));
       assertNotNull(result.get("s1"));
       assertTrue(
@@ -1083,11 +1076,10 @@ public class TimeSeriesMetadataCacheTest {
     try {
       Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
       Map<String, TimeseriesMetadata> result =
-          cache.getTimeseriesMetadata(
+          cache.getDeviceTimeseriesMetadata(
               filePath,
               resource.getTsFileID(),
               deviceID,
-              allSensors,
               allSensors,
               false,
               false,
