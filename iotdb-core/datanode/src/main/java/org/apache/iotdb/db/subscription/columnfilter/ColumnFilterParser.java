@@ -208,11 +208,26 @@ public class ColumnFilterParser {
     @Override
     public Expression visitLogicalBinary(
         final SubscriptionColumnFilterParser.LogicalBinaryContext context) {
-      final Expression left = visit(context.booleanExpression(0));
-      final Expression right = visit(context.booleanExpression(1));
-      return Objects.nonNull(context.AND())
-          ? LogicalExpression.and(left, right)
-          : LogicalExpression.or(left, right);
+      final LogicalExpression.Operator operator =
+          Objects.nonNull(context.AND())
+              ? LogicalExpression.Operator.AND
+              : LogicalExpression.Operator.OR;
+      final List<Expression> terms = new ArrayList<>();
+      appendLogicalTerms(terms, operator, visit(context.booleanExpression(0)));
+      appendLogicalTerms(terms, operator, visit(context.booleanExpression(1)));
+      return new LogicalExpression(operator, terms);
+    }
+
+    private static void appendLogicalTerms(
+        final List<Expression> terms,
+        final LogicalExpression.Operator operator,
+        final Expression expression) {
+      if (expression instanceof LogicalExpression
+          && ((LogicalExpression) expression).getOperator() == operator) {
+        terms.addAll(((LogicalExpression) expression).getTerms());
+      } else {
+        terms.add(expression);
+      }
     }
 
     @Override

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.tagfilter;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.junit.Assert;
@@ -27,6 +28,8 @@ import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class TagFilterParserTest {
 
@@ -94,6 +97,50 @@ public class TagFilterParserTest {
     Assert.assertFalse(evaluate("NOT (region = \"north\" OR true)", values));
     Assert.assertTrue(evaluate("NOT (false AND region = \"north\")", values));
     Assert.assertFalse(evaluate("NOT (true OR region = \"north\")", values));
+  }
+
+  @Test
+  public void testFlatLogicalChainsDoNotExceedMaxAstDepth() throws Exception {
+    final String orChain =
+        IntStream.range(0, 40)
+            .mapToObj(i -> "region = \"r" + i + "\"")
+            .collect(Collectors.joining(" OR "));
+    final Expression orExpression = PARSER.parseAndValidate(orChain);
+    Assert.assertTrue(orExpression instanceof LogicalExpression);
+    Assert.assertEquals(
+        LogicalExpression.Operator.OR, ((LogicalExpression) orExpression).getOperator());
+    Assert.assertEquals(40, ((LogicalExpression) orExpression).getTerms().size());
+    Assert.assertTrue(TagFilterEvaluator.evaluate(orExpression, identifier -> "r39"));
+    Assert.assertFalse(TagFilterEvaluator.evaluate(orExpression, identifier -> "r40"));
+
+    final String andChain =
+        IntStream.range(0, 40)
+            .mapToObj(i -> "region <> \"bad" + i + "\"")
+            .collect(Collectors.joining(" AND "));
+    final Expression andExpression = PARSER.parseAndValidate(andChain);
+    Assert.assertTrue(andExpression instanceof LogicalExpression);
+    Assert.assertEquals(
+        LogicalExpression.Operator.AND, ((LogicalExpression) andExpression).getOperator());
+    Assert.assertEquals(40, ((LogicalExpression) andExpression).getTerms().size());
+    Assert.assertTrue(TagFilterEvaluator.evaluate(andExpression, identifier -> "good"));
+    Assert.assertFalse(TagFilterEvaluator.evaluate(andExpression, identifier -> "bad39"));
+
+    // Precedence between OR and AND must still be preserved when flattening.
+    Assert.assertFalse(
+        evaluate(
+            "(region = \"north\" OR region = \"south\") AND device = \"d2\"",
+            Map.of("region", "north", "device", "d1")));
+
+    // Genuine nesting deeper than MAX_AST_DEPTH (32) must still be rejected.
+    final StringBuilder deeplyNested = new StringBuilder();
+    for (int i = 0; i < 33; i++) {
+      deeplyNested.append("NOT (");
+    }
+    deeplyNested.append("region = \"north\"");
+    for (int i = 0; i < 33; i++) {
+      deeplyNested.append(")");
+    }
+    assertRejected(deeplyNested.toString(), "AST depth exceeds maximum");
   }
 
   @Test

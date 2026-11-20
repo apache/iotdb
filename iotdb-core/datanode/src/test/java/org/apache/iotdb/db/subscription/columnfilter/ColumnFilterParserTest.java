@@ -20,11 +20,15 @@
 package org.apache.iotdb.db.subscription.columnfilter;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.commons.subscription.columnfilter.ColumnMetadata;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class ColumnFilterParserTest {
 
@@ -77,6 +81,22 @@ public class ColumnFilterParserTest {
     Assert.assertFalse(
         evaluate(
             "(category = \"TAG\" OR category = \"FIELD\") AND datatype = \"STRING\"", TEMPERATURE));
+  }
+
+  @Test
+  public void testFlattenedOrChainParsesIntoSingleLogicalExpression() throws Exception {
+    final String orChain =
+        IntStream.range(0, 40)
+            .mapToObj(i -> "column_name = \"s" + i + "\"")
+            .collect(Collectors.joining(" OR "));
+    final Expression parsed = PARSER.parseAndValidate(orChain);
+    Assert.assertTrue(parsed instanceof LogicalExpression);
+    Assert.assertEquals(LogicalExpression.Operator.OR, ((LogicalExpression) parsed).getOperator());
+    Assert.assertEquals(40, ((LogicalExpression) parsed).getTerms().size());
+    Assert.assertTrue(
+        ColumnFilterEvaluator.evaluate(
+            parsed, new ColumnMetadata("db1", "weather", "s39", "DOUBLE", "FIELD")));
+    Assert.assertFalse(ColumnFilterEvaluator.evaluate(parsed, TEMPERATURE));
   }
 
   @Test
