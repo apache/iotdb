@@ -432,7 +432,7 @@ public class QueryExecution implements IQueryExecution {
    * ClientRPCServiceImpl is responsible for performing the cleanup.
    */
   private synchronized void cleanUpCoordinatorContextMapIfNeeded(Throwable t) {
-    if (isActive()) {
+    if (!isActive()) {
       Coordinator.getInstance().cleanupQueryExecution(context.getLocalQueryId(), null, t);
     }
   }
@@ -446,7 +446,7 @@ public class QueryExecution implements IQueryExecution {
    * cleaned up.
    */
   public synchronized boolean isActive() {
-    return startTimeOfCurrentRpc == -1;
+    return startTimeOfCurrentRpc != -1;
   }
 
   /**
