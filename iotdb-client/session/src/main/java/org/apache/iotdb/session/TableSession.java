@@ -23,6 +23,7 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TestInsertStage;
 
 import org.apache.tsfile.write.record.Tablet;
 
@@ -32,6 +33,12 @@ public class TableSession implements ITableSession {
 
   TableSession(Session session) {
     this.session = session;
+  }
+
+  @Override
+  public void testInsert(Tablet tablet, TestInsertStage stage)
+      throws StatementExecutionException, IoTDBConnectionException {
+    session.testInsertRelationalTablet(tablet, stage);
   }
 
   @Override

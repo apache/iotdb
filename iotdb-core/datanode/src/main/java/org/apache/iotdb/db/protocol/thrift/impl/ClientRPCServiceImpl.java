@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -36,6 +37,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -110,6 +112,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -200,9 +203,12 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSTestInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSTestInsertResp;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
+import org.apache.iotdb.service.rpc.thrift.TestInsertStage;
 
 import io.airlift.units.Duration;
 import org.apache.thrift.TException;
@@ -2965,6 +2971,123 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus testInsertTablet(TSInsertTabletReq req) {
     LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSTestInsertResp testInsert(TSTestInsertReq req) {
+    try {
+      IClientSession session = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      if (!SESSION_MANAGER.checkLogin(session)) {
+        return new TSTestInsertResp(getNotLoggedInStatus(), 0);
+      }
+      TestInsertStage stage = TestInsertStage.findByValue(req.getStage());
+      if (stage == null || !hasExactlyOneInsertPayload(req)) {
+        return new TSTestInsertResp(
+            RpcUtils.getStatus(
+                TSStatusCode.ILLEGAL_PARAMETER,
+                DataNodeMiscMessages
+                    .MESSAGE_TEST_INSERTION_REQUIRES_A_KNOWN_STAGE_AND_EXACTLY_ONE_INSERTION_PAYLOAD_B0F3D171),
+            0);
+      }
+      if (stage == TestInsertStage.UNTIL_RPC_PROCESSED) {
+        return new TSTestInsertResp(
+            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), req.getStage());
+      }
+      InsertBaseStatement statement = decodeTestInsert(req);
+      if (stage == TestInsertStage.UNTIL_DECODED) {
+        return new TSTestInsertResp(
+            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), req.getStage());
+      }
+      if (!statement.isWriteToTable()) {
+        TSStatus permission =
+            AuthorityChecker.checkAuthority(
+                statement,
+                new TreeAccessCheckContext(
+                    session.getUserId(), session.getUsername(), session.getClientAddress()));
+        if (permission.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return new TSTestInsertResp(permission, 0);
+        }
+      }
+      TSStatus status =
+          COORDINATOR.testInsert(
+              statement,
+              stage,
+              SESSION_MANAGER.requestQueryId(),
+              SESSION_MANAGER.getSessionInfo(session),
+              relationSqlParser,
+              metadata,
+              partitionFetcher,
+              schemaFetcher);
+      return new TSTestInsertResp(
+          status,
+          status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() ? req.getStage() : 0);
+    } catch (Exception e) {
+      return new TSTestInsertResp(
+          onQueryException(e, "testInsert", TSStatusCode.EXECUTE_STATEMENT_ERROR), 0);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  private static boolean hasExactlyOneInsertPayload(TSTestInsertReq req) {
+    int payloadCount =
+        (req.isSetTablet() ? 1 : 0)
+            + (req.isSetTablets() ? 1 : 0)
+            + (req.isSetRecord() ? 1 : 0)
+            + (req.isSetStringRecord() ? 1 : 0)
+            + (req.isSetRecords() ? 1 : 0)
+            + (req.isSetRecordsOfOneDevice() ? 1 : 0)
+            + (req.isSetStringRecords() ? 1 : 0);
+    return payloadCount == 1;
+  }
+
+  private static InsertBaseStatement decodeTestInsert(TSTestInsertReq req)
+      throws MetadataException, QueryProcessException {
+    if (req.isSetTablet()) {
+      TSInsertTabletReq tablet = req.getTablet();
+      if (!tablet.isWriteToTable()) {
+        tablet.setMeasurements(
+            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(tablet.getMeasurements()));
+      }
+      return StatementGenerator.createStatement(tablet);
+    }
+    if (req.isSetTablets()) {
+      TSInsertTabletsReq tablets = req.getTablets();
+      tablets.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(tablets.getMeasurementsList()));
+      return StatementGenerator.createStatement(tablets);
+    }
+    if (req.isSetRecord()) {
+      TSInsertRecordReq record = req.getRecord();
+      if (!record.isIsWriteToTable()) {
+        record.setMeasurements(
+            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(record.getMeasurements()));
+      }
+      return StatementGenerator.createStatement(record);
+    }
+    if (req.isSetStringRecord()) {
+      TSInsertStringRecordReq record = req.getStringRecord();
+      record.setMeasurements(
+          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(record.getMeasurements()));
+      return StatementGenerator.createStatement(record);
+    }
+    if (req.isSetRecords()) {
+      TSInsertRecordsReq records = req.getRecords();
+      records.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(records.getMeasurementsList()));
+      return StatementGenerator.createStatement(records);
+    }
+    if (req.isSetRecordsOfOneDevice()) {
+      TSInsertRecordsOfOneDeviceReq records = req.getRecordsOfOneDevice();
+      records.setMeasurementsList(
+          PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(records.getMeasurementsList()));
+      return StatementGenerator.createStatement(records);
+    }
+    // The caller has verified that exactly one payload is set.
+    TSInsertStringRecordsReq records = req.getStringRecords();
+    records.setMeasurementsList(
+        PathUtils.checkIsLegalSingleMeasurementListsAndUpdate(records.getMeasurementsList()));
+    return StatementGenerator.createStatement(records);
   }
 
   @Override

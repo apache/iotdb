@@ -67,10 +67,13 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSTestInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSTestInsertResp;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.util.SessionUtils;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -1090,6 +1093,39 @@ public class SessionConnection {
   private TSStatus deleteDataInternal(TSDeleteDataReq request) throws TException {
     request.setSessionId(sessionId);
     return client.deleteData(request);
+  }
+
+  protected void testInsert(TSTestInsertReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    RetryResult<TSTestInsertResp> result =
+        callWithRetryAndReconnect(
+            () -> {
+              request.setSessionId(sessionId);
+              try {
+                return client.testInsert(request);
+              } catch (TApplicationException e) {
+                if (e.getType() != TApplicationException.UNKNOWN_METHOD) {
+                  throw e;
+                }
+                return new TSTestInsertResp(
+                    new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                        .setMessage(
+                            SessionMessages
+                                .MESSAGE_SERVER_DOES_NOT_SUPPORT_STAGED_TEST_INSERTION_0127CF25),
+                    0);
+              }
+            },
+            TSTestInsertResp::getStatus);
+    if (result.getException() != null) {
+      throw new IoTDBConnectionException(result.getException());
+    }
+    TSTestInsertResp response = result.getResult();
+    RpcUtils.verifySuccess(response.getStatus());
+    if (response.getCompletedStage() != request.getStage()) {
+      throw new StatementExecutionException(
+          SessionMessages
+              .EXCEPTION_SERVER_DID_NOT_ACKNOWLEDGE_THE_REQUESTED_TEST_INSERTION_STAGE_41067D1C);
+    }
   }
 
   protected void testInsertRecord(TSInsertStringRecordReq request)

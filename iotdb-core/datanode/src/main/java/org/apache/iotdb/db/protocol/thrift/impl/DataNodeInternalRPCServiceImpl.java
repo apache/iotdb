@@ -154,6 +154,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.TestInsertPlanValidator;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
@@ -603,6 +604,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } finally {
       fragmentInstance.closeUDFQueryScopeIfPresent();
     }
+  }
+
+  @Override
+  public TSendBatchPlanNodeResp testInsertPlanNodes(TSendBatchPlanNodeReq req) {
+    return TestInsertPlanValidator.validate(req);
   }
 
   @Override

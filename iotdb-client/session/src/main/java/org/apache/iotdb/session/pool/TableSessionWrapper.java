@@ -23,6 +23,7 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TestInsertStage;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.i18n.SessionMessages;
 
@@ -46,6 +47,19 @@ public class TableSessionWrapper implements ITableSession {
   protected TableSessionWrapper(Session session, SessionPool sessionPool) {
     this.session = session;
     this.sessionPool = sessionPool;
+  }
+
+  @Override
+  public synchronized void testInsert(Tablet tablet, TestInsertStage stage)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      session.testInsertRelationalTablet(tablet, stage);
+    } catch (IoTDBConnectionException e) {
+      sessionPool.cleanSessionAndMayThrowConnectionException(session);
+      closed.set(true);
+      session = null;
+      throw e;
+    }
   }
 
   @Override

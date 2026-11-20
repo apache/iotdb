@@ -136,6 +136,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
@@ -1403,7 +1404,9 @@ public class StatementAnalyzer {
               context,
               innerInsert,
               () -> SchemaValidator.validate(metadata, insert, context, accessControl),
-              metadata::getOrCreateDataPartition,
+              context.isTestInsert()
+                  ? ClusterPartitionFetcher.getInstance()::getDataPartitionForTestInsert
+                  : metadata::getOrCreateDataPartition,
               AnalyzeUtils::computeTableDataPartitionParams,
               analysis,
               false);

@@ -56,8 +56,13 @@ import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSTestInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSTestInsertResp;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TestInsertStage;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -98,6 +103,50 @@ public class SessionConnectionTest {
   @Mock private IClientRPCService.Iface client;
 
   @Mock private Session session;
+
+  @Test
+  public void testOldServerRejectsStagedInsertionWithoutFallback() throws Exception {
+    Mockito.when(client.testInsert(any()))
+        .thenThrow(new TApplicationException(TApplicationException.UNKNOWN_METHOD, "testInsert"));
+    StatementExecutionException error =
+        Assert.assertThrows(
+            StatementExecutionException.class,
+            () ->
+                sessionConnection.testInsert(
+                    new TSTestInsertReq(0, TestInsertStage.UNTIL_PLANNED.getValue())));
+    Assert.assertTrue(
+        error
+            .getMessage()
+            .contains(
+                SessionMessages.MESSAGE_SERVER_DOES_NOT_SUPPORT_STAGED_TEST_INSERTION_0127CF25));
+    Mockito.verify(client, Mockito.times(1)).testInsert(any());
+    Mockito.verify(client, Mockito.never()).insertTablet(any());
+    Mockito.verify(client, Mockito.never()).testInsertTablet(any());
+  }
+
+  @Test
+  public void testStagedInsertionAcknowledgement() throws Exception {
+    TSTestInsertReq request = new TSTestInsertReq(0, TestInsertStage.UNTIL_PLANNED.getValue());
+    Mockito.when(client.testInsert(any()))
+        .thenReturn(
+            new TSTestInsertResp(
+                new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), request.getStage()));
+    sessionConnection.testInsert(request);
+    Mockito.verify(client).testInsert(request);
+    Mockito.verify(client, Mockito.never()).insertTablet(any());
+    Mockito.when(client.testInsert(any()))
+        .thenReturn(
+            new TSTestInsertResp(
+                new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+                TestInsertStage.UNTIL_DECODED.getValue()));
+    Assert.assertThrows(
+        StatementExecutionException.class, () -> sessionConnection.testInsert(request));
+    Mockito.when(client.testInsert(any()))
+        .thenReturn(
+            new TSTestInsertResp(new TSStatus(TSStatusCode.METADATA_ERROR.getStatusCode()), 0));
+    Assert.assertThrows(
+        StatementExecutionException.class, () -> sessionConnection.testInsert(request));
+  }
 
   @Before
   public void setUp() throws IoTDBConnectionException, StatementExecutionException, TException {

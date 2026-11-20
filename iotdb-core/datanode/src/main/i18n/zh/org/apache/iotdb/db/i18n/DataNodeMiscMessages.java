@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 /** 编译时国际化常量 - DataNode 杂项子系统（中文）。 */
 public final class DataNodeMiscMessages {
+
+  public static final String MESSAGE_TEST_INSERTION_REQUIRES_A_KNOWN_STAGE_AND_EXACTLY_ONE_INSERTION_PAYLOAD_B0F3D171 =
+      "测试写入需要有效阶段且只能包含一个写入载荷";
   public static final String LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F =
       "CQ {} 的用户 {} 鉴权失败：{}";
 

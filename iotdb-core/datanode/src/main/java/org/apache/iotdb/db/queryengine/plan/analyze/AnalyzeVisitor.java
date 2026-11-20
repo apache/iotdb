@@ -2911,7 +2911,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         context,
         insertTabletStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertTabletStatement, context),
-        partitionFetcher::getOrCreateDataPartition,
+        context.isTestInsert()
+            ? ClusterPartitionFetcher.getInstance()::getDataPartitionForTestInsert
+            : partitionFetcher::getOrCreateDataPartition,
         AnalyzeUtils::computeTreeDataPartitionParams,
         analysis,
         true);
@@ -2946,13 +2948,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           analysis,
           Collections.singletonList(dataPartitionQueryParam),
           context.getSession().getUserName(),
-          partitionFetcher::getOrCreateDataPartition);
+          context.isTestInsert()
+              ? ClusterPartitionFetcher.getInstance()::getDataPartitionForTestInsert
+              : partitionFetcher::getOrCreateDataPartition);
     } else {
       AnalyzeUtils.analyzeDataPartition(
           analysis,
           AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement, context),
           context.getSession().getUserName(),
-          partitionFetcher::getOrCreateDataPartition);
+          context.isTestInsert()
+              ? ClusterPartitionFetcher.getInstance()::getDataPartitionForTestInsert
+              : partitionFetcher::getOrCreateDataPartition);
     }
     return analysis;
   }
@@ -2978,7 +2984,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analysis,
         AnalyzeUtils.computeTreeDataPartitionParams(realInsertRowsStatement, context),
         context.getSession().getUserName(),
-        partitionFetcher::getOrCreateDataPartition);
+        context.isTestInsert()
+            ? ClusterPartitionFetcher.getInstance()::getDataPartitionForTestInsert
+            : partitionFetcher::getOrCreateDataPartition);
     return analysis;
   }
 
@@ -3004,7 +3012,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analysis,
         AnalyzeUtils.computeTreeDataPartitionParams(realStatement, context),
         context.getSession().getUserName(),
-        partitionFetcher::getOrCreateDataPartition);
+        context.isTestInsert()
+            ? ClusterPartitionFetcher.getInstance()::getDataPartitionForTestInsert
+            : partitionFetcher::getOrCreateDataPartition);
     return analysis;
   }
 
@@ -3036,13 +3046,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           analysis,
           Collections.singletonList(dataPartitionQueryParam),
           context.getSession().getUserName(),
-          partitionFetcher::getOrCreateDataPartition);
+          context.isTestInsert()
+              ? ClusterPartitionFetcher.getInstance()::getDataPartitionForTestInsert
+              : partitionFetcher::getOrCreateDataPartition);
     } else {
       AnalyzeUtils.analyzeDataPartition(
           analysis,
           AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement, context),
           context.getSession().getUserName(),
-          partitionFetcher::getOrCreateDataPartition);
+          context.isTestInsert()
+              ? ClusterPartitionFetcher.getInstance()::getDataPartitionForTestInsert
+              : partitionFetcher::getOrCreateDataPartition);
     }
     return analysis;
   }

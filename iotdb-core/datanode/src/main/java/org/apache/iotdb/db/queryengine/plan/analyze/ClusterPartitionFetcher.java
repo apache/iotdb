@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -314,6 +315,39 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
     }
     return dataPartition;
+  }
+
+  public DataPartition getDataPartitionForTestInsert(
+      final List<DataPartitionQueryParam> params, final String userName) {
+    final Map<String, List<DataPartitionQueryParam>> byDatabase =
+        splitDataPartitionQueryParam(params, false, userName);
+    if (byDatabase.values().stream().mapToInt(List::size).sum() != params.size()) {
+      throw new SemanticException(
+          DataNodeQueryMessages
+              .EXCEPTION_TEST_INSERTION_REQUIRES_AN_EXISTING_DATABASE_FOR_EVERY_DEVICE_22548137);
+    }
+    final DataPartition partition = getDataPartition(byDatabase);
+    for (Map.Entry<String, List<DataPartitionQueryParam>> entry : byDatabase.entrySet()) {
+      for (DataPartitionQueryParam param : entry.getValue()) {
+        final Map<TTimePartitionSlot, List<TRegionReplicaSet>> slots =
+            partition
+                .getDataPartitionMap()
+                .getOrDefault(entry.getKey(), Collections.emptyMap())
+                .getOrDefault(
+                    partition.calculateDeviceGroupId(param.getDeviceID()), Collections.emptyMap());
+        for (TTimePartitionSlot slot : param.getTimePartitionSlotList()) {
+          if (!slots.containsKey(slot) || slots.get(slot).isEmpty()) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .EXCEPTION_TEST_INSERTION_REQUIRES_AN_EXISTING_DATA_PARTITION_FOR_ARG_AT_ARG_A5AABFF2,
+                    param.getDeviceID(),
+                    slot.getStartTime()));
+          }
+        }
+      }
+    }
+    return partition;
   }
 
   @Override
