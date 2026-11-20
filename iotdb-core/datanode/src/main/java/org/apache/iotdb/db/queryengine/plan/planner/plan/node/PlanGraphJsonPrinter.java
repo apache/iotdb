@@ -76,7 +76,13 @@ public class PlanGraphJsonPrinter {
       jsonNode.add("properties", properties);
     }
 
-    List<PlanNode> children = node.getChildren();
+    List<PlanNode> children;
+    try {
+      children = node.getChildren();
+    } catch (UnsupportedOperationException e) {
+      // GroupReference, which appears inside the iterative optimizer's memo, has no children.
+      children = null;
+    }
     if (children != null && !children.isEmpty()) {
       JsonArray childrenArray = new JsonArray();
       for (PlanNode child : children) {
