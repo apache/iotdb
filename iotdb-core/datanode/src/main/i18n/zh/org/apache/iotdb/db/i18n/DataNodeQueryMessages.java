@@ -3196,9 +3196,11 @@ public final class DataNodeQueryMessages {
   public static final String LOADTSFILEANALYZER_CURRENT_DATANODE_IS_READ_ONLY_WILL_TRY_TO_CONVERT_TO_TABLETS_AND =
 
       "LoadTsFileAnalyzer: 当前 DataNode 为只读，将尝试转换为 tablet 后再插入。";
-  public static final String LOAD_ANALYSIS_STAGE_ARG_ARG_TSFILES_HAVE_BEEN_ANALYZED_PROGRESS_ARG_PERCENT =
-
-      "加载 - 分析阶段：已分析 {}/{} 个 TsFile，进度：{}%";
+  public static final String LOG_LOAD_ANALYSIS_STAGE_ANALYZING_TSFILE_ARG_ARG_ARG_31359828 =
+      "加载 - 分析阶段：正在分析 TsFile {}（{}/{}）";
+  public static final String
+      LOG_LOAD_ANALYSIS_STAGE_ARG_ARG_TSFILES_HAVE_BEEN_ANALYZED_PROGRESS_ARG_FILE_ARG_3339452F =
+          "加载 - 分析阶段：已分析 {}/{} 个 TsFile，进度：{}%，文件：{}";
   public static final String THE_FILE_ARG_IS_NOT_A_VALID_TSFILE_PLEASE_CHECK_THE_INPUT_FILE =
 
       "文件 {} 不是有效的 TsFile，请检查输入文件。";
@@ -3354,6 +3356,25 @@ public final class DataNodeQueryMessages {
 
 
       "LoadTsFileScheduler：加载 TsFile {} 期间检测到 Region 迁移，将转换为 insertion 以避免数据丢失。";
+  public static final String LOG_START_LOADING_ARG_TSFILES_BDB79D79 = "开始加载 {} 个 TsFile";
+  public static final String LOG_LOAD_TSFILE_ARG_SPLIT_PATH_ARG_A9F2E219 =
+      "加载 TsFile {}，拆分路径={}";
+  public static final String LOG_LOADING_TSFILE_ARG_ARG_ARG_F29B2E19 = "正在加载 TsFile {}（{}/{}）";
+  public static final String
+      LOG_LOADING_TSFILE_ARG_ARG_ARG_WITH_STRATEGY_ARG_CURRENTLY_LOADING_ARG_FEA695E6 =
+          "正在加载 TsFile {}（{}/{}），策略 {}，当前正在加载的文件：{}";
+  public static final String LOG_LOAD_TSFILE_ARG_PHASE_DISPATCH_START_FILESIZE_ARG_D7E5D5F4 =
+      "加载 TsFile {}，dispatch 阶段开始，fileSize={}";
+  public static final String
+      LOG_LOAD_TSFILE_ARG_PHASE_DISPATCH_DISPATCHEDBYTES_ARG_FILESIZE_ARG_PROGRESS_ARG_668540F9 =
+          "加载 TsFile {}，dispatch 阶段，dispatchedBytes={}，fileSize={}，进度={}%";
+  public static final String
+      LOG_LOAD_TSFILE_ARG_PHASE_DISPATCH_END_PIECES_ARG_BYTES_ARG_ELAPSEDMS_ARG_DB1D69B6 =
+          "加载 TsFile {}，dispatch 阶段结束，pieces={}，bytes={}，elapsedMs={}";
+  public static final String LOG_LOAD_TSFILE_ARG_PHASE_ARG_START_B225907D =
+      "加载 TsFile {}，阶段 {} 开始";
+  public static final String LOG_LOAD_TSFILE_ARG_PHASE_ARG_END_SUCCESS_ARG_ELAPSEDMS_ARG_6126B0D0 =
+      "加载 TsFile {}，阶段 {} 结束，success={}，elapsedMs={}";
   public static final String LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG =
       "成功加载 TsFile {}，加载进度 [{}/{}]";
   public static final String
@@ -5683,5 +5704,8 @@ public final class DataNodeQueryMessages {
 
   public static final String LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9 =
       "[QueryFailed] queryId: {}, SQL：{}";
+
+  public static final String EXCEPTION_WHOLE_FILE_LOAD_HAS_NO_SINGLE_RESOLVED_REGION_FOR_S_DAC09CDC =
+      "Whole-file load 未解析出唯一的 region：%s。";
 
 }

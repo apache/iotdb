@@ -350,11 +350,12 @@ public class LoadTsFileManager {
     } finally {
       readLock.unlock();
     }
-    if (node.getPieceRefs().isEmpty()) {
+    if (!node.hasWholeFileData() && node.getPieceRefs().isEmpty()) {
       // The chunks of this piece have just been written into the staged file, which recorded where
       // the payload of each of them landed. The WAL entry keeps everything the leader received -
       // device, headers, statistics and layout - and only replaces the payload with those
-      // references, so a replica can be given the very same piece later on
+      // references, so a replica can be given the very same piece later on. A whole-file slice has
+      // no reference form and is already in the WAL, so it must not be logged a second time.
       node.setPieceRefs(refs);
       logLoadNodeToWAL(node);
       dataRegion.insertSeparatorToWAL(node);

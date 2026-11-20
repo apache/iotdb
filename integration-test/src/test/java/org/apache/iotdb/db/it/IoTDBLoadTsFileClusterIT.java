@@ -237,6 +237,38 @@ public class IoTDBLoadTsFileClusterIT {
     }
   }
 
+  /**
+   * A TsFile whose devices all fall into one time partition and one data region is loaded through
+   * the whole-file consensus path: three replicas, no chunk splitting, and every replica must end
+   * up with the same data.
+   */
+  @Test
+  public void testLoadWholeTsFileIntoSingleRegion() throws Exception {
+    final long writtenPointCount;
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "load-cluster-whole-file.tsfile"))) {
+      final List<IMeasurementSchema> schemas =
+          Arrays.asList(
+              new MeasurementSchema(MEASUREMENTS.get(0), TSDataType.INT64, TSEncoding.PLAIN),
+              new MeasurementSchema(MEASUREMENTS.get(1), TSDataType.INT64, TSEncoding.PLAIN),
+              new MeasurementSchema(MEASUREMENTS.get(2), TSDataType.INT64, TSEncoding.PLAIN),
+              new MeasurementSchema(MEASUREMENTS.get(3), TSDataType.INT64, TSEncoding.PLAIN));
+      generator.registerTimeseries(DEVICES.get(0), schemas);
+      generator.generateData(DEVICES.get(0), 1_000, 1L, false);
+      writtenPointCount = generator.getTotalNumber();
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      createDatabaseAndSchema(statement);
+      statement.execute("load \"" + tmpDir.getAbsolutePath() + "\"");
+      Assert.assertEquals(writtenPointCount, queryPointCount(statement));
+    }
+
+    // The whole-file transaction must reach all three replicas, not only the coordinator.
+    awaitAllReplicasHaveData();
+  }
+
   /** Four concurrent LOADs on separate time partitions must expose their combined point count. */
   @Test
   public void testLoadConcurrently() throws Exception {

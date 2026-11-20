@@ -1452,6 +1452,15 @@ public final class StorageEngineMessages {
       "Failed to convert data types for tree model statement {}.";
   public static final String STORAGE_LOG_LOAD_INSERTING_TABLET_TO_CASTING_TYPE_FROM_TO_AE808A8B =
       "Load: Inserting tablet to {}.{}. Casting type from {} to {}.";
+  public static final String
+      LOG_SPLIT_TSFILE_ARG_START_FILESIZE_ARG_CHUNKMETADATA_ARG_FORCEDECODE_ARG_243A182F =
+          "Split TsFile {} start, fileSize={}, chunkMetadata={}, forceDecode={}";
+  public static final String
+      LOG_SPLIT_TSFILE_ARG_END_COMPLETED_ARG_DEVICES_ARG_ENTIRECHUNKS_ARG_DECODEDCHUNKS_ARG_SKIPPEDCHUNKS_ARG_TIMEPARTITIONS_ARG_DELETIONS_ARG_ELAPSEDMS_ARG_063A3789 =
+          "Split TsFile {} end, completed={}, devices={}, entireChunks={}, decodedChunks={}, "
+              + "skippedChunks={}, timePartitions={}, deletions={}, elapsedMs={}";
+  public static final String LOG_SKIP_CHUNK_WITHOUT_METADATA_IN_TSFILE_ARG_OFFSET_ARG_DATASIZE_ARG_41F9ED2B =
+      "Skip chunk without metadata in TsFile {}, offset={}, dataSize={}";
   public static final String STORAGE_LOG_TRY_TO_LOAD_TSFILE_V3_INTO_CURRENT_VERSION_V4_FILE_PATH_B8D38E22 =
       "try to load TsFile V3 into current version (V4), file path: {}";
   public static final String STORAGE_LOG_THE_FILE_S_VERSION_NUMBER_IS_HIGHER_THAN_CURRENT_FILE_PATH_6D17349F =
@@ -1482,6 +1491,9 @@ public final class StorageEngineMessages {
           + "will retry later.";
   public static final String STORAGE_LOG_SUCCESSFULLY_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_ADB5FEC9 =
       "Successfully auto load tsfile {} (isGeneratedByPipe = {})";
+  public static final String
+      LOG_START_AUTO_LOADING_TSFILE_ARG_ISGENERATEDBYPIPE_ARG_PENDING_ARG_LOADING_ARG_7B71F0D6 =
+          "Start auto loading TsFile {} (isGeneratedByPipe = {}), pending={}, loading={}";
   public static final String STORAGE_LOG_ERROR_OCCURRED_DURING_CREATING_FAIL_DIRECTORY_FOR_ACTIVE_7D3BEB38 =
       "Error occurred during creating fail directory {} for active load.";
   public static final String STORAGE_LOG_FAILED_TO_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_STATUS_FILE_F43E9EF7 =
@@ -1906,4 +1918,55 @@ public final class StorageEngineMessages {
       "source files are cleaned up";
 
   public static final String EXCEPTION_TASK_FINISHED_A075ACB1 = "task finished";
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_KIND_CANNOT_BE_NULL_1B93752F =
+      "Whole-file slice kind cannot be null.";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_PAYLOAD_CANNOT_BE_EMPTY_C14A7878 =
+      "Whole-file slice payload cannot be empty.";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_RANGE_IS_INVALID_OFFSET_D_LENGTH_D_SOURCE_LENGTH_D_402A1599 =
+      "Whole-file slice range is invalid: offset %d, length %d, source length %d.";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_TIME_PARTITION_IS_MISSING_4EE30E24 =
+      "Whole-file slice time partition is missing.";
+
+  public static final String EXCEPTION_UNKNOWN_WHOLE_FILE_SLICE_KIND_D_WHEN_DESERIALIZING_A_LOAD_PIECE_AE5381F6 =
+      "Unknown whole-file slice kind %d when deserializing a LOAD piece.";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_HAS_INVALID_PAYLOAD_LENGTH_D_0D04C9C1 =
+      "Whole-file slice has invalid payload length %d.";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_ENDED_AFTER_D_OF_D_PAYLOAD_BYTES_39E892F4 =
+      "Whole-file slice ended after %d of %d payload bytes.";
+
+  public static final String EXCEPTION_A_WHOLE_FILE_LOAD_PIECE_CANNOT_MIX_WHOLE_FILE_SLICES_AND_CHUNK_DATA_B1297688 =
+      "A whole-file LOAD piece cannot mix whole-file slices and chunk data.";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_CHECKSUM_MISMATCH_AT_OFFSET_D_EXPECTED_D_ACTUAL_D_48238B7E =
+      "Whole-file slice checksum mismatch at offset %d: expected %d, actual %d.";
+
+  public static final String EXCEPTION_WHOLE_FILE_STAGING_S_ALREADY_EXISTS_BUT_CANNOT_BE_RESUMED_5F80C60D =
+      "Whole-file staging %s already exists but cannot be resumed.";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_SOURCE_LENGTH_D_TIME_PARTITION_D_DOES_NOT_MATCH_THE_STAGED_TASK_SOURCE_LENGTH_D_FCD90EBB =
+      "Whole-file slice (source length %d, time partition %d) does not match the staged task (source length %d).";
+
+  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_DATA_ARRIVED_BEFORE_THE_TSFILE_18FCDD22 =
+      "Whole-file modification data arrived before the TsFile.";
+
+  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_SLICE_KIND_S_DOES_NOT_MATCH_THE_STAGED_TASK_KIND_S_7D2A42AA =
+      "Whole-file modification slice kind %s does not match the staged task kind %s.";
+
+  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_STAGING_S_ALREADY_EXISTS_BUT_CANNOT_BE_RESUMED_ADE1CCB8 =
+      "Whole-file modification staging %s already exists but cannot be resumed.";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_OFFSET_D_EXCEEDS_THE_STAGED_LENGTH_D_FOR_TASK_S_8E5B27C5 =
+      "Whole-file slice offset %d exceeds the staged length %d for task %s.";
+
+  public static final String EXCEPTION_WHOLE_FILE_STAGING_IS_MISSING_THE_TSFILE_OF_TASK_S_AC2FAD2C =
+      "Whole-file staging is missing the TsFile of task %s.";
+
+  public static final String EXCEPTION_WHOLE_FILE_STAGING_LENGTH_D_DOES_NOT_MATCH_THE_EXPECTED_LENGTH_D_FOR_TASK_S_89AC32B6 =
+      "Whole-file staging length %d does not match the expected length %d for task %s.";
+
 }

@@ -32,23 +32,33 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
+import org.apache.iotdb.db.storageengine.load.splitter.WholeFileData;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.CRC32C;
 
 /**
  * Two-phase consensus LOAD strategy for files that need decoding.
@@ -88,6 +98,15 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
 
   private static final long LOAD_CONSENSUS_SUBMIT_RETRY_BACKOFF_MS = 100L;
 
+  /** Progress of one file is logged on the first piece, each further 10%, and at least every 5s. */
+  static final long LOAD_DISPATCH_PROGRESS_LOG_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(5);
+
+  static final int LOAD_DISPATCH_PROGRESS_BUCKETS = 10;
+
+  private static final String PREPARE_COMMIT_PHASE = "prepare-commit";
+
+  private static final String ABORT_PHASE = "abort";
+
   private final LoadTsFileDispatcherImpl dispatcher;
 
   /** Resolves the data partitions of the file, reusing the ones the judgement already resolved. */
@@ -96,6 +115,9 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   private final LoadTsFileDataCacheMemoryBlock block;
   private final LoadConsensusSubmitter consensusSubmitter;
   private final boolean isGeneratedByPipe;
+
+  /** When true the source file is copied as whole-file slices instead of being split by chunks. */
+  private final boolean wholeFile;
 
   /** The source file being loaded, kept for the phase-two commands. */
   private LoadSingleTsFileNode currentNode;
@@ -129,17 +151,40 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
   private final Map<TTimePartitionSlot, ProgressIndex> timePartitionSlotToProgressIndex =
       new HashMap<>();
 
+  private String sourceFilePath = "";
+
+  private long sourceFileLength;
+
+  private long dispatchedPayloadBytes;
+
+  private long dispatchedPieceCount;
+
+  private int lastLoggedProgressBucket = -1;
+
+  private long lastProgressLogNanos;
+
   public TwoPhaseConsensusLoadStrategy(
       LoadTsFileDispatcherImpl dispatcher,
       DataPartitionResolver partitionResolver,
       LoadTsFileDataCacheMemoryBlock block,
       LoadConsensusSubmitter consensusSubmitter,
       boolean isGeneratedByPipe) {
+    this(dispatcher, partitionResolver, block, consensusSubmitter, isGeneratedByPipe, false);
+  }
+
+  public TwoPhaseConsensusLoadStrategy(
+      LoadTsFileDispatcherImpl dispatcher,
+      DataPartitionResolver partitionResolver,
+      LoadTsFileDataCacheMemoryBlock block,
+      LoadConsensusSubmitter consensusSubmitter,
+      boolean isGeneratedByPipe,
+      boolean wholeFile) {
     this.dispatcher = dispatcher;
     this.partitionResolver = partitionResolver;
     this.block = block;
     this.consensusSubmitter = consensusSubmitter;
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.wholeFile = wholeFile;
   }
 
   @Override
@@ -152,29 +197,130 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
     regionTotalBytes.clear();
     regionExpectedDataEnd.clear();
     timePartitionSlotToProgressIndex.clear();
+    dispatchedPayloadBytes = 0L;
+    dispatchedPieceCount = 0L;
+    lastLoggedProgressBucket = -1;
+    lastProgressLogNanos = 0L;
+    final File sourceFile = node.getTsFileResource().getTsFile();
+    sourceFilePath = sourceFile.getAbsolutePath();
+    sourceFileLength = sourceFile.length();
+
+    logLoadProgress(
+        DataNodeQueryMessages.LOG_LOAD_TSFILE_ARG_PHASE_DISPATCH_START_FILESIZE_ARG_D7E5D5F4,
+        sourceFilePath,
+        sourceFileLength);
 
     long startTime = System.nanoTime();
     final boolean isFirstPhaseSuccess;
     try {
       isFirstPhaseSuccess = firstPhase(node);
     } finally {
+      final long elapsedNanos = System.nanoTime() - startTime;
       LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-          LoadTsFileCostMetricsSet.FIRST_PHASE, System.nanoTime() - startTime);
+          LoadTsFileCostMetricsSet.FIRST_PHASE, elapsedNanos);
+      logLoadProgress(
+          DataNodeQueryMessages
+              .LOG_LOAD_TSFILE_ARG_PHASE_DISPATCH_END_PIECES_ARG_BYTES_ARG_ELAPSEDMS_ARG_DB1D69B6,
+          sourceFilePath,
+          dispatchedPieceCount,
+          dispatchedPayloadBytes,
+          TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
     }
 
+    final String secondPhaseName = isFirstPhaseSuccess ? PREPARE_COMMIT_PHASE : ABORT_PHASE;
+    logLoadProgress(
+        DataNodeQueryMessages.LOG_LOAD_TSFILE_ARG_PHASE_ARG_START_B225907D,
+        sourceFilePath,
+        secondPhaseName);
     startTime = System.nanoTime();
-    final boolean isSecondPhaseSuccess;
+    boolean isSecondPhaseSuccess = false;
     try {
       isSecondPhaseSuccess = secondPhase(isFirstPhaseSuccess);
+      return isFirstPhaseSuccess && isSecondPhaseSuccess;
     } finally {
+      final long elapsedNanos = System.nanoTime() - startTime;
       LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-          LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
+          LoadTsFileCostMetricsSet.SECOND_PHASE, elapsedNanos);
+      logLoadProgress(
+          DataNodeQueryMessages
+              .LOG_LOAD_TSFILE_ARG_PHASE_ARG_END_SUCCESS_ARG_ELAPSEDMS_ARG_6126B0D0,
+          sourceFilePath,
+          secondPhaseName,
+          isSecondPhaseSuccess,
+          TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
     }
+  }
 
-    return isFirstPhaseSuccess && isSecondPhaseSuccess;
+  private void logDispatchProgress(final long pieceBytes) {
+    dispatchedPayloadBytes += pieceBytes;
+    if (!isLoadProgressLogEnabled()) {
+      return;
+    }
+    final long nowNanos = System.nanoTime();
+    if (!shouldLogDispatchProgress(
+        sourceFileLength,
+        dispatchedPayloadBytes,
+        lastLoggedProgressBucket,
+        lastProgressLogNanos,
+        nowNanos)) {
+      return;
+    }
+    lastLoggedProgressBucket = progressBucket(sourceFileLength, dispatchedPayloadBytes);
+    lastProgressLogNanos = nowNanos;
+    logLoadProgress(
+        DataNodeQueryMessages
+            .LOG_LOAD_TSFILE_ARG_PHASE_DISPATCH_DISPATCHEDBYTES_ARG_FILESIZE_ARG_PROGRESS_ARG_668540F9,
+        sourceFilePath,
+        dispatchedPayloadBytes,
+        sourceFileLength,
+        progressPercent(dispatchedPayloadBytes, sourceFileLength));
+  }
+
+  private void logLoadProgress(final String message, final Object... args) {
+    if (!LOGGER.isDebugEnabled()) {
+      return;
+    }
+    LOGGER.debug(message, args);
+  }
+
+  private boolean isLoadProgressLogEnabled() {
+    return LOGGER.isDebugEnabled();
+  }
+
+  static boolean shouldLogDispatchProgress(
+      final long fileSize,
+      final long dispatchedBytes,
+      final int lastBucket,
+      final long lastLogNanos,
+      final long nowNanos) {
+    if (lastLogNanos == 0L) {
+      return true;
+    }
+    if (nowNanos - lastLogNanos >= LOAD_DISPATCH_PROGRESS_LOG_INTERVAL_NANOS) {
+      return true;
+    }
+    return progressBucket(fileSize, dispatchedBytes) > lastBucket;
+  }
+
+  static int progressBucket(final long fileSize, final long dispatchedBytes) {
+    if (fileSize <= 0L || dispatchedBytes <= 0L) {
+      return 0;
+    }
+    if (dispatchedBytes >= fileSize) {
+      return LOAD_DISPATCH_PROGRESS_BUCKETS;
+    }
+    return (int) (dispatchedBytes * LOAD_DISPATCH_PROGRESS_BUCKETS / fileSize);
+  }
+
+  private static String progressPercent(final long dispatchedBytes, final long fileSize) {
+    final double percent = fileSize <= 0L ? 0.0 : dispatchedBytes * 100.0 / fileSize;
+    return String.format("%.3f", percent);
   }
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
+    if (wholeFile) {
+      return dispatchWholeFile(node);
+    }
     final TsFileSplitConsumer pipeline =
         new TsFileSplitConsumer(
             node,
@@ -203,6 +349,131 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
     } finally {
       pipeline.clear();
     }
+  }
+
+  /** How many source bytes one whole-file PIECE carries. Kept well below the RPC frame limit. */
+  private static final int WHOLE_FILE_SLICE_SIZE = 4 * 1024 * 1024;
+
+  /**
+   * Copies one source file through the consensus LOAD transaction: every slice is a PIECE, so the
+   * consensus layer replicates it and PREPARE/COMMIT still decide the transaction atomically.
+   */
+  private boolean dispatchWholeFile(final LoadSingleTsFileNode node) {
+    final TRegionReplicaSet replicaSet = node.getLocalRegionReplicaSet();
+    final TTimePartitionSlot timePartitionSlot = node.getWholeFileTimePartitionSlot();
+    final File sourceFile = node.getTsFileResource().getTsFile();
+    if (replicaSet == null || timePartitionSlot == null || sourceFile == null) {
+      LOGGER.warn(
+          String.format(
+              DataNodeQueryMessages.PARSE_OR_SEND_TSFILE_S_ERROR,
+              sourceFile == null ? node.getTsFileResource().getTsFilePath() : sourceFile),
+          new IllegalStateException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_WHOLE_FILE_LOAD_HAS_NO_SINGLE_RESOLVED_REGION_FOR_S_DAC09CDC,
+                  node.getTsFileResource().getTsFilePath())));
+      return false;
+    }
+
+    final TConsensusGroupId regionId = replicaSet.getRegionId();
+    final String loadId =
+        regionLoadIds.computeIfAbsent(regionId, ignored -> UUID.randomUUID().toString());
+    regionRoutes.putIfAbsent(regionId, replicaSet);
+    computeTimePartitionSlotToProgressIndexIfAbsent(timePartitionSlot);
+
+    final long sourceLength = sourceFile.length();
+    if (sourceLength <= 0L) {
+      LOGGER.warn(
+          String.format(
+              DataNodeQueryMessages.PARSE_OR_SEND_TSFILE_S_ERROR, sourceFile.getAbsolutePath()));
+      return false;
+    }
+    regionExpectedDataEnd
+        .computeIfAbsent(regionId, ignored -> new HashMap<>())
+        .put(timePartitionSlot, sourceLength);
+
+    if (!dispatchWholeFileKind(
+        sourceFile, WholeFileData.Kind.TSFILE, sourceLength, timePartitionSlot, replicaSet, node)) {
+      return false;
+    }
+    return dispatchWholeFileMods(sourceFile, timePartitionSlot, replicaSet, node);
+  }
+
+  private boolean dispatchWholeFileMods(
+      final File sourceFile,
+      final TTimePartitionSlot timePartitionSlot,
+      final TRegionReplicaSet replicaSet,
+      final LoadSingleTsFileNode node) {
+    File modsFile = ModificationFile.getExclusiveMods(sourceFile);
+    WholeFileData.Kind kind = WholeFileData.Kind.MODS_V2;
+    if (!modsFile.isFile()) {
+      modsFile = ModificationFileV1.getNormalMods(sourceFile);
+      kind = WholeFileData.Kind.MODS_V1;
+    }
+    if (!modsFile.isFile()) {
+      return true;
+    }
+    return dispatchWholeFileKind(
+        modsFile, kind, modsFile.length(), timePartitionSlot, replicaSet, node);
+  }
+
+  private boolean dispatchWholeFileKind(
+      final File file,
+      final WholeFileData.Kind kind,
+      final long sourceLength,
+      final TTimePartitionSlot timePartitionSlot,
+      final TRegionReplicaSet replicaSet,
+      final LoadSingleTsFileNode node) {
+    long offset = 0L;
+    long pieceIndex = regionPieceCounts.getOrDefault(replicaSet.getRegionId(), 0L);
+    try (final FileChannel channel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
+      while (offset < sourceLength) {
+        final int expected = (int) Math.min(WHOLE_FILE_SLICE_SIZE, sourceLength - offset);
+        final ByteBuffer buffer = ByteBuffer.allocate(expected);
+        int read = 0;
+        while (read < expected) {
+          final int current = channel.read(buffer, offset + read);
+          if (current < 0) {
+            break;
+          }
+          read += current;
+        }
+        if (read <= 0) {
+          LOGGER.warn(
+              String.format(
+                  DataNodeQueryMessages.PARSE_OR_SEND_TSFILE_S_ERROR, file.getAbsolutePath()));
+          return false;
+        }
+        final byte[] payload = Arrays.copyOf(buffer.array(), read);
+        final LoadTsFilePieceNode pieceNode =
+            LoadTsFilePieceNode.wholeFilePiece(node.getPlanNodeId(), file, pieceIndex++);
+        pieceNode.addTsFileData(
+            new WholeFileData(
+                kind,
+                offset,
+                sourceLength,
+                timePartitionSlot.getStartTime(),
+                isGeneratedByPipe,
+                crc32c(payload),
+                payload));
+        if (!dispatchOnePieceNode(pieceNode, replicaSet)) {
+          return false;
+        }
+        offset += read;
+      }
+    } catch (final IOException e) {
+      LOGGER.warn(
+          String.format(DataNodeQueryMessages.PARSE_OR_SEND_TSFILE_S_ERROR, file.getAbsolutePath()),
+          e);
+      return false;
+    }
+    return offset == sourceLength;
+  }
+
+  private static long crc32c(final byte[] payload) {
+    final CRC32C crc32c = new CRC32C();
+    crc32c.update(payload, 0, payload.length);
+    return crc32c.getValue();
   }
 
   private boolean dispatchOnePieceNode(
@@ -381,6 +652,8 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
         piece.getDataSize());
     regionPieceCounts.merge(regionId, 1L, Long::sum);
     regionTotalBytes.merge(regionId, piece.getDataSize(), Long::sum);
+    dispatchedPieceCount++;
+    logDispatchProgress(piece.getDataSize());
     final Map<TTimePartitionSlot, Long> expectedDataEnd =
         regionExpectedDataEnd.computeIfAbsent(regionId, id -> new HashMap<>());
     for (final TsFileData data : pieceNode.getAllTsFileData()) {

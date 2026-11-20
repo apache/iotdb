@@ -167,6 +167,10 @@ public final class LoadTsFileSnapshot {
   }
 
   private static void discardUnrecordedStagedFiles(final File snapshotTaskDir) throws IOException {
+    // A whole-file task has no chunk records by design: its marker and its bytes are the state.
+    if (new File(snapshotTaskDir, TsFileWriterManager.WHOLE_FILE_META_NAME).isFile()) {
+      return;
+    }
     for (final File stagedFile : listFiles(snapshotTaskDir)) {
       if (!stagedFile.isFile() || !stagedFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
         continue;
