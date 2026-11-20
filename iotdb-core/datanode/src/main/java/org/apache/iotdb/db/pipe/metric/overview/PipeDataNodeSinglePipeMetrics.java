@@ -131,11 +131,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::deregister);
-    if (!remainingEventAndTimeOperatorMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe remaining event and time metrics, RemainingEventAndTimeOperator map not empty");
-    }
+    ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.values()).forEach(this::removeAutoGauge);
   }
 
   private void removeAutoGauge(final PipeDataNodeRemainingEventAndTimeOperator operator) {

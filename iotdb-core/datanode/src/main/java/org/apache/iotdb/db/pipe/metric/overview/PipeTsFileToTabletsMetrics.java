@@ -101,12 +101,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(pipe).forEach(this::deregister);
-    if (!pipe.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {}",
-          pipe);
-    }
+    ImmutableSet.copyOf(pipe).forEach(this::removeMetrics);
   }
 
   private void removeMetrics(final String pipeID) {
