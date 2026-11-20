@@ -25,8 +25,11 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TagFilterParserTest {
 
@@ -103,6 +106,77 @@ public class TagFilterParserTest {
     assertRejected("lower(region) = \"north\"", "expected column predicate operator");
     assertRejected("region = other_tag", "expected string literal");
     assertRejected("region REGEXP \"[\"", "illegal REGEXP pattern");
+  }
+
+  @Test
+  public void testValidateAndCompileBuildsInPredicateHashSets() throws Exception {
+    final int maxInLiterals = TagFilterValidator.MAX_IN_VALUES;
+    final List<String> literals = new ArrayList<>(maxInLiterals);
+    for (int i = 0; i < maxInLiterals; i++) {
+      literals.add(String.format("\"d_%03d\"", i));
+    }
+    final Expression maxInExpr =
+        PARSER.parseAndValidate("device IN (" + String.join(", ", literals) + ")");
+    final TagFilterValidator.ValidationResult maxValidation =
+        TagFilterValidator.validateAndCompile(maxInExpr);
+
+    Assert.assertEquals(1, maxValidation.getCompiledInSets().size());
+    final Set<String> compiledMaxSet = maxValidation.getCompiledInSets().values().iterator().next();
+    Assert.assertEquals(maxInLiterals, compiledMaxSet.size());
+    Assert.assertTrue(compiledMaxSet.contains("d_000"));
+    Assert.assertTrue(compiledMaxSet.contains("d_127"));
+    Assert.assertTrue(compiledMaxSet.contains("d_255"));
+
+    Assert.assertTrue(
+        TagFilterEvaluator.evaluate(
+            maxInExpr,
+            id -> "d_127",
+            maxValidation.getCompiledPatterns(),
+            maxValidation.getCompiledInSets()));
+    Assert.assertFalse(
+        TagFilterEvaluator.evaluate(
+            maxInExpr,
+            id -> "d_256",
+            maxValidation.getCompiledPatterns(),
+            maxValidation.getCompiledInSets()));
+    Assert.assertFalse(
+        TagFilterEvaluator.evaluate(
+            maxInExpr,
+            id -> null,
+            maxValidation.getCompiledPatterns(),
+            maxValidation.getCompiledInSets()));
+
+    literals.add("\"d_256\"");
+    assertRejected(
+        "device IN (" + String.join(", ", literals) + ")",
+        "IN list exceeds maximum of " + TagFilterValidator.MAX_IN_VALUES);
+
+    final Expression compositeExpr =
+        PARSER.parseAndValidate(
+            "device IN (\"d_0\", \"d_0\", \"O'Reilly\") OR NOT (region IN (\"north\", \"south\"))");
+    final TagFilterValidator.ValidationResult compositeValidation =
+        TagFilterValidator.validateAndCompile(compositeExpr);
+    Assert.assertEquals(2, compositeValidation.getCompiledInSets().size());
+
+    final Map<String, String> matchSecond = new HashMap<>();
+    matchSecond.put("device", "other");
+    matchSecond.put("region", "west");
+    Assert.assertTrue(
+        TagFilterEvaluator.evaluate(
+            compositeExpr,
+            id -> matchSecond.get(id.getValue()),
+            compositeValidation.getCompiledPatterns(),
+            compositeValidation.getCompiledInSets()));
+
+    final Map<String, String> nullRegion = new HashMap<>();
+    nullRegion.put("device", "other");
+    nullRegion.put("region", null);
+    Assert.assertFalse(
+        TagFilterEvaluator.evaluate(
+            compositeExpr,
+            id -> nullRegion.get(id.getValue()),
+            compositeValidation.getCompiledPatterns(),
+            compositeValidation.getCompiledInSets()));
   }
 
   private static boolean evaluate(final String filter, final Map<String, String> values)
