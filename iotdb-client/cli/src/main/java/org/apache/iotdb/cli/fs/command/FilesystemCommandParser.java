@@ -123,9 +123,136 @@ public class FilesystemCommandParser {
   }
 
   private static FilesystemCommand.Type commandType(String command) {
+    if (INTERNAL_MODES.contains(command)) return FilesystemCommand.Type.INVALID;
     return "quit".equals(command)
         ? FilesystemCommand.Type.EXIT
         : FilesystemCommand.Type.valueOf(command.toUpperCase(Locale.ROOT));
+  }
+
+  /** Analytic modes of {@code stats}; they are internal command types, not command names. */
+  private static final List<String> INTERNAL_MODES =
+      java.util.Arrays.asList("windows", "reduce", "gaps", "sessions", "extreme");
+
+  private static final List<String> GRID_FLAGS =
+      java.util.Arrays.asList("--origin", "--width", "--step", "--unit", "--timezone");
+
+  private static final List<String> REDUCTION_ONLY_AGGREGATES =
+      java.util.Arrays.asList("delta", "elapsed_ms", "rate_per_ms");
+
+  private static final List<String> ANALYTIC_ONLY_FLAGS =
+      java.util.Arrays.asList("--by", "--gap-ms", "--sort-by", "--order", "-n", "--offset");
+
+  /**
+   * Chooses the engine behind {@code stats}: plain statistics, or the reduction/temporal engines
+   * selected by parameters. At most one analytic mode may be requested.
+   */
+  private static FilesystemCommand.Type statsMode(Arguments args) {
+    List<String> aggregates =
+        args.has("--aggregates")
+            ? java.util.Arrays.asList(args.value("--aggregates").split(",", -1))
+            : java.util.Collections.emptyList();
+    String groupBy = args.valueOrDefault("--group-by", "");
+    List<FilesystemCommand.Type> modes = new ArrayList<>();
+    if (args.has("--gaps")) modes.add(FilesystemCommand.Type.GAPS);
+    if ("session".equals(groupBy)) modes.add(FilesystemCommand.Type.SESSIONS);
+    if (aggregates.contains("argmin") || aggregates.contains("argmax"))
+      modes.add(FilesystemCommand.Type.EXTREME);
+    if ((args.has("--group-by") && !"session".equals(groupBy))
+        || args.has("--sort-by")
+        || aggregates.stream().anyMatch(REDUCTION_ONLY_AGGREGATES::contains))
+      modes.add(FilesystemCommand.Type.REDUCE);
+    if (modes.size() > 1)
+      throw invalid(
+          CliMessages.EXCEPTION_ARG_UNEXPECTED_ARGUMENT_ARG_3EF9EC3F,
+          "stats",
+          "--gaps, --group-by session, argmin/argmax and reduction options are exclusive");
+    return modes.isEmpty() ? FilesystemCommand.Type.STATS : modes.get(0);
+  }
+
+  /** Rewrites {@code stats} parameters into the options of the selected internal engine. */
+  private static FilesystemCommand analyticStats(
+      String command, FilesystemCommand.Type mode, Arguments args) {
+    if (args.has("--by") != (mode == FilesystemCommand.Type.EXTREME)
+        || (args.has("--gap-ms") && mode != FilesystemCommand.Type.SESSIONS)
+        || ((args.has("--sort-by") || args.has("--order"))
+            && mode != FilesystemCommand.Type.REDUCE))
+      throw invalid(
+          CliMessages.EXCEPTION_ARG_UNEXPECTED_ARGUMENT_ARG_3EF9EC3F, command, mode.name());
+    if (mode == FilesystemCommand.Type.EXTREME) {
+      List<String> aggregates = java.util.Arrays.asList(args.value("--aggregates").split(",", -1));
+      if (aggregates.size() != 1) throw TemporalOptions.invalid();
+      args.options.put("--field", args.value("--by"));
+      args.options.put("--mode", "argmax".equals(aggregates.get(0)) ? "max" : "min");
+      args.options.remove("--by");
+      args.options.remove("--aggregates");
+    } else {
+      List<String> fields = args.values("-m");
+      if (fields.size() != 1)
+        throw mode == FilesystemCommand.Type.REDUCE
+            ? ReductionOptions.invalid()
+            : TemporalOptions.invalid();
+      args.options.put("--field", fields.get(0));
+      args.options.remove("-m");
+      args.repeated.remove("-m");
+    }
+    switch (mode) {
+      case GAPS:
+        if (args.has("--aggregates")) throw TemporalOptions.invalid();
+        args.options.remove("--gaps");
+        break;
+      case SESSIONS:
+        if (args.has("--aggregates")) throw TemporalOptions.invalid();
+        args.options.remove("--group-by");
+        break;
+      case REDUCE:
+        if (args.has("--aggregates")) args.options.put("--metrics", args.value("--aggregates"));
+        if (args.has("--sort-by")) args.options.put("--rank-by", args.value("--sort-by"));
+        args.options.remove("--aggregates");
+        args.options.remove("--sort-by");
+        break;
+      default:
+        break;
+    }
+    // The reduction engine expands grids itself; the temporal engines take explicit windows.
+    if (mode != FilesystemCommand.Type.REDUCE) gridToWindows(args);
+    if (args.has("--windows") && args.value("--windows").isEmpty())
+      throw mode == FilesystemCommand.Type.REDUCE
+          ? ReductionOptions.invalid()
+          : TemporalOptions.invalid();
+    FilesystemCommand analytic =
+        withReadOptions(
+                FilesystemCommand.path(mode, args.path(false))
+                    .withLimit(
+                        args.has("-n")
+                            ? unsignedInteger(command, "-n", args.value("-n"), false)
+                            : -1),
+                args,
+                "-f")
+            .withOptions(args.options);
+    if (mode == FilesystemCommand.Type.REDUCE) ReductionOptions.from(analytic);
+    else TemporalOptions.from(analytic);
+    return analytic;
+  }
+
+  /**
+   * Expands {@code --origin/--width/--step/--unit/--timezone} with {@code --start/--end} into the
+   * equivalent explicit {@code --windows} list.
+   */
+  private static void gridToWindows(Arguments args) {
+    if (!args.has("--origin")) {
+      for (String flag : GRID_FLAGS) if (args.has(flag)) throw WindowGrid.invalid();
+      return;
+    }
+    if (args.has("--windows")) throw WindowGrid.invalid();
+    FilesystemCommand probe =
+        withReadOptions(
+                FilesystemCommand.path(FilesystemCommand.Type.STATS, DEFAULT_PATH), args, "-f")
+            .withOptions(args.options);
+    String ranges = WindowGrid.from(probe).ranges();
+    for (String flag : GRID_FLAGS) args.options.remove(flag);
+    args.options.remove("--start");
+    args.options.remove("--end");
+    args.options.put("--windows", ranges);
   }
 
   private static FilesystemCommand parseCommand(String command, Arguments args) {
@@ -146,51 +273,29 @@ public class FilesystemCommandParser {
       case CD:
         args.paths(0, 1);
         return FilesystemCommand.path(type, args.operands.isEmpty() ? "/" : args.operands.get(0));
-      case WINDOWS:
-      case REDUCE:
+      case STATS:
         validateScope(args);
-        if (type == FilesystemCommand.Type.WINDOWS) args.paths(0, 0);
-        if (args.has("--windows") && args.value("--windows").isEmpty())
-          throw ReductionOptions.invalid();
-        FilesystemCommand reduction =
-            withReadOptions(
-                    FilesystemCommand.path(type, args.path(type == FilesystemCommand.Type.REDUCE))
-                        .withLimit(
-                            args.has("-n")
-                                ? unsignedInteger(command, "-n", args.value("-n"), false)
-                                : -1),
-                    args,
-                    "-f")
-                .withOptions(args.options);
-        if (type == FilesystemCommand.Type.REDUCE) ReductionOptions.from(reduction);
-        else WindowGrid.from(reduction);
-        return reduction;
-      case GAPS:
-      case SESSIONS:
-      case EXTREME:
-        validateScope(args);
-        FilesystemCommand temporal =
-            withReadOptions(
-                    FilesystemCommand.path(type, args.path(true))
-                        .withLimit(
-                            args.has("-n")
-                                ? unsignedInteger(command, "-n", args.value("-n"), false)
-                                : -1),
-                    args,
-                    "-f")
-                .withOptions(args.options);
-        if (args.has("--windows") && args.value("--windows").isEmpty())
-          throw TemporalOptions.invalid();
-        TemporalOptions.from(temporal);
-        return temporal;
+        FilesystemCommand.Type mode = statsMode(args);
+        if (mode != FilesystemCommand.Type.STATS) return analyticStats(command, mode, args);
+        for (String flag : ANALYTIC_ONLY_FLAGS)
+          if (args.has(flag))
+            throw invalid(CliMessages.EXCEPTION_ARG_UNSUPPORTED_OPTION_ARG_33DE669D, command, flag);
+        gridToWindows(args);
+        if (args.has("--aggregates")) validateAggregates(args.value("--aggregates"));
+        FilesystemCommand statistics =
+            withReadOptions(FilesystemCommand.path(type, args.path(false)), args, "-f");
+        if (args.has("--windows")) {
+          String windows = args.value("--windows");
+          if (windows.isEmpty())
+            throw invalid(
+                CliMessages.EXCEPTION_ARG_UNEXPECTED_ARGUMENT_ARG_3EF9EC3F, "stats", windows);
+          statistics.getReadOptions().withStatistics("", windows);
+        }
+        return statistics;
       case SCHEMA:
       case META:
-      case STATS:
       case COUNT:
         validateScope(args);
-        if (type == FilesystemCommand.Type.STATS && args.has("--aggregates")) {
-          validateAggregates(args.value("--aggregates"));
-        }
         FilesystemCommand metadata =
             withReadOptions(FilesystemCommand.path(type, args.path(false)), args, "-f");
         if (args.has("--windows")) {
@@ -753,7 +858,8 @@ public class FilesystemCommandParser {
                   || "-i".equals(flag)
                   || "-v".equals(flag)
                   || "-n".equals(flag)))
-          || (("export".equals(command) || "sketch".equals(command)) && "--force".equals(flag));
+          || (("export".equals(command) || "sketch".equals(command)) && "--force".equals(flag))
+          || ("stats".equals(command) && "--gaps".equals(flag));
     }
 
     private boolean allShortFlags(String token) {
@@ -781,51 +887,6 @@ public class FilesystemCommandParser {
               || "--table".equals(flag)
               || "-m".equals(flag)
               || "--measurements".equals(flag);
-        case "windows":
-        case "reduce":
-          return java.util.Arrays.asList(
-                      "--origin",
-                      "--width",
-                      "--step",
-                      "--unit",
-                      "--timezone",
-                      "--start",
-                      "--end",
-                      "-f",
-                      "--format",
-                      "-n",
-                      "--limit",
-                      "--offset")
-                  .contains(flag)
-              || ("reduce".equals(command)
-                  && java.util.Arrays.asList(
-                          "--field",
-                          "--metrics",
-                          "--group-by",
-                          "--rank-by",
-                          "--order",
-                          "--top",
-                          "--windows",
-                          "--tag-filter",
-                          "--tag-match")
-                      .contains(flag));
-        case "gaps":
-        case "sessions":
-        case "extreme":
-          return "--field".equals(flag)
-              || ("sessions".equals(command) && "--gap-ms".equals(flag))
-              || ("extreme".equals(command)
-                  && ("--mode".equals(flag) || "-m".equals(flag) || "--measurements".equals(flag)))
-              || (!"sessions".equals(command) && "--windows".equals(flag))
-              || "-f".equals(flag)
-              || "--format".equals(flag)
-              || "-n".equals(flag)
-              || "--limit".equals(flag)
-              || "--offset".equals(flag)
-              || "--start".equals(flag)
-              || "--end".equals(flag)
-              || "--tag-filter".equals(flag)
-              || "--tag-match".equals(flag);
         case "stats":
           return "-f".equals(flag)
               || "--format".equals(flag)
@@ -840,7 +901,22 @@ public class FilesystemCommandParser {
               || "--tag-filter".equals(flag)
               || "--tag-match".equals(flag)
               || "--aggregates".equals(flag)
-              || "--windows".equals(flag);
+              || "--windows".equals(flag)
+              || java.util.Arrays.asList(
+                      "--origin",
+                      "--width",
+                      "--step",
+                      "--unit",
+                      "--timezone",
+                      "--group-by",
+                      "--gap-ms",
+                      "--by",
+                      "--sort-by",
+                      "--order",
+                      "-n",
+                      "--limit",
+                      "--offset")
+                  .contains(flag);
         case "sketch":
           return "-o".equals(flag) || "--output".equals(flag);
         case "export":

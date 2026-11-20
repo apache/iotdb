@@ -261,6 +261,16 @@ active source. Window origins/timezones, entity/pooled reduction, ranking and
 endpoint differences remain supported. The independent `--final-table` evaluation
 option is retained; existing experiment results and scoring contracts are unchanged.
 
+Since 2026-11-20 the analytic capabilities are modes of the existing `stats` command
+instead of separate commands, following the rule of reusing existing Unix-style commands and
+extending parameters: `--origin/--width/--step/--unit/--timezone` expand a window grid inline;
+`--aggregates delta|elapsed_ms|rate_per_ms`, `--group-by entity|pooled` or `--sort-by` select
+reduction; `--gaps` selects gap analysis; `--group-by session --gap-ms` selects sessions; and
+`--aggregates argmin|argmax --by FIELD` selects the extreme row. The former `windows`, `reduce`,
+`gaps`, `sessions` and `extreme` command names are rejected. The adapter exposes the same modes
+as `stats` parameters under the unchanged feature gates. Historical runs keep their frozen CLI
+and adapter.
+
 Frame source is archived at `.tmp/fs-grid-reduce-rollback-20261119/pre-rollback-source.tar.gz`;
 [FS_FRAME_PROTOCOL.md](FS_FRAME_PROTOCOL.md) and its validation report describe the
 historical implementation, not the currently deployed command surface.

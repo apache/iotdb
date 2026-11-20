@@ -55,6 +55,12 @@ public final class FsHelpMessages {
     "--aggregates 接受 count,min,max,sum,avg,median,first,last,min_time,max_time,null_count；省略时返回全部统计，仅累积所选字段。min_time/max_time 为首末非空时间，不是极值所在时间。"
     + " " + "--windows start:end,... 接受按输入顺序排列的 1..256 个 epoch 闭区间，可重叠或重复，与 --start/--end 互斥。每个设备/表只扫描一次合并后的区间并集，返回从零开始的 window_index、window_start、window_end；空 Tree 窗口保留零计数，空 Table 窗口无实体行。"
     + " " + "标量统计流式计算；精确 median 使用有界缓冲和私有临时磁盘文件，完成或失败时清理。BOOLEAN sum 为 true 数量；INT64 sum/avg/median 保留精确十进制字符串。"
+    + " " + "窗口网格：--origin（epoch 毫秒或 ISO 时间）加正数 --width，可选 --step（默认等于宽度）、--unit ms|day|month 与 --timezone（默认 UTC），把 --start/--end 展开为显式闭区间窗口（最多 256 个，末窗截到 --end，日历单位以 origin 为锚）；与 --windows 互斥。"
+    + " " + "分析模式只接受一个目标字段（-m；argmin/argmax 用 --by），在 CLI 中流式处理原始观测，-n/--offset 对输出行分页；同一次调用只能选一种模式。"
+    + " " + "归约：--aggregates 取 count,sum,avg,min,max,first,last,delta,elapsed_ms,rate_per_ms（默认 count,first,last,delta），出现 delta/elapsed_ms/rate_per_ms、--group-by entity|pooled 或 --sort-by 之一即进入该模式。pooled 按窗口合并原始观测（按样本加权平均）；delta 为非空物理时间端点的末值减首值，elapsed_ms 为 last_at 减 first_at，rate_per_ms 为 delta/elapsed_ms（零跨度为 NULL）。--sort-by 聚合名 --order asc|desc（默认 desc）在分页前对全部结果行全局排序，NULL 置后。非空分组最多 65536 个。"
+    + " " + "--gaps：按实体计算相邻非空观测的间隔，归属后一个观测；每个窗口返回去重后的首、末、最小、最大间隔，含 previous_at、observed_at 与精确 gap_ms；真实前驱可以在窗口之前。"
+    + " " + "--group-by session --gap-ms G：仅当间隔严格大于 G 时切分会话；--start/--end 在切分前过滤；不支持窗口。输出 session_index/start/end、count、avg、first、last。"
+    + " " + "--aggregates argmin|argmax --by F：按实体/窗口返回 F 取最小/最大值的最早一行，-m 指定关联字段（保留 NULL）。"
   };
   public static final String[] COUNT = {
     "输出 TAG 和 FIELD 的行数、设备数、非空数、空值数及时间范围；排除 TIME 和 ATTRIBUTE。",
@@ -102,7 +108,4 @@ public final class FsHelpMessages {
   };
   public static final String[] HELP = {"输出通用帮助或指定命令帮助；-h 与 --help 等价。", "未指定命令时输出通用帮助。"};
   public static final String[] EXIT = {"按指定状态码退出文件系统模式；quit 为别名。", "状态码默认为 0；指定值保留低 8 位。"};
-  public static final String[] GAPS = {"按实体完整计算非空观测的前驱间隔，归属到后一条观测。每个包含端点的窗口返回去重后的 first/last/min/max 间隔观测；极值并列取最早时间。输出 previous_at、observed_at、精确十进制 gap_ms 与 selected_as。", "必需 --field；可选 --windows start:end,...（1..256，包含端点，与 --start/--end 互斥）。无 windows 时使用一个 start/end 区间，省略边界表示无界。真实前驱可在区间外，因此扫描包含下界之前的观测。Tree 设备与 Table 完整 TAG 键独立；跳过 NULL 字段，空窗口或无间隔不返回行。-n/--offset 对输出行分页，默认无限/0；-f table|csv|ndjson，默认 table；Table --tag-filter/--tag-match all|any 在分析前生效。"};
-  public static final String[] SESSIONS = {"按实体完整计算非空有限数值 --field 的 session。必需正数 --gap-ms：仅在下一间隔严格大于阈值时分段，相等不分段。输出 session_index/start/end、count、avg、first、last。", "可选包含端点的 --start/--end 在分段之前过滤，因此边界 session 会裁剪，session_index 从零重新编号。不支持 windows。Tree 设备与 Table 完整 TAG 组合不混合；跳过 NULL。-n/--offset 对输出 session 分页，默认无限/0；-f table|csv|ndjson；Table --tag-filter/--tag-match all|any。整数平均值保持精确十进制运算。"};
-  public static final String[] EXTREME = {"对有限数值 --field 使用必需的 --mode min|max，在每个实体/窗口内选择极值关联行。并列取最早时间；跳过 NULL 比较值，保留关联字段的 NULL。不跨实体混合或排名。", "可选 -m 关联 FIELD（可重复，始终包含目标字段）、包含端点的 --windows start:end,... 或 --start/--end；省略边界表示全时段。输出 object/TAG 身份、window_index/start/end、observed_at、extreme_value 和 value.<field>。空窗口不返回行。-n/--offset 对输出行分页，默认无限/0；-f table|csv|ndjson；Table --tag-filter/--tag-match all|any。"};
 }

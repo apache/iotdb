@@ -46,11 +46,12 @@ public class FsReductionTest {
   }
 
   private WindowGrid grid(String flags) {
-    return WindowGrid.from(parse("windows -f ndjson " + flags));
+    return WindowGrid.from(parse("stats /root/db -m x --aggregates delta -f ndjson " + flags));
   }
 
   private ReductionOptions options(String flags) {
-    return ReductionOptions.from(parse("reduce /root/db --field x " + flags));
+    String mode = flags.contains("--group-by") ? "" : " --group-by entity";
+    return ReductionOptions.from(parse("stats /root/db -m x" + mode + " " + flags));
   }
 
   private List<FsColumn> schema() {
@@ -70,9 +71,10 @@ public class FsReductionTest {
   public void rejectsUnusedGridPathAndSubmillisecondOrigin() {
     for (String command :
         Arrays.asList(
-            "windows /root/db --start 0 --end 10 --origin 0 --width 1",
-            "windows --start 0 --end 10 --origin 1970-01-01T00:00:00.0001Z --width 1",
-            "reduce /root/db --field x --windows ''")) {
+            "windows --start 0 --end 10 --origin 0 --width 1",
+            "reduce /root/db --field x --aggregates delta",
+            "stats /root/db -m x --start 0 --end 10 --origin 1970-01-01T00:00:00.0001Z --width 1",
+            "stats /root/db -m x --aggregates delta --windows ''")) {
       assertEquals(
           FilesystemCommand.Type.INVALID, FilesystemCommandParser.parse(command).getType());
     }
@@ -130,7 +132,7 @@ public class FsReductionTest {
             "--start 0 --end 10 --origin 0 --width 0"))
       assertEquals(
           FilesystemCommand.Type.INVALID,
-          FilesystemCommandParser.parse("windows " + flags).getType());
+          FilesystemCommandParser.parse("stats /root/db -m x " + flags).getType());
   }
 
   @Test
@@ -140,7 +142,7 @@ public class FsReductionTest {
             "tree",
             "/root/db",
             options(
-                "--group-by pooled --metrics count,sum,avg,delta,first,last,elapsed_ms,rate_per_ms"));
+                "--group-by pooled --aggregates count,sum,avg,delta,first,last,elapsed_ms,rate_per_ms"));
     feed(e, "root.db.b", SqlRow.of("time", "10", "x", "90"));
     feed(
         e,
@@ -162,7 +164,7 @@ public class FsReductionTest {
   public void entityGrainNullTagsAndDuplicateWindows() throws Exception {
     FsReduction e =
         new FsReduction(
-            "table", "db.t", options("--windows 0:10,0:10,20:30 --metrics count,delta"));
+            "table", "db.t", options("--windows 0:10,0:10,20:30 --aggregates count,delta"));
     feed(
         e,
         "db.t",
@@ -183,11 +185,11 @@ public class FsReductionTest {
         new FsReduction(
             "tree",
             "/root/db",
-            options("--metrics avg --rank-by avg --top 2 --windows 0:10,20:30"));
+            options("--aggregates avg --sort-by avg --windows 0:10,20:30"));
     feed(e, "b", SqlRow.of("time", "0", "x", "5"), SqlRow.of("time", "20", "x", "6"));
     feed(e, "a", SqlRow.of("time", "0", "x", "5"), SqlRow.of("time", "20", "x", "6"));
     List<SqlRow> r = e.finish();
-    assertEquals(2, r.size());
+    assertEquals(4, r.size());
     assertEquals("a", r.get(0).get("object"));
     assertEquals("1", r.get(0).get("window_index"));
     assertEquals("2", r.get(1).get("rank"));
@@ -196,7 +198,7 @@ public class FsReductionTest {
   @Test
   public void endpointDifferenceAndSpanAvoidInt64Overflow() throws Exception {
     FsReduction e =
-        new FsReduction("tree", "x", options("--metrics first,last,delta,elapsed_ms,rate_per_ms"));
+        new FsReduction("tree", "x", options("--aggregates first,last,delta,elapsed_ms,rate_per_ms"));
     feed(
         e,
         "a",
@@ -212,7 +214,7 @@ public class FsReductionTest {
   public void zeroSpanNullLastAndAscendingRank() throws Exception {
     FsReduction e =
         new FsReduction(
-            "tree", "x", options("--metrics delta,rate_per_ms --rank-by rate_per_ms --order asc"));
+            "tree", "x", options("--aggregates delta,rate_per_ms --sort-by rate_per_ms --order asc"));
     feed(e, "a", SqlRow.of("time", "0", "x", "3"));
     feed(e, "b", SqlRow.of("time", "0", "x", "4"), SqlRow.of("time", "2", "x", "2"));
     List<SqlRow> r = e.finish();
@@ -231,13 +233,13 @@ public class FsReductionTest {
     }
     for (String flags :
         Arrays.asList(
-            "--metrics avg --rank-by delta",
+            "--aggregates avg --sort-by delta",
             "--group-by unknown",
-            "--metrics count,count",
+            "--aggregates count,count",
             "--top 2",
             "--origin 0 --width 1"))
       assertEquals(
           FilesystemCommand.Type.INVALID,
-          FilesystemCommandParser.parse("reduce /root/db --field x " + flags).getType());
+          FilesystemCommandParser.parse("stats /root/db -m x " + flags).getType());
   }
 }

@@ -23,6 +23,8 @@ import org.apache.iotdb.cli.i18n.CliMessages;
 
 import org.junit.Test;
 
+import java.util.Collections;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -781,28 +783,78 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
-  public void temporalCommandsValidateContractBeforeExecution() {
-    assertEquals(
-        FilesystemCommand.Type.GAPS,
+  public void statsSelectsAnalyticModesByParameters() {
+    FilesystemCommand gaps =
         FilesystemCommandParser.parse(
-                "gaps /root/db/d --field x --windows -10:0,0:10 -n 3 --offset 1 -f ndjson")
-            .getType());
+            "stats /root/db/d -m x --gaps --windows -10:0,0:10 -n 3 --offset 1 -f ndjson");
+    assertEquals(FilesystemCommand.Type.GAPS, gaps.getType());
+    assertEquals("x", gaps.optionValue("--field", ""));
+    assertTrue(gaps.getReadOptions().getColumns().isEmpty());
     assertEquals(
         FilesystemCommand.Type.SESSIONS,
         FilesystemCommandParser.parse(
-                "sessions /db/t.csv --field x --gap-ms 14400000 --start 0 --end 10")
+                "stats /db/t.csv -m x --group-by session --gap-ms 14400000 --start 0 --end 10")
             .getType());
+    FilesystemCommand extreme =
+        FilesystemCommandParser.parse("stats /root/db/d --by x --aggregates argmax -m y");
+    assertEquals(FilesystemCommand.Type.EXTREME, extreme.getType());
+    assertEquals("max", extreme.optionValue("--mode", ""));
+    assertEquals(Collections.singletonList("y"), extreme.getReadOptions().getColumns());
+    FilesystemCommand reduce =
+        FilesystemCommandParser.parse(
+            "stats /root/db -m x --aggregates avg,delta --sort-by delta --order asc -n 5");
+    assertEquals(FilesystemCommand.Type.REDUCE, reduce.getType());
+    assertEquals("avg,delta", reduce.optionValue("--metrics", ""));
+    assertEquals("delta", reduce.optionValue("--rank-by", ""));
     assertEquals(
-        FilesystemCommand.Type.EXTREME,
-        FilesystemCommandParser.parse("extreme /root/db/d --field x --mode max -m y").getType());
+        FilesystemCommand.Type.REDUCE,
+        FilesystemCommandParser.parse("stats /root/db -m x --group-by pooled").getType());
+    assertEquals(
+        FilesystemCommand.Type.STATS,
+        FilesystemCommandParser.parse("stats /root/db -m x --aggregates avg,median").getType());
+  }
+
+  @Test
+  public void statsExpandsInlineGridIntoExplicitWindows() {
+    FilesystemCommand c =
+        FilesystemCommandParser.parse(
+            "stats /root/db/d -m x --start 0 --end 25 --origin 0 --width 10");
+    assertEquals(FilesystemCommand.Type.STATS, c.getType());
+    assertEquals(3, c.getReadOptions().getWindows().size());
+    assertEquals(20L, c.getReadOptions().getWindows().get(2).getStart());
+    assertEquals(25L, c.getReadOptions().getWindows().get(2).getEnd());
+    assertEquals(
+        FilesystemCommand.Type.GAPS,
+        FilesystemCommandParser.parse(
+                "stats /root/db/d -m x --gaps --start 0 --end 25 --origin 0 --width 10")
+            .getType());
+  }
+
+  @Test
+  public void analyticStatsValidateContractBeforeExecution() {
     for (String command :
         new String[] {
-          "gaps /root/db/d",
-          "sessions /root/db/d --field x --gap-ms 0",
-          "sessions /root/db/d --field x --gap-ms 1 --windows 0:1",
-          "extreme /root/db/d --field x --mode top",
-          "gaps /root/db/d --field x --start 10 --end 0",
-          "extreme /root/db/d --field x --mode max --windows 0:1 --end 1"
+          "gaps /root/db/d --field x",
+          "sessions /root/db/d --field x --gap-ms 1",
+          "extreme /root/db/d --field x --mode max",
+          "reduce /root/db --field x",
+          "windows --start 0 --end 10 --origin 0 --width 1",
+          "stats /root/db/d --gaps",
+          "stats /root/db/d -m x -m y --gaps",
+          "stats /root/db/d -m x --group-by session --gap-ms 0",
+          "stats /root/db/d -m x --group-by session --gap-ms 1 --windows 0:1",
+          "stats /root/db/d --by x --aggregates argmax,argmin",
+          "stats /root/db/d -m x --aggregates argmax",
+          "stats /root/db/d -m x --gaps --start 10 --end 0",
+          "stats /root/db/d --by x --aggregates argmax --windows 0:1 --end 1",
+          "stats /root/db/d -m x --gaps --group-by session --gap-ms 1",
+          "stats /root/db/d -m x --gaps --aggregates delta",
+          "stats /root/db/d -m x --aggregates avg,median --sort-by avg",
+          "stats /root/db/d -m x -n 3",
+          "stats /root/db/d -m x --order asc",
+          "stats /root/db/d -m x --gap-ms 1",
+          "stats /root/db/d -m x --width 10 --start 0 --end 10",
+          "stats /root/db/d -m x --origin 0 --width 10 --windows 0:1"
         })
       assertEquals(
           command,

@@ -74,7 +74,6 @@ public final class WindowGrid {
         } else
           for (ReadOptions.Window w : read.getWindows())
             g.bounds.add(new Bounds(w.getStart(), w.getEnd(), null, null));
-        if (c.getType() == FilesystemCommand.Type.WINDOWS) throw invalid();
         return g;
       }
       if (read.getStart() == null

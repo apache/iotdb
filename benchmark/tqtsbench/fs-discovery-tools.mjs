@@ -23,7 +23,10 @@ export async function apply(ctx, config) {
   const { defineTool } = await import(config.toolsModule);
   const features = new Set(config.features ?? []);
   const temporal = features.has('temporal'), extreme = features.has('extreme'), grid = features.has('grid'), reduce = features.has('reduce');
-  const commands = ['help','ls','find','tree','schema','meta','stats','count','cat','head','tail','stat','file','grep','cut','paste','join','wc', ...(temporal ? ['gaps','sessions'] : []), ...(extreme ? ['extreme'] : []), ...(grid ? ['windows'] : []), ...(reduce ? ['reduce'] : [])];
+  const commands = ['help','ls','find','tree','schema','meta','stats','count','cat','head','tail','stat','file','grep','cut','paste','join','wc'];
+  const analytic = temporal || extreme || reduce;
+  const aggregates = ['count','min','max','sum','avg','median','first','last','min_time','max_time','null_count', ...(reduce ? ['delta','elapsed_ms','rate_per_ms'] : []), ...(extreme ? ['argmin','argmax'] : [])];
+  const groupings = [...(reduce ? ['entity','pooled'] : []), ...(temporal ? ['session'] : [])];
   let calls = 0;
   for (const kind of ['context', 'fs']) {
     ctx.tools.register(defineTool({
@@ -33,32 +36,32 @@ export async function apply(ctx, config) {
         : 'Retrieve original benchmark public dataset documentation on demand. This contains field meanings, units, device mappings, time conventions and dialect notes, never questions or answers. Results are scalar entries with JSON-pointer paths. Start with query or pointer=/database; use a returned parent pointer to inspect a related record. query is a case-insensitive literal substring; empty query matches all. Follow next_offset with identical query/pointer.',
       parameters: kind === 'fs' ? {
         command: { type: 'string', enum: commands, required: true, description: 'Native read-only FS operation. Call help for the complete parameter and return contract.' },
-        ...((temporal || extreme || reduce) ? { field: { type: 'string', description: 'Required target measurement for enabled analysis commands. See help for entity, boundary and NULL semantics.' } } : {}),
-        ...(temporal ? { gap_ms: { type: 'integer', description: 'sessions only: positive threshold; split iff gap > threshold.' } } : {}),
-        ...(extreme ? { mode: { type: 'string', enum: ['min','max'], description: 'extreme only: direction, ties choose earliest time.' } } : {}),
+        ...(temporal ? {
+          gaps: { type: 'boolean', description: 'stats mode: true computes complete successive non-null observation gaps of the single measurement; see help.' },
+          gap_ms: { type: 'integer', description: 'stats with group_by=session only: positive threshold; split iff gap > threshold.' },
+        } : {}),
+        ...(groupings.length ? { group_by: { type: 'string', enum: groupings, description: 'stats mode: ' + [reduce ? 'entity (default) or pooled reduction grain' : '', temporal ? 'session segments by gap_ms' : ''].filter(Boolean).join('; ') + '. See help.' } } : {}),
+        ...(extreme ? { by: { type: 'string', description: 'stats with aggregates [argmin] or [argmax] only: target measurement; ties choose earliest time.' } } : {}),
+        ...(reduce ? {
+          sort_by: { type: 'string', description: 'stats reduction mode: selected aggregate used for global ordering of result rows AFTER grouping, before paging.' },
+          order: { type: 'string', enum: ['asc','desc'], description: 'sort direction, default desc; requires sort_by; NULL last.' },
+        } : {}),
         ...(grid ? {
-          origin: { type: 'string', description: 'windows or reduce grid: epoch-ms string or ISO datetime, interpreted with explicit timezone for local time; required with width and start_ms/end_ms.' },
+          origin: { type: 'string', description: 'stats grid: epoch-ms string or ISO datetime, interpreted with explicit timezone for local time; required with width and start_ms/end_ms.' },
           width: { type: 'integer', description: 'Positive grid width in unit; explicit windows are mutually exclusive.' },
           step: { type: 'integer', description: 'Positive grid stride, defaults to width; supports overlapping or gapped windows.' },
           unit: { type: 'string', enum: ['ms','day','month'], description: 'Fixed milliseconds vs origin-anchored calendar days/months. Default ms.' },
         } : {}),
-        ...((grid || reduce) ? { timezone: { type: 'string', description: 'windows/reduce: IANA timezone default UTC. Labels epoch bounds; calendar grids use local arithmetic. Ambiguous/nonexistent boundaries rejected.' } } : {}),
-        ...(reduce ? {
-          metrics: { type: 'array', items: { type: 'string', enum: ['count','sum','avg','min','max','first','last','delta','elapsed_ms','rate_per_ms'] }, description: 'reduce only: default count,first,last,delta; first/last non-null endpoints, rate uses actual physical elapsed milliseconds.' },
-          group_by: { type: 'string', enum: ['entity','pooled'], description: 'reduce only: default entity, separate device/window groups; pooled explicitly combines observations by window before aggregation.' },
-          rank_by: { type: 'string', description: 'reduce only: selected metric used for global ordering of result rows AFTER grouping.' },
-          order: { type: 'string', enum: ['asc','desc'], description: 'reduce rank direction, default desc; requires rank_by; NULL last.' },
-          top: { type: 'integer', description: 'reduce only: keep first 1..65536 ranked rows before paging; requires rank_by.' },
-        } : {}),
-        path: { type: 'string', description: 'Not used for windows. Absolute virtual path inside assigned /root/database. Default assigned root. No local paths or .csv suffix for Tree model.' },
+        ...((grid || reduce) ? { timezone: { type: 'string', description: 'stats: IANA timezone default UTC for grids; in reduction mode it also labels epoch bounds. Ambiguous/nonexistent boundaries rejected.' } } : {}),
+        path: { type: 'string', description: 'Absolute virtual path inside assigned /root/database. Default assigned root. No local paths or .csv suffix for Tree model.' },
         paths: { type: 'array', items: { type: 'string' }, description: 'For paste (2..8) or join (exactly 2) only; absolute virtual paths.' },
-        measurements: { type: 'array', items: { type: 'string' }, description: 'Field identifiers, 1..64; schema/count/stats/cat/head' + (extreme ? '/extreme (associated fields)' : '') + '. Omit for native defaults.' },
-        start_ms: { type: 'integer', description: 'Inclusive epoch-ms lower bound; stats/cat/head' + (temporal || extreme ? ' and enabled analysis commands; see help.' : ' only.') },
-        end_ms: { type: 'integer', description: 'Inclusive epoch-ms upper bound; stats/cat/head' + (temporal || extreme ? ' and enabled analysis commands; see help.' : ' only.') },
-        limit: { type: 'integer', description: 'cat/head/tail page size 1..2000; defaults 200/200/10.' + (temporal || extreme ? ' Also output-row page size for enabled analysis commands, default200.' : '') },
-        offset: { type: 'integer', description: 'cat/head row offset >=0; follow next_offset with identical filters.' + (temporal || extreme ? ' Also output-row offset for enabled analysis commands.' : '') },
-        aggregates: { type: 'array', items: { type: 'string', enum: ['count','min','max','sum','avg','median','first','last','min_time','max_time','null_count'] }, description: 'stats only; omit for all native statistics including first/last and timeline min_time/max_time.' },
-        windows: { type: 'array', items: { type: 'object', properties: { start_ms: { type: 'integer', required: true }, end_ms: { type: 'integer', required: true } }, additionalProperties: false }, description: 'stats' + (temporal ? '/gaps' : '') + (extreme ? '/extreme' : '') + (reduce ? '/reduce' : '') + ': 1..256 inclusive epoch-ms windows, mutually exclusive with top-level start_ms/end_ms. One scan per device; output includes window_index/start/end. Overlap and duplicates allowed.' },
+        measurements: { type: 'array', items: { type: 'string' }, description: 'Field identifiers, 1..64; schema/count/stats/cat/head. Analytic stats modes take exactly one target here' + (extreme ? ' (argmin/argmax: associated fields instead)' : '') + '. Omit for native defaults.' },
+        start_ms: { type: 'integer', description: 'Inclusive epoch-ms lower bound; stats/cat/head only.' },
+        end_ms: { type: 'integer', description: 'Inclusive epoch-ms upper bound; stats/cat/head only.' },
+        limit: { type: 'integer', description: 'cat/head/tail page size 1..2000; defaults 200/200/10.' + (analytic ? ' Also output-row page size for analytic stats modes, default 200.' : '') },
+        offset: { type: 'integer', description: 'cat/head row offset >=0; follow next_offset with identical filters.' + (analytic ? ' Also output-row offset for analytic stats modes.' : '') },
+        aggregates: { type: 'array', items: { type: 'string', enum: aggregates }, description: 'stats only; omit for all native statistics including first/last and timeline min_time/max_time.' + (analytic ? ' Some values select an analytic mode; see help.' : '') },
+        windows: { type: 'array', items: { type: 'object', properties: { start_ms: { type: 'integer', required: true }, end_ms: { type: 'integer', required: true } }, additionalProperties: false }, description: 'stats (all modes except group_by=session): 1..256 inclusive epoch-ms windows, mutually exclusive with top-level start_ms/end_ms. One scan per device; output includes window_index/start/end. Overlap and duplicates allowed.' },
         max_depth: { type: 'integer', description: 'find/tree recursion depth 1..12, defaults 6/3.' },
         pattern: { type: 'string', description: 'find filename glob or grep regular expression; up to 256 chars, no command separators or quotes.' },
         type: { type: 'string', enum: ['f','d'], description: 'find object kind filter only.' },

@@ -26,7 +26,6 @@ import org.apache.iotdb.cli.fs.command.FsShellWords;
 import org.apache.iotdb.cli.fs.command.ReadOptions;
 import org.apache.iotdb.cli.fs.command.ReductionOptions;
 import org.apache.iotdb.cli.fs.command.TemporalOptions;
-import org.apache.iotdb.cli.fs.command.WindowGrid;
 import org.apache.iotdb.cli.fs.node.FsColumn;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
@@ -85,9 +84,6 @@ public class FilesystemShell {
           "meta",
           "schema",
           "stats",
-          "gaps",
-          "sessions",
-          "extreme",
           "count",
           "wc",
           "cat",
@@ -166,12 +162,9 @@ public class FilesystemShell {
           printNode(node);
         }
         return true;
-      case WINDOWS:
       case REDUCE:
         List<SqlRow> reduced =
-            command.getType() == FilesystemCommand.Type.WINDOWS
-                ? WindowGrid.from(command).rows()
-                : provider.reduce(resolve(command.getPath()), ReductionOptions.from(command));
+            provider.reduce(resolve(command.getPath()), ReductionOptions.from(command));
         ReadOptions reductionRead = command.getReadOptions();
         int from = (int) Math.min(reduced.size(), reductionRead.getOffset());
         int to =

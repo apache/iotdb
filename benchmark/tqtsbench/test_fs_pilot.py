@@ -66,29 +66,42 @@ class FsBoundaryTest(unittest.TestCase):
     def test_feature_gates_and_temporal_contracts(self):
         scope = "/root/iotdb_ndbc/station_42001"
         requests = [
-            {"command":"gaps","path":scope,"field":"wspd"},
-            {"command":"sessions","path":scope,"field":"wspd","gap_ms":14400000},
-            {"command":"extreme","path":scope,"field":"wspd","mode":"max","measurements":["wtmp"]},
+            {"command":"stats","path":scope,"measurements":["wspd"],"gaps":True},
+            {"command":"stats","path":scope,"measurements":["wspd"],"group_by":"session","gap_ms":14400000},
+            {"command":"stats","path":scope,"by":"wspd","aggregates":["argmax"],"measurements":["wtmp"]},
         ]
         for request in requests:
             with self.assertRaises(ValueError):
                 build_command(request,"iotdb_ndbc")
             command=build_command({**request,"limit":1,"offset":2},"iotdb_ndbc",["temporal","extreme"])
+            self.assertTrue(command.startswith("stats "))
             self.assertIn("-n 2",command)
             self.assertIn("--offset 2",command)
+        self.assertIn("--gaps",build_command(requests[0],"iotdb_ndbc",["temporal"]))
+        self.assertIn("--group-by session --gap-ms 14400000",build_command(requests[1],"iotdb_ndbc",["temporal"]))
+        self.assertIn("--by wspd --aggregates argmax",build_command(requests[2],"iotdb_ndbc",["extreme"]))
         for request in [
-            {**requests[0],"field":"wspd;sql"},
+            {**requests[0],"measurements":["wspd;sql"]},
+            {**requests[0],"measurements":["wspd","wtmp"]},
+            {**requests[0],"gaps":False},
             {**requests[1],"gap_ms":True},
             {**requests[1],"gap_ms":0},
             {**requests[1],"gap_ms":2**63},
             {**requests[1],"windows":[{"start_ms":0,"end_ms":10}]},
-            {**requests[2],"mode":"average"},
-            {"command":"gaps","field":"wspd"},
+            {**requests[2],"by":"wspd;sql"},
+            {**requests[2],"aggregates":["argmax","argmin"]},
+            {**requests[0],"group_by":"session","gap_ms":1},
+            {"command":"stats","measurements":["wspd"],"gaps":True},
+            {"command":"stats","path":scope,"measurements":["wspd"],"gap_ms":1},
+            {"command":"stats","path":scope,"measurements":["wspd"],"limit":5},
+            {"command":"gaps","path":scope,"field":"wspd"},
+            {"command":"extreme","path":scope,"field":"wspd","mode":"max"},
         ]:
-            with self.assertRaises(ValueError):
+            with self.subTest(request=request),self.assertRaises(ValueError):
                 build_command(request,"iotdb_ndbc",["temporal","extreme"])
-        self.assertNotIn("extreme",help_text(scope,["temporal"])["commands"])
-        self.assertNotIn("sessions",help_text(scope,["extreme"])["commands"])
+        self.assertNotIn("by=<numeric measurement>",help_text(scope,["temporal"])["commands"]["stats"])
+        self.assertNotIn("group_by=session",help_text(scope,["extreme"])["commands"]["stats"])
+        self.assertEqual(set(help_text(scope,["temporal","extreme","grid","reduce"])["commands"]),set(help_text(scope)["commands"]))
 
     def test_grep_no_match_is_distinct_from_fatal_jvm_exit(self):
         self.assertFalse(command_failed("grep",1,False,""))
@@ -98,23 +111,27 @@ class FsBoundaryTest(unittest.TestCase):
         self.assertTrue(command_failed("stats",1,False,""))
 
     def test_grid_and_reduce_gates_and_types(self):
-        grid={"command":"windows","origin":"2024-03-10T00:00:00","width":1,"unit":"day","timezone":"America/New_York","start_ms":1710046800000,"end_ms":1710215999999}
+        grid={"command":"stats","path":"/root/iotdb_ndbc","measurements":["wspd"],"origin":"2024-03-10T00:00:00","width":1,"unit":"day","timezone":"America/New_York","start_ms":1710046800000,"end_ms":1710215999999}
         with self.assertRaises(ValueError):build_command(grid,"iotdb_ndbc",["reduce"])
         native=build_command(grid,"iotdb_ndbc",["grid"])
         self.assertIn("--origin 2024-03-10T00:00:00",native)
-        self.assertNotIn("/root",native)
-        self.assertIn("-n 201",native)
-        reduce={**grid,"command":"reduce","path":"/root/iotdb_ndbc","field":"wspd","metrics":["avg","delta"],"rank_by":"delta","top":3}
+        self.assertIn("--unit day",native)
+        self.assertNotIn(" -n ",native)
+        reduce={**grid,"aggregates":["avg","delta"],"sort_by":"delta"}
         with self.assertRaises(ValueError):build_command(reduce,"iotdb_ndbc",["reduce"])
         native=build_command(reduce,"iotdb_ndbc",["grid","reduce"])
-        self.assertIn("--rank-by delta",native)
-        self.assertIn("--group-by entity",native)
-        self.assertIn("--top 3",native)
-        for changes in [{"width":True},{"timezone":"UTC;sql"},{"origin":"0|cat"},{"unit":"year"},{"windows":[{"start_ms":0,"end_ms":1}]},{"metrics":["delta","delta"]},{"rank_by":"sum"},{"group_by":"auto"}]:
+        self.assertIn("--aggregates avg,delta",native)
+        self.assertIn("--sort-by delta --order desc",native)
+        self.assertIn("-n 201",native)
+        pooled=build_command({"command":"stats","path":"/root/iotdb_ndbc","measurements":["wspd"],"group_by":"pooled"},"iotdb_ndbc",["reduce"])
+        self.assertIn("--aggregates count,first,last,delta --group-by pooled",pooled)
+        for changes in [{"width":True},{"timezone":"UTC;sql"},{"origin":"0|cat"},{"unit":"year"},{"windows":[{"start_ms":0,"end_ms":1}]},{"aggregates":["delta","delta"]},{"sort_by":"sum"},{"group_by":"auto"},{"aggregates":["median","delta"]},{"top":3}]:
             with self.subTest(changes=changes),self.assertRaises(ValueError):build_command({**reduce,**changes},"iotdb_ndbc",["grid","reduce"])
+        for old in [{"command":"windows","origin":"0","width":1,"start_ms":0,"end_ms":1},{"command":"reduce","path":"/root/iotdb_ndbc","field":"wspd"}]:
+            with self.assertRaises(ValueError):build_command(old,"iotdb_ndbc",["grid","reduce"])
         contract=help_text("/root/iotdb_ndbc",["grid","reduce"])
-        self.assertIn("sample-weighted",contract["commands"]["reduce"])
-        self.assertIn("no left partial",contract["commands"]["windows"])
+        self.assertIn("sample-weighted",contract["commands"]["stats"])
+        self.assertIn("no left partial",contract["commands"]["stats"])
 
     def test_resource_metrics_preserve_units(self):
         self.assertEqual(resource_metrics("Maximum resident set size (kbytes): 1234\nUser time (seconds): 1.25\nSystem time (seconds): 0.10"), {"peak_rss_kib": 1234.0, "cpu_user_seconds": 1.25, "cpu_system_seconds": 0.1})

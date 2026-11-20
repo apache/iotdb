@@ -33,14 +33,41 @@ from tool_runner import context_page
 COMMANDS = ("help", "ls", "find", "tree", "schema", "meta", "stats", "count", "cat", "head", "tail", "stat", "file", "grep", "cut", "paste", "join", "wc")
 AGGREGATES = ("count", "min", "max", "sum", "avg", "median", "first", "last", "min_time", "max_time", "null_count")
 READ = {"cat", "head"}
-TEMPORAL = {"gaps", "sessions", "extreme"}
-ANALYTIC = {"windows", "reduce"}
 METRICS = ("count", "sum", "avg", "min", "max", "first", "last", "delta", "elapsed_ms", "rate_per_ms")
+REDUCTION_ONLY = {"delta", "elapsed_ms", "rate_per_ms"}
+EXTREMA = ("argmin", "argmax")
 GRID_ARGS = {"origin", "width", "step", "unit", "timezone"}
-PAGED = READ | TEMPORAL | ANALYTIC
+# Analytic capabilities are modes of the native stats command, gated by feature.
+MODE_FEATURE = {"gaps": "temporal", "sessions": "temporal", "extreme": "extreme", "reduce": "reduce"}
+
 
 def enabled_commands(features):
-    return set(COMMANDS) | ({"gaps", "sessions"} if "temporal" in features else set()) | ({"extreme"} if "extreme" in features else set()) | ({"windows"} if "grid" in features else set()) | ({"reduce"} if "reduce" in features else set())
+    return set(COMMANDS)
+
+
+def stats_mode(args):
+    aggregates = args.get("aggregates")
+    aggregates = aggregates if isinstance(aggregates, list) else []
+    group = args.get("group_by")
+    if "gaps" in args and args["gaps"] is not True:
+        raise ValueError("gaps must be true when given")
+    modes = []
+    if args.get("gaps") is True:
+        modes.append("gaps")
+    if group == "session":
+        modes.append("sessions")
+    if any(a in EXTREMA for a in aggregates):
+        modes.append("extreme")
+    if (group is not None and group != "session") or "sort_by" in args or any(a in REDUCTION_ONLY for a in aggregates):
+        modes.append("reduce")
+    if len(modes) > 1:
+        raise ValueError("gaps, group_by=session, argmin/argmax and reduction parameters are exclusive")
+    return modes[0] if modes else "plain"
+
+
+def is_paged(args):
+    command = args.get("command")
+    return command in READ or (command == "stats" and stats_mode(args) != "plain")
 
 
 def integer(value, name, low, high):
@@ -87,19 +114,26 @@ def help_text(scope, features=()):
     }
 
 
-    result["commands"]["stats"] += " Statistics remain separate per object/entity and window; cross-entity ranking is not pooled averaging. Preserve object and window keys when combining results."
-    if "temporal" in features:
-        result["commands"]["gaps"] = "Complete non-null successive gaps: required path and field; optional start_ms/end_ms OR windows, limit=1..2000 (default200), offset>=0. Inclusive windows are assigned by LATER observation time; the actual preceding non-null observation may be outside the window. Return distinct first/last/min/max gap samples (earliest tied min/max), observed_at, previous_at, exact decimal gap_ms, selected_as; deduplicate by entity/window/observed_at. Full scan, never sampled. Each device is independent. Empty/no-gap window has no row. Structured pages with next_offset."
-        result["commands"]["sessions"] = "Complete sessionization: required path, numeric field and positive gap_ms. Consecutive non-null target observations split ONLY when their gap > gap_ms; equality stays in session. Optional inclusive start_ms/end_ms filters BEFORE segmentation (clipped sessions, indices restart at0); windows not allowed. Per-device session_index/start/end,count,avg,first,last. Never pool devices. limit/offset paginate output sessions with next_offset. Null target values skipped; non-finite numeric target values rejected. Full scan, not inferred from sampled windows."
-    if "extreme" in features:
-        result["commands"]["extreme"] = "Associated extreme row: required path, numeric field and mode=min|max; optional measurements of associated fields, inclusive start_ms/end_ms OR windows, limit/offset. Independently per device/window; ties choose earliest time. Skip null comparison values, retain null associated values, reject non-finite comparison values. Return object, group_scope=entity, field, window keys, observed_at, extreme_value and value.<field> (target always included). No pooling/global ranking. Empty windows have no row. Structured pages with next_offset."
+    stats = result["commands"]["stats"]
+    stats += " Statistics remain separate per object/entity and window; cross-entity ranking is not pooled averaging. Preserve object and window keys when combining results."
+    modes = []
     if "grid" in features:
-        result["commands"]["windows"] = "Generate explicit window grid, no data read. Required inclusive start_ms/end_ms, origin (epoch-ms string or ISO local/offset datetime), positive width; step defaults to width; unit=ms|day|month default ms; timezone=IANA name default UTC. ms is fixed duration; day/month is calendar arithmetic anchored at origin. Select starts inside range, clip ends to end_ms; no left partial window from outside. Return nominal half-open bounds, effective inclusive window_start/window_end, local labels and grid descriptors. Use returned inclusive bounds with stats/gaps/extreme/reduce. Max256 windows. Ambiguous/nonexistent local DST boundaries, sub-ms origin and overflow rejected. limit/offset paginate grid. No path parameter."
+        stats += " Window grid: origin (epoch-ms string or ISO local/offset datetime) with positive width, optional step (default width), unit=ms|day|month (default ms) and timezone (IANA, default UTC) expands required inclusive start_ms/end_ms into explicit windows, at most 256; ms is fixed duration, day/month is calendar arithmetic anchored at origin; starts lie inside the range, the last end is clipped to end_ms, no left partial window. Excludes explicit windows."
     if "reduce" in features:
-        result["commands"]["reduce"] = "Native raw-observation reduction: explicit path and numeric field; metrics subset of count,sum,avg,min,max,first,last,delta,elapsed_ms,rate_per_ms (default count,first,last,delta). Optional inclusive start_ms/end_ms OR explicit windows. group_by=entity (default) keeps device/window rows; pooled merges raw observations per window, sample-weighted mean, never mean of entity means. NULL targets skipped, non-finite rejected, empty groups omitted. delta=last-first at non-null physical-time endpoints; elapsed_ms=last_at-first_at; rate_per_ms=delta/elapsed_ms (NULL if zero). No implicit unit/cycle conversion. Return endpoint identities/times and group/window/timezone descriptors. Optional rank_by selected metric, order=asc|desc(default desc), top>=1; top/order require rank_by. Global row-number ranking AFTER reduction, NULL last; ties window_index then entity identity. Endpoint timestamp ties choose lexicographically first entity (NULL tags first). Top before limit/offset paging. Exact decimal result strings; division DECIMAL128. Max65536 nonempty groups. timezone labels explicit epoch bounds; does not shift them."
-        result["scope_note"] = "Only native read-only FS commands enumerated here are enabled. reduce explicitly selects entity vs pooled grain and can rank result rows; stats remains entity-local. No SQL/shell/local files/writes."
-        if "grid" in features:
-            result["commands"]["reduce"] += " Optional origin,width,step,unit,timezone generate the same grid as windows directly, requiring start_ms/end_ms and excluding explicit windows; no manual window array needed."
+        modes.append("reduction")
+        stats += " Reduction mode (selected by any of aggregates delta/elapsed_ms/rate_per_ms, group_by=entity|pooled or sort_by): exactly one numeric measurement; aggregates subset of count,sum,avg,min,max,first,last,delta,elapsed_ms,rate_per_ms (default count,first,last,delta). group_by=entity (default) keeps device/window rows; pooled merges raw observations per window, sample-weighted mean, never mean of entity means. delta=last-first at non-null physical-time endpoints; elapsed_ms=last_at-first_at; rate_per_ms=delta/elapsed_ms (NULL if zero). No implicit unit/cycle conversion. Optional sort_by (a selected aggregate) and order=asc|desc (default desc) rank all result rows globally after reduction, NULL last; ties window_index then entity identity; ranking precedes limit/offset paging. timezone without a grid only labels epoch bounds. Max 65536 nonempty groups."
+    if "temporal" in features:
+        modes.append("gaps/sessions")
+        stats += " gaps=true: exactly one measurement; complete non-null successive gaps, optional start_ms/end_ms OR windows; inclusive windows are assigned by LATER observation time and the real preceding observation may be outside the window. Returns distinct first/last/min/max gap samples (earliest tied min/max), observed_at, previous_at, exact decimal gap_ms, selected_as; full scan, never sampled; each device independent; empty/no-gap windows have no row."
+        stats += " group_by=session with positive gap_ms: exactly one numeric measurement; consecutive non-null observations split ONLY when their gap > gap_ms; optional inclusive start_ms/end_ms filter BEFORE segmentation (clipped sessions, indices restart at 0); windows not allowed. Per-device session_index/start/end,count,avg,first,last; never pools devices."
+    if "extreme" in features:
+        modes.append("argmin/argmax")
+        stats += " aggregates=[argmin] or [argmax] with by=<numeric measurement>: the earliest row where that measurement is minimal/maximal, independently per device/window; optional measurements list associated fields (NULL retained); optional start_ms/end_ms OR windows. Returns observed_at, extreme_value and value.<field>; empty windows have no row; no pooling or global ranking."
+    if modes:
+        stats += " Only one mode per call (" + ", ".join(modes) + "); modes stream raw observations in the CLI and page OUTPUT rows with limit=1..2000 (default 200) and offset, returning next_offset."
+    result["commands"]["stats"] = stats
+    if "reduce" in features:
+        result["scope_note"] = "Only native read-only FS commands enumerated here are enabled. stats reduction mode explicitly selects entity vs pooled grain and can rank result rows. No SQL/shell/local files/writes."
     return result
 
 
@@ -109,31 +143,33 @@ def build_command(args, package, features=()):
     cmd = args.get("command")
     if cmd not in enabled_commands(features):
         raise ValueError("Unknown command; use help")
+    mode = stats_mode(args) if cmd == "stats" else None
+    if mode in MODE_FEATURE and MODE_FEATURE[mode] not in features:
+        raise ValueError("This stats mode is not enabled for this arm; use help")
+    paged = is_paged(args)
     allowed = {"command"}
-    if cmd not in {"help", "windows"}:
+    if cmd != "help":
         allowed.add("paths" if cmd in {"paste", "join"} else "path")
-    if cmd in READ | {"stats", "schema", "count", "extreme"}:
+    if cmd in READ | {"stats", "schema", "count"}:
         allowed.add("measurements")
-    if cmd in PAGED | {"stats"}:
+    if cmd in READ | {"stats"}:
         allowed |= {"start_ms", "end_ms"}
-    if cmd in PAGED | {"tail"}:
+    if paged or cmd == "tail":
         allowed.add("limit")
-    if cmd in PAGED:
+    if paged:
         allowed.add("offset")
     if cmd == "stats":
         allowed |= {"aggregates", "windows"}
-    if cmd in TEMPORAL | {"reduce"}:
-        allowed.add("field")
-    if cmd in {"gaps", "extreme", "reduce"}:
-        allowed.add("windows")
-    if cmd == "sessions":
-        allowed.add("gap_ms")
-    if cmd == "extreme":
-        allowed.add("mode")
-    if cmd == "windows" or (cmd == "reduce" and "grid" in features):
-        allowed |= GRID_ARGS
-    if cmd == "reduce":
-        allowed |= {"metrics", "group_by", "rank_by", "order", "top", "timezone"}
+        if "grid" in features:
+            allowed |= GRID_ARGS
+        if mode == "reduce":
+            allowed |= {"group_by", "sort_by", "order", "timezone"}
+        if mode == "gaps":
+            allowed.add("gaps")
+        if mode == "sessions":
+            allowed |= {"group_by", "gap_ms"}
+        if mode == "extreme":
+            allowed.add("by")
     if cmd in {"find", "grep"}:
         allowed.add("pattern")
     if cmd in {"tree", "find"}:
@@ -156,18 +192,48 @@ def build_command(args, package, features=()):
     else:
         paths = [path_arg(args.get("path", "/root/"+package), package)]
     parts = [cmd]
-    if cmd in TEMPORAL | {"reduce"}:
+    if mode not in (None, "plain"):
         if "path" not in args:
-            raise ValueError("Analysis commands require an explicit path")
-        field = args.get("field")
-        if not isinstance(field, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", field):
-            raise ValueError("field must be a measurement identifier")
-        parts += ["--field", field]
-    if cmd in ANALYTIC:
-        has_grid = "origin" in args
-        if cmd == "windows" and not has_grid:
-            raise ValueError("windows requires origin, width and start_ms/end_ms")
-        if has_grid:
+            raise ValueError("Analysis modes require an explicit path")
+        names = args.get("measurements")
+        if mode == "extreme":
+            by = args.get("by")
+            if not isinstance(by, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", by):
+                raise ValueError("by must be a measurement identifier")
+            if args.get("aggregates") not in (["argmin"], ["argmax"]):
+                raise ValueError("argmin/argmax must be the only aggregate")
+            parts += ["--by", by, "--aggregates", args["aggregates"][0]]
+        else:
+            if not isinstance(names, list) or len(names) != 1:
+                raise ValueError("This stats mode requires exactly one target measurement")
+            if mode == "gaps":
+                if "aggregates" in args:
+                    raise ValueError("gaps takes no aggregates")
+                parts += ["--gaps"]
+            if mode == "sessions":
+                if "windows" in args or "origin" in args:
+                    raise ValueError("sessions take start_ms/end_ms only, not windows")
+                if "aggregates" in args:
+                    raise ValueError("sessions take no aggregates")
+                parts += ["--group-by", "session", "--gap-ms", str(integer(args.get("gap_ms"), "gap_ms", 1, 2**63-1))]
+            if mode == "reduce":
+                metrics = args.get("aggregates", ["count", "first", "last", "delta"])
+                if not isinstance(metrics, list) or not metrics or any(v not in METRICS for v in metrics) or len(set(metrics)) != len(metrics):
+                    raise ValueError("aggregates must be distinct supported reduction aggregates")
+                parts += ["--aggregates", ",".join(metrics)]
+                if "group_by" in args:
+                    if args["group_by"] not in {"entity", "pooled"}:
+                        raise ValueError("group_by must be entity, pooled or session")
+                    parts += ["--group-by", args["group_by"]]
+                if "sort_by" in args:
+                    order = args.get("order", "desc")
+                    if args["sort_by"] not in metrics or order not in {"asc", "desc"}:
+                        raise ValueError("sort_by must be a selected aggregate; order asc or desc")
+                    parts += ["--sort-by", args["sort_by"], "--order", order]
+                elif "order" in args:
+                    raise ValueError("order requires sort_by")
+    if cmd == "stats":
+        if "origin" in args:
             if not {"start_ms", "end_ms", "width"} <= set(args) or "windows" in args:
                 raise ValueError("Grid requires origin,width,start_ms,end_ms and excludes windows")
             origin = args["origin"]
@@ -181,28 +247,12 @@ def build_command(args, package, features=()):
         elif any(k in args for k in ["width","step","unit"]):
             raise ValueError("width/step/unit require origin")
         if "timezone" in args:
+            if "origin" not in args and mode != "reduce":
+                raise ValueError("timezone requires origin")
             zone=args["timezone"]
             if not isinstance(zone,str) or len(zone)>100 or not re.fullmatch(r"[A-Za-z0-9_/+\-:]+",zone): raise ValueError("timezone must be an IANA zone or offset")
             parts += ["--timezone",zone]
-    if cmd == "reduce":
-        metrics=args.get("metrics",["count","first","last","delta"])
-        if not isinstance(metrics,list) or not metrics or any(v not in METRICS for v in metrics) or len(set(metrics))!=len(metrics): raise ValueError("metrics must be distinct supported reduction metrics")
-        group=args.get("group_by","entity")
-        if group not in {"entity","pooled"}: raise ValueError("group_by must be entity or pooled")
-        parts += ["--metrics",",".join(metrics),"--group-by",group]
-        if "rank_by" in args:
-            rank=args["rank_by"]; order=args.get("order","desc")
-            if rank not in metrics or order not in {"asc","desc"}: raise ValueError("rank_by must be selected metric; order asc or desc")
-            parts += ["--rank-by",rank,"--order",order]
-            if "top" in args:parts += ["--top",str(integer(args["top"],"top",1,65536))]
-        elif "top" in args or "order" in args:raise ValueError("top/order require rank_by")
-    if cmd == "sessions":
-        parts += ["--gap-ms", str(integer(args.get("gap_ms"), "gap_ms", 1, 2**63-1))]
-    if cmd == "extreme":
-        if args.get("mode") not in {"min", "max"}:
-            raise ValueError("mode must be min or max")
-        parts += ["--mode", args["mode"]]
-    if cmd in {"schema", "meta", "stats", "count", "cat", "head"} | TEMPORAL | ANALYTIC:
+    if cmd in {"schema", "meta", "stats", "count", "cat", "head"}:
         parts += ["-f", "ndjson"]
     elif cmd == "tail":
         parts += ["--format", "ndjson"]
@@ -233,12 +283,12 @@ def build_command(args, package, features=()):
                 raise ValueError("Window end_ms must be >= start_ms")
             ranges.append(f"{start}:{end}")
         parts += ["--windows", ",".join(ranges)]
-    if cmd in PAGED | {"tail"}:
+    if paged or cmd == "tail":
         limit = integer(args.get("limit",10 if cmd=="tail" else 200), "limit",1,2000)
-        parts += ["-n", str(limit + (1 if cmd in PAGED else 0))]
-    if cmd in PAGED:
+        parts += ["-n", str(limit + (1 if paged else 0))]
+    if paged:
         parts += ["--offset", str(integer(args.get("offset",0),"offset",0,100000000))]
-    if "aggregates" in args:
+    if "aggregates" in args and mode in (None, "plain"):
         values = args["aggregates"]
         if not isinstance(values,list) or not values or any(v not in AGGREGATES for v in values):
             raise ValueError("aggregates must be a nonempty subset of " + ",".join(AGGREGATES))
@@ -269,7 +319,7 @@ def build_command(args, package, features=()):
         parts += ["-t",",","-1",str(integer(args.get("left_field",1),"left_field",1,10000)),"-2",str(integer(args.get("right_field",1),"right_field",1,10000))]
     if cmd == "wc":
         parts += ["-c"]
-    if cmd not in {"find", "windows"}:
+    if cmd != "find":
         parts += paths
     return " ".join(shlex.quote(p) for p in parts)
 
@@ -331,7 +381,7 @@ def execute(config, request):
                             proc.wait()
                         finally:
                             signal.signal(signal.SIGTERM, previous)
-                page_command = args["command"] in PAGED | {"tail"}
+                page_command = is_paged(args) or args["command"] == "tail"
                 if page_command and (folder/"stdout.txt").stat().st_size > 8*1024*1024:
                     raise ValueError("Page output exceeds 8 MiB; select fewer measurements")
                 with (folder/"stdout.txt").open(errors="replace") as stream:
@@ -341,7 +391,7 @@ def execute(config, request):
                 (folder/"resources.json").write_text(json.dumps(metrics))
                 error=command_failed(args["command"],proc.returncode,timed_out,stderr)
                 payload={"stdout":raw[:40000],"stderr":"\n".join(line for line in stderr.splitlines() if not line.startswith("Picked up _JAVA_OPTIONS:"))[:2000],"truncated":len(raw)>40000,"is_error":error,"exit_code":proc.returncode,"timed_out":timed_out}
-                if not error and args["command"] in PAGED | {"tail"}:
+                if not error and page_command:
                     rows=[json.loads(line) for line in raw.splitlines() if line.strip()]
                     limit=args.get("limit",10 if args["command"]=="tail" else 200)
                     selected=rows[:limit]
@@ -352,7 +402,7 @@ def execute(config, request):
                     if args["command"]=="tail" and len(selected)<len(rows):
                         raise ValueError("Tail page exceeds output budget; use a smaller limit")
                     offset=args.get("offset",0)
-                    more=args["command"] in PAGED and len(selected)<len(rows)
+                    more=is_paged(args) and len(selected)<len(rows)
                     payload={"rows":selected,"offset":offset,"returned_rows":len(selected),"has_more":more,"next_offset":offset+len(selected) if more else None,"is_error":False}
                 if payload.get("truncated"):
                     payload["continuation"]="Narrow the path or parameters. Raw output is retained offline and cannot be opened by the agent."
