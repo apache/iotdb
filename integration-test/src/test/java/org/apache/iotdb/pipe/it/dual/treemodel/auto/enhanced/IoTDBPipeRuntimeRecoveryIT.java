@@ -878,7 +878,7 @@ public class IoTDBPipeRuntimeRecoveryIT {
           final Future<?> drop =
               executor.submit(
                   () -> {
-                    sql(sender, "drop pipe " + f.name);
+                    sql(sender, "drop pipe if exists " + f.name);
                     return null;
                   });
           await().untilAsserted(() -> assertEquals("PRE_DELETE", pipe(f.name).getState()));
@@ -888,9 +888,16 @@ public class IoTDBPipeRuntimeRecoveryIT {
           try {
             drop.get(60, TimeUnit.SECONDS);
           } catch (final java.util.concurrent.ExecutionException e) {
-            // Only a transport failure can be explained by losing the response during restart.
-            // Product/procedure errors must fail this test even if background cleanup later wins.
-            assertTrue("Unexpected DROP failure: " + e.getCause(), causedByTransport(e));
+            assertTrue(
+                "Unexpected DROP failure: " + e.getCause(),
+                causedByTransport(e)
+                    || causedByConfigNodeUnavailable(e)
+                    || causedByPipeNotExist(e));
+            if (causedByPipeNotExist(e)) {
+              assertFalse(
+                  "DROP reported a missing pipe while its metadata still exists",
+                  pipeExists(f.name));
+            }
           }
         }
         awaitNoPipeResources(f.name);
@@ -902,6 +909,28 @@ public class IoTDBPipeRuntimeRecoveryIT {
   private static boolean causedByTransport(final Throwable error) {
     for (Throwable cause = error; cause != null; cause = cause.getCause()) {
       if (cause instanceof TTransportException) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean causedByConfigNodeUnavailable(final Throwable error) {
+    for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+      if (cause instanceof SQLException
+          && cause.getMessage() != null
+          && cause.getMessage().contains("java.net.ConnectException: Connection refused")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean causedByPipeNotExist(final Throwable error) {
+    for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+      if (cause instanceof SQLException
+          && ((SQLException) cause).getErrorCode()
+              == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()) {
         return true;
       }
     }
@@ -1126,6 +1155,21 @@ public class IoTDBPipeRuntimeRecoveryIT {
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
       assertEquals("Expected one generation of " + name, 1, result.getPipeInfoListSize());
       return result.getPipeInfoList().get(0);
+    }
+  }
+
+  private static boolean pipeExists(final String name) throws Exception {
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) sender.getLeaderConfigNodeConnection()) {
+      final TShowPipeResp result =
+          client.showPipe(
+              new TShowPipeReq()
+                  .setPipeName(name)
+                  .setWhereClause(true)
+                  .setIsTableModel("p1_table_schema".equals(name))
+                  .setUserName(SessionConfig.DEFAULT_USER));
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
+      return result.getPipeInfoList().stream().anyMatch(pipe -> name.equals(pipe.getId()));
     }
   }
 

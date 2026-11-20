@@ -546,7 +546,8 @@ public class IoTDBPipeTransferRecoveryIT {
       await()
           .atMost(60, TimeUnit.SECONDS)
           .until(() -> Files.readAllLines(auditFile).contains("processed"));
-      final ProgressIndex parentProgress = auditedProgress("parent-progress:");
+      final String parentProgressPrefix = "parent-progress:";
+      final ProgressIndex parentProgress = auditedProgress(parentProgressPrefix);
       Assert.assertNotEquals(MinimumProgressIndex.INSTANCE, parentProgress);
       final int regionId = sourceRegionId(input);
       // The fixture configures 1-second metadata heartbeats. Observe two full rounds for the
@@ -561,6 +562,7 @@ public class IoTDBPipeTransferRecoveryIT {
                   Assert.assertFalse(
                       "An unfinished sibling must retain the parent checkpoint",
                       coordinatorProgress(regionId).isEqualOrAfter(parentProgress)));
+      final long auditLinesBeforeRestart = auditCount();
       restartSender();
       assertRows(senderEnv, "select * from " + input, "Time," + input + ".s1,", "1,55,");
       awaitBacklog(senderEnv, pipeName);
@@ -572,15 +574,33 @@ public class IoTDBPipeTransferRecoveryIT {
       await()
           .pollInSameThread()
           .atMost(60, TimeUnit.SECONDS)
-          .until(() -> coordinatorProgress(regionId).isEqualOrAfter(parentProgress));
+          .untilAsserted(
+              () -> {
+                final ProgressIndex replayedProgress =
+                    auditedProgress(parentProgressPrefix, auditLinesBeforeRestart);
+                Assert.assertNotEquals(MinimumProgressIndex.INSTANCE, replayedProgress);
+                final ProgressIndex checkpoint = coordinatorProgress(regionId);
+                Assert.assertTrue(
+                    "Checkpoint "
+                        + checkpoint
+                        + " does not cover replayed progress "
+                        + replayedProgress,
+                    checkpoint.isEqualOrAfter(replayedProgress));
+              });
       assertInt32Schema(receiverEnv, first);
       assertInt32Schema(receiverEnv, second);
     }
   }
 
   private ProgressIndex auditedProgress(final String prefix) throws Exception {
+    return auditedProgress(prefix, 0);
+  }
+
+  private ProgressIndex auditedProgress(final String prefix, final long skipLines)
+      throws Exception {
     try (final Stream<String> lines = Files.lines(auditFile)) {
       return lines
+          .skip(skipLines)
           .filter(line -> line.startsWith(prefix))
           .map(
               line ->
