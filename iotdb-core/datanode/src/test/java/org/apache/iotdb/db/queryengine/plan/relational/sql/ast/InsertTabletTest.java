@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.sorter.TableModelTabletEventSorter;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -195,5 +196,48 @@ public class InsertTabletTest {
     List<Object[]> deviceIdList = insertTablet.getDeviceIdList();
     assertEquals(1, deviceIdList.size());
     assertArrayEquals(new Object[] {"d1"}, deviceIdList.get(0));
+  }
+
+  /**
+   * The coordinator sorts the rows before planning, but an attribute is device metadata: it is the
+   * last non-null value of the rows as the client submitted them, so the sort must not change it.
+   */
+  @Test
+  public void testAttributeValueFollowsSubmittedRowOrderAfterSort() {
+    final InsertTabletStatement innerStmt = new InsertTabletStatement();
+    innerStmt.setDevicePath(new PartialPath("table1", false));
+    innerStmt.setMeasurements(new String[] {"deviceId", "attr1", "measurement"});
+    innerStmt.setColumnCategories(
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.FIELD
+        });
+    innerStmt.setDataTypes(
+        new TSDataType[] {TSDataType.STRING, TSDataType.STRING, TSDataType.STRING});
+    // the client sends the newer row first: its attribute "old" must not win over the last one
+    innerStmt.setTimes(new long[] {100, 15});
+    innerStmt.setRowCount(2);
+    innerStmt.setColumns(
+        new Object[] {
+          new Binary[] {
+            new Binary("d1", StandardCharsets.UTF_8), new Binary("d1", StandardCharsets.UTF_8)
+          },
+          new Binary[] {
+            new Binary("old", StandardCharsets.UTF_8), new Binary("new", StandardCharsets.UTF_8)
+          },
+          new Binary[] {
+            new Binary("m100", StandardCharsets.UTF_8), new Binary("m15", StandardCharsets.UTF_8)
+          }
+        });
+
+    final TableModelTabletEventSorter sorter = new TableModelTabletEventSorter(innerStmt);
+    sorter.sortByTimestampIfNecessary();
+    innerStmt.setOriginalRowIndexes(sorter.getRowPermutation());
+    assertArrayEquals(new long[] {15, 100}, Arrays.copyOf(innerStmt.getTimes(), 2));
+
+    final InsertTablet insertTablet = new InsertTablet(innerStmt, null);
+    final List<Object[]> attributeValueList = insertTablet.getAttributeValueList();
+    assertEquals(1, attributeValueList.size());
+    assertArrayEquals(
+        new Object[] {new Binary("new", StandardCharsets.UTF_8)}, attributeValueList.get(0));
   }
 }

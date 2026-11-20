@@ -17,102 +17,97 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.sink.util.sorter;
-
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+package org.apache.iotdb.db.utils.sorter;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
-/** Adapter for InsertTabletStatement to implement InsertEventDataAdapter interface. */
-public class InsertTabletStatementAdapter implements InsertEventDataAdapter {
+import java.util.List;
 
-  private final InsertTabletStatement statement;
+/** Adapter for Tablet to implement InsertEventDataAdapter interface. */
+public class TabletAdapter implements InsertEventDataAdapter {
 
-  public InsertTabletStatementAdapter(final InsertTabletStatement statement) {
-    this.statement = statement;
+  private final Tablet tablet;
+
+  public TabletAdapter(final Tablet tablet) {
+    this.tablet = tablet;
   }
 
   @Override
   public int getColumnCount() {
-    final Object[] columns = statement.getColumns();
-    return columns != null ? columns.length : 0;
+    final Object[] values = tablet.getValues();
+    return values != null ? values.length : 0;
   }
 
   @Override
   public TSDataType getDataType(int columnIndex) {
-    final TSDataType[] dataTypes = statement.getDataTypes();
-    if (dataTypes != null && columnIndex < dataTypes.length) {
-      return dataTypes[columnIndex];
+    final List<IMeasurementSchema> schemas = tablet.getSchemas();
+    if (schemas != null && columnIndex < schemas.size()) {
+      final IMeasurementSchema schema = schemas.get(columnIndex);
+      return schema != null ? schema.getType() : null;
     }
     return null;
   }
 
   @Override
   public BitMap[] getBitMaps() {
-    return statement.getBitMaps();
+    return tablet.getBitMaps();
   }
 
   @Override
   public void setBitMaps(BitMap[] bitMaps) {
-    statement.setBitMaps(bitMaps);
+    tablet.setBitMaps(bitMaps);
   }
 
   @Override
   public Object[] getValues() {
-    return statement.getColumns();
+    return tablet.getValues();
   }
 
   @Override
   public void setValue(int columnIndex, Object value) {
-    Object[] columns = statement.getColumns();
-    if (columns != null && columnIndex < columns.length) {
-      columns[columnIndex] = value;
-    }
+    tablet.getValues()[columnIndex] = value;
   }
 
   @Override
   public long[] getTimestamps() {
-    return statement.getTimes();
+    return tablet.getTimestamps();
   }
 
   @Override
   public void setTimestamps(long[] timestamps) {
-    statement.setTimes(timestamps);
+    tablet.setTimestamps(timestamps);
   }
 
   @Override
   public int getRowSize() {
-    return statement.getRowCount();
+    return tablet.getRowSize();
   }
 
   @Override
   public void setRowSize(int rowSize) {
-    statement.setRowCount(rowSize);
+    tablet.setRowSize(rowSize);
   }
 
   @Override
   public long getTimestamp(int rowIndex) {
-    long[] times = statement.getTimes();
-    if (times != null && rowIndex < times.length) {
-      return times[rowIndex];
-    }
-    return 0;
+    return tablet.getTimestamp(rowIndex);
   }
 
   @Override
   public IDeviceID getDeviceID(int rowIndex) {
-    return statement.getTableDeviceID(rowIndex);
+    return tablet.getDeviceID(rowIndex);
   }
 
   @Override
   public boolean isDateStoredAsLocalDate(int columnIndex) {
-    // InsertTabletStatement stores DATE as int[]
-    return false;
+    return true;
   }
 
-  public InsertTabletStatement getStatement() {
-    return statement;
+  public Tablet getTablet() {
+    return tablet;
   }
 }

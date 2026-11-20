@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.sink;
 
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
+import org.apache.iotdb.db.utils.sorter.TableModelTabletEventSorter;
+import org.apache.iotdb.db.utils.sorter.TreeModelTabletEventSorter;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -81,7 +81,7 @@ public class PipeTabletEventSorterTest {
 
     Assert.assertFalse(tablet.isSorted());
 
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new TreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     Assert.assertTrue(tablet.isSorted());
 
@@ -129,7 +129,7 @@ public class PipeTabletEventSorterTest {
 
     Assert.assertTrue(tablet.isSorted());
 
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new TreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     Assert.assertTrue(tablet.isSorted());
 
@@ -191,7 +191,7 @@ public class PipeTabletEventSorterTest {
       }
     }
 
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new TreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     Assert.assertTrue(tablet.isSorted());
 
@@ -233,7 +233,7 @@ public class PipeTabletEventSorterTest {
 
   public void doTableModelTest(final boolean hasDuplicates, final boolean isUnSorted) {
     final Tablet tablet = generateTablet("test", 10, hasDuplicates, isUnSorted);
-    new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
+    new TableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
     long[] timestamps = tablet.getTimestamps();
     for (int i = 1; i < tablet.getRowSize(); i++) {
       long time = timestamps[i];
@@ -256,7 +256,7 @@ public class PipeTabletEventSorterTest {
 
   public void doTableModelTest1() {
     final Tablet tablet = generateTablet("test", 10, false, true);
-    new PipeTableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
+    new TableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
     long[] timestamps = tablet.getTimestamps();
     for (int i = 1; i < tablet.getRowSize(); i++) {
       long time = timestamps[i];
