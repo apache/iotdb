@@ -37,13 +37,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCon
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadPointCountMetrics;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkPayloadRef;
 import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
+import org.apache.iotdb.db.storageengine.load.splitter.TsFileDataType;
+import org.apache.iotdb.db.storageengine.load.splitter.WholeFileData;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -60,19 +64,28 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.TsFilePrecalculatedChunkWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -84,6 +97,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.zip.CRC32C;
 
 /**
  * Manages the physical writing, crash recovery, and consensus transitions (PIECE, PREPARE, COMMIT,
@@ -115,6 +129,27 @@ final class TsFileWriterManager {
   private final Map<TTimePartitionSlot, ModificationFile> timePartition2ModificationFile =
       new ConcurrentHashMap<>();
 
+  private static final String WHOLE_FILE_MAGIC = "LTWHOLE1";
+  private static final int WHOLE_FILE_META_VERSION = 1;
+  static final String WHOLE_FILE_TSFILE_NAME = "whole-file.tsfile";
+  static final String WHOLE_FILE_META_NAME = "whole-file.meta";
+
+  /** Whole-file staging: the source TsFile is copied byte for byte, not rebuilt from chunks. */
+  private File wholeFile;
+
+  private File wholeFileMods;
+  private FileChannel wholeFileChannel;
+  private FileChannel wholeFileModsChannel;
+  private long wholeFileSourceLength = -1L;
+  private long wholeFileSealedLength = -1L;
+  private long wholeFileModsSourceLength = -1L;
+  private long wholeFileTimePartitionStart = Long.MIN_VALUE;
+  private boolean wholeFileGeneratedByPipe;
+  private WholeFileData.Kind wholeFileModsKind;
+  private TsFileResource wholeFileResource;
+  private LoadTsFileProgress wholeFileProgress;
+  private TTimePartitionSlot wholeFileTimePartition;
+
   private volatile long currentSearchIndex = -1L;
   private volatile boolean isClosed;
 
@@ -138,11 +173,14 @@ final class TsFileWriterManager {
   }
 
   boolean hasPendingTsFiles() {
-    return !timePartition2Resource.isEmpty();
+    return wholeFile != null || wholeFileChannel != null || !timePartition2Resource.isEmpty();
   }
 
   boolean hasStagedData() {
-    return !timePartition2Writer.isEmpty() || !timePartition2ModificationFile.isEmpty();
+    return wholeFileChannel != null
+        || wholeFileResource != null
+        || !timePartition2Writer.isEmpty()
+        || !timePartition2ModificationFile.isEmpty();
   }
 
   // -------------------------------------------------------------------------
@@ -183,6 +221,11 @@ final class TsFileWriterManager {
               .EXCEPTION_PRECALCULATED_CHUNK_STAGING_IS_NOT_SUPPORTED_BY_THE_FILE_ENCRYPTION_POLICY_13DA8C32);
     }
 
+    if (containsWholeFileData(tsFileDataList)) {
+      writeWholeFilePiece(tsFileDataList);
+      return Collections.emptyList();
+    }
+
     for (final TsFileData tsFileData : tsFileDataList) {
       switch (tsFileData.getType()) {
         case CHUNK:
@@ -203,6 +246,208 @@ final class TsFileWriterManager {
     forceStagedFiles();
     flushRecordedChunks();
     return publishPieceRefs();
+  }
+
+  // -------------------------------------------------------------------------
+  // Whole-file staging
+  // -------------------------------------------------------------------------
+
+  private static boolean containsWholeFileData(final List<TsFileData> tsFileDataList) {
+    for (final TsFileData data : tsFileDataList) {
+      if (data.getType() == TsFileDataType.WHOLE_FILE) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private void writeWholeFilePiece(final List<TsFileData> tsFileDataList) throws IOException {
+    for (final TsFileData data : tsFileDataList) {
+      if (data.getType() != TsFileDataType.WHOLE_FILE) {
+        throw new IOException(
+            StorageEngineMessages
+                .EXCEPTION_A_WHOLE_FILE_LOAD_PIECE_CANNOT_MIX_WHOLE_FILE_SLICES_AND_CHUNK_DATA_B1297688);
+      }
+      writeWholeFileData((WholeFileData) data);
+    }
+    if (wholeFileChannel != null) {
+      wholeFileChannel.force(false);
+    }
+    if (wholeFileModsChannel != null) {
+      wholeFileModsChannel.force(false);
+    }
+  }
+
+  private void writeWholeFileData(final WholeFileData data) throws IOException {
+    final CRC32C crc32c = new CRC32C();
+    crc32c.update(data.getPayload(), 0, data.getPayload().length);
+    if (crc32c.getValue() != data.getChecksum()) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_WHOLE_FILE_SLICE_CHECKSUM_MISMATCH_AT_OFFSET_D_EXPECTED_D_ACTUAL_D_48238B7E,
+              data.getOffset(),
+              data.getChecksum(),
+              crc32c.getValue()));
+    }
+
+    switch (data.getKind()) {
+      case TSFILE:
+        ensureWholeFile(data);
+        appendWholeFile(wholeFile, wholeFileChannel, data);
+        return;
+      case MODS_V1:
+      case MODS_V2:
+        ensureWholeFileMods(data);
+        appendWholeFile(wholeFileMods, wholeFileModsChannel, data);
+        return;
+      default:
+        throw new IOException(StorageEngineMessages.UNSUPPORTED_TSFILE_DATA_TYPE + data.getType());
+    }
+  }
+
+  private void ensureWholeFile(final WholeFileData data) throws IOException {
+    if (wholeFileChannel != null) {
+      validateWholeFile(data);
+      return;
+    }
+    if (wholeFile != null) {
+      // Recovered from disk: only the metadata still has to match the slices that arrive next.
+      validateWholeFile(data);
+      if (wholeFileChannel == null) {
+        wholeFileChannel =
+            FileChannel.open(wholeFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE);
+      }
+      return;
+    }
+    wholeFile = new File(taskDir, WHOLE_FILE_TSFILE_NAME);
+    if (!wholeFile.createNewFile()) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_WHOLE_FILE_STAGING_S_ALREADY_EXISTS_BUT_CANNOT_BE_RESUMED_5F80C60D,
+              wholeFile.getAbsolutePath()));
+    }
+    wholeFileChannel =
+        FileChannel.open(wholeFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE);
+    wholeFileSourceLength = data.getSourceLength();
+    wholeFileTimePartitionStart = data.getTimePartitionStart();
+    wholeFileTimePartition = new TTimePartitionSlot(wholeFileTimePartitionStart);
+    wholeFileGeneratedByPipe = data.isGeneratedByPipe();
+    wholeFileProgress = new LoadTsFileProgress(wholeFile);
+    writeWholeFileMeta();
+  }
+
+  private void validateWholeFile(final WholeFileData data) throws IOException {
+    if (wholeFileSourceLength != data.getSourceLength()
+        || wholeFileTimePartitionStart != data.getTimePartitionStart()
+        || wholeFileGeneratedByPipe != data.isGeneratedByPipe()) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_WHOLE_FILE_SLICE_SOURCE_LENGTH_D_TIME_PARTITION_D_DOES_NOT_MATCH_THE_STAGED_TASK_SOURCE_LENGTH_D_FCD90EBB,
+              data.getSourceLength(),
+              data.getTimePartitionStart(),
+              wholeFileSourceLength));
+    }
+  }
+
+  private void ensureWholeFileMods(final WholeFileData data) throws IOException {
+    if (wholeFile == null) {
+      throw new IOException(
+          StorageEngineMessages
+              .EXCEPTION_WHOLE_FILE_MODIFICATION_DATA_ARRIVED_BEFORE_THE_TSFILE_18FCDD22);
+    }
+    if (wholeFileModsChannel != null) {
+      if (wholeFileModsKind != data.getKind()
+          || wholeFileModsSourceLength != data.getSourceLength()) {
+        throw new IOException(
+            String.format(
+                StorageEngineMessages
+                    .EXCEPTION_WHOLE_FILE_MODIFICATION_SLICE_KIND_S_DOES_NOT_MATCH_THE_STAGED_TASK_KIND_S_7D2A42AA,
+                data.getKind(),
+                wholeFileModsKind));
+      }
+      return;
+    }
+    wholeFileModsKind = data.getKind();
+    wholeFileMods =
+        data.getKind() == WholeFileData.Kind.MODS_V1
+            ? ModificationFileV1.getNormalMods(wholeFile)
+            : ModificationFile.getExclusiveMods(wholeFile);
+    if (!wholeFileMods.createNewFile()) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_WHOLE_FILE_MODIFICATION_STAGING_S_ALREADY_EXISTS_BUT_CANNOT_BE_RESUMED_ADE1CCB8,
+              wholeFileMods.getAbsolutePath()));
+    }
+    wholeFileModsChannel =
+        FileChannel.open(wholeFileMods.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE);
+    wholeFileModsSourceLength = data.getSourceLength();
+  }
+
+  private void appendWholeFile(final File file, final FileChannel channel, final WholeFileData data)
+      throws IOException {
+    final long length = file.length();
+    if (data.getOffset() > length) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_WHOLE_FILE_SLICE_OFFSET_D_EXCEEDS_THE_STAGED_LENGTH_D_FOR_TASK_S_8E5B27C5,
+              data.getOffset(),
+              length,
+              taskDir.getAbsolutePath()));
+    }
+    final long alreadyStagedLong = Math.max(0L, length - data.getOffset());
+    if (alreadyStagedLong >= data.getPayload().length) {
+      return;
+    }
+    final int alreadyStaged = (int) alreadyStagedLong;
+    final ByteBuffer buffer =
+        ByteBuffer.wrap(data.getPayload(), alreadyStaged, data.getPayload().length - alreadyStaged);
+    channel.position(length);
+    while (buffer.hasRemaining()) {
+      channel.write(buffer);
+    }
+    channel.force(false);
+  }
+
+  private void writeWholeFileMeta() throws IOException {
+    final File meta = new File(taskDir, WHOLE_FILE_META_NAME);
+    try (final FileOutputStream fos = new FileOutputStream(meta, false);
+        final DataOutputStream out = new DataOutputStream(new BufferedOutputStream(fos))) {
+      ReadWriteIOUtils.write(WHOLE_FILE_MAGIC, out);
+      ReadWriteIOUtils.write(WHOLE_FILE_META_VERSION, out);
+      ReadWriteIOUtils.write(wholeFileSourceLength, out);
+      ReadWriteIOUtils.write(wholeFileTimePartitionStart, out);
+      ReadWriteIOUtils.write(wholeFileGeneratedByPipe, out);
+      ReadWriteIOUtils.write(wholeFile.getName(), out);
+      out.flush();
+      fos.getFD().sync();
+    }
+  }
+
+  private static WholeFileMeta readWholeFileMeta(final File meta) throws IOException {
+    if (!meta.isFile()) {
+      return null;
+    }
+    try (final FileInputStream fis = new FileInputStream(meta);
+        final DataInputStream in = new DataInputStream(new BufferedInputStream(fis))) {
+      final String magic = ReadWriteIOUtils.readString(in);
+      if (!WHOLE_FILE_MAGIC.equals(magic)) {
+        return null;
+      }
+      final int version = ReadWriteIOUtils.readInt(in);
+      if (version != WHOLE_FILE_META_VERSION) {
+        return null;
+      }
+      return new WholeFileMeta(
+          ReadWriteIOUtils.readLong(in),
+          ReadWriteIOUtils.readLong(in),
+          ReadWriteIOUtils.readBool(in),
+          ReadWriteIOUtils.readString(in));
+    }
   }
 
   /** One fsync per staged file of the piece, after every chunk of that piece is written. */
@@ -228,6 +473,24 @@ final class TsFileWriterManager {
       final long searchIndex,
       final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd)
       throws IOException {
+    if (wholeFile != null) {
+      final long expectedDataEnd =
+          expectedDataEndOf(timePartition2ExpectedDataEnd, wholeFileTimePartition);
+      if (wholeFileProgress == null
+          || !canMarkWholeFileTerminal(
+              terminalOp,
+              wholeFileSealedLength >= 0L ? wholeFileSealedLength : wholeFile.length(),
+              expectedDataEnd)) {
+        LOGGER.warn(
+            StorageEngineMessages
+                .LOG_STAGED_FILE_ARG_OF_THE_LOAD_TASK_IS_NOT_CONTINUOUS_SO_IT_CANNOT_BE_MARKED_ARG_AND_THE_TERMINAL_RECORD_IS_WITHHELD_7B21F365,
+            wholeFile.getAbsolutePath(),
+            terminalOp);
+        return;
+      }
+      wholeFileProgress.recordTerminal(terminalOp, searchIndex);
+      return;
+    }
     for (final Map.Entry<TTimePartitionSlot, LoadTsFileProgress> entry :
         timePartition2Progress.entrySet()) {
       final TsFilePrecalculatedChunkWriter writer = timePartition2Writer.get(entry.getKey());
@@ -277,6 +540,17 @@ final class TsFileWriterManager {
     return terminalOp == LoadTsFileConsensusOp.COMMIT
         ? progress.isReady(fileLength)
         : progress.getFirstHoleOffset() < 0L && fileLength >= progress.getTotalLength();
+  }
+
+  /** Whether a whole-file staging has the bytes the terminal command of the task may describe. */
+  static boolean canMarkWholeFileTerminal(
+      final LoadTsFileConsensusOp terminalOp, final long fileLength, final long expectedDataEnd) {
+    if (expectedDataEnd >= 0L && fileLength < expectedDataEnd) {
+      return false;
+    }
+    return terminalOp != LoadTsFileConsensusOp.COMMIT
+        || expectedDataEnd < 0L
+        || fileLength == expectedDataEnd;
   }
 
   /** Writes a chunk into the target staged file or skips if the byte range was already recorded. */
@@ -519,6 +793,12 @@ final class TsFileWriterManager {
     checkNotClosed();
     touch();
 
+    if (wholeFile != null) {
+      prepareWholeFile(
+          isGeneratedByPipe, timePartitionProgressIndexMap, timePartition2ExpectedDataEnd);
+      return;
+    }
+
     // Validate every announced partition before sealing any file. A missing partition or a file
     // without durable chunk records must not turn into a successful partial import.
     validateStagedFiles(timePartition2ExpectedDataEnd);
@@ -560,9 +840,83 @@ final class TsFileWriterManager {
     }
   }
 
+  /**
+   * Seals a whole-file staging: the copied TsFile is validated and its resource is rebuilt. Nothing
+   * is imported here; COMMIT does that through {@link #loadAll}.
+   */
+  private void prepareWholeFile(
+      final boolean isGeneratedByPipe,
+      final Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap,
+      final Map<TTimePartitionSlot, Long> timePartition2ExpectedDataEnd)
+      throws IOException, LoadFileException {
+    if (wholeFile == null || wholeFileProgress == null) {
+      throw new LoadFileException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_WHOLE_FILE_STAGING_IS_MISSING_THE_TSFILE_OF_TASK_S_AC2FAD2C,
+              taskDir.getAbsolutePath()));
+    }
+
+    if (wholeFileChannel != null) {
+      wholeFileChannel.force(false);
+    }
+    final long fileLength = wholeFile.length();
+    wholeFileSealedLength = fileLength;
+    final long expectedDataEnd =
+        expectedDataEndOf(timePartition2ExpectedDataEnd, wholeFileTimePartition);
+    if ((wholeFileSourceLength >= 0L && fileLength != wholeFileSourceLength)
+        || (expectedDataEnd >= 0L && fileLength != expectedDataEnd)) {
+      throw new LoadFileException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_WHOLE_FILE_STAGING_LENGTH_D_DOES_NOT_MATCH_THE_EXPECTED_LENGTH_D_FOR_TASK_S_89AC32B6,
+              fileLength,
+              expectedDataEnd >= 0L ? expectedDataEnd : wholeFileSourceLength,
+              taskDir.getAbsolutePath()));
+    }
+
+    if (wholeFileChannel != null) {
+      wholeFileChannel.close();
+      wholeFileChannel = null;
+    }
+    if (wholeFileModsChannel != null) {
+      wholeFileModsChannel.force(false);
+      wholeFileModsChannel.close();
+      wholeFileModsChannel = null;
+    }
+
+    final TsFileResource resource = new TsFileResource(wholeFile);
+    try (final TsFileSequenceReader reader =
+        new TsFileSequenceReader(wholeFile.getAbsolutePath())) {
+      resource.updatePlanIndexes(reader.getMinPlanIndex());
+      resource.updatePlanIndexes(reader.getMaxPlanIndex());
+      TsFileResourceUtils.updateTsFileResource(reader, resource);
+    }
+    resource.setStatus(TsFileResourceStatus.NORMAL);
+    resource.setGeneratedByPipe(isGeneratedByPipe);
+    resource.setProgressIndex(
+        timePartitionProgressIndexMap.getOrDefault(
+            wholeFileTimePartition, MinimumProgressIndex.INSTANCE));
+    resource.serialize();
+
+    wholeFileResource = resource;
+    timePartition2Resource.put(wholeFileTimePartition, resource);
+    timePartition2Progress.put(wholeFileTimePartition, wholeFileProgress);
+  }
+
   /** Formally imports sealed staged TsFiles into the target storage engine data regions. */
   void loadAll(final boolean isGeneratedByPipe, final boolean deleteStagedSource)
       throws IOException, LoadFileException {
+    if (wholeFile != null && wholeFileSealedLength < 0L && wholeFile.isFile()) {
+      wholeFileSealedLength = wholeFile.length();
+    }
+    if (wholeFile != null && wholeFileResource == null) {
+      throw new LoadFileException(
+          String.format(
+              StorageEngineMessages
+                  .EXCEPTION_WHOLE_FILE_STAGING_IS_MISSING_THE_TSFILE_OF_TASK_S_AC2FAD2C,
+              taskDir.getAbsolutePath()));
+    }
     for (final Map.Entry<TTimePartitionSlot, TsFileResource> entry :
         timePartition2Resource.entrySet()) {
       final DataRegion targetDataRegion = dataRegion;
@@ -708,6 +1062,11 @@ final class TsFileWriterManager {
    * writers.
    */
   TsFileWriterManager recoverFromDisk() throws IOException {
+    final File wholeFileMeta = new File(taskDir, WHOLE_FILE_META_NAME);
+    if (wholeFileMeta.isFile()) {
+      return recoverWholeFileFromDisk(wholeFileMeta);
+    }
+
     final File[] files = taskDir.listFiles(LoadTsFileProgress.PROGRESS_FILE_FILTER);
     if (files == null) {
       return this;
@@ -830,6 +1189,52 @@ final class TsFileWriterManager {
     return this;
   }
 
+  private TsFileWriterManager recoverWholeFileFromDisk(final File metaFile) throws IOException {
+    final WholeFileMeta meta = readWholeFileMeta(metaFile);
+    if (meta == null) {
+      return this;
+    }
+    wholeFile = new File(taskDir, meta.tsFileName);
+    if (!wholeFile.isFile()) {
+      return this;
+    }
+    wholeFileChannel =
+        FileChannel.open(wholeFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE);
+    wholeFileSourceLength = meta.sourceLength;
+    wholeFileSealedLength = -1L;
+    wholeFileTimePartitionStart = meta.timePartitionStart;
+    wholeFileTimePartition = new TTimePartitionSlot(wholeFileTimePartitionStart);
+    wholeFileGeneratedByPipe = meta.generatedByPipe;
+    wholeFileProgress = new LoadTsFileProgress(wholeFile);
+
+    final File modsV2 = ModificationFile.getExclusiveMods(wholeFile);
+    final File modsV1 = ModificationFileV1.getNormalMods(wholeFile);
+    if (modsV2.isFile()) {
+      wholeFileMods = modsV2;
+      wholeFileModsKind = WholeFileData.Kind.MODS_V2;
+    } else if (modsV1.isFile()) {
+      wholeFileMods = modsV1;
+      wholeFileModsKind = WholeFileData.Kind.MODS_V1;
+    }
+    if (wholeFileMods != null) {
+      wholeFileModsChannel =
+          FileChannel.open(
+              wholeFileMods.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE);
+      wholeFileModsSourceLength = wholeFileMods.length();
+    }
+
+    if (new File(wholeFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).isFile()) {
+      wholeFileSealedLength = wholeFile.length();
+      final TsFileResource resource = new TsFileResource(wholeFile);
+      resource.deserialize();
+      resource.setStatus(TsFileResourceStatus.NORMAL);
+      wholeFileResource = resource;
+      timePartition2Resource.put(wholeFileTimePartition, resource);
+      timePartition2Progress.put(wholeFileTimePartition, wholeFileProgress);
+    }
+    return this;
+  }
+
   /**
    * Replays serialized chunk headers and statistics to restore writer metadata state without
    * physical pages.
@@ -883,6 +1288,53 @@ final class TsFileWriterManager {
       return;
     }
     isClosed = true;
+
+    if (wholeFileChannel != null) {
+      try {
+        wholeFileChannel.close();
+      } catch (final IOException e) {
+        LOGGER.warn(
+            StorageEngineMessages.CLOSE_TSFILE_IO_WRITER_ERROR,
+            wholeFile == null ? taskDir.getPath() : wholeFile.getPath(),
+            e);
+      }
+      wholeFileChannel = null;
+    }
+    if (wholeFileModsChannel != null) {
+      try {
+        wholeFileModsChannel.close();
+      } catch (final IOException e) {
+        LOGGER.warn(
+            StorageEngineMessages.CLOSE_MODIFICATION_FILE_ERROR,
+            wholeFileMods == null ? taskDir.getPath() : wholeFileMods,
+            e);
+      }
+      wholeFileModsChannel = null;
+    }
+    if (!retainStagedFiles) {
+      for (final File staged :
+          new File[] {wholeFile, wholeFileMods, new File(taskDir, WHOLE_FILE_META_NAME)}) {
+        if (staged == null) {
+          continue;
+        }
+        try {
+          deleteIfExistsWithRetry(staged.toPath());
+        } catch (final IOException e) {
+          LOGGER.warn(
+              StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD, staged.getAbsolutePath(), e);
+        }
+      }
+      if (wholeFileProgress != null) {
+        try {
+          deleteIfExistsWithRetry(wholeFileProgress.getProgressFile().toPath());
+        } catch (final IOException e) {
+          LOGGER.warn(
+              StorageEngineMessages.LOG_FAILED_TO_DELETE_ARG_3A7BD6FD,
+              wholeFileProgress.getProgressFile().getAbsolutePath(),
+              e);
+        }
+      }
+    }
 
     for (final TsFilePrecalculatedChunkWriter writer : timePartition2Writer.values()) {
       try {
@@ -938,6 +1390,11 @@ final class TsFileWriterManager {
     timePartition2Resource.clear();
     timePartition2Progress.clear();
     timePartition2ModificationFile.clear();
+    wholeFile = null;
+    wholeFileMods = null;
+    wholeFileResource = null;
+    wholeFileProgress = null;
+    wholeFileTimePartition = null;
   }
 
   // -------------------------------------------------------------------------
@@ -993,6 +1450,24 @@ final class TsFileWriterManager {
         tsFileName.substring(
             stagedFilePrefix().length(),
             tsFileName.length() - TsFileConstant.TSFILE_SUFFIX.length()));
+  }
+
+  private static final class WholeFileMeta {
+    private final long sourceLength;
+    private final long timePartitionStart;
+    private final boolean generatedByPipe;
+    private final String tsFileName;
+
+    private WholeFileMeta(
+        final long sourceLength,
+        final long timePartitionStart,
+        final boolean generatedByPipe,
+        final String tsFileName) {
+      this.sourceLength = sourceLength;
+      this.timePartitionStart = timePartitionStart;
+      this.generatedByPipe = generatedByPipe;
+      this.tsFileName = tsFileName;
+    }
   }
 
   /** The bytes this piece added to each staged file, as the refs a replica reads them back with. */

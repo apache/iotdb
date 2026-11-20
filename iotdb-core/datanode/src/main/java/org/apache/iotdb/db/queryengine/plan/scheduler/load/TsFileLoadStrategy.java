@@ -32,7 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
  * <ul>
  *   <li>{@link LocalLoadStrategy} - no decode needed, dispatch the file to the local region;
  *   <li>{@link TwoPhaseConsensusLoadStrategy} - decode, stream PIECE batches through consensus,
- *       then PREPARE+COMMIT or ABORT.
+ *       then PREPARE+COMMIT or ABORT. When the whole file belongs to one data region it is copied
+ *       as whole-file pieces instead of being split into chunks.
  * </ul>
  */
 public interface TsFileLoadStrategy {

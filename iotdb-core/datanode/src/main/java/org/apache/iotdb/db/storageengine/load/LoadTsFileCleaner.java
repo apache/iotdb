@@ -326,6 +326,11 @@ public class LoadTsFileCleaner {
 
   /** Verifies that every staged TsFile in the directory has no missing chunks. */
   private static boolean isComplete(final File taskDir) {
+    // A whole-file task is complete once its marker exists: its bytes were validated by PREPARE,
+    // and it has no chunk records to check.
+    if (new File(taskDir, TsFileWriterManager.WHOLE_FILE_META_NAME).isFile()) {
+      return true;
+    }
     final File[] files = taskDir.listFiles(LoadTsFileProgress.PROGRESS_FILE_FILTER);
     if (files == null) {
       return false;

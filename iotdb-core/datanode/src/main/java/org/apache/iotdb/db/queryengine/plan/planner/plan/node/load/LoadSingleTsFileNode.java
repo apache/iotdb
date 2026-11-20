@@ -68,6 +68,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   private TRegionReplicaSet localRegionReplicaSet;
 
+  /** The one time partition of a whole-file load, or null when the file has to be split. */
+  private TTimePartitionSlot wholeFileTimePartitionSlot;
+
   public LoadSingleTsFileNode(
       final PlanNodeId id,
       final TsFileResource resource,
@@ -119,19 +122,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       return true;
     }
 
-    List<Pair<IDeviceID, TTimePartitionSlot>> slotList =
-        new ArrayList<>(resource.getDevices().size() << 1);
-    for (final IDeviceID device : resource.getDevices()) {
-      // iterating the index, must present
-      final TTimePartitionSlot startSlot =
-          TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(device).get());
-      final TTimePartitionSlot endSlot =
-          TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(device).get());
-      slotList.add(new Pair<>(device, startSlot));
-      if (!startSlot.equals(endSlot)) {
-        slotList.add(new Pair<>(device, endSlot));
-      }
-    }
+    final List<Pair<IDeviceID, TTimePartitionSlot>> slotList = buildSlotList();
 
     if (slotList.isEmpty()) {
       throw new IllegalStateException(
@@ -151,6 +142,83 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     }
 
     return needDecodeTsFile;
+  }
+
+  /**
+   * Resolves how this file has to be loaded. A file whose devices all fall into one time slot and
+   * one data region does not need to be split by chunks even when the region has several replicas:
+   * the consensus LOAD transaction can carry it as whole-file slices.
+   */
+  public LoadMode resolveLoadMode(
+      final Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>>
+          partitionFetcher) {
+    if (needDecodeTsFile) {
+      return LoadMode.CONSENSUS_SPLIT;
+    }
+
+    final List<Pair<IDeviceID, TTimePartitionSlot>> slotList = buildSlotList();
+    if (slotList.isEmpty()) {
+      return LoadMode.CONSENSUS_SPLIT;
+    }
+
+    // A whole-file load needs exactly one time slot and exactly one target region. Several device
+    // slots are fine when the partition placement puts all of them into that one region.
+    final Set<TTimePartitionSlot> timePartitionSlots = new HashSet<>();
+    for (final Pair<IDeviceID, TTimePartitionSlot> slot : slotList) {
+      timePartitionSlots.add(slot.right);
+    }
+    if (timePartitionSlots.size() != 1) {
+      return LoadMode.CONSENSUS_SPLIT;
+    }
+
+    final TTimePartitionSlot firstSlot = timePartitionSlots.iterator().next();
+    final Set<TRegionReplicaSet> replicaSets = new HashSet<>(partitionFetcher.apply(slotList));
+    if (replicaSets.size() != 1) {
+      return LoadMode.CONSENSUS_SPLIT;
+    }
+    final TRegionReplicaSet replicaSet = replicaSets.iterator().next();
+    localRegionReplicaSet = replicaSet;
+    wholeFileTimePartitionSlot = firstSlot;
+
+    if (replicaSet.getDataNodeLocations().size() == 1) {
+      return isDispatchedToLocal(replicaSet.getDataNodeLocations().get(0).getInternalEndPoint())
+          ? LoadMode.LOCAL_WHOLE_FILE
+          : LoadMode.CONSENSUS_WHOLE_FILE;
+    }
+    return LoadMode.CONSENSUS_WHOLE_FILE;
+  }
+
+  private List<Pair<IDeviceID, TTimePartitionSlot>> buildSlotList() {
+    final List<Pair<IDeviceID, TTimePartitionSlot>> slotList =
+        new ArrayList<>(resource.getDevices().size() << 1);
+    for (final IDeviceID device : resource.getDevices()) {
+      // iterating the index, must present
+      final TTimePartitionSlot startSlot =
+          TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(device).get());
+      final TTimePartitionSlot endSlot =
+          TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(device).get());
+      slotList.add(new Pair<>(device, startSlot));
+      if (!startSlot.equals(endSlot)) {
+        slotList.add(new Pair<>(device, endSlot));
+      }
+    }
+    return slotList;
+  }
+
+  public TTimePartitionSlot getWholeFileTimePartitionSlot() {
+    return wholeFileTimePartitionSlot;
+  }
+
+  /** The load paths a source TsFile can take, resolved before the strategy is created. */
+  public enum LoadMode {
+    /** One local replica and one region: import the local file directly, as before. */
+    LOCAL_WHOLE_FILE,
+    /**
+     * One region with several replicas: copy the whole file through the consensus LOAD protocol.
+     */
+    CONSENSUS_WHOLE_FILE,
+    /** More than one region or a file that has to be decoded: split into chunk pieces. */
+    CONSENSUS_SPLIT
   }
 
   private boolean isDispatchedToLocal(Set<TRegionReplicaSet> replicaSets) {

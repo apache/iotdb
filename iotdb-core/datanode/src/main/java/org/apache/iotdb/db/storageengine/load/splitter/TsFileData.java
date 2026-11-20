@@ -70,6 +70,8 @@ public interface TsFileData {
         return ChunkData.deserialize(stream);
       case DELETION:
         return DeletionData.deserialize(stream);
+      case WHOLE_FILE:
+        return WholeFileData.deserialize(stream);
       default:
         throw new UnsupportedOperationException(
             StorageEngineMessages.UNKNOWN_TSFILE_DATA_TYPE + type);

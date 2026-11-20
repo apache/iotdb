@@ -278,6 +278,14 @@ public class LoadTsFileScheduler implements IScheduler {
   /** Global thread-safe set tracking file paths actively being loaded across all schedulers. */
   private static final Set<String> ACTIVE_LOADING_FILES = ConcurrentHashMap.newKeySet();
 
+  private static final String LOCAL_SPLIT_PATH = "local";
+
+  private static final String DISTRIBUTED_SPLIT_PATH = "distributed";
+
+  private static final String TABLET_REWRITE_SPLIT_PATH = "tablet-rewrite";
+
+  private static final String WHOLE_FILE_SPLIT_PATH = "whole-file";
+
   private final MPPQueryContext queryContext;
   private final QueryStateMachine stateMachine;
   private final LoadTsFileDispatcherImpl dispatcher;
@@ -364,6 +372,7 @@ public class LoadTsFileScheduler implements IScheduler {
       boolean allFilesSucceeded = true;
 
       final int totalFiles = tsFileNodeList.size();
+      logLoadProgress(DataNodeQueryMessages.LOG_START_LOADING_ARG_TSFILES_BDB79D79, totalFiles);
       for (int i = 0; i < totalFiles; ++i) {
         if (stopped) {
           return;
@@ -438,6 +447,7 @@ public class LoadTsFileScheduler implements IScheduler {
       }
 
       final TsFileLoadStrategy strategy = resolveStrategy(node, userName);
+      logLoadFileStart(filePath, index + 1, totalFiles, strategy.getClass().getSimpleName());
       final boolean loadSuccess = strategy.execute(node);
 
       if (isRegionMigrating(startTimeMs)) {
@@ -445,12 +455,12 @@ public class LoadTsFileScheduler implements IScheduler {
             DataNodeQueryMessages
                 .LOADTSFILESCHEDULER_REGION_MIGRATION_WAS_DETECTED_DURING_LOADING_TSFILE_ARG_WILL_CONVERT,
             filePath);
-        logCannotLoad(node, index, totalFiles);
+        logCannotLoad(node, index + 1, totalFiles);
         return false;
       }
 
       if (!loadSuccess) {
-        logCannotLoad(node, index, totalFiles);
+        logCannotLoad(node, index + 1, totalFiles);
         return false;
       }
 
@@ -471,20 +481,48 @@ public class LoadTsFileScheduler implements IScheduler {
    */
   private TsFileLoadStrategy resolveStrategy(final LoadSingleTsFileNode node, final String userName)
       throws Exception {
+    final String filePath = node.getTsFileResource().getTsFilePath();
     if (EncryptDBUtils.requiresFileRewrite()) {
+      logSplitPath(filePath, TABLET_REWRITE_SPLIT_PATH);
       return new TabletRewriteLoadStrategy(queryContext, isGeneratedByPipe);
     }
     // The judgement resolves the partitions of the devices anyway, so the routing reuses them.
     final DataPartitionResolver partitionResolver =
         new DataPartitionResolver(partitionFetcher, userName);
-    final boolean needDecode = node.needDecodeTsFile(partitionResolver::resolve);
+    final LoadSingleTsFileNode.LoadMode loadMode = node.resolveLoadMode(partitionResolver::resolve);
 
-    if (!needDecode) {
-      return new LocalLoadStrategy(queryContext, fragmentId, dispatcher);
-    } else {
-      return new TwoPhaseConsensusLoadStrategy(
-          dispatcher, partitionResolver, memoryBlock, consensusSubmitter, isGeneratedByPipe);
+    switch (loadMode) {
+      case LOCAL_WHOLE_FILE:
+        logSplitPath(filePath, LOCAL_SPLIT_PATH);
+        return new LocalLoadStrategy(queryContext, fragmentId, dispatcher);
+      case CONSENSUS_WHOLE_FILE:
+        logSplitPath(filePath, WHOLE_FILE_SPLIT_PATH);
+        return new TwoPhaseConsensusLoadStrategy(
+            dispatcher,
+            partitionResolver,
+            memoryBlock,
+            consensusSubmitter,
+            isGeneratedByPipe,
+            true);
+      case CONSENSUS_SPLIT:
+      default:
+        logSplitPath(filePath, DISTRIBUTED_SPLIT_PATH);
+        return new TwoPhaseConsensusLoadStrategy(
+            dispatcher,
+            partitionResolver,
+            memoryBlock,
+            consensusSubmitter,
+            isGeneratedByPipe,
+            false);
     }
+  }
+
+  private void logSplitPath(final String filePath, final String splitPath) {
+    if (!LOGGER.isDebugEnabled()) {
+      return;
+    }
+    LOGGER.debug(
+        DataNodeQueryMessages.LOG_LOAD_TSFILE_ARG_SPLIT_PATH_ARG_A9F2E219, filePath, splitPath);
   }
 
   private boolean isRegionMigrating(final long taskStartTimeMs) {
@@ -558,6 +596,31 @@ public class LoadTsFileScheduler implements IScheduler {
           DataNodeQueryMessages
               .LOG_EXCEPTION_ENCOUNTERED_RELEASING_DATA_CACHE_MEMORY_BLOCK_3CD1873D,
           t);
+    }
+  }
+
+  private void logLoadFileStart(
+      final String filePath, final int current, final int total, final String strategy) {
+    logLoadProgress(
+        DataNodeQueryMessages.LOG_LOADING_TSFILE_ARG_ARG_ARG_F29B2E19, filePath, current, total);
+    if (!LOGGER.isDebugEnabled()) {
+      return;
+    }
+    LOGGER.debug(
+        DataNodeQueryMessages
+            .LOG_LOADING_TSFILE_ARG_ARG_ARG_WITH_STRATEGY_ARG_CURRENTLY_LOADING_ARG_FEA695E6,
+        filePath,
+        current,
+        total,
+        strategy,
+        String.join(", ", ACTIVE_LOADING_FILES));
+  }
+
+  private void logLoadProgress(final String message, final Object... args) {
+    if (isGeneratedByPipe) {
+      LOGGER.debug(message, args);
+    } else {
+      LOGGER.info(message, args);
     }
   }
 

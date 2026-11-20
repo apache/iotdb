@@ -2773,8 +2773,11 @@ public final class DataNodeQueryMessages {
       "Device {} is not in the tsFileDevice2IsAligned cache {}.";
   public static final String LOADTSFILEANALYZER_CURRENT_DATANODE_IS_READ_ONLY_WILL_TRY_TO_CONVERT_TO_TABLETS_AND =
       "LoadTsFileAnalyzer: Current datanode is read only, will try to convert to tablets and insert later.";
-  public static final String LOAD_ANALYSIS_STAGE_ARG_ARG_TSFILES_HAVE_BEEN_ANALYZED_PROGRESS_ARG_PERCENT =
-      "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%";
+  public static final String LOG_LOAD_ANALYSIS_STAGE_ANALYZING_TSFILE_ARG_ARG_ARG_31359828 =
+      "Load - Analysis Stage: analyzing TsFile {} ({}/{})";
+  public static final String
+      LOG_LOAD_ANALYSIS_STAGE_ARG_ARG_TSFILES_HAVE_BEEN_ANALYZED_PROGRESS_ARG_FILE_ARG_3339452F =
+          "Load - Analysis Stage: {}/{} TsFiles have been analyzed, progress: {}%, file: {}";
   public static final String THE_FILE_ARG_IS_NOT_A_VALID_TSFILE_PLEASE_CHECK_THE_INPUT_FILE =
       "The file {} is not a valid tsfile. Please check the input file.";
   public static final String TSFILE_ARG_IS_A_ARG_MODEL_FILE =
@@ -2878,6 +2881,25 @@ public final class DataNodeQueryMessages {
       "The prefix of sourceKey is not 'source.'. Please check the parameters passed in: {}";
   public static final String LOADTSFILESCHEDULER_REGION_MIGRATION_WAS_DETECTED_DURING_LOADING_TSFILE_ARG_WILL_CONVERT =
       "LoadTsFileScheduler: Region migration was detected during loading TsFile {}, will convert to insertion to avoid data loss";
+  public static final String LOG_START_LOADING_ARG_TSFILES_BDB79D79 = "Start loading {} TsFiles";
+  public static final String LOG_LOAD_TSFILE_ARG_SPLIT_PATH_ARG_A9F2E219 =
+      "Load TsFile {}, split path={}";
+  public static final String LOG_LOADING_TSFILE_ARG_ARG_ARG_F29B2E19 = "Loading TsFile {} ({}/{})";
+  public static final String
+      LOG_LOADING_TSFILE_ARG_ARG_ARG_WITH_STRATEGY_ARG_CURRENTLY_LOADING_ARG_FEA695E6 =
+          "Loading TsFile {} ({}/{}) with strategy {}, currently loading: {}";
+  public static final String LOG_LOAD_TSFILE_ARG_PHASE_DISPATCH_START_FILESIZE_ARG_D7E5D5F4 =
+      "Load TsFile {}, phase=dispatch start, fileSize={}";
+  public static final String
+      LOG_LOAD_TSFILE_ARG_PHASE_DISPATCH_DISPATCHEDBYTES_ARG_FILESIZE_ARG_PROGRESS_ARG_668540F9 =
+          "Load TsFile {}, phase=dispatch, dispatchedBytes={}, fileSize={}, progress={}%";
+  public static final String
+      LOG_LOAD_TSFILE_ARG_PHASE_DISPATCH_END_PIECES_ARG_BYTES_ARG_ELAPSEDMS_ARG_DB1D69B6 =
+          "Load TsFile {}, phase=dispatch end, pieces={}, bytes={}, elapsedMs={}";
+  public static final String LOG_LOAD_TSFILE_ARG_PHASE_ARG_START_B225907D =
+      "Load TsFile {}, phase={} start";
+  public static final String LOG_LOAD_TSFILE_ARG_PHASE_ARG_END_SUCCESS_ARG_ELAPSEDMS_ARG_6126B0D0 =
+      "Load TsFile {}, phase={} end, success={}, elapsedMs={}";
   public static final String LOAD_TSFILE_ARG_SUCCESSFULLY_LOAD_PROCESS_ARG_ARG =
       "Load TsFile {} Successfully, load process [{}/{}]";
   public static final String
@@ -4982,5 +5004,11 @@ public final class DataNodeQueryMessages {
 
   public static final String LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9 =
       "[QueryFailed] queryId: {}, sql: {}";
+
+  public static final String EXCEPTION_WHOLE_FILE_LOAD_HAS_NO_SINGLE_RESOLVED_REGION_FOR_S_DAC09CDC =
+      "Whole-file load has no single resolved region for %s.";
+
+  public static final String LOAD_ANALYSIS_STAGE_ARG_ARG_TSFILES_HAVE_BEEN_ANALYZED_PROGRESS_ARG_PERCENT =
+      "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%";
 
 }

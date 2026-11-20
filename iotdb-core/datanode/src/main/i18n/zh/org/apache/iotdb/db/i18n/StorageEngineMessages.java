@@ -1386,6 +1386,15 @@ public final class StorageEngineMessages {
       "无法转换树模型语句 {} 的数据类型。";
   public static final String STORAGE_LOG_LOAD_INSERTING_TABLET_TO_CASTING_TYPE_FROM_TO_AE808A8B =
       "Load：正在向 {}.{} 插入 tablet。将类型从 {} 转换为 {}。";
+  public static final String
+      LOG_SPLIT_TSFILE_ARG_START_FILESIZE_ARG_CHUNKMETADATA_ARG_FORCEDECODE_ARG_243A182F =
+          "开始拆分 TsFile {}，fileSize={}，chunkMetadata={}，forceDecode={}";
+  public static final String
+      LOG_SPLIT_TSFILE_ARG_END_COMPLETED_ARG_DEVICES_ARG_ENTIRECHUNKS_ARG_DECODEDCHUNKS_ARG_SKIPPEDCHUNKS_ARG_TIMEPARTITIONS_ARG_DELETIONS_ARG_ELAPSEDMS_ARG_063A3789 =
+          "结束拆分 TsFile {}，completed={}，devices={}，entireChunks={}，decodedChunks={}，"
+              + "skippedChunks={}，timePartitions={}，deletions={}，elapsedMs={}";
+  public static final String LOG_SKIP_CHUNK_WITHOUT_METADATA_IN_TSFILE_ARG_OFFSET_ARG_DATASIZE_ARG_41F9ED2B =
+      "跳过 TsFile {} 中缺少 ChunkMetadata 的 chunk，offset={}，dataSize={}";
   public static final String STORAGE_LOG_TRY_TO_LOAD_TSFILE_V3_INTO_CURRENT_VERSION_V4_FILE_PATH_B8D38E22 =
       "尝试将 TsFile V3 加载到当前版本 (V4)，文件路径：{}";
   public static final String STORAGE_LOG_THE_FILE_S_VERSION_NUMBER_IS_HIGHER_THAN_CURRENT_FILE_PATH_6D17349F =
@@ -1410,6 +1419,9 @@ public final class StorageEngineMessages {
       "拒绝自动加载 TsFile {} (isGeneratedByPipe = {})，原因：当前查询已超时，稍后重试。";
   public static final String STORAGE_LOG_SUCCESSFULLY_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_ADB5FEC9 =
       "成功自动加载 TsFile {} (isGeneratedByPipe = {})";
+  public static final String
+      LOG_START_AUTO_LOADING_TSFILE_ARG_ISGENERATEDBYPIPE_ARG_PENDING_ARG_LOADING_ARG_7B71F0D6 =
+          "开始自动加载 TsFile {} (isGeneratedByPipe = {})，pending={}，loading={}";
   public static final String STORAGE_LOG_ERROR_OCCURRED_DURING_CREATING_FAIL_DIRECTORY_FOR_ACTIVE_7D3BEB38 =
       "为 active load 创建失败目录 {} 时发生错误。";
   public static final String STORAGE_LOG_FAILED_TO_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_STATUS_FILE_F43E9EF7 =
@@ -1808,4 +1820,55 @@ public final class StorageEngineMessages {
   public static final String EXCEPTION_SOURCE_FILES_ARE_CLEANED_UP_83638D68 = "源文件已清理";
 
   public static final String EXCEPTION_TASK_FINISHED_A075ACB1 = "任务已完成";
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_KIND_CANNOT_BE_NULL_1B93752F =
+      "Whole-file 切片类型不能为空。";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_PAYLOAD_CANNOT_BE_EMPTY_C14A7878 =
+      "Whole-file 切片内容不能为空。";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_RANGE_IS_INVALID_OFFSET_D_LENGTH_D_SOURCE_LENGTH_D_402A1599 =
+      "Whole-file 切片范围非法：offset %d，length %d，source length %d。";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_TIME_PARTITION_IS_MISSING_4EE30E24 =
+      "Whole-file 切片缺少时间分区。";
+
+  public static final String EXCEPTION_UNKNOWN_WHOLE_FILE_SLICE_KIND_D_WHEN_DESERIALIZING_A_LOAD_PIECE_AE5381F6 =
+      "反序列化 LOAD piece 时遇到未知的 whole-file 切片类型 %d。";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_HAS_INVALID_PAYLOAD_LENGTH_D_0D04C9C1 =
+      "Whole-file 切片的 payload 长度非法：%d。";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_ENDED_AFTER_D_OF_D_PAYLOAD_BYTES_39E892F4 =
+      "Whole-file 切片在读取到 %d/%d 字节时提前结束。";
+
+  public static final String EXCEPTION_A_WHOLE_FILE_LOAD_PIECE_CANNOT_MIX_WHOLE_FILE_SLICES_AND_CHUNK_DATA_B1297688 =
+      "Whole-file LOAD piece 不能同时包含 whole-file 切片和 chunk 数据。";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_CHECKSUM_MISMATCH_AT_OFFSET_D_EXPECTED_D_ACTUAL_D_48238B7E =
+      "Whole-file 切片在 offset %d 处校验和不一致：期望 %d，实际 %d。";
+
+  public static final String EXCEPTION_WHOLE_FILE_STAGING_S_ALREADY_EXISTS_BUT_CANNOT_BE_RESUMED_5F80C60D =
+      "Whole-file staging 文件 %s 已存在，但无法恢复。";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_SOURCE_LENGTH_D_TIME_PARTITION_D_DOES_NOT_MATCH_THE_STAGED_TASK_SOURCE_LENGTH_D_FCD90EBB =
+      "Whole-file 切片（source length %d，time partition %d）与已 staging 的任务（source length %d）不匹配。";
+
+  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_DATA_ARRIVED_BEFORE_THE_TSFILE_18FCDD22 =
+      "Whole-file 修改数据先于 TsFile 到达。";
+
+  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_SLICE_KIND_S_DOES_NOT_MATCH_THE_STAGED_TASK_KIND_S_7D2A42AA =
+      "Whole-file 修改切片类型 %s 与已 staging 的任务类型 %s 不匹配。";
+
+  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_STAGING_S_ALREADY_EXISTS_BUT_CANNOT_BE_RESUMED_ADE1CCB8 =
+      "Whole-file 修改文件 %s 已存在，但无法恢复。";
+
+  public static final String EXCEPTION_WHOLE_FILE_SLICE_OFFSET_D_EXCEEDS_THE_STAGED_LENGTH_D_FOR_TASK_S_8E5B27C5 =
+      "Whole-file 切片 offset %d 超过已 staging 的长度 %d（任务 %s）。";
+
+  public static final String EXCEPTION_WHOLE_FILE_STAGING_IS_MISSING_THE_TSFILE_OF_TASK_S_AC2FAD2C =
+      "Whole-file staging 缺少任务 %s 的 TsFile。";
+
+  public static final String EXCEPTION_WHOLE_FILE_STAGING_LENGTH_D_DOES_NOT_MATCH_THE_EXPECTED_LENGTH_D_FOR_TASK_S_89AC32B6 =
+      "Whole-file staging 长度 %d 与期望长度 %d 不匹配（任务 %s）。";
+
 }

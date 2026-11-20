@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.load.splitter.SerializedSizes;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
+import org.apache.iotdb.db.storageengine.load.splitter.TsFileDataType;
 
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.exception.write.PageException;
@@ -371,6 +372,16 @@ public class LoadTsFileConsensusNode extends SearchNode implements WALEntryValue
   /** Whether this PIECE carries actual chunk/deletion data (write-node path) or is a marker. */
   public boolean hasChunkData() {
     return !tsFileDataList.isEmpty();
+  }
+
+  /** Whether this PIECE carries slices of a whole source file instead of staged TsFileData. */
+  public boolean hasWholeFileData() {
+    for (final TsFileData data : tsFileDataList) {
+      if (data.getType() == TsFileDataType.WHOLE_FILE) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public Map<TTimePartitionSlot, byte[]> getTimePartition2ProgressIndex() {

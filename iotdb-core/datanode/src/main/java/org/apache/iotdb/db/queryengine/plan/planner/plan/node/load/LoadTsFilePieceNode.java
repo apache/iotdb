@@ -53,6 +53,13 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   private File tsFile;
   private long pieceIndex;
 
+  /**
+   * Whether this piece carries slices of the complete source TsFile instead of decoded chunk data.
+   * The receiver recognises the same mode from the {@code WholeFileData} it receives; the flag
+   * makes the coordinator side explicit and keeps logs/diagnostics unambiguous.
+   */
+  private boolean wholeFile;
+
   private long dataSize;
   private List<TsFileData> tsFileDataList;
 
@@ -74,6 +81,21 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   public long getPieceIndex() {
     return pieceIndex;
+  }
+
+  public boolean isWholeFilePiece() {
+    return wholeFile;
+  }
+
+  public LoadTsFilePieceNode markAsWholeFilePiece() {
+    this.wholeFile = true;
+    return this;
+  }
+
+  /** A piece of a complete source TsFile, carried as whole-file slices instead of chunks. */
+  public static LoadTsFilePieceNode wholeFilePiece(
+      final PlanNodeId id, final File tsFile, final long pieceIndex) {
+    return new LoadTsFilePieceNode(id, tsFile, pieceIndex).markAsWholeFilePiece();
   }
 
   public long getDataSize() {
