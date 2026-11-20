@@ -225,19 +225,26 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   public void writeAlignedPoints(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
     int columnCount = ensureColumnsAndCount(schemaList);
-    int[] destColumns = new int[columnCount];
-    Object[] sparseValues = new Object[columnCount];
-    int position = 0;
-    for (int i = 0; i < schemaList.size(); i++) {
-      IMeasurementSchema measurementSchema = schemaList.get(i);
-      if (measurementSchema == null) {
-        continue;
+    if (columnCount == list.getTsDataTypes().size()
+        && isIdentityColumnMapping(schemaList, columnCount)) {
+      // The insert plan already covers every device column in device order, so the sparse mapping
+      // arrays would only add an O(columns) allocation per row.
+      list.putAlignedValue(insertTime, objectValue);
+    } else {
+      int[] destColumns = new int[columnCount];
+      Object[] sparseValues = new Object[columnCount];
+      int position = 0;
+      for (int i = 0; i < schemaList.size(); i++) {
+        IMeasurementSchema measurementSchema = schemaList.get(i);
+        if (measurementSchema == null) {
+          continue;
+        }
+        destColumns[position] = measurementIndexMap.get(measurementSchema.getMeasurementName());
+        sparseValues[position] = objectValue[i];
+        position++;
       }
-      destColumns[position] = measurementIndexMap.get(measurementSchema.getMeasurementName());
-      sparseValues[position] = objectValue[i];
-      position++;
+      list.putAlignedValue(insertTime, sparseValues, destColumns);
     }
-    list.putAlignedValue(insertTime, sparseValues, destColumns);
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverAlignedTvList();
     }
@@ -302,6 +309,25 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       }
     }
     return columnCount;
+  }
+
+  /**
+   * Whether every column of the insert plan maps to the device column with the same position. Such
+   * a plan can be written through the dense path without building a column mapping.
+   */
+  private boolean isIdentityColumnMapping(
+      List<IMeasurementSchema> schemaListInInsertPlan, int columnCount) {
+    if (schemaListInInsertPlan.size() != columnCount) {
+      return false;
+    }
+    for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
+      IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
+      if (measurementSchema == null
+          || measurementIndexMap.get(measurementSchema.getMeasurementName()) != i) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private void extendColumnsInInsertPlan(
