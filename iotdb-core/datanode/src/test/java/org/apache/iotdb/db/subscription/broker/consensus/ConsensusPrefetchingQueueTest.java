@@ -2704,6 +2704,7 @@ public class ConsensusPrefetchingQueueTest {
         // A slow retention read must not keep the event-map bucket locked by ACK and stall
         // a shared prefetch worker trying to recycle that event.
         executor.submit(() -> recycle.invoke(activeQueue)).get(5, TimeUnit.SECONDS);
+        assertTrue(event.isCommitted());
         assertEquals(0L, activeQueue.getSubscriptionUncommittedEventCount());
         assertEquals(0L, activeQueue.getRetainedTabletBytes());
         assertFalse(ack.isDone());
@@ -3869,7 +3870,7 @@ public class ConsensusPrefetchingQueueTest {
       if (recycle) {
         CommonDescriptor.getInstance()
             .getConfig()
-            .setSubscriptionRecycleUncommittedEventIntervalMs(-1);
+            .setSubscriptionRecycleUncommittedEventIntervalMs(1);
       }
       final DataRegionId regionId = new DataRegionId(1);
       final FakeConsensusReqReader reader = new FakeConsensusReqReader();
@@ -3921,6 +3922,8 @@ public class ConsensusPrefetchingQueueTest {
       assertNotNull(event);
       final long retainedBytes = queue.getRetainedTabletBytes();
       assertTrue(retainedBytes > 0L);
+      final Field timestampField = SubscriptionEvent.class.getDeclaredField("lastPolledTimestamp");
+      timestampField.setAccessible(true);
 
       if (failCommit) {
         final AtomicBoolean rejectFirstCommit = new AtomicBoolean(true);
@@ -3938,6 +3941,7 @@ public class ConsensusPrefetchingQueueTest {
 
       for (int retry = 1; retry <= 10; retry++) {
         if (recycle) {
+          ((AtomicLong) timestampField.get(event)).set(System.currentTimeMillis() - 900000L);
           queue.drivePrefetchOnce();
         } else if (silent) {
           assertTrue(queue.nackSilent("consumer", event.getCommitContext()));
