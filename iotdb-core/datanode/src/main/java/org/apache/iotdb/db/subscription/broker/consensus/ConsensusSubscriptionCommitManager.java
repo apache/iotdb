@@ -725,18 +725,6 @@ public class ConsensusSubscriptionCommitManager {
     getOrCreateState(consumerGroupId, topicName, regionId).claimTransientInFlightState(owner);
   }
 
-  void claimTransientInFlightStateIfPresent(
-      final String consumerGroupId,
-      final String topicName,
-      final ConsensusGroupId regionId,
-      final Object owner) {
-    final ConsensusSubscriptionCommitState state =
-        commitStates.get(generateKey(consumerGroupId, topicName, regionId));
-    if (Objects.nonNull(state)) {
-      state.claimTransientInFlightState(owner);
-    }
-  }
-
   void clearTransientInFlightState(
       final String consumerGroupId,
       final String topicName,
@@ -1039,6 +1027,18 @@ public class ConsensusSubscriptionCommitManager {
       final RegionProgress regionProgress,
       final boolean explicitSeek,
       final Consumer<RegionProgress> afterReset) {
+    return resetState(
+        consumerGroupId, topicName, regionId, regionProgress, explicitSeek, afterReset, null);
+  }
+
+  RegionProgress resetState(
+      final String consumerGroupId,
+      final String topicName,
+      final ConsensusGroupId regionId,
+      final RegionProgress regionProgress,
+      final boolean explicitSeek,
+      final Consumer<RegionProgress> afterReset,
+      final Object owner) {
     final CommitStateKey stateKey =
         getCommitStateKey(consumerGroupId, topicName, regionId.toString());
     synchronized (getTopicPersistLock(stateKey.topicFileKey)) {
@@ -1056,6 +1056,12 @@ public class ConsensusSubscriptionCommitManager {
       }
       final RegionProgress resetProgress;
       synchronized (state) {
+        if (state.isSupersededTransientOwner(owner)) {
+          return null;
+        }
+        if (Objects.nonNull(owner)) {
+          state.claimTransientInFlightState(owner);
+        }
         // Activation applies its seek asynchronously, after the authoritative refresh. Preserve
         // committed progress received since that refresh; only a user seek may rewind it.
         resetProgress =
@@ -2150,8 +2156,9 @@ public class ConsensusSubscriptionCommitManager {
         new HashMap<>();
 
     /**
-     * Active queue instance owning transient in-flight mappings so delayed async cleanup or late
-     * prefetch/commit calls from a superseded queue cannot corrupt a replacement queue.
+     * Lightweight opaque token identifying the active queue owning transient in-flight mappings so
+     * delayed async cleanup or late prefetch/commit/seek calls from a superseded queue cannot
+     * corrupt a replacement queue without retaining strong references to closed queue instances.
      */
     private Object transientOwner;
 
@@ -2179,7 +2186,7 @@ public class ConsensusSubscriptionCommitManager {
 
     boolean clearTransientInFlightStateIfOwner(final Object owner) {
       synchronized (this) {
-        if (Objects.nonNull(owner) && Objects.nonNull(transientOwner) && transientOwner != owner) {
+        if (Objects.nonNull(transientOwner) && transientOwner != owner) {
           return false;
         }
         clearTransientInFlightStateUnderLock();

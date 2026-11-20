@@ -1147,7 +1147,8 @@ public class ConsensusSubscriptionCommitStateTest {
       manager.recordMapping(
           "cg", "topic", regionId, writerId, new WriterProgress(1075L, 75L), owner2);
 
-      // Delayed mapping, commits, and async cleanup from owner1 cannot touch owner2's live state.
+      // Delayed mapping, commits, seek resets, null-owner clears, and async cleanup from owner1
+      // cannot touch owner2's live state.
       assertTrue(manager.isSupersededTransientOwner("cg", "topic", regionId, owner1));
       assertFalse(manager.isSupersededTransientOwner("cg", "topic", regionId, owner2));
       assertFalse(
@@ -1159,13 +1160,50 @@ public class ConsensusSubscriptionCommitStateTest {
       assertFalse(
           manager.commitWithoutOutstanding(
               "cg", "topic", regionId, writerId, new WriterProgress(1075L, 75L), owner1));
+      manager.clearTransientInFlightState("cg", "topic", regionId, null);
       manager.clearTransientInFlightState("cg", "topic", regionId, owner1);
+      final java.util.concurrent.atomic.AtomicBoolean supersededAfterResetInvoked =
+          new java.util.concurrent.atomic.AtomicBoolean(false);
+      org.junit.Assert.assertNull(
+          manager.resetState(
+              "cg",
+              "topic",
+              regionId,
+              new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1000L, 1L))),
+              true,
+              ignored -> supersededAfterResetInvoked.set(true),
+              owner1));
+      assertFalse(supersededAfterResetInvoked.get());
+      assertFalse(manager.isSupersededTransientOwner("cg", "topic", regionId, owner2));
 
       assertTrue(
           manager.commit(
               "cg", "topic", regionId, writerId, new WriterProgress(1075L, 75L), owner2));
       assertEquals(
           new WriterProgress(1075L, 75L),
+          manager
+              .getCommittedRegionProgress("cg", "topic", regionId)
+              .getWriterPositions()
+              .get(writerId));
+
+      // Active owner can still seek-reset the state cleanly.
+      final RegionProgress activeSeekTarget =
+          new RegionProgress(Collections.singletonMap(writerId, new WriterProgress(1080L, 80L)));
+      final java.util.concurrent.atomic.AtomicBoolean activeAfterResetInvoked =
+          new java.util.concurrent.atomic.AtomicBoolean(false);
+      assertEquals(
+          activeSeekTarget,
+          manager.resetState(
+              "cg",
+              "topic",
+              regionId,
+              activeSeekTarget,
+              true,
+              ignored -> activeAfterResetInvoked.set(true),
+              owner2));
+      assertTrue(activeAfterResetInvoked.get());
+      assertEquals(
+          new WriterProgress(1080L, 80L),
           manager
               .getCommittedRegionProgress("cg", "topic", regionId)
               .getWriterPositions()
