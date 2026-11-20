@@ -509,7 +509,8 @@ public class TimeSeriesRuntimeState {
     if (buffer == null) {
       return;
     }
-    final int size = ReadWriteIOUtils.readInt(buffer);
+    final ByteBuffer readBuffer = buffer.duplicate();
+    final int size = ReadWriteIOUtils.readInt(readBuffer);
     for (int i = 0; i < size; ++i) {
       // The runtime value will be deserialized if exists
       final TimeSeriesWindow currentWindow = new TimeSeriesWindow(windowingProcessor, null);
@@ -517,7 +518,7 @@ public class TimeSeriesRuntimeState {
           intermediateResultName2OperatorSupplierMap,
           aggregatorOutputName2OperatorMap,
           systemParameters);
-      currentWindow.deserialize(buffer);
+      currentWindow.deserialize(readBuffer);
       currentOpeningWindows.add(currentWindow);
     }
   }

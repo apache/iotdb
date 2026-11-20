@@ -18,6 +18,10 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.AggregatedResultOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.standardstatistics.AverageOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.standardstatistics.ClearanceFactorOperator;
@@ -53,6 +57,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -410,6 +415,69 @@ public class AggregateProcessorTest {
     Assert.assertTrue(state.forceOutput().isEmpty());
   }
 
+  @Test
+  public void testReportedWindowProgressIndexRestoresOpenWindowAfterSerialization()
+      throws Exception {
+    final long interval = TimestampPrecisionUtils.convertToCurrPrecision(1, TimeUnit.SECONDS);
+    final TumblingWindowingProcessor windowingProcessor = createWindowingProcessor(0, 1);
+    final Map<String, Supplier<IntermediateResultOperator>> intermediateOperators = new HashMap<>();
+    intermediateOperators.put("count", CountOperator::new);
+    intermediateOperators.put("sum_x1", () -> new IntegralPoweredSumOperator(1));
+    final Map<String, AggregatedResultOperator> aggregatedOperators =
+        Collections.singletonMap("avg", new AverageOperator());
+    final TimeSeriesRuntimeState runtimeState =
+        new TimeSeriesRuntimeState(
+            aggregatedOperators, intermediateOperators, Collections.emptyMap(), windowingProcessor);
+
+    Assert.assertNull(runtimeState.updateWindows(0, 10, 0));
+    final Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> reportedState =
+        runtimeState.updateWindows(interval, 20, 0);
+    Assert.assertNotNull(reportedState);
+    Assert.assertEquals(
+        10.0,
+        (double) reportedState.getLeft().get(0).getAggregatedResults().get("avg").getRight(),
+        0.0);
+    Assert.assertNotNull(reportedState.getRight());
+    Assert.assertEquals(interval, (long) reportedState.getRight().getLeft());
+
+    final TimeWindowStateProgressIndex reportedProgressIndex =
+        new TimeWindowStateProgressIndex(
+            Collections.singletonMap("root.sg.d.s", reportedState.getRight()));
+    final ProgressIndex restoredProgressIndex = roundTripProgressIndex(reportedProgressIndex);
+    final TimeWindowStateProgressIndex restoredWindowProgressIndex =
+        restoredProgressIndex
+            .getProgressIndexByType(TimeWindowStateProgressIndex.class)
+            .orElse(null);
+    Assert.assertNotNull(restoredWindowProgressIndex);
+
+    final Pair<Long, ByteBuffer> restoredState =
+        restoredWindowProgressIndex.getTimeSeries2TimestampWindowBufferPairMap().get("root.sg.d.s");
+    Assert.assertNotNull(restoredState);
+
+    for (int restoration = 0; restoration < 2; ++restoration) {
+      final TimeSeriesRuntimeState restoredRuntimeState =
+          new TimeSeriesRuntimeState(
+              aggregatedOperators,
+              intermediateOperators,
+              Collections.emptyMap(),
+              windowingProcessor);
+      restoredRuntimeState.restoreTimestampAndWindows(restoredState);
+      Assert.assertNull(restoredRuntimeState.updateWindows(interval, 100, 0));
+      Assert.assertNull(restoredRuntimeState.updateWindows(interval + 1, 30, 0));
+
+      final Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> resumedOutput =
+          restoredRuntimeState.updateWindows(interval * 2, 40, 0);
+      Assert.assertNotNull(resumedOutput);
+      Assert.assertEquals(1, resumedOutput.getLeft().size());
+      Assert.assertEquals(
+          25.0,
+          (double) resumedOutput.getLeft().get(0).getAggregatedResults().get("avg").getRight(),
+          0.0);
+      Assert.assertNotNull(resumedOutput.getRight());
+      Assert.assertEquals(interval * 2, (long) resumedOutput.getRight().getLeft());
+    }
+  }
+
   private static ByteBuffer serializeWindow(
       final TumblingWindowingProcessor windowingProcessor, final long timestamp)
       throws IOException {
@@ -420,6 +488,15 @@ public class AggregateProcessorTest {
       window.setTimestamp(timestamp);
       window.serialize(outputStream);
       return ByteBuffer.wrap(output.getBuf(), 0, output.size());
+    }
+  }
+
+  private static ProgressIndex roundTripProgressIndex(final ProgressIndex progressIndex)
+      throws IOException {
+    try (final PublicBAOS output = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(output)) {
+      progressIndex.serialize(outputStream);
+      return ProgressIndexType.deserializeFrom(ByteBuffer.wrap(output.getBuf(), 0, output.size()));
     }
   }
 
