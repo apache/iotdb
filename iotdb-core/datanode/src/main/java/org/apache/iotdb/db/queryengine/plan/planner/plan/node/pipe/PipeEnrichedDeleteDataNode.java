@@ -73,6 +73,16 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   }
 
   @Override
+  public boolean isGeneratedByRemoteConsensusLeader() {
+    return deleteDataNode.isGeneratedByRemoteConsensusLeader();
+  }
+
+  @Override
+  public void markAsGeneratedByRemoteConsensusLeader() {
+    deleteDataNode.markAsGeneratedByRemoteConsensusLeader();
+  }
+
+  @Override
   public PlanNodeId getPlanNodeId() {
     return deleteDataNode.getPlanNodeId();
   }
