@@ -462,4 +462,47 @@ public class TreeDeviceSchemaCacheManagerTest {
     TableDeviceSchemaCache.getInstance().invalidateAll();
     Assert.assertEquals(0, TableDeviceSchemaCache.getInstance().getMemoryUsage());
   }
+
+  @Test
+  public void testPutTemplateSchemaAfterLastCacheDeclaration() throws Exception {
+    final String database = "root.sg1";
+    final PartialPath device = new PartialPath("root.sg1.d1");
+    final Template template =
+        new Template(
+            "t1",
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
+            Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
+    template.setId(1);
+    ClusterTemplateManager.getInstance().putTemplate(template);
+    final MeasurementPath s1Path =
+        new MeasurementPath(device.concatNode("s1"), template.getSchema("s1"));
+    final TimeValuePair tv1 = new TimeValuePair(1, new TsPrimitiveType.TsDouble(1));
+
+    // A DataNode running the fragment of a SELECT LAST coordinated elsewhere declares the last
+    // cache before it has fetched this device's template schema.
+    treeDeviceSchemaCacheManager.declareLastCache(database, s1Path);
+    treeDeviceSchemaCacheManager.updateLastCacheIfExists(
+        database,
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
+        new String[] {"s1"},
+        new TimeValuePair[] {tv1},
+        false,
+        new MeasurementSchema[] {(MeasurementSchema) template.getSchema("s1")});
+
+    final ClusterSchemaTree clusterSchemaTree = new ClusterSchemaTree();
+    clusterSchemaTree.appendTemplateDevice(device, false, 1, template);
+    clusterSchemaTree.setDatabases(Collections.singleton(database));
+    treeDeviceSchemaCacheManager.put(clusterSchemaTree);
+
+    final List<MeasurementPath> measurementPaths =
+        treeDeviceSchemaCacheManager
+            .getMatchedTemplateSchema(device)
+            .searchMeasurementPaths(ALL_MATCH_PATTERN)
+            .left;
+    Assert.assertEquals(2, measurementPaths.size());
+    Assert.assertEquals(tv1, treeDeviceSchemaCacheManager.getLastCache(s1Path));
+  }
 }
