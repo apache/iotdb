@@ -75,6 +75,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
+import static org.apache.iotdb.calc.utils.TypeServices.getIntegralInListValue;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor.getLongValue;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
@@ -134,13 +135,37 @@ public class ConvertPredicateToFilterVisitor
     Type type = context.getType(Symbol.from(operand));
     TSDataType dataType = InternalTypeManager.getTSDataType(type);
     Set<T> inSet = constructInSet(values, type);
+    if (inSet.isEmpty()) {
+      // No literal can match, so the predicate is always false. An empty ValueIn cannot express
+      // that: TsFile's statistics shortcut reports allSatisfy() for a page whose column is
+      // entirely NULL, and the page reader then returns those NULL rows. "=" already uses
+      // FalseLiteralFilter for a literal that can never match. NOT IN is unaffected because a
+      // NotExpression is never pushed into the scan, so it keeps excluding NULL rows in the
+      // column transformer.
+      return new FalseLiteralFilter();
+    }
     return ValueFilterApi.in(measurementIndex, inSet, dataType);
   }
 
+  @SuppressWarnings("unchecked")
   private <T extends Comparable<T>> Set<T> constructInSet(List<Literal> literals, Type dataType) {
+    TSDataType tsDataType = InternalTypeManager.getTSDataType(dataType);
     Set<T> values = new HashSet<>();
     for (Literal literal : literals) {
-      values.add(getValue(literal, dataType));
+      if (tsDataType != INT32 && tsDataType != INT64) {
+        values.add(getValue(literal, dataType));
+        continue;
+      }
+      // Like "=", drop literals that can never equal an INT32/INT64 value instead of narrowing them
+      Long value = getIntegralInListValue(literal, dataType);
+      if (value == null) {
+        continue;
+      }
+      if (tsDataType == INT32) {
+        values.add((T) Integer.valueOf(value.intValue()));
+      } else {
+        values.add((T) value);
+      }
     }
     return values;
   }
@@ -178,7 +203,11 @@ public class ConvertPredicateToFilterVisitor
       double floatPointValue = floatPoint;
 
       if (columnDataType == INT64) {
-        if (floatPointValue > Long.MAX_VALUE) {
+        // (double) Long.MAX_VALUE rounds up to 2^63, so ">" would let a literal of exactly 2^63
+        // through and the cast back to long would saturate it onto Long.MAX_VALUE, matching the
+        // wrong row. 0x1p63 is that bound exactly. INT32 needs no such care: its bound is
+        // representable as a double.
+        if (floatPointValue >= 0x1p63) {
           return constructFilterForGreaterThanMax(operator, measurementIndex);
         }
         if (floatPointValue < Long.MIN_VALUE) {
