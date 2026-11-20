@@ -61,7 +61,10 @@ public class SessionDataSet implements ISessionDataSet {
       ZoneId zoneId,
       int timeFactor,
       boolean tableModel,
-      List<Integer> columnIndex2TsBlockColumnIndexList) {
+      List<Integer> columnIndex2TsBlockColumnIndexList,
+      boolean offsetSet,
+      int offset,
+      int totalLength) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -81,7 +84,95 @@ public class SessionDataSet implements ISessionDataSet {
             RpcUtils.DEFAULT_TIME_FORMAT,
             timeFactor,
             tableModel,
-            columnIndex2TsBlockColumnIndexList);
+            columnIndex2TsBlockColumnIndexList,
+            offsetSet,
+            offset,
+            totalLength);
+  }
+
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      long queryId,
+      long statementId,
+      IClientRPCService.Iface client,
+      long sessionId,
+      List<ByteBuffer> queryResult,
+      boolean ignoreTimeStamp,
+      boolean moreData,
+      ZoneId zoneId,
+      int timeFactor,
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList) {
+    this(
+        sql,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        queryId,
+        statementId,
+        client,
+        sessionId,
+        queryResult,
+        ignoreTimeStamp,
+        moreData,
+        zoneId,
+        timeFactor,
+        tableModel,
+        columnIndex2TsBlockColumnIndexList,
+        false,
+        0,
+        0);
+  }
+
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      long queryId,
+      long statementId,
+      IClientRPCService.Iface client,
+      long sessionId,
+      List<ByteBuffer> queryResult,
+      boolean ignoreTimeStamp,
+      long timeout,
+      boolean moreData,
+      int fetchSize,
+      ZoneId zoneId,
+      int timeFactor,
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList,
+      boolean offsetSet,
+      int offset,
+      int totalLength) {
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            moreData,
+            queryId,
+            statementId,
+            client,
+            sessionId,
+            queryResult,
+            fetchSize,
+            timeout,
+            zoneId,
+            RpcUtils.DEFAULT_TIME_FORMAT,
+            timeFactor,
+            tableModel,
+            columnIndex2TsBlockColumnIndexList,
+            offsetSet,
+            offset,
+            totalLength);
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -103,26 +194,27 @@ public class SessionDataSet implements ISessionDataSet {
       int timeFactor,
       boolean tableModel,
       List<Integer> columnIndex2TsBlockColumnIndexList) {
-    this.ioTDBRpcDataSet =
-        new IoTDBRpcDataSet(
-            sql,
-            columnNameList,
-            columnTypeList,
-            columnNameIndex,
-            ignoreTimeStamp,
-            moreData,
-            queryId,
-            statementId,
-            client,
-            sessionId,
-            queryResult,
-            fetchSize,
-            timeout,
-            zoneId,
-            RpcUtils.DEFAULT_TIME_FORMAT,
-            timeFactor,
-            tableModel,
-            columnIndex2TsBlockColumnIndexList);
+    this(
+        sql,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        queryId,
+        statementId,
+        client,
+        sessionId,
+        queryResult,
+        ignoreTimeStamp,
+        timeout,
+        moreData,
+        fetchSize,
+        zoneId,
+        timeFactor,
+        tableModel,
+        columnIndex2TsBlockColumnIndexList,
+        false,
+        0,
+        0);
   }
 
   public int getFetchSize() {

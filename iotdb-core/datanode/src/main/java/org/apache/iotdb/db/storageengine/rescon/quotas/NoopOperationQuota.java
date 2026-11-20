@@ -20,9 +20,6 @@ package org.apache.iotdb.db.storageengine.rescon.quotas;
 
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-
 /** Noop operation quota returned when no quota is associated to the user/table */
 class NoopOperationQuota implements OperationQuota {
   private static OperationQuota instance = new NoopOperationQuota();
@@ -39,7 +36,7 @@ class NoopOperationQuota implements OperationQuota {
   public void checkQuota(int numWrites, int numReads, Statement s) {}
 
   @Override
-  public void addReadResult(List<ByteBuffer> queryResult) {}
+  public void addReadResult(long bytes) {}
 
   @Override
   public void close() {

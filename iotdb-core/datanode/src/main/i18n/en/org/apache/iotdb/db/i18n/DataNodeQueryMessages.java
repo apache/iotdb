@@ -4974,6 +4974,18 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s: %s ms, %s invocations, %s applications";
+
+  public static final String
+      EXCEPTION_REQUEST_OFFSET_ARG_DOES_NOT_MATCH_THE_PENDING_RESULT_FRAGMENT_OFFSET_ARG_A1B13DBC =
+          "Request offset %d does not match the pending result fragment offset %d";
+  public static final String
+      EXCEPTION_REQUEST_OFFSET_ARG_IS_INVALID_BECAUSE_NO_RESULT_FRAGMENT_IS_PENDING_C403454F =
+          "Request offset %d is invalid because no result fragment is pending";
+
+  public static final String
+      EXCEPTION_WAITING_FOR_THE_MEMORY_OF_A_PENDING_RESULT_FRAGMENT_WAS_ABORTED_BECAUSE_THE_QUERY_WAS_CLEANED_UP_D51EC67C =
+          "Waiting for the memory of a pending result fragment was aborted because the query was cleaned up";
+
   public static final String MESSAGE_COLUMN_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_OR_COLUMN_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_08F7DB64 =
       "Column deletion is asynchronous. The specified table or column does not exist; no task was submitted.";
   public static final String MESSAGE_TABLE_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_74E6521A =

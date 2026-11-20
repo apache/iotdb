@@ -22,9 +22,6 @@ package org.apache.iotdb.db.storageengine.rescon.quotas;
 import org.apache.iotdb.commons.exception.RpcThrottlingException;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-
 public interface OperationQuota {
 
   public enum OperationType {
@@ -43,7 +40,7 @@ public interface OperationQuota {
    */
   void checkQuota(int numWrites, int numReads, Statement s) throws RpcThrottlingException;
 
-  void addReadResult(List<ByteBuffer> queryResult);
+  void addReadResult(long bytes);
 
   /** Cleanup method on operation completion */
   void close();

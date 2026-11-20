@@ -45,6 +45,11 @@ public interface IQueryExecution {
 
   Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException;
 
+  /** Returns the pending fragment holder, or null if this execution does not fragment results. */
+  default PendingResultFragment getPendingResultFragment() {
+    return null;
+  }
+
   boolean hasNextResult();
 
   int getOutputValueColumnCount();

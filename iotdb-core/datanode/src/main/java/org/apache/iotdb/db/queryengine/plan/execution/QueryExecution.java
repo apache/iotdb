@@ -113,6 +113,10 @@ public class QueryExecution implements IQueryExecution {
   // used for cleaning resultHandle up exactly once
   private final AtomicBoolean resultHandleCleanUp;
 
+  // the serialized TsBlock partially sent to the client, accounted by the query-owned account
+  private final PendingResultFragment pendingResultFragment;
+  private final QueryOwnedFragmentAccount pendingFragmentAccount;
+
   private final UDFClassLoaderManager.QueryScope udfQueryScope;
 
   // cost time in ns of finished rpc
@@ -134,6 +138,8 @@ public class QueryExecution implements IQueryExecution {
   public QueryExecution(IPlanner planner, MPPQueryContext context, ExecutorService executor) {
     this.context = context;
     this.planner = planner;
+    this.pendingFragmentAccount = new QueryOwnedFragmentAccount(context.getQueryId().getId());
+    this.pendingResultFragment = new PendingResultFragment(pendingFragmentAccount);
     UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
     this.udfQueryScope =
         classLoaderManager == null
@@ -549,6 +555,11 @@ public class QueryExecution implements IQueryExecution {
    */
   private void releaseResource(Throwable t, boolean isRetry) {
     context.recordDeviceEntryDiskIOMetricsOnRelease();
+    // release the pending fragment, so that a retried execution does not continue a stale one
+    pendingResultFragment.clear();
+    if (!isRetry) {
+      pendingFragmentAccount.deregister();
+    }
     // close ResultHandle to unblock client's getResult request
     // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
     // There are only two scenarios where the ResultHandle should be closed:
@@ -719,6 +730,11 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public Optional<ByteBuffer> getByteBufferBatchResult() throws IoTDBException {
     return getResult(this::getSerializedTsBlock);
+  }
+
+  @Override
+  public PendingResultFragment getPendingResultFragment() {
+    return pendingResultFragment;
   }
 
   private ByteBuffer getSerializedTsBlock() throws IoTDBException {
