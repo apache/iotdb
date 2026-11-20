@@ -131,20 +131,10 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::deregister);
-    if (!remainingEventAndTimeOperatorMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe remaining event and time metrics, RemainingEventAndTimeOperator map not empty");
-    }
+    ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.values()).forEach(this::removeAutoGauge);
   }
 
-  private void removeMetrics(final String pipeID) {
-    removeAutoGauge(pipeID);
-  }
-
-  private void removeAutoGauge(final String pipeID) {
-    final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.get(pipeID);
+  private void removeAutoGauge(final PipeDataNodeRemainingEventAndTimeOperator operator) {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
@@ -190,14 +180,44 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         Metric.PIPE_TSFILE_EVENT_TRANSFER_TIME.toString(),
         Tag.NAME.toString(),
         operator.getPipeName());
-    remainingEventAndTimeOperatorMap.remove(pipeID);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final IoTDBDataRegionSource extractor) {
+  private static String generatePipeID(final String pipeName, final long creationTime) {
+    return pipeName + "_" + creationTime;
+  }
+
+  private boolean isPipeAlive(final String pipeName, final long creationTime) {
+    return PipeDataNodeAgent.task().isPipeAlive(pipeName, creationTime);
+  }
+
+  private PipeDataNodeRemainingEventAndTimeOperator getOrCreateOperatorIfPipeAlive(
+      final String pipeName, final long creationTime) {
+    final String pipeID = generatePipeID(pipeName, creationTime);
+    PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(pipeID);
+    if (Objects.nonNull(operator)) {
+      return operator;
+    }
+
+    // Serialize creation with deregistration so a late update cannot restore a removed operator.
+    synchronized (this) {
+      operator = remainingEventAndTimeOperatorMap.get(pipeID);
+      if (Objects.nonNull(operator)) {
+        return operator;
+      }
+      if (!isPipeAlive(pipeName, creationTime)) {
+        return null;
+      }
+      return remainingEventAndTimeOperatorMap.computeIfAbsent(
+          pipeID, key -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
+    }
+  }
+
+  public synchronized void register(final IoTDBDataRegionSource extractor) {
     // The metric is global thus the regionId is omitted
-    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
+    final String pipeID = generatePipeID(extractor.getPipeName(), extractor.getCreationTime());
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeID,
@@ -210,9 +230,9 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
     }
   }
 
-  public void register(final IoTDBSchemaRegionSource extractor) {
+  public synchronized void register(final IoTDBSchemaRegionSource extractor) {
     // The metric is global thus the regionId is omitted
-    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
+    final String pipeID = generatePipeID(extractor.getPipeName(), extractor.getCreationTime());
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeID,
@@ -226,19 +246,20 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   }
 
   public void increaseInsertNodeEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .increaseInsertNodeEventCount();
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        getOrCreateOperatorIfPipeAlive(pipeName, creationTime);
+    if (Objects.nonNull(operator)) {
+      operator.increaseInsertNodeEventCount();
+    }
   }
 
   public void decreaseInsertNodeEventCount(
       final String pipeName, final long creationTime, final long transferTime) {
-    PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(generatePipeID(pipeName, creationTime));
+    if (Objects.isNull(operator)) {
+      return;
+    }
 
     operator.decreaseInsertNodeEventCount();
 
@@ -249,46 +270,44 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   public void updateInsertNodeTransferTimer(
       final String pipeName, final long creationTime, final long transferTime) {
-    if (transferTime > 0) {
-      remainingEventAndTimeOperatorMap
-          .computeIfAbsent(
-              pipeName + "_" + creationTime,
-              k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-          .getInsertNodeTransferTimer()
-          .update(transferTime, TimeUnit.NANOSECONDS);
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(generatePipeID(pipeName, creationTime));
+    if (Objects.nonNull(operator) && transferTime > 0) {
+      operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
     }
   }
 
   public void increaseRawTabletEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .increaseRawTabletEventCount();
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        getOrCreateOperatorIfPipeAlive(pipeName, creationTime);
+    if (Objects.nonNull(operator)) {
+      operator.increaseRawTabletEventCount();
+    }
   }
 
   public void decreaseRawTabletEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseRawTabletEventCount();
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(generatePipeID(pipeName, creationTime));
+    if (Objects.nonNull(operator)) {
+      operator.decreaseRawTabletEventCount();
+    }
   }
 
   public void increaseTsFileEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .increaseTsFileEventCount();
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        getOrCreateOperatorIfPipeAlive(pipeName, creationTime);
+    if (Objects.nonNull(operator)) {
+      operator.increaseTsFileEventCount();
+    }
   }
 
   public void decreaseTsFileEventCount(
       final String pipeName, final long creationTime, final long transferTime) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
+        remainingEventAndTimeOperatorMap.get(generatePipeID(pipeName, creationTime));
+    if (Objects.isNull(operator)) {
+      return;
+    }
 
     operator.decreaseTsFileEventCount();
 
@@ -299,30 +318,27 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   public void updateTsFileTransferTimer(
       final String pipeName, final long creationTime, final long transferTime) {
-    if (transferTime > 0) {
-      remainingEventAndTimeOperatorMap
-          .computeIfAbsent(
-              pipeName + "_" + creationTime,
-              k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-          .getTsFileTransferTimer()
-          .update(transferTime, TimeUnit.NANOSECONDS);
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(generatePipeID(pipeName, creationTime));
+    if (Objects.nonNull(operator) && transferTime > 0) {
+      operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
     }
   }
 
   public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .increaseHeartbeatEventCount();
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        getOrCreateOperatorIfPipeAlive(pipeName, creationTime);
+    if (Objects.nonNull(operator)) {
+      operator.increaseHeartbeatEventCount();
+    }
   }
 
   public void decreaseHeartbeatEventCount(final String pipeName, final long creationTime) {
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
-        .decreaseHeartbeatEventCount();
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(generatePipeID(pipeName, creationTime));
+    if (Objects.nonNull(operator)) {
+      operator.decreaseHeartbeatEventCount();
+    }
   }
 
   public void thawRate(final String pipeID) {
@@ -345,15 +361,17 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
     remainingEventAndTimeOperatorMap.get(pipeID).freezeRate(true);
   }
 
-  public void deregister(final String pipeID) {
-    if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
+  public synchronized void deregister(final String pipeID) {
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.remove(pipeID);
+    if (Objects.isNull(operator)) {
       LOGGER.warn(
           "Failed to deregister pipe remaining event and time metrics, RemainingEventAndTimeOperator({}) does not exist",
           pipeID);
       return;
     }
     if (Objects.nonNull(metricService)) {
-      removeMetrics(pipeID);
+      removeAutoGauge(operator);
     }
   }
 
@@ -396,9 +414,10 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   public Pair<Long, Double> getRemainingEventAndTime(
       final String pipeName, final long creationTime) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.computeIfAbsent(
-            pipeName + "_" + creationTime,
-            k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
+        remainingEventAndTimeOperatorMap.get(generatePipeID(pipeName, creationTime));
+    if (Objects.isNull(operator)) {
+      return new Pair<>(0L, 0.0);
+    }
     return new Pair<>(operator.getRemainingNonHeartbeatEvents(), operator.getRemainingTime());
   }
 

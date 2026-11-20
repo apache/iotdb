@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -58,6 +59,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -99,10 +101,14 @@ public abstract class PipeTaskAgent {
 
   protected final PipeMetaKeeper pipeMetaKeeper;
   protected final PipeTaskManager pipeTaskManager;
+  private final Map<String, AtomicLong> pipeNameWithCreationTime2FloatingMemoryUsageInByteMap;
+  private final Map<String, Set<Long>> pipeName2CreationTimeSetMap;
 
   protected PipeTaskAgent() {
     pipeMetaKeeper = new PipeMetaKeeper();
     pipeTaskManager = new PipeTaskManager();
+    pipeNameWithCreationTime2FloatingMemoryUsageInByteMap = new ConcurrentHashMap<>();
+    pipeName2CreationTimeSetMap = new ConcurrentHashMap<>();
 
     // Help PipeEndPointRateLimiter to check if the pipe is still alive
     PipeEndPointRateLimiter.setTaskAgent(this);
@@ -649,6 +655,8 @@ public abstract class PipeTaskAgent {
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
+    cleanupFloatingMemoryUsageCounterIfNecessary(pipeName, creationTime);
+    clearPipeRuntimeState(pipeName, creationTime);
 
     return true;
   }
@@ -687,6 +695,9 @@ public abstract class PipeTaskAgent {
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
+    cleanupFloatingMemoryUsageCounterIfNecessary(
+        pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
+    clearPipeRuntimeState(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
 
     return true;
   }
@@ -1302,15 +1313,57 @@ public abstract class PipeTaskAgent {
 
   ///////////////////////// Maintain meta info /////////////////////////
 
+  private static String generatePipeNameWithCreationTime(
+      final String pipeName, final long creationTime) {
+    return pipeName + "_" + creationTime;
+  }
+
+  private AtomicLong cleanupFloatingMemoryUsageCounterIfUnused(
+      final String pipeName, final long creationTime, final AtomicLong counter) {
+    if (counter.get() != 0) {
+      return counter;
+    }
+
+    // A missing counter also reports zero; a later acquisition recreates it without scanning all
+    // pipe metadata on the event-release path.
+    pipeName2CreationTimeSetMap.computeIfPresent(
+        pipeName,
+        (key, creationTimes) -> {
+          creationTimes.remove(creationTime);
+          return creationTimes.isEmpty() ? null : creationTimes;
+        });
+    return null;
+  }
+
+  private void cleanupFloatingMemoryUsageCounterIfNecessary(
+      final String pipeName, final long creationTime) {
+    pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.computeIfPresent(
+        generatePipeNameWithCreationTime(pipeName, creationTime),
+        (key, counter) ->
+            cleanupFloatingMemoryUsageCounterIfUnused(pipeName, creationTime, counter));
+  }
+
+  private void clearPipeRuntimeState(final String pipeName, final long creationTime) {
+    PipeEventCommitManager.getInstance().clear(pipeName, creationTime);
+    IoTDBSink.clearPipeRateLimiter(pipeName, creationTime);
+  }
+
   public long getPipeCreationTime(final String pipeName) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     return pipeMeta == null ? 0 : pipeMeta.getStaticMeta().getCreationTime();
   }
 
+  public boolean isPipeAlive(final String pipeName, final long creationTime) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    return pipeMeta != null
+        && pipeMeta.getStaticMeta().getCreationTime() == creationTime
+        && pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.DROPPED;
+  }
+
   public String getPipeNameWithCreationTime(final String pipeName, final long creationTime) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     return pipeMeta == null
-        ? pipeName + "_" + creationTime
+        ? generatePipeNameWithCreationTime(pipeName, creationTime)
         : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getPipeNameWithCreationTime();
   }
 
@@ -1324,42 +1377,60 @@ public abstract class PipeTaskAgent {
   }
 
   public long getAllFloatingMemoryUsageInByte() {
-    final AtomicLong bytes = new AtomicLong(0);
-    pipeMetaKeeper
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta ->
-                bytes.addAndGet(
-                    ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
-                        .getFloatingMemoryUsageInByte()));
-    return bytes.get();
+    return pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.values().stream()
+        .mapToLong(AtomicLong::get)
+        .sum();
   }
 
   public long getFloatingMemoryUsageInByte(final String pipeName) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    return pipeMeta == null
-        ? 0
-        : ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta()).getFloatingMemoryUsageInByte();
+    final Set<Long> creationTimes = pipeName2CreationTimeSetMap.get(pipeName);
+    if (Objects.isNull(creationTimes)) {
+      return 0;
+    }
+
+    return creationTimes.stream()
+        .map(creationTime -> generatePipeNameWithCreationTime(pipeName, creationTime))
+        .map(pipeNameWithCreationTime2FloatingMemoryUsageInByteMap::get)
+        .filter(Objects::nonNull)
+        .mapToLong(AtomicLong::get)
+        .sum();
+  }
+
+  public long getFloatingMemoryUsageInByte(final String pipeName, final long creationTime) {
+    final AtomicLong counter =
+        pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.get(
+            generatePipeNameWithCreationTime(pipeName, creationTime));
+    return Objects.isNull(counter) ? 0 : counter.get();
   }
 
   public void addFloatingMemoryUsageInByte(
       final String pipeName, final long creationTime, final long sizeInByte) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    // To avoid stale pipe before alter
-    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
-      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
-          .addFloatingMemoryUsageInByte(sizeInByte);
-    }
+    // Late events still own memory after drop and must be paired with their eventual release.
+    pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.compute(
+        generatePipeNameWithCreationTime(pipeName, creationTime),
+        (key, counter) -> {
+          final AtomicLong updatedCounter = Objects.isNull(counter) ? new AtomicLong(0) : counter;
+          updatedCounter.addAndGet(sizeInByte);
+          pipeName2CreationTimeSetMap.compute(
+              pipeName,
+              (name, creationTimes) -> {
+                final Set<Long> updatedCreationTimes =
+                    Objects.isNull(creationTimes) ? ConcurrentHashMap.newKeySet() : creationTimes;
+                updatedCreationTimes.add(creationTime);
+                return updatedCreationTimes;
+              });
+          return updatedCounter;
+        });
   }
 
   public void decreaseFloatingMemoryUsageInByte(
       final String pipeName, final long creationTime, final long sizeInByte) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    // To avoid stale pipe before alter
-    if (Objects.nonNull(pipeMeta) && pipeMeta.getStaticMeta().getCreationTime() == creationTime) {
-      ((PipeTemporaryMetaInAgent) pipeMeta.getTemporaryMeta())
-          .decreaseFloatingMemoryUsageInByte(sizeInByte);
-    }
+    pipeNameWithCreationTime2FloatingMemoryUsageInByteMap.computeIfPresent(
+        generatePipeNameWithCreationTime(pipeName, creationTime),
+        (key, counter) -> {
+          counter.addAndGet(-sizeInByte);
+          return cleanupFloatingMemoryUsageCounterIfUnused(pipeName, creationTime, counter);
+        });
   }
 
   public void recordPipeResourceFailure(
