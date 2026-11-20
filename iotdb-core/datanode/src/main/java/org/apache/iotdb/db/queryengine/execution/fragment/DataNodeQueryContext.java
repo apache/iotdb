@@ -30,16 +30,20 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.concurrent.GuardedBy;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
@@ -65,6 +69,12 @@ public class DataNodeQueryContext {
 
   private static final TableDeviceSchemaCache TABLE_DEVICE_SCHEMA_CACHE =
       TableDeviceSchemaCache.getInstance();
+
+  // Devices whose last cache is declared by this query attempt, shared by its fragment instances.
+  // database is null for the tree model.
+  private final Map<TableId, Set<IDeviceID>> declaredDevices = new HashMap<>();
+  private final Object declaredDevicesLock = new Object();
+  private boolean lastCacheInvalidationStarted = false;
 
   // Used for TableModel information table_disk_usage scan
   @GuardedBy("lock")
@@ -97,6 +107,31 @@ public class DataNodeQueryContext {
   public DataNodeQueryContext() {
     this.uncachedPathToSeriesScanInfo = new ConcurrentHashMap<>();
     this.deviceCountAndMeasurementValues = new HashMap<>();
+  }
+
+  /** Register a device whose last cache is declared by this query attempt. */
+  public void addDeclaredDevice(final String database, final IDeviceID deviceID) {
+    final TableId tableId = new TableId(database, deviceID.getTableName());
+    synchronized (declaredDevicesLock) {
+      declaredDevices.computeIfAbsent(tableId, ignored -> new HashSet<>()).add(deviceID);
+    }
+  }
+
+  public void invalidateDeclaredLastCaches() {
+    synchronized (declaredDevicesLock) {
+      lastCacheInvalidationStarted = true;
+      declaredDevices.forEach(
+          (tableId, deviceIDs) ->
+              deviceIDs.forEach(
+                  deviceID -> TABLE_DEVICE_SCHEMA_CACHE.invalidateDeviceEntry(tableId, deviceID)));
+      declaredDevices.clear();
+    }
+  }
+
+  public boolean isLastCacheInvalidationStarted() {
+    synchronized (declaredDevicesLock) {
+      return lastCacheInvalidationStarted;
+    }
   }
 
   public boolean unCached(PartialPath path) {
@@ -161,15 +196,20 @@ public class DataNodeQueryContext {
 
   /** Update the last cache when device count decrease to zero. */
   public void updateLastCache(QualifiedObjectName tableName, DeviceEntry deviceEntry) {
+    if (isLastCacheInvalidationStarted()) {
+      return;
+    }
     Map<String, TimeValuePair> values =
         deviceCountAndMeasurementValues.get(tableName).get(deviceEntry).getRight();
     // if a device hits cache each time, the values recorded in context will be null
     if (values != null) {
-      TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheFromQuery(
+      TABLE_DEVICE_SCHEMA_CACHE.putBackLastCache(
           tableName.getDatabaseName(),
           deviceEntry.getDeviceID(),
           values.keySet().toArray(new String[0]),
-          values.values().toArray(new TimeValuePair[0]));
+          null,
+          values.values().toArray(new TimeValuePair[0]),
+          true);
     }
   }
 

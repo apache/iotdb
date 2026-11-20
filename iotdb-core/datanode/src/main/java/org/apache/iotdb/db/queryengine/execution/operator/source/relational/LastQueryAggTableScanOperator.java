@@ -689,17 +689,22 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
 
   private void checkIfUpdated(
       List<String> updateMeasurementList, List<TimeValuePair> updateTimeValuePairList) {
+    if (dataNodeQueryContext.isLastCacheInvalidationStarted()) {
+      return;
+    }
     if (!updateMeasurementList.isEmpty()) {
       currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
 
       boolean deviceInMultiRegion =
           deviceCountMap != null && deviceCountMap.containsKey(currentDeviceEntry);
       if (!deviceInMultiRegion) {
-        TABLE_DEVICE_SCHEMA_CACHE.updateLastCacheFromQuery(
+        TABLE_DEVICE_SCHEMA_CACHE.putBackLastCache(
             dbName,
             currentDeviceEntry.getDeviceID(),
             updateMeasurementList.toArray(new String[0]),
-            updateTimeValuePairList.toArray(new TimeValuePair[0]));
+            null,
+            updateTimeValuePairList.toArray(new TimeValuePair[0]),
+            true);
         return;
       }
 

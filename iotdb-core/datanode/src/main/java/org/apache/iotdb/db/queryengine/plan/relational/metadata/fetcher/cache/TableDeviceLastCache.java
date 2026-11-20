@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TableDeviceLastCache {
   static final int INSTANCE_SIZE =
       (int) RamUsageEstimator.shallowSizeOfInstance(TableDeviceLastCache.class)
-          + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
+          + 2 * (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
   private static final int LONG_INSTANCE_SIZE =
       (int) RamUsageEstimator.shallowSizeOfInstance(Long.class);
 
@@ -75,6 +75,8 @@ public class TableDeviceLastCache {
   // Time is seen as "" as a measurement
   private final ConcurrentMap<String, TimeValuePair> measurement2CachedLastMap =
       new ConcurrentHashMap<>();
+  // measurement -> an aligned last-row time at which this measurement is known to be null.
+  // It advances only when a later aligned row observes null, and is removed once a value covers it.
   private final ConcurrentMap<String, Long> measurement2CachedLastKnownNullTimeMap =
       new ConcurrentHashMap<>();
   private final boolean isTableModel;
@@ -83,11 +85,17 @@ public class TableDeviceLastCache {
     this.isTableModel = isTableModel;
   }
 
-  int initOrInvalidate(
+  /**
+   * @param invalidateLastCacheValue true means that invalidate(delete) the last value in
+   *     measurement2CachedLastMap, false means that init the last value, just put on a
+   *     PLACEHOLDER_NO_CACHE, if it has been init(the last value exists) then do not need init
+   *     again
+   */
+  int initOrInvalidateLastCache(
       final String database,
       final String tableName,
       final String[] measurements,
-      final boolean isInvalidate) {
+      final boolean invalidateLastCacheValue) {
     final AtomicInteger diff = new AtomicInteger(0);
 
     for (final String measurement : measurements) {
@@ -101,25 +109,27 @@ public class TableDeviceLastCache {
       if (Objects.isNull(finalMeasurement)) {
         continue;
       }
-      if (isInvalidate && measurement2CachedLastKnownNullTimeMap.remove(finalMeasurement) != null) {
+      if (invalidateLastCacheValue
+          && measurement2CachedLastKnownNullTimeMap.remove(finalMeasurement) != null) {
         diff.addAndGet(-getKnownNullTimeEntrySize());
       }
-      final TimeValuePair newPair = isInvalidate ? null : PLACEHOLDER_NO_CACHE;
 
       measurement2CachedLastMap.compute(
           finalMeasurement,
           (measurementKey, tvPair) -> {
-            if (Objects.isNull(newPair)) {
-              diff.addAndGet(
-                  -((isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
-                      + getTvPairEntrySize(tvPair)));
+            if (invalidateLastCacheValue) {
+              if (Objects.nonNull(tvPair)) {
+                diff.addAndGet(
+                    -((isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
+                        + getTvPairEntrySize(tvPair)));
+              }
               return null;
             }
             if (Objects.isNull(tvPair)) {
               diff.addAndGet(
                   (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(finalMeasurement))
-                      + getTvPairEntrySize(newPair));
-              return newPair;
+                      + getTvPairEntrySize(PLACEHOLDER_NO_CACHE));
+              return PLACEHOLDER_NO_CACHE;
             }
             return tvPair;
           });
@@ -147,7 +157,7 @@ public class TableDeviceLastCache {
     return tryUpdate(measurements, measurementSchemas, timeValuePairs, invalidateNull, true);
   }
 
-  int tryUpdateFromQuery(
+  int tryUpdateFromTableQuery(
       final @Nonnull String[] measurements, final @Nonnull TimeValuePair[] timeValuePairs) {
     // A FIELD's last non-NULL value can be older than the device's latest row. Queries must
     // provide an explicit time entry when they can establish the actual last-row time.
@@ -185,13 +195,99 @@ public class TableDeviceLastCache {
       if (isKnownNullAtAlignedTime(measurement, timeValuePair)) {
         diff += tryUpdateKnownNullTime(measurement, timeValuePair.getTimestamp());
       } else {
-        diff += tryUpdateCachedLast(measurement, timeValuePair);
+        diff +=
+            tryUpdateCachedLast(
+                measurement, measurement2CachedLastMap.get(measurement), timeValuePair);
       }
     }
     if (updateLastTimeFromMeasurements) {
-      tryUpdateLastTime(lastTime);
+      diff += updateTimeColumnAndGetDiff(lastTime);
     }
     return diff;
+  }
+
+  int updateOrDelete(
+      final String[] measurements,
+      final IMeasurementSchema[] measurementSchemas,
+      final TimeValuePair[] timeValuePairs) {
+    int diff = 0;
+    for (int i = 0; i < measurements.length; ++i) {
+      String measurement = getRawMeasurement(measurements, measurementSchemas, i);
+      if (Objects.isNull(measurement)) {
+        continue;
+      }
+      TimeValuePair timeValuePair = timeValuePairs[i];
+      if (Objects.isNull(timeValuePair)) {
+        continue;
+      }
+
+      // scan and get the null, cache it, or delete entry if it has the valid value
+      if (timeValuePair == PLACEHOLDER_EMPTY_COLUMN) {
+        diff += cacheNullValueOrDeleteValue(measurement);
+        continue;
+      }
+
+      TimeValuePair cachedPair = measurement2CachedLastMap.get(measurement);
+      if (Objects.isNull(cachedPair)) {
+        // The declared entry has been cleared.
+        continue;
+      }
+      if (isTableModel && isKnownNullAtAlignedTime(measurement, timeValuePair)) {
+        diff += tryUpdateKnownNullTime(measurement, timeValuePair.getTimestamp());
+        continue;
+      }
+      if (cachedPair == PLACEHOLDER_EMPTY_COLUMN) {
+        // Another LAST query already cached all-null after this scan; drop the entry instead of
+        // letting a possibly stale value overwrite the null.
+        diff += deleteCachedValue(measurement, cachedPair);
+        continue;
+      }
+      if (cachedPair.getTimestamp() > timeValuePair.getTimestamp()) {
+        // A newer value is already cached.
+        continue;
+      }
+      diff += tryUpdateCachedLast(measurement, cachedPair, timeValuePair);
+    }
+
+    return diff;
+  }
+
+  private int cacheNullValueOrDeleteValue(final String measurement) {
+    TimeValuePair cachedPair = measurement2CachedLastMap.get(measurement);
+    if (Objects.isNull(cachedPair) || cachedPair == PLACEHOLDER_EMPTY_COLUMN) {
+      return 0;
+    }
+    if (cachedPair == PLACEHOLDER_NO_CACHE) {
+      measurement2CachedLastMap.replace(measurement, cachedPair, PLACEHOLDER_EMPTY_COLUMN);
+      return 0;
+    }
+    // The cached value may have been inserted after this query scanned the data.
+    return deleteCachedValue(measurement, cachedPair);
+  }
+
+  private int deleteCachedValue(final String measurement, final TimeValuePair cachedPair) {
+    if (!measurement2CachedLastMap.remove(measurement, cachedPair)) {
+      return 0;
+    }
+    int diff =
+        -((isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(measurement))
+            + getTvPairEntrySize(cachedPair));
+    if (isTableModel) {
+      diff += removeKnownNullTime(measurement);
+    }
+    return diff;
+  }
+
+  private int updateTimeColumnAndGetDiff(long lastTime) {
+    TimeValuePair cachedPair = measurement2CachedLastMap.get("");
+    while (Objects.nonNull(cachedPair) && cachedPair.getTimestamp() < lastTime) {
+      TimeValuePair newPair = new TimeValuePair(lastTime, PLACEHOLDER_NO_VALUE);
+      if (measurement2CachedLastMap.replace("", cachedPair, newPair)) {
+        return getDiffSize(cachedPair, newPair);
+      }
+      cachedPair = measurement2CachedLastMap.get("");
+    }
+    return 0;
   }
 
   int tryUpdate(
@@ -210,7 +306,7 @@ public class TableDeviceLastCache {
       diff += tryUpdateCachedLast(measurement, updateSource, i);
     }
     if (hasValue) {
-      tryUpdateLastTime(updateSource.getLastCacheTimestamp());
+      diff += updateTimeColumnAndGetDiff(updateSource.getLastCacheTimestamp());
     }
     return diff;
   }
@@ -226,10 +322,6 @@ public class TableDeviceLastCache {
     return Objects.nonNull(newPair) ? tryUpdateCachedLast(measurement, cachedPair, newPair) : 0;
   }
 
-  private int tryUpdateCachedLast(final String measurement, final TimeValuePair newPair) {
-    return tryUpdateCachedLast(measurement, measurement2CachedLastMap.get(measurement), newPair);
-  }
-
   private int tryUpdateCachedLast(
       final String measurement, TimeValuePair cachedPair, final TimeValuePair newPair) {
     while (Objects.nonNull(cachedPair) && cachedPair.getTimestamp() <= newPair.getTimestamp()) {
@@ -240,23 +332,6 @@ public class TableDeviceLastCache {
       cachedPair = measurement2CachedLastMap.get(measurement);
     }
     return 0;
-  }
-
-  private void tryUpdateLastTime(final long lastTime) {
-    if (lastTime == Long.MIN_VALUE) {
-      return;
-    }
-    TimeValuePair cachedPair = measurement2CachedLastMap.get("");
-    if (Objects.isNull(cachedPair) || cachedPair.getTimestamp() >= lastTime) {
-      return;
-    }
-    final TimeValuePair newPair = new TimeValuePair(lastTime, PLACEHOLDER_NO_VALUE);
-    while (Objects.nonNull(cachedPair) && cachedPair.getTimestamp() < lastTime) {
-      if (measurement2CachedLastMap.replace("", cachedPair, newPair)) {
-        return;
-      }
-      cachedPair = measurement2CachedLastMap.get("");
-    }
   }
 
   @Nullable
@@ -300,7 +375,9 @@ public class TableDeviceLastCache {
         "",
         (s, timeValuePair) -> {
           if (timeValuePair.getTimestamp() <= Math.max(time.get(), knownNullTime.get())) {
-            diff.addAndGet((int) RamUsageEstimator.sizeOf(s) + getTvPairEntrySize(timeValuePair));
+            diff.addAndGet(
+                (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(s))
+                    + getTvPairEntrySize(timeValuePair));
             return null;
           }
           return timeValuePair;

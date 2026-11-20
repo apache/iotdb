@@ -35,16 +35,16 @@ public class TableDeviceLastCacheTest {
   @Test
   public void testQueryFieldTimesDoNotInitializeAlignedTime() {
     final TableDeviceLastCache cache = new TableDeviceLastCache(false);
-    cache.initOrInvalidate(null, null, new String[] {"", "s1"}, false);
+    cache.initOrInvalidateLastCache(null, null, new String[] {"", "s1"}, false);
     final TimeValuePair historicalValue = new TimeValuePair(2L, new TsPrimitiveType.TsInt(20));
 
-    cache.tryUpdateFromQuery(new String[] {"s1"}, new TimeValuePair[] {historicalValue});
+    cache.tryUpdateFromTableQuery(new String[] {"s1"}, new TimeValuePair[] {historicalValue});
 
     Assert.assertEquals(historicalValue, cache.getTimeValuePair("s1"));
     Assert.assertNull(cache.getTimeValuePair(""));
     Assert.assertFalse(cache.getLastRow("", Collections.singletonList("s1")).isPresent());
 
-    cache.tryUpdateFromQuery(
+    cache.tryUpdateFromTableQuery(
         new String[] {"", "s1"},
         new TimeValuePair[] {
           new TimeValuePair(7L, TableDeviceLastCache.PLACEHOLDER_NO_VALUE),
@@ -60,7 +60,7 @@ public class TableDeviceLastCacheTest {
         new TsPrimitiveType[] {TableDeviceLastCache.PLACEHOLDER_NO_VALUE}, result.get().getRight());
 
     final TimeValuePair newerFieldValue = new TimeValuePair(8L, new TsPrimitiveType.TsInt(80));
-    cache.tryUpdateFromQuery(new String[] {"s1"}, new TimeValuePair[] {newerFieldValue});
+    cache.tryUpdateFromTableQuery(new String[] {"s1"}, new TimeValuePair[] {newerFieldValue});
     Assert.assertEquals(newerFieldValue, cache.getTimeValuePair("s1"));
     Assert.assertEquals(7L, cache.getTimeValuePair("").getTimestamp());
   }
@@ -68,7 +68,7 @@ public class TableDeviceLastCacheTest {
   @Test
   public void testLazyUpdateOnlyComposesCachedMeasurements() {
     final TableDeviceLastCache cache = new TableDeviceLastCache(false);
-    cache.initOrInvalidate(null, null, new String[] {"s1"}, false);
+    cache.initOrInvalidateLastCache(null, null, new String[] {"s1"}, false);
     final AtomicInteger composedValueCount = new AtomicInteger();
 
     cache.tryUpdate(
@@ -102,7 +102,7 @@ public class TableDeviceLastCacheTest {
   public void testKnownNullTimePreservesHistoricalValueAndClearsOnNewerValue() {
     final TableDeviceLastCache cache = new TableDeviceLastCache(false);
 
-    cache.initOrInvalidate(null, null, new String[] {"", "s1"}, false);
+    cache.initOrInvalidateLastCache(null, null, new String[] {"", "s1"}, false);
 
     final TimeValuePair historicalValue = new TimeValuePair(1L, new TsPrimitiveType.TsInt(1));
     cache.tryUpdate(
@@ -134,10 +134,83 @@ public class TableDeviceLastCacheTest {
   }
 
   @Test
+  public void testLastQueryAllNullDeletesCachedValue() {
+    final TableDeviceLastCache cache = new TableDeviceLastCache(false);
+    cache.initOrInvalidateLastCache(null, null, new String[] {"s1"}, false);
+    final TimeValuePair value = new TimeValuePair(10L, new TsPrimitiveType.TsInt(10));
+
+    cache.updateOrDelete(new String[] {"s1"}, null, new TimeValuePair[] {value});
+    Assert.assertEquals(value, cache.getTimeValuePair("s1"));
+
+    final int diff =
+        cache.updateOrDelete(
+            new String[] {"s1"},
+            null,
+            new TimeValuePair[] {TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN});
+    Assert.assertNull(cache.getTimeValuePair("s1"));
+    Assert.assertTrue(diff < 0);
+  }
+
+  @Test
+  public void testLastQueryValueDoesNotOverwriteCachedAllNull() {
+    final TableDeviceLastCache cache = new TableDeviceLastCache(false);
+    cache.initOrInvalidateLastCache(null, null, new String[] {"s1"}, false);
+
+    cache.updateOrDelete(
+        new String[] {"s1"},
+        null,
+        new TimeValuePair[] {TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN});
+    Assert.assertSame(TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN, cache.getTimeValuePair("s1"));
+
+    final int diff =
+        cache.updateOrDelete(
+            new String[] {"s1"},
+            null,
+            new TimeValuePair[] {new TimeValuePair(10L, new TsPrimitiveType.TsInt(10))});
+    Assert.assertNull(cache.getTimeValuePair("s1"));
+    Assert.assertTrue(diff < 0);
+  }
+
+  @Test
+  public void testLastQueryValueBackfillsDeclaredPlaceholder() {
+    final TableDeviceLastCache cache = new TableDeviceLastCache(false);
+    cache.initOrInvalidateLastCache(null, null, new String[] {"s1"}, false);
+    final TimeValuePair value = new TimeValuePair(10L, new TsPrimitiveType.TsInt(10));
+
+    cache.updateOrDelete(new String[] {"s1"}, null, new TimeValuePair[] {value});
+
+    Assert.assertEquals(value, cache.getTimeValuePair("s1"));
+    Assert.assertNull(cache.getTimeValuePair(""));
+  }
+
+  @Test
+  public void testLastQuerySkipsClearedEntry() {
+    final TableDeviceLastCache cache = new TableDeviceLastCache(false);
+    cache.initOrInvalidateLastCache(null, null, new String[] {"s1"}, false);
+    cache.invalidate("s1");
+
+    cache.updateOrDelete(
+        new String[] {"s1"},
+        null,
+        new TimeValuePair[] {new TimeValuePair(10L, new TsPrimitiveType.TsInt(10))});
+
+    Assert.assertNull(cache.getTimeValuePair("s1"));
+  }
+
+  @Test
+  public void testInvalidateAbsentMeasurementDoesNotSubtractSize() {
+    final TableDeviceLastCache cache = new TableDeviceLastCache(false);
+
+    final int diff = cache.initOrInvalidateLastCache(null, null, new String[] {"s1"}, true);
+
+    Assert.assertEquals(0, diff);
+  }
+
+  @Test
   public void testInvalidateMeasurementClearsKnownNullTimeAndAlignedTime() {
     final TableDeviceLastCache cache = new TableDeviceLastCache(false);
 
-    cache.initOrInvalidate(null, null, new String[] {"", "s1"}, false);
+    cache.initOrInvalidateLastCache(null, null, new String[] {"", "s1"}, false);
     cache.tryUpdate(
         new String[] {"", "s1"},
         new TimeValuePair[] {

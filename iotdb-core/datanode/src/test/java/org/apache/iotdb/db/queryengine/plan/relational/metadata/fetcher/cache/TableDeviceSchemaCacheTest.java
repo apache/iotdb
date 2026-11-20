@@ -341,8 +341,8 @@ public class TableDeviceSchemaCacheTest {
         cache.getLastEntry(database1, convertTagValuesToDeviceID(table1, device0), "s3"));
 
     // Test null hit measurements
-    cache.initOrInvalidateLastCache(
-        database1, convertTagValuesToDeviceID(table1, device0), new String[] {"s4"}, false);
+    cache.declareLastCache(
+        database1, convertTagValuesToDeviceID(table1, device0), new String[] {"s4"}, true);
 
     // Miss if the "null" time value pair is not in cache, meaning that the
     // entry is evicted
@@ -405,8 +405,8 @@ public class TableDeviceSchemaCacheTest {
         },
         result.get().getRight());
 
-    cache.initOrInvalidateLastCache(
-        database1, convertTagValuesToDeviceID(table1, device0), new String[] {"s5"}, false);
+    cache.declareLastCache(
+        database1, convertTagValuesToDeviceID(table1, device0), new String[] {"s5"}, true);
 
     result =
         cache.getLastRow(
@@ -719,13 +719,13 @@ public class TableDeviceSchemaCacheTest {
     final IDeviceID disabledDevice =
         convertTagValuesToDeviceID(tableNeedLastCacheDisabled, device0);
 
-    cache.initOrInvalidateLastCache(database1, disabledDevice, measurements, false);
+    cache.declareLastCache(database1, disabledDevice, measurements, true);
     cache.updateLastCacheIfExists(database1, disabledDevice, measurements, values);
 
     Assert.assertNull(cache.getLastEntry(database1, disabledDevice, measurement1));
 
     final IDeviceID enabledDevice = convertTagValuesToDeviceID(table1, device0);
-    cache.initOrInvalidateLastCache(database1, enabledDevice, measurements, false);
+    cache.declareLastCache(database1, enabledDevice, measurements, true);
     cache.updateLastCacheIfExists(database1, enabledDevice, measurements, values);
 
     Assert.assertEquals(values[0], cache.getLastEntry(database1, enabledDevice, measurement1));
@@ -737,7 +737,7 @@ public class TableDeviceSchemaCacheTest {
       final IDeviceID deviceID,
       final String[] measurement,
       final TimeValuePair[] data) {
-    cache.initOrInvalidateLastCache(database, deviceID, measurement, false);
+    cache.declareLastCache(database, deviceID, measurement, true);
     cache.updateLastCacheIfExists(database, deviceID, measurement, data);
   }
 

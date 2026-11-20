@@ -139,6 +139,15 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
               tableName);
           deleteSchema(env);
           break;
+        case DOUBLE_CLEAN_DATANODE_SCHEMA_CACHE:
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TABLE_SECOND_TIME, database, tableName);
+          if (invalidateTableCache(
+              env,
+              ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE_SECOND_TIME,
+              false)) {
+            setNextState(DropTableState.DROP_TABLE);
+          }
+          break;
         case DROP_TABLE:
           LOGGER.info(ProcedureMessages.DROPPING_TABLE_ON_CONFIGNODE, database, tableName);
           dropTable(env);
@@ -184,21 +193,34 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   }
 
   private void preDelete(final ConfigNodeProcedureEnv env) {
-    TInvalidateTableCacheReq req = new TInvalidateTableCacheReq(database, tableName);
+    LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TABLE_FIRST_TIME, database, tableName);
+    if (!invalidateTableCache(
+        env, ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE_FIRST_TIME, true)) {
+      return;
+    }
+    setNextState(
+        this instanceof DropViewProcedure ? DropTableState.DROP_TABLE : DropTableState.DELETE_DATA);
+  }
+
+  private boolean invalidateTableCache(
+      final ConfigNodeProcedureEnv env,
+      final String failureMessage,
+      final boolean cleanDataNodeTableCache) {
+    TInvalidateTableCacheReq req =
+        new TInvalidateTableCacheReq(database, tableName)
+            .setCleanDataNodeTableCache(cleanDataNodeTableCache);
     final boolean proceeded =
         new ClusterCachePropagator(SchemaUtils.filterFencedDataNode(env.getConfigManager()))
             .propagate(targets -> broadCastInvalidateCache(req, targets));
 
     if (!proceeded) {
-      LOGGER.warn(
-          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TABLE, database, tableName);
+      LOGGER.warn(failureMessage, database, tableName);
       setFailure(
           new ProcedureException(
               new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
-      return;
+      return false;
     }
-    setNextState(
-        this instanceof DropViewProcedure ? DropTableState.DROP_TABLE : DropTableState.DELETE_DATA);
+    return true;
   }
 
   private Map<Integer, TSStatus> broadCastInvalidateCache(
@@ -256,7 +278,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
           .execute();
     }
 
-    setNextState(DropTableState.DROP_TABLE);
+    setNextState(DropTableState.DOUBLE_CLEAN_DATANODE_SCHEMA_CACHE);
   }
 
   private void dropTable(final ConfigNodeProcedureEnv env) {

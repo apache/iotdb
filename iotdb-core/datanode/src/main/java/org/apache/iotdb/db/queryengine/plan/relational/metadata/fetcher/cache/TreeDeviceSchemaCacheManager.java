@@ -350,14 +350,13 @@ public class TreeDeviceSchemaCacheManager {
       final IDeviceID deviceID,
       final String[] measurements,
       final @Nonnull TimeValuePair[] timeValuePairs,
-      final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas) {
     if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
       return;
     }
 
     tableDeviceSchemaCache.updateLastCache(
-        database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
+        deviceID, measurements, timeValuePairs, measurementSchemas);
   }
 
   public void updateLastCacheIfExists(
@@ -365,10 +364,13 @@ public class TreeDeviceSchemaCacheManager {
       final IDeviceID deviceID,
       final String[] measurements,
       final LastCacheUpdateSource updateSource,
-      final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas) {
+    if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
+      return;
+    }
+
     tableDeviceSchemaCache.updateLastCache(
-        database, deviceID, measurements, updateSource, isAligned, measurementSchemas);
+        deviceID, measurements, updateSource, measurementSchemas);
   }
 
   /**
@@ -381,12 +383,7 @@ public class TreeDeviceSchemaCacheManager {
    * consistency. WARNING: The writing may temporarily put a stale value in cache if a stale value
    * is written, but it won't affect the eventual consistency.
    *
-   * <p>- Second time put the calculated {@link TimeValuePair}, and use {@link
-   * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], boolean,
-   * IMeasurementSchema[])}. The input {@link TimeValuePair} shall never be or contain {@code null},
-   * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
-   * TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN}. This method is not supposed to update time
-   * column.
+   * <p>Second time the query would put back the value in the cache
    *
    * @param database the device's database, WITH "root"
    * @param measurementPath the fetched {@link MeasurementPath}
@@ -396,34 +393,25 @@ public class TreeDeviceSchemaCacheManager {
       return;
     }
 
-    tableDeviceSchemaCache.updateLastCache(
+    tableDeviceSchemaCache.declareLastCache(
         database,
         measurementPath.getIDeviceID(),
         new String[] {measurementPath.getMeasurement()},
-        null,
-        measurementPath.isUnderAlignedEntity(),
-        new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
-        true);
+        false);
   }
 
-  /**
-   * Update the {@link TableDeviceLastCache} on query in tree model.
-   *
-   * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
-   * in the first time, to avoid the stale writing damaging the eventual consistency.
-   *
-   * @param database the device's database, WITH "root"
-   * @param measurementPath the fetched {@link MeasurementPath}
-   */
-  public void invalidateLastCache(final String database, final MeasurementPath measurementPath) {
-    tableDeviceSchemaCache.updateLastCache(
-        database,
-        measurementPath.getIDeviceID(),
-        new String[] {measurementPath.getMeasurement()},
-        new TimeValuePair[] {null},
-        measurementPath.isUnderAlignedEntity(),
-        new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
-        true);
+  public void updateLastCacheForLastQuery(
+      final String database,
+      final IDeviceID deviceID,
+      final String[] measurements,
+      final TimeValuePair[] timeValuePairs,
+      final IMeasurementSchema[] measurementSchemas) {
+    if (!ClusterPartitionFetcher.getInstance().needLastCache(database)) {
+      return;
+    }
+
+    tableDeviceSchemaCache.putBackLastCache(
+        database, deviceID, measurements, measurementSchemas, timeValuePairs, false);
   }
 
   public void invalidate(final List<MeasurementPath> partialPathList) {

@@ -106,7 +106,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected void mayUpdateLastCache(
       final long time, final @Nullable TsPrimitiveType value, final MeasurementPath fullPath) {
-    if (!needUpdateCache) {
+    if (!needUpdateCache || dataNodeQueryContext.isLastCacheInvalidationStarted()) {
       return;
     }
     try {
@@ -120,7 +120,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       }
 
       if (!deviceInMultiRegion) {
-        lastCache.updateLastCacheIfExists(
+        lastCache.updateLastCacheForLastQuery(
             getDatabaseName(),
             fullPath.getIDeviceID(),
             new String[] {fullPath.getMeasurement()},
@@ -129,7 +129,6 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
                   ? new TimeValuePair(time, value)
                   : needUpdateNullEntry ? TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN : null
             },
-            fullPath.isUnderAlignedEntity(),
             new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
         return;
       }
@@ -144,12 +143,11 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       }
 
       if (seriesScanInfo.left.decrementAndGet() == 0) {
-        lastCache.updateLastCacheIfExists(
+        lastCache.updateLastCacheForLastQuery(
             getDatabaseName(),
             fullPath.getIDeviceID(),
             new String[] {fullPath.getMeasurement()},
             new TimeValuePair[] {seriesScanInfo.right},
-            fullPath.isUnderAlignedEntity(),
             new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
       }
     } finally {

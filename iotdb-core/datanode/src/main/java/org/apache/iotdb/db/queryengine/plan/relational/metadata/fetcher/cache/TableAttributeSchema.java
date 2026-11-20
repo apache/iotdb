@@ -61,11 +61,13 @@ public class TableAttributeSchema implements IDeviceSchema {
                         ? newValueSize - UpdateDetailContainer.sizeOf(previousValue)
                         : RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + newValueSize));
           } else {
-            attributeMap.remove(k);
-            diff.addAndGet(
-                (int)
-                    (-RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-                        - UpdateDetailContainer.sizeOf(v)));
+            final Binary previousValue = attributeMap.remove(k);
+            if (Objects.nonNull(previousValue)) {
+              diff.addAndGet(
+                  (int)
+                      (-RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                          - UpdateDetailContainer.sizeOf(previousValue)));
+            }
           }
         });
     // Typically the "update" and "invalidate" won't be concurrently called

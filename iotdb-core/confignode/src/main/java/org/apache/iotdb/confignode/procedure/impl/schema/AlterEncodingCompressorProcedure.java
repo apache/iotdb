@@ -133,7 +133,13 @@ public class AlterEncodingCompressorProcedure
           break;
         case CLEAR_CACHE:
           LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TIMESERIES, requestMessage);
-          invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure, false);
+          invalidateCache(
+              env,
+              patternTreeBytes,
+              requestMessage,
+              this::setFailure,
+              false,
+              ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES);
           collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:

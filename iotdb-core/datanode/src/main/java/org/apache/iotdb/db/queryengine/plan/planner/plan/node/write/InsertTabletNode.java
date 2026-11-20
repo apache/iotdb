@@ -1401,12 +1401,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
     TreeDeviceSchemaCacheManager.getInstance()
         .updateLastCacheIfExists(
-            databaseName,
-            getDeviceID(),
-            measurements,
-            timeValuePairs,
-            isAligned,
-            measurementSchemas);
+            databaseName, getDeviceID(), measurements, timeValuePairs, measurementSchemas);
   }
 
   @Override
