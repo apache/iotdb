@@ -80,7 +80,6 @@ import java.io.IOException;
 import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -382,10 +381,9 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
               tableModelRequest
                   ? new LoadTsFileAnalyzer(tableStatement, generatedByPipe, context)
                   : new LoadTsFileAnalyzer(treeStatement, generatedByPipe, context)) {
-            final List<Boolean> tableModelFiles =
-                Whitebox.getInternalState(analyzer, "isTableModelTsFile");
-            tableModelFiles.set(0, false);
-            Whitebox.setInternalState(analyzer, "isTableModelTsFileReliableIndex", 0);
+            final LoadTsFileModelCache modelCache =
+                Whitebox.getInternalState(analyzer, "modelCache");
+            modelCache.recordModelType(0, false);
             if (miniFile) {
               Assert.assertTrue(
                   (Boolean) Whitebox.invokeMethod(analyzer, "handleSingleMiniFile", 0));
@@ -690,10 +688,9 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
               tableModelRequest
                   ? new LoadTsFileAnalyzer(tableStatement, generatedByPipe, context)
                   : new LoadTsFileAnalyzer(treeStatement, generatedByPipe, context)) {
-            final List<Boolean> tableModelFiles =
-                Whitebox.getInternalState(analyzer, "isTableModelTsFile");
-            tableModelFiles.set(0, true);
-            Whitebox.setInternalState(analyzer, "isTableModelTsFileReliableIndex", 0);
+            final LoadTsFileModelCache modelCache =
+                Whitebox.getInternalState(analyzer, "modelCache");
+            modelCache.recordModelType(0, true);
             if (miniFile) {
               Assert.assertTrue(
                   (Boolean) Whitebox.invokeMethod(analyzer, "handleSingleMiniFile", 0));

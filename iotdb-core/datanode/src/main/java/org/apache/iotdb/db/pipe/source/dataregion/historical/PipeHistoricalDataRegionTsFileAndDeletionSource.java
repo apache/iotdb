@@ -143,7 +143,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private int dataRegionId;
 
   private TreePattern treePattern;
-  private TablePattern tablePattern;
+  private TablePattern dataTablePattern;
 
   private boolean isModelDetected = false;
   private boolean isTableModel;
@@ -366,7 +366,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             + Integer.toHexString(System.identityHashCode(environment));
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
-    tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
+    dataTablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
     tsFileParser =
         parameters.getStringByKeys(EXTRACTOR_TSFILE_PARSER_KEY, SOURCE_TSFILE_PARSER_KEY);
 
@@ -378,7 +378,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         isTableModel = PathUtils.isTableModelDatabase(databaseName);
         isModelDetected = true;
         if (isTableModel) {
-          isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
+          isDbNameCoveredByPattern = dataTablePattern.coversDb(databaseName);
         } else {
           isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
         }
@@ -1045,9 +1045,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               }
 
               return isTableModel
-                  ? (tablePattern.isTableModelDataAllowedToBeCaptured()
-                      && tablePattern.matchesDatabase(resource.getDatabaseName())
-                      && tablePattern.matchesTable(deviceID.getTableName()))
+                  ? (dataTablePattern.isTableModelDataAllowedToBeCaptured()
+                      && dataTablePattern.matchesDatabaseAndTable(
+                          resource.getDatabaseName(), deviceID.getTableName()))
                   : (treePattern.isTreeModelDataAllowedToBeCaptured()
                       && treePattern.mayOverlapWithDevice(deviceID));
             });
@@ -1059,8 +1059,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     this.isTableModel = PathUtils.isTableModelDatabase(databaseName);
     isDbNameCoveredByPattern =
         isTableModel
-            ? tablePattern.isTableModelDataAllowedToBeCaptured()
-                && tablePattern.coversDb(databaseName)
+            ? dataTablePattern.isTableModelDataAllowedToBeCaptured()
+                && dataTablePattern.coversDb(databaseName)
             : treePattern.isTreeModelDataAllowedToBeCaptured()
                 && treePattern.coversDb(databaseName);
   }
@@ -1298,7 +1298,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               creationTime,
               pipeTaskMeta,
               treePattern,
-              tablePattern,
+              dataTablePattern,
               userId,
               userName,
               cliHostname,
@@ -1379,15 +1379,15 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       final TsFileResource resource, final Set<String> tableNames) {
     return isModelDetected
         && isTableModel
-        && tablePattern.isTableModelDataAllowedToBeCaptured()
+        && dataTablePattern.isTableModelDataAllowedToBeCaptured()
         && Objects.nonNull(resource)
         && Objects.nonNull(tableNames)
         && !tableNames.isEmpty()
         && tableNames.stream()
             .allMatch(
                 tableName ->
-                    tablePattern.matchesDatabase(resource.getDatabaseName())
-                        && tablePattern.matchesTable(tableName));
+                    dataTablePattern.matchesDatabaseAndTable(
+                        resource.getDatabaseName(), tableName));
   }
 
   private Event supplyDeletionEvent(final DeletionResource deletionResource) {
@@ -1398,7 +1398,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             creationTime,
             pipeTaskMeta,
             treePattern,
-            tablePattern,
+            dataTablePattern,
             userId,
             userName,
             cliHostname,
@@ -1471,6 +1471,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   @Override
   public synchronized void close() {
+    doClose();
+  }
+
+  private void doClose() {
     if (!isTerminateSignalSent) {
       PipeTerminateEvent.clearHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
     }
