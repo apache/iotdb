@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.relational.it.schema;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -52,6 +54,7 @@ public class IoTDBAttributeUpdateOrderingIT extends TableMetadataPropagationTest
       assertTrue(delayed.toString(), delayed.get("version").matches("\\d+=\\d+"));
       assertTrue(delayed.toString(), delayed.get("attributes").contains("changing=late-old"));
       update("ALTER TABLE sensor DROP COLUMN changing");
+      TestUtils.waitForColumnDeletion(EnvFactory.getEnv(), database, "sensor", "changing");
       update("ALTER TABLE sensor ADD COLUMN changing STRING ATTRIBUTE");
       assertTwoDevices(null, null, true);
       update("UPDATE sensor SET changing='new-lifetime' WHERE device='d0'");

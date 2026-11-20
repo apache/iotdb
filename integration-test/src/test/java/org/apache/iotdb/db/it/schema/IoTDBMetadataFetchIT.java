@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.schema;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -882,7 +883,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       } catch (SQLException e) {
         fail(e.getMessage());
       } finally {
-        statement.execute("delete timeseries root.sg1.d0.*");
+        TestUtils.deleteTimeSeries(statement, "delete timeseries root.sg1.d0.*");
       }
     }
   }

@@ -41,7 +41,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.Meter;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +54,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
-    implements Iterator<Pair<String, List<Tablet>>> {
+    implements Iterator<SubscriptionPipeTabletEventBatch.TabletBatch> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPipeTabletEventBatch.class);
@@ -197,34 +196,32 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
             >= SubscriptionConfig.getInstance().getSubscriptionMaxAllowedEventCountInTabletBatch();
   }
 
-  private Pair<String, List<Tablet>> convertToTablets(
-      final TabletInsertionEvent tabletInsertionEvent) {
-    final Pair<String, List<Tablet>> result;
+  private TabletBatch convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
+    final TabletBatch result;
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       final List<Tablet> tablets =
           ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablets();
-      updateEstimatedInsertNodeTabletInsertionEventSize(
-          tablets.stream()
-              .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-              .reduce(Long::sum)
-              .orElse(0L));
+      final long estimatedSizeInBytes = calculateTabletsSizeInBytes(tablets);
+      updateEstimatedInsertNodeTabletInsertionEventSize(estimatedSizeInBytes);
       result =
-          new Pair<>(
+          new TabletBatch(
               ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
                   ? ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent)
                       .getTableModelDatabaseName()
                   : null,
-              tablets);
+              tablets,
+              estimatedSizeInBytes);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
       final Tablet tablet = ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
-      updateEstimatedRawTabletInsertionEventSize(
-          PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
+      final long estimatedSizeInBytes = PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
+      updateEstimatedRawTabletInsertionEventSize(estimatedSizeInBytes);
       result =
-          new Pair<>(
+          new TabletBatch(
               ((PipeRawTabletInsertionEvent) tabletInsertionEvent).isTableModelEvent()
                   ? ((PipeRawTabletInsertionEvent) tabletInsertionEvent).getTableModelDatabaseName()
                   : null,
-              Collections.singletonList(tablet));
+              Collections.singletonList(tablet),
+              estimatedSizeInBytes);
     } else {
       LOGGER.warn(
           DataNodePipeMessages
@@ -234,12 +231,21 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       return null;
     }
 
-    return pruneTablets(projectTableViewTabletsIfNecessary(result));
+    final TabletBatch projected = projectTreeViewTabletsIfNecessary(result);
+    if (Objects.isNull(projected)) {
+      return null;
+    }
+    final TabletBatch pruned = pruneTablets(projected);
+    if (Objects.isNull(pruned) || pruned.estimatedSizeMatchesTablets) {
+      return pruned;
+    }
+    return pruned.withEstimatedSize(calculateTabletsSizeInBytes(pruned.tablets));
   }
 
-  private Pair<String, List<Tablet>> projectTableViewTabletsIfNecessary(
-      final Pair<String, List<Tablet>> tablets) {
-    if (Objects.isNull(tablets) || Objects.nonNull(tablets.left) || Objects.isNull(tablets.right)) {
+  private TabletBatch projectTreeViewTabletsIfNecessary(final TabletBatch tablets) {
+    if (Objects.isNull(tablets)
+        || Objects.nonNull(tablets.databaseName)
+        || Objects.isNull(tablets.tablets)) {
       return tablets;
     }
 
@@ -256,8 +262,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
               .EXCEPTION_TREE_VIEW_PROJECTOR_IS_UNAVAILABLE_FOR_FILTERED_SUBSCRIPTION_DATA_B5F396A5);
     }
 
-    final List<Tablet> projectedTablets = new ArrayList<>(tablets.right.size());
-    for (final Tablet tablet : tablets.right) {
+    final List<Tablet> projectedTablets = new ArrayList<>(tablets.tablets.size());
+    for (final Tablet tablet : tablets.tablets) {
       final Tablet projectedTablet = treeViewTabletProjector.project(tablet);
       if (Objects.nonNull(projectedTablet)) {
         projectedTablets.add(projectedTablet);
@@ -265,28 +271,103 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     }
     return projectedTablets.isEmpty()
         ? null
-        : new Pair<>(treeViewTabletProjector.getDatabaseName(), projectedTablets);
+        : tablets.withTablets(treeViewTabletProjector.getDatabaseName(), projectedTablets);
   }
 
-  private Pair<String, List<Tablet>> pruneTablets(final Pair<String, List<Tablet>> tablets) {
-    if (Objects.isNull(tablets) || Objects.isNull(tablets.left) || Objects.isNull(tablets.right)) {
+  private TabletBatch pruneTablets(final TabletBatch tablets) {
+    if (Objects.isNull(tablets)
+        || Objects.isNull(tablets.databaseName)
+        || Objects.isNull(tablets.tablets)) {
       return tablets;
     }
 
     final SubscriptionFilterSnapshot snapshot = ensureFilterSnapshot();
 
-    final List<Tablet> prunedTablets = new ArrayList<>(tablets.right.size());
-    for (final Tablet tablet : tablets.right) {
+    final List<Tablet> prunedTablets = new ArrayList<>(tablets.tablets.size());
+    for (final Tablet tablet : tablets.tablets) {
       final Tablet prunedTablet =
           TabletColumnPruner.pruneTableModelTablet(
-              TabletTagFilter.filter(tablet, snapshot.getTagFilterMatcher(), tablets.left),
-              tablets.left,
+              TabletTagFilter.filter(tablet, snapshot.getTagFilterMatcher(), tablets.databaseName),
+              tablets.databaseName,
               snapshot.getColumnFilterMatcher());
       if (Objects.nonNull(prunedTablet)) {
         prunedTablets.add(prunedTablet);
       }
     }
-    return prunedTablets.isEmpty() ? null : new Pair<>(tablets.left, prunedTablets);
+    return prunedTablets.isEmpty()
+        ? null
+        : tablets.withTablets(tablets.databaseName, prunedTablets);
+  }
+
+  private long calculateTabletsSizeInBytes(final List<Tablet> tablets) {
+    long estimatedSizeInBytes = 0L;
+    for (final Tablet tablet : tablets) {
+      estimatedSizeInBytes += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
+    }
+    return estimatedSizeInBytes;
+  }
+
+  private static boolean haveSameTabletReferences(
+      final List<Tablet> left, final List<Tablet> right) {
+    if (left == right) {
+      return true;
+    }
+    if (Objects.isNull(left) || Objects.isNull(right) || left.size() != right.size()) {
+      return false;
+    }
+    for (int i = 0; i < left.size(); i++) {
+      if (left.get(i) != right.get(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public static final class TabletBatch {
+    private final String databaseName;
+    private final List<Tablet> tablets;
+    private final long estimatedSizeInBytes;
+    private final boolean estimatedSizeMatchesTablets;
+
+    private TabletBatch(
+        final String databaseName, final List<Tablet> tablets, final long estimatedSizeInBytes) {
+      this(databaseName, tablets, estimatedSizeInBytes, true);
+    }
+
+    private TabletBatch(
+        final String databaseName,
+        final List<Tablet> tablets,
+        final long estimatedSizeInBytes,
+        final boolean estimatedSizeMatchesTablets) {
+      this.databaseName = databaseName;
+      this.tablets = tablets;
+      this.estimatedSizeInBytes = estimatedSizeInBytes;
+      this.estimatedSizeMatchesTablets = estimatedSizeMatchesTablets;
+    }
+
+    private TabletBatch withTablets(final String databaseName, final List<Tablet> tablets) {
+      return new TabletBatch(
+          databaseName,
+          tablets,
+          estimatedSizeInBytes,
+          estimatedSizeMatchesTablets && haveSameTabletReferences(this.tablets, tablets));
+    }
+
+    private TabletBatch withEstimatedSize(final long estimatedSizeInBytes) {
+      return new TabletBatch(databaseName, tablets, estimatedSizeInBytes, true);
+    }
+
+    public String getDatabaseName() {
+      return databaseName;
+    }
+
+    public List<Tablet> getTablets() {
+      return tablets;
+    }
+
+    public long getEstimatedSizeInBytes() {
+      return estimatedSizeInBytes;
+    }
   }
 
   @Override
@@ -380,8 +461,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   @Override
-  public synchronized Pair<String, List<Tablet>> next() {
-    final Pair<String, List<Tablet>> tablets = nextInternal();
+  public synchronized TabletBatch next() {
+    final TabletBatch tablets = nextInternal();
     if (Objects.isNull(tablets)) {
       return null;
     }
@@ -398,7 +479,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     return tablets;
   }
 
-  private Pair<String, List<Tablet>> nextInternal() {
+  private TabletBatch nextInternal() {
     if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
       if (currentTabletInsertionEventsIterator.hasNext()) {
         final TabletInsertionEvent tabletInsertionEvent =

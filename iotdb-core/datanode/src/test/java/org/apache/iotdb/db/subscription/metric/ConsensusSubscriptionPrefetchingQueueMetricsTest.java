@@ -199,6 +199,17 @@ public class ConsensusSubscriptionPrefetchingQueueMetricsTest {
               eq(Tag.REGION.toString()),
               eq(secondRegionId.toString()));
 
+      verify(metricService)
+          .createAutoGauge(
+              eq(Metric.SUBSCRIPTION_CONSENSUS_ACTIVE_WRITER_COUNT.toString()),
+              eq(MetricLevel.IMPORTANT),
+              eq(firstQueue),
+              any(),
+              eq(Tag.NAME.toString()),
+              eq(queueId),
+              eq(Tag.REGION.toString()),
+              eq(firstRegionId.toString()));
+
       metrics.mark(queueId, firstRegionId.toString(), 11L);
       metrics.mark(queueId, secondRegionId.toString(), 22L);
       verify(firstRate).mark(11L);
@@ -238,6 +249,14 @@ public class ConsensusSubscriptionPrefetchingQueueMetricsTest {
           .remove(
               MetricType.AUTO_GAUGE,
               Metric.SUBSCRIPTION_CONSENSUS_LAG.toString(),
+              Tag.NAME.toString(),
+              queueId,
+              Tag.REGION.toString(),
+              firstRegionId.toString());
+      verify(metricService)
+          .remove(
+              MetricType.AUTO_GAUGE,
+              Metric.SUBSCRIPTION_CONSENSUS_ACTIVE_WRITER_COUNT.toString(),
               Tag.NAME.toString(),
               queueId,
               Tag.REGION.toString(),

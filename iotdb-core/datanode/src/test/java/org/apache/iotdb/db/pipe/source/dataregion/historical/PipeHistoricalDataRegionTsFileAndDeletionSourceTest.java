@@ -130,7 +130,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
       setPrivateField(source, "shouldOrderHistoricalTsFileByQueryPriority", true);
       setPrivateField(source, "isModelDetected", true);
       setPrivateField(source, "isTableModel", true);
-      setPrivateField(source, "tablePattern", new TablePattern(true, null, null));
+      setPrivateField(source, "dataTablePattern", new TablePattern(true, null, null));
       setPrivateField(source, "isDbNameCoveredByPattern", true);
       final Map<TsFileResource, Set<String>> selectedResources =
           (Map<TsFileResource, Set<String>>)
@@ -225,7 +225,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
       setPrivateField(source, "dataRegionId", 2147483646);
       setPrivateField(source, "isModelDetected", true);
       setPrivateField(source, "isTableModel", true);
-      setPrivateField(source, "tablePattern", new TablePattern(true, null, null));
+      setPrivateField(source, "dataTablePattern", new TablePattern(true, null, null));
       setPrivateField(source, "isDbNameCoveredByPattern", true);
       setPrivateField(source, "historicalDataExtractionStartTime", -10L);
       setPrivateField(source, "historicalDataExtractionEndTime", 10L);

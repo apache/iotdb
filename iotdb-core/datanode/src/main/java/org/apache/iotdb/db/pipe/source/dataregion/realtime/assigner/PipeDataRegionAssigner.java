@@ -387,7 +387,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 final PipeDeleteDataNodeEvent deleteDataNodeEvent =
                     (PipeDeleteDataNodeEvent) innerEvent;
                 final DeletionResourceManager manager =
-                    DeletionResourceManager.getInstance(source.getDataRegionId());
+                    DeletionResourceManager.getInstanceIfPresent(source.getDataRegionId());
                 // increase deletion resource's reference and bind real deleteEvent
                 if (Objects.nonNull(manager)
                     && DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(

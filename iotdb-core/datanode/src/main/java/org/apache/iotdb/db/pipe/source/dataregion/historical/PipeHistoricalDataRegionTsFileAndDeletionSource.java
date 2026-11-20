@@ -568,6 +568,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         DataNodePipeMessages
             .MESSAGE_PIPE_START_TO_EXTRACT_HISTORICAL_TSFILE_AND_DELETION_IF_USES_IOTCONSENSUSV2_C1603968);
     try {
+      if (dataRegion.isDeleted()) {
+        pendingQueue = new ArrayDeque<>();
+        return;
+      }
       List<PersistentResource> originalResourceList = new ArrayList<>();
 
       if (shouldExtractInsertion) {
@@ -1427,7 +1431,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
           dataRegionId,
           event);
     } else {
-      Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId))
+      Optional.ofNullable(DeletionResourceManager.getInstanceIfPresent(dataRegionId))
           .ifPresent(
               manager ->
                   event.setDeletionResource(

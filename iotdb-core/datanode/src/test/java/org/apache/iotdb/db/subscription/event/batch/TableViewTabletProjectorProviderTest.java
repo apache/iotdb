@@ -37,7 +37,6 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -118,11 +117,12 @@ public class TableViewTabletProjectorProviderTest {
         new PipeRawTabletInsertionEvent(
             false, "root.test", null, "root.test", sourceTablet, true, null, 0, null, null, false));
     Assert.assertNotNull(batch.generateSubscriptionEvents());
-    final Pair<String, List<Tablet>> emittedTablets = batch.next();
-    Assert.assertEquals(database, emittedTablets.left);
-    Assert.assertEquals(1, emittedTablets.right.size());
-    Assert.assertEquals("view", emittedTablets.right.get(0).getTableName());
-    Assert.assertEquals(2.5, ((double[]) emittedTablets.right.get(0).getValues()[0])[0], 0.0);
+    final SubscriptionPipeTabletEventBatch.TabletBatch emittedTablets = batch.next();
+    Assert.assertEquals(database, emittedTablets.getDatabaseName());
+    Assert.assertEquals(1, emittedTablets.getTablets().size());
+    Assert.assertEquals("view", emittedTablets.getTablets().get(0).getTableName());
+    Assert.assertEquals(
+        2.5, ((double[]) emittedTablets.getTablets().get(0).getValues()[0])[0], 0.0);
     Assert.assertNull(createBatch().generateSubscriptionEvents());
   }
 
