@@ -2742,6 +2742,9 @@ public final class DataNodePipeMessages {
       "ConsensusPrefetchingQueue %s: cannot seekAfterRegionProgress %s: %s";
   public static final String PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_IS_CLOSING_WHILE_APPLYING_SEEK_2BB2B431 =
       "ConsensusPrefetchingQueue %s is closing while applying seek";
+  public static final String
+      EXCEPTION_CONSENSUSPREFETCHINGQUEUE_ARG_WAS_SUPERSEDED_WHILE_APPLYING_SEEK_3A4EF021 =
+          "ConsensusPrefetchingQueue %s was superseded while applying seek";
   public static final String PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_RUNTIME_STOPPED_BEFORE_SEEK_7BCB4F4B =
       "ConsensusPrefetchingQueue %s runtime stopped before seek(%s) was applied";
   public static final String PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_IS_CLOSING_BEFORE_SEEK_APPLIES_F893BB02 =

@@ -631,6 +631,112 @@ public class ConsensusPrefetchingQueueDeliveryTest {
     }
   }
 
+  @Test
+  public void testReopenWithRetainedProgressAndRebatchingAdvancesCommittedFrontier()
+      throws Exception {
+    writeWal(4, true);
+    memoryManager = new SubscriptionMemoryManager(tabletBytes * 8);
+    final ConsensusPrefetchingQueue queue1 = newQueue();
+    assertNull(queue1.poll(CONSUMER));
+
+    final List<SubscriptionEvent> events = new ArrayList<>();
+    for (int index = 1; index <= 4; index++) {
+      queue1.drivePrefetchOnce();
+      final SubscriptionEvent event = queue1.poll(CONSUMER);
+      assertNotNull(event);
+      events.add(event);
+    }
+    assertTrue(queue1.ack(CONSUMER, events.get(0).getCommitContext()));
+    // Commit seq 3 out of order while leaving seq 2 and seq 4 unacknowledged.
+    assertTrue(queue1.ack(CONSUMER, events.get(2).getCommitContext()));
+    assertEquals(
+        new WriterProgress(1001, 1), committedProgress().getWriterPositions().get(writerId()));
+
+    queue1.close(false, true);
+
+    config.setSubscriptionConsensusBatchMaxTabletCount(3);
+    final ConsensusPrefetchingQueue queue2 = newQueue();
+    assertNull(queue2.poll(CONSUMER));
+    queue2.drivePrefetchOnce();
+    final SubscriptionEvent mergedEvent = queue2.poll(CONSUMER);
+    assertNotNull(mergedEvent);
+    assertEquals(4L, mergedEvent.getCommitContext().getWriterProgress().getLocalSeq());
+    assertEquals(Arrays.asList(1002L, 1003L, 1004L), timestamps(deliver(mergedEvent)));
+    assertTrue(queue2.ack(CONSUMER, mergedEvent.getCommitContext()));
+    assertEquals(
+        new WriterProgress(1004, 4), committedProgress().getWriterPositions().get(writerId()));
+  }
+
+  @Test
+  public void testDeactivationAndReactivationWithRebatchingAdvancesCommittedFrontier()
+      throws Exception {
+    writeWal(4, true);
+    memoryManager = new SubscriptionMemoryManager(tabletBytes * 8);
+    final ConsensusPrefetchingQueue queue = newQueue();
+    assertNull(queue.poll(CONSUMER));
+
+    final List<SubscriptionEvent> events = new ArrayList<>();
+    for (int index = 1; index <= 4; index++) {
+      queue.drivePrefetchOnce();
+      final SubscriptionEvent event = queue.poll(CONSUMER);
+      assertNotNull(event);
+      events.add(event);
+    }
+    assertTrue(queue.ack(CONSUMER, events.get(0).getCommitContext()));
+    assertTrue(queue.ack(CONSUMER, events.get(2).getCommitContext()));
+    assertEquals(
+        new WriterProgress(1001, 1), committedProgress().getWriterPositions().get(writerId()));
+
+    queue.setActive(false);
+    config.setSubscriptionConsensusBatchMaxTabletCount(3);
+    queue.setActive(true);
+    assertNull(queue.poll(CONSUMER));
+
+    queue.drivePrefetchOnce();
+    final SubscriptionEvent mergedEvent = queue.poll(CONSUMER);
+    assertNotNull(mergedEvent);
+    assertEquals(4L, mergedEvent.getCommitContext().getWriterProgress().getLocalSeq());
+    assertEquals(Arrays.asList(1002L, 1003L, 1004L), timestamps(deliver(mergedEvent)));
+    assertTrue(queue.ack(CONSUMER, mergedEvent.getCommitContext()));
+    assertEquals(
+        new WriterProgress(1004, 4), committedProgress().getWriterPositions().get(writerId()));
+  }
+
+  @Test
+  public void testDelayedOldQueueCleanUpDoesNotClearReplacementQueueOutstandingState()
+      throws Exception {
+    writeWal(4, true);
+    memoryManager = new SubscriptionMemoryManager(tabletBytes * 8);
+    final ConsensusPrefetchingQueue queue1 = newQueue();
+    assertNull(queue1.poll(CONSUMER));
+
+    queue1.drivePrefetchOnce();
+    final SubscriptionEvent firstEvent = queue1.poll(CONSUMER);
+    assertNotNull(firstEvent);
+    assertTrue(queue1.ack(CONSUMER, firstEvent.getCommitContext()));
+    // Leave seq 2 unacknowledged on queue1 while replacement queue2 starts before queue1 cleans up.
+    queue1.drivePrefetchOnce();
+    assertNotNull(queue1.poll(CONSUMER));
+    assertEquals(
+        new WriterProgress(1001, 1), committedProgress().getWriterPositions().get(writerId()));
+
+    config.setSubscriptionConsensusBatchMaxTabletCount(3);
+    final ConsensusPrefetchingQueue queue2 = newQueue();
+    assertNull(queue2.poll(CONSUMER));
+    queue2.drivePrefetchOnce();
+    final SubscriptionEvent mergedEvent = queue2.poll(CONSUMER);
+    assertNotNull(mergedEvent);
+    assertEquals(4L, mergedEvent.getCommitContext().getWriterProgress().getLocalSeq());
+
+    // Simulate delayed closeAsync cleanup of queue1 after queue2 already recorded seq 4.
+    queue1.cleanUp();
+    queue1.close(false, true);
+
+    assertTrue(queue2.ack(CONSUMER, mergedEvent.getCommitContext()));
+    assertEquals(
+        new WriterProgress(1004, 4), committedProgress().getWriterPositions().get(writerId()));
+  }
+
   private ConsensusPrefetchingQueue newQueue() {
     return newQueue(false);
   }
