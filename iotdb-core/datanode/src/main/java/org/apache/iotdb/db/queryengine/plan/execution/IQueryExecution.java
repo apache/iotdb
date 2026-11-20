@@ -82,6 +82,8 @@ public interface IQueryExecution {
    * finishes. On the other hand, if there is no active RPC, it means that the client has finished
    * fetching results or has not started fetching results yet, and the QueryExecution can be safely
    * cleaned up.
+   *
+   * @return true if an RPC of this query is in progress, false otherwise
    */
   boolean isActive();
 
