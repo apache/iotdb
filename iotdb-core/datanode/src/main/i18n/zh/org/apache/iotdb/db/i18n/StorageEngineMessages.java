@@ -1820,8 +1820,6 @@ public final class StorageEngineMessages {
   public static final String EXCEPTION_SOURCE_FILES_ARE_CLEANED_UP_83638D68 = "源文件已清理";
 
   public static final String EXCEPTION_TASK_FINISHED_A075ACB1 = "任务已完成";
-  public static final String EXCEPTION_WHOLE_FILE_SLICE_KIND_CANNOT_BE_NULL_1B93752F =
-      "Whole-file 切片类型不能为空。";
 
   public static final String EXCEPTION_WHOLE_FILE_SLICE_PAYLOAD_CANNOT_BE_EMPTY_C14A7878 =
       "Whole-file 切片内容不能为空。";
@@ -1832,8 +1830,6 @@ public final class StorageEngineMessages {
   public static final String EXCEPTION_WHOLE_FILE_SLICE_TIME_PARTITION_IS_MISSING_4EE30E24 =
       "Whole-file 切片缺少时间分区。";
 
-  public static final String EXCEPTION_UNKNOWN_WHOLE_FILE_SLICE_KIND_D_WHEN_DESERIALIZING_A_LOAD_PIECE_AE5381F6 =
-      "反序列化 LOAD piece 时遇到未知的 whole-file 切片类型 %d。";
 
   public static final String EXCEPTION_WHOLE_FILE_SLICE_HAS_INVALID_PAYLOAD_LENGTH_D_0D04C9C1 =
       "Whole-file 切片的 payload 长度非法：%d。";
@@ -1853,14 +1849,8 @@ public final class StorageEngineMessages {
   public static final String EXCEPTION_WHOLE_FILE_SLICE_SOURCE_LENGTH_D_TIME_PARTITION_D_DOES_NOT_MATCH_THE_STAGED_TASK_SOURCE_LENGTH_D_FCD90EBB =
       "Whole-file 切片（source length %d，time partition %d）与已 staging 的任务（source length %d）不匹配。";
 
-  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_DATA_ARRIVED_BEFORE_THE_TSFILE_18FCDD22 =
-      "Whole-file 修改数据先于 TsFile 到达。";
 
-  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_SLICE_KIND_S_DOES_NOT_MATCH_THE_STAGED_TASK_KIND_S_7D2A42AA =
-      "Whole-file 修改切片类型 %s 与已 staging 的任务类型 %s 不匹配。";
 
-  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_STAGING_S_ALREADY_EXISTS_BUT_CANNOT_BE_RESUMED_ADE1CCB8 =
-      "Whole-file 修改文件 %s 已存在，但无法恢复。";
 
   public static final String EXCEPTION_WHOLE_FILE_SLICE_OFFSET_D_EXCEEDS_THE_STAGED_LENGTH_D_FOR_TASK_S_8E5B27C5 =
       "Whole-file 切片 offset %d 超过已 staging 的长度 %d（任务 %s）。";

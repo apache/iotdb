@@ -92,8 +92,7 @@ public class TsFileWriterManagerWholeFileTest {
     System.arraycopy(source, from, payload, 0, length);
     final CRC32C crc32c = new CRC32C();
     crc32c.update(payload, 0, payload.length);
-    return new WholeFileData(
-        WholeFileData.Kind.TSFILE, offset, source.length, 0L, false, crc32c.getValue(), payload);
+    return new WholeFileData(offset, source.length, 0L, false, crc32c.getValue(), payload);
   }
 
   private static void deleteRecursively(final File file) {

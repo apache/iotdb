@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -36,6 +37,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -93,6 +95,23 @@ public class LoadSingleTsFileNodeLoadModeTest {
   }
 
   @Test
+  public void deletionSidecarKeepsTheSplitPath() throws Exception {
+    final TRegionReplicaSet region = region(1, 1, 2, 3);
+    final File tsFile = Files.createTempFile("load-mode", ".tsfile").toFile();
+    final File mods = ModificationFile.getExclusiveMods(tsFile);
+    Assert.assertTrue(mods.createNewFile());
+    try {
+      final LoadSingleTsFileNode node = nodeWithFile(tsFile, 0L, 1L, false, device("root.sg.d1"));
+      final LoadSingleTsFileNode.LoadMode mode =
+          node.resolveLoadMode(ignored -> Collections.singletonList(region));
+      Assert.assertEquals(LoadSingleTsFileNode.LoadMode.CONSENSUS_SPLIT, mode);
+    } finally {
+      Files.deleteIfExists(mods.toPath());
+      Files.deleteIfExists(tsFile.toPath());
+    }
+  }
+
+  @Test
   public void severalRegionsKeepTheSplitPath() {
     final TRegionReplicaSet first = region(1, 1, 2);
     final TRegionReplicaSet second = region(2, 3, 4);
@@ -122,7 +141,16 @@ public class LoadSingleTsFileNodeLoadModeTest {
       final long endTime,
       final boolean needDecodeTsFile,
       final StringArrayDeviceID... devices) {
-    final TsFileResource resource = new TsFileResource(new File("1.tsfile"));
+    return nodeWithFile(new File("1.tsfile"), startTime, endTime, needDecodeTsFile, devices);
+  }
+
+  private static LoadSingleTsFileNode nodeWithFile(
+      final File tsFile,
+      final long startTime,
+      final long endTime,
+      final boolean needDecodeTsFile,
+      final StringArrayDeviceID... devices) {
+    final TsFileResource resource = new TsFileResource(tsFile);
     for (final StringArrayDeviceID device : devices) {
       resource.updateStartTime(device, startTime);
       resource.updateEndTime(device, endTime);

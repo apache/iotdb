@@ -32,8 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusOp;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
@@ -392,34 +390,11 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
         .computeIfAbsent(regionId, ignored -> new HashMap<>())
         .put(timePartitionSlot, sourceLength);
 
-    if (!dispatchWholeFileKind(
-        sourceFile, WholeFileData.Kind.TSFILE, sourceLength, timePartitionSlot, replicaSet, node)) {
-      return false;
-    }
-    return dispatchWholeFileMods(sourceFile, timePartitionSlot, replicaSet, node);
+    return dispatchWholeFileSlices(sourceFile, sourceLength, timePartitionSlot, replicaSet, node);
   }
 
-  private boolean dispatchWholeFileMods(
-      final File sourceFile,
-      final TTimePartitionSlot timePartitionSlot,
-      final TRegionReplicaSet replicaSet,
-      final LoadSingleTsFileNode node) {
-    File modsFile = ModificationFile.getExclusiveMods(sourceFile);
-    WholeFileData.Kind kind = WholeFileData.Kind.MODS_V2;
-    if (!modsFile.isFile()) {
-      modsFile = ModificationFileV1.getNormalMods(sourceFile);
-      kind = WholeFileData.Kind.MODS_V1;
-    }
-    if (!modsFile.isFile()) {
-      return true;
-    }
-    return dispatchWholeFileKind(
-        modsFile, kind, modsFile.length(), timePartitionSlot, replicaSet, node);
-  }
-
-  private boolean dispatchWholeFileKind(
+  private boolean dispatchWholeFileSlices(
       final File file,
-      final WholeFileData.Kind kind,
       final long sourceLength,
       final TTimePartitionSlot timePartitionSlot,
       final TRegionReplicaSet replicaSet,
@@ -449,7 +424,6 @@ public class TwoPhaseConsensusLoadStrategy implements TsFileLoadStrategy {
             LoadTsFilePieceNode.wholeFilePiece(node.getPlanNodeId(), file, pieceIndex++);
         pieceNode.addTsFileData(
             new WholeFileData(
-                kind,
                 offset,
                 sourceLength,
                 timePartitionSlot.getStartTime(),

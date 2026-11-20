@@ -35,8 +35,7 @@ public class WholeFileDataTest {
     final CRC32C crc32c = new CRC32C();
     crc32c.update(payload, 0, payload.length);
     final WholeFileData data =
-        new WholeFileData(
-            WholeFileData.Kind.TSFILE, 10L, 100L, 1_000L, true, crc32c.getValue(), payload);
+        new WholeFileData(10L, 100L, 1_000L, true, crc32c.getValue(), payload);
 
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     try (final DataOutputStream out = new DataOutputStream(baos)) {
@@ -50,7 +49,6 @@ public class WholeFileDataTest {
     final WholeFileData wholeFileData = (WholeFileData) deserialized;
     Assert.assertEquals(data, wholeFileData);
     Assert.assertArrayEquals(payload, wholeFileData.getPayload());
-    Assert.assertEquals(WholeFileData.Kind.TSFILE, wholeFileData.getKind());
     Assert.assertEquals(10L, wholeFileData.getOffset());
     Assert.assertEquals(100L, wholeFileData.getSourceLength());
     Assert.assertEquals(1_000L, wholeFileData.getTimePartitionStart());
@@ -58,25 +56,9 @@ public class WholeFileDataTest {
   }
 
   @Test
-  public void testModificationSliceRoundTrip() throws Exception {
-    final byte[] payload = new byte[] {9, 8, 7};
-    final WholeFileData data =
-        new WholeFileData(WholeFileData.Kind.MODS_V2, 0L, 3L, -1L, false, 0L, payload);
-
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    try (final DataOutputStream out = new DataOutputStream(baos)) {
-      data.serialize(out, false);
-    }
-    final WholeFileData deserialized =
-        (WholeFileData) TsFileData.deserialize(new ByteArrayInputStream(baos.toByteArray()));
-    Assert.assertEquals(data, deserialized);
-    Assert.assertEquals(WholeFileData.Kind.MODS_V2, deserialized.getKind());
-  }
-
-  @Test
   public void testRejectsSliceOutsideSourceLength() {
     try {
-      new WholeFileData(WholeFileData.Kind.TSFILE, 95L, 100L, 0L, false, 0L, new byte[10]);
+      new WholeFileData(95L, 100L, 0L, false, 0L, new byte[10]);
       Assert.fail();
     } catch (final IllegalArgumentException expected) {
       // expected: the slice must not extend past the declared source length

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 
@@ -170,6 +171,11 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     if (timePartitionSlots.size() != 1) {
       return LoadMode.CONSENSUS_SPLIT;
     }
+    // A complete TsFile has no deletion sidecar. When one exists it is not part of the TsFile
+    // bytes, so the whole-file path cannot carry it: use the chunk path, which sends deletions.
+    if (hasModificationFile(resource.getTsFile())) {
+      return LoadMode.CONSENSUS_SPLIT;
+    }
 
     final TTimePartitionSlot firstSlot = timePartitionSlots.iterator().next();
     final Set<TRegionReplicaSet> replicaSets = new HashSet<>(partitionFetcher.apply(slotList));
@@ -186,6 +192,11 @@ public class LoadSingleTsFileNode extends WritePlanNode {
           : LoadMode.CONSENSUS_WHOLE_FILE;
     }
     return LoadMode.CONSENSUS_WHOLE_FILE;
+  }
+
+  private static boolean hasModificationFile(final File tsFile) {
+    return ModificationFile.getExclusiveMods(tsFile).isFile()
+        || ModificationFileV1.getNormalMods(tsFile).isFile();
   }
 
   private List<Pair<IDeviceID, TTimePartitionSlot>> buildSlotList() {

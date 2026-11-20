@@ -1918,8 +1918,6 @@ public final class StorageEngineMessages {
       "source files are cleaned up";
 
   public static final String EXCEPTION_TASK_FINISHED_A075ACB1 = "task finished";
-  public static final String EXCEPTION_WHOLE_FILE_SLICE_KIND_CANNOT_BE_NULL_1B93752F =
-      "Whole-file slice kind cannot be null.";
 
   public static final String EXCEPTION_WHOLE_FILE_SLICE_PAYLOAD_CANNOT_BE_EMPTY_C14A7878 =
       "Whole-file slice payload cannot be empty.";
@@ -1930,8 +1928,6 @@ public final class StorageEngineMessages {
   public static final String EXCEPTION_WHOLE_FILE_SLICE_TIME_PARTITION_IS_MISSING_4EE30E24 =
       "Whole-file slice time partition is missing.";
 
-  public static final String EXCEPTION_UNKNOWN_WHOLE_FILE_SLICE_KIND_D_WHEN_DESERIALIZING_A_LOAD_PIECE_AE5381F6 =
-      "Unknown whole-file slice kind %d when deserializing a LOAD piece.";
 
   public static final String EXCEPTION_WHOLE_FILE_SLICE_HAS_INVALID_PAYLOAD_LENGTH_D_0D04C9C1 =
       "Whole-file slice has invalid payload length %d.";
@@ -1951,14 +1947,8 @@ public final class StorageEngineMessages {
   public static final String EXCEPTION_WHOLE_FILE_SLICE_SOURCE_LENGTH_D_TIME_PARTITION_D_DOES_NOT_MATCH_THE_STAGED_TASK_SOURCE_LENGTH_D_FCD90EBB =
       "Whole-file slice (source length %d, time partition %d) does not match the staged task (source length %d).";
 
-  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_DATA_ARRIVED_BEFORE_THE_TSFILE_18FCDD22 =
-      "Whole-file modification data arrived before the TsFile.";
 
-  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_SLICE_KIND_S_DOES_NOT_MATCH_THE_STAGED_TASK_KIND_S_7D2A42AA =
-      "Whole-file modification slice kind %s does not match the staged task kind %s.";
 
-  public static final String EXCEPTION_WHOLE_FILE_MODIFICATION_STAGING_S_ALREADY_EXISTS_BUT_CANNOT_BE_RESUMED_ADE1CCB8 =
-      "Whole-file modification staging %s already exists but cannot be resumed.";
 
   public static final String EXCEPTION_WHOLE_FILE_SLICE_OFFSET_D_EXCEEDS_THE_STAGED_LENGTH_D_FOR_TASK_S_8E5B27C5 =
       "Whole-file slice offset %d exceeds the staged length %d for task %s.";

@@ -37,7 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileCon
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -137,15 +136,11 @@ final class TsFileWriterManager {
   /** Whole-file staging: the source TsFile is copied byte for byte, not rebuilt from chunks. */
   private File wholeFile;
 
-  private File wholeFileMods;
   private FileChannel wholeFileChannel;
-  private FileChannel wholeFileModsChannel;
   private long wholeFileSourceLength = -1L;
   private long wholeFileSealedLength = -1L;
-  private long wholeFileModsSourceLength = -1L;
   private long wholeFileTimePartitionStart = Long.MIN_VALUE;
   private boolean wholeFileGeneratedByPipe;
-  private WholeFileData.Kind wholeFileModsKind;
   private TsFileResource wholeFileResource;
   private LoadTsFileProgress wholeFileProgress;
   private TTimePartitionSlot wholeFileTimePartition;
@@ -273,9 +268,6 @@ final class TsFileWriterManager {
     if (wholeFileChannel != null) {
       wholeFileChannel.force(false);
     }
-    if (wholeFileModsChannel != null) {
-      wholeFileModsChannel.force(false);
-    }
   }
 
   private void writeWholeFileData(final WholeFileData data) throws IOException {
@@ -291,19 +283,8 @@ final class TsFileWriterManager {
               crc32c.getValue()));
     }
 
-    switch (data.getKind()) {
-      case TSFILE:
-        ensureWholeFile(data);
-        appendWholeFile(wholeFile, wholeFileChannel, data);
-        return;
-      case MODS_V1:
-      case MODS_V2:
-        ensureWholeFileMods(data);
-        appendWholeFile(wholeFileMods, wholeFileModsChannel, data);
-        return;
-      default:
-        throw new IOException(StorageEngineMessages.UNSUPPORTED_TSFILE_DATA_TYPE + data.getType());
-    }
+    ensureWholeFile(data);
+    appendWholeFile(wholeFile, wholeFileChannel, data);
   }
 
   private void ensureWholeFile(final WholeFileData data) throws IOException {
@@ -350,41 +331,6 @@ final class TsFileWriterManager {
               data.getTimePartitionStart(),
               wholeFileSourceLength));
     }
-  }
-
-  private void ensureWholeFileMods(final WholeFileData data) throws IOException {
-    if (wholeFile == null) {
-      throw new IOException(
-          StorageEngineMessages
-              .EXCEPTION_WHOLE_FILE_MODIFICATION_DATA_ARRIVED_BEFORE_THE_TSFILE_18FCDD22);
-    }
-    if (wholeFileModsChannel != null) {
-      if (wholeFileModsKind != data.getKind()
-          || wholeFileModsSourceLength != data.getSourceLength()) {
-        throw new IOException(
-            String.format(
-                StorageEngineMessages
-                    .EXCEPTION_WHOLE_FILE_MODIFICATION_SLICE_KIND_S_DOES_NOT_MATCH_THE_STAGED_TASK_KIND_S_7D2A42AA,
-                data.getKind(),
-                wholeFileModsKind));
-      }
-      return;
-    }
-    wholeFileModsKind = data.getKind();
-    wholeFileMods =
-        data.getKind() == WholeFileData.Kind.MODS_V1
-            ? ModificationFileV1.getNormalMods(wholeFile)
-            : ModificationFile.getExclusiveMods(wholeFile);
-    if (!wholeFileMods.createNewFile()) {
-      throw new IOException(
-          String.format(
-              StorageEngineMessages
-                  .EXCEPTION_WHOLE_FILE_MODIFICATION_STAGING_S_ALREADY_EXISTS_BUT_CANNOT_BE_RESUMED_ADE1CCB8,
-              wholeFileMods.getAbsolutePath()));
-    }
-    wholeFileModsChannel =
-        FileChannel.open(wholeFileMods.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE);
-    wholeFileModsSourceLength = data.getSourceLength();
   }
 
   private void appendWholeFile(final File file, final FileChannel channel, final WholeFileData data)
@@ -879,11 +825,6 @@ final class TsFileWriterManager {
       wholeFileChannel.close();
       wholeFileChannel = null;
     }
-    if (wholeFileModsChannel != null) {
-      wholeFileModsChannel.force(false);
-      wholeFileModsChannel.close();
-      wholeFileModsChannel = null;
-    }
 
     final TsFileResource resource = new TsFileResource(wholeFile);
     try (final TsFileSequenceReader reader =
@@ -1207,22 +1148,6 @@ final class TsFileWriterManager {
     wholeFileGeneratedByPipe = meta.generatedByPipe;
     wholeFileProgress = new LoadTsFileProgress(wholeFile);
 
-    final File modsV2 = ModificationFile.getExclusiveMods(wholeFile);
-    final File modsV1 = ModificationFileV1.getNormalMods(wholeFile);
-    if (modsV2.isFile()) {
-      wholeFileMods = modsV2;
-      wholeFileModsKind = WholeFileData.Kind.MODS_V2;
-    } else if (modsV1.isFile()) {
-      wholeFileMods = modsV1;
-      wholeFileModsKind = WholeFileData.Kind.MODS_V1;
-    }
-    if (wholeFileMods != null) {
-      wholeFileModsChannel =
-          FileChannel.open(
-              wholeFileMods.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE);
-      wholeFileModsSourceLength = wholeFileMods.length();
-    }
-
     if (new File(wholeFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).isFile()) {
       wholeFileSealedLength = wholeFile.length();
       final TsFileResource resource = new TsFileResource(wholeFile);
@@ -1300,20 +1225,8 @@ final class TsFileWriterManager {
       }
       wholeFileChannel = null;
     }
-    if (wholeFileModsChannel != null) {
-      try {
-        wholeFileModsChannel.close();
-      } catch (final IOException e) {
-        LOGGER.warn(
-            StorageEngineMessages.CLOSE_MODIFICATION_FILE_ERROR,
-            wholeFileMods == null ? taskDir.getPath() : wholeFileMods,
-            e);
-      }
-      wholeFileModsChannel = null;
-    }
     if (!retainStagedFiles) {
-      for (final File staged :
-          new File[] {wholeFile, wholeFileMods, new File(taskDir, WHOLE_FILE_META_NAME)}) {
+      for (final File staged : new File[] {wholeFile, new File(taskDir, WHOLE_FILE_META_NAME)}) {
         if (staged == null) {
           continue;
         }
@@ -1391,7 +1304,6 @@ final class TsFileWriterManager {
     timePartition2Progress.clear();
     timePartition2ModificationFile.clear();
     wholeFile = null;
-    wholeFileMods = null;
     wholeFileResource = null;
     wholeFileProgress = null;
     wholeFileTimePartition = null;

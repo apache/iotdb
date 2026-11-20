@@ -26,37 +26,31 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * One slice of a source file that a LOAD task transfers byte for byte.
+ * One slice of a complete source TsFile that a LOAD task transfers byte for byte.
  *
- * <p>A {@link #kind} of {@link Kind#TSFILE} carries a slice of the source TsFile; the modification
- * kinds carry a slice of its deletion file. Slices of one file are identified by {@code offset} and
- * are applied in order, so a retried slice is skipped instead of being appended twice.
+ * <p>The deletion sidecar of a TsFile is not part of this record. A file that has modifications is
+ * not loaded through the whole-file path at all: it falls back to the chunk-splitting path, which
+ * already transfers its deletions. The whole-file path therefore only ever carries the {@code
+ * .tsfile} bytes, and a receiver can rebuild the exact file without any extra artifact.
  *
- * <p>The source length, time partition and pipe flag are repeated in every slice: the receiver
- * creates the staging state on the first slice and needs them to recognise the task and to rebuild
- * its resource on PREPARE.
+ * <p>Slices are identified by {@code offset} and are applied in order, so a retried slice is
+ * skipped instead of being appended twice. The source length, time partition and pipe flag are
+ * repeated in every slice: the receiver creates the staging state on the first slice and needs them
+ * to recognise the task and to rebuild its resource on PREPARE.
  */
 public class WholeFileData implements TsFileData {
 
-  /** The file a slice belongs to. The order is part of the wire format and must not change. */
-  public enum Kind {
-    TSFILE,
-    MODS_V1,
-    MODS_V2
-  }
-
   private static final int TYPE_ORDINAL_BYTES = Integer.BYTES;
-  private static final int KIND_BYTES = Integer.BYTES;
   private static final int LONG_BYTES = Long.BYTES;
   private static final int BOOLEAN_BYTES = Byte.BYTES;
   private static final int PAYLOAD_LENGTH_BYTES = Integer.BYTES;
   private static final int METADATA_BYTES =
-      TYPE_ORDINAL_BYTES + KIND_BYTES + 4 * LONG_BYTES + BOOLEAN_BYTES + PAYLOAD_LENGTH_BYTES;
+      TYPE_ORDINAL_BYTES + 4 * LONG_BYTES + BOOLEAN_BYTES + PAYLOAD_LENGTH_BYTES;
 
-  private final Kind kind;
   private final long offset;
   private final long sourceLength;
   private final long timePartitionStart;
@@ -65,17 +59,12 @@ public class WholeFileData implements TsFileData {
   private final byte[] payload;
 
   public WholeFileData(
-      final Kind kind,
       final long offset,
       final long sourceLength,
       final long timePartitionStart,
       final boolean generatedByPipe,
       final long checksum,
       final byte[] payload) {
-    if (kind == null) {
-      throw new IllegalArgumentException(
-          StorageEngineMessages.EXCEPTION_WHOLE_FILE_SLICE_KIND_CANNOT_BE_NULL_1B93752F);
-    }
     if (payload == null || payload.length == 0) {
       throw new IllegalArgumentException(
           StorageEngineMessages.EXCEPTION_WHOLE_FILE_SLICE_PAYLOAD_CANNOT_BE_EMPTY_C14A7878);
@@ -93,17 +82,12 @@ public class WholeFileData implements TsFileData {
       throw new IllegalArgumentException(
           StorageEngineMessages.EXCEPTION_WHOLE_FILE_SLICE_TIME_PARTITION_IS_MISSING_4EE30E24);
     }
-    this.kind = kind;
     this.offset = offset;
     this.sourceLength = sourceLength;
     this.timePartitionStart = timePartitionStart;
     this.generatedByPipe = generatedByPipe;
     this.checksum = checksum;
     this.payload = payload;
-  }
-
-  public Kind getKind() {
-    return kind;
   }
 
   public long getOffset() {
@@ -151,7 +135,6 @@ public class WholeFileData implements TsFileData {
     // A whole-file slice has no reference form: its bytes are the payload, so they are always
     // written. A caller that asks for references therefore still gets a self-contained slice.
     ReadWriteIOUtils.write(getType().ordinal(), stream);
-    ReadWriteIOUtils.write(kind.ordinal(), stream);
     ReadWriteIOUtils.write(offset, stream);
     ReadWriteIOUtils.write(sourceLength, stream);
     ReadWriteIOUtils.write(timePartitionStart, stream);
@@ -167,15 +150,6 @@ public class WholeFileData implements TsFileData {
   }
 
   public static WholeFileData deserialize(final InputStream stream) throws IOException {
-    final int kindOrdinal = ReadWriteIOUtils.readInt(stream);
-    if (kindOrdinal < 0 || kindOrdinal >= Kind.values().length) {
-      throw new IOException(
-          String.format(
-              StorageEngineMessages
-                  .EXCEPTION_UNKNOWN_WHOLE_FILE_SLICE_KIND_D_WHEN_DESERIALIZING_A_LOAD_PIECE_AE5381F6,
-              kindOrdinal));
-    }
-    final Kind kind = Kind.values()[kindOrdinal];
     final long offset = ReadWriteIOUtils.readLong(stream);
     final long sourceLength = ReadWriteIOUtils.readLong(stream);
     final long timePartitionStart = ReadWriteIOUtils.readLong(stream);
@@ -204,7 +178,7 @@ public class WholeFileData implements TsFileData {
       read += current;
     }
     return new WholeFileData(
-        kind, offset, sourceLength, timePartitionStart, generatedByPipe, checksum, payload);
+        offset, sourceLength, timePartitionStart, generatedByPipe, checksum, payload);
   }
 
   @Override
@@ -221,21 +195,18 @@ public class WholeFileData implements TsFileData {
         && timePartitionStart == that.timePartitionStart
         && generatedByPipe == that.generatedByPipe
         && checksum == that.checksum
-        && kind == that.kind
-        && java.util.Arrays.equals(payload, that.payload);
+        && Arrays.equals(payload, that.payload);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(kind, offset, sourceLength, timePartitionStart, generatedByPipe, checksum);
+    return Objects.hash(offset, sourceLength, timePartitionStart, generatedByPipe, checksum);
   }
 
   @Override
   public String toString() {
     return "WholeFileData{"
-        + "kind="
-        + kind
-        + ", offset="
+        + "offset="
         + offset
         + ", length="
         + payload.length
