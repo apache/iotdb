@@ -159,7 +159,11 @@ public class WALRecoverManagerTest {
   }
 
   private void prepareCheckpointAndWALFileForNormal()
-      throws MetadataException, ExecutionException, InterruptedException, QueryProcessException {
+      throws MetadataException,
+          ExecutionException,
+          InterruptedException,
+          QueryProcessException,
+          IOException {
     // write useless .wal files, start write threads to write concurrently
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
@@ -227,7 +231,11 @@ public class WALRecoverManagerTest {
   }
 
   private void prepareCheckpointAndWALFileForSnapshot()
-      throws MetadataException, ExecutionException, InterruptedException, QueryProcessException {
+      throws MetadataException,
+          ExecutionException,
+          InterruptedException,
+          QueryProcessException,
+          IOException {
     // write useless .wal files, start write threads to write concurrently
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);

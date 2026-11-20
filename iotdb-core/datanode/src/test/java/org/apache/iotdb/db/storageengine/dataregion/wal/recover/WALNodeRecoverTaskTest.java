@@ -38,12 +38,16 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.file.UnsealedTsFileRecoverPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.CheckpointFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -62,6 +66,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
+import static org.apache.iotdb.db.storageengine.dataregion.wal.WALTestUtils.getInsertRowNode;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -72,6 +77,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -138,6 +144,68 @@ public class WALNodeRecoverTaskTest {
         false);
   }
 
+  @Test(timeout = 30000)
+  public void testRecoveryReplaysAllMemTablesForSameTsFile() throws Exception {
+    File node = folder.newFolder("node");
+    String relativePath = "sequence/root.recovery/0/0/1-1-0-0.tsfile";
+    File tsFile = new File(folder.getRoot(), relativePath);
+    // A legacy checkpoint may still refer to the file's previous data directory.
+    File previousPath = new File(folder.getRoot(), "previous/" + relativePath);
+    Files.createDirectories(tsFile.toPath().getParent());
+    Files.createFile(tsFile.toPath());
+    File oldCheckpoint = new File(node, "_0.checkpoint");
+    File nextCheckpoint = new File(node, "_1.checkpoint");
+    writeCheckpoint(
+        oldCheckpoint,
+        1,
+        new Checkpoint(
+            CheckpointType.GLOBAL_MEMORY_TABLE_INFO, List.of(memTable(1, previousPath, 0))));
+    writeCheckpoint(
+        nextCheckpoint,
+        2,
+        new Checkpoint(CheckpointType.CREATE_MEMORY_TABLE, List.of(memTable(2, tsFile, 0))));
+    String device = "root.recovery.d1";
+    File wal = new File(node, "_0-0-0.wal");
+    writeWalEntries(
+        wal,
+        List.of(
+            new WALInfoEntry(1, getInsertRowNode(device, 10)),
+            new WALInfoEntry(2, getInsertRowNode(device, 20))));
+
+    UnsealedTsFileRecoverPerformer failed = register(tsFile);
+    IOException failure = new IOException("injected initialization failure");
+    doThrow(failure).when(failed).startRecovery();
+    new WALNodeRecoverTask(node, new CountDownLatch(1)).run();
+    assertEquals(WALRecoverListener.Status.FAILURE, failed.getRecoverListener().waitForResult());
+    assertSame(failure, failed.getRecoverListener().getCause());
+    verify(failed).startRecovery();
+    verify(failed, never()).redoLog(any());
+    verify(failed, never()).endRecovery();
+    verify(failed).close();
+    assertTrue(oldCheckpoint.exists());
+    assertTrue(nextCheckpoint.exists());
+    assertTrue(wal.exists());
+
+    UnsealedTsFileRecoverPerformer performer =
+        spy(new UnsealedTsFileRecoverPerformer(new TsFileResource(tsFile), true, false, p -> {}));
+    WALRecoverListener listener = recovery.addRecoverPerformer(performer);
+    new WALNodeRecoverTask(node, new CountDownLatch(1)).run();
+    assertEquals(WALRecoverListener.Status.SUCCESS, listener.waitForResult());
+    verify(performer).startRecovery();
+    verify(performer).endRecovery();
+    verify(performer).close();
+    assertFalse(node.exists());
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      Statistics<?> statistics =
+          reader
+              .readTimeseriesMetadata(IDeviceID.Factory.DEFAULT_FACTORY.create(device), "s1", true)
+              .getStatistics();
+      assertEquals(2, statistics.getCount());
+      assertEquals(10, statistics.getStartTime());
+      assertEquals(20, statistics.getEndTime());
+    }
+  }
+
   private void assertFailedRecovery(Exception failure, boolean finalization, boolean retry)
       throws Exception {
     File node = folder.newFolder("node");
@@ -155,10 +223,7 @@ public class WALNodeRecoverTaskTest {
       File file = new File(folder.getRoot(), "sequence/root.recovery/0/0/" + id + "-1-0-0.tsfile");
       files.add(file);
       performers.add(register(file));
-      IMemTable table = mock(IMemTable.class);
-      when(table.getMemTableId()).thenReturn(id);
-      when(table.getDataRegionId()).thenReturn("0");
-      tables.add(new MemTableInfo(table, file.getAbsolutePath(), firstVersion));
+      tables.add(memTable(id, file, firstVersion));
       InsertRowNode row =
           new InsertRowNode(
               new PlanNodeId(""),
@@ -176,27 +241,17 @@ public class WALNodeRecoverTaskTest {
       }
       entries.add(new WALInfoEntry(id, row));
     }
-    Checkpoint checkpoint = new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, tables);
-    ByteBuffer checkpointBytes = ByteBuffer.allocate(Long.BYTES + checkpoint.serializedSize());
-    checkpointBytes.putLong(2);
-    checkpoint.serialize(checkpointBytes);
     File checkpointFile = new File(node, "_0.checkpoint");
-    try (CheckpointWriter writer = new CheckpointWriter(checkpointFile)) {
-      writer.write(checkpointBytes, false);
-    }
+    writeCheckpoint(
+        checkpointFile, 2, new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, tables));
     File wal = new File(node, stableNode ? "_7-11-1.wal" : "_0-0-0.wal");
-    try (WALWriter writer = new WALWriter(wal)) {
-      for (WALEntry entry : entries) {
-        ByteBuffer data = ByteBuffer.allocate(entry.serializedSize());
-        entry.serialize(new WALByteBufferForTest(data));
-        WALMetaData metadata = new WALMetaData();
-        metadata.add(
-            data.position(), stableNode ? 10 + entry.getMemTableId() : -1, entry.getMemTableId());
-        writer.write(data, metadata);
-      }
-    }
+    writeWalEntries(wal, entries);
     byte[] walBefore = Files.readAllBytes(wal.toPath());
     byte[] checkpointBefore = Files.readAllBytes(checkpointFile.toPath());
+    File candidate = CheckpointFileUtils.createCheckpointCandidate(new File(node, "_1.checkpoint"));
+    Files.writeString(candidate.toPath(), "V99-WAL");
+    File unrelatedTemp = new File(node, "_1.checkpoint.backup.tmp");
+    Files.createFile(unrelatedTemp.toPath());
     UnsealedTsFileRecoverPerformer failed = performers.get(0);
     when(failed.canWrite()).thenReturn(true);
     if (finalization) {
@@ -222,6 +277,7 @@ public class WALNodeRecoverTaskTest {
     verify(healthy).endRecovery();
     assertArrayEquals(walBefore, Files.readAllBytes(wal.toPath()));
     assertArrayEquals(checkpointBefore, Files.readAllBytes(checkpointFile.toPath()));
+    assertTrue(candidate.exists());
     if (stableNode) {
       WALManager manager = WALManager.getInstance();
       for (int i = 0; i < 3; i++) {
@@ -262,6 +318,10 @@ public class WALNodeRecoverTaskTest {
       CountDownLatch retryLatch = new CountDownLatch(1);
       new WALNodeRecoverTask(node, retryLatch).run();
       assertEquals(0, retryLatch.getCount());
+      assertFalse(candidate.exists());
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+        assertTrue(unrelatedTemp.exists());
+      }
       for (UnsealedTsFileRecoverPerformer performer : retried) {
         assertEquals(
             WALRecoverListener.Status.SUCCESS, performer.getRecoverListener().waitForResult());
@@ -278,6 +338,38 @@ public class WALNodeRecoverTaskTest {
       assertEquals(WALRecoverListener.Status.FAILURE, failed.getRecoverListener().waitForResult());
     } else {
       assertTrue(node.isDirectory());
+    }
+  }
+
+  private static MemTableInfo memTable(long id, File tsFile, long firstVersion) {
+    IMemTable table = mock(IMemTable.class);
+    when(table.getMemTableId()).thenReturn(id);
+    when(table.getDataRegionId()).thenReturn("0");
+    return new MemTableInfo(table, tsFile.getAbsolutePath(), firstVersion);
+  }
+
+  private static void writeCheckpoint(File file, long maxMemTableId, Checkpoint checkpoint)
+      throws IOException {
+    ByteBuffer bytes = ByteBuffer.allocate(Long.BYTES + checkpoint.serializedSize());
+    bytes.putLong(maxMemTableId);
+    checkpoint.serialize(bytes);
+    try (CheckpointWriter writer = new CheckpointWriter(file)) {
+      writer.write(bytes, false);
+    }
+  }
+
+  private static void writeWalEntries(File wal, List<WALEntry> entries) throws IOException {
+    try (WALWriter writer = new WALWriter(wal)) {
+      for (WALEntry entry : entries) {
+        ByteBuffer data = ByteBuffer.allocate(entry.serializedSize());
+        entry.serialize(new WALByteBufferForTest(data));
+        WALMetaData metadata = new WALMetaData();
+        metadata.add(
+            data.position(),
+            ((InsertRowNode) entry.getValue()).getSearchIndex(),
+            entry.getMemTableId());
+        writer.write(data, metadata);
+      }
     }
   }
 
