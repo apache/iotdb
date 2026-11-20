@@ -20,11 +20,47 @@
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class AbsoluteMaxOperator extends AbstractSameTypeNumericOperator {
+  private static final TypeService<Deserializer> DESERIALIZER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 ->
+                operator -> {
+                  if (operator.intValue == Integer.MIN_VALUE) {
+                    operator.doubleValue = -(double) operator.intValue;
+                    operator.outPutDataType = TSDataType.DOUBLE;
+                  } else {
+                    operator.intValue = Math.abs(operator.intValue);
+                  }
+                };
+            case INT64 ->
+                operator -> {
+                  if (operator.longValue == Long.MIN_VALUE) {
+                    operator.doubleValue = -(double) operator.longValue;
+                    operator.outPutDataType = TSDataType.DOUBLE;
+                  } else {
+                    operator.longValue = Math.abs(operator.longValue);
+                  }
+                };
+            case FLOAT -> operator -> operator.floatValue = Math.abs(operator.floatValue);
+            case DOUBLE -> operator -> operator.doubleValue = Math.abs(operator.doubleValue);
+            default ->
+                operator -> {
+                  throw new IOException();
+                };
+          };
+
+  @FunctionalInterface
+  private interface Deserializer {
+    void deserialize(AbsoluteMaxOperator operator) throws IOException;
+  }
+
   @Override
   public String getName() {
     return "abs_max";
@@ -105,31 +141,6 @@ public class AbsoluteMaxOperator extends AbstractSameTypeNumericOperator {
   @Override
   public void deserialize(final ByteBuffer byteBuffer) throws IOException {
     super.deserialize(byteBuffer);
-    switch (outPutDataType) {
-      case INT32:
-        if (intValue == Integer.MIN_VALUE) {
-          doubleValue = -(double) intValue;
-          outPutDataType = TSDataType.DOUBLE;
-        } else {
-          intValue = Math.abs(intValue);
-        }
-        break;
-      case INT64:
-        if (longValue == Long.MIN_VALUE) {
-          doubleValue = -(double) longValue;
-          outPutDataType = TSDataType.DOUBLE;
-        } else {
-          longValue = Math.abs(longValue);
-        }
-        break;
-      case FLOAT:
-        floatValue = Math.abs(floatValue);
-        break;
-      case DOUBLE:
-        doubleValue = Math.abs(doubleValue);
-        break;
-      default:
-        throw new IOException();
-    }
+    DESERIALIZER_SERVICE.call(Type.fromTsDataType(outPutDataType)).deserialize(this);
   }
 }

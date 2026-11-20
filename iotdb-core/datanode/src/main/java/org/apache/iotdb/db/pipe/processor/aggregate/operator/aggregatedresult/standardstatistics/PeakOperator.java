@@ -23,13 +23,27 @@ import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.Ag
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.CustomizedReadableIntermediateResults;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 public class PeakOperator implements AggregatedResultOperator {
+  private static final TypeService<Function<CustomizedReadableIntermediateResults, Object>>
+      ABSOLUTE_MAXIMUM_GETTER_SERVICE =
+          type ->
+              switch (type.getTypeEnum()) {
+                case INT32 -> intermediateResults -> intermediateResults.getInt("abs_max");
+                case INT64 -> intermediateResults -> intermediateResults.getLong("abs_max");
+                case FLOAT -> intermediateResults -> intermediateResults.getFloat("abs_max");
+                case DOUBLE -> intermediateResults -> intermediateResults.getDouble("abs_max");
+                default -> intermediateResults -> intermediateResults.getObject("abs_max");
+              };
+
   @Override
   public String getName() {
     return "peak";
@@ -48,24 +62,10 @@ public class PeakOperator implements AggregatedResultOperator {
   @Override
   public Pair<TSDataType, Object> terminateWindow(
       TSDataType measurementDataType, CustomizedReadableIntermediateResults intermediateResults) {
-    final Object absoluteMaximum;
-    switch (measurementDataType) {
-      case INT32:
-        absoluteMaximum = intermediateResults.getInt("abs_max");
-        break;
-      case INT64:
-        absoluteMaximum = intermediateResults.getLong("abs_max");
-        break;
-      case FLOAT:
-        absoluteMaximum = intermediateResults.getFloat("abs_max");
-        break;
-      case DOUBLE:
-        absoluteMaximum = intermediateResults.getDouble("abs_max");
-        break;
-      default:
-        absoluteMaximum = intermediateResults.getObject("abs_max");
-        break;
-    }
+    final Object absoluteMaximum =
+        ABSOLUTE_MAXIMUM_GETTER_SERVICE
+            .call(Type.fromTsDataType(measurementDataType))
+            .apply(intermediateResults);
     return new Pair<>(measurementDataType, absoluteMaximum);
   }
 }

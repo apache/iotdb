@@ -20,12 +20,32 @@
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.service.TypeService;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class IntegralPoweredSumOperator extends AbstractSameTypeNumericOperator {
   private final transient int power;
+
+  private static final TypeService<Deserializer> DESERIALIZER_SERVICE =
+      type ->
+          switch (type.getTypeEnum()) {
+            case INT32 -> operator -> operator.doubleValue = operator.intValue;
+            case INT64 -> operator -> operator.doubleValue = operator.longValue;
+            case FLOAT -> operator -> operator.doubleValue = operator.floatValue;
+            case DOUBLE -> operator -> {};
+            default ->
+                operator -> {
+                  throw new IOException();
+                };
+          };
+
+  @FunctionalInterface
+  private interface Deserializer {
+    void deserialize(IntegralPoweredSumOperator operator) throws IOException;
+  }
 
   public IntegralPoweredSumOperator(int power) {
     this.power = power;
@@ -87,21 +107,7 @@ public class IntegralPoweredSumOperator extends AbstractSameTypeNumericOperator 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) throws IOException {
     super.deserialize(byteBuffer);
-    switch (outPutDataType) {
-      case INT32:
-        doubleValue = intValue;
-        break;
-      case INT64:
-        doubleValue = longValue;
-        break;
-      case FLOAT:
-        doubleValue = floatValue;
-        break;
-      case DOUBLE:
-        break;
-      default:
-        throw new IOException();
-    }
+    DESERIALIZER_SERVICE.call(Type.fromTsDataType(outPutDataType)).deserialize(this);
     outPutDataType = TSDataType.DOUBLE;
   }
 }
