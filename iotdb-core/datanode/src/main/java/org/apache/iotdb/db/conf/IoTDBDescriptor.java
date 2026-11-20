@@ -95,6 +95,7 @@ import java.nio.file.FileStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
@@ -1192,6 +1193,30 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "schema_thread_count", Integer.toString(conf.getSchemaThreadCount()))));
 
+    // Sending policy is a startup setting. Decoding is always available for in-flight requests.
+    String compression = properties.getProperty("data_region_iot_log_compression", "NONE").trim();
+    try {
+      String normalizedCompression = compression.toUpperCase(Locale.ROOT);
+      switch (normalizedCompression) {
+        case "NONE":
+          conf.setIotLogCompressionType(CompressionType.UNCOMPRESSED);
+          break;
+        case "LZ4":
+        case "SNAPPY":
+        case "ZSTD":
+          conf.setIotLogCompressionType(CompressionType.valueOf(normalizedCompression));
+          break;
+        default:
+          throw new IllegalArgumentException();
+      }
+    } catch (IllegalArgumentException e) {
+      throw new IOException(
+          String.format(
+              DataNodeMiscMessages
+                  .EXCEPTION_INVALID_IOTCONSENSUS_LOG_COMPRESSION_CODEC_ARG_2B9C27F7,
+              compression),
+          e);
+    }
     loadIoTConsensusProps(properties);
     loadIoTConsensusV2Props(properties);
 

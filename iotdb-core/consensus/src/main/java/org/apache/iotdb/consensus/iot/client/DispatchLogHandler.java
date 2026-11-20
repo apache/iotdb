@@ -39,6 +39,7 @@ import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -53,6 +54,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   private final LogDispatcherThreadMetrics logDispatcherThreadMetrics;
   private int retryCount;
   private long retryInterval;
+  private volatile boolean hasCompressedAttempt;
 
   public DispatchLogHandler(
       LogDispatcherThread thread,
@@ -65,8 +67,17 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
     this.retryInterval = thread.getConfig().getReplication().getBasicRetryWaitTimeMs();
   }
 
+  public void markCompressedAttempt() {
+    hasCompressedAttempt = true;
+  }
+
   @Override
   public void onComplete(TSyncLogEntriesRes response) {
+    if (response.isSetLogCompressionError()) {
+      // Decoding failed before application, regardless of the ordinary status retry classification.
+      onError(new IOException(response.getLogCompressionError().getMessage()));
+      return;
+    }
     recordTransferAttempt(response);
     if (response.getStatuses().stream()
         .anyMatch(status -> RetryUtils.needRetryForWrite(status.getCode()))) {
@@ -138,7 +149,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
           actualCause.toString());
     }
     // skip TApplicationException caused by follower
-    if (actualCause instanceof TApplicationException) {
+    if (actualCause instanceof TApplicationException && !hasCompressedAttempt) {
       completeBatch(batch);
       LOGGER.warn(IoTConsensusMessages.SKIP_RETRY_TAPPLICATION_EXCEPTION, batch);
       logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);

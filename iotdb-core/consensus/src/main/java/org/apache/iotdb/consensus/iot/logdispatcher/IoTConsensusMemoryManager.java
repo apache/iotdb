@@ -129,6 +129,15 @@ public class IoTConsensusMemoryManager {
     }
   }
 
+  /** Non-blocking reservation for the additional arrays held by an encoded RPC attempt. */
+  public boolean reserveLogCompression(long size) {
+    return reserve(size, false);
+  }
+
+  public void freeLogCompression(long size) {
+    free(size, false);
+  }
+
   public void free(Batch batch) {
     free(batch.getMemorySize(), false);
     if (logger.isDebugEnabled()) {

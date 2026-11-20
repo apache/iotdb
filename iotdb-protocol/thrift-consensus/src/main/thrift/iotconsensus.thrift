@@ -20,6 +20,12 @@
 include "common.thrift"
 namespace java org.apache.iotdb.consensus.iot.thrift
 
+struct TLogBufferCompression {
+  // Value returned by TsFile CompressionType.serialize().
+  1: required byte codec
+  2: required i32 uncompressedSize
+}
+
 // If this TLogEntry comes from the queue in memory, the list size of the data will only be 1.
 // If this TLogEntry comes from wal, the list size of the data may be greater than 1.
 struct TLogEntry {
@@ -29,6 +35,8 @@ struct TLogEntry {
   4: required i64 memorySize
   5: optional i64 routingEpoch
   6: optional i64 physicalTime
+  // One descriptor per data buffer; absent means the original, uncompressed entry.
+  7: optional list<TLogBufferCompression> compressionInfo
 }
 
 struct TSyncLogEntriesReq {
@@ -41,6 +49,8 @@ struct TSyncLogEntriesReq {
 struct TSyncLogEntriesRes {
   1: required list<common.TSStatus> statuses
   2: optional i64 receiverMemSize
+  // Rejected before application. This must never be treated as a completed batch.
+  3: optional common.TSStatus logCompressionError
 }
 
 struct TSyncWriterSafeTimeBarrierReq {

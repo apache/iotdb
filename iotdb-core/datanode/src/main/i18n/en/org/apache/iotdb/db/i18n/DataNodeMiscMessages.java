@@ -21,6 +21,7 @@ package org.apache.iotdb.db.i18n;
 
 /** Compile-time i18n constants for DataNode misc subsystems (English). */
 public final class DataNodeMiscMessages {
+  public static final String EXCEPTION_INVALID_IOTCONSENSUS_LOG_COMPRESSION_CODEC_ARG_2B9C27F7 = "Invalid IoTConsensus log compression codec: %s";
   public static final String LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F =
       "Failed to authorize CQ {} for user {}: {}";
 
