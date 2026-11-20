@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -32,6 +36,7 @@ import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.Test;
 
 import java.io.DataOutputStream;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
@@ -145,5 +150,108 @@ public class AlterTopicProcedureTest {
     } catch (final SubscriptionException e) {
       assertTrue(e.getMessage(), e.getMessage().contains("duplicate tag-filter"));
     }
+  }
+
+  @Test
+  public void testRealtimeModeCanChangeBeforeSubscriptionPipeCreation() throws Exception {
+    final String topicName = "test_topic";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = new HashMap<>();
+    originalAttributes.put(TopicConstant.PATH_KEY, "root.**");
+    originalAttributes.put(
+        TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_STREAM_VALUE);
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta(topicName, 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes =
+        Map.of(TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE);
+    final AlterTopicProcedure procedure =
+        new AlterTopicProcedure(
+            subscriptionInfo.deepCopyTopicMetaWithUpdatedAttributes(topicName, updatedAttributes),
+            updatedAttributes,
+            new AtomicReference<>(subscriptionInfo));
+    procedure.executeFromValidate(null);
+
+    assertEquals(
+        TopicConstant.REALTIME_MODE_BATCH_VALUE,
+        procedure.getUpdatedTopicMeta().getConfig().getRealtimeMode());
+  }
+
+  @Test
+  public void testRealtimeModeCannotChangeWhileSubscriptionPipeExists() throws Exception {
+    final String topicName = "test_topic";
+    final String consumerGroupId = "test_group";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = new HashMap<>();
+    originalAttributes.put(TopicConstant.PATH_KEY, "root.**");
+    originalAttributes.put(
+        TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_STREAM_VALUE);
+    final TopicMeta topicMeta = new TopicMeta(topicName, 1L, originalAttributes);
+    subscriptionInfo.createTopic(new CreateTopicPlan(topicMeta));
+
+    final PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            PipeStaticMeta.generateSubscriptionPipeName(topicName, consumerGroupId),
+            1L,
+            topicMeta.generateExtractorAttributes("user"),
+            topicMeta.generateProcessorAttributes(),
+            topicMeta.generateConnectorAttributes(consumerGroupId));
+    final PipeTaskInfo pipeTaskInfo = new PipeTaskInfo();
+    pipeTaskInfo.createPipe(new CreatePipePlanV2(pipeStaticMeta, new PipeRuntimeMeta()));
+
+    final Map<String, String> updatedAttributes =
+        Map.of(TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE);
+    final AlterTopicProcedure procedure =
+        new AlterTopicProcedure(
+            subscriptionInfo.deepCopyTopicMetaWithUpdatedAttributes(topicName, updatedAttributes),
+            updatedAttributes,
+            new AtomicReference<>(subscriptionInfo));
+    setField(procedure, "pipeTaskInfo", new AtomicReference<>(pipeTaskInfo));
+
+    try {
+      procedure.executeFromValidate(null);
+      fail("Expected mode change with an existing subscription Pipe to be rejected");
+    } catch (final SubscriptionException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains(TopicConstant.REALTIME_MODE_KEY));
+    }
+  }
+
+  @Test
+  public void testUnrelatedAlterMigratesLegacyRealtimeModeToStream() throws Exception {
+    final String topicName = "test_topic";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = new HashMap<>();
+    originalAttributes.put(TopicConstant.PATH_KEY, "root.**");
+    originalAttributes.put(TopicConstant.REALTIME_MODE_KEY, "hybrid");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta(topicName, 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes = Map.of("processor", "test_processor");
+    final AlterTopicProcedure procedure =
+        new AlterTopicProcedure(
+            subscriptionInfo.deepCopyTopicMetaWithUpdatedAttributes(topicName, updatedAttributes),
+            updatedAttributes,
+            new AtomicReference<>(subscriptionInfo));
+    procedure.executeFromValidate(null);
+
+    assertEquals(
+        TopicConstant.REALTIME_MODE_STREAM_VALUE,
+        procedure.getUpdatedTopicMeta().getConfig().getRealtimeMode());
+  }
+
+  private static void setField(final Object target, final String name, final Object value)
+      throws Exception {
+    Class<?> type = target.getClass();
+    while (type != null) {
+      try {
+        final Field field = type.getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(target, value);
+        return;
+      } catch (final NoSuchFieldException ignored) {
+        type = type.getSuperclass();
+      }
+    }
+    throw new NoSuchFieldException(name);
   }
 }

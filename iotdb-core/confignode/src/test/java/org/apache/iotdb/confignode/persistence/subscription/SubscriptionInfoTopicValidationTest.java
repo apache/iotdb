@@ -533,6 +533,112 @@ public class SubscriptionInfoTopicValidationTest {
     assertCreateRejected(subscriptionInfo, attributes, "unsupported mode");
   }
 
+  @Test
+  public void testValidateRealtimeMode() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.REALTIME_MODE_KEY, " BATCH ");
+
+    Assert.assertTrue(
+        subscriptionInfo.validateBeforeCreatingTopic(
+            new TCreateTopicReq("batch_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectInvalidRealtimeMode() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(" realtime.mode ", "hybrid");
+
+    assertCreateRejected(subscriptionInfo, attributes, "hybrid");
+  }
+
+  @Test
+  public void testCanonicalizeCreateAttributesBeforeValidation() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    attributes.put(" MODE ", TopicConstant.MODE_INCREMENTAL_VALUE);
+    attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
+    attributes.put(" realtime.mode ", TopicConstant.REALTIME_MODE_BATCH_VALUE);
+    final TCreateTopicReq request =
+        new TCreateTopicReq("table_topic").setTopicAttributes(attributes);
+
+    try {
+      subscriptionInfo.validateBeforeCreatingTopic(request);
+      Assert.fail("Expected incremental topic to reject realtime.mode");
+    } catch (final SubscriptionException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(TopicConstant.REALTIME_MODE_KEY));
+    }
+
+    Assert.assertEquals(
+        TopicConstant.MODE_INCREMENTAL_VALUE,
+        request.getTopicAttributes().get(TopicConstant.MODE_KEY));
+    Assert.assertEquals(
+        TopicConstant.REALTIME_MODE_BATCH_VALUE,
+        request.getTopicAttributes().get(TopicConstant.REALTIME_MODE_KEY));
+    Assert.assertFalse(request.getTopicAttributes().containsKey(" MODE "));
+  }
+
+  @Test
+  public void testRejectConflictingRealtimeModeAliases() {
+    for (final String alias :
+        new String[] {
+          PipeSourceConstant.SOURCE_REALTIME_MODE_KEY,
+          PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY
+        }) {
+      final Map<String, String> attributes = newInitialTableTopicAttributes();
+      attributes.put(TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE);
+      attributes.put(alias, TopicConstant.REALTIME_MODE_STREAM_VALUE);
+      assertCreateRejected(new SubscriptionInfo(), attributes, alias);
+    }
+  }
+
+  @Test
+  public void testRejectCaseInsensitiveDuplicateRealtimeModeAliases() {
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(PipeSourceConstant.SOURCE_REALTIME_MODE_KEY, "batch");
+    attributes.put("SOURCE.REALTIME.MODE", "batch");
+
+    assertCreateRejected(
+        new SubscriptionInfo(), attributes, PipeSourceConstant.SOURCE_REALTIME_MODE_KEY);
+  }
+
+  @Test
+  public void testRejectAlteringRealtimeMode() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = newInitialTableTopicAttributes();
+    originalAttributes.put(
+        TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_STREAM_VALUE);
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes = new HashMap<>(originalAttributes);
+    updatedAttributes.put(TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE);
+    try {
+      subscriptionInfo.validateBeforeAlteringTopic(
+          new TopicMeta("table_topic", 2L, updatedAttributes), true);
+      Assert.fail("Expected altering realtime.mode to be rejected");
+    } catch (final SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains(TopicConstant.REALTIME_MODE_KEY));
+    }
+  }
+
+  @Test
+  public void testAllowAlteringRealtimeModeWithoutSubscriptionPipe() throws Exception {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = newInitialTableTopicAttributes();
+    originalAttributes.put(
+        TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_STREAM_VALUE);
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes = new HashMap<>(originalAttributes);
+    updatedAttributes.put(TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE);
+    subscriptionInfo.validateBeforeAlteringTopic(
+        new TopicMeta("table_topic", 2L, updatedAttributes));
+  }
+
   @SuppressWarnings("deprecation")
   @Test
   public void testAcceptLegacyModeValues() throws Exception {

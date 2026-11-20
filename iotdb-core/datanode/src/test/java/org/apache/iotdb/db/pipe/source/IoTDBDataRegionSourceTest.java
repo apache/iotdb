@@ -20,17 +20,55 @@
 package org.apache.iotdb.db.pipe.source;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionHybridSource;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionTsFileSource;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class IoTDBDataRegionSourceTest {
+  @Test
+  public void testSubscriptionRealtimeModeSelectsExpectedSource() throws Exception {
+    for (final String[] modeAndExpectedSource :
+        new String[][] {
+          {
+            TopicConstant.REALTIME_MODE_STREAM_VALUE,
+            PipeRealtimeDataRegionHybridSource.class.getName()
+          },
+          {
+            TopicConstant.REALTIME_MODE_BATCH_VALUE,
+            PipeRealtimeDataRegionTsFileSource.class.getName()
+          }
+        }) {
+      final TopicMeta topicMeta =
+          new TopicMeta(
+              "topic",
+              1L,
+              Map.of(
+                  TopicConstant.PATH_KEY,
+                  "root.**",
+                  TopicConstant.REALTIME_MODE_KEY,
+                  modeAndExpectedSource[0]));
+      try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {
+        extractor.validate(
+            new PipeParameterValidator(
+                new PipeParameters(topicMeta.generateExtractorAttributes("user"))));
+        Assert.assertEquals(
+            modeAndExpectedSource[1],
+            extractor.getRealtimeSourceForCompletion().getClass().getName());
+      }
+    }
+  }
+
   @Test
   public void testIoTDBDataRegionExtractor() {
     try (final IoTDBDataRegionSource extractor = new IoTDBDataRegionSource()) {

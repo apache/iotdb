@@ -37,11 +37,19 @@ public class TopicMetaTest {
         new TopicMeta(
             "topic",
             1L,
-            Map.of("Tag-Filter", "region = \"north\"", "source.CustomOption", "CaseSensitive"));
+            Map.of(
+                "Tag-Filter",
+                "region = \"north\"",
+                "RealTime.Mode",
+                " BATCH ",
+                "source.CustomOption",
+                "CaseSensitive"));
     final TopicMeta updated =
         original.deepCopyWithUpdatedAttributes(Map.of(" TAG-FILTER ", "region = \"North\""));
-    Assert.assertEquals(2, updated.getConfig().getAttribute().size());
+    Assert.assertEquals(3, updated.getConfig().getAttribute().size());
     Assert.assertEquals("region = \"North\"", updated.getConfig().getTagFilter());
+    Assert.assertEquals(
+        TopicConstant.REALTIME_MODE_BATCH_VALUE, updated.getConfig().getRealtimeMode());
     Assert.assertEquals(
         "CaseSensitive", updated.getConfig().getAttribute().get("source.CustomOption"));
     Assert.assertEquals("region = \"north\"", original.getConfig().getTagFilter());

@@ -22,6 +22,9 @@ package org.apache.iotdb.rpc.subscription.config;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +40,7 @@ public class TopicConfigTest {
     attributes.put(TopicConstant.OWNER_EPOCH_KEY, "1");
     attributes.put(TopicConstant.RETENTION_MS_KEY, "60000");
     attributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "1000");
+    attributes.put(TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE);
     attributes.put("future.non-filtering-property", "value");
     final TopicConfig updated = new TopicConfig(attributes);
     updated.inheritFilterVersion(original);
@@ -100,6 +104,57 @@ public class TopicConfigTest {
 
     Assert.assertTrue(topicConfigWithMode(" INITIAL ").isInitialMode());
     Assert.assertTrue(topicConfigWithMode(" INCREMENTAL ").isIncrementalMode());
+  }
+
+  @Test
+  public void testRealtimeModeDefaultsToStreamAndSupportsBatch() {
+    final TopicConfig defaultConfig = new TopicConfig();
+    Assert.assertEquals(
+        TopicConstant.REALTIME_MODE_STREAM_VALUE,
+        defaultConfig.getAttributesWithSourceRealtimeMode().get(TopicConstant.REALTIME_MODE_KEY));
+
+    final TopicConfig batchConfig =
+        new TopicConfig(Collections.singletonMap("Realtime.Mode", " BATCH "));
+    Assert.assertEquals(TopicConstant.REALTIME_MODE_BATCH_VALUE, batchConfig.getRealtimeMode());
+    Assert.assertTrue(TopicConfig.isValidRealtimeMode(batchConfig.getRealtimeMode()));
+    Assert.assertEquals(
+        TopicConstant.REALTIME_MODE_BATCH_VALUE,
+        batchConfig.getAttributesWithSourceRealtimeMode().get(TopicConstant.REALTIME_MODE_KEY));
+    Assert.assertFalse(TopicConfig.isValidRealtimeMode("hybrid"));
+  }
+
+  @Test
+  public void testRealtimeModeAliasesDoNotOverrideCanonicalTopicMode() {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE);
+    attributes.put(TopicConstant.SOURCE_REALTIME_MODE_KEY, " BATCH ");
+    attributes.put(TopicConstant.EXTRACTOR_REALTIME_MODE_KEY, "BATCH");
+    final TopicConfig config = new TopicConfig(attributes);
+
+    Assert.assertEquals(TopicConstant.REALTIME_MODE_BATCH_VALUE, config.getRealtimeMode());
+    Assert.assertFalse(
+        config.getAttributesWithSourcePrefix().containsKey(TopicConstant.SOURCE_REALTIME_MODE_KEY));
+    Assert.assertEquals(
+        TopicConstant.REALTIME_MODE_BATCH_VALUE,
+        config.getAttributesWithSourceRealtimeMode().get(TopicConstant.REALTIME_MODE_KEY));
+    Assert.assertEquals(
+        TopicConstant.REALTIME_MODE_DEFAULT_VALUE,
+        new TopicConfig(Collections.singletonMap(TopicConstant.REALTIME_MODE_KEY, "hybrid"))
+            .getEffectiveRealtimeMode());
+  }
+
+  @Test
+  public void testRealtimeModeSurvivesSerialization() throws Exception {
+    final TopicConfig original =
+        new TopicConfig(
+            Collections.singletonMap(
+                TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE));
+    final ByteArrayOutputStream output = new ByteArrayOutputStream();
+    original.serialize(new DataOutputStream(output));
+
+    final TopicConfig restored = TopicConfig.deserialize(ByteBuffer.wrap(output.toByteArray()));
+
+    Assert.assertEquals(TopicConstant.REALTIME_MODE_BATCH_VALUE, restored.getRealtimeMode());
   }
 
   @Test
