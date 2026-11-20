@@ -20,7 +20,20 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.ProcedureManager;
+import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.procedure.NoopProcedureStore;
+import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.state.ProcedureState;
+import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableProcedureInfo;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -28,9 +41,126 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.mockito.Mockito.mock;
 
 public class DropTableColumnProcedureTest {
+  @Test
+  public void testColumnFailurePersistenceDoesNotBlockShutdown() throws Exception {
+    final AtomicBoolean allowCompletion = new AtomicBoolean();
+    final CountDownLatch completionRetried = new CountDownLatch(1);
+    final AtomicInteger attempts = new AtomicInteger();
+    final NoopProcedureStore store =
+        new NoopProcedureStore() {
+          @Override
+          public void update(Procedure procedure) {
+            if (procedure.getState() == ProcedureState.ROLLEDBACK && !allowCompletion.get()) {
+              if (attempts.incrementAndGet() >= 2) {
+                completionRetried.countDown();
+              }
+              throw new IllegalStateException("column failure store unavailable");
+            }
+          }
+        };
+    final DropTableColumnProcedure procedure =
+        new DropTableColumnProcedure(false) {
+          @Override
+          protected Flow executeFromState(ConfigNodeProcedureEnv env, DropTableColumnState state) {
+            setFailure(new ProcedureException("column deletion failed"));
+            return Flow.NO_MORE_STATE;
+          }
+        };
+    final ProcedureExecutor<ConfigNodeProcedureEnv> executor = new ProcedureExecutor<>(null, store);
+    final ProcedureManager manager = progressManager(executor);
+    final ExecutorService joiner = Executors.newSingleThreadExecutor();
+    store.start();
+    executor.init(1);
+    executor.startWorkers();
+    try {
+      executor.submitProcedureAndPersist(procedure);
+      Assert.assertTrue(completionRetried.await(10, TimeUnit.SECONDS));
+      final TDropTableProcedureInfo progress = manager.getDropTableColumnProcedures().get(0);
+      Assert.assertEquals("RUNNABLE", progress.getState());
+      Assert.assertEquals("FINALIZING", progress.getProgress());
+      Assert.assertEquals("column deletion failed", progress.getErrorMessage());
+      executor.stop();
+      final Future<?> stopped = joiner.submit(executor::join);
+      stopped.get(5, TimeUnit.SECONDS);
+      Assert.assertFalse(executor.isCompleted(procedure.getProcId()));
+      Assert.assertTrue(executor.getProcedures().containsKey(procedure.getProcId()));
+    } finally {
+      allowCompletion.set(true);
+      executor.stop();
+      executor.join();
+      joiner.shutdownNow();
+      store.stop();
+    }
+  }
+
+  @Test
+  public void testColumnCompletionWaitsForPersistence() throws Exception {
+    final AtomicBoolean allowCompletion = new AtomicBoolean();
+    final AtomicInteger attempts = new AtomicInteger();
+    final CountDownLatch completionRetried = new CountDownLatch(1);
+    final NoopProcedureStore store =
+        new NoopProcedureStore() {
+          @Override
+          public void update(Procedure procedure) {
+            if (procedure.isSuccess() && !allowCompletion.get()) {
+              if (attempts.incrementAndGet() >= 2) {
+                completionRetried.countDown();
+              }
+              throw new IllegalStateException("column completion store unavailable");
+            }
+          }
+        };
+    final DropTableColumnProcedure procedure =
+        new DropTableColumnProcedure(false) {
+          @Override
+          protected Flow executeFromState(ConfigNodeProcedureEnv env, DropTableColumnState state) {
+            return Flow.NO_MORE_STATE;
+          }
+        };
+    final ProcedureExecutor<ConfigNodeProcedureEnv> executor = new ProcedureExecutor<>(null, store);
+    final ProcedureManager manager = progressManager(executor);
+    store.start();
+    executor.init(1);
+    executor.startWorkers();
+    try {
+      executor.submitProcedureAndPersist(procedure);
+      Assert.assertTrue(completionRetried.await(10, TimeUnit.SECONDS));
+      Assert.assertFalse(executor.isCompleted(procedure.getProcId()));
+      final TDropTableProcedureInfo progress = manager.getDropTableColumnProcedures().get(0);
+      Assert.assertEquals("RUNNABLE", progress.getState());
+      Assert.assertEquals("FINALIZING", progress.getProgress());
+      allowCompletion.set(true);
+      ProcedureTestUtil.waitForProcedure(executor, procedure.getProcId());
+      Assert.assertTrue(executor.isCompleted(procedure.getProcId()));
+      Assert.assertEquals("SUCCESS", manager.getDropTableColumnProcedures().get(0).getState());
+    } finally {
+      executor.stop();
+      executor.join();
+      store.stop();
+    }
+  }
+
+  private static ProcedureManager progressManager(
+      final ProcedureExecutor<ConfigNodeProcedureEnv> executor) {
+    final ProcedureManager manager =
+        new ProcedureManager(mock(ConfigManager.class), mock(ProcedureInfo.class));
+    manager.setExecutor(executor);
+    return manager;
+  }
+
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final DropTableColumnProcedure dropTableColumnProcedure =
@@ -49,5 +179,53 @@ public class DropTableColumnProcedureTest {
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(dropTableColumnProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void modProgressSurvivesSerialization() throws Exception {
+    for (final boolean isGeneratedByPipe : new boolean[] {false, true}) {
+      for (final TDropTableModProgress progress :
+          new TDropTableModProgress[] {
+            new TDropTableModProgress(4),
+            new TDropTableModProgress(4).setRemainingModFileCount(6),
+            new TDropTableModProgress(10).setRemainingModFileCount(0)
+          }) {
+        final DropTableColumnProcedure procedure =
+            new DropTableColumnProcedure(
+                "database", "table", "query", "reading", isGeneratedByPipe);
+        final Field trackerField = DropTableColumnProcedure.class.getDeclaredField("modProgress");
+        trackerField.setAccessible(true);
+        final Field progressField =
+            TableDeletionModProgress.class.getDeclaredField("modFileProgress");
+        progressField.setAccessible(true);
+        progressField.set(trackerField.get(procedure), progress);
+        final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        procedure.serialize(new DataOutputStream(bytes));
+        final ByteBuffer buffer = ByteBuffer.wrap(bytes.toByteArray());
+        buffer.getShort();
+        final DropTableColumnProcedure recovered = new DropTableColumnProcedure(isGeneratedByPipe);
+        recovered.deserialize(buffer);
+        Assert.assertEquals("reading", recovered.getColumnName());
+        Assert.assertEquals(progress, recovered.getModFileProgress());
+        Assert.assertFalse(buffer.hasRemaining());
+        recovered.getModFileProgress().setWrittenModFileCount(0);
+        Assert.assertEquals(progress, recovered.getModFileProgress());
+      }
+    }
+  }
+
+  @Test
+  public void deserializeProcedureWithoutModProgress() throws Exception {
+    final DropTableColumnProcedure procedure =
+        new DropTableColumnProcedure("database", "table", "query", "reading", false);
+    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    // The old column procedure format ended after the column name and category.
+    procedure.innerSerialize(new DataOutputStream(bytes));
+    final ByteBuffer buffer = ByteBuffer.wrap(bytes.toByteArray());
+    final DropTableColumnProcedure recovered = new DropTableColumnProcedure(false);
+    recovered.deserialize(buffer);
+    Assert.assertEquals(procedure, recovered);
+    Assert.assertNull(recovered.getModFileProgress());
+    Assert.assertFalse(buffer.hasRemaining());
   }
 }

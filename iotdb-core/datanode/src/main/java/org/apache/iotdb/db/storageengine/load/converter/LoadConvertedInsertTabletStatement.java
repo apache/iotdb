@@ -53,6 +53,10 @@ public class LoadConvertedInsertTabletStatement extends PipeConvertedInsertTable
       return false;
     }
 
+    if (dataType.isCompatible(dataTypes[columnIndex])) {
+      return originalCheckAndCastDataType(columnIndex, dataType);
+    }
+
     LOGGER.info(
         StorageEngineMessages.STORAGE_LOG_LOAD_INSERTING_TABLET_TO_CASTING_TYPE_FROM_TO_AE808A8B,
         devicePath,

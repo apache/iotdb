@@ -2456,12 +2456,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteDALFolderAndClose() {
-    Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId.getId()))
-        .ifPresent(
-            manager -> {
-              manager.close();
-              manager.removeDAL();
-            });
+    DeletionResourceManager.closeAndRemoveDAL(dataRegionId.getId());
   }
 
   /** close all tsfile resource */
@@ -3509,9 +3504,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     final long procedureId = DropTableModProgress.procedureId(node.getPlanNodeId());
     final DropTableModProgress progress =
-        procedureId >= 0 && modEntries.size() == 1 && modEntries.get(0).isDroppingTable()
-            ? new DropTableModProgress()
-            : null;
+        procedureId >= 0 && modEntries.size() == 1 ? new DropTableModProgress() : null;
 
     logger.info(StorageEngineMessages.DELETION_EXECUTING_TABLE_DELETION, node);
 

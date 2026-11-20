@@ -79,6 +79,10 @@ public class TsFileTableGenerator implements AutoCloseable {
     table2ColumnCategory.put(tableName, columnCategoryList);
   }
 
+  public void resetRandom(final long seed) {
+    random = new Random(seed);
+  }
+
   public void generateData(final String tableName, final int number, final long timeGap)
       throws IOException, WriteProcessException {
     final List<IMeasurementSchema> schemas = table2MeasurementSchema.get(tableName);

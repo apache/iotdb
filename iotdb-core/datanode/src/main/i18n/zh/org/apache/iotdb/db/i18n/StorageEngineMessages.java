@@ -788,6 +788,8 @@ public final class StorageEngineMessages {
   public static final String USER_IN_ACTIVE_LOAD_PATH_DOES_NOT_EXIST =
       "Active 加载路径中的用户不存在";
   public static final String ERROR_MOVING_FILE_TO_FAIL_DIR = "将文件 {} 移动到失败目录时发生错误。";
+  public static final String LOG_FAILED_TO_READ_ACTIVE_LOAD_FAILURE_METADATA_ARG_E152544E =
+      "读取主动 LOAD 失败元数据 {} 失败";
   public static final String FAILED_COUNT_FILES_IN_FAIL_DIR = "统计失败目录中的失败文件数量失败。";
 
   public static final String STRING_NOT_LEGAL_REPAIR_LOG = "字符串 '%s' 不是合法的修复日志";

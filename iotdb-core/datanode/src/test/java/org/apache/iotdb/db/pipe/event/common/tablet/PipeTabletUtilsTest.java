@@ -20,13 +20,19 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class PipeTabletUtilsTest {
@@ -48,5 +54,67 @@ public class PipeTabletUtilsTest {
 
     Assert.assertFalse(tablet.isNull(0, 0));
     Assert.assertTrue(tablet.isNull(0, 1));
+  }
+
+  @Test
+  public void testPutFieldValueMatchesObjectConversion() {
+    final TSDataType[] types = {
+      TSDataType.BOOLEAN,
+      TSDataType.INT32,
+      TSDataType.INT64,
+      TSDataType.TIMESTAMP,
+      TSDataType.FLOAT,
+      TSDataType.DOUBLE,
+      TSDataType.DATE,
+      TSDataType.TEXT,
+      TSDataType.STRING,
+      TSDataType.BLOB,
+      TSDataType.OBJECT
+    };
+    final Object[] values = {
+      true,
+      123456789,
+      9876543210L,
+      Long.MIN_VALUE,
+      -0.0f,
+      Double.longBitsToDouble(0x7ff0000000000001L),
+      DateUtils.parseDateExpressionToInt(LocalDate.of(2024, 2, 29)),
+      new Binary(new byte[] {1, 2, 3}),
+      new Binary(new byte[] {4, 5}),
+      new Binary(new byte[0]),
+      new Binary(new byte[16])
+    };
+    for (int i = 0; i < types.length; i++) {
+      final List<IMeasurementSchema> schemas =
+          Collections.singletonList(new MeasurementSchema("s1", types[i]));
+      final Tablet expected = new Tablet("root.sg.d1", schemas, 1);
+      final Tablet actual = new Tablet("root.sg.d1", schemas, 1);
+      final Field field = Type.fromTsDataType(types[i]).getField(values[i]);
+      PipeTabletUtils.markNullValue(actual, 0, 0);
+
+      PipeTabletUtils.putValue(expected, 0, 0, types[i], field.getObjectValue(types[i]));
+      PipeTabletUtils.putFieldValue(actual, 0, 0, types[i], field);
+
+      Assert.assertFalse(actual.isNull(0, 0));
+      Assert.assertEquals(expected.getValue(0, 0), actual.getValue(0, 0));
+    }
+  }
+
+  @Test
+  public void testPutFieldValuePreservesNullFieldDefaults() {
+    for (final TSDataType type :
+        Arrays.asList(TSDataType.INT32, TSDataType.DATE, TSDataType.STRING, TSDataType.BLOB)) {
+      final List<IMeasurementSchema> schemas =
+          Collections.singletonList(new MeasurementSchema("s1", type));
+      final Tablet expected = new Tablet("root.sg.d1", schemas, 1);
+      final Tablet actual = new Tablet("root.sg.d1", schemas, 1);
+      PipeTabletUtils.markNullValue(actual, 0, 0);
+
+      PipeTabletUtils.putValue(expected, 0, 0, type, null);
+      PipeTabletUtils.putFieldValue(actual, 0, 0, type, new Field(null));
+
+      Assert.assertFalse(actual.isNull(0, 0));
+      Assert.assertEquals(expected.getValue(0, 0), actual.getValue(0, 0));
+    }
   }
 }

@@ -396,6 +396,7 @@ struct TDeleteColumnDataReq {
   2: required string tableName,
   3: required string columnName,
   4: required bool isAttributeColumn
+  5: optional i64 procedureId
 }
 
 struct TDeleteDataOrDevicesForDropTableReq {
@@ -673,12 +674,21 @@ struct TPushConsumerGroupMetaRespExceptionMessage {
 }
 
 struct TPullCommitProgressReq {
+  1: optional bool includeConsensusQueueReadiness // Request a point-in-time queue binding snapshot.
+}
+
+// One entry means all matching local DataRegion queues for this subscription are bound.
+struct TConsensusSubscriptionQueueReadiness {
+  1: required string topicName
+  2: required string consumerGroupId
+  3: required bool tableModel
 }
 
 struct TPullCommitProgressResp {
   1: required common.TSStatus status
   2: optional map<string, binary> commitRegionProgress
   3: optional map<string, binary> subscriptionProgress
+  4: optional list<TConsensusSubscriptionQueueReadiness> consensusQueueReadiness
 }
 
 struct TSyncSubscriptionProgressReq {

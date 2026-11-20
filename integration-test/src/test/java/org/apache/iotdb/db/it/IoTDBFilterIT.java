@@ -215,21 +215,23 @@ public class IoTDBFilterIT {
   @Test
   public void testFilterWithUDTF() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement();
-        ResultSet containsResultSet =
-            statement.executeQuery(
-                "select s1 from root.vehicle.testUDTF where STRING_CONTAINS(s1, 's'='s')");
-        ResultSet sinResultSet =
-            statement.executeQuery("select s1 from root.vehicle.testUDTF where sin(s2) = 0")) {
+        Statement statement = connection.createStatement()) {
       int containsCnt = 0;
-      while (containsResultSet.next()) {
-        ++containsCnt;
+      try (ResultSet containsResultSet =
+          statement.executeQuery(
+              "select s1 from root.vehicle.testUDTF where STRING_CONTAINS(s1, 's'='s')")) {
+        while (containsResultSet.next()) {
+          ++containsCnt;
+        }
       }
       assertEquals(1, containsCnt);
 
       int sinCnt = 0;
-      while (sinResultSet.next()) {
-        ++sinCnt;
+      try (ResultSet sinResultSet =
+          statement.executeQuery("select s1 from root.vehicle.testUDTF where sin(s2) = 0")) {
+        while (sinResultSet.next()) {
+          ++sinCnt;
+        }
       }
       assertEquals(1, sinCnt);
       assertTestFail(

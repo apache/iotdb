@@ -456,10 +456,10 @@ public class ConsensusManager {
    *     NEED_REDIRECTION otherwise
    */
   public TSStatus confirmLeader() {
-    return confirmLeader(true);
+    return confirmLeader(false);
   }
 
-  private TSStatus confirmLeader(final boolean checkLoadReady) {
+  private TSStatus confirmLeader(final boolean forInternalProcedure) {
     if (!isLeader()) {
       TSStatus result = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
       result.setMessage(
@@ -479,11 +479,11 @@ public class ConsensusManager {
           ManagerMessages
               .MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_NOT_READY_YET_PLEASE_TRY_AGAIN_F0B10645);
     }
-    if (!stateMachine.areLeaderServicesReady()) {
+    if (!stateMachine.areLeaderServicesReady(forInternalProcedure)) {
       return getLeaderWarmingUpStatus(
           ManagerMessages.MESSAGE_CURRENT_CONFIGNODE_LEADER_SERVICE_NOT_READY);
     }
-    if (checkLoadReady && !configManager.getLoadManager().isLoadReady()) {
+    if (!forInternalProcedure && !configManager.getLoadManager().isLoadReady()) {
       return getLeaderWarmingUpStatus(configManager.getLoadManager().getLoadReadyReason());
     }
 
@@ -491,7 +491,7 @@ public class ConsensusManager {
   }
 
   public TSStatus confirmLeaderForInternalProcedure() {
-    return confirmLeader(false);
+    return confirmLeader(true);
   }
 
   private void waitForLeaderReady() {
