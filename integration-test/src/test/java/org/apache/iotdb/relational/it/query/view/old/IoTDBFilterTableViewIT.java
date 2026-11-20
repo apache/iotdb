@@ -227,6 +227,22 @@ public class IoTDBFilterTableViewIT {
   }
 
   @Test
+  public void testCountDevicesWithFunctionOnTag() {
+    // The tag position in the device path depends on the depth of the view's path prefix:
+    // root.sg1.** has two levels and root.vehicle.testNaN.** has three.
+    tableResultSetEqualTest(
+        "count devices from sg1 where upper(device) = 'D1'",
+        new String[] {"count(devices)"},
+        new String[] {"1,"},
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "count devices from testNaN where upper(device) = 'D1'",
+        new String[] {"count(devices)"},
+        new String[] {"1,"},
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testCalculateWithNull() {
     tableResultSetEqualTest(
         "select s1 + null from sg1",
