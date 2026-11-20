@@ -122,6 +122,42 @@ libpq-based clients only from libpq 15 on, which matches IP-address names).
   `information_schema.pg_is_*`. IoTDB clients see them in `SHOW TABLES FROM information_schema`.
   They list only what the user may read.
 
+## Tree-model data
+
+The service reads the table model only. Tree-model data becomes visible through a **table view**
+over a path pattern: the path levels below the prefix become tags, the measurements become fields.
+For devices `root.factory.<line>.<machine>` with the measurements `temperature` and `running`:
+
+```sql
+-- in the table model (CLI: -sql_dialect table)
+CREATE DATABASE factory;
+CREATE VIEW factory.machines (
+  line STRING TAG,
+  machine STRING TAG,
+  temperature DOUBLE FIELD,
+  running BOOLEAN FIELD
+) AS root.factory.**;
+```
+
+PostgreSQL clients then see the view like a table (`relkind` `v`), for example in psql:
+
+```
+iotdb=> \dv factory.*
+         List of relations
+ Schema  |   Name   | Type | Owner
+---------+----------+------+-------
+ factory | machines | view | root
+
+iotdb=> SELECT line, avg(temperature) FROM factory.machines GROUP BY line ORDER BY line;
+ line  |  avg
+-------+-------
+ line1 | 21.25
+ line2 |  19.5
+```
+
+Clients that list views show it next to the tables. One view is needed per device pattern;
+the service does not create views by itself.
+
 ## Supported SQL
 
 The rules are documented in `PgToTableSql`, `DateTimeRules` and `ConstructCheck`. In short:
@@ -147,7 +183,7 @@ The rules are documented in `PgToTableSql`, `DateTimeRules` and `ConstructCheck`
 ## Limitations
 
 - Read-only: `INSERT`, `UPDATE`, `DELETE`, DDL and `COPY` are refused with 25006.
-- Table model only; tree-model data is visible through table views.
+- Table model only; tree-model data is visible through table views (see "Tree-model data").
 - Constructs without an exact equivalent are refused with 0A000 naming them, among them arrays,
   `numeric(p,s)`, `INTERVAL` months/years, explicit window frames, `lpad`/`rpad`.
 - Timestamps with nanosecond precision are sent with microsecond precision.
