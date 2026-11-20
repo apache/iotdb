@@ -19,14 +19,24 @@
 
 package org.apache.iotdb.it.fault.metadata;
 
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.state.ProcedureState;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +53,7 @@ public final class MetadataTestHooks {
   public static final String ATTRIBUTE_UPDATE = "attribute-update";
   public static final String SNAPSHOT_CREATED = "snapshot-created";
   public static final String SNAPSHOT_LOADED = "snapshot-loaded";
+  private static final String COMPLETION_ARMED_SUFFIX = ".armed";
 
   private MetadataTestHooks() {}
 
@@ -119,6 +130,60 @@ public final class MetadataTestHooks {
       throw new AssertionError("Cannot observe the real procedure ID", e);
     }
     return fail(point);
+  }
+
+  private static String completionPrefix(final String id) {
+    return "procedure-completion." + id + ".";
+  }
+
+  public static Path armProcedureCompletion(final Path directory, final String id)
+      throws IOException {
+    return Files.createTempFile(directory, completionPrefix(id), COMPLETION_ARMED_SUFFIX);
+  }
+
+  public static Path procedureCompletionMarker(final Path control, final ProcedureState state) {
+    return control.resolveSibling(control.getFileName() + "." + state.name());
+  }
+
+  public static void disarmProcedureCompletion(final Path control) throws IOException {
+    Files.deleteIfExists(control);
+    Files.deleteIfExists(procedureCompletionMarker(control, ProcedureState.SUCCESS));
+    Files.deleteIfExists(procedureCompletionMarker(control, ProcedureState.ROLLEDBACK));
+  }
+
+  public static void procedureApplied(final ByteBuffer logData) {
+    try {
+      if (logData.remaining() < Short.BYTES
+          || logData.getShort(logData.position())
+              != ConfigPhysicalPlanType.UpdateProcedure.getPlanType()) {
+        return;
+      }
+      final Procedure<?> procedure =
+          ((UpdateProcedurePlan) ConfigPhysicalPlan.Factory.create(logData)).getProcedure();
+      if (!(procedure instanceof DeleteTimeSeriesProcedure) || !procedure.isFinished()) {
+        return;
+      }
+      final String pattern =
+          completionPrefix(Long.toString(procedure.getProcId())) + "*" + COMPLETION_ARMED_SUFFIX;
+      try (DirectoryStream<Path> controls = Files.newDirectoryStream(directory(), pattern)) {
+        for (Path control : controls) {
+          try {
+            Files.move(
+                control,
+                procedureCompletionMarker(control, procedure.getState()),
+                StandardCopyOption.ATOMIC_MOVE);
+          } catch (NoSuchFileException | FileAlreadyExistsException ignored) {
+          }
+        }
+      }
+    } catch (IOException | RuntimeException failure) {
+      try {
+        record("instrumentation-error", "ConfigRegion procedure completion: " + failure);
+      } catch (RuntimeException recordFailure) {
+        failure.addSuppressed(recordFailure);
+        failure.printStackTrace(System.err);
+      }
+    }
   }
 
   public static String captureAttributeUpdate() {

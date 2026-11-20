@@ -54,6 +54,8 @@ public final class MetadataTestAgent {
   private static final String HOOKS = MetadataTestHooks.class.getName();
   private static final String STATE_MACHINE =
       "org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure";
+  private static final String RATIS_STATE_MACHINE =
+      "org.apache.iotdb.consensus.ratis.ApplicationStateMachineProxy";
   private static final String SCHEMA_STATE_MACHINE =
       "org.apache.iotdb.db.consensus.statemachine.schemaregion.SchemaRegionStateMachine";
   private static final String RATIS_CONSENSUS = "org.apache.iotdb.consensus.ratis.RatisConsensus";
@@ -68,6 +70,7 @@ public final class MetadataTestAgent {
       new HashSet<>(
           Arrays.asList(
               STATE_MACHINE,
+              RATIS_STATE_MACHINE,
               SCHEMA_STATE_MACHINE,
               RATIS_CONSENSUS,
               CONFIG_CLIENT,
@@ -168,6 +171,20 @@ public final class MetadataTestAgent {
             if (barrier.matches != 1) {
               throw new CannotCompileException("Expected exactly one procedure state transition");
             }
+            break;
+          case RATIS_STATE_MACHINE:
+            type.getDeclaredMethod("applyTransaction")
+                .insertAfter(
+                    "{ if (consensusGroupType == "
+                        + "org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion"
+                        + " && ((org.apache.iotdb.common.rpc.thrift.TSStatus) "
+                        + "((org.apache.iotdb.consensus.ratis.ResponseMessage) $_.getNow(null))"
+                        + ".getContentHolder()).getCode() == "
+                        + STATUS_CODES
+                        + "SUCCESS_STATUS.getStatusCode()) { "
+                        + HOOKS
+                        + ".procedureApplied($1.getLogEntry().getStateMachineLogEntry()"
+                        + ".getLogData().asReadOnlyByteBuffer()); } }");
             break;
           case SCHEMA_STATE_MACHINE:
             snapshotBoundaries(type);

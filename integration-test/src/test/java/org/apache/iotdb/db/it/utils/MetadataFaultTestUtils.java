@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
@@ -680,7 +681,12 @@ public final class MetadataFaultTestUtils {
     final ExecutorService executor = Executors.newSingleThreadExecutor();
     final int oldIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
     final ConfigNodeWrapper old = EnvFactory.getEnv().getConfigNodeWrapper(oldIndex);
-    Future<Exception> result = null;
+    final boolean requireOriginalDeleteSuccess =
+        !rollback
+            && "DeleteTimeSeriesProcedure".equals(procedure)
+            && "DELETE_TIMESERIES_SCHEMA".equals(state);
+    Future<SQLException> result = null;
+    final List<Path> completionObservations = new ArrayList<>();
     try {
       for (ConfigNodeWrapper node : EnvFactory.getEnv().getConfigNodeWrapperList()) {
         faults.add(new Fault(node, point).arm("pause"));
@@ -696,6 +702,13 @@ public final class MetadataFaultTestUtils {
                 }
               });
       final String id = faults.get(oldIndex).awaitHit();
+      if (requireOriginalDeleteSuccess) {
+        for (ConfigNodeWrapper node : EnvFactory.getEnv().getConfigNodeWrapperList()) {
+          completionObservations.add(
+              MetadataTestHooks.armProcedureCompletion(
+                  Paths.get(node.getNodePath(), MetadataTestHooks.DIRECTORY), id));
+        }
+      }
       assertFalse("DDL finished before its pause", result.isDone());
       whilePaused.execute();
       old.stopForcibly();
@@ -721,9 +734,9 @@ public final class MetadataFaultTestUtils {
       if (rollback) {
         faults.get(newIndex).awaitFailure();
       }
-      final Exception outcome = result.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      final SQLException outcome = result.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
       if (outcome != null) {
-        final int code = ((SQLException) outcome).getErrorCode();
+        final int code = outcome.getErrorCode();
         assertTrue(
             outcome.toString(),
             code == TSStatusCode.INTERNAL_REQUEST_TIME_OUT.getStatusCode()
@@ -737,12 +750,35 @@ public final class MetadataFaultTestUtils {
                 || (!rollback
                     && "CreateTableProcedure".equals(procedure)
                     && "COMMIT_RELEASE".equals(state)
-                    && code == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()));
+                    && code == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode())
+                || (requireOriginalDeleteSuccess
+                    && code == TSStatusCode.PATH_NOT_EXIST.getStatusCode()));
+      }
+      if (requireOriginalDeleteSuccess) {
+        assertProcedureSucceeded(id, completionObservations);
       }
     } finally {
       try {
-        for (Fault fault : faults) {
-          fault.close();
+        try {
+          IOException observationCleanupFailure = null;
+          for (Path observation : completionObservations) {
+            try {
+              MetadataTestHooks.disarmProcedureCompletion(observation);
+            } catch (IOException e) {
+              if (observationCleanupFailure == null) {
+                observationCleanupFailure = e;
+              } else {
+                observationCleanupFailure.addSuppressed(e);
+              }
+            }
+          }
+          if (observationCleanupFailure != null) {
+            throw observationCleanupFailure;
+          }
+        } finally {
+          for (Fault fault : faults) {
+            fault.close();
+          }
         }
       } finally {
         if (!old.isAlive()) {
@@ -771,5 +807,32 @@ public final class MetadataFaultTestUtils {
                 });
       }
     }
+  }
+
+  private static void assertProcedureSucceeded(final String id, final List<Path> observations) {
+    assertFalse("No completion observations were armed", observations.isEmpty());
+    await()
+        .alias("committed SUCCESS for original DeleteTimeSeriesProcedure " + id)
+        .atMost(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              boolean succeeded = false;
+              for (Path observation : observations) {
+                final Path error = observation.resolveSibling("hit.instrumentation-error");
+                if (Files.exists(error)) {
+                  throw new AssertionError(Files.readString(error));
+                }
+                assertFalse(
+                    "Original DeleteTimeSeriesProcedure " + id + " rolled back",
+                    Files.exists(
+                        MetadataTestHooks.procedureCompletionMarker(
+                            observation, ProcedureState.ROLLEDBACK)));
+                succeeded |=
+                    Files.exists(
+                        MetadataTestHooks.procedureCompletionMarker(
+                            observation, ProcedureState.SUCCESS));
+              }
+              return succeeded;
+            });
   }
 }
