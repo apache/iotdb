@@ -1057,6 +1057,48 @@ public class AlignedTVListTest {
   }
 
   @Test
+  public void testNullCellsAreNeverMaterializedAsDefaultValues() {
+    // A block that holds no value for a column must stay "no array at all" so that null is never
+    // confused with a default value such as 0. This is the same representation the list used before
+    // the sparse-write rework.
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            new ArrayList<>(Arrays.asList(TSDataType.INT64, TSDataType.INT64)));
+    for (int row = 0; row < ARRAY_SIZE; row++) {
+      tvList.putAlignedValue(row, new Object[] {(long) row, null});
+    }
+    // Column 1 never got a value in block 0: the slot is null, not a zero-filled array.
+    Assert.assertNull(tvList.getValues().get(1).get(0));
+    Assert.assertTrue(tvList.getBitMaps() == null || tvList.getBitMaps().get(1) == null);
+    for (int row = 0; row < ARRAY_SIZE; row++) {
+      Assert.assertTrue(tvList.isNullValue(row, 1));
+    }
+
+    // The first real value in block 1 materializes only that block; block 0 stays null.
+    tvList.putAlignedValue(ARRAY_SIZE, new Object[] {(long) ARRAY_SIZE, 7L});
+    Assert.assertNull(tvList.getValues().get(1).get(0));
+    Assert.assertNotNull(tvList.getValues().get(1).get(1));
+    Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE, 1));
+    Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE - 1, 1));
+
+    // An explicit null is recorded in the bitmap and must not be read back as a value.
+    tvList.putAlignedValue(ARRAY_SIZE + 1L, new Object[] {(long) ARRAY_SIZE + 1, null});
+    Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE + 1, 1));
+    Assert.assertTrue(tvList.getBitMaps().get(1).get(1).isMarked(1));
+    Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE, 1));
+
+    // The flush snapshot must report exactly the same nulls.
+    tvList.materializeOpenBlockForRead();
+    Assert.assertNull(tvList.getValues().get(1).get(0));
+    for (int row = 0; row < ARRAY_SIZE; row++) {
+      Assert.assertTrue(tvList.isNullValue(row, 1));
+    }
+    Assert.assertFalse(tvList.isNullValue(ARRAY_SIZE, 1));
+    Assert.assertTrue(tvList.isNullValue(ARRAY_SIZE + 1, 1));
+    tvList.clear();
+  }
+
+  @Test
   public void testStructureRamCostTracksLazyIndicesAfterSort() {
     AlignedTVList tvList =
         AlignedTVList.newAlignedList(new ArrayList<>(Collections.singletonList(TSDataType.INT64)));

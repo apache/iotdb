@@ -155,7 +155,8 @@ public class AlignedWritableMemChunkTest {
     // report exactly the same nulls and values.
     int originalThreshold = IoTDBDescriptor.getInstance().getConfig().getTvListSortThreshold();
     IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(0);
-    int columns = 8;
+    int columns = 9;
+    int writtenColumns = 8;
     int rows = 1220;
     List<IMeasurementSchema> schemas = new ArrayList<>(columns);
     for (int column = 0; column < columns; column++) {
@@ -165,13 +166,13 @@ public class AlignedWritableMemChunkTest {
     Long[][] expected = new Long[rows][columns];
     try {
       // Dense rows.
-      Object[] denseValues = new Object[columns];
+      Object[] denseValues = new Object[writtenColumns];
       for (int row = 0; row < 200; row++) {
-        for (int column = 0; column < columns; column++) {
+        for (int column = 0; column < writtenColumns; column++) {
           denseValues[column] = (long) row * 100 + column;
           expected[row][column] = (Long) denseValues[column];
         }
-        chunk.writeAlignedPoints(row, denseValues, schemas);
+        chunk.writeAlignedPoints(row, denseValues, schemas.subList(0, writtenColumns));
       }
       // One sparse measurement per row.
       for (int row = 200; row < 400; row++) {
@@ -183,7 +184,7 @@ public class AlignedWritableMemChunkTest {
       }
       // Rotating sparse columns across the block boundary.
       for (int row = 1000; row < 1200; row++) {
-        write(chunk, schemas, row, (row - 1000) % columns, (long) row, expected);
+        write(chunk, schemas, row, (row - 1000) % writtenColumns, (long) row, expected);
       }
       // Explicit nulls must stay null.
       for (int row = 1200; row < rows; row++) {
@@ -192,6 +193,10 @@ public class AlignedWritableMemChunkTest {
 
       AlignedTVList list = chunk.getWorkingTVList();
       Assert.assertEquals(rows, list.rowCount());
+      // Column 3 is never written: every block must stay a null block instead of a default-value
+      // array, exactly like before the sparse-write rework.
+      Assert.assertNull(list.getValues().get(writtenColumns).get(0));
+      Assert.assertNull(list.getValues().get(writtenColumns).get(1));
       assertContent(list, expected);
       // The flush snapshot must materialize the same representation the encoder reads.
       list.materializeOpenBlockForRead();
