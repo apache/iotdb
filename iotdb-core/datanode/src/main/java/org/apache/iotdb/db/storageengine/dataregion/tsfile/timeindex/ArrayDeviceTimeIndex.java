@@ -54,6 +54,14 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ArrayDeviceTimeIndex.class);
 
+  private static final long INTEGER_SIZE = RamUsageEstimator.shallowSizeOfInstance(Integer.class);
+  // Both ConcurrentHashMap.Node and HashMap.Node hold a hash and three references.
+  private static final long MAP_NODE_SIZE =
+      RamUsageEstimator.alignObjectSize(
+          RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+              + Integer.BYTES
+              + 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF);
+
   private static final Logger logger = LoggerFactory.getLogger(ArrayDeviceTimeIndex.class);
 
   public static final int INIT_ARRAY_SIZE = 64;
@@ -235,9 +243,27 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public long calculateRamSize() {
+    int count = deviceToIndex.size();
+    long deviceIdBytes = 0;
+    for (IDeviceID device : deviceToIndex.keySet()) {
+      deviceIdBytes += device.ramBytesUsed();
+    }
+    // Capacity is an estimate: map implementations do not expose their backing array.
+    // ConcurrentHashMap grows at the threshold; HashMap grows on the next insertion.
+    boolean concurrent = deviceToIndex instanceof ConcurrentHashMap;
+    long requiredSlots = (4L * count - (concurrent ? 0 : 1)) / 3;
+    long buckets =
+        count == 0 ? 0 : Math.min(1L << 30, Math.max(16L, Long.highestOneBit(requiredSlots) << 1));
+    long tableSize = buckets == 0 ? 0 : RamUsageEstimator.sizeOfObjectArray((int) buckets);
     return INSTANCE_SIZE
-        + RamUsageEstimator.sizeOfMap(
-            deviceToIndex, RamUsageEstimator.shallowSizeOfInstance(Integer.class))
+        + (concurrent
+            ? RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP
+            : RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP)
+        + tableSize
+        + count * MAP_NODE_SIZE
+        + deviceIdBytes
+        // Indices are contiguous from zero. Integer.valueOf shares at least the first 128.
+        + Math.max(0, count - 128) * INTEGER_SIZE
         + RamUsageEstimator.sizeOf(startTimes)
         + RamUsageEstimator.sizeOf(endTimes);
   }

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
+import org.apache.iotdb.db.utils.MemUtils;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -48,9 +49,6 @@ public class LoadTsFile extends Statement {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LoadTsFile.class);
-
-  private static final long FILE_INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(File.class);
 
   private String filePath;
 
@@ -389,19 +387,23 @@ public class LoadTsFile extends Statement {
     size += RamUsageEstimator.sizeOf(filePath);
     size += RamUsageEstimator.sizeOf(database);
     size += RamUsageEstimator.sizeOfMap(loadAttributes);
-    if (tsFiles != null) {
-      size += RamUsageEstimator.shallowSizeOf(tsFiles);
-      for (File file : tsFiles) {
-        if (file != null) {
-          size += FILE_INSTANCE_SIZE;
-        }
-      }
-    }
     if (resources != null) {
       size += RamUsageEstimator.shallowSizeOf(resources);
       for (TsFileResource resource : resources) {
         if (resource != null) {
           size += resource.calculateRamSize();
+        }
+      }
+    }
+    if (tsFiles != null) {
+      size += RamUsageEstimator.shallowSizeOf(tsFiles);
+      for (int i = 0; i < tsFiles.size(); i++) {
+        File file = tsFiles.get(i);
+        // Analysis appends one resource (possibly null) for each processed file, in order.
+        TsFileResource resource =
+            resources != null && i < resources.size() ? resources.get(i) : null;
+        if (resource == null || resource.getTsFile() != file) {
+          size += MemUtils.getFileRamBytes(file);
         }
       }
     }

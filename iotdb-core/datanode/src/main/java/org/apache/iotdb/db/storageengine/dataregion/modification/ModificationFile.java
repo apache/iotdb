@@ -28,7 +28,10 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.MemUtils;
 
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +54,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -59,7 +63,14 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static org.apache.iotdb.db.utils.ModificationUtils.sortAndMerge;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
-public class ModificationFile implements AutoCloseable {
+public class ModificationFile implements AutoCloseable, Accountable {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ModificationFile.class)
+          + RamUsageEstimator.shallowSizeOfInstance(ReentrantReadWriteLock.class)
+          + RamUsageEstimator.shallowSizeOfInstance(ReentrantReadWriteLock.ReadLock.class)
+          + RamUsageEstimator.shallowSizeOfInstance(ReentrantReadWriteLock.WriteLock.class)
+          + RamUsageEstimator.shallowSizeOfInstance(AbstractQueuedSynchronizer.class);
 
   public static final String FILE_SUFFIX = ".mods2";
   public static final String COMPACTION_FILE_SUFFIX = ".compaction.mods2";
@@ -90,6 +101,12 @@ public class ModificationFile implements AutoCloseable {
     if (fileExists) {
       updateModFileMetric(1, file.length());
     }
+  }
+
+  /** Long-lived handle and lock. Open streams and cascaded files have separate lifetimes. */
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + MemUtils.getFileRamBytes(file);
   }
 
   public void writeLock() {
