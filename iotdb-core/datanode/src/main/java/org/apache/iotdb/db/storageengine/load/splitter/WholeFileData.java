@@ -32,10 +32,9 @@ import java.util.Objects;
 /**
  * One slice of a complete source TsFile that a LOAD task transfers byte for byte.
  *
- * <p>The deletion sidecar of a TsFile is not part of this record. A file that has modifications is
- * not loaded through the whole-file path at all: it falls back to the chunk-splitting path, which
- * already transfers its deletions. The whole-file path therefore only ever carries the {@code
- * .tsfile} bytes, and a receiver can rebuild the exact file without any extra artifact.
+ * <p>The deletion sidecar of a TsFile is not part of this record: it travels as the existing {@link
+ * DeletionData} pieces in the same LOAD transaction. This record therefore only ever carries the
+ * {@code .tsfile} bytes, and a receiver can rebuild the exact file without any extra artifact.
  *
  * <p>Slices are identified by {@code offset} and are applied in order, so a retried slice is
  * skipped instead of being appended twice. The source length, time partition and pipe flag are
