@@ -125,6 +125,13 @@ public class Analysis implements IAnalysis {
   @Nullable private Statement root;
   private boolean needSetHighestPriority;
 
+  // A query that reads only information_schema tables (catalog queries of BI tools join up to
+  // seven of them) gets the highest priority too: its memory estimate (one sort buffer per sort of
+  // every join) is far above what its tiny inputs need and would refuse it at small memory budgets.
+  private boolean readsInformationSchema;
+
+  private boolean readsOtherTables;
+
   private final Map<NodeRef<Parameter>, Expression> parameters;
 
   private String updateType;
@@ -282,6 +289,7 @@ public class Analysis implements IAnalysis {
   }
 
   public void updateNeedSetHighestPriority(QualifiedObjectName tableName) {
+    readsInformationSchema = true;
     if (needSetHighestPriority) {
       return;
     }
@@ -1006,9 +1014,14 @@ public class Analysis implements IAnalysis {
     isQuery = query;
   }
 
+  /** Called for every scanned table outside information_schema. */
+  public void markNonInformationSchemaTableRead() {
+    readsOtherTables = true;
+  }
+
   @Override
   public boolean needSetHighestPriority() {
-    return needSetHighestPriority;
+    return needSetHighestPriority || (readsInformationSchema && !readsOtherTables);
   }
 
   @Override
