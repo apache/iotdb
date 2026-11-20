@@ -37,6 +37,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
+import org.apache.iotdb.db.service.ExternalRPCService;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -80,6 +81,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
   @Override
   public void stop() {
     // do nothing
+  }
+
+  @Override
+  public void notifyNotLeader() {
+    ExternalRPCService.getInstance().reclaimOneIdleServerConnection();
   }
 
   @Override
