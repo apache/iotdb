@@ -52,11 +52,18 @@ public class IoTDBLTTBTableFunctionIT {
   public static void setUp() throws Exception {
     // Four data region groups per database, so a partition can be split across regions and a
     // per-fragment LTTB or an unordered merge would produce visibly wrong results.
+    //
+    // The IT DataNode gives query operators about 16 MB. LTTB reserves its budget twice and the
+    // sort above an ORDER BY reserves its own buffer, so the defaults (about 2 MB and 8 MB) make
+    // one query take about 12 MB. A finished fragment keeps that reservation for about a second,
+    // and the next query is then rejected with error 719. These tables hold a few dozen points.
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
         .setDataRegionGroupExtensionPolicy("CUSTOM")
-        .setDefaultDataRegionGroupNumPerDatabase(4);
+        .setDefaultDataRegionGroupNumPerDatabase(4)
+        .setLttbBufferSize(256 * 1024L)
+        .setSortBufferSize(128 * 1024L);
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {

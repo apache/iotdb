@@ -149,6 +149,8 @@ public interface CommonConfig {
 
   CommonConfig setSortBufferSize(long sortBufferSize);
 
+  CommonConfig setLttbBufferSize(long lttbBufferSize);
+
   CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte);
 
   CommonConfig setDataRegionPerDataNode(int dataRegionPerDataNode);

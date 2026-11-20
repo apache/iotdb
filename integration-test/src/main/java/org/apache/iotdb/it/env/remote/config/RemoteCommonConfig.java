@@ -324,6 +324,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setLttbBufferSize(long lttbBufferSize) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte) {
     return this;
   }
