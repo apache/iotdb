@@ -777,7 +777,6 @@ region_group_allocate_policy=GCR
 
 # Whether to enable auto leader balance for Ratis consensus protocol.
 # The ConfigNode-leader will balance the leader of Ratis-RegionGroups by leader_distribution_policy if set true.
-# Notice: Default is false because the Ratis is unstable for this function.
 # effectiveMode: restart
 # Datatype: Boolean
 enable_auto_leader_balance_for_ratis_consensus=true
@@ -1389,7 +1388,7 @@ ttl_check_interval=7200000
 # Notice: It is not recommended to change it too small, as it will affect the read and write performance of the system.
 # effectiveMode: restart
 # Unit: ms
-# Datatype: int
+# Datatype: long
 max_expired_time=2592000000
 
 # The expired device ratio. If the ratio of expired devices in one file exceeds this value, then expired data of this file will be cleaned by compaction.
