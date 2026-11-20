@@ -58,5 +58,7 @@ public class SessionConfig {
 
   public static final String DEFAULT_SSL_PROTOCOL = "TLS";
 
+  public static final String SUPPORTS_DATABASE_SCOPED_TABLET = "supports_database_scoped_tablet";
+
   private SessionConfig() {}
 }

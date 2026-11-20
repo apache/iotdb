@@ -47,6 +47,21 @@ public interface ITableSession extends AutoCloseable {
   void insert(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException;
 
   /**
+   * Inserts a {@link Tablet} into the specified database for this invocation only.
+   *
+   * <p>The database does not become the current database of this session and subsequent operations
+   * are unaffected.
+   *
+   * @param tablet the tablet containing time-series data to be inserted.
+   * @param database the target database for this insertion; if null, the current database of this
+   *     session is used.
+   * @throws StatementExecutionException if an error occurs while executing the statement.
+   * @throws IoTDBConnectionException if there is an issue with the IoTDB connection.
+   */
+  void insert(Tablet tablet, String database)
+      throws StatementExecutionException, IoTDBConnectionException;
+
+  /**
    * Executes a non-query SQL statement, such as a DDL or DML command.
    *
    * @param sql the SQL statement to execute.

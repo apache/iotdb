@@ -57,7 +57,6 @@ import org.apache.iotdb.db.audit.PasswordChangeAuditContext;
 import org.apache.iotdb.db.audit.PasswordChangeAuditTask;
 import org.apache.iotdb.db.audit.UserRoleModificationAuditContext;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -269,6 +268,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatemen
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterParser;
 import org.apache.iotdb.db.subscription.tagfilter.TagFilterParser;
+import org.apache.iotdb.isession.util.TableModelDatabaseUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -294,7 +294,6 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
@@ -310,7 +309,7 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.rel
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_SCHEMA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.isession.util.TableModelDatabaseUtils.MAX_DATABASE_NAME_LENGTH;
 
 public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryContext> {
 
@@ -951,14 +950,11 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   }
 
   public static void validateDatabaseName(final String dbName) throws SemanticException {
-    // Check database length here
-    if (dbName.contains(PATH_SEPARATOR)
-        || !IoTDBConfig.DATABASE_PATTERN.matcher(dbName).matches()
-        || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
+    if (!TableModelDatabaseUtils.isValidDatabaseName(dbName, MAX_DATABASE_NAME_LENGTH)) {
       throw new SemanticException(
           new IllegalPathException(
               dbName,
-              dbName.length() > MAX_DATABASE_NAME_LENGTH
+              dbName != null && dbName.length() > MAX_DATABASE_NAME_LENGTH
                   ? DataNodeQueryMessages.THE_LENGTH_OF_DATABASE_NAME_SHALL_NOT_EXCEED
                       + MAX_DATABASE_NAME_LENGTH
                   : DataNodeQueryMessages

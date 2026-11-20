@@ -33,6 +33,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
@@ -116,6 +117,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -385,6 +387,11 @@ public class StatementGenerator {
                 ColumnCategory.values()[insertTabletReq.columnCategories.get(i).intValue()]);
       }
       insertStatement.setColumnCategories(columnCategories);
+      if (insertTabletReq.isSetDatabase()) {
+        String database = insertTabletReq.getDatabase().toLowerCase(Locale.ENGLISH);
+        TableConfigTaskVisitor.validateDatabaseName(database);
+        insertStatement.setDatabaseName(database);
+      }
     }
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;

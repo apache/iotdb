@@ -130,6 +130,7 @@ public class SessionConnection {
   // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
   private int timeFactor = 1_000;
 
+  private boolean supportsDatabaseScopedTablet;
   private volatile boolean forceClosed;
 
   // TestOnly
@@ -271,6 +272,10 @@ public class SessionConnection {
       TSOpenSessionResp openResp = client.openSession(openReq);
 
       RpcUtils.verifySuccess(openResp.getStatus());
+      supportsDatabaseScopedTablet =
+          openResp.getConfiguration() != null
+              && Boolean.parseBoolean(
+                  openResp.getConfiguration().get(SessionConfig.SUPPORTS_DATABASE_SCOPED_TABLET));
       this.timeFactor = RpcUtils.getTimeFactor(openResp);
       if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
@@ -925,6 +930,12 @@ public class SessionConnection {
   }
 
   private TSStatus insertTabletInternal(TSInsertTabletReq request) throws TException {
+    if (request.isSetDatabase() && !supportsDatabaseScopedTablet) {
+      return new TSStatus(TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode())
+          .setMessage(
+              SessionMessages
+                  .EXCEPTION_SERVER_DOES_NOT_SUPPORT_DATABASE_SCOPED_TABLET_INSERTION_01CFFAF8);
+    }
     request.setSessionId(sessionId);
     return client.insertTablet(request);
   }

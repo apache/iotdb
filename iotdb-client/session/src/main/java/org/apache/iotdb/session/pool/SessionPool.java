@@ -139,7 +139,7 @@ public class SessionPool implements ISessionPool {
   private boolean enableQueryRedirection = false;
 
   private Map<String, TEndPoint> deviceIdToEndpoint;
-  private Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint;
+  private Map<String, Map<IDeviceID, TEndPoint>> tableModelDeviceIdToEndpoint;
 
   private int thriftDefaultBufferSize;
   private int thriftMaxFrameSize;
@@ -780,7 +780,7 @@ public class SessionPool implements ISessionPool {
       session = constructNewSession();
 
       try {
-        session.open(
+        session.openWithTableModelDatabaseCache(
             enableThriftCompression,
             connectionTimeoutInMs,
             deviceIdToEndpoint,
@@ -961,7 +961,7 @@ public class SessionPool implements ISessionPool {
     }
     Session session = constructNewSession();
     try {
-      session.open(
+      session.openWithTableModelDatabaseCache(
           enableThriftCompression,
           connectionTimeoutInMs,
           deviceIdToEndpoint,

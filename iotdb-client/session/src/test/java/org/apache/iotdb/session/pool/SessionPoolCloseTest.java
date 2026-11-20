@@ -45,6 +45,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.RETURNS_SELF;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -173,7 +174,7 @@ public class SessionPoolCloseTest {
   @Test
   public void testCloseAfterInsertConnectionFailure() throws Exception {
     IoTDBConnectionException failure = new IoTDBConnectionException("insert failed");
-    doThrow(failure).when(session).insertRelationalTablet(any(Tablet.class));
+    doThrow(failure).when(session).insertRelationalTablet(any(Tablet.class), isNull());
     assertCloseAfterConnectionFailure(failure, s -> s.insert(mock(Tablet.class)));
   }
 

@@ -47,14 +47,18 @@ import org.junit.Test;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class SessionCacheLeaderTest {
@@ -704,8 +708,123 @@ public class SessionCacheLeaderTest {
       tablet.reset();
     }
 
-    assertEquals(4, session.tableModelDeviceIdToEndpoint.size());
+    assertEquals(1, session.tableModelDeviceIdToEndpoint.size());
+    assertEquals(4, session.tableModelDeviceIdToEndpoint.values().iterator().next().size());
     assertEquals(4, session.endPointToSessionConnection.size());
+    session.close();
+  }
+
+  @Test
+  public void testRelationalTabletRedirectCacheIsScopedByDatabase()
+      throws IoTDBConnectionException, StatementExecutionException {
+    final TEndPoint db1Endpoint = endpoints.get(1);
+    final TEndPoint db2Endpoint = endpoints.get(2);
+    final AtomicInteger db1AcceptedWrites = new AtomicInteger();
+    final AtomicInteger db2AcceptedWrites = new AtomicInteger();
+    session =
+        new MockSession("127.0.0.1", 55560, true, "table") {
+          @Override
+          public SessionConnection constructSessionConnection(
+              Session owner, TEndPoint endpoint, ZoneId zoneId) {
+            final TEndPoint connectionEndpoint = endpoint;
+            return new MockSessionConnection(owner, endpoint, zoneId) {
+              @Override
+              protected void insertTablet(TSInsertTabletReq request) throws RedirectException {
+                TEndPoint leader = "db1".equals(request.getDatabase()) ? db1Endpoint : db2Endpoint;
+                if (connectionEndpoint.equals(leader)) {
+                  if (leader.equals(db1Endpoint)) {
+                    db1AcceptedWrites.incrementAndGet();
+                  } else {
+                    db2AcceptedWrites.incrementAndGet();
+                  }
+                  return;
+                }
+                throw new RedirectException(Collections.singletonList(leader));
+              }
+            };
+          }
+        };
+    session.open();
+
+    Tablet tablet =
+        new Tablet(
+            "table1",
+            Arrays.asList("id", "field"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            1);
+    tablet.addTimestamp(0, 1);
+    tablet.addValue("id", 0, "id0");
+    tablet.addValue("field", 0, 1L);
+
+    session.insertRelationalTablet(tablet, "DB1");
+    session.insertRelationalTablet(tablet, "db2");
+    session.insertRelationalTablet(tablet, "db1");
+    session.insertRelationalTablet(tablet, "DB2");
+
+    assertEquals(1, db1AcceptedWrites.get());
+    assertEquals(1, db2AcceptedWrites.get());
+    assertEquals(2, session.tableModelDeviceIdToEndpoint.size());
+    assertEquals(
+        db1Endpoint, session.tableModelDeviceIdToEndpoint.get("db1").get(tablet.getDeviceID(0)));
+    assertEquals(
+        db2Endpoint, session.tableModelDeviceIdToEndpoint.get("db2").get(tablet.getDeviceID(0)));
+    session.close();
+  }
+
+  @Test
+  public void testGroupedRelationalTabletWithExplicitDatabase() throws Exception {
+    final TEndPoint leader1 = endpoints.get(1);
+    final TEndPoint leader2 = endpoints.get(2);
+    final Map<TEndPoint, TSInsertTabletReq> groupedRequests = new ConcurrentHashMap<>();
+    final AtomicBoolean redirectCacheSeeded = new AtomicBoolean();
+    session =
+        new MockSession("127.0.0.1", 55560, true, "table") {
+          @Override
+          public SessionConnection constructSessionConnection(
+              Session owner, TEndPoint endpoint, ZoneId zoneId) {
+            final TEndPoint connectionEndpoint = endpoint;
+            return new MockSessionConnection(owner, endpoint, zoneId) {
+              @Override
+              protected void insertTablet(TSInsertTabletReq request) throws RedirectException {
+                if (connectionEndpoint.equals(endpoints.get(0))
+                    && redirectCacheSeeded.compareAndSet(false, true)) {
+                  throw new RedirectException(Arrays.asList(leader1, leader2));
+                }
+                groupedRequests.put(connectionEndpoint, request);
+              }
+            };
+          }
+        };
+    session.database = "session_db";
+    session.open();
+
+    Tablet tablet =
+        new Tablet(
+            "table1",
+            Arrays.asList("id", "field"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+            2);
+    tablet.addTimestamp(0, 1);
+    tablet.addValue("id", 0, "id1");
+    tablet.addValue("field", 0, 1L);
+    tablet.addTimestamp(1, 2);
+    tablet.addValue("id", 1, "id2");
+    tablet.addValue("field", 1, 2L);
+
+    // Seed the database-scoped route cache with two leaders.
+    session.insertRelationalTablet(tablet, "db1");
+    // The second write splits the multi-device tablet and uses the grouped path.
+    session.insertRelationalTablet(tablet, "db1");
+
+    assertEquals(2, groupedRequests.size());
+    for (Map.Entry<TEndPoint, TSInsertTabletReq> entry : groupedRequests.entrySet()) {
+      assertTrue(entry.getKey().equals(leader1) || entry.getKey().equals(leader2));
+      assertEquals("db1", entry.getValue().getDatabase());
+      assertEquals(1, entry.getValue().getSize());
+    }
+    assertEquals("session_db", session.database);
     session.close();
   }
 
@@ -750,7 +869,8 @@ public class SessionCacheLeaderTest {
         tablet.addValue("field", row, 1L);
       }
       session.insertRelationalTablet(tablet);
-      assertEquals(4, session.tableModelDeviceIdToEndpoint.size());
+      assertEquals(1, session.tableModelDeviceIdToEndpoint.size());
+      assertEquals(4, session.tableModelDeviceIdToEndpoint.values().iterator().next().size());
 
       failWrites.set(true);
       tablet.reset();
@@ -1217,9 +1337,11 @@ public class SessionCacheLeaderTest {
       timestamp++;
     }
 
-    assertEquals(3, session.tableModelDeviceIdToEndpoint.size());
-    for (Map.Entry<IDeviceID, TEndPoint> endPointEntry :
-        session.tableModelDeviceIdToEndpoint.entrySet()) {
+    assertEquals(1, session.tableModelDeviceIdToEndpoint.size());
+    Map<IDeviceID, TEndPoint> tableModelDeviceRoutes =
+        session.tableModelDeviceIdToEndpoint.values().iterator().next();
+    assertEquals(3, tableModelDeviceRoutes.size());
+    for (Map.Entry<IDeviceID, TEndPoint> endPointEntry : tableModelDeviceRoutes.entrySet()) {
       assertEquals(getDeviceIdBelongedEndpoint(endPointEntry.getKey()), endPointEntry.getValue());
     }
     assertEquals(3, session.endPointToSessionConnection.size());
