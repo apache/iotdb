@@ -176,17 +176,15 @@ public class TimeSeriesMetadataCache {
         TsFileSequenceReader reader =
             FileReaderManager.getInstance()
                 .get(filePath, key.tsFileID, true, bloomFilterIoSizeRecorder, externalTsFile);
-        if (deviceMetadataIndexNodeOffset == null) {
-          BloomFilter bloomFilter = reader.readBloomFilter(bloomFilterIoSizeRecorder);
-          queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount().incrementAndGet();
-          if (bloomFilter != null
-              && !bloomFilter.contains(
-                  deviceStringFormat + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
-            loadBloomFilterTime = System.nanoTime() - startTime;
-            return null;
-          }
+        BloomFilter bloomFilter = reader.readBloomFilter(bloomFilterIoSizeRecorder);
+        queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount().incrementAndGet();
+        if (bloomFilter != null
+            && !bloomFilter.contains(
+                deviceStringFormat + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
           loadBloomFilterTime = System.nanoTime() - startTime;
+          return null;
         }
+        loadBloomFilterTime = System.nanoTime() - startTime;
 
         TimeseriesMetadata timeseriesMetadata =
             reader.readTimeseriesMetadata(
@@ -218,33 +216,30 @@ public class TimeSeriesMetadataCache {
           if (timeseriesMetadata == null) {
             cacheHit = false;
 
-            if (deviceMetadataIndexNodeOffset == null) {
-              long loadBloomFilterStartTime = System.nanoTime();
-              // bloom filter part
-              BloomFilter bloomFilter =
-                  BloomFilterCache.getInstance()
-                      .get(
-                          new BloomFilterCache.BloomFilterCacheKey(filePath, key.tsFileID),
-                          debug,
-                          bloomFilterIoSizeRecorder,
-                          queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()
-                              ::addAndGet,
-                          queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()
-                              ::addAndGet,
-                          false);
-              if (bloomFilter != null
-                  && !bloomFilter.contains(
-                      deviceStringFormat + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
-                if (debug) {
-                  DEBUG_LOGGER.info(
-                      StorageEngineMessages.TS_METADATA_FILTERED_BY_BLOOM_FILTER, key);
-                }
-                loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
-                return null;
+            long loadBloomFilterStartTime = System.nanoTime();
+            // bloom filter part
+            BloomFilter bloomFilter =
+                BloomFilterCache.getInstance()
+                    .get(
+                        new BloomFilterCache.BloomFilterCacheKey(filePath, key.tsFileID),
+                        debug,
+                        bloomFilterIoSizeRecorder,
+                        queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()
+                            ::addAndGet,
+                        queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()
+                            ::addAndGet,
+                        false);
+            if (bloomFilter != null
+                && !bloomFilter.contains(
+                    deviceStringFormat + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
+              if (debug) {
+                DEBUG_LOGGER.info(StorageEngineMessages.TS_METADATA_FILTERED_BY_BLOOM_FILTER, key);
               }
-
               loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
+              return null;
             }
+            loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
+
             TsFileSequenceReader reader =
                 FileReaderManager.getInstance()
                     .get(filePath, key.tsFileID, true, timeSeriesMetadataIoSizeRecorder, false);
