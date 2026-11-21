@@ -340,6 +340,8 @@ public class AlignedTimeseriesSessionExample {
     session.setSchemaTemplate("template1", "root.sg_1");
   }
 
+  private static final SecureRandom Random = new SecureRandom();
+
   /** Method 1 for insert tablet with aligned timeseries */
   private static void insertTabletWithAlignedTimeseriesMethod1()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -355,10 +357,8 @@ public class AlignedTimeseriesSessionExample {
     for (long row = 1; row < 100; row++) {
       int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue(
-          schemaList.get(0).getMeasurementName(), rowIndex, new SecureRandom().nextLong());
-      tablet.addValue(
-          schemaList.get(1).getMeasurementName(), rowIndex, new SecureRandom().nextInt());
+      tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, Random.nextLong());
+      tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, Random.nextInt());
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         session.insertAlignedTablet(tablet, true);
@@ -390,9 +390,9 @@ public class AlignedTimeseriesSessionExample {
       int row = tablet.getRowSize();
       tablet.addTimestamp(row, time);
 
-      tablet.addValue(row, 0, new SecureRandom().nextLong());
+      tablet.addValue(row, 0, Random.nextLong());
 
-      tablet.addValue(row, 1, new SecureRandom().nextInt());
+      tablet.addValue(row, 1, Random.nextInt());
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         session.insertAlignedTablet(tablet, true);
@@ -422,10 +422,10 @@ public class AlignedTimeseriesSessionExample {
       int row = tablet.getRowSize();
       tablet.addTimestamp(row, time);
 
-      tablet.addValue(row, 0, new SecureRandom().nextLong());
+      tablet.addValue(row, 0, Random.nextLong());
 
       if (time % 5 != 0) {
-        tablet.addValue(row, 1, new SecureRandom().nextInt());
+        tablet.addValue(row, 1, Random.nextInt());
       }
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -602,7 +602,7 @@ public class AlignedTimeseriesSessionExample {
       tablet2.addTimestamp(row2, timestamp);
       tablet3.addTimestamp(row3, timestamp);
       for (int i = 0; i < 2; i++) {
-        long value = new SecureRandom().nextLong();
+        long value = Random.nextLong();
         tablet1.addValue(schemaList1.get(i).getMeasurementName(), row1, value);
         tablet2.addValue(schemaList2.get(i).getMeasurementName(), row2, value);
         tablet3.addValue(schemaList3.get(i).getMeasurementName(), row3, value);
@@ -658,7 +658,7 @@ public class AlignedTimeseriesSessionExample {
       tablet2.addTimestamp(row2, timestamp);
       tablet3.addTimestamp(row3, timestamp);
       for (int i = 0; i < 2; i++) {
-        long value = new SecureRandom().nextLong();
+        long value = Random.nextLong();
         tablet1.addValue(schemaList1.get(i).getMeasurementName(), row1, value);
         tablet2.addValue(schemaList2.get(i).getMeasurementName(), row2, value);
         tablet3.addValue(schemaList3.get(i).getMeasurementName(), row3, value);
