@@ -104,6 +104,7 @@ public class SessionConnection {
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
   private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
+  private static final String ENABLE_RESULT_CHUNKING_KEY = "enable_result_chunking";
   public static final String MSG_RECONNECTION_FAIL =
       SessionMessages.EXCEPTION_FAIL_TO_RECONNECT_TO_SERVER_PLEASE_CHECK_SERVER_STATUS_D9A2790F;
   protected Session session;
@@ -128,6 +129,8 @@ public class SessionConnection {
 
   // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
   private int timeFactor = 1_000;
+
+  private volatile boolean forceClosed;
 
   // TestOnly
   public SessionConnection(String sqlDialect) {
@@ -252,6 +255,8 @@ public class SessionConnection {
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", session.version.toString());
     openReq.putToConfiguration("sql_dialect", sqlDialect);
+    // this client can assemble fragmented query results, see TSFetchResultsReq#offset
+    openReq.putToConfiguration(ENABLE_RESULT_CHUNKING_KEY, Boolean.TRUE.toString());
     if (session.useEncryptedPassword) {
       openReq.putToConfiguration(USE_ENCRYPTED_PASSWORD_KEY, Boolean.TRUE.toString());
     }
@@ -355,6 +360,7 @@ public class SessionConnection {
   }
 
   protected void forceCloseTransport() {
+    forceClosed = true;
     if (transport == null) {
       return;
     }
@@ -498,7 +504,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         execResp.isSetTableModel() && execResp.isTableModel(),
-        execResp.getColumnIndex2TsBlockColumnIndexList());
+        execResp.getColumnIndex2TsBlockColumnIndexList(),
+        execResp.isSetOffset(),
+        execResp.offset,
+        execResp.totalLength);
   }
 
   protected void executeNonQueryStatement(String sql)
@@ -567,7 +576,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         execResp.isSetTableModel() && execResp.isTableModel(),
-        execResp.getColumnIndex2TsBlockColumnIndexList());
+        execResp.getColumnIndex2TsBlockColumnIndexList(),
+        execResp.isSetOffset(),
+        execResp.offset,
+        execResp.totalLength);
   }
 
   protected SessionDataSet executeLastDataQueryForOnePrefixPath(final List<String> prefixes)
@@ -607,7 +619,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         false,
-        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+        tsExecuteStatementResp.isSetOffset(),
+        tsExecuteStatementResp.offset,
+        tsExecuteStatementResp.totalLength);
   }
 
   protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
@@ -657,7 +672,10 @@ public class SessionConnection {
             zoneId,
             timeFactor,
             tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
-            tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList()),
+            tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+            tsExecuteStatementResp.isSetOffset(),
+            tsExecuteStatementResp.offset,
+            tsExecuteStatementResp.totalLength),
         redirectedEndPoint);
   }
 
@@ -700,7 +718,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
-        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+        tsExecuteStatementResp.isSetOffset(),
+        tsExecuteStatementResp.offset,
+        tsExecuteStatementResp.totalLength);
   }
 
   protected SessionDataSet executeAggregationQuery(
@@ -782,7 +803,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
-        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+        tsExecuteStatementResp.isSetOffset(),
+        tsExecuteStatementResp.offset,
+        tsExecuteStatementResp.totalLength);
   }
 
   private TSAggregationQueryReq createAggregationQueryReq(
@@ -946,6 +970,11 @@ public class SessionConnection {
     TSStatus status = null;
     int i;
     for (i = 0; i <= maxRetryCount; i++) {
+      if (forceClosed) {
+        status = null;
+        lastTException = new TException(SessionMessages.SESSION_NOT_OPEN);
+        break;
+      }
       if (i > 0) {
         // re-init the TException and TSStatus
         lastTException = null;
@@ -977,6 +1006,11 @@ public class SessionConnection {
       } catch (TException e) {
         // all network exception need retry until reaching maxRetryCount
         lastTException = e;
+      }
+      if (forceClosed) {
+        status = null;
+        lastTException = new TException(SessionMessages.SESSION_NOT_OPEN);
+        break;
       }
     }
 
@@ -1018,6 +1052,9 @@ public class SessionConnection {
     int retryAttempt;
     int maxRetryCountRead = 10;
     for (retryAttempt = 0; retryAttempt <= maxRetryCountRead; retryAttempt++) {
+      if (forceClosed) {
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+      }
       // 1. try to execute the rpc
       try {
         result = rpc.run();
@@ -1025,6 +1062,10 @@ public class SessionConnection {
       } catch (TException e) {
         result = null;
         lastTException = e;
+      }
+
+      if (forceClosed) {
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
       }
 
       // success, return immediately
@@ -1148,9 +1189,15 @@ public class SessionConnection {
     "squid:S3776"
   }) // ignore Cognitive Complexity of methods should not be too high
   private boolean reconnect() {
+    if (forceClosed) {
+      return false;
+    }
     boolean connectedSuccess = false;
     SecureRandom random = new SecureRandom();
     for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
+      if (forceClosed) {
+        return false;
+      }
       if (transport != null) {
         transport.close();
         List<TEndPoint> discoveredNodes = availableNodes.get();
@@ -1168,6 +1215,9 @@ public class SessionConnection {
         // Try every discovered endpoint before falling back to seeds, once per endpoint per round.
         endPointList = new ArrayList<>(new LinkedHashSet<>(endPointList));
         for (TEndPoint candidate : endPointList) {
+          if (forceClosed) {
+            return false;
+          }
           this.endPoint = candidate;
           try {
             init(
@@ -1178,6 +1228,10 @@ public class SessionConnection {
                 session.keyStore,
                 session.keyStorePwd,
                 session.sslProtocol);
+            if (forceClosed) {
+              forceCloseTransport();
+              return false;
+            }
             connectedSuccess = true;
             if (!discoveredNodes.contains(endPoint) && availableNodes instanceof INodeSupplier) {
               ((INodeSupplier) availableNodes).requestRefresh();
@@ -1192,6 +1246,10 @@ public class SessionConnection {
         }
       }
       if (connectedSuccess) {
+        if (forceClosed) {
+          forceCloseTransport();
+          return false;
+        }
         // remove the broken end point
         session.removeBrokenSessionConnection(this);
         session.defaultEndPoint = this.endPoint;

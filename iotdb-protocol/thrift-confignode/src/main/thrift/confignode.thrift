@@ -990,6 +990,20 @@ struct TDeleteTimeSeriesReq {
   4: optional bool mayDeleteAudit
 }
 
+struct TDeleteTimeSeriesProcedureInfo {
+  1: required i64 procedureId
+  2: required string queryId
+  3: required string pathPatterns
+  4: required string state
+  5: required string progress
+  6: optional string errorMessage
+}
+
+struct TShowDeleteTimeSeriesProceduresResp {
+  1: required common.TSStatus status
+  2: optional list<TDeleteTimeSeriesProcedureInfo> procedureInfoList
+}
+
 struct TAlterTimeSeriesReq {
   1: required string queryId
   2: required binary measurementPath
@@ -1116,6 +1130,7 @@ struct TSubscriptionProgressInfo {
     18: required string lastConsumerId
     19: required i64 seekGeneration
     20: optional list<i32> readyOnDns
+    21: optional list<i32> queuesBoundOnDns // DataNodes reporting all matching local queues bound.
 }
 
 struct TDropSubscriptionReq {
@@ -1331,6 +1346,7 @@ struct TDropTableProcedureInfo {
    6: optional string errorMessage
    7: optional i64 writtenModFileCount
    8: optional i64 remainingModFileCount
+   9: optional string columnName
 }
 
 struct TDescTableResp {
@@ -1989,6 +2005,8 @@ service IConfigNodeRPCService {
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 
+  TShowDeleteTimeSeriesProceduresResp showDeleteTimeSeriesProcedures()
+
   /**
    * Alter timeseries measurement
    **/
@@ -2179,6 +2197,8 @@ service IConfigNodeRPCService {
 
   TShowTable4InformationSchemaResp showTables4InformationSchema()
   TShowDropTableProceduresResp showDropTableProcedures()
+
+  TShowDropTableProceduresResp showDropTableColumnProcedures()
 
   TDescTableResp describeTable(string database, string tableName, bool isDetails)
 

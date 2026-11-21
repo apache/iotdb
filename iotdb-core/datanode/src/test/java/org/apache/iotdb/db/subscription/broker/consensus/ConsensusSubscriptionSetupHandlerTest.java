@@ -94,6 +94,29 @@ public class ConsensusSubscriptionSetupHandlerTest {
   }
 
   @Test
+  public void testQueueBindingReadinessRequiresEveryStableRegionAndCompletedCallbacks() {
+    final Set<String> matchingRegionIds = new LinkedHashSet<>(Arrays.asList("1", "2"));
+    final Set<String> allBoundRegionIds = new LinkedHashSet<>(Arrays.asList("1", "2"));
+    final Set<String> partiallyBoundRegionIds = Collections.singleton("1");
+
+    assertTrue(
+        ConsensusSubscriptionSetupHandler.isQueueBindingComplete(
+            matchingRegionIds, allBoundRegionIds, false, true));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.isQueueBindingComplete(
+            matchingRegionIds, partiallyBoundRegionIds, false, true));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.isQueueBindingComplete(
+            matchingRegionIds, allBoundRegionIds, true, true));
+    assertFalse(
+        ConsensusSubscriptionSetupHandler.isQueueBindingComplete(
+            matchingRegionIds, allBoundRegionIds, false, false));
+    assertTrue(
+        ConsensusSubscriptionSetupHandler.isQueueBindingComplete(
+            Collections.emptySet(), Collections.emptySet(), false, true));
+  }
+
+  @Test
   public void testSingleTopicSetupFailurePropagates() {
     SubscriptionException failure = null;
     try {

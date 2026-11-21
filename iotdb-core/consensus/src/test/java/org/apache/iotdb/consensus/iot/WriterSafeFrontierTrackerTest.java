@@ -73,4 +73,25 @@ public class WriterSafeFrontierTrackerTest {
     tracker.recordAppliedProgress(0L, 9, 35L);
     assertEquals(220L, tracker.getEffectiveSafePt(9));
   }
+
+  @Test
+  public void testEffectiveSafePtSnapshotIncludesAtomicVersion() {
+    final WriterSafeFrontierTracker tracker = new WriterSafeFrontierTracker();
+
+    tracker.observePendingWriterSafeTimeBarrier(200L, 9, 30L);
+    assertEquals(0L, tracker.getEffectiveSafePtVersion());
+
+    tracker.recordAppliedProgress(150L, 9, 30L);
+    assertEquals(200L, tracker.getEffectiveSafePt(9));
+    assertEquals(1L, tracker.getEffectiveSafePtVersion());
+
+    tracker.recordAppliedProgress(160L, 9, 31L);
+    assertEquals(1L, tracker.getEffectiveSafePtVersion());
+
+    tracker.recordAppliedProgress(250L, 9, 32L);
+    final WriterSafeFrontierTracker.Snapshot snapshot =
+        tracker.snapshotEffectiveSafePtsWithVersion();
+    assertEquals(2L, snapshot.getVersion());
+    assertEquals(Long.valueOf(250L), snapshot.getEffectiveSafePts().get(9));
+  }
 }

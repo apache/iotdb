@@ -921,9 +921,16 @@ public class ConfigNodeProcedureEnv {
   }
 
   public Map<Integer, TPullCommitProgressResp> pullCommitProgressFromDataNodesBestEffort() {
+    return pullCommitProgressFromDataNodesBestEffort(false);
+  }
+
+  public Map<Integer, TPullCommitProgressResp> pullCommitProgressFromDataNodesBestEffort(
+      final boolean includeConsensusQueueReadiness) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final TPullCommitProgressReq request = new TPullCommitProgressReq();
+    final TPullCommitProgressReq request =
+        new TPullCommitProgressReq()
+            .setIncludeConsensusQueueReadiness(includeConsensusQueueReadiness);
 
     final DataNodeAsyncRequestContext<TPullCommitProgressReq, TPullCommitProgressResp>
         clientHandler =

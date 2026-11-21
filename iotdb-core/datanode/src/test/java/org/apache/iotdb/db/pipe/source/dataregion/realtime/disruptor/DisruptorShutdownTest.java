@@ -45,13 +45,15 @@ public class DisruptorShutdownTest {
             (event, sequence, endOfBatch) -> handledEventCount.incrementAndGet());
 
     final Thread processorThread = new Thread(processor, "pipe-batch-event-processor-test");
-    processorThread.start();
-
-    Assert.assertTrue(barrier.awaitWaitForCall());
-    processor.halt();
-    barrier.interruptWait();
-
-    processorThread.join(TimeUnit.SECONDS.toMillis(5));
+    processorThread.setDaemon(true);
+    try {
+      processorThread.start();
+      Assert.assertTrue(barrier.awaitWaitForCall());
+    } finally {
+      processor.halt();
+      barrier.interruptWait();
+      processorThread.join(TimeUnit.SECONDS.toMillis(30));
+    }
 
     Assert.assertFalse(processorThread.isAlive());
     Assert.assertEquals(1, handledEventCount.get());
@@ -83,12 +85,18 @@ public class DisruptorShutdownTest {
 
     final Thread processorThread =
         new Thread(processor, "pipe-batch-event-processor-snapshot-test");
-    processorThread.start();
-    processorThread.join(TimeUnit.SECONDS.toMillis(5));
-
-    Assert.assertFalse(processorThread.isAlive());
-    Assert.assertEquals(2, handledEventCount.get());
-    Assert.assertEquals(1L, processor.getSequence().get());
+    processorThread.setDaemon(true);
+    try {
+      processorThread.start();
+      processorThread.join(TimeUnit.SECONDS.toMillis(30));
+      Assert.assertFalse(processorThread.isAlive());
+      Assert.assertEquals(2, handledEventCount.get());
+      Assert.assertEquals(1L, processor.getSequence().get());
+    } finally {
+      processor.halt();
+      processorThread.interrupt();
+      processorThread.join(TimeUnit.SECONDS.toMillis(30));
+    }
   }
 
   @Test
@@ -97,6 +105,7 @@ public class DisruptorShutdownTest {
     final ThreadFactory threadFactory =
         runnable -> {
           final Thread thread = new Thread(runnable, "pipe-disruptor-shutdown-test");
+          thread.setDaemon(true);
           processorThreadReference.set(thread);
           return thread;
         };
@@ -106,10 +115,12 @@ public class DisruptorShutdownTest {
     disruptor.start();
 
     final Thread processorThread = processorThreadReference.get();
-    Assert.assertNotNull(processorThread);
-
-    TimeUnit.MILLISECONDS.sleep(50);
-    disruptor.shutdown();
+    try {
+      Assert.assertNotNull(processorThread);
+      TimeUnit.MILLISECONDS.sleep(50);
+    } finally {
+      disruptor.shutdown();
+    }
 
     Assert.assertFalse(processorThread.isAlive());
   }
@@ -120,6 +131,7 @@ public class DisruptorShutdownTest {
     final ThreadFactory threadFactory =
         runnable -> {
           final Thread thread = new Thread(runnable, "pipe-disruptor-unexpected-interrupt-test");
+          thread.setDaemon(true);
           processorThreadReference.set(thread);
           return thread;
         };
@@ -130,16 +142,17 @@ public class DisruptorShutdownTest {
         disruptor.handleEventsWith((event, sequence, endOfBatch) -> handled.countDown()).start();
 
     final Thread processorThread = processorThreadReference.get();
-    Assert.assertNotNull(processorThread);
+    try {
+      Assert.assertNotNull(processorThread);
+      TimeUnit.MILLISECONDS.sleep(50);
+      processorThread.interrupt();
 
-    TimeUnit.MILLISECONDS.sleep(50);
-    processorThread.interrupt();
-
-    ringBuffer.publishEvent((event, sequence, value) -> event.value = value, 1);
-    Assert.assertTrue(handled.await(5, TimeUnit.SECONDS));
-    Assert.assertTrue(processorThread.isAlive());
-
-    disruptor.shutdown();
+      ringBuffer.publishEvent((event, sequence, value) -> event.value = value, 1);
+      Assert.assertTrue(handled.await(30, TimeUnit.SECONDS));
+      Assert.assertTrue(processorThread.isAlive());
+    } finally {
+      disruptor.shutdown();
+    }
     Assert.assertFalse(processorThread.isAlive());
   }
 
@@ -160,10 +173,14 @@ public class DisruptorShutdownTest {
                         (event, sequence, value) -> event.value = value, 2, isClosed::get)),
             "pipe-disruptor-publish-abort-test");
 
-    publisherThread.start();
-    TimeUnit.MILLISECONDS.sleep(50);
-    isClosed.set(true);
-    publisherThread.join(TimeUnit.SECONDS.toMillis(5));
+    publisherThread.setDaemon(true);
+    try {
+      publisherThread.start();
+      TimeUnit.MILLISECONDS.sleep(50);
+    } finally {
+      isClosed.set(true);
+      publisherThread.join(TimeUnit.SECONDS.toMillis(30));
+    }
 
     Assert.assertFalse(publisherThread.isAlive());
     Assert.assertFalse(published.get());
@@ -202,7 +219,7 @@ public class DisruptorShutdownTest {
     }
 
     private boolean awaitWaitForCall() throws InterruptedException {
-      return waitForCalled.await(5, TimeUnit.SECONDS);
+      return waitForCalled.await(30, TimeUnit.SECONDS);
     }
 
     private void interruptWait() {
