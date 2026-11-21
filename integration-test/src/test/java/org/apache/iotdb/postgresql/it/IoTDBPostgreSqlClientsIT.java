@@ -68,6 +68,7 @@ public class IoTDBPostgreSqlClientsIT {
         .setEnablePostgreSqlService(true)
         .setPostgreSqlServicePort(port);
     EnvFactory.getEnv().initClusterEnvironment();
+    PgItSupport.awaitListening(port);
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE plant");
       session.executeNonQueryStatement("USE plant");

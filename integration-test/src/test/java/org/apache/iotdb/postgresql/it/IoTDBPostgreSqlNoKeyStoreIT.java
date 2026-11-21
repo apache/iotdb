@@ -64,9 +64,13 @@ public class IoTDBPostgreSqlNoKeyStoreIT {
   }
 
   @Test
-  public void noPortAndTheAddressIsNamed() {
+  public void noPortAndTheAddressIsNamed() throws Exception {
+    String log =
+        PgItSupport.awaitDataNodeLog(
+            l ->
+                l.contains("PostgreSQL endpoint not started")
+                    && l.contains("postgresql_service_address=0.0.0.0"));
     assertFalse("no listener without TLS off loopback", PgItSupport.listening(port));
-    String log = PgItSupport.dataNodeLog();
     assertTrue(
         log.contains("PostgreSQL endpoint not started")
             && log.contains("postgresql_service_address=0.0.0.0"));

@@ -114,6 +114,7 @@ public class IoTDBPostgreSqlTlsIT {
         .setPostgreSqlServiceAddress("0.0.0.0")
         .setPostgreSqlServicePort(port);
     EnvFactory.getEnv().initClusterEnvironment();
+    PgItSupport.awaitListening(port);
   }
 
   @AfterClass
