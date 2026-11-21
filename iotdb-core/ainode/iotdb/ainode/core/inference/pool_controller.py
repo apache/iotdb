@@ -19,6 +19,7 @@ import concurrent
 import queue
 import random
 import threading
+from collections import Counter
 from concurrent.futures import wait
 from queue import Empty
 from typing import Dict, Optional
@@ -42,6 +43,7 @@ from iotdb.ainode.core.inference.pool_scheduler.basic_pool_scheduler import (
 )
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.model_manager import ModelManager
+from iotdb.ainode.core.model.model_constants import ModelStates
 from iotdb.ainode.core.util.atmoic_int import AtomicInt
 from iotdb.ainode.core.util.batch_executor import BatchExecutor
 from iotdb.ainode.core.util.decorator import synchronized
@@ -66,6 +68,13 @@ class PoolController:
 
         # for pool instances control
         self._task_queue = queue.Queue()
+        # Models whose weights are downloading for a LOAD MODEL, with the load and unload
+        # tasks for them that arrived during the download. Only the worker thread uses it.
+        self._tasks_waiting_for_download: Dict[str, list] = {}
+        # Loads that are requested but not finished yet, by (model_id, device_id), so that an
+        # unload requested meanwhile is queued after them instead of being skipped.
+        self._pending_loads: Counter = Counter()
+        self._pending_loads_lock = threading.Lock()
         self._pool_control_worker_thread = threading.Thread(
             target=self._worker_loop, daemon=True
         )
@@ -141,9 +150,24 @@ class PoolController:
             model_id (str): The ID of the model to be loaded.
             device_id_list (list[torch.device]): List of device_ids where the model should be loaded.
         """
+        with self._pending_loads_lock:
+            self._pending_loads.update((model_id, d) for d in device_id_list)
         self._task_queue.put(
             (self._load_one_model_task, (model_id, device_id_list), {})
         )
+
+    def is_loading(self, model_id: str, device_id: torch.device) -> bool:
+        """
+        Check if a load of the given model_id to the given device_id is requested and not
+        finished yet, for example because the model is still downloading.
+        """
+        with self._pending_loads_lock:
+            return self._pending_loads[(model_id, device_id)] > 0
+
+    def _finish_pending_loads(self, model_id: str, device_id_list: list[torch.device]):
+        with self._pending_loads_lock:
+            self._pending_loads.subtract((model_id, d) for d in device_id_list)
+            self._pending_loads += Counter()  # drop the entries that reached 0
 
     def unload_model(self, model_id: str, device_id_list: list[torch.device]):
         """
@@ -192,15 +216,44 @@ class PoolController:
                     "PoolController received task None, the worker loop is existed."
                 )
                 break
-            task_fn, args, kwargs = task
             try:
-                task_fn(*args, **kwargs)
+                self._run_task(*task)
             except Exception as e:
                 logger.error(f"Error executing task: {e}")
             finally:
                 self._task_queue.task_done()
 
+    def _run_task(self, task_fn, args, kwargs):
+        model_id = args[0]
+        if (
+            task_fn != self._finish_download_task
+            and model_id in self._tasks_waiting_for_download
+        ):
+            # Keep the order of a model's tasks: run them after its download ends
+            self._tasks_waiting_for_download[model_id].append((task_fn, args, kwargs))
+            return
+        task_fn(*args, **kwargs)
+
     def _load_one_model_task(self, model_id: str, device_id_list: list[torch.device]):
+        model_info = self._model_manager.get_model_info(model_id)
+        if not model_info.download_on_start and model_info.state != ModelStates.ACTIVE:
+            # Built-in models that are not downloaded at start are downloaded when loaded.
+            # The download runs in its own thread, so that tasks for other models and
+            # stop() do not wait for it.
+            self._tasks_waiting_for_download[model_id] = []
+            if model_info.weights_license_notice:
+                logger.warning(
+                    f"[Inference] Downloading the weights of model {model_id}. "
+                    f"{model_info.weights_license_notice}"
+                )
+            threading.Thread(
+                target=self._download_model,
+                args=(model_id, device_id_list),
+                name=f"{ThreadName.INFERENCE_POOL_CONTROLLER.value}-download-{model_id}",
+                daemon=True,
+            ).start()
+            return
+
         def _load_one_model_on_device_task(device_id: torch.device):
             if not self.has_pool_on_device(device_id):
                 self._expand_pools_on_device(model_id, device_id, 1)
@@ -209,12 +262,47 @@ class PoolController:
                     f"[Inference][{device_id}] There are already pools on this device."
                 )
 
-        load_model_futures = self._executor.submit_batch(
-            device_id_list, _load_one_model_on_device_task
-        )
-        concurrent.futures.wait(
-            load_model_futures, return_when=concurrent.futures.ALL_COMPLETED
-        )
+        try:
+            load_model_futures = self._executor.submit_batch(
+                device_id_list, _load_one_model_on_device_task
+            )
+            concurrent.futures.wait(
+                load_model_futures, return_when=concurrent.futures.ALL_COMPLETED
+            )
+        finally:
+            self._finish_pending_loads(model_id, device_id_list)
+
+    def _download_model(self, model_id: str, device_id_list: list[torch.device]):
+        try:
+            succeeded = self._model_manager.download_builtin_model(model_id)
+        except Exception as e:
+            logger.error(f"[Inference] Error downloading model {model_id}: {e}")
+            succeeded = False
+        if not self._stop_event.is_set():
+            self._task_queue.put(
+                (
+                    self._finish_download_task,
+                    (model_id, device_id_list, succeeded),
+                    {},
+                )
+            )
+
+    def _finish_download_task(
+        self, model_id: str, device_id_list: list[torch.device], succeeded: bool
+    ):
+        waiting_tasks = self._tasks_waiting_for_download.pop(model_id)
+        if succeeded:
+            self._load_one_model_task(model_id, device_id_list)
+        else:
+            logger.error(
+                f"[Inference] Cannot load model {model_id}: downloading it failed."
+            )
+            self._finish_pending_loads(model_id, device_id_list)
+        for task in waiting_tasks:
+            try:
+                self._run_task(*task)
+            except Exception as e:
+                logger.error(f"Error executing task: {e}")
 
     def _unload_one_model_task(self, model_id: str, device_id_list: list[torch.device]):
         def _unload_one_model_on_device_task(device_id: torch.device):

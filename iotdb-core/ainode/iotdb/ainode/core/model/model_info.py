@@ -32,6 +32,8 @@ class ModelInfo:
         repo_id: str = "",
         auto_map: Optional[Dict] = None,
         hub_mixin_cls: Optional[str] = None,
+        download_on_start: bool = True,
+        weights_license_notice: Optional[str] = None,
     ):
         self.model_id = model_id
         self.model_type = model_type
@@ -41,6 +43,11 @@ class ModelInfo:
         self.repo_id = repo_id
         self.auto_map = auto_map
         self.hub_mixin_cls = hub_mixin_cls
+        # False for a built-in model whose weights are downloaded only when it is loaded
+        self.download_on_start = download_on_start
+        # Shown to users before the weights are downloaded, when their licence restricts who
+        # may use them
+        self.weights_license_notice = weights_license_notice
 
     def __repr__(self):
         return (
@@ -177,5 +184,24 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_moment.MomentConfig",
             "AutoModelForCausalLM": "modeling_moment.MomentForPrediction",
         },
+    ),
+    "timestral": ModelInfo(
+        model_id="timestral",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="timestral",
+        pipeline_cls="pipeline_timestral.TimestralPipeline",
+        repo_id="mistralai/Timestral-209M",
+        hub_mixin_cls="modeling_timestral.TimestralForPrediction",
+        # The weights are not under an open-source licence, so AINode downloads them only
+        # when the model is loaded (LOAD MODEL), not at start
+        download_on_start=False,
+        weights_license_notice=(
+            "The weights of Timestral (mistralai/Timestral-209M) are under a Modified MIT "
+            "licence: https://huggingface.co/mistralai/Timestral-209M/blob/main/LICENSE. "
+            "It grants no rights if the global consolidated monthly revenue of your company, "
+            "or of your employer, exceeded USD 20 million in the preceding month. Check that "
+            "you may use them before you load the model."
+        ),
     ),
 }
