@@ -20,10 +20,20 @@
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { apply } from './fs-discovery-tools.mjs';
+import { apply as applySql } from './discovery-tools.mjs';
 const toolsModule=pathToFileURL(process.argv[2]).href;
 for (const features of [[], ['temporal','extreme'], ['grid'], ['reduce'], ['temporal','extreme','grid','reduce']]) {
   const registered=[];
   await apply({tools:{register:tool=>registered.push(tool)}},{features,toolsModule});
   assert.equal(registered.length,2);
 }
-console.log('Five active feature configurations compile with the real DSH schema compiler; no model calls.');
+// Access-shape arms: H registers three tools; S and S+ register two.
+const hybrid=[];
+await apply({tools:{register:tool=>hybrid.push(tool)}},{features:['temporal','extreme','grid','reduce'],hybrid:true,toolBudget:120,toolsModule});
+assert.equal(hybrid.length,3);
+for (const multiStatement of [false, true]) {
+  const registered=[];
+  await applySql({tools:{register:tool=>registered.push(tool)}},{multiStatement,toolBudget:120,timeoutMs:195000,toolsModule});
+  assert.equal(registered.length,2);
+}
+console.log('Five FS feature configurations and the S, S+ and H arm configurations compile with the real DSH schema compiler; no model calls.');

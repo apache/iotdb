@@ -21,16 +21,24 @@ export const name = 'tqts-discovery-tools';
 export const inject = ['tools'];
 export async function apply(ctx, config) {
   const { defineTool } = await import(config.toolsModule);
+  // S+ arm: one call may carry 1..8 independent statements; budget defaults to the 2026-11-18 pilot.
+  const multi = config.multiStatement === true;
+  const budget = config.toolBudget ?? 30;
   let calls = 0;
   for (const kind of ['context', 'sql']) {
     ctx.tools.register(defineTool({
       name: kind === 'sql' ? 'iotdb_sql' : 'dataset_context',
       description: kind === 'sql'
-        ? 'Execute one read-only IoTDB TREE SQL statement in the assigned database. Multiple calls are permitted for discovery, queries and correction. SELECT; SHOW TIMESERIES/DEVICES/CHILD PATHS/CHILD NODES/VERSION; COUNT TIMESERIES/DEVICES/NODES. Use explicit root paths. No other SQL statements.'
+        ? (multi
+          ? 'Execute 1..8 independent read-only IoTDB TREE SQL statements in the assigned database in one call, in order; each result is returned separately and they share one output bound. Multiple calls are permitted for discovery, queries and correction. '
+          : 'Execute one read-only IoTDB TREE SQL statement in the assigned database. Multiple calls are permitted for discovery, queries and correction. ')
+          + 'SELECT; SHOW TIMESERIES/DEVICES/CHILD PATHS/CHILD NODES/VERSION; COUNT TIMESERIES/DEVICES/NODES. Use explicit root paths. No other SQL statements.'
         : 'Retrieve original benchmark public dataset documentation on demand. This contains field meanings, units, device mappings, time conventions and dialect notes, never questions or answers. Results are scalar entries with JSON-pointer paths. Start with query or pointer=/database; use a returned parent pointer to inspect a related record. query is a case-insensitive literal substring; empty query matches all. Follow next_offset with identical query/pointer.',
-      parameters: kind === 'sql' ? {
-        sql: { type: 'string', required: true, description: 'One read-only IoTDB tree-model SQL statement.' },
+      parameters: kind === 'sql' ? (multi ? {
+        statements: { type: 'array', items: { type: 'string' }, required: true, description: '1..8 independent read-only IoTDB tree-model SQL statements, one per array element.' },
       } : {
+        sql: { type: 'string', required: true, description: 'One read-only IoTDB tree-model SQL statement.' },
+      }) : {
         pointer: { type: 'string', description: 'JSON-pointer prefix; default empty (all public context).' },
         query: { type: 'string', description: 'Literal substring filter over each path and value; default empty.' },
         offset: { type: 'integer', description: 'Result offset, default 0.' },
@@ -45,9 +53,9 @@ export async function apply(ctx, config) {
         render: (_args, value) => [{ type: 'text', text: value.content }],
         presentationMeta: (_args, value) => ({ interface: kind, cliProcessMs: kind === 'sql' ? value.elapsedMs : 0, toolError: value.isError }),
       },
-      timeoutMs: 55000,
+      timeoutMs: config.timeoutMs ?? 55000,
       async execute(args, exec) {
-        if (++calls > 30) throw new Error('Tool budget exhausted (30 calls). Return your best supported final answer now.');
+        if (++calls > budget) throw new Error(`Tool budget exhausted (${budget} calls). Return your best supported final answer now.`);
         return await new Promise((resolve, reject) => {
           const child = spawn(config.python, [config.runner, config.configPath], { stdio: ['pipe','pipe','pipe'] });
           const stdout = [], stderr = [];

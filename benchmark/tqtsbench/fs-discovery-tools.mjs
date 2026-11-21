@@ -27,14 +27,22 @@ export async function apply(ctx, config) {
   const analytic = temporal || extreme || reduce;
   const aggregates = ['count','min','max','sum','avg','median','first','last','min_time','max_time','null_count', ...(reduce ? ['delta','elapsed_ms','rate_per_ms'] : []), ...(extreme ? ['argmin','argmax'] : [])];
   const groupings = [...(reduce ? ['entity','pooled'] : []), ...(temporal ? ['session'] : [])];
+  // Hybrid arm (H): the same SQL tool as the SQL arms is registered beside iotdb_fs; budget is shared.
+  const hybrid = config.hybrid === true;
+  const budget = config.toolBudget ?? 120;
+  const sqlTool = {
+    name: 'iotdb_sql',
+    description: 'Execute one read-only IoTDB TREE SQL statement in the assigned database, on the same data and account as iotdb_fs. FS path /root/db/device/measurement is root.db.device.measurement in SQL. SELECT; SHOW TIMESERIES/DEVICES/CHILD PATHS/CHILD NODES/VERSION; COUNT TIMESERIES/DEVICES/NODES. One statement, no comments, no writes.',
+    parameters: { sql: { type: 'string', required: true, description: 'One read-only IoTDB tree-model SQL statement.' } },
+  };
   let calls = 0;
-  for (const kind of ['context', 'fs']) {
+  for (const kind of ['context', 'fs', ...(hybrid ? ['sql'] : [])]) {
     ctx.tools.register(defineTool({
-      name: kind === 'fs' ? 'iotdb_fs' : 'dataset_context',
-      description: kind === 'fs'
-        ? 'Execute a native read-only IoTDB Tree FS command in the assigned database. Use help for full typed parameters and return contract. No SQL escape or local files. Read results are structured pages; statistics are native FS scan statistics. Only existing FS capabilities are exposed.'
+      name: kind === 'sql' ? sqlTool.name : kind === 'fs' ? 'iotdb_fs' : 'dataset_context',
+      description: kind === 'sql' ? sqlTool.description : kind === 'fs'
+        ? 'Execute a native read-only IoTDB Tree FS command in the assigned database. Use help for full typed parameters and return contract.' + (hybrid ? ' Read-only SQL is available through the separate iotdb_sql tool.' : ' No SQL escape or local files.') + ' Read results are structured pages; statistics are native FS scan statistics. Only existing FS capabilities are exposed.'
         : 'Retrieve original benchmark public dataset documentation on demand. This contains field meanings, units, device mappings, time conventions and dialect notes, never questions or answers. Results are scalar entries with JSON-pointer paths. Start with query or pointer=/database; use a returned parent pointer to inspect a related record. query is a case-insensitive literal substring; empty query matches all. Follow next_offset with identical query/pointer.',
-      parameters: kind === 'fs' ? {
+      parameters: kind === 'sql' ? sqlTool.parameters : kind === 'fs' ? {
         command: { type: 'string', enum: commands, required: true, description: 'Native read-only FS operation. Call help for the complete parameter and return contract.' },
         ...(temporal ? {
           gaps: { type: 'boolean', description: 'stats mode: true computes complete successive non-null observation gaps of the single measurement; see help.' },
@@ -81,11 +89,11 @@ export async function apply(ctx, config) {
           isError: { type: 'boolean', required: true },
         } },
         render: (_args, value) => [{ type: 'text', text: value.content }],
-        presentationMeta: (_args, value) => ({ interface: kind, cliProcessMs: kind === 'fs' ? value.elapsedMs : 0, toolError: value.isError }),
+        presentationMeta: (_args, value) => ({ interface: kind, cliProcessMs: kind === 'context' ? 0 : value.elapsedMs, toolError: value.isError }),
       },
       timeoutMs: 195000,
       async execute(args, exec) {
-        if (++calls > 120) throw new Error('Tool budget exhausted (120 calls). Return your best supported final answer now.');
+        if (++calls > budget) throw new Error(`Tool budget exhausted (${budget} calls). Return your best supported final answer now.`);
         return await new Promise((resolve, reject) => {
           const child = spawn(config.python, [config.runner, config.configPath], { stdio: ['pipe','pipe','pipe'] });
           const stdout = [], stderr = [];

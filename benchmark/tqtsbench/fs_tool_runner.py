@@ -15,7 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-"""Controlled Tree FS adapter; invokes native FS commands, never model SQL."""
+"""Controlled Tree FS adapter; invokes native FS commands. In the hybrid arm it also
+forwards read-only SQL to the same validated path as the SQL arms."""
 import hashlib
 import json
 import os
@@ -28,7 +29,7 @@ import sys
 import tempfile
 import time
 
-from tool_runner import context_page
+from tool_runner import context_page, execute as execute_sql
 
 COMMANDS = ("help", "ls", "find", "tree", "schema", "meta", "stats", "count", "cat", "head", "tail", "stat", "file", "grep", "cut", "paste", "join", "wc")
 AGGREGATES = ("count", "min", "max", "sum", "avg", "median", "first", "last", "min_time", "max_time", "null_count")
@@ -87,7 +88,7 @@ def path_arg(value, package):
     return value
 
 
-def help_text(scope, features=()):
+def help_text(scope, features=(), hybrid=False):
     result = {
         "scope": scope,
         "commands": {
@@ -97,7 +98,7 @@ def help_text(scope, features=()):
             "tree": "Display hierarchy: path, max_depth=1..12 (default 3).",
             "schema": "Field types: path, optional measurements (array of names).",
             "meta": "Underlying metadata: path.",
-            "stats": "Statistics: path, optional measurements, start_ms, end_ms, aggregates, windows. Bounds inclusive epoch milliseconds. aggregates subset of count,min,max,sum,avg,median,first,last,min_time,max_time,null_count; omit for complete native statistics including first,last,min_time,max_time. min_time/max_time denote earliest/latest non-null observation, NOT argmin/argmax timestamps. windows is an array of 1..256 objects {start_ms,end_ms}, inclusive, mutually exclusive with top-level time bounds. Overlap and duplicates are allowed; output includes zero-based window_index, window_start, window_end. Each device is scanned once for all windows. Scalar statistics stream; exact median may use private temporary disk, never exposed to the model.",
+            "stats": "Statistics: path, optional measurements, start_ms, end_ms, aggregates, windows. A directory path covers every device below it with one row per device, so one call can replace per-device calls. Bounds inclusive epoch milliseconds. aggregates subset of count,min,max,sum,avg,median,first,last,min_time,max_time,null_count; omit for complete native statistics including first,last,min_time,max_time. min_time/max_time denote earliest/latest non-null observation, NOT argmin/argmax timestamps. windows is an array of 1..256 objects {start_ms,end_ms}, inclusive, mutually exclusive with top-level time bounds. Overlap and duplicates are allowed; output includes zero-based window_index, window_start, window_end. Each device is scanned once for all windows. Scalar statistics stream; exact median may use private temporary disk, never exposed to the model.",
             "count": "Native count: path, optional measurements. No time filter on count; use stats for filtered count.",
             "cat/head": "Read page: path, measurements, start_ms, end_ms, limit=1..2000 (default 200), offset>=0 (default 0). Time bounds inclusive. Structured NDJSON rows and next_offset; follow identical scope/filter with next_offset. Null is JSON null. Missing columns are not numerical zero.",
             "tail": "Last rows in chronological order: path, limit=1..2000 (default 10). No filters or offset.",
@@ -134,6 +135,8 @@ def help_text(scope, features=()):
     result["commands"]["stats"] = stats
     if "reduce" in features:
         result["scope_note"] = "Only native read-only FS commands enumerated here are enabled. stats reduction mode explicitly selects entity vs pooled grain and can rank result rows. No SQL/shell/local files/writes."
+    if hybrid:
+        result["scope_note"] = "Only the read-only FS commands enumerated here are enabled through iotdb_fs. The separate iotdb_sql tool runs read-only Tree SQL on the same data with the same account: FS path /root/db/device/measurement is root.db.device.measurement in SQL, and FS object columns name the same devices. Either tool may be used at any step. No shell, local files or writes."
     return result
 
 
@@ -343,6 +346,9 @@ def resource_metrics(text):
 
 
 def execute(config, request):
+    if request["kind"] == "sql" and config.get("hybrid"):
+        # Hybrid arm: the same validated read-only SQL path and limits as the SQL arms.
+        return execute_sql(config, request)
     args, kind = request["arguments"], request["kind"]
     folder = Path(config["output"]) / ("call-"+hashlib.sha256(request["callId"].encode()).hexdigest()[:20])
     folder.mkdir(parents=True, exist_ok=False)
@@ -355,7 +361,7 @@ def execute(config, request):
         elif kind == "fs":
             command = build_command(args,config["package"],config.get("features",[]))
             if command is None:
-                payload = help_text("/root/"+config["package"],config.get("features",[]))
+                payload = help_text("/root/"+config["package"],config.get("features",[]),config.get("hybrid",False))
             else:
                 (folder/"native-command.txt").write_text(command)
                 creds=json.loads(Path(config["credentials"]).read_text())

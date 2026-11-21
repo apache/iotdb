@@ -72,6 +72,53 @@ def context_page(context, args):
     return {"entries": page, "matched": len(rows), "offset": offset, "next_offset": offset+len(page) if offset+len(page)<len(rows) else None}
 
 
+MAX_STATEMENTS = 8
+
+
+def run_sql(config, sql, out, suffix="", seconds=None):
+    """Runs one validated read-only statement; limits come from config, defaulting to the pilot values."""
+    seconds = config.get("sql_seconds", 45) if seconds is None else seconds
+    chars = config.get("sql_output_chars", 24000)
+    sql = validate_sql(sql, config["package"])
+    # Dedicated read-only per-package credentials, never sent to the model.
+    creds = json.loads(Path(config["credentials"]).read_text())
+    argv = [config["cli"], "-h", "127.0.0.1", "-p", "32867", "-u", creds["username"], "-pw", creds["password"], "-sql_dialect", "tree", "-disableISO8601", "-e", sql]
+    try:
+        proc = subprocess.run(argv, capture_output=True, text=True, timeout=seconds)
+    except subprocess.TimeoutExpired:
+        # TimeoutExpired includes argv, which contains the private database password.
+        return {"is_error": True, "error": f"SQL query exceeded the {seconds} second execution limit"}
+    (out / ("stdout" + suffix + ".txt")).write_text(proc.stdout)
+    (out / ("stderr" + suffix + ".txt")).write_text(proc.stderr)
+    error = proc.returncode != 0 or bool(re.search(r"(?:Error (?:code|message)|Exception|SQL execution error)", proc.stdout+proc.stderr, re.I))
+    payload = {"stdout": proc.stdout[:chars], "stderr": proc.stderr[:2000], "truncated": len(proc.stdout)>chars, "is_error": error, "exit_code": proc.returncode}
+    if payload["truncated"]:
+        payload["continuation"] = "Result truncated. Narrow the query or use LIMIT/OFFSET. Full raw output is retained for offline analysis, not available to the agent."
+    return payload
+
+
+def run_statements(config, args, out):
+    """Multi-statement arm (S+): 1..8 independent statements in one call, run in order.
+    The call shares one output bound (an equal slice per statement) and one time bound
+    (sql_seconds for the whole call, like one FS process); statements left when the
+    time is used up are reported as not run."""
+    statements = args.get("statements")
+    if "sql" in args or not isinstance(statements, list) or not 1 <= len(statements) <= MAX_STATEMENTS:
+        raise ValueError(f"Provide statements: an array of 1..{MAX_STATEMENTS} read-only statements")
+    for sql in statements:
+        validate_sql(sql, config["package"])
+    share = dict(config, sql_output_chars=config.get("sql_output_chars", 24000) // len(statements))
+    deadline = time.monotonic() + config.get("sql_seconds", 45)
+    results = []
+    for i, sql in enumerate(statements):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            results.append({"statement_index": i, "is_error": True, "error": "Not run: the call time limit was used by earlier statements"})
+            continue
+        results.append(dict(statement_index=i, **run_sql(share, sql, out, "-" + str(i), seconds=remaining)))
+    return {"results": results, "is_error": any(r["is_error"] for r in results)}
+
+
 def execute(config, request):
     args = request["arguments"]
     kind = request["kind"]
@@ -84,23 +131,12 @@ def execute(config, request):
     try:
         if kind == "context":
             payload = context_page(json.loads(Path(config["context"]).read_text()), args)
+        elif kind == "sql" and config.get("multi_statement"):
+            payload = run_statements(config, args, out)
         elif kind == "sql":
-            sql = validate_sql(args["sql"], config["package"])
-            # Dedicated read-only per-package credentials, never sent to the model.
-            creds = json.loads(Path(config["credentials"]).read_text())
-            argv = [config["cli"], "-h", "127.0.0.1", "-p", "32867", "-u", creds["username"], "-pw", creds["password"], "-sql_dialect", "tree", "-disableISO8601", "-e", sql]
-            proc = subprocess.run(argv, capture_output=True, text=True, timeout=45)
-            (out / "stdout.txt").write_text(proc.stdout)
-            (out / "stderr.txt").write_text(proc.stderr)
-            error = proc.returncode != 0 or bool(re.search(r"(?:Error (?:code|message)|Exception|SQL execution error)", proc.stdout+proc.stderr, re.I))
-            payload = {"stdout": proc.stdout[:24000], "stderr": proc.stderr[:2000], "truncated": len(proc.stdout)>24000, "is_error": error, "exit_code": proc.returncode}
-            if payload["truncated"]:
-                payload["continuation"] = "Result truncated. Narrow the query or use LIMIT/OFFSET. Full raw output is retained for offline analysis, not available to the agent."
+            payload = run_sql(config, args["sql"], out)
         else:
             raise ValueError("Unknown tool")
-    except subprocess.TimeoutExpired:
-        # TimeoutExpired includes argv, which contains the private database password.
-        payload = {"is_error": True, "error": "SQL query exceeded the 45 second execution limit"}
     except Exception as exc:
         payload = {"is_error": True, "error": str(exc)}
     result = {"content": json.dumps(payload, ensure_ascii=False), "elapsedMs": (time.monotonic()-start)*1000, "isError": payload.get("is_error", False)}
