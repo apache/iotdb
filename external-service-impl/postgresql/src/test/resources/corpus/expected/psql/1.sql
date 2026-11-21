@@ -1,0 +1,19 @@
+--
+-- Licensed to the Apache Software Foundation (ASF) under one
+-- or more contributor license agreements.  See the NOTICE file
+-- distributed with this work for additional information
+-- regarding copyright ownership.  The ASF licenses this file
+-- to you under the Apache License, Version 2.0 (the
+-- "License"); you may not use this file except in compliance
+-- with the License.  You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing,
+-- software distributed under the License is distributed on an
+-- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+-- KIND, either express or implied.  See the License for the
+-- specific language governing permissions and limitations
+-- under the License.
+--
+SELECT "d"."datname" AS "Name", 'admin' AS "Owner", CASE CAST("d"."encoding" AS INT32) WHEN 0 THEN 'SQL_ASCII' WHEN 1 THEN 'EUC_JP' WHEN 2 THEN 'EUC_CN' WHEN 3 THEN 'EUC_KR' WHEN 4 THEN 'EUC_TW' WHEN 5 THEN 'EUC_JIS_2004' WHEN 6 THEN 'UTF8' WHEN 7 THEN 'MULE_INTERNAL' WHEN 8 THEN 'LATIN1' WHEN 9 THEN 'LATIN2' WHEN 10 THEN 'LATIN3' WHEN 11 THEN 'LATIN4' WHEN 12 THEN 'LATIN5' WHEN 13 THEN 'LATIN6' WHEN 14 THEN 'LATIN7' WHEN 15 THEN 'LATIN8' WHEN 16 THEN 'LATIN9' WHEN 17 THEN 'LATIN10' WHEN 18 THEN 'WIN1256' WHEN 19 THEN 'WIN1258' WHEN 20 THEN 'WIN866' WHEN 21 THEN 'WIN874' WHEN 22 THEN 'KOI8R' WHEN 23 THEN 'WIN1251' WHEN 24 THEN 'WIN1252' WHEN 25 THEN 'ISO_8859_5' WHEN 26 THEN 'ISO_8859_6' WHEN 27 THEN 'ISO_8859_7' WHEN 28 THEN 'ISO_8859_8' WHEN 29 THEN 'WIN1250' WHEN 30 THEN 'WIN1253' WHEN 31 THEN 'WIN1254' WHEN 32 THEN 'WIN1255' WHEN 33 THEN 'WIN1257' WHEN 34 THEN 'KOI8U' WHEN 35 THEN 'SJIS' WHEN 36 THEN 'BIG5' WHEN 37 THEN 'GBK' WHEN 38 THEN 'UHC' WHEN 39 THEN 'GB18030' WHEN 40 THEN 'JOHAB' WHEN 41 THEN 'SHIFT_JIS_2004' ELSE CASE WHEN "d"."encoding" IS NULL THEN CAST(NULL AS STRING) ELSE '' END END AS "Encoding", "d"."datcollate" AS "Collate", "d"."datctype" AS "Ctype", CAST(NULL AS STRING) AS "Access privileges" FROM information_schema."pg_database" AS "d" ORDER BY 1 NULLS LAST

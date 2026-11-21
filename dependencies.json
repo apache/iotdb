@@ -14,6 +14,7 @@
         "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider",
         "com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations",
         "com.github.ben-manes.caffeine:caffeine",
+        "com.github.jsqlparser:jsqlparser",
         "com.github.luben:zstd-jni",
         "com.github.moquette-io.moquette:moquette-broker",
         "com.github.wendykierp:JTransforms",

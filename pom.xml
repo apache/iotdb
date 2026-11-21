@@ -101,6 +101,8 @@
         <jetty.version>12.0.41</jetty.version>
         <jline.version>3.30.17</jline.version>
         <jna.version>5.14.0</jna.version>
+        <!-- SQL parser of the PostgreSQL wire protocol (dual LGPL-2.1/Apache-2.0, used under Apache-2.0) -->
+        <jsqlparser.version>5.4</jsqlparser.version>
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
         <logback.version>1.5.34</logback.version>
@@ -115,6 +117,8 @@
         <moquette.version>0.18.0</moquette.version>
         <netty.version>4.1.137.Final</netty.version>
         <openapi.generator.version>7.10.0</openapi.generator.version>
+        <!-- PostgreSQL JDBC driver: test client of the PostgreSQL wire protocol ITs -->
+        <postgresql-jdbc.version>42.7.14</postgresql-jdbc.version>
         <powermock.version>2.0.9</powermock.version>
         <ratis-thirdparty-misc.version>1.1.0</ratis-thirdparty-misc.version>
         <ratis.version>3.3.1</ratis.version>
@@ -631,6 +635,17 @@
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-core</artifactId>
                 <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.jsqlparser</groupId>
+                <artifactId>jsqlparser</artifactId>
+                <version>${jsqlparser.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${postgresql-jdbc.version}</version>
+                <scope>test</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

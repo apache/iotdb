@@ -48,6 +48,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBDetailsColumnHeaders;
@@ -564,6 +566,13 @@ public class IoTDBDatabaseIT {
     }
   }
 
+  /** information_schema tables added by an InformationSchemaExtension (PostgreSQL service). */
+  private static List<String> extensionTables() {
+    return InformationSchema.getSchemaTables().keySet().stream()
+        .filter(name -> name.startsWith("pg_"))
+        .collect(Collectors.toList());
+  }
+
   /**
    * Check read-only system metadata and ordinary-user visibility, then verify administrator
    * metadata for tables, views, pipes, functions, configuration, and the running cluster.
@@ -614,32 +623,37 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables"),
           "TableName,TTL(ms),",
-          Arrays.asList(
-              "columns,INF,",
-              "config_nodes,INF,",
-              "configurations,INF,",
-              "connections,INF,",
-              "current_queries,INF,",
-              "data_nodes,INF,",
-              "databases,INF,",
-              "drop_table_column_procedures,INF,",
-              "drop_table_procedures,INF,",
-              "functions,INF,",
-              "keywords,INF,",
-              "nodes,INF,",
-              "pipe_memory,INF,",
-              "pipe_plugins,INF,",
-              "pipes,INF,",
-              "queries,INF,",
-              "queries_costs_histogram,INF,",
-              "receivers,INF,",
-              "regions,INF,",
-              "services,INF,",
-              "subscriptions,INF,",
-              "table_disk_usage,INF,",
-              "tables,INF,",
-              "topics,INF,",
-              "views,INF,"));
+          Stream.concat(
+                  Stream.of(
+                      "columns",
+                      "config_nodes",
+                      "configurations",
+                      "connections",
+                      "current_queries",
+                      "data_nodes",
+                      "databases",
+                      "drop_table_column_procedures",
+                      "drop_table_procedures",
+                      "functions",
+                      "keywords",
+                      "nodes",
+                      "pipe_memory",
+                      "pipe_plugins",
+                      "pipes",
+                      "queries",
+                      "queries_costs_histogram",
+                      "receivers",
+                      "regions",
+                      "services",
+                      "subscriptions",
+                      "table_disk_usage",
+                      "tables",
+                      "topics",
+                      "views"),
+                  extensionTables().stream())
+              .sorted()
+              .map(name -> name + ",INF,")
+              .collect(Collectors.toList()));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc databases"),
@@ -978,9 +992,7 @@ public class IoTDBDatabaseIT {
         }
         assertEquals(2, cnt);
       }
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("show devices from tables where status = 'USING'"),
-          "database,table_name,ttl(ms),status,comment,table_type,need_last_cache,",
+      final Set<String> expectedDevices =
           new HashSet<>(
               Arrays.asList(
                   "information_schema,databases,INF,USING,null,SYSTEM VIEW,false,",
@@ -1009,7 +1021,15 @@ public class IoTDBDatabaseIT {
                   "information_schema,current_queries,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,queries_costs_histogram,INF,USING,null,SYSTEM VIEW,false,",
                   "test,test,INF,USING,test,BASE TABLE,true,",
-                  "test,view_table,100,USING,null,VIEW FROM TREE,true,")));
+                  "test,view_table,100,USING,null,VIEW FROM TREE,true,"));
+      expectedDevices.addAll(
+          extensionTables().stream()
+              .map(name -> "information_schema," + name + ",INF,USING,null,SYSTEM VIEW,false,")
+              .collect(Collectors.toList()));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from tables where status = 'USING'"),
+          "database,table_name,ttl(ms),status,comment,table_type,need_last_cache,",
+          expectedDevices);
       // Include all system tables and the table and view created in the test database.
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),

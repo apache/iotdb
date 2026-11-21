@@ -1,0 +1,19 @@
+--
+-- Licensed to the Apache Software Foundation (ASF) under one
+-- or more contributor license agreements.  See the NOTICE file
+-- distributed with this work for additional information
+-- regarding copyright ownership.  The ASF licenses this file
+-- to you under the Apache License, Version 2.0 (the
+-- "License"); you may not use this file except in compliance
+-- with the License.  You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing,
+-- software distributed under the License is distributed on an
+-- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+-- KIND, either express or implied.  See the License for the
+-- specific language governing permissions and limitations
+-- under the License.
+--
+SELECT CAST(NULL AS STRING) AS "table_cat", "n"."nspname" AS "table_schem", "c"."relname" AS "table_name", CASE ("n"."nspname" LIKE 'pg\_%' ESCAPE '\') OR "n"."nspname" = 'information_schema' WHEN TRUE THEN CASE WHEN "n"."nspname" = 'pg_catalog' OR "n"."nspname" = 'information_schema' THEN CASE "c"."relkind" WHEN 'r' THEN 'SYSTEM TABLE' WHEN 'v' THEN 'SYSTEM VIEW' WHEN 'i' THEN 'SYSTEM INDEX' ELSE CAST(NULL AS STRING) END WHEN "n"."nspname" = 'pg_toast' THEN CASE "c"."relkind" WHEN 'r' THEN 'SYSTEM TOAST TABLE' WHEN 'i' THEN 'SYSTEM TOAST INDEX' ELSE CAST(NULL AS STRING) END ELSE CASE "c"."relkind" WHEN 'r' THEN 'TEMPORARY TABLE' WHEN 'p' THEN 'TEMPORARY TABLE' WHEN 'i' THEN 'TEMPORARY INDEX' WHEN 'S' THEN 'TEMPORARY SEQUENCE' WHEN 'v' THEN 'TEMPORARY VIEW' ELSE CAST(NULL AS STRING) END END WHEN FALSE THEN CASE "c"."relkind" WHEN 'r' THEN 'TABLE' WHEN 'p' THEN 'PARTITIONED TABLE' WHEN 'i' THEN 'INDEX' WHEN 'P' THEN 'PARTITIONED INDEX' WHEN 'S' THEN 'SEQUENCE' WHEN 'v' THEN 'VIEW' WHEN 'c' THEN 'TYPE' WHEN 'f' THEN 'FOREIGN TABLE' WHEN 'm' THEN 'MATERIALIZED VIEW' ELSE CAST(NULL AS STRING) END ELSE CAST(NULL AS STRING) END AS "table_type", "d"."description" AS "remarks", '' AS "type_cat", '' AS "type_schem", '' AS "type_name", '' AS "self_referencing_col_name", '' AS "ref_generation" FROM information_schema."pg_namespace" AS "n", information_schema."pg_class" AS "c" LEFT JOIN information_schema."pg_description" AS "d" ON ("c"."oid" = "d"."objoid" AND "d"."objsubid" = 0 AND "d"."classoid" = 1259) WHERE "c"."relnamespace" = "n"."oid" AND "n"."nspname" LIKE 'refdb' AND "c"."relname" LIKE '%' AND (FALSE OR ("c"."relkind" = 'r' AND NOT ("n"."nspname" LIKE 'pg\_%' ESCAPE '\') AND "n"."nspname" <> 'information_schema') OR ("c"."relkind" = 'v' AND "n"."nspname" <> 'pg_catalog' AND "n"."nspname" <> 'information_schema')) ORDER BY "table_type" NULLS LAST, "table_schem" NULLS LAST, "table_name" NULLS LAST

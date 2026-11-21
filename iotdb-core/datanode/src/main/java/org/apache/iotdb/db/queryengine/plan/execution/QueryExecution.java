@@ -417,6 +417,9 @@ public class QueryExecution implements IQueryExecution {
     // that the sub-tasks of the ShowQueries instances could be executed first.
     if (analysis.needSetHighestPriority()) {
       distributedPlan.getInstances().forEach(instance -> instance.setHighestPriority(true));
+      // table-model analysis decides this while planning, after the constructor copied it, so the
+      // result handle needs it here as well
+      context.setNeedSetHighestPriority(true);
     }
 
     if (LOGGER.isDebugEnabled() && isQuery()) {

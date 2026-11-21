@@ -660,6 +660,47 @@ client_auth=false
 idle_timeout_in_seconds=50000
 
 ####################
+### PostgreSQL Service Configuration
+####################
+
+# Is the PostgreSQL wire protocol service enabled. PostgreSQL clients (psql, JDBC, psycopg,
+# Npgsql, Power BI, ...) can then query the table model, read-only.
+# effectiveMode: restart
+# Datatype: boolean
+enable_postgresql_service=false
+
+# The bind address. Any address other than loopback accepts only TLS connections and needs
+# key_store_path / key_store_pwd. Must be an IP address of this machine (or 0.0.0.0 / ::).
+# effectiveMode: restart
+# Datatype: String
+postgresql_service_address=127.0.0.1
+
+# The port of the PostgreSQL service
+# effectiveMode: restart
+# Datatype: int
+postgresql_service_port=5432
+
+# Connections above this number are refused (SQLSTATE 53300)
+# effectiveMode: restart
+# Datatype: int
+postgresql_service_max_connections=32
+
+# Connections without a running query are closed after this time
+# effectiveMode: restart
+# Datatype: long
+postgresql_service_idle_timeout_in_ms=1800000
+
+# Time allowed from connecting to a completed login
+# effectiveMode: restart
+# Datatype: long
+postgresql_service_startup_timeout_in_ms=10000
+
+# A client that reads no result data for this long loses its query and its connection
+# effectiveMode: restart
+# Datatype: long
+postgresql_service_write_timeout_in_ms=300000
+
+####################
 ### Load balancing configuration
 ####################
 

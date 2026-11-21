@@ -113,6 +113,9 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   /** Whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
 
+  /** Whether to enable the PostgreSQL wire protocol service. */
+  private boolean enablePostgreSqlService = false;
+
   /** The mqtt service binding host. */
   private String mqttHost = "127.0.0.1";
 
@@ -2848,6 +2851,14 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setEnableMQTTService(boolean enableMQTTService) {
     this.enableMQTTService = enableMQTTService;
+  }
+
+  public boolean isEnablePostgreSqlService() {
+    return enablePostgreSqlService;
+  }
+
+  public void setEnablePostgreSqlService(boolean enablePostgreSqlService) {
+    this.enablePostgreSqlService = enablePostgreSqlService;
   }
 
   public String getMqttHost() {
