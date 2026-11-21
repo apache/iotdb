@@ -617,6 +617,9 @@ public final class DataNodePipeMessages {
       "Pipe {}@{}：unpin TsFileResource after creating event, original path: {} 失败";
   public static final String PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_DROPPING =
       "Pipe {}@{}：unpin TsFileResource after dropping pipe, original path: {} 失败";
+  public static final String
+      EXCEPTION_PIPE_ARG_ARG_TIME_PARTITION_ARG_CHANGED_DURING_HISTORICAL_TSFILE_EXTRACTION_AFTER_ONE_REFRESH_AF060BD3 =
+          "Pipe {}@{}：历史 TsFile 提取期间，时间分区 {} 在刷新一次后仍发生变化";
   public static final String PIPE_FINISH_TO_EXTRACT_DELETIONS_EXTRACT_DELETIONS =
       "Pipe {}@{}：finish to extract deletions, extract deletions count {}/{}, took {} ms";
   public static final String PIPE_FINISH_TO_EXTRACT_HISTORICAL_TSFILE_EXTRACTED =

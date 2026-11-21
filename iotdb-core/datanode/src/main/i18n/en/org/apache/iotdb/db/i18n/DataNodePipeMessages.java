@@ -651,6 +651,9 @@ public final class DataNodePipeMessages {
       "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}";
   public static final String PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_DROPPING =
       "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}";
+  public static final String
+      EXCEPTION_PIPE_ARG_ARG_TIME_PARTITION_ARG_CHANGED_DURING_HISTORICAL_TSFILE_EXTRACTION_AFTER_ONE_REFRESH_AF060BD3 =
+          "Pipe {}@{}: time partition {} changed during historical TsFile extraction after one refresh";
   public static final String PIPE_FINISH_TO_EXTRACT_DELETIONS_EXTRACT_DELETIONS =
       "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}, took {} ms";
   public static final String PIPE_FINISH_TO_EXTRACT_HISTORICAL_TSFILE_EXTRACTED =
