@@ -41,13 +41,16 @@ LICENSE = '''--
 # Usage: extract.py <server log> <corpus dir> <server version> <app>=<client version>...
 log, outdir, pgv = sys.argv[1], sys.argv[2], sys.argv[3]
 versions = dict(a.split('=',1) for a in sys.argv[4:])
-start = re.compile(r'^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+ \w+ \[\d+\] app=(\S*) user=\S* db=\S* (LOG|DETAIL|ERROR|STATEMENT|FATAL):  (.*)$')
+# application names may contain spaces (Power BI: "Mashup Engine")
+start = re.compile(r'^(\d{4}-\d\d-\d\d) \d\d:\d\d:\d\d\.\d+ \w+ \[\d+\] app=(.*?) user=\S* db=\S* (LOG|DETAIL|ERROR|STATEMENT|FATAL):  (.*)$')
+captured = None
 records = []
 for line in open(log, encoding='utf-8', errors='replace'):
     line = line.rstrip('\n')
     m = start.match(line)
     if m:
-        records.append([m.group(1), m.group(2), m.group(3)])
+        captured = captured or m.group(1)
+        records.append([m.group(2), m.group(3), m.group(4)])
     elif records and not re.match(r'^\d{4}-\d\d-\d\d ', line):
         records[-1][2] += '\n' + line
 # skip the setup (it ran as psql too): everything up to the final ANALYZE
@@ -67,7 +70,7 @@ for app, stmts in per.items():
     with open(f'{outdir}/{app}.sql', 'w') as f:
         f.write(LICENSE)
         f.write(f'-- Client: {app} {versions[app]}\n-- Server: PostgreSQL {pgv} (docker postgres:14-alpine), log_statement=all\n')
-        f.write('-- Captured: 2026-11-19 (T001, spec 012); schema refdb/other from corpus/README.md\n')
+        f.write(f'-- Captured: {captured} (T001, spec 012); schema refdb/other from corpus/README.md\n')
         collapsed = []
         for sql, params in stmts:
             if collapsed and collapsed[-1][0] == sql and collapsed[-1][1] == params:

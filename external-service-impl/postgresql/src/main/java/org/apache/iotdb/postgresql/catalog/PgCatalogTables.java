@@ -389,6 +389,15 @@ public final class PgCatalogTables {
         .col("default_character_set_schema", TEXT)
         .col("default_character_set_name", TEXT)
         .col("sql_path", TEXT);
+    table("pg_is_character_sets")
+        .col("character_set_catalog", TEXT)
+        .col("character_set_schema", TEXT)
+        .col("character_set_name", TEXT)
+        .col("character_repertoire", TEXT)
+        .col("form_of_use", TEXT)
+        .col("default_collate_catalog", TEXT)
+        .col("default_collate_schema", TEXT)
+        .col("default_collate_name", TEXT);
     table("pg_is_tables")
         .col("table_catalog", TEXT)
         .col("table_schema", TEXT)

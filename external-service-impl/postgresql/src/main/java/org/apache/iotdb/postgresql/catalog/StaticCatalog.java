@@ -741,6 +741,8 @@ public final class StaticCatalog {
     collation(rows, DEFAULT_COLLATION, "default", "d", -1, null);
     collation(rows, 950, "C", "c", -1, "C");
     collation(rows, 951, "POSIX", "c", -1, "POSIX");
+    // UTF8 only; information_schema.character_sets names it as the default collation
+    collation(rows, 12545, "ucs_basic", "c", 6, "C");
     return rows;
   }
 

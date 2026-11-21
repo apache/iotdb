@@ -184,6 +184,29 @@ public class CatalogRowsTest {
   }
 
   @Test
+  public void characterSetsNameTheEncodingAndAnExistingDefaultCollation() {
+    // PostgreSQL 14, UTF8 database with collation C (Power BI reads character_set_name)
+    CatalogRows rows = new CatalogRows("u", CatalogRowsTest::userSnapshot);
+    List<Map<String, Object>> sets = rows.rows("pg_is_character_sets");
+    assertEquals(1, sets.size());
+    Map<String, Object> set = sets.get(0);
+    assertEquals(null, set.get("character_set_catalog"));
+    assertEquals("UTF8", set.get("character_set_name"));
+    assertEquals("UCS", set.get("character_repertoire"));
+    assertEquals("UTF8", set.get("form_of_use"));
+    assertEquals("pg_catalog", set.get("default_collate_schema"));
+    assertEquals("ucs_basic", set.get("default_collate_name"));
+    Map<String, Object> collation =
+        rows.rows("pg_collation").stream()
+            .filter(r -> "ucs_basic".equals(r.get("collname")))
+            .findFirst()
+            .get();
+    assertEquals(12545L, collation.get("oid"));
+    assertEquals(6, collation.get("collencoding"));
+    assertEquals("C", collation.get("collcollate"));
+  }
+
+  @Test
   public void oidsDoNotDependOnTheUser() {
     CatalogSnapshot all = CatalogSnapshot.of(tables(), db -> true, (db, table) -> true);
     CatalogSnapshot some = userSnapshot();

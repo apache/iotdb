@@ -96,6 +96,8 @@ public final class CatalogRows {
         return users();
       case "pg_is_schemata":
         return schemata();
+      case "pg_is_character_sets":
+        return characterSets();
       case "pg_is_tables":
         return tables();
       case "pg_is_columns":
@@ -377,6 +379,23 @@ public final class CatalogRows {
               name.equals("pg_catalog") || name.equals("information_schema") ? "postgres" : user));
     }
     return rows;
+  }
+
+  /**
+   * The database encoding, as PostgreSQL 14 shows it for a UTF8 database with collation C: the
+   * default collation is the longest collation name with that locale, {@code ucs_basic}.
+   */
+  private static List<Map<String, Object>> characterSets() {
+    Map<String, Object> row = new HashMap<>();
+    row.put("character_set_catalog", null);
+    row.put("character_set_schema", null);
+    row.put("character_set_name", "UTF8");
+    row.put("character_repertoire", "UCS");
+    row.put("form_of_use", "UTF8");
+    row.put("default_collate_catalog", DATABASE);
+    row.put("default_collate_schema", "pg_catalog");
+    row.put("default_collate_name", "ucs_basic");
+    return Collections.singletonList(row);
   }
 
   private List<Map<String, Object>> tables() {

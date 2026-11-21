@@ -35,7 +35,7 @@ repeated prepared statements) are collapsed into one entry with a count.
 | `psql.sql` | psql 14.25 | `\l`, `\dn`, `\dt refdb.*`, `\d refdb.sensors`, `\d+ refdb.events`, `\dt *.*`, one aggregation |
 | `pgjdbc.sql` | pgJDBC 42.7.4 (DBeaver's driver) | `DatabaseMetaData` catalogs, schemas, tables, columns, primary keys, indexes, imported keys, type info; a plain query; a prepared statement executed 6 times; `setFetchSize(1000)` over 100,000 rows |
 | `psycopg.sql` | psycopg 3.3.9 | `version()`, plain query, parameterised query 6 times, a binary-result query, a server-side cursor over 100,000 rows |
-| `powerbi.sql` | Power BI Desktop | **to be recorded** (owner, Windows), see below |
+| `powerbi.sql` | Power BI Desktop 2.149 (Npgsql, `application_name` `Mashup Engine`) | connect (Npgsql type loading), navigator over `refdb`, Import of `refdb.sensors` (with `pg_total_relation_size`), DirectQuery: three visuals (`sum` by `time`); date hierarchy, slicer, relative date and Top N filters still to be recorded |
 | `excel.sql`, `metabase.sql` | Excel, Metabase | to be recorded |
 
 ## Expected outcomes
@@ -86,6 +86,7 @@ example `-p <mac-ip>:54314:5432`), run `setup.sql`, then on Windows:
    `refdb.events`.
 
 Then `docker logs` into a file and run `extract.py` with the application names found in the log
-(`grep -o 'app=[^ ]*' pg14.log | sort | uniq -c`). An empty name works too (`=<version>`); it is
+(`grep -o 'app=.* user=' pg14.log | sort | uniq -c`; Power BI 2.149 sends `Mashup Engine`, so pass
+`"Mashup Engine=2.149"` and rename the output to `powerbi.sql`). An empty name works too (`=<version>`); it is
 written to `.sql`, so rename that file to `powerbi.sql` or `excel.sql`. Record the Power BI Desktop
 and Excel versions in the header.
