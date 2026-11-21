@@ -91,6 +91,7 @@ public class IoTDBPostgreSqlImportIT {
         .setPostgreSqlServicePort(port)
         .setPostgreSqlServiceWriteTimeoutInMs(2000);
     EnvFactory.getEnv().initClusterEnvironment();
+    PgItSupport.awaitListening(port);
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE imp");
       session.executeNonQueryStatement("USE imp");
@@ -295,6 +296,10 @@ public class IoTDBPostgreSqlImportIT {
   /** A socket whose reads stop while {@code stalled} is set: a client that stops reading. */
   public static final class StallingSocketFactory extends SocketFactory {
     static volatile boolean stalled;
+
+    /** Set once result bytes wait unread: the server has started sending. */
+    static volatile boolean dataArrived;
+
     static final Object LOCK = new Object();
 
     @Override
@@ -304,11 +309,14 @@ public class IoTDBPostgreSqlImportIT {
         public InputStream getInputStream() throws IOException {
           InputStream in = super.getInputStream();
           return new InputStream() {
-            private void await() {
+            private void await() throws IOException {
               synchronized (LOCK) {
                 while (stalled) {
+                  if (in.available() > 0) {
+                    dataArrived = true;
+                  }
                   try {
-                    LOCK.wait();
+                    LOCK.wait(50);
                   } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     return;
@@ -382,6 +390,7 @@ public class IoTDBPostgreSqlImportIT {
     props.setProperty("preferQueryMode", "simple");
     try (Connection c = DriverManager.getConnection(url(), props);
         Statement s = c.createStatement()) {
+      StallingSocketFactory.dataArrived = false;
       StallingSocketFactory.stalled = true;
       AtomicReference<Throwable> outcome = new AtomicReference<>();
       CountDownLatch done = new CountDownLatch(1);
@@ -399,8 +408,14 @@ public class IoTDBPostgreSqlImportIT {
                 }
               });
       reader.start();
-      // the server fills the socket buffers, waits write_timeout (2 s) and closes the connection
-      Thread.sleep(8_000);
+      // the server fills the socket buffers, waits write_timeout (2 s) and closes the connection;
+      // the countdown starts with the first result bytes (slow machines take a while to sort)
+      long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(120);
+      while (!StallingSocketFactory.dataArrived && System.nanoTime() < deadline) {
+        Thread.sleep(100);
+      }
+      assertTrue("the server started sending", StallingSocketFactory.dataArrived);
+      Thread.sleep(10_000);
       StallingSocketFactory.release();
       assertTrue("the query ended", done.await(60, TimeUnit.SECONDS));
       assertNotNull("the query failed", outcome.get());

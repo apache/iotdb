@@ -63,7 +63,11 @@ public class IoTDBPostgreSqlPortInUseIT {
 
   @Test
   public void theServiceFailsNamingThePort() throws Exception {
-    String log = PgItSupport.dataNodeLog();
+    String log =
+        PgItSupport.awaitDataNodeLog(
+            l ->
+                l.contains("PostgreSQL endpoint not started")
+                    && l.contains("postgresql_service_port"));
     assertTrue(
         "log names the port key",
         log.contains("PostgreSQL endpoint not started") && log.contains("postgresql_service_port"));

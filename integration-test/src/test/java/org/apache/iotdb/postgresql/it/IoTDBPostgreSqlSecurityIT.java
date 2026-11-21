@@ -64,6 +64,7 @@ public class IoTDBPostgreSqlSecurityIT {
         .setPostgreSqlServicePort(port)
         .setPostgreSqlServiceMaxConnections(2);
     EnvFactory.getEnv().initClusterEnvironment();
+    PgItSupport.awaitListening(port);
   }
 
   @AfterClass

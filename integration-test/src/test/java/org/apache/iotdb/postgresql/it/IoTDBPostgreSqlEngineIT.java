@@ -68,6 +68,7 @@ public class IoTDBPostgreSqlEngineIT {
         .setEnablePostgreSqlService(true)
         .setPostgreSqlServicePort(port);
     EnvFactory.getEnv().initClusterEnvironment();
+    PgItSupport.awaitListening(port);
     try (ISession admin = EnvFactory.getEnv().getSessionConnection()) {
       admin.executeNonQueryStatement("CREATE USER pguser '" + PASSWORD + "'");
     }
