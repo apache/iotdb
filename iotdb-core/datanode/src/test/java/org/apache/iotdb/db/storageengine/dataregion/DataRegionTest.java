@@ -3043,4 +3043,24 @@ public class DataRegionTest {
       }
     }
   }
+
+  @Test
+  public void testDropColumnModFileProgress() throws Exception {
+    dataRegion.insertTablet(genInsertTabletNode(10, 0));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    final TsFileResource resource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    final TableDeletionEntry deletion =
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                StatementTestUtils.tableName(), new NOP(), Collections.singletonList("m1")),
+            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
+    dataRegion.deleteByTable(
+        new RelationalDeleteDataNode(
+            DropTableModProgress.planNodeId(47), deletion, dataRegion.getDatabaseName()));
+    Assert.assertEquals(
+        new TDropTableModProgress(1).setRemainingModFileCount(0),
+        dataRegion.getDropTableModProgress(47));
+    assertTrue(resource.getTsFile().exists());
+    assertTrue(resource.anyModFileExists());
+  }
 }

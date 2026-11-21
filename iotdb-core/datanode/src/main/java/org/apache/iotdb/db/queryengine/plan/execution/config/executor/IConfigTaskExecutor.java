@@ -161,6 +161,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> repairDataPartitionTable();
 
+  SettableFuture<ConfigTaskResult> showDeleteTimeSeriesProgress();
+
   SettableFuture<ConfigTaskResult> showRepairDataPartitionTableProgress();
 
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);

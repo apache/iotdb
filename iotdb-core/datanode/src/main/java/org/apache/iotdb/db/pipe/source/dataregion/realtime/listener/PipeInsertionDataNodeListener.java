@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDe
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -52,10 +53,15 @@ public class PipeInsertionDataNodeListener {
   private final ConcurrentMap<Integer, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
 
+  private final Set<Integer> deletedRegions = ConcurrentHashMap.newKeySet();
+
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
       final int dataRegionId, final PipeRealtimeDataRegionSource source) {
+    if (deletedRegions.contains(dataRegionId)) {
+      return;
+    }
     // Keep registration inside compute so the assigner is fully started before it becomes visible
     // to concurrent listeners.
     dataRegionId2Assigner.compute(
@@ -66,6 +72,22 @@ public class PipeInsertionDataNodeListener {
           actualAssigner.startAssignTo(source);
           return actualAssigner;
         });
+  }
+
+  /** Stop admission and drain the region assigner before its DAL is closed. */
+  public void releaseDataRegion(final int dataRegionId) {
+    final PipeDataRegionAssigner assigner;
+    synchronized (this) {
+      deletedRegions.add(dataRegionId);
+      assigner = dataRegionId2Assigner.remove(dataRegionId);
+    }
+    if (assigner != null) {
+      assigner.close();
+    }
+  }
+
+  public synchronized void onRegionCreated(final int dataRegionId) {
+    deletedRegions.remove(dataRegionId);
   }
 
   public void stopListenAndAssign(

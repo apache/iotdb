@@ -71,6 +71,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_STRICT_UDP_PACKET_SIZE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_AIR_GAP_TRANSPORT_DEFAULT_VALUE;
@@ -327,7 +328,9 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     udpPacketSizeInBytes =
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY, SINK_AIR_GAP_UDP_PACKET_SIZE_KEY),
-            CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_DEFAULT_VALUE);
+            strictUnidirectional
+                ? CONNECTOR_AIR_GAP_STRICT_UDP_PACKET_SIZE_DEFAULT_VALUE
+                : CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_DEFAULT_VALUE);
     strictUdpSendIntervalNanos =
         TimeUnit.MILLISECONDS.toNanos(
             parameters.getIntOrDefault(

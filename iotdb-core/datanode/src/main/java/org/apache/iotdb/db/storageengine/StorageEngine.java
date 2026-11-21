@@ -57,6 +57,7 @@ import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner.CompletionToken;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
@@ -542,6 +543,9 @@ public class StorageEngine implements IService {
     WRITING_METRICS.createActiveMemtableCounterMetrics(dataRegionId);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
+    // The previous region's cleanup has completed before a new storage lifecycle starts.
+    DeletionResourceManager.onRegionCreated(dataRegionId.getId());
+    PipeInsertionDataNodeListener.getInstance().onRegionCreated(dataRegionId.getId());
     return dataRegion;
   }
 
@@ -892,11 +896,15 @@ public class StorageEngine implements IService {
       LOGGER.info(StorageEngineMessages.REMOVING_DATA_REGION, regionId);
       region.markDeleted();
       try {
+        // Install the creation barrier before draining tasks. Do not hold the DAL lock while
+        // waiting for receivers/assigners, whose in-flight work may access the manager.
+        DeletionResourceManager.markRegionDeleted(regionId.getId());
+        PipeDataNodeAgent.receiver().iotConsensusV2().releaseReceiverResource(regionId);
+        PipeInsertionDataNodeListener.getInstance().releaseDataRegion(regionId.getId());
         region.abortCompaction();
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
         region.deleteDALFolderAndClose();
-        PipeDataNodeAgent.receiver().iotConsensusV2().releaseReceiverResource(regionId);
         switch (CONFIG.getDataRegionConsensusProtocolClass()) {
           case ConsensusFactory.IOT_CONSENSUS:
           case ConsensusFactory.IOT_CONSENSUS_V2:
