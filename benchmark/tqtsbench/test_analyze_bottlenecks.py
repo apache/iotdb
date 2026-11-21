@@ -16,9 +16,11 @@
 # under the License.
 
 import json
+from pathlib import Path
+import tempfile
 import unittest
 
-from analyze_bottlenecks import category, outcome, sibling_signature
+from analyze_bottlenecks import category, outcome, sibling_signature, trial_dirs
 
 
 class BottleneckRulesTest(unittest.TestCase):
@@ -47,6 +49,17 @@ class BottleneckRulesTest(unittest.TestCase):
         err = outcome({"isError": True, "content": json.dumps({"is_error": True, "error": "Unsupported parameters for tail: measurements"})})
         self.assertFalse(err[0]); self.assertIn("Unsupported", err[1])
         self.assertTrue(outcome({"content": json.dumps({"stdout": "x", "truncated": True})})[3])
+
+    def test_trial_dirs_accepts_flat_and_repeat_layouts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            arm = Path(tmp)
+            (arm / "trials" / "q1").mkdir(parents=True)
+            for r in ("r0", "r1"):
+                (arm / "trials" / "q2" / r).mkdir(parents=True)
+            (arm / "trials" / "q2" / "tool-output").mkdir()
+            labels = [label for label, _ in trial_dirs(arm)]
+            self.assertEqual(labels, ["q1", "q2/r0", "q2/r1"])
+            self.assertEqual(dict(trial_dirs(arm))["q2/r1"], arm / "trials" / "q2" / "r1")
 
 
 if __name__ == "__main__":

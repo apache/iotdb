@@ -161,9 +161,17 @@ def cost(calls):
                 carried_chars=sum(c["chars"] * c["later_messages"] for c in calls))
 
 
+def trial_dirs(arm):
+    """Yield (label, directory) for trials/<question>/ or trials/<question>/r<k>/ layouts."""
+    for question in sorted((arm / "trials").iterdir()):
+        repeats = sorted(r for r in question.glob("r[0-9]*") if r.is_dir())
+        for trial in repeats or [question]:
+            yield (question.name + "/" + trial.name if repeats else question.name), trial
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--arm", type=Path, action="append", required=True, help="directory containing trials/<question>/")
+    p.add_argument("--arm", type=Path, action="append", required=True, help="directory containing trials/<question>/ or trials/<question>/r<k>/")
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--large", type=int, default=8000, help="returned-character threshold for B3/B4")
     p.add_argument("--sample", type=int, default=50, help="calls in the human-labelling sample")
@@ -174,14 +182,14 @@ def main():
     for arm in args.arm:
         name = arm.parent.name + "/" + arm.name if arm.name in {"base", "both", "grid-base", "grid-reduce", "composition", "temporal", "extreme", "grid-only", "reduce-only"} else arm.name
         trials, all_calls = [], []
-        for trial in sorted((arm / "trials").iterdir()):
+        for label, trial in trial_dirs(arm):
             if not (trial / "events-summary.jsonl").exists():
                 continue
             calls, b5 = analyze_trial(trial, args.large)
             for c in calls:
-                c["arm"], c["question_id"] = name, trial.name
+                c["arm"], c["question_id"] = name, label
             all_calls += calls
-            trials.append(dict(question_id=trial.name, total=cost(calls), b5=b5,
+            trials.append(dict(question_id=label, total=cost(calls), b5=b5,
                                classes={k: cost([c for c in calls if k in c["classes"]]) for k in CLASSES if k != "B5"},
                                access_shape_union=cost([c for c in calls if set(c["classes"]) & {"B1", "B2", "B3", "B4"}])))
         total = cost(all_calls)
