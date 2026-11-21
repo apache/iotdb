@@ -32,6 +32,7 @@ class ModelInfo:
         repo_id: str = "",
         auto_map: Optional[Dict] = None,
         hub_mixin_cls: Optional[str] = None,
+        max_output_length: Optional[int] = None,
     ):
         self.model_id = model_id
         self.model_type = model_type
@@ -41,6 +42,9 @@ class ModelInfo:
         self.repo_id = repo_id
         self.auto_map = auto_map
         self.hub_mixin_cls = hub_mixin_cls
+        # The longest forecast the model can produce, if it is shorter than AINode's own limit.
+        # Requests are checked against it before they reach an inference pool.
+        self.max_output_length = max_output_length
 
     def __repr__(self):
         return (
@@ -177,5 +181,15 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_moment.MomentConfig",
             "AutoModelForCausalLM": "modeling_moment.MomentForPrediction",
         },
+    ),
+    "tirex2": ModelInfo(
+        model_id="tirex2",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="tirex2",
+        pipeline_cls="pipeline_tirex2.TiRex2Pipeline",
+        repo_id="NX-AI/TiRex-2",
+        hub_mixin_cls="modeling_tirex2.TiRex2ForPrediction",
+        max_output_length=320,
     ),
 }

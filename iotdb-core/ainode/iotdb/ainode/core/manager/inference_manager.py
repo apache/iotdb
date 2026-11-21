@@ -217,6 +217,21 @@ class InferenceManager:
             resp_list.append(resp)
         return resp_list
 
+    def _max_output_length(self, model_id: str) -> int:
+        """AINode's output_length limit, lowered to the model's own limit if it has one.
+
+        The check runs before a request reaches an inference pool, where a failing
+        request would stop the pool.
+        """
+        max_output_length = (
+            AINodeDescriptor().get_config().get_ain_inference_max_output_length()
+        )
+        if self._model_manager.is_model_registered(model_id):
+            model_limit = self._model_manager.get_model_info(model_id).max_output_length
+            if model_limit is not None:
+                max_output_length = min(max_output_length, model_limit)
+        return max_output_length
+
     def _run_forecast(
         self,
         req,
@@ -232,17 +247,10 @@ class InferenceManager:
 
             inference_attrs = extract_attrs(req)
             output_length = int(inference_attrs.get("output_length", 96))
-            if (
-                output_length
-                > AINodeDescriptor().get_config().get_ain_inference_max_output_length()
-            ):
+            max_output_length = self._max_output_length(model_id)
+            if not 1 <= output_length <= max_output_length:
                 raise NumericalRangeException(
-                    "output_length",
-                    output_length,
-                    1,
-                    AINodeDescriptor()
-                    .get_config()
-                    .get_ain_inference_max_output_length(),
+                    "output_length", output_length, 1, max_output_length
                 )
 
             model_inputs: list[dict[str, torch.Tensor | dict[str, torch.Tensor]]] = [
