@@ -19,8 +19,9 @@
 
 Gold: every selected gold_query is executed once, read-only, with the per-package
 credentials through tool_runner.run_sql; stdout is kept under <output>/gold/<id>/.
-Row counts are checked against the selection's gold_check (stdout hashes are
-reported but not required to match, because the CLI prints elapsed time).
+Row counts (the CLI's 'Total line number') are checked against the selection's
+gold_check; the comparator's parsed row count is reported beside it. Stdout hashes
+are reported but not required to match, because the CLI prints elapsed time.
 
 Policies: v1 is the original TQTS match_policy; v2 removes normalization.pivot and
 normalization.reshape (rescore_final_table_v2.v2_policy). Gold and comparator are
@@ -39,6 +40,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import sys
 
 from analyze_bottlenecks import trial_dirs
@@ -95,9 +97,13 @@ def main():
         except ValueError as e:
             result = {"is_error": True, "error": str(e)}
         stdout = (folder / "stdout.txt").read_text() if (folder / "stdout.txt").exists() else ""
-        rows = len(normalize_output(stdout, "relational").rows) if stdout and not result.get("is_error") else None
+        # Same row count as the selection's gold check: the CLI's own line count.
+        counted = re.findall(r"Total line number = (\d+)", stdout)
+        rows = int(counted[-1]) if counted else (0 if "Empty set" in stdout else None)
+        parsed = len(normalize_output(stdout, "relational").rows) if stdout and not result.get("is_error") else None
         expected = checks.get(qid, {}).get("rows")
-        gold_report.append(dict(question_id=qid, is_error=bool(result.get("is_error")), error=result.get("error"), rows=rows, selection_rows=expected,
+        gold_report.append(dict(question_id=qid, is_error=bool(result.get("is_error")), error=result.get("error"), rows=rows,
+                                comparator_rows=parsed, selection_rows=expected,
                                 rows_agree=rows == expected, stdout_sha256=hashlib.sha256(stdout.encode()).hexdigest(),
                                 selection_stdout_sha256=checks.get(qid, {}).get("stdout_sha256")))
         if not result.get("is_error"):
@@ -136,7 +142,8 @@ def main():
             try:
                 candidate = serialize_final_table(final)
             except ValueError as e:
-                row.update(submission="invalid", error=str(e), v1=False, v2=False)
+                row.update(submission="invalid", error=str(e),
+                           **{v: (False if qid in valid[v] else None) for v in ("v1", "v2")})
                 scores.append(row)
                 continue
             row["submission"] = "valid"
