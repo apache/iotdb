@@ -145,7 +145,7 @@ public class MPPDataExchangeManagerTest {
             mockLocalMemoryManager,
             new TsBlockSerdeFactory(),
             Executors.newSingleThreadExecutor(),
-            new MPPDataExchangeClientManager());
+            Mockito.mock(MPPDataExchangeClientManager.class));
 
     ISinkHandle shuffleSinkHandle =
         mppDataExchangeManager.createShuffleSinkHandle(
@@ -207,7 +207,7 @@ public class MPPDataExchangeManagerTest {
             mockLocalMemoryManager,
             new TsBlockSerdeFactory(),
             Executors.newSingleThreadExecutor(),
-            new MPPDataExchangeClientManager());
+            Mockito.mock(MPPDataExchangeClientManager.class));
 
     ISourceHandle localSourceHandle =
         mppDataExchangeManager.createLocalSourceHandleForFragment(

@@ -22,13 +22,19 @@ package org.apache.iotdb.commons.client.sync;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
 
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -38,6 +44,7 @@ import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -49,6 +56,26 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 public class MPPDataExchangeClientManagerTest {
+  @Test
+  public void exposesActiveConnectionSetupWorkersUntilManagerCloses() throws Exception {
+    MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+    ObjectName name =
+        new ObjectName(
+            IoTDBConstant.IOTDB_THREADPOOL_JMX_NAME,
+            IoTDBConstant.JMX_TYPE,
+            ThreadName.MPP_DATA_EXCHANGE_CONNECTION_SETUP.getName());
+    MPPDataExchangeClientManager manager = new MPPDataExchangeClientManager();
+    try {
+      int active =
+          manager.prepareConnection(
+              () -> (Integer) server.getAttribute(name, "ActiveCount"), 5_000);
+      assertEquals(1, active);
+    } finally {
+      manager.close();
+    }
+    assertFalse(server.isRegistered(name));
+  }
+
   @Test
   public void reusedConnectionUsesEachBorrowersTimeout() throws Exception {
     MPPDataExchangeClientManager manager = new MPPDataExchangeClientManager();

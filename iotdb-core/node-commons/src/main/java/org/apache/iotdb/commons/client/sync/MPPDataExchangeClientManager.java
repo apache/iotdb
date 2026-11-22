@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.concurrent.IoTDBDaemonThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
@@ -39,7 +40,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -48,18 +48,23 @@ public class MPPDataExchangeClientManager
 
   // Native name resolution and TLS store loading can ignore interrupts. Keep these cold-path
   // operations off exchange workers. Each waiting borrower removes its task on cancellation.
-  private final ThreadPoolExecutor connectionSetup =
-      new ThreadPoolExecutor(
-          4,
-          4,
-          1,
-          TimeUnit.MINUTES,
-          new LinkedBlockingQueue<>(),
-          new IoTDBDaemonThreadFactory(ThreadName.MPP_DATA_EXCHANGE_CONNECTION_SETUP.getName()));
+  private final WrappedThreadPoolExecutor connectionSetup;
 
   public MPPDataExchangeClientManager() {
     super(new SyncDataNodeMPPDataExchangeServiceClientPoolFactory());
+    String poolName = ThreadName.MPP_DATA_EXCHANGE_CONNECTION_SETUP.getName();
+    connectionSetup =
+        new WrappedThreadPoolExecutor(
+            4,
+            4,
+            1,
+            TimeUnit.MINUTES,
+            new LinkedBlockingQueue<>(),
+            new IoTDBDaemonThreadFactory(poolName),
+            poolName);
     connectionSetup.allowCoreThreadTimeOut(true);
+    // prepareConnection propagates setup failures to the borrower.
+    connectionSetup.disableErrorLog();
   }
 
   @Override
