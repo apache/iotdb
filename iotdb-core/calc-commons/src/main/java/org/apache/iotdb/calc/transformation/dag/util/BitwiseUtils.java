@@ -85,67 +85,38 @@ public class BitwiseUtils {
   }
 
   public static int bitwiseLeftShiftTransform(int value, long shift) {
+    // The width of the shift is the width of the declared operand type: this overload is only
+    // reached for INT32 operands, so plain 32-bit two's complement semantics apply. The guard is
+    // required because Java uses only the five lowest bits of the shift count for an int operand.
     if (shift >= 32) {
       return 0;
     }
-    int shifted = (value << shift);
-    if (isTinyInt(value)) {
-      return preserveSign(shifted, TINYINT_MASK_IN_INT, TINYINT_SIGNED_BIT_IN_INT);
-    } else if (isSmallInt(value)) {
-      return preserveSign(shifted, SMALLINT_MASK_IN_INT, SMALLINT_SIGNED_BIT_IN_INT);
-    } else {
-      return shifted;
-    }
+    return value << shift;
   }
 
   public static long bitwiseLeftShiftTransform(long value, long shift) {
+    // Only reached for INT64 operands, so 64-bit two's complement semantics apply. The guard is
+    // required because Java uses only the six lowest bits of the shift count for a long operand.
     if (shift >= 64) {
       return 0L;
     }
-    long shifted = (value << shift);
-    if (isTinyInt(value)) {
-      return preserveSign(shifted, TINYINT_MASK, TINYINT_SIGNED_BIT);
-    } else if (isSmallInt(value)) {
-      return preserveSign(shifted, SMALLINT_MASK, SMALLINT_SIGNED_BIT);
-    } else if (isInt32(value)) {
-      return preserveSign(shifted, INTEGER_MASK, INTEGER_SIGNED_BIT);
-    } else {
-      return shifted;
-    }
+    return value << shift;
   }
 
   public static int bitwiseRightShiftTransform(int value, long shift) {
+    // Only reached for INT32 operands, so the vacated bits are filled from a 32-bit width.
     if (shift >= 32) {
       return 0;
     }
-    if (shift == 0) {
-      return value;
-    }
-    if (isTinyInt(value)) {
-      return (value & TINYINT_MASK_IN_INT) >>> shift;
-    } else if (isSmallInt(value)) {
-      return (value & SMALLINT_MASK_IN_INT) >>> shift;
-    } else {
-      return value >>> shift;
-    }
+    return value >>> shift;
   }
 
   public static long bitwiseRightShiftTransform(long value, long shift) {
+    // Only reached for INT64 operands, so the vacated bits are filled from a 64-bit width.
     if (shift >= 64) {
       return 0L;
     }
-    if (shift == 0) {
-      return value;
-    }
-    if (isTinyInt(value)) {
-      return (value & TINYINT_MASK) >>> shift;
-    } else if (isSmallInt(value)) {
-      return (value & SMALLINT_MASK) >>> shift;
-    } else if (isInt32(value)) {
-      return (value & INTEGER_MASK) >>> shift;
-    } else {
-      return value >>> shift;
-    }
+    return value >>> shift;
   }
 
   public static int bitwiseRightShiftArithmeticTransform(int value, long shift) {
