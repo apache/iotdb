@@ -21,52 +21,19 @@ package org.apache.iotdb.commons.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientManagerMetrics;
-import org.apache.iotdb.commons.client.IClientPoolFactory;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.client.property.ClientPoolProperty;
-import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.concurrent.IoTDBDaemonThreadFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
 
-import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.thrift.transport.TTransportException;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.io.IOException;
 
 public class MPPDataExchangeClientManager
     extends ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> {
 
-  // Native name resolution and TLS store loading can ignore interrupts. Keep these cold-path
-  // operations off exchange workers. Each waiting borrower removes its task on cancellation.
-  private final WrappedThreadPoolExecutor connectionSetup;
-
   public MPPDataExchangeClientManager() {
-    super(new SyncDataNodeMPPDataExchangeServiceClientPoolFactory());
-    String poolName = ThreadName.MPP_DATA_EXCHANGE_CONNECTION_SETUP.getName();
-    connectionSetup =
-        new WrappedThreadPoolExecutor(
-            4,
-            4,
-            1,
-            TimeUnit.MINUTES,
-            new LinkedBlockingQueue<>(),
-            new IoTDBDaemonThreadFactory(poolName),
-            poolName);
-    connectionSetup.allowCoreThreadTimeOut(true);
-    // prepareConnection propagates setup failures to the borrower.
-    connectionSetup.disableErrorLog();
+    super(new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory());
   }
 
   @Override
@@ -84,9 +51,7 @@ public class MPPDataExchangeClientManager
       client.prepare(deadlineMs);
       ready = true;
       return client;
-    } catch (ClientManagerException e) {
-      throw e;
-    } catch (Exception e) {
+    } catch (IOException | TTransportException | RuntimeException e) {
       throw new ClientManagerException(e);
     } finally {
       if (client != null && !ready) {
@@ -99,35 +64,6 @@ public class MPPDataExchangeClientManager
     }
   }
 
-  <T> T prepareConnection(Callable<T> prepare, int timeoutMs) throws TTransportException {
-    FutureTask<T> task = new FutureTask<>(prepare);
-    try {
-      connectionSetup.execute(task);
-      return timeoutMs == 0 ? task.get() : task.get(timeoutMs, TimeUnit.MILLISECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new TTransportException(e);
-    } catch (CancellationException | RejectedExecutionException e) {
-      throw new TTransportException(TTransportException.NOT_OPEN, e);
-    } catch (TimeoutException e) {
-      throw new TTransportException(TTransportException.TIMED_OUT, e);
-    } catch (ExecutionException e) {
-      throw new TTransportException(e.getCause());
-    } finally {
-      if (task.cancel(true)) {
-        connectionSetup.remove(task);
-      }
-    }
-  }
-
-  @Override
-  public void close() {
-    for (Runnable queued : connectionSetup.shutdownNow()) {
-      ((FutureTask<?>) queued).cancel(false);
-    }
-    super.close();
-  }
-
   public static long remainingMillis(long deadlineMs) {
     if (deadlineMs == Long.MAX_VALUE) {
       return Long.MAX_VALUE;
@@ -137,30 +73,5 @@ public class MPPDataExchangeClientManager
       throw new QueryTimeoutException();
     }
     return remaining;
-  }
-
-  private static class SyncDataNodeMPPDataExchangeServiceClientPoolFactory
-      implements IClientPoolFactory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> {
-
-    @Override
-    public GenericKeyedObjectPool<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
-        createClientPool(
-            ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> manager) {
-      CommonConfig conf = CommonDescriptor.getInstance().getConfig();
-      GenericKeyedObjectPool<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clientPool =
-          new GenericKeyedObjectPool<>(
-              new SyncDataNodeMPPDataExchangeServiceClient.Factory(
-                  manager,
-                  new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
-                      .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .build()),
-              new ClientPoolProperty.Builder<SyncDataNodeMPPDataExchangeServiceClient>()
-                  .build()
-                  .getConfig());
-      ClientManagerMetrics.getInstance()
-          .registerClientManager(this.getClass().getSimpleName(), clientPool);
-      return clientPool;
-    }
   }
 }

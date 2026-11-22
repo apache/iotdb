@@ -152,9 +152,8 @@ struct TSendFragmentInstanceReq {
   // Attempt metadata is absent for a legacy coordinator. Do not change the binary FI body.
   3: optional i32 queryAttemptId
   4: optional TQueryAdmissionToken admissionToken
-  // Field 5 carried an absolute deadline in earlier development builds.
   // The receiver anchors the remaining duration to its own clock at RPC receipt.
-  6: optional i64 remainingQueryTimeMs
+  5: optional i64 remainingQueryTimeMs
 }
 
 struct TSendFragmentInstanceResp {

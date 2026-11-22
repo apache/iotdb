@@ -41,7 +41,6 @@ public enum ThreadName {
   // -------------------------- MPP --------------------------
   MPP_COORDINATOR_SCHEDULED_EXECUTOR("MPP-Coordinator-Scheduled-Executor"),
   MPP_DATA_EXCHANGE_TASK_EXECUTOR("MPP-Data-Exchange-Task-Executors"),
-  MPP_DATA_EXCHANGE_CONNECTION_SETUP("MPP-Data-Exchange-Connection-Setup"),
   ASYNC_DATANODE_CLIENT_POOL("AsyncDataNodeInternalServiceClientPool"),
   MPP_DATA_EXCHANGE_RPC_SERVICE("MPPDataExchangeRPC-Service"),
   MPP_DATA_EXCHANGE_RPC_PROCESSOR("MPPDataExchangeRPC-Processor"),
@@ -233,7 +232,6 @@ public enum ThreadName {
           Arrays.asList(
               MPP_COORDINATOR_SCHEDULED_EXECUTOR,
               MPP_DATA_EXCHANGE_TASK_EXECUTOR,
-              MPP_DATA_EXCHANGE_CONNECTION_SETUP,
               ASYNC_DATANODE_CLIENT_POOL,
               MPP_DATA_EXCHANGE_RPC_SERVICE,
               MPP_DATA_EXCHANGE_RPC_PROCESSOR,

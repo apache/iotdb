@@ -20,34 +20,20 @@
 package org.apache.iotdb.commons.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
-import org.apache.iotdb.rpc.RpcSslUtils;
-import org.apache.iotdb.rpc.TElasticFramedTransport;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransportException;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentCaptor;
 
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLServerSocket;
-import javax.net.ssl.SSLSocket;
-
-import java.io.File;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -55,23 +41,11 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedByInterruptException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -84,31 +58,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 public class MPPDataExchangeClientManagerTest {
-  @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-  private ObjectName setupPoolName() throws Exception {
-    return new ObjectName(
-        IoTDBConstant.IOTDB_THREADPOOL_JMX_NAME,
-        IoTDBConstant.JMX_TYPE,
-        ThreadName.MPP_DATA_EXCHANGE_CONNECTION_SETUP.getName());
-  }
-
-  @Test
-  public void exposesActiveConnectionSetupWorkersUntilManagerCloses() throws Exception {
-    MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-    ObjectName name = setupPoolName();
-    MPPDataExchangeClientManager manager = new MPPDataExchangeClientManager();
-    try {
-      int active =
-          manager.prepareConnection(
-              () -> (Integer) server.getAttribute(name, "ActiveCount"), 5_000);
-      assertEquals(1, active);
-    } finally {
-      manager.close();
-    }
-    assertFalse(server.isRegistered(name));
-  }
-
   @Test
   public void reusedConnectionUsesEachBorrowersTimeout() throws Exception {
     MPPDataExchangeClientManager manager = new MPPDataExchangeClientManager();
@@ -177,97 +126,44 @@ public class MPPDataExchangeClientManagerTest {
   }
 
   @Test
-  public void borrowPreservesQueryTimeoutCauseDuringPreparation() {
-    QueryTimeoutException expired = new QueryTimeoutException();
-    MPPDataExchangeClientManager manager =
-        new MPPDataExchangeClientManager() {
-          @Override
-          <T> T prepareConnection(Callable<T> prepare, int timeoutMs) {
-            throw expired;
-          }
-        };
-    try {
-      TEndPoint endpoint = new TEndPoint("localhost", 1);
-      ClientManagerException failure =
-          assertThrows(
-              ClientManagerException.class, () -> manager.borrowClient(endpoint, Long.MAX_VALUE));
-      assertSame(expired, failure.getCause());
-      assertEquals(0, manager.getPool().getNumActive());
-      assertEquals(0, manager.getPool().getNumIdle());
-    } finally {
-      manager.close();
-    }
-  }
-
-  @Test(timeout = 5_000)
-  public void stalledConnectionSetupReleasesBorrower() throws Exception {
-    MPPDataExchangeClientManager manager = new MPPDataExchangeClientManager();
-    CountDownLatch release = new CountDownLatch(1);
-    try {
-      TTransportException failure =
-          assertThrows(
-              TTransportException.class,
-              () ->
-                  manager.prepareConnection(
-                      () -> {
-                        release.await();
-                        return null;
-                      },
-                      80));
-      assertEquals(TTransportException.TIMED_OUT, failure.getType());
-      assertEquals("ready", manager.prepareConnection(() -> "ready", 1_000));
-    } finally {
-      release.countDown();
-      manager.close();
-    }
-  }
-
-  @Test
-  public void closingPoolReportsQueuedSetupCancellationAsTransportFailure() throws Exception {
-    MPPDataExchangeClientManager manager = new MPPDataExchangeClientManager();
-    ExecutorService callers = Executors.newFixedThreadPool(5);
-    CountDownLatch started = new CountDownLatch(4);
-    CountDownLatch release = new CountDownLatch(1);
-    try {
-      for (int i = 0; i < 4; i++) {
-        callers.submit(
-            () ->
-                manager.prepareConnection(
-                    () -> {
-                      started.countDown();
-                      release.await();
-                      return null;
-                    },
-                    0));
+  public void legacyFactoryAndConstructorReturnConnectedClients() throws Exception {
+    ThriftClientProperty property =
+        new ThriftClientProperty.Builder().setConnectionTimeoutMs(5_000).build();
+    ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> manager =
+        (ClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>)
+            new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
+                .createClientManager(
+                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory());
+    try (ServerSocket server = new ServerSocket(0, 3, InetAddress.getLoopbackAddress())) {
+      TEndPoint endpoint =
+          new TEndPoint(server.getInetAddress().getHostAddress(), server.getLocalPort());
+      try (SyncDataNodeMPPDataExchangeServiceClient borrowed = manager.borrowClient(endpoint);
+          Socket peer = server.accept()) {
+        assertTrue(borrowed.getInputProtocol().getTransport().isOpen());
       }
-      assertTrue(started.await(5, SECONDS));
-      Future<String> queued = callers.submit(() -> manager.prepareConnection(() -> "queued", 0));
-      ObjectName name = setupPoolName();
-      MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-      await()
-          .atMost(5, SECONDS)
-          .until(() -> Integer.valueOf(1).equals(server.getAttribute(name, "QueueLength")));
-      manager.close();
-      Throwable failure =
-          assertThrows(ExecutionException.class, () -> queued.get(5, SECONDS)).getCause();
-      assertTrue(failure instanceof TTransportException);
-      assertTrue(failure.getCause() instanceof CancellationException);
+      SyncDataNodeMPPDataExchangeServiceClient direct =
+          new SyncDataNodeMPPDataExchangeServiceClient(property, endpoint, manager);
+      try (Socket peer = server.accept()) {
+        assertTrue(direct.getInputProtocol().getTransport().isOpen());
+        assertEquals(5_000, direct.getTimeout());
+      } finally {
+        direct.invalidate();
+      }
     } finally {
-      release.countDown();
-      callers.shutdownNow();
       manager.close();
     }
   }
 
   @Test
-  public void onlyPeerFailuresClearOtherConnectionsEvenOnInterruptedWorker() {
+  public void onlyPeerFailuresClearOtherConnectionsEvenOnInterruptedWorker() throws Exception {
     TEndPoint endpoint = new TEndPoint("127.0.0.1", 10740);
     MPPDataExchangeClientManager manager = mock(MPPDataExchangeClientManager.class);
     SyncDataNodeMPPDataExchangeServiceClient client =
         new SyncDataNodeMPPDataExchangeServiceClient(
             new ThriftClientProperty.Builder().setPrintLogWhenEncounterException(false).build(),
             endpoint,
-            manager);
+            manager,
+            false);
     ThriftClient.resolveException(new TException(new ClosedByInterruptException()), client);
     verify(manager, never()).clear(endpoint);
     Thread.currentThread().interrupt();
@@ -280,99 +176,13 @@ public class MPPDataExchangeClientManagerTest {
   }
 
   @Test
-  public void tlsConnectionVerifiesPeerOnLoopback() throws Exception {
-    String password = "test-only";
-    Path store = temporaryFolder.getRoot().toPath().resolve("loopback.p12");
-    Path output = temporaryFolder.newFile("keytool.log").toPath();
-    Path keytool =
-        Path.of(
-            System.getProperty("java.home"),
-            "bin",
-            File.separatorChar == '\\' ? "keytool.exe" : "keytool");
-    Process keys =
-        new ProcessBuilder(
-                keytool.toString(),
-                "-genkeypair",
-                "-alias",
-                "loopback",
-                "-keyalg",
-                "EC",
-                "-dname",
-                "CN=localhost",
-                "-ext",
-                "SAN=ip:127.0.0.1",
-                "-validity",
-                "2",
-                "-storetype",
-                "PKCS12",
-                "-keystore",
-                store.toString(),
-                "-storepass",
-                password)
-            .redirectErrorStream(true)
-            .redirectOutput(output.toFile())
-            .start();
-    try {
-      assertTrue(keys.waitFor(30, SECONDS));
-      assertEquals(Files.readString(output), 0, keys.exitValue());
-    } finally {
-      keys.destroyForcibly();
-    }
-    CommonConfig config = CommonDescriptor.getInstance().getConfig();
-    boolean previousSsl = config.isEnableInternalSSL();
-    String previousTrustStore = config.getTrustStorePath();
-    String previousTrustPassword = config.getTrustStorePwd();
-    SSLContext tls =
-        RpcSslUtils.createSSLContext(store.toString(), password, store.toString(), password);
-    MPPDataExchangeClientManager manager = new MPPDataExchangeClientManager();
-    ExecutorService peerThread = Executors.newSingleThreadExecutor();
-    try (SSLServerSocket server =
-        (SSLServerSocket)
-            tls.getServerSocketFactory()
-                .createServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))) {
-      config.setEnableInternalSSL(true);
-      config.setTrustStorePath(store.toString());
-      config.setTrustStorePwd(password);
-      server.setSoTimeout(10_000);
-      Future<?> peerHandshake =
-          peerThread.submit(
-              () -> {
-                try (SSLSocket peer = (SSLSocket) server.accept()) {
-                  peer.setSoTimeout(10_000);
-                  peer.startHandshake();
-                }
-                return null;
-              });
-      try (SyncDataNodeMPPDataExchangeServiceClient client =
-          manager.borrowClient(
-              new TEndPoint("127.0.0.1", server.getLocalPort()),
-              System.currentTimeMillis() + 10_000)) {
-        TSocket transport =
-            (TSocket)
-                ((TElasticFramedTransport) client.getInputProtocol().getTransport()).getSocket();
-        SSLSocket socket = (SSLSocket) transport.getSocket();
-        assertEquals("HTTPS", socket.getSSLParameters().getEndpointIdentificationAlgorithm());
-        socket.startHandshake();
-        assertTrue(socket.getSession().getPeerCertificates().length > 0);
-        client.invalidate();
-      }
-      peerHandshake.get(10, SECONDS);
-    } finally {
-      config.setEnableInternalSSL(previousSsl);
-      config.setTrustStorePath(previousTrustStore);
-      config.setTrustStorePwd(previousTrustPassword);
-      manager.close();
-      peerThread.shutdownNow();
-    }
-  }
-
-  @Test
   public void connectUsesRemainingBudgetAndClosesFailedSocket() throws Exception {
     SyncDataNodeMPPDataExchangeServiceClient client =
         new SyncDataNodeMPPDataExchangeServiceClient(
             new ThriftClientProperty.Builder().setConnectionTimeoutMs(60_000).build(),
             new TEndPoint("127.0.0.1", 10740),
-            null);
+            null,
+            false);
     Socket socket = mock(Socket.class);
     doThrow(new SocketTimeoutException()).when(socket).connect(any(SocketAddress.class), anyInt());
     long deadline = System.currentTimeMillis() - 3_200 + 4_000;
@@ -397,7 +207,8 @@ public class MPPDataExchangeClientManagerTest {
         new SyncDataNodeMPPDataExchangeServiceClient(
             new ThriftClientProperty.Builder().setConnectionTimeoutMs(-1).build(),
             new TEndPoint("127.0.0.1", 10740),
-            null);
+            null,
+            false);
     Socket failed = mock(Socket.class);
     AssertionError connectFailure = new AssertionError("connect failed");
     doThrow(connectFailure).when(failed).connect(any(SocketAddress.class), eq(0));

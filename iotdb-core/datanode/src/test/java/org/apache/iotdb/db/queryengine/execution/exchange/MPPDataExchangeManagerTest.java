@@ -48,10 +48,43 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class MPPDataExchangeManagerTest {
+  @Test
+  public void exchangeExecutorClosesClientsAfterItsLastTask() throws Exception {
+    MPPDataExchangeClientManager clients = Mockito.mock(MPPDataExchangeClientManager.class);
+    ExecutorService executor = MPPDataExchangeService.createExchangeExecutor(clients);
+    CountDownLatch started = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    try {
+      TEndPoint endpoint = new TEndPoint("localhost", 1);
+      Future<?> task =
+          executor.submit(
+              () -> {
+                started.countDown();
+                release.await();
+                return clients.borrowClient(endpoint);
+              });
+      Assert.assertTrue(started.await(5, TimeUnit.SECONDS));
+      executor.shutdown();
+      Mockito.verify(clients, Mockito.never()).close();
+      release.countDown();
+      task.get(5, TimeUnit.SECONDS);
+      Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      org.mockito.InOrder order = Mockito.inOrder(clients);
+      order.verify(clients).borrowClient(endpoint);
+      order.verify(clients).close();
+    } finally {
+      release.countDown();
+      executor.shutdownNow();
+    }
+  }
+
   @Test
   public void testNewDataBlockMemoryFailureMarksTargetFragmentFailed() throws Exception {
     final String queryId = "q_memory_reservation_failure";

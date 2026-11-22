@@ -29,9 +29,7 @@ import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TProtocolUtil;
-import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
-import org.apache.thrift.transport.TMemoryBuffer;
 import org.apache.thrift.transport.TMemoryInputTransport;
 import org.junit.Test;
 
@@ -58,26 +56,6 @@ public class QueryAttemptProtocolTest {
     assertEquals(cancel, receivedCancel);
     assertFalse(receivedCancel.isSetQueryAttemptId());
     assertFalse(receivedCancel.isSetAdmissionToken());
-  }
-
-  @Test
-  public void oldAbsoluteDeadlineIsSkippedByRelativeBudgetReader() throws Exception {
-    TFragmentInstance body = new TFragmentInstance(ByteBuffer.wrap(new byte[] {1, 2, 3}));
-    TBinaryProtocol protocol = new TBinaryProtocol(new TMemoryBuffer(128));
-    protocol.writeStructBegin(new TStruct("TSendFragmentInstanceReq"));
-    protocol.writeFieldBegin(new TField("fragmentInstance", TType.STRUCT, (short) 1));
-    body.write(protocol);
-    protocol.writeFieldEnd();
-    protocol.writeFieldBegin(new TField("queryDeadlineMs", TType.I64, (short) 5));
-    protocol.writeI64(System.currentTimeMillis() + 800);
-    protocol.writeFieldEnd();
-    protocol.writeFieldStop();
-    protocol.writeStructEnd();
-
-    TSendFragmentInstanceReq received = new TSendFragmentInstanceReq();
-    received.read(protocol);
-    assertEquals(body, received.getFragmentInstance());
-    assertFalse(received.isSetRemainingQueryTimeMs());
   }
 
   @Test

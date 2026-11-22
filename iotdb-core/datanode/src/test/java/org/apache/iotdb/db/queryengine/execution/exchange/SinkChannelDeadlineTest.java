@@ -37,11 +37,13 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
+import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -60,6 +62,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -189,14 +192,18 @@ public class SinkChannelDeadlineTest {
     SyncDataNodeMPPDataExchangeServiceClient client =
         mock(SyncDataNodeMPPDataExchangeServiceClient.class);
     when(clients.borrowClient(eq(endpoint), anyLong())).thenReturn(client);
-    doThrow(new TException("transient failure")).when(client).onNewDataBlockEvent(any());
+    TException networkFailure = new TException("transient failure");
+    doThrow(networkFailure).when(client).onNewDataBlockEvent(any());
     SinkChannel channel = channel(endpoint, System.currentTimeMillis() + 800, clients);
     channel.setRetryIntervalInMs(30_000);
     channel.open();
     channel.send(Utils.createMockTsBlocks(1, 1024).get(0));
     awaitWorker();
     verify(client).onNewDataBlockEvent(any());
-    verify(listener).onFailure(eq(channel), isA(QueryTimeoutException.class));
+    ArgumentCaptor<Throwable> reported = ArgumentCaptor.forClass(Throwable.class);
+    verify(listener).onFailure(eq(channel), reported.capture());
+    assertTrue(reported.getValue() instanceof QueryTimeoutException);
+    assertSame(networkFailure, Throwables.getRootCause(reported.getValue()));
     channel.abort();
   }
 
@@ -249,6 +256,7 @@ public class SinkChannelDeadlineTest {
           }
         };
     CountDownLatch sending = new CountDownLatch(1);
+    ClosedByInterruptException socketFailure = new ClosedByInterruptException();
     try {
       TEndPoint endpoint = new TEndPoint("unused", 1);
       MPPDataExchangeClientManager clients = mock(MPPDataExchangeClientManager.class);
@@ -261,7 +269,7 @@ public class SinkChannelDeadlineTest {
                 while (!Thread.currentThread().isInterrupted()) {
                   LockSupport.park();
                 }
-                throw new TException(new ClosedByInterruptException());
+                throw new TException(socketFailure);
               })
           .when(client)
           .onEndOfDataBlockEvent(any());
@@ -281,7 +289,10 @@ public class SinkChannelDeadlineTest {
       assertEquals(shutdownNow, inListener.get(5, SECONDS));
       assertEquals(shutdownNow, afterTask.get(5, SECONDS));
       if (!shutdownNow) {
-        verify(listener).onFailure(eq(channel), isA(QueryTimeoutException.class));
+        ArgumentCaptor<Throwable> reported = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onFailure(eq(channel), reported.capture());
+        assertTrue(reported.getValue() instanceof QueryTimeoutException);
+        assertSame(socketFailure, Throwables.getRootCause(reported.getValue()));
       }
       verify(listener, never()).onEndOfBlocks(channel);
     } finally {
@@ -305,6 +316,7 @@ public class SinkChannelDeadlineTest {
     CountDownLatch releaseData = new CountDownLatch(1);
     CountDownLatch releaseEnd = new CountDownLatch(1);
     CountDownLatch normalEnd = new CountDownLatch(1);
+    CompletableFuture<Boolean> dataInterrupted = new CompletableFuture<>();
     CountDownLatch failure = new CountDownLatch(1);
     try {
       TEndPoint endpoint = new TEndPoint("unused", 1);
@@ -316,6 +328,7 @@ public class SinkChannelDeadlineTest {
               call -> {
                 bothSending.countDown();
                 Uninterruptibles.awaitUninterruptibly(releaseData);
+                dataInterrupted.complete(Thread.currentThread().isInterrupted());
                 throw new TApplicationException("injected data notification failure");
               })
           .when(client)
@@ -351,7 +364,10 @@ public class SinkChannelDeadlineTest {
       if (finishFirst) {
         releaseEnd.countDown();
         assertTrue(normalEnd.await(5, SECONDS));
+        // The owning shuffle handle closes normally finished channels.
+        channel.close();
         releaseData.countDown();
+        assertFalse(dataInterrupted.get(5, SECONDS));
       } else {
         releaseData.countDown();
         assertTrue(failure.await(5, SECONDS));
@@ -370,6 +386,54 @@ public class SinkChannelDeadlineTest {
     } finally {
       releaseData.countDown();
       releaseEnd.countDown();
+      workers.shutdownNow();
+    }
+  }
+
+  @Test
+  public void acknowledgedChannelStillBoundsAnOutstandingReadAtItsDeadline() throws Exception {
+    ExecutorService workers = Executors.newFixedThreadPool(2);
+    CountDownLatch dataSending = new CountDownLatch(1);
+    CountDownLatch endDelivered = new CountDownLatch(1);
+    CompletableFuture<Long> interruptedAt = new CompletableFuture<>();
+    try {
+      TEndPoint endpoint = new TEndPoint("unused", 1);
+      MPPDataExchangeClientManager clients = mock(MPPDataExchangeClientManager.class);
+      SyncDataNodeMPPDataExchangeServiceClient client =
+          mock(SyncDataNodeMPPDataExchangeServiceClient.class);
+      when(clients.borrowClient(eq(endpoint), anyLong())).thenReturn(client);
+      doAnswer(
+              call -> {
+                dataSending.countDown();
+                while (!Thread.currentThread().isInterrupted()) {
+                  LockSupport.park();
+                }
+                interruptedAt.complete(System.currentTimeMillis());
+                throw new TException(new ClosedByInterruptException());
+              })
+          .when(client)
+          .onNewDataBlockEvent(any());
+      doAnswer(
+              call -> {
+                endDelivered.countDown();
+                return null;
+              })
+          .when(listener)
+          .onEndOfBlocks(any());
+      long deadline = System.currentTimeMillis() + 1_500;
+      SinkChannel channel = channel(endpoint, deadline, clients, workers);
+      channel.open();
+      channel.send(Utils.createMockTsBlocks(1, 1024).get(0));
+      assertTrue(dataSending.await(5, SECONDS));
+      channel.acknowledgeTsBlock(0, 1);
+      channel.setNoMoreTsBlocks();
+      assertTrue(endDelivered.await(5, SECONDS));
+      assertTrue(interruptedAt.get(5, SECONDS) >= deadline - 2);
+      workers.shutdown();
+      assertTrue(workers.awaitTermination(5, SECONDS));
+      verify(listener).onFinish(channel);
+      verify(listener, never()).onFailure(any(), any());
+    } finally {
       workers.shutdownNow();
     }
   }

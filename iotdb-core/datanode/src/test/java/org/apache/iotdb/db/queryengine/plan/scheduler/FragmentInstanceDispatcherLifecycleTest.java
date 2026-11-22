@@ -194,6 +194,29 @@ public class FragmentInstanceDispatcherLifecycleTest {
   }
 
   @Test
+  public void unspecifiedCoordinatorTimeoutRetainsTheFragmentLimitOnReconnect() throws Exception {
+    FragmentInstanceDispatcherImpl dispatcher = dispatcher();
+    context.setTimeOut(0);
+    List<TSendFragmentInstanceReq> requests = new ArrayList<>();
+    when(client.sendFragmentInstance(any()))
+        .thenAnswer(
+            invocation -> {
+              TSendFragmentInstanceReq request = invocation.getArgument(0);
+              requests.add(request.deepCopy());
+              if (requests.size() == 1) {
+                throw new TException("connection closed");
+              }
+              return new TSendFragmentInstanceResp(true);
+            });
+    assertTrue(
+        dispatcher.dispatch(null, Collections.singletonList(instance(0))).get().isSuccessful());
+    assertEquals(2, requests.size());
+    for (TSendFragmentInstanceReq request : requests) {
+      assertFalse(request.isSetRemainingQueryTimeMs());
+    }
+  }
+
+  @Test
   public void fragmentsOnTheSameNodeReuseOneTokenRpc() throws Exception {
     FragmentInstanceDispatcherImpl dispatcher = dispatcher();
     when(client.sendFragmentInstance(any())).thenReturn(new TSendFragmentInstanceResp(true));

@@ -421,6 +421,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   public interface SinkListener {
     void onFinish(ISink sink);
 
+    /**
+     * Remote channels may publish the end under their monitor before an outstanding ACK. This
+     * callback must be non-blocking and must not acquire the owning shuffle handle's lock.
+     */
     void onEndOfBlocks(ISink sink);
 
     Optional<Throwable> onAborted(ISink sink);
@@ -875,7 +879,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             mppDataExchangeServiceClientManager);
     instanceContext
         .getStateMachine()
-        .addFinalStateChangeListener(state -> channel.stopNotifications());
+        .addFinalStateChangeListener(state -> channel.stopNotifications(state.isFailed()));
     return channel;
   }
 
