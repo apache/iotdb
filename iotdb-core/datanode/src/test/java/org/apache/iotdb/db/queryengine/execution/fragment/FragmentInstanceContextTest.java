@@ -91,6 +91,12 @@ public class FragmentInstanceContextTest {
     assertEquals(localDeadline, context.getOuterQueryDeadlineMs());
     context.setExchangeDeadlineMs(Long.MAX_VALUE);
     assertEquals(localDeadline, context.getExchangeDeadlineMs());
+
+    FragmentInstanceContext withoutLocalDeadline =
+        FragmentInstanceContext.createFragmentInstanceContext(id, state);
+    assertEquals(-1L, withoutLocalDeadline.getExchangeDeadlineMs());
+    withoutLocalDeadline.setExchangeDeadlineMs(localDeadline);
+    assertEquals(localDeadline, withoutLocalDeadline.getExchangeDeadlineMs());
   }
 
   @Test

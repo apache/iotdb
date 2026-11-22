@@ -37,9 +37,11 @@ import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.thrift.transport.TTransportException;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -75,17 +77,19 @@ public class MPPDataExchangeClientManager
 
   public SyncDataNodeMPPDataExchangeServiceClient borrowClient(TEndPoint endpoint, long deadlineMs)
       throws ClientManagerException {
-    SyncDataNodeMPPDataExchangeServiceClient client =
-        borrowClientWithTimeout(endpoint, remainingMillis(deadlineMs));
+    SyncDataNodeMPPDataExchangeServiceClient client = null;
     boolean ready = false;
     try {
+      client = borrowClientWithTimeout(endpoint, remainingMillis(deadlineMs));
       client.prepare(deadlineMs);
       ready = true;
       return client;
+    } catch (ClientManagerException e) {
+      throw e;
     } catch (Exception e) {
       throw new ClientManagerException(e);
     } finally {
-      if (!ready) {
+      if (client != null && !ready) {
         try {
           client.invalidate();
         } finally {
@@ -97,12 +101,14 @@ public class MPPDataExchangeClientManager
 
   <T> T prepareConnection(Callable<T> prepare, int timeoutMs) throws TTransportException {
     FutureTask<T> task = new FutureTask<>(prepare);
-    connectionSetup.execute(task);
     try {
+      connectionSetup.execute(task);
       return timeoutMs == 0 ? task.get() : task.get(timeoutMs, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new TTransportException(e);
+    } catch (CancellationException | RejectedExecutionException e) {
+      throw new TTransportException(TTransportException.NOT_OPEN, e);
     } catch (TimeoutException e) {
       throw new TTransportException(TTransportException.TIMED_OUT, e);
     } catch (ExecutionException e) {

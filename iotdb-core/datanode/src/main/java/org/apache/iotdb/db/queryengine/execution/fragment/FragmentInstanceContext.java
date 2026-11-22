@@ -663,15 +663,16 @@ public class FragmentInstanceContext extends QueryContext {
     return outerQueryDeadlineMs;
   }
 
-  void setExchangeDeadlineMs(long coordinatorDeadlineMs) {
-    exchangeDeadlineMs = coordinatorDeadlineMs;
+  void setExchangeDeadlineMs(long deadlineMs) {
+    exchangeDeadlineMs = deadlineMs;
   }
 
   public long getExchangeDeadlineMs() {
     // Legacy coordinators only send the remaining FI timeout. Also honor an earlier local FI limit.
-    return exchangeDeadlineMs < 0
-        ? outerQueryDeadlineMs
-        : Math.min(outerQueryDeadlineMs, exchangeDeadlineMs);
+    if (exchangeDeadlineMs < 0 || outerQueryDeadlineMs < 0) {
+      return Math.max(exchangeDeadlineMs, outerQueryDeadlineMs);
+    }
+    return Math.min(outerQueryDeadlineMs, exchangeDeadlineMs);
   }
 
   public Optional<Throwable> getFailureCause() {

@@ -201,8 +201,6 @@ public final class DataNodeQueryMessages {
       "Failed to send new data block event, attempt times: {}";
   public static final String FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT =
       "Failed to send end of data block event, attempt times: {}";
-  public static final String FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT_2 =
-      "Failed to send end of data block event after all retry";
   public static final String SOURCE_HANDLE_IS_BLOCKED =
       "Source handle is blocked.";
   public static final String RESERVED_DATA_BLOCK_SIZE_IS_NULL =

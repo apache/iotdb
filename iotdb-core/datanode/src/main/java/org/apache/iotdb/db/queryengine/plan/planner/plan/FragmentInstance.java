@@ -46,6 +46,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static com.google.common.math.LongMath.saturatedAdd;
+
 public class FragmentInstance implements IConsensusRequest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstance.class);
@@ -65,7 +67,7 @@ public class FragmentInstance implements IConsensusRequest {
   private final TimePredicate globalTimePredicate;
 
   private final long timeOut;
-  // Carried in the optional dispatch envelope. Older coordinators only send the FI timeOut.
+  // Process-local deadline. The dispatch envelope carries only the remaining duration.
   private long queryDeadlineMs = -1;
 
   private boolean isRoot;
@@ -366,8 +368,8 @@ public class FragmentInstance implements IConsensusRequest {
     return hostDataNode;
   }
 
-  public void setQueryDeadlineMs(long queryDeadlineMs) {
-    this.queryDeadlineMs = queryDeadlineMs;
+  public void setQueryDeadlineFromTimeout(long localStartMs, long timeoutMs) {
+    queryDeadlineMs = saturatedAdd(localStartMs, Math.max(0, timeoutMs));
   }
 
   public long getQueryDeadlineMs() {

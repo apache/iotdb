@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.MPPDataExchangeClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
@@ -53,16 +54,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
@@ -106,8 +106,11 @@ public class SinkChannel implements ISinkChannel {
   private final String threadName;
   private long retryIntervalInMs;
   private final long queryDeadlineMs;
-  private final Set<Thread> runningNotifications = new HashSet<>();
-  private volatile CompletableFuture<Void> deadlineAlarm;
+  // The value records whether this registration received a channel-owned interrupt.
+  private final Map<Thread, Boolean> runningNotifications = new HashMap<>();
+  // Guarded by runningNotifications.
+  private CompletableFuture<Void> deadlineAlarm;
+  private volatile boolean deadlineExpired;
   private volatile boolean notificationsStopped;
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
@@ -137,7 +140,8 @@ public class SinkChannel implements ISinkChannel {
 
   private boolean noMoreTsBlocks = false;
 
-  private final AtomicBoolean invokedOnFinished = new AtomicBoolean(false);
+  // Guarded by this. Normal finish and notification failure compete for one terminal callback.
+  private boolean terminalCallbackClaimed;
 
   /** max bytes this SinkChannel can reserve. */
   private long maxBytesCanReserve =
@@ -329,6 +333,7 @@ public class SinkChannel implements ISinkChannel {
     if (aborted || closed) {
       return false;
     }
+    terminalCallbackClaimed = true;
     stopNotifications();
     sequenceIdToTsBlock.clear();
     if (blocked != null) {
@@ -384,9 +389,44 @@ public class SinkChannel implements ISinkChannel {
   }
 
   private void invokeOnFinished() {
-    if (invokedOnFinished.compareAndSet(false, true)) {
+    if (claimFinish()) {
       sinkListener.onFinish(this);
     }
+  }
+
+  private synchronized boolean claimFinish() {
+    if (terminalCallbackClaimed) {
+      return false;
+    }
+    terminalCallbackClaimed = true;
+    stopNotifications();
+    return true;
+  }
+
+  private synchronized boolean claimFailure() {
+    if (terminalCallbackClaimed || !stopNotifications()) {
+      return false;
+    }
+    terminalCallbackClaimed = true;
+    return true;
+  }
+
+  private void endOfBlocksSent() {
+    synchronized (this) {
+      if (notificationsStopped || noMoreTsBlocks) {
+        return;
+      }
+      noMoreTsBlocks = true;
+      if (!sequenceIdToTsBlock.isEmpty()) {
+        // The final ACK can still finish this channel. Publish the end before a failure can win.
+        sinkListener.onEndOfBlocks(this);
+        return;
+      }
+      claimFinish();
+    }
+    // onFinish may re-enter the owning shuffle handle and close other channels.
+    sinkListener.onFinish(this);
+    sinkListener.onEndOfBlocks(this);
   }
 
   @Override
@@ -608,8 +648,7 @@ public class SinkChannel implements ISinkChannel {
   }
 
   private boolean deadlineReached() {
-    return System.currentTimeMillis() >= queryDeadlineMs
-        || (deadlineAlarm != null && deadlineAlarm.isCompletedExceptionally());
+    return deadlineExpired || System.currentTimeMillis() >= queryDeadlineMs;
   }
 
   private void registerNotification() throws InterruptedException {
@@ -624,17 +663,24 @@ public class SinkChannel implements ISinkChannel {
             .whenComplete(
                 (unused, failure) -> {
                   if (failure != null) {
+                    deadlineExpired = true;
                     interruptNotifications();
                   }
                 });
       }
-      runningNotifications.add(Thread.currentThread());
+      runningNotifications.put(Thread.currentThread(), false);
     }
   }
 
   private void interruptNotifications() {
     synchronized (runningNotifications) {
-      runningNotifications.forEach(Thread::interrupt);
+      for (Entry<Thread, Boolean> registration : runningNotifications.entrySet()) {
+        Thread worker = registration.getKey();
+        if (!worker.isInterrupted()) {
+          registration.setValue(true);
+          worker.interrupt();
+        }
+      }
     }
   }
 
@@ -661,28 +707,26 @@ public class SinkChannel implements ISinkChannel {
       registerNotification();
       try {
         sendWithRetry(notification, blockCount);
-        return true;
       } finally {
         synchronized (runningNotifications) {
-          runningNotifications.remove(Thread.currentThread());
+          if (Boolean.TRUE.equals(runningNotifications.remove(Thread.currentThread()))) {
+            // Only consume a wakeup we issued. An independently interrupted worker keeps its flag.
+            Thread.interrupted();
+          }
         }
       }
+      checkNotificationActive();
+      return true;
     } catch (Exception e) {
-      if (stopNotifications()) {
-        if (deadlineReached()) {
-          sinkListener.onFailure(this, new QueryTimeoutException());
-        } else {
-          if (e instanceof InterruptedException) {
-            Thread.currentThread().interrupt();
-          }
-          sinkListener.onFailure(this, e);
-        }
+      if (claimFailure()) {
+        sinkListener.onFailure(this, deadlineReached() ? new QueryTimeoutException() : e);
       }
       return false;
     }
   }
 
-  private void sendWithRetry(Notification notification, int blockCount) throws Exception {
+  private void sendWithRetry(Notification notification, int blockCount)
+      throws ClientManagerException, InterruptedException, TException {
     for (int attempt = 1; ; attempt++) {
       checkNotificationActive();
       long startTime = System.nanoTime();
@@ -703,9 +747,15 @@ public class SinkChannel implements ISinkChannel {
         if (attempt == MAX_ATTEMPT_TIMES || (blockCount > 0 && containsTApplicationException(e))) {
           throw e;
         }
-        Thread.sleep(
-            Math.min(
-                retryIntervalInMs, MPPDataExchangeClientManager.remainingMillis(queryDeadlineMs)));
+        try {
+          Thread.sleep(
+              Math.min(
+                  retryIntervalInMs,
+                  MPPDataExchangeClientManager.remainingMillis(queryDeadlineMs)));
+        } catch (InterruptedException interrupted) {
+          Thread.currentThread().interrupt();
+          throw interrupted;
+        }
       } finally {
         if (blockCount > 0) {
           DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
@@ -783,16 +833,7 @@ public class SinkChannel implements ISinkChannel {
         if (!sendNotification(client -> client.onEndOfDataBlockEvent(endOfDataBlockEvent), 0)) {
           return;
         }
-        synchronized (SinkChannel.this) {
-          if (notificationsStopped) {
-            return;
-          }
-          noMoreTsBlocks = true;
-        }
-        if (isFinished()) {
-          invokeOnFinished();
-        }
-        sinkListener.onEndOfBlocks(SinkChannel.this);
+        endOfBlocksSent();
       }
     }
   }

@@ -37,6 +37,8 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
+import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Test;
@@ -44,10 +46,15 @@ import org.junit.Test;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.channels.ClosedByInterruptException;
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.locks.LockSupport;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -78,6 +85,14 @@ public class SinkChannelDeadlineTest {
 
   private SinkChannel channel(
       TEndPoint endpoint, long deadline, MPPDataExchangeClientManager clients) {
+    return channel(endpoint, deadline, clients, executor);
+  }
+
+  private SinkChannel channel(
+      TEndPoint endpoint,
+      long deadline,
+      MPPDataExchangeClientManager clients,
+      ExecutorService workers) {
     doReturn(Utils.createMockNonBlockedMemoryPool()).when(memory).getQueryPool();
     return new SinkChannel(
         endpoint,
@@ -86,7 +101,7 @@ public class SinkChannelDeadlineTest {
         "sink",
         new TFragmentInstanceId("query", 1, "0"),
         memory,
-        executor,
+        workers,
         Utils.createMockTsBlockSerde(1024),
         listener,
         false,
@@ -115,7 +130,10 @@ public class SinkChannelDeadlineTest {
     channel.open();
     channel.send(Utils.createMockTsBlocks(1, 1024).get(0));
     channel.setNoMoreTsBlocks();
-    assertFalse(dequeue.await(Math.max(0, deadline - System.currentTimeMillis()), MILLISECONDS));
+    long remaining;
+    while ((remaining = deadline - System.currentTimeMillis()) > 0) {
+      MILLISECONDS.sleep(remaining);
+    }
     dequeue.countDown();
     awaitWorker();
     verify(clients, never()).borrowClient(any(), anyLong());
@@ -207,6 +225,152 @@ public class SinkChannelDeadlineTest {
       assertEquals(1, clients.getPool().getNumIdle());
     } finally {
       clients.close();
+    }
+  }
+
+  @Test
+  public void deadlineInterruptIsClearedBeforeListenerAndWorkerReturn() throws Exception {
+    verifyWorkerInterrupt(false);
+  }
+
+  @Test
+  public void executorShutdownInterruptSurvivesNotificationCleanup() throws Exception {
+    verifyWorkerInterrupt(true);
+  }
+
+  private void verifyWorkerInterrupt(boolean shutdownNow) throws Exception {
+    CompletableFuture<Boolean> afterTask = new CompletableFuture<>();
+    CompletableFuture<Boolean> inListener = new CompletableFuture<>();
+    ThreadPoolExecutor workers =
+        new ThreadPoolExecutor(1, 1, 0, SECONDS, new LinkedBlockingQueue<>()) {
+          @Override
+          protected void afterExecute(Runnable task, Throwable error) {
+            afterTask.complete(Thread.currentThread().isInterrupted());
+          }
+        };
+    CountDownLatch sending = new CountDownLatch(1);
+    try {
+      TEndPoint endpoint = new TEndPoint("unused", 1);
+      MPPDataExchangeClientManager clients = mock(MPPDataExchangeClientManager.class);
+      SyncDataNodeMPPDataExchangeServiceClient client =
+          mock(SyncDataNodeMPPDataExchangeServiceClient.class);
+      when(clients.borrowClient(eq(endpoint), anyLong())).thenReturn(client);
+      doAnswer(
+              call -> {
+                sending.countDown();
+                while (!Thread.currentThread().isInterrupted()) {
+                  LockSupport.park();
+                }
+                throw new TException(new ClosedByInterruptException());
+              })
+          .when(client)
+          .onEndOfDataBlockEvent(any());
+      doAnswer(call -> inListener.complete(Thread.currentThread().isInterrupted()))
+          .when(listener)
+          .onFailure(any(), any());
+      long deadline = shutdownNow ? Long.MAX_VALUE : System.currentTimeMillis() + 1_000;
+      SinkChannel channel = channel(endpoint, deadline, clients, workers);
+      channel.setNoMoreTsBlocks();
+      assertTrue(sending.await(5, SECONDS));
+      if (shutdownNow) {
+        workers.shutdownNow();
+      } else {
+        // Graceful shutdown lets the running task reach its own deadline.
+        workers.shutdown();
+      }
+      assertEquals(shutdownNow, inListener.get(5, SECONDS));
+      assertEquals(shutdownNow, afterTask.get(5, SECONDS));
+      if (!shutdownNow) {
+        verify(listener).onFailure(eq(channel), isA(QueryTimeoutException.class));
+      }
+      verify(listener, never()).onEndOfBlocks(channel);
+    } finally {
+      workers.shutdownNow();
+    }
+  }
+
+  @Test
+  public void failureWinsAgainstLateEndAndNormalClose() throws Exception {
+    verifyTerminalCallbacks(false);
+  }
+
+  @Test
+  public void acknowledgedEndWinsAgainstLateNotificationFailure() throws Exception {
+    verifyTerminalCallbacks(true);
+  }
+
+  private void verifyTerminalCallbacks(boolean finishFirst) throws Exception {
+    ExecutorService workers = Executors.newFixedThreadPool(2);
+    CountDownLatch bothSending = new CountDownLatch(2);
+    CountDownLatch releaseData = new CountDownLatch(1);
+    CountDownLatch releaseEnd = new CountDownLatch(1);
+    CountDownLatch normalEnd = new CountDownLatch(1);
+    CountDownLatch failure = new CountDownLatch(1);
+    try {
+      TEndPoint endpoint = new TEndPoint("unused", 1);
+      MPPDataExchangeClientManager clients = mock(MPPDataExchangeClientManager.class);
+      SyncDataNodeMPPDataExchangeServiceClient client =
+          mock(SyncDataNodeMPPDataExchangeServiceClient.class);
+      when(clients.borrowClient(eq(endpoint), anyLong())).thenReturn(client);
+      doAnswer(
+              call -> {
+                bothSending.countDown();
+                Uninterruptibles.awaitUninterruptibly(releaseData);
+                throw new TApplicationException("injected data notification failure");
+              })
+          .when(client)
+          .onNewDataBlockEvent(any());
+      doAnswer(
+              call -> {
+                bothSending.countDown();
+                Uninterruptibles.awaitUninterruptibly(releaseEnd);
+                return null;
+              })
+          .when(client)
+          .onEndOfDataBlockEvent(any());
+      doAnswer(
+              call -> {
+                normalEnd.countDown();
+                return null;
+              })
+          .when(listener)
+          .onEndOfBlocks(any());
+      doAnswer(
+              call -> {
+                failure.countDown();
+                return null;
+              })
+          .when(listener)
+          .onFailure(any(), any());
+      SinkChannel channel = channel(endpoint, Long.MAX_VALUE, clients, workers);
+      channel.open();
+      channel.send(Utils.createMockTsBlocks(1, 1024).get(0));
+      channel.setNoMoreTsBlocks();
+      assertTrue(bothSending.await(5, SECONDS));
+      channel.acknowledgeTsBlock(0, 1);
+      if (finishFirst) {
+        releaseEnd.countDown();
+        assertTrue(normalEnd.await(5, SECONDS));
+        releaseData.countDown();
+      } else {
+        releaseData.countDown();
+        assertTrue(failure.await(5, SECONDS));
+        channel.close();
+        releaseEnd.countDown();
+      }
+      workers.shutdown();
+      assertTrue(workers.awaitTermination(5, SECONDS));
+      if (finishFirst) {
+        verify(listener).onFinish(channel);
+        verify(listener, never()).onFailure(any(), any());
+      } else {
+        verify(listener, never()).onFinish(channel);
+        verify(listener, never()).onEndOfBlocks(channel);
+      }
+    } finally {
+      releaseData.countDown();
+      releaseEnd.countDown();
+      workers.shutdownNow();
     }
   }
 

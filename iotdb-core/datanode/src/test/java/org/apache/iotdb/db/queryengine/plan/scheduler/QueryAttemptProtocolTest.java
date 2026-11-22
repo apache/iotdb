@@ -29,7 +29,9 @@ import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TProtocolUtil;
+import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
+import org.apache.thrift.transport.TMemoryBuffer;
 import org.apache.thrift.transport.TMemoryInputTransport;
 import org.junit.Test;
 
@@ -49,7 +51,7 @@ public class QueryAttemptProtocolTest {
     assertEquals(original, received);
     assertFalse(received.isSetQueryAttemptId());
     assertFalse(received.isSetAdmissionToken());
-    assertFalse(received.isSetQueryDeadlineMs());
+    assertFalse(received.isSetRemainingQueryTimeMs());
     TCancelQueryReq cancel = new TCancelQueryReq("query", Collections.emptyList(), true);
     TCancelQueryReq receivedCancel = new TCancelQueryReq();
     new TDeserializer().deserialize(receivedCancel, new TSerializer().serialize(cancel));
@@ -59,11 +61,31 @@ public class QueryAttemptProtocolTest {
   }
 
   @Test
+  public void oldAbsoluteDeadlineIsSkippedByRelativeBudgetReader() throws Exception {
+    TFragmentInstance body = new TFragmentInstance(ByteBuffer.wrap(new byte[] {1, 2, 3}));
+    TBinaryProtocol protocol = new TBinaryProtocol(new TMemoryBuffer(128));
+    protocol.writeStructBegin(new TStruct("TSendFragmentInstanceReq"));
+    protocol.writeFieldBegin(new TField("fragmentInstance", TType.STRUCT, (short) 1));
+    body.write(protocol);
+    protocol.writeFieldEnd();
+    protocol.writeFieldBegin(new TField("queryDeadlineMs", TType.I64, (short) 5));
+    protocol.writeI64(System.currentTimeMillis() + 800);
+    protocol.writeFieldEnd();
+    protocol.writeFieldStop();
+    protocol.writeStructEnd();
+
+    TSendFragmentInstanceReq received = new TSendFragmentInstanceReq();
+    received.read(protocol);
+    assertEquals(body, received.getFragmentInstance());
+    assertFalse(received.isSetRemainingQueryTimeMs());
+  }
+
+  @Test
   public void attemptMetadataRoundTripsAndLegacyReaderCanSkipIt() throws Exception {
     TFragmentInstance body = new TFragmentInstance(ByteBuffer.wrap(new byte[] {1, 2, 3}));
     TSendFragmentInstanceReq request =
         new TSendFragmentInstanceReq(body)
-            .setQueryDeadlineMs(123456789L)
+            .setRemainingQueryTimeMs(800L)
             .setQueryAttemptId(2)
             .setAdmissionToken(new TQueryAdmissionToken("receiver", 123450L, 1000L));
     byte[] serialized = new TSerializer().serialize(request);

@@ -202,8 +202,6 @@ public final class DataNodeQueryMessages {
       "发送新数据块事件失败，尝试次数：{}";
   public static final String FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT =
       "发送数据块结束事件失败，尝试次数：{}";
-  public static final String FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT_2 =
-      "所有重试后仍无法发送数据块结束事件";
   public static final String SOURCE_HANDLE_IS_BLOCKED =
       "Source handle 已被阻塞。";
   public static final String RESERVED_DATA_BLOCK_SIZE_IS_NULL =

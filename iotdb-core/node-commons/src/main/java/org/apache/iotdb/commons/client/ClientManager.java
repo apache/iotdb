@@ -60,6 +60,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
       if (maxWaitMs == Long.MAX_VALUE) {
         return pool.borrowObject(node);
       }
+      maxWaitMs = Math.max(0L, maxWaitMs);
       long poolWaitMs = pool.getMaxWaitDuration().toMillis();
       return pool.borrowObject(node, poolWaitMs < 0 ? maxWaitMs : Math.min(poolWaitMs, maxWaitMs));
     } catch (InterruptedException e) {

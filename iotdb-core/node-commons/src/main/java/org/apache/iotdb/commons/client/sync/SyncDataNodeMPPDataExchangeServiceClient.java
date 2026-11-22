@@ -44,6 +44,7 @@ import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -57,6 +58,7 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private final ThriftClientProperty property;
+  private final int defaultTimeoutMs;
   private final TEndPoint endpoint;
   private final MPPDataExchangeClientManager clientManager;
   private boolean invalidated;
@@ -70,24 +72,47 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
       MPPDataExchangeClientManager clientManager) {
     super(null);
     this.property = property;
+    this.defaultTimeoutMs = Math.max(0, property.getConnectionTimeoutMs());
     this.endpoint = endpoint;
     this.clientManager = clientManager;
   }
 
   final void prepare(long deadlineMs) throws TTransportException, IOException {
     if (iprot_ == null) {
-      // A channel-backed socket makes blocking connects, writes and reads interruptible,
-      // including reads during the TLS handshake.
-      TTransport transport = connect(SocketChannel.open().socket(), deadlineMs);
-      try {
-        iprot_ = oprot_ = property.getProtocolFactory().getProtocol(transport);
-      } catch (RuntimeException | Error e) {
-        transport.close();
-        throw e;
-      }
+      openProtocol(deadlineMs);
     }
     if (deadlineMs != Long.MAX_VALUE) {
       setTimeout(rpcTimeout(deadlineMs));
+    }
+  }
+
+  // On success TSocket (or its auto-closing TLS socket) owns the channel until invalidation.
+  @SuppressWarnings("java:S2095")
+  private void openProtocol(long deadlineMs) throws IOException, TTransportException {
+    SocketChannel channel = SocketChannel.open();
+    try {
+      // A channel-backed socket makes blocking connects, writes and reads interruptible.
+      TTransport transport = connect(channel.socket(), deadlineMs);
+      try {
+        iprot_ = oprot_ = property.getProtocolFactory().getProtocol(transport);
+      } catch (RuntimeException | Error e) {
+        closeOnFailure(transport, e);
+        throw e;
+      }
+    } catch (IOException | TTransportException | RuntimeException | Error e) {
+      // Also close the channel if closing the TLS wrapper failed.
+      closeOnFailure(channel, e);
+      throw e;
+    }
+  }
+
+  private static void closeOnFailure(Closeable resource, Throwable failure) {
+    try {
+      resource.close();
+    } catch (IOException | RuntimeException | Error closeFailure) {
+      if (closeFailure != failure) {
+        failure.addSuppressed(closeFailure);
+      }
     }
   }
 
@@ -121,7 +146,7 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
       socket.setSoTimeout(rpcTimeout(deadlineMs));
       return DeepCopyRpcTransportFactory.INSTANCE.getTransport(new TSocket(socket));
     } catch (IOException | TTransportException | RuntimeException | Error e) {
-      socket.close();
+      closeOnFailure(socket, e);
       throw e;
     }
   }
@@ -142,12 +167,11 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
   }
 
   private int rpcTimeout(long deadlineMs) {
-    int configured = property.getConnectionTimeoutMs();
     if (deadlineMs == Long.MAX_VALUE) {
-      return configured;
+      return defaultTimeoutMs;
     }
     long remaining = MPPDataExchangeClientManager.remainingMillis(deadlineMs);
-    return (int) Math.min(remaining, configured > 0 ? configured : Integer.MAX_VALUE);
+    return (int) Math.min(remaining, defaultTimeoutMs > 0 ? defaultTimeoutMs : Integer.MAX_VALUE);
   }
 
   public int getTimeout() throws SocketException {
@@ -155,7 +179,7 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
   }
 
   public void setTimeout(int timeout) {
-    restoreTimeout = timeout != property.getConnectionTimeoutMs();
+    restoreTimeout = timeout != defaultTimeoutMs;
     // the same transport is used in both input and output
     ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
@@ -177,10 +201,7 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
 
   @Override
   public void invalidateAll() {
-    // An interrupt closes just this channel. Other clients to the same peer remain usable.
-    if (!Thread.currentThread().isInterrupted()) {
-      clientManager.clear(endpoint);
-    }
+    clientManager.clear(endpoint);
   }
 
   @Override
@@ -226,7 +247,7 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
         TEndPoint endpoint, PooledObject<SyncDataNodeMPPDataExchangeServiceClient> pooledObject) {
       SyncDataNodeMPPDataExchangeServiceClient client = pooledObject.getObject();
       if (client.restoreTimeout) {
-        client.setTimeout(thriftClientProperty.getConnectionTimeoutMs());
+        client.setTimeout(client.defaultTimeoutMs);
       }
     }
 
