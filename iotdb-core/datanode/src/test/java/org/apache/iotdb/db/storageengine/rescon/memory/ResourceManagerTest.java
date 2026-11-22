@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -50,12 +51,14 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -66,11 +69,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager.REGISTRATION_RAM_BYTES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 public class ResourceManagerTest {
 
@@ -257,7 +267,7 @@ public class ResourceManagerTest {
         TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
     long previousRamSize = tsFileResource.calculateRamSize();
-    long curTimeIndexMemoryThreshold = previousRamSize + REGISTRATION_RAM_BYTES;
+    long curTimeIndexMemoryThreshold = registeredSize(tsFileResource);
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     assertEquals(0, previousRamSize - tsFileResource.calculateRamSize());
@@ -313,9 +323,7 @@ public class ResourceManagerTest {
         TimeIndexLevel.valueOf(tsFileResource2.getTimeIndexType()));
 
     long curTimeIndexMemoryThreshold =
-        degradedResource1.calculateRamSize()
-            + tsFileResource2.calculateRamSize()
-            + 2 * REGISTRATION_RAM_BYTES;
+        registeredSize(degradedResource1) + registeredSize(tsFileResource2);
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource1);
     assertEquals(
@@ -353,7 +361,7 @@ public class ResourceManagerTest {
           TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
       tsFileResource.degradeTimeIndex();
-      curTimeIndexMemoryThreshold += tsFileResource.calculateRamSize() + REGISTRATION_RAM_BYTES;
+      curTimeIndexMemoryThreshold += registeredSize(tsFileResource);
     }
     for (int i = 8; i < seqFileNum; i++) {
       File file =
@@ -374,7 +382,7 @@ public class ResourceManagerTest {
           TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
           TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
-      curTimeIndexMemoryThreshold += tsFileResource.calculateRamSize() + REGISTRATION_RAM_BYTES;
+      curTimeIndexMemoryThreshold += registeredSize(tsFileResource);
     }
 
     for (int i = 0; i < seqFileNum; i++) {
@@ -470,17 +478,12 @@ public class ResourceManagerTest {
         TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
-    long resourceRamSizeBeforeDegrade = tsFileResource.calculateRamSize();
-    Assert.assertEquals(
-        resourceRamSizeBeforeDegrade + REGISTRATION_RAM_BYTES,
-        tsFileResourceManager.getTotalTimeIndexMemCost());
+    long chargeBeforeDegrade = registeredSize(tsFileResource);
+    Assert.assertEquals(chargeBeforeDegrade, tsFileResourceManager.getTotalTimeIndexMemCost());
     TsFileResourceManager.getInstance().forceDegradeTsFileResource(tsFileResource);
     Assert.assertEquals(
-        tsFileResource.calculateRamSize() + REGISTRATION_RAM_BYTES,
-        tsFileResourceManager.getTotalTimeIndexMemCost());
-    Assert.assertTrue(
-        resourceRamSizeBeforeDegrade + REGISTRATION_RAM_BYTES
-            > tsFileResourceManager.getTotalTimeIndexMemCost());
+        registeredSize(tsFileResource), tsFileResourceManager.getTotalTimeIndexMemCost());
+    Assert.assertTrue(chargeBeforeDegrade > tsFileResourceManager.getTotalTimeIndexMemCost());
     Assert.assertTrue(tsFileResource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE);
     Assert.assertEquals(1, tsFileResourceManager.getDegradedTimeIndexNum());
   }
@@ -534,31 +537,28 @@ public class ResourceManagerTest {
     resource.setTimeIndex(new ArrayDeviceTimeIndex());
     tsFileResourceManager.registerSealedTsFileResource(resource);
     tsFileResourceManager.registerSealedTsFileResource(resource);
-    long originalCharge = resource.calculateRamSize() + REGISTRATION_RAM_BYTES;
+    long originalCharge = registeredSize(resource);
     assertEquals(baseline + originalCharge, tsFileResourceManager.getTotalTimeIndexMemCost());
     resource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.later"), 7);
     resource.setProgressIndex(new SimpleProgressIndex(1, 1));
     resource.getExclusiveModFile();
-    long changedCharge = resource.calculateRamSize() + REGISTRATION_RAM_BYTES;
+    long changedCharge = registeredSize(resource);
     assertTrue(changedCharge > originalCharge);
     assertEquals(baseline + changedCharge, tsFileResourceManager.getTotalTimeIndexMemCost());
 
     resource.degradeTimeIndex();
     assertEquals(1, tsFileResourceManager.getDegradedTimeIndexNum());
     assertEquals(
-        baseline + resource.calculateRamSize() + REGISTRATION_RAM_BYTES,
-        tsFileResourceManager.getTotalTimeIndexMemCost());
+        baseline + registeredSize(resource), tsFileResourceManager.getTotalTimeIndexMemCost());
     TsFileResource clone = resource.shallowCloneForNative();
     Assert.assertNull(clone.getMemoryRegistration());
     clone.getCompactionModFile();
     assertEquals(
-        baseline + resource.calculateRamSize() + REGISTRATION_RAM_BYTES,
-        tsFileResourceManager.getTotalTimeIndexMemCost());
+        baseline + registeredSize(resource), tsFileResourceManager.getTotalTimeIndexMemCost());
     resource.setTimeIndex(new ArrayDeviceTimeIndex());
     assertEquals(0, tsFileResourceManager.getDegradedTimeIndexNum());
     assertEquals(
-        baseline + resource.calculateRamSize() + REGISTRATION_RAM_BYTES,
-        tsFileResourceManager.getTotalTimeIndexMemCost());
+        baseline + registeredSize(resource), tsFileResourceManager.getTotalTimeIndexMemCost());
     tsFileResourceManager.removeTsFileResource(resource);
     tsFileResourceManager.removeTsFileResource(resource);
     assertEquals(baseline, tsFileResourceManager.getTotalTimeIndexMemCost());
@@ -582,13 +582,139 @@ public class ResourceManagerTest {
             IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d"),
             Collections.singletonList(new Pair<>("s1", new TimeValuePair(1, value)))));
     assertTrue(tsFileResourceManager.getTotalTimeIndexMemCost() >= baseline + 1024);
-    assertEquals(
-        resource.calculateRamSize() + REGISTRATION_RAM_BYTES,
-        tsFileResourceManager.getTotalTimeIndexMemCost());
+    assertEquals(registeredSize(resource), tsFileResourceManager.getTotalTimeIndexMemCost());
     resource.setLastValues(null);
     assertEquals(baseline, tsFileResourceManager.getTotalTimeIndexMemCost());
     tsFileResourceManager.removeTsFileResource(resource);
     assertEquals(0, tsFileResourceManager.getDegradedTimeIndexNum());
     assertEquals(0, tsFileResourceManager.getTotalTimeIndexMemCost());
+  }
+
+  private static long registeredSize(TsFileResource resource) {
+    File file = resource.getTsFile();
+    return resource.calculateRamSize()
+        + REGISTRATION_RAM_BYTES
+        + (file.isAbsolute() ? 0 : RamUsageEstimator.sizeOf(file.getAbsolutePath()));
+  }
+
+  @Test
+  public void testRecoveryUsesFileIdentityAcrossIndexLevelsAndRenames() throws IOException {
+    tsFileResourceManager.setTimeIndexMemoryThreshold(Long.MAX_VALUE);
+    File file = new File("target/0-11-0-0.tsfile");
+    TsFileResource original = new TsFileResource(file);
+    original.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d1"), 7);
+    original.close();
+    tsFileResourceManager.registerSealedTsFileResource(original);
+    TsFileResource recovered = new TsFileResource(file.getAbsoluteFile());
+    long charge = tsFileResourceManager.getTotalTimeIndexMemCost();
+    tsFileResourceManager.registerSealedTsFileResource(recovered);
+    assertEquals(1, tsFileResourceManager.getPriorityQueueSize());
+    assertEquals(charge, tsFileResourceManager.getTotalTimeIndexMemCost());
+
+    tsFileResourceManager.forceDegradeTsFileResource(original);
+    charge = tsFileResourceManager.getTotalTimeIndexMemCost();
+    tsFileResourceManager.registerSealedTsFileResource(recovered);
+    assertEquals(charge, tsFileResourceManager.getTotalTimeIndexMemCost());
+    File newFile = new File("target/0-12-0-0.tsfile").getAbsoluteFile();
+    original.setFile(newFile);
+    assertEquals(registeredSize(original), tsFileResourceManager.getTotalTimeIndexMemCost());
+    tsFileResourceManager.registerSealedTsFileResource(recovered);
+    assertEquals(2, tsFileResourceManager.getPriorityQueueSize());
+    // Moving onto an already registered path leaves one charge for the existing owner.
+    recovered.setFile(newFile);
+    Assert.assertNull(recovered.getMemoryRegistration());
+    assertEquals(registeredSize(original), tsFileResourceManager.getTotalTimeIndexMemCost());
+    tsFileResourceManager.removeTsFileResource(new TsFileResource(file));
+    assertEquals(1, tsFileResourceManager.getPriorityQueueSize());
+    tsFileResourceManager.removeTsFileResource(new TsFileResource(newFile));
+    assertEquals(0, tsFileResourceManager.getPriorityQueueSize());
+    assertEquals(0, tsFileResourceManager.getDegradedTimeIndexNum());
+    assertEquals(0, tsFileResourceManager.getTotalTimeIndexMemCost());
+    Assert.assertNull(original.getMemoryRegistration());
+  }
+
+  @Test
+  public void testMetadataRefreshObservesPendingIndexSwap() throws Exception {
+    tsFileResourceManager.setTimeIndexMemoryThreshold(Long.MAX_VALUE);
+    TsFileResource first = new TsFileResource(new File("target/0-21-0-0.tsfile"));
+    TsFileResource second = new TsFileResource(new File("target/0-22-0-0.tsfile"));
+    for (int i = 0; i < 16; i++) {
+      first.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d" + i), 1);
+    }
+    second.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.other"), 2);
+    first.close();
+    second.close();
+    tsFileResourceManager.registerSealedTsFileResource(first);
+    tsFileResourceManager.registerSealedTsFileResource(second);
+    tsFileResourceManager.setTimeIndexMemoryThreshold(
+        tsFileResourceManager.getTotalTimeIndexMemCost());
+    ExecutorService pool = Executors.newSingleThreadExecutor();
+    try {
+      Future<Long> degradation;
+      synchronized (tsFileResourceManager) {
+        // Hold the manager monitor between the index CAS and its accounting callback.
+        degradation = pool.submit(first::degradeTimeIndex);
+        Awaitility.await()
+            .atMost(10, TimeUnit.SECONDS)
+            .until(() -> first.getTimeIndex() instanceof FileTimeIndex);
+        first.getExclusiveModFile();
+        assertTrue(second.getTimeIndex() instanceof ArrayDeviceTimeIndex);
+        assertEquals(1, tsFileResourceManager.getDegradedTimeIndexNum());
+      }
+      assertTrue(degradation.get(10, TimeUnit.SECONDS) > 0);
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testSelectionUsesMeasuredSizeOnlyForTheSameIndex() throws IOException {
+    tsFileResourceManager.setTimeIndexMemoryThreshold(Long.MAX_VALUE);
+    TsFileResource resource = new TsFileResource(new File("target/0-31-0-0.tsfile"));
+    ArrayDeviceTimeIndex resident = spy(new ArrayDeviceTimeIndex());
+    resource.setTimeIndex(resident);
+    resource.close();
+    tsFileResourceManager.registerSealedTsFileResource(resource);
+    CompactionScheduleContext context = new CompactionScheduleContext();
+    ArrayDeviceTimeIndex rebuilt = spy(new ArrayDeviceTimeIndex());
+    try {
+      assertTrue(resource.getDeviceTimeIndexRamSize().isPresent());
+      context.addResourceDeviceTimeIndex(resource, resident);
+      context.clearTimePartitionDeviceInfoCache();
+      context.addResourceDeviceTimeIndex(resource, resident);
+      tsFileResourceManager.forceDegradeTsFileResource(resource);
+      context.addResourceDeviceTimeIndex(resource, rebuilt);
+      context.addResourceDeviceTimeIndex(resource, rebuilt);
+      verify(resident, times(1)).calculateRamSize();
+      verify(rebuilt, times(1)).calculateRamSize();
+      Assert.assertSame(rebuilt, context.getResourceDeviceInfo(resource));
+      tsFileResourceManager.removeTsFileResource(resource);
+      context.clearTimePartitionDeviceInfoCache();
+      context.addResourceDeviceTimeIndex(resource, resident);
+      verify(resident, times(2)).calculateRamSize();
+    } finally {
+      context.clearTimePartitionDeviceInfoCache();
+    }
+  }
+
+  @Test
+  public void testNullIndexAndNullLastValueSeries() {
+    TsFileResource empty = new TsFileResource();
+    Assert.assertNull(empty.replaceDeviceTimeIndexWithFileTimeIndex());
+    assertEquals(0, empty.degradeTimeIndex());
+    long base = empty.calculateRamSize();
+    empty.setLastValues(
+        Collections.singletonMap(IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d"), null));
+    assertTrue(empty.calculateRamSize() > base);
+    empty.setLastValues(null);
+    assertEquals(base, empty.calculateRamSize());
+
+    TsFileResource registered = new TsFileResource(new File("target/0-41-0-0.tsfile"));
+    registered.setTimeIndex(new FileTimeIndex());
+    tsFileResourceManager.registerSealedTsFileResource(registered);
+    registered.setTimeIndex(null);
+    assertEquals(0, registered.degradeTimeIndex());
+    assertEquals(0, tsFileResourceManager.getDegradedTimeIndexNum());
+    assertEquals(registeredSize(registered), tsFileResourceManager.getTotalTimeIndexMemCost());
   }
 }

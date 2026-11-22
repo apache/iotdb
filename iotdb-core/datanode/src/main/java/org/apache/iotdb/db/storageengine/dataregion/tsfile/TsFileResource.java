@@ -124,8 +124,9 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  /** this tsfile */
-  private File file;
+  /** Publishing a new File also publishes its immutable path. */
+  @SuppressWarnings("java:S3077")
+  private volatile File file;
 
   public static final String RESOURCE_SUFFIX = ".resource";
   public static final String TEMP_SUFFIX = ".temp";
@@ -144,9 +145,13 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   private final AtomicReference<Boolean> isEmpty = new AtomicReference<>();
 
-  private Future<ModificationFile> exclusiveModFileFuture;
-  // this future suggest when the async recovery ends
-  private CompletableFuture<String> sharedModFilePathFuture;
+  // The resource monitor protects the handle/future pair, including when cloning the resource.
+  @SuppressWarnings("java:S3077")
+  private volatile Future<ModificationFile> exclusiveModFileFuture;
+
+  // The future signals completion of asynchronous shared-mod recovery.
+  @SuppressWarnings("java:S3077")
+  private volatile CompletableFuture<String> sharedModFilePathFuture;
 
   private ModFileManagement modFileManagement;
 
@@ -185,6 +190,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   private TsFileID tsFileID;
 
+  // The manager monitor protects the mutable fields of the published registration.
+  @SuppressWarnings("java:S3077")
   private volatile Registration memoryRegistration;
 
   private AtomicInteger tierLevel;
@@ -224,6 +231,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
 
+  // LOAD builds the map before publishing the resource and drops the reference after consumption.
+  @SuppressWarnings("java:S3077")
   private volatile Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
 
   @TestOnly
@@ -359,10 +368,12 @@ public class TsFileResource implements PersistentResource, Cloneable {
         // ends with ".mods2" means it is a new version resource file
         if (modFilePath != null && modFilePath.endsWith(ModificationFile.FILE_SUFFIX)) {
           sharedModFileOffset = ReadWriteIOUtils.readLong(inputStream);
-          if (sharedModFilePathFuture != null) {
-            sharedModFilePathFuture.complete(modFilePath);
-          } else {
+          // A writer may hold the resource monitor while waiting for shared-mod recovery.
+          final CompletableFuture<String> recovery = sharedModFilePathFuture;
+          if (recovery == null) {
             sharedModFilePathFuture = CompletableFuture.completedFuture(modFilePath);
+          } else {
+            recovery.complete(modFilePath);
           }
         }
       }
@@ -539,10 +550,11 @@ public class TsFileResource implements PersistentResource, Cloneable {
     if (sharedModFile != null) {
       return sharedModFile;
     }
-    if (sharedModFilePathFuture != null) {
+    final CompletableFuture<String> recovery = sharedModFilePathFuture;
+    if (recovery != null) {
       try {
         if (modFileManagement != null) {
-          sharedModFile = modFileManagement.recover(sharedModFilePathFuture.get(), this);
+          sharedModFile = modFileManagement.recover(recovery.get(), this);
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -555,8 +567,9 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   @SuppressWarnings("java:S2886")
   public ModificationFile getExclusiveModFile() {
-    if (exclusiveModFile != null) {
-      return exclusiveModFile;
+    ModificationFile current = exclusiveModFile;
+    if (current != null) {
+      return current;
     }
 
     synchronized (this) {
@@ -575,10 +588,11 @@ public class TsFileResource implements PersistentResource, Cloneable {
         } else {
           exclusiveModFile = ModificationFile.getExclusiveMods(this);
         }
+        exclusiveModFileFuture = null;
         updateMemoryCostIfRegistered();
       }
+      return exclusiveModFile;
     }
-    return exclusiveModFile;
   }
 
   public ModificationFile getCompactionModFile() {
@@ -601,19 +615,18 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   @TestOnly
-  public void resetModFile() throws IOException {
+  public synchronized void resetModFile() throws IOException {
     if (exclusiveModFile != null) {
-      synchronized (this) {
-        exclusiveModFile.close();
-        exclusiveModFile = null;
-        updateMemoryCostIfRegistered();
-      }
+      exclusiveModFile.close();
     }
+    exclusiveModFile = null;
+    exclusiveModFileFuture = null;
+    updateMemoryCostIfRegistered();
   }
 
   public void setFile(File file) {
-    this.file = file;
     this.tsFileID = new TsFileID(file.getAbsolutePath());
+    this.file = file;
     updateMemoryCostIfRegistered();
   }
 
@@ -1184,11 +1197,10 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return timeIndex.isSpanMultiTimePartitions();
   }
 
-  public void setExclusiveModFile(ModificationFile exclusiveModFile) {
-    synchronized (this) {
-      this.exclusiveModFile = exclusiveModFile;
-      updateMemoryCostIfRegistered();
-    }
+  public synchronized void setExclusiveModFile(ModificationFile exclusiveModFile) {
+    this.exclusiveModFile = exclusiveModFile;
+    exclusiveModFileFuture = null;
+    updateMemoryCostIfRegistered();
   }
 
   /** Estimated resident metadata of the file, excluding shared managers and query snapshot data. */
@@ -1245,8 +1257,12 @@ public class TsFileResource implements PersistentResource, Cloneable {
       size +=
           RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY
               + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-              + entry.getKey().ramBytesUsed()
-              + RamUsageEstimator.ARRAY_LIST_INSTANCE_SIZE
+              + entry.getKey().ramBytesUsed();
+      if (series == null) {
+        continue;
+      }
+      size +=
+          RamUsageEstimator.ARRAY_LIST_INSTANCE_SIZE
               + RamUsageEstimator.sizeOfObjectArray(series.size());
       for (Pair<String, TimeValuePair> pair : series) {
         if (pair == null) {
@@ -1254,10 +1270,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
         }
         size += PAIR_SIZE + RamUsageEstimator.sizeOf(pair.left);
         if (pair.right != null) {
-          size += TIME_VALUE_PAIR_SIZE;
-          if (pair.right.getValue() != null) {
-            size += MemUtils.getTsPrimitiveTypeRamBytes(pair.right.getValue());
-          }
+          size += TIME_VALUE_PAIR_SIZE + MemUtils.getTsPrimitiveTypeRamBytes(pair.right.getValue());
         }
       }
     }
@@ -1268,8 +1281,14 @@ public class TsFileResource implements PersistentResource, Cloneable {
   public Optional<Long> getDeviceTimeIndexRamSize() {
     ITimeIndex index = timeIndex;
     return isClosed() && index instanceof ArrayDeviceTimeIndex
-        ? Optional.of(index.calculateRamSize())
+        ? Optional.of(getDeviceTimeIndexRamSize((ArrayDeviceTimeIndex) index))
         : Optional.empty();
+  }
+
+  /** Uses the registration's measurement only for the exact index the caller holds. */
+  public long getDeviceTimeIndexRamSize(ArrayDeviceTimeIndex index) {
+    Registration registration = memoryRegistration;
+    return registration == null ? index.calculateRamSize() : registration.getIndexRamSize(index);
   }
 
   public Registration getMemoryRegistration() {
@@ -1507,7 +1526,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   /** Drops the device index without scanning it. The caller may measure the previous index. */
   public ITimeIndex replaceDeviceTimeIndexWithFileTimeIndex() {
     ITimeIndex current = timeIndex;
-    while (current.getTimeIndexType() != ITimeIndex.FILE_TIME_INDEX_TYPE) {
+    while (current != null && current.getTimeIndexType() != ITimeIndex.FILE_TIME_INDEX_TYPE) {
       FileTimeIndex replacement =
           new FileTimeIndex(current.getMinStartTime(), current.getMaxEndTime());
       if (TIME_INDEX_UPDATER.compareAndSet(this, current, replacement)) {
@@ -1700,8 +1719,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   /** Unpublished LOAD installations defer metrics until their data file is published. */
-  public void upgradeModFile(ExecutorService upgradeModFileThreadPool, boolean updateModMetrics)
-      throws IOException {
+  public synchronized void upgradeModFile(
+      ExecutorService upgradeModFileThreadPool, boolean updateModMetrics) throws IOException {
     ModificationFileV1 oldModFile = ModificationFileV1.getNormalMods(this);
     if (!oldModFile.exists()) {
       return;
@@ -1710,11 +1729,11 @@ public class TsFileResource implements PersistentResource, Cloneable {
     if (upgradeModFileThreadPool != null) {
       exclusiveModFileFuture =
           upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile, updateModMetrics));
+      exclusiveModFile = null;
+      updateMemoryCostIfRegistered();
     } else {
-      exclusiveModFileFuture =
-          CompletableFuture.completedFuture(doUpgradeModFile(oldModFile, updateModMetrics));
+      setExclusiveModFile(doUpgradeModFile(oldModFile, updateModMetrics));
     }
-    updateMemoryCostIfRegistered();
   }
 
   @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
@@ -1775,7 +1794,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     updateMemoryCostIfRegistered();
   }
 
-  public TsFileResource shallowClone() {
+  public synchronized TsFileResource shallowClone() {
     TsFileResource cloned = new TsFileResource();
     cloned.file = this.file;
     cloned.timeIndex = this.timeIndex;
@@ -1812,7 +1831,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return cloned;
   }
 
-  public TsFileResource shallowCloneForNative() throws CloneNotSupportedException {
+  public synchronized TsFileResource shallowCloneForNative() throws CloneNotSupportedException {
     TsFileResource cloned = (TsFileResource) clone();
     cloned.memoryRegistration = null;
     return cloned;

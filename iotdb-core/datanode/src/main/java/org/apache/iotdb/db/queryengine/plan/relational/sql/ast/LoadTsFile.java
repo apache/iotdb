@@ -395,20 +395,25 @@ public class LoadTsFile extends Statement {
         }
       }
     }
-    if (tsFiles != null) {
-      size += RamUsageEstimator.shallowSizeOf(tsFiles);
-      for (int i = 0; i < tsFiles.size(); i++) {
-        File file = tsFiles.get(i);
-        // Analysis appends one resource (possibly null) for each processed file, in order.
-        TsFileResource resource =
-            resources != null && i < resources.size() ? resources.get(i) : null;
-        if (resource == null || resource.getTsFile() != file) {
-          size += MemUtils.getFileRamBytes(file);
-        }
-      }
-    }
+    size += estimateUnsharedTsFilesSize();
     size += AstMemoryEstimationHelper.getEstimatedSizeOfLongList(writePointCountList);
     size += RamUsageEstimator.shallowSizeOf(isTableModel);
+    return size;
+  }
+
+  private long estimateUnsharedTsFilesSize() {
+    if (tsFiles == null) {
+      return 0;
+    }
+    long size = RamUsageEstimator.shallowSizeOf(tsFiles);
+    for (int i = 0; i < tsFiles.size(); i++) {
+      File file = tsFiles.get(i);
+      // Analysis appends one resource (possibly null) for each processed file, in order.
+      TsFileResource resource = resources != null && i < resources.size() ? resources.get(i) : null;
+      if (resource == null || resource.getTsFile() != file) {
+        size += MemUtils.getFileRamBytes(file);
+      }
+    }
     return size;
   }
 }

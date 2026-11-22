@@ -60,6 +60,9 @@ public class MemUtils {
       };
 
   public static long getTsPrimitiveTypeRamBytes(TsPrimitiveType value) {
+    if (value == null) {
+      return 0;
+    }
     long bytes = PRIMITIVE_INSTANCE_SIZE.get(value.getClass());
     if (value instanceof TsPrimitiveType.TsBinary && value.getBinary() != null) {
       bytes += value.getBinary().ramBytesUsed();
@@ -67,9 +70,7 @@ public class MemUtils {
       TsPrimitiveType[] elements = value.getVector();
       bytes += RamUsageEstimator.shallowSizeOf(elements);
       for (TsPrimitiveType element : elements) {
-        if (element != null) {
-          bytes += getTsPrimitiveTypeRamBytes(element);
-        }
+        bytes += getTsPrimitiveTypeRamBytes(element);
       }
     }
     return bytes;

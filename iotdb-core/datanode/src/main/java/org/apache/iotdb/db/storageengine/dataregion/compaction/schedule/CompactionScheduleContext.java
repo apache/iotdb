@@ -54,9 +54,12 @@ public class CompactionScheduleContext {
   private int fullyDirtyFileNum = 0;
 
   private int partiallyDirtyFileNum = 0;
+
   // end region
 
-  private final Map<TsFileResource, ArrayDeviceTimeIndex> partitionFileDeviceInfoCache;
+  private record CachedDeviceTimeIndex(ArrayDeviceTimeIndex index, long bytes) {}
+
+  private final Map<TsFileResource, CachedDeviceTimeIndex> partitionFileDeviceInfoCache;
   private final Map<IDeviceID, IDeviceID> deviceIdCache;
   private long cachedDeviceInfoSize = 0;
 
@@ -89,19 +92,21 @@ public class CompactionScheduleContext {
 
   public void addResourceDeviceTimeIndex(
       TsFileResource tsFileResource, ArrayDeviceTimeIndex deviceTimeIndex) {
-    ArrayDeviceTimeIndex previous =
-        partitionFileDeviceInfoCache.put(tsFileResource, deviceTimeIndex);
-    if (previous == deviceTimeIndex) {
+    CachedDeviceTimeIndex previous = partitionFileDeviceInfoCache.get(tsFileResource);
+    if (previous != null && previous.index() == deviceTimeIndex) {
       return;
     }
-    long deviceTimeIndexSize =
-        deviceTimeIndex.calculateRamSize() - (previous == null ? 0 : previous.calculateRamSize());
-    cachedDeviceInfoSize += deviceTimeIndexSize;
-    CompactionMetrics.getInstance().addSelectionCachedDeviceTimeIndexSize(deviceTimeIndexSize);
+    long bytes = tsFileResource.getDeviceTimeIndexRamSize(deviceTimeIndex);
+    partitionFileDeviceInfoCache.put(
+        tsFileResource, new CachedDeviceTimeIndex(deviceTimeIndex, bytes));
+    long delta = bytes - (previous == null ? 0 : previous.bytes());
+    cachedDeviceInfoSize += delta;
+    CompactionMetrics.getInstance().addSelectionCachedDeviceTimeIndexSize(delta);
   }
 
   public ArrayDeviceTimeIndex getResourceDeviceInfo(TsFileResource resource) {
-    return partitionFileDeviceInfoCache.get(resource);
+    CachedDeviceTimeIndex cached = partitionFileDeviceInfoCache.get(resource);
+    return cached == null ? null : cached.index();
   }
 
   public void clearTimePartitionDeviceInfoCache() {

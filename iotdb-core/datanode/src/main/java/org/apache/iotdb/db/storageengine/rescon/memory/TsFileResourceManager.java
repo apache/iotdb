@@ -33,6 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.TreeSet;
 
 public class TsFileResourceManager {
@@ -44,58 +46,73 @@ public class TsFileResourceManager {
   /** The memory block of time index */
   private final IMemoryBlock memoryBlock;
 
-  // One registration and one TreeMap.Entry (key, value, parent, left, right and color) per file.
+  // Registration, its priority-tree node, and the path map's node and amortized bucket slots.
   static final long REGISTRATION_RAM_BYTES =
       RamUsageEstimator.shallowSizeOfInstance(Registration.class)
           + RamUsageEstimator.alignObjectSize(
               RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
                   + 5L * RamUsageEstimator.NUM_BYTES_OBJECT_REF
-                  + Byte.BYTES);
+                  + Byte.BYTES)
+          + RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY
+          + 2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
-  private final TreeSet<Registration> sealedTsFileResources = new TreeSet<>();
+  private final Map<String, Registration> registrationsByPath = new HashMap<>();
+  private final TreeSet<Registration> sealedTsFileResources =
+      new TreeSet<>(Registration::comparePriority);
   private long degradedTimeIndexNum;
-  private long nextRegistrationId;
   private boolean degrading;
 
-  /** The sort key and the charged bytes remain stable until the manager updates the entry. */
-  public static final class Registration implements Comparable<Registration> {
+  /** The manager monitor protects the priority key, measured index and charged bytes. */
+  public static final class Registration {
     private final TsFileResource resource;
-    private final long id;
-    private long indexBytes;
     private File file;
+    private String path;
     private long startTime;
-    private boolean fileIndex;
+    private ITimeIndex index;
+    private long indexBytes;
     private long bytes;
 
-    private Registration(TsFileResource resource, long id) {
+    private Registration(TsFileResource resource, File file, String path) {
       this.resource = resource;
-      this.id = id;
-      updatePriority(resource.getTimeIndex());
+      this.file = file;
+      this.path = path;
+      index = resource.getTimeIndex();
+      startTime = index == null ? Long.MAX_VALUE : index.getMinStartTime();
     }
 
-    private void updatePriority(ITimeIndex index) {
-      file = resource.getTsFile();
-      startTime = index.getMinStartTime();
-      fileIndex = index.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
+    private boolean hasFileIndex() {
+      return index != null && index.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
+    }
+
+    private boolean canDegrade() {
+      return index != null && !hasFileIndex();
     }
 
     private int comparePriority(Registration other) {
-      int cmp = Boolean.compare(fileIndex, other.fileIndex);
+      int cmp = Boolean.compare(other.canDegrade(), canDegrade());
       if (cmp == 0) {
         cmp = Long.compare(startTime, other.startTime);
       }
-      return cmp != 0 ? cmp : file.getAbsolutePath().compareTo(other.file.getAbsolutePath());
+      return cmp == 0 ? path.compareTo(other.path) : cmp;
     }
 
-    @Override
-    public int compareTo(Registration other) {
-      int cmp = comparePriority(other);
-      // Two previously distinct entries can acquire the same priority after degradation.
-      return cmp == 0 ? Long.compare(id, other.id) : cmp;
+    public long getIndexRamSize(ITimeIndex candidate) {
+      synchronized (TsFileResourceManager.getInstance()) {
+        if (candidate == index) {
+          return indexBytes;
+        }
+      }
+      // A compaction may own a rebuilt index or still hold the index from before degradation.
+      return candidate.calculateRamSize();
     }
 
     public void refresh(boolean indexChanged) {
       TsFileResourceManager.getInstance().refresh(this, indexChanged);
+    }
+
+    private void detach() {
+      resource.setMemoryRegistration(null);
+      index = null;
     }
   }
 
@@ -119,20 +136,26 @@ public class TsFileResourceManager {
     if (resource.getMemoryRegistration() != null) {
       return;
     }
-    Registration entry = new Registration(resource, ++nextRegistrationId);
-    Registration previous = sealedTsFileResources.floor(entry);
-    if (previous == null || entry.comparePriority(previous) != 0) {
-      sealedTsFileResources.add(entry);
-      if (entry.fileIndex) {
-        degradedTimeIndexNum++;
-      }
-      // Publish before sampling so a concurrent metadata change cannot miss its charge.
-      resource.setMemoryRegistration(entry);
-      try {
-        refresh(entry, true);
-      } catch (RuntimeException | Error e) {
-        removeTsFileResource(resource);
-        throw e;
+    File file = resource.getTsFile();
+    String path = file.getAbsolutePath();
+    if (registrationsByPath.containsKey(path)) {
+      return;
+    }
+    Registration entry = new Registration(resource, file, path);
+    registrationsByPath.put(path, entry);
+    sealedTsFileResources.add(entry);
+    if (entry.hasFileIndex()) {
+      degradedTimeIndexNum++;
+    }
+    // Publish before sampling so a concurrent metadata change cannot miss its charge.
+    resource.setMemoryRegistration(entry);
+    boolean charged = false;
+    try {
+      refresh(entry, true);
+      charged = true;
+    } finally {
+      if (!charged) {
+        removeRegistration(entry);
       }
     }
   }
@@ -140,23 +163,52 @@ public class TsFileResourceManager {
   public synchronized void removeTsFileResource(TsFileResource resource) {
     Registration entry = resource.getMemoryRegistration();
     if (entry == null) {
-      // Recovery can supply another resource describing the same file.
-      if (sealedTsFileResources.isEmpty()) {
-        return;
-      }
-      Registration key = new Registration(resource, Long.MIN_VALUE);
-      entry = sealedTsFileResources.ceiling(key);
-      if (entry == null || entry.comparePriority(key) != 0) {
-        return;
-      }
+      // Compaction recovery may only know the path, with an empty or different time index.
+      File file = resource.getTsFile();
+      entry = file == null ? null : registrationsByPath.get(file.getAbsolutePath());
     }
-    if (sealedTsFileResources.remove(entry)) {
-      entry.resource.setMemoryRegistration(null);
-      memoryBlock.release(entry.bytes);
-      if (entry.fileIndex) {
+    if (entry != null) {
+      removeRegistration(entry);
+    }
+  }
+
+  private void removeRegistration(Registration entry) {
+    if (registrationsByPath.remove(entry.path, entry)) {
+      sealedTsFileResources.remove(entry);
+      if (entry.hasFileIndex()) {
         degradedTimeIndexNum--;
       }
+      entry.detach();
+      memoryBlock.release(entry.bytes);
     }
+  }
+
+  private boolean updatePriority(Registration entry, ITimeIndex index, long startTime, File file) {
+    String path = entry.path;
+    if (file != entry.file) {
+      path = file.getAbsolutePath();
+      Registration owner = registrationsByPath.get(path);
+      if (owner != null && owner != entry) {
+        // As on registration, keep the existing owner when two resources name the same file.
+        removeRegistration(entry);
+        return false;
+      }
+      registrationsByPath.remove(entry.path);
+      registrationsByPath.put(path, entry);
+    }
+    sealedTsFileResources.remove(entry);
+    if (entry.hasFileIndex()) {
+      degradedTimeIndexNum--;
+    }
+    entry.file = file;
+    entry.path = path;
+    entry.startTime = startTime;
+    entry.index = index;
+    if (entry.hasFileIndex()) {
+      degradedTimeIndexNum++;
+    }
+    sealedTsFileResources.add(entry);
+    return true;
   }
 
   private synchronized void refresh(Registration entry, boolean indexChanged) {
@@ -165,23 +217,29 @@ public class TsFileResourceManager {
       return;
     }
     ITimeIndex index = resource.getTimeIndex();
-    boolean fileIndex = index.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
-    if (entry.fileIndex != fileIndex
-        || entry.startTime != index.getMinStartTime()
-        || entry.file != resource.getTsFile()) {
-      sealedTsFileResources.remove(entry);
-      if (entry.fileIndex != fileIndex) {
-        degradedTimeIndexNum += fileIndex ? 1 : -1;
-      }
-      entry.updatePriority(index);
-      sealedTsFileResources.add(entry);
+    long startTime = index == null ? Long.MAX_VALUE : index.getMinStartTime();
+    File file = resource.getTsFile();
+    boolean replaced = index != entry.index;
+    // A metadata callback can observe an index swap before the swapping thread takes this monitor.
+    long indexBytes = entry.indexBytes;
+    if (replaced || indexChanged) {
+      indexBytes = index == null ? 0 : index.calculateRamSize();
     }
-    if (indexChanged) {
-      entry.indexBytes = index.calculateRamSize();
+    if ((replaced || startTime != entry.startTime || file != entry.file)
+        && !updatePriority(entry, index, startTime, file)) {
+      return;
     }
-    long bytes = REGISTRATION_RAM_BYTES + resource.calculateMetadataRamSize() + entry.indexBytes;
+    entry.indexBytes = indexBytes;
+    // A relative File retains its own path string in addition to the map's absolute key.
+    long pathBytes = file.isAbsolute() ? 0 : RamUsageEstimator.sizeOf(entry.path);
+    long bytes =
+        REGISTRATION_RAM_BYTES + pathBytes + resource.calculateMetadataRamSize() + indexBytes;
     long delta = bytes - entry.bytes;
     entry.bytes = bytes;
+    adjustMemoryUsage(delta);
+  }
+
+  private void adjustMemoryUsage(long delta) {
     if (delta > 0) {
       memoryBlock.forceAllocateWithoutLimitation(delta);
       if (!degrading
@@ -207,7 +265,7 @@ public class TsFileResourceManager {
   private void chooseTsFileResourceToDegrade() {
     while (memoryBlock.getUsedMemoryInBytes() > memoryBlock.getTotalMemorySizeInBytes()) {
       Registration entry = sealedTsFileResources.first();
-      if (entry.fileIndex) {
+      if (!entry.canDegrade()) {
         logger.debug(StorageEngineMessages.CANNOT_DEGRADE_TIME_INDEX_ALL_FILE_LEVEL);
         return;
       }
@@ -234,7 +292,8 @@ public class TsFileResourceManager {
   /** function for clearing TsFileManager */
   @TestOnly
   public synchronized void clear() {
-    sealedTsFileResources.forEach(entry -> entry.resource.setMemoryRegistration(null));
+    registrationsByPath.values().forEach(Registration::detach);
+    registrationsByPath.clear();
     this.sealedTsFileResources.clear();
     this.memoryBlock.setUsedMemoryInBytes(0);
     this.degradedTimeIndexNum = 0;
