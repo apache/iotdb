@@ -218,6 +218,12 @@ public class PipeSinkConstant {
   public static final String SINK_AIR_GAP_UDP_SEND_INTERVAL_MS_KEY =
       "sink.air-gap.udp.send-interval-ms";
   public static final int CONNECTOR_AIR_GAP_UDP_SEND_INTERVAL_MS_DEFAULT_VALUE = 5;
+  public static final String CONNECTOR_AIR_GAP_UDP_REQUEST_COPY_COUNT_KEY =
+      "connector.air-gap.udp.request-copy-count";
+  public static final String SINK_AIR_GAP_UDP_REQUEST_COPY_COUNT_KEY =
+      "sink.air-gap.udp.request-copy-count";
+  public static final int CONNECTOR_AIR_GAP_UDP_REQUEST_COPY_COUNT_DEFAULT_VALUE = 2;
+  public static final int CONNECTOR_AIR_GAP_UDP_REQUEST_COPY_COUNT_MAX_VALUE = 16;
 
   public static final String CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_KEY = "connector.version";
   public static final String SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY = "sink.version";

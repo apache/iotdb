@@ -126,7 +126,7 @@ public class IoTDBAirGapReceiverTest {
 
     try {
       commonConfig.setPipeAirGapRetryLocalIntervalMs(0);
-      commonConfig.setPipeAirGapRetryMaxMs(1);
+      commonConfig.setPipeAirGapRetryMaxMs(0);
 
       final RecordingSocket socket = new RecordingSocket();
       final IoTDBAirGapReceiver receiver = new IoTDBAirGapReceiver(socket, 3L);
@@ -137,17 +137,7 @@ public class IoTDBAirGapReceiverTest {
                   TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())));
       setField(receiver, "agent", stubAgent);
 
-      final AirGapPseudoTPipeTransferRequest req = new AirGapPseudoTPipeTransferRequest();
-      req.setVersion(IoTDBSinkRequestVersion.VERSION_1.getVersion());
-      req.setType((short) 0);
-      req.setBody(ByteBuffer.allocate(0));
-
-      final Method handleReq =
-          IoTDBAirGapReceiver.class.getDeclaredMethod(
-              "handleReq", AirGapPseudoTPipeTransferRequest.class, long.class, String.class);
-      handleReq.setAccessible(true);
-      handleReq.invoke(receiver, req, System.currentTimeMillis() - 10_000L, null);
-
+      Assert.assertTrue(receiver.receive(toAirGapData(toRawRequestBytes()), null));
       Assert.assertArrayEquals(AirGapOneByteResponse.FAIL, socket.getWrittenBytes());
     } finally {
       commonConfig.setPipeAirGapRetryLocalIntervalMs(originalRetryLocalIntervalMs);
@@ -350,19 +340,15 @@ public class IoTDBAirGapReceiverTest {
           });
       setField(receiver, "agent", stubAgent);
 
-      final AirGapPseudoTPipeTransferRequest req = new AirGapPseudoTPipeTransferRequest();
-      req.setVersion(IoTDBSinkRequestVersion.VERSION_1.getVersion());
-      req.setType((short) 0);
-      req.setBody(ByteBuffer.wrap(expectedBody));
-
-      final Method handleReq =
-          IoTDBAirGapReceiver.class.getDeclaredMethod(
-              "handleReq", AirGapPseudoTPipeTransferRequest.class, long.class, String.class);
-      handleReq.setAccessible(true);
-      handleReq.invoke(receiver, req, System.currentTimeMillis(), receiverKey);
+      final byte[] request =
+          ByteBuffer.allocate(Byte.BYTES + Short.BYTES + expectedBody.length)
+              .put(IoTDBSinkRequestVersion.VERSION_1.getVersion())
+              .putShort((short) 0)
+              .put(expectedBody)
+              .array();
+      Assert.assertTrue(receiver.receive(toAirGapData(request), receiverKey));
 
       Assert.assertEquals(2, receiveCount.get());
-      Assert.assertEquals(0, req.body.position());
       Assert.assertArrayEquals(AirGapOneByteResponse.OK, socket.getWrittenBytes());
     } finally {
       commonConfig.setPipeAirGapRetryLocalIntervalMs(originalRetryLocalIntervalMs);
