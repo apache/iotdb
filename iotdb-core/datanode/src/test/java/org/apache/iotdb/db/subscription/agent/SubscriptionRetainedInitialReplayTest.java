@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -78,6 +79,7 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -720,6 +722,86 @@ public class SubscriptionRetainedInitialReplayTest {
         org.junit.Assert.assertNotNull(realtimePolled);
         drainTabletsResponses(realtimePolled);
         assertTrue(subscription.queue.ack("first", realtimePolled.getCommitContext()));
+      }
+    }
+  }
+
+  @Test
+  public void testRetainedSnapshotCompletesAfterLastRegionLosesLeadershipWithOutstandingAck()
+      throws Exception {
+    for (final boolean zeroExpectedAfterLoss : new boolean[] {false, true}) {
+      final ArrayDequeBlockingPendingQueue initialPending = new ArrayDequeBlockingPendingQueue();
+      try (final RetainedSubscription subscription =
+          new RetainedSubscription(
+              false, true, TopicConstant.MODE_SNAPSHOT_VALUE, false, initialPending)) {
+        final SubscriptionPrefetchingQueueStates spiedStates =
+            spy(
+                (SubscriptionPrefetchingQueueStates)
+                    Whitebox.getInternalState(subscription.queue, "states"));
+        doReturn(true).when(spiedStates).shouldPrefetch();
+        Whitebox.setInternalState(subscription.queue, "states", spiedStates);
+        Whitebox.setInternalState(
+            Whitebox.getInternalState(subscription.queue, "batches"), "maxDelayInMs", 0);
+
+        final String pipeName =
+            PipeStaticMeta.generateSubscriptionPipeName(subscription.topic, subscription.group);
+        final long creationTime = 100L + (zeroExpectedAfterLoss ? 1L : 0L);
+        final Set<Integer> expectedRegions = new HashSet<>(Arrays.asList(1, 2));
+        doAnswer(inv -> Optional.of(new HashSet<>(expectedRegions)))
+            .when(subscription.queue)
+            .getExpectedDataRegionIds(pipeName, creationTime);
+
+        final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+        commitManager.register(pipeName, creationTime, 1, "subscription");
+        commitManager.register(pipeName, creationTime, 2, "subscription");
+        try {
+          final PipeRawTabletInsertionEvent tablet = createTabletEvent(false, 1, 1L);
+          assertTrue(tablet.increaseReferenceCount("test"));
+
+          final PipeTerminateEvent term1 =
+              new PipeTerminateEvent(pipeName, creationTime, null, 1, true);
+          commitManager.enrichWithCommitterKeyAndCommitId(term1, creationTime, 1);
+          assertTrue(term1.increaseReferenceCount("test"));
+
+          final PipeTerminateEvent term2 =
+              new PipeTerminateEvent(pipeName, creationTime, null, 2, true);
+          commitManager.enrichWithCommitterKeyAndCommitId(term2, creationTime, 2);
+          assertTrue(term2.increaseReferenceCount("test"));
+
+          initialPending.directOffer(tablet);
+          initialPending.directOffer(term1);
+          initialPending.directOffer(term2);
+
+          // Prefetch tablet, poll it into in-flight, then prefetch both terminate events while
+          // tablet stays unacknowledged.
+          subscription.queue.executePrefetch();
+          final SubscriptionEvent polledTablet = subscription.poll("first");
+          org.junit.Assert.assertNotNull(polledTablet);
+          subscription.queue.executePrefetch();
+          assertFalse(term1.isReleased());
+          assertFalse(term2.isReleased());
+          assertFalse(subscription.queue.isCompleted());
+
+          // Region 2 (whose terminate event was added last) loses leadership while ACK is
+          // outstanding, deregistering its committer.
+          commitManager.deregister(pipeName, creationTime, 2);
+          expectedRegions.remove(2);
+          if (zeroExpectedAfterLoss) {
+            commitManager.deregister(pipeName, creationTime, 1);
+            expectedRegions.remove(1);
+          }
+
+          // Once the outstanding tablet is acknowledged, completion must still be signalled.
+          drainTabletsResponses(polledTablet);
+          assertTrue(subscription.queue.ack("first", polledTablet.getCommitContext()));
+          assertTrue(subscription.queue.isCompleted());
+          assertEquals(
+              Collections.singletonList(subscription.topic),
+              subscription.broker.fetchTopicNamesToUnsubscribe(
+                  Collections.singleton(subscription.topic)));
+        } finally {
+          commitManager.clear(pipeName, creationTime);
+        }
       }
     }
   }

@@ -1309,6 +1309,191 @@ public class SubscriptionConsumerMultiProviderPollTest {
     }
   }
 
+  @Test(timeout = 20_000)
+  public void testRetainedSnapshotTerminationWaitsWhenEndpointDiscoveryFailsDuringOpen()
+      throws Exception {
+    final AtomicBoolean failDiscovery = new AtomicBoolean(true);
+    final AtomicInteger unsubscribeCount = new AtomicInteger();
+    final TestPullConsumer consumer =
+        new TestPullConsumer(1, 0, false, false, 2) {
+          @Override
+          protected AbstractSubscriptionProvider constructSubscriptionProvider(
+              final TEndPoint endPoint,
+              final String username,
+              final String password,
+              final String encryptedPassword,
+              final String consumerId,
+              final String consumerGroupId,
+              final String ownerId,
+              final Long ownerEpoch,
+              final int thriftMaxFrameSize,
+              final long heartbeatIntervalMs,
+              final int connectionTimeoutInMs) {
+            final TestSubscriptionProvider provider =
+                (TestSubscriptionProvider)
+                    super.constructSubscriptionProvider(
+                        endPoint,
+                        username,
+                        password,
+                        encryptedPassword,
+                        consumerId,
+                        consumerGroupId,
+                        ownerId,
+                        ownerEpoch,
+                        thriftMaxFrameSize,
+                        heartbeatIntervalMs,
+                        connectionTimeoutInMs);
+            if (provider.getDataNodeId() == 1) {
+              provider.heartbeatAction =
+                  () -> {
+                    if (failDiscovery.get()) {
+                      throw new SubscriptionConnectionException("endpoint discovery failed");
+                    }
+                  };
+            }
+            provider.unsubscribeHandler =
+                topicNames -> {
+                  unsubscribeCount.incrementAndGet();
+                  return Collections.emptyMap();
+                };
+            provider.pollHandler =
+                (topicNames, pollCount) ->
+                    new ArrayList<>(
+                        Collections.singletonList(
+                            new SubscriptionPollResponse(
+                                SubscriptionPollResponseType.TERMINATION.getType(),
+                                new TerminationPayload(),
+                                new SubscriptionCommitContext(
+                                    provider.getDataNodeId(), 0, TOPIC, CONSUMER_GROUP_ID, -1L))));
+            return provider;
+          }
+        };
+    try {
+      consumer.open();
+      consumer.subscribeRetainedSnapshotTopic();
+
+      Assert.assertTrue(consumer.getExpectedDataNodeIds().isEmpty());
+      Assert.assertTrue(consumer.pollForTest(500L).isEmpty());
+      Assert.assertEquals(0, unsubscribeCount.get());
+      Assert.assertFalse(consumer.allTopicMessagesHaveBeenConsumed());
+
+      failDiscovery.set(false);
+      getProviders(consumer).sync(consumer);
+      consumer.subscribeRetainedSnapshotTopic();
+      Assert.assertEquals(2, consumer.getExpectedDataNodeIds().size());
+
+      Assert.assertTrue(consumer.pollForTest(500L).isEmpty());
+      Assert.assertTrue(consumer.allTopicMessagesHaveBeenConsumed());
+      Assert.assertEquals(1, unsubscribeCount.get());
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test(timeout = 20_000)
+  public void testRetainedSnapshotTerminationDoesNotUseStaleMembershipAcrossConcurrentSync()
+      throws Exception {
+    final AtomicInteger clusterSize = new AtomicInteger(1);
+    final AtomicInteger unsubscribeCount = new AtomicInteger();
+    final TestPullConsumer consumer =
+        new TestPullConsumer(1, 0, false, false, 2) {
+          @Override
+          protected AbstractSubscriptionProvider constructSubscriptionProvider(
+              final TEndPoint endPoint,
+              final String username,
+              final String password,
+              final String encryptedPassword,
+              final String consumerId,
+              final String consumerGroupId,
+              final String ownerId,
+              final Long ownerEpoch,
+              final int thriftMaxFrameSize,
+              final long heartbeatIntervalMs,
+              final int connectionTimeoutInMs) {
+            final TestSubscriptionProvider provider =
+                (TestSubscriptionProvider)
+                    super.constructSubscriptionProvider(
+                        endPoint,
+                        username,
+                        password,
+                        encryptedPassword,
+                        consumerId,
+                        consumerGroupId,
+                        ownerId,
+                        ownerEpoch,
+                        thriftMaxFrameSize,
+                        heartbeatIntervalMs,
+                        connectionTimeoutInMs);
+            provider.heartbeatAction =
+                () -> {
+                  // Overrides default provider's endpoint list with current clusterSize.
+                };
+            provider.unsubscribeHandler =
+                topicNames -> {
+                  unsubscribeCount.incrementAndGet();
+                  return Collections.emptyMap();
+                };
+            return provider;
+          }
+
+          @Override
+          protected Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() {
+            final Map<Integer, TEndPoint> endpoints = new HashMap<>();
+            for (int id = 1; id <= clusterSize.get(); id++) {
+              endpoints.put(id, new TEndPoint(HOST, FIRST_PORT + id - 1));
+            }
+            return endpoints;
+          }
+        };
+    try {
+      consumer.open();
+      consumer.subscribeRetainedSnapshotTopic();
+      final AbstractSubscriptionProviders providers = getProviders(consumer);
+      // Restrict initial membership to {1} via sync, then re-apply retained snapshot topic config.
+      providers.sync(consumer);
+      consumer.subscribeRetainedSnapshotTopic();
+      Assert.assertEquals(Collections.singleton(1), consumer.getExpectedDataNodeIds());
+
+      final CountDownLatch readLockHeld = new CountDownLatch(1);
+      final ExecutorService executor = Executors.newSingleThreadExecutor();
+      try {
+        // Hold providers read lock while sync() waits for write lock to expand cluster to {1, 2}.
+        final Future<?> syncFuture =
+            executor.submit(
+                () -> {
+                  await(readLockHeld);
+                  clusterSize.set(2);
+                  providers.sync(consumer);
+                });
+
+        providers.acquireReadLock();
+        try {
+          readLockHeld.countDown();
+          // Give sync() a moment to queue on the write lock.
+          Thread.sleep(50L);
+        } finally {
+          providers.releaseReadLock();
+        }
+        syncFuture.get(5, TimeUnit.SECONDS);
+      } finally {
+        executor.shutdownNow();
+      }
+      consumer.subscribeRetainedSnapshotTopic();
+
+      // Now cluster membership is {1, 2}. A termination from DN 1 alone must NOT unsubscribe.
+      consumer.handleProviderTopicTermination(1, TOPIC);
+      Assert.assertEquals(0, unsubscribeCount.get());
+      Assert.assertFalse(consumer.allTopicMessagesHaveBeenConsumed());
+
+      // Termination from DN 2 completes the barrier.
+      consumer.handleProviderTopicTermination(2, TOPIC);
+      Assert.assertEquals(1, unsubscribeCount.get());
+      Assert.assertTrue(consumer.allTopicMessagesHaveBeenConsumed());
+    } finally {
+      consumer.close();
+    }
+  }
+
   private static void enableCommitBatching(
       final TestSubscriptionProvider provider, final SubscriptionCommitContext context)
       throws Exception {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -53,7 +54,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -125,8 +125,11 @@ public abstract class SubscriptionPrefetchingQueue {
   private volatile RetryableEvent<TabletInsertionEvent> currentTabletInsertionEvent;
   private volatile SubscriptionTsFileToTabletIterator currentToTabletIterator;
   private final List<PipeTerminateEvent> pendingTerminateEvents = new ArrayList<>();
-  private final Set<Integer> terminatedDataRegionIds = new HashSet<>();
-  private long activeTerminatePipeCreationTime = Long.MIN_VALUE;
+  private final Map<Integer, PipeTerminateEvent> pendingTerminateEventByRegion = new HashMap<>();
+  private final Set<Integer> committedTerminateDataRegionIds = ConcurrentHashMap.newKeySet();
+  private final Set<CommitterKey> awaitingCompletionCommitterKeys = ConcurrentHashMap.newKeySet();
+  private volatile long activeTerminatePipeCreationTime = Long.MIN_VALUE;
+  private volatile String activeTerminatePipeName;
   private PipeTerminateEvent currentNonMarkingTerminateEvent;
 
   public SubscriptionPrefetchingQueue(
@@ -205,8 +208,11 @@ public abstract class SubscriptionPrefetchingQueue {
         terminateEvent.clearReferenceCount(this.getClass().getName());
       }
       pendingTerminateEvents.clear();
-      terminatedDataRegionIds.clear();
+      pendingTerminateEventByRegion.clear();
+      committedTerminateDataRegionIds.clear();
+      awaitingCompletionCommitterKeys.clear();
       activeTerminatePipeCreationTime = Long.MIN_VALUE;
+      activeTerminatePipeName = null;
       if (Objects.nonNull(currentNonMarkingTerminateEvent)) {
         currentNonMarkingTerminateEvent.clearReferenceCount(this.getClass().getName());
         currentNonMarkingTerminateEvent = null;
@@ -851,6 +857,45 @@ public abstract class SubscriptionPrefetchingQueue {
     return !pendingTerminateEvents.isEmpty() || Objects.nonNull(currentNonMarkingTerminateEvent);
   }
 
+  private static boolean isManagedCommitterEvent(final PipeTerminateEvent event) {
+    return Objects.nonNull(event.getCommitterKey())
+        && event.getCreationTime() != 0
+        && event.getCommitId() > EnrichedEvent.NO_COMMIT_ID;
+  }
+
+  protected boolean isCurrentCommitterKey(final CommitterKey committerKey) {
+    return PipeEventCommitManager.getInstance().isCurrentCommitterKey(committerKey);
+  }
+
+  private void onTerminateEventCommitted(
+      final String pipeName,
+      final long creationTime,
+      final int regionId,
+      final CommitterKey committerKey) {
+    if (creationTime != activeTerminatePipeCreationTime) {
+      return;
+    }
+    committedTerminateDataRegionIds.add(regionId);
+    awaitingCompletionCommitterKeys.remove(committerKey);
+    recheckAwaitingCompletionCommitters(pipeName, creationTime);
+  }
+
+  private void recheckAwaitingCompletionCommitters(final String pipeName, final long creationTime) {
+    if (isCompleted || creationTime != activeTerminatePipeCreationTime) {
+      return;
+    }
+    awaitingCompletionCommitterKeys.removeIf(key -> !isCurrentCommitterKey(key));
+    if (!awaitingCompletionCommitterKeys.isEmpty()) {
+      return;
+    }
+    final Optional<Set<Integer>> expectedDataRegionIds =
+        getExpectedDataRegionIds(pipeName, creationTime);
+    if (expectedDataRegionIds.isPresent()
+        && committedTerminateDataRegionIds.containsAll(expectedDataRegionIds.get())) {
+      markCompleted();
+    }
+  }
+
   private synchronized boolean onTerminateEvent(final PipeTerminateEvent terminateEvent) {
     if (!terminateEvent.isShouldMark()) {
       currentNonMarkingTerminateEvent = terminateEvent;
@@ -869,11 +914,14 @@ public abstract class SubscriptionPrefetchingQueue {
         staleEvent.clearReferenceCount(SubscriptionPrefetchingQueue.class.getName());
       }
       pendingTerminateEvents.clear();
-      terminatedDataRegionIds.clear();
+      pendingTerminateEventByRegion.clear();
+      committedTerminateDataRegionIds.clear();
+      awaitingCompletionCommitterKeys.clear();
     }
     activeTerminatePipeCreationTime = eventCreationTime;
+    activeTerminatePipeName = terminateEvent.getPipeName();
     pendingTerminateEvents.add(terminateEvent);
-    terminatedDataRegionIds.add(terminateEvent.getDataRegionId());
+    pendingTerminateEventByRegion.put(terminateEvent.getDataRegionId(), terminateEvent);
     tryCommitPendingTerminateEvents();
     return true;
   }
@@ -910,6 +958,9 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private synchronized boolean tryCommitPendingTerminateEvents() {
     final boolean committedNonMarking = tryCommitCurrentNonMarkingTerminateEvent();
+    if (!isCompleted && !awaitingCompletionCommitterKeys.isEmpty()) {
+      recheckAwaitingCompletionCommitters(activeTerminatePipeName, activeTerminatePipeCreationTime);
+    }
     if (pendingTerminateEvents.isEmpty()) {
       return committedNonMarking;
     }
@@ -921,15 +972,28 @@ public abstract class SubscriptionPrefetchingQueue {
       return false;
     }
 
-    final PipeTerminateEvent sampleEvent =
-        pendingTerminateEvents.get(pendingTerminateEvents.size() - 1);
+    final String pipeName = activeTerminatePipeName;
+    final long creationTime = activeTerminatePipeCreationTime;
     final Optional<Set<Integer>> expectedDataRegionIds =
-        getExpectedDataRegionIds(sampleEvent.getPipeName(), sampleEvent.getCreationTime());
-    if (!expectedDataRegionIds.isPresent()
-        || !terminatedDataRegionIds.containsAll(expectedDataRegionIds.get())) {
+        getExpectedDataRegionIds(pipeName, creationTime);
+    if (!expectedDataRegionIds.isPresent()) {
       return false;
     }
 
+    for (final int regionId : expectedDataRegionIds.get()) {
+      if (committedTerminateDataRegionIds.contains(regionId)) {
+        continue;
+      }
+      final PipeTerminateEvent regionTerminateEvent = pendingTerminateEventByRegion.get(regionId);
+      if (Objects.isNull(regionTerminateEvent)
+          || (isManagedCommitterEvent(regionTerminateEvent)
+              && !isCurrentCommitterKey(regionTerminateEvent.getCommitterKey()))) {
+        return false;
+      }
+    }
+
+    final PipeTerminateEvent sampleEvent =
+        pendingTerminateEvents.get(pendingTerminateEvents.size() - 1);
     try {
       batches.emitAll(this::prefetchEvent);
     } catch (final Exception e) {
@@ -948,19 +1012,29 @@ public abstract class SubscriptionPrefetchingQueue {
       return false;
     }
 
-    final PipeTerminateEvent lastTerminateEvent =
-        pendingTerminateEvents.get(pendingTerminateEvents.size() - 1);
-    lastTerminateEvent.addOnCommittedHook(this::markCompleted);
+    for (final int regionId : expectedDataRegionIds.get()) {
+      if (committedTerminateDataRegionIds.contains(regionId)) {
+        continue;
+      }
+      final PipeTerminateEvent regionTerminateEvent = pendingTerminateEventByRegion.get(regionId);
+      if (isManagedCommitterEvent(regionTerminateEvent)
+          && isCurrentCommitterKey(regionTerminateEvent.getCommitterKey())) {
+        final CommitterKey committerKey = regionTerminateEvent.getCommitterKey();
+        awaitingCompletionCommitterKeys.add(committerKey);
+        regionTerminateEvent.addOnCommittedHook(
+            () -> onTerminateEventCommitted(pipeName, creationTime, regionId, committerKey));
+      } else {
+        committedTerminateDataRegionIds.add(regionId);
+      }
+    }
+
     for (final PipeTerminateEvent terminateEvent : pendingTerminateEvents) {
       terminateEvent.decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
       LOGGER.info(DataNodeMiscMessages.COMMIT_TERMINATE_EVENT, this, terminateEvent);
     }
-    if (Objects.isNull(lastTerminateEvent.getCommitterKey())
-        || lastTerminateEvent.getCreationTime() == 0
-        || lastTerminateEvent.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
-      markCompleted();
-    }
     pendingTerminateEvents.clear();
+    pendingTerminateEventByRegion.clear();
+    recheckAwaitingCompletionCommitters(pipeName, creationTime);
     return true;
   }
 
@@ -1330,6 +1404,9 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   public boolean isCompleted() {
+    if (!isCompleted && !awaitingCompletionCommitterKeys.isEmpty()) {
+      recheckAwaitingCompletionCommitters(activeTerminatePipeName, activeTerminatePipeCreationTime);
+    }
     return isCompleted;
   }
 

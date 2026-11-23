@@ -837,25 +837,35 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     if (Objects.nonNull(topicConfig)
         && topicConfig.isSnapshotMode()
         && topicConfig.isProgressRetainedAfterUnsubscribe()) {
-      final Set<Integer> expectedDataNodeIds = getExpectedDataNodeIds();
-      synchronized (topicTerminationLock) {
-        if (!subscribedTopics.containsKey(topicName)) {
-          terminatedDataNodeIdsByTopic.remove(topicName);
-          return;
+      final long topologyGeneration;
+      providers.acquireReadLock();
+      try {
+        final Set<Integer> expectedDataNodeIds = providers.getExpectedDataNodeIds();
+        topologyGeneration = providers.getTopologyGeneration();
+        synchronized (topicTerminationLock) {
+          if (!subscribedTopics.containsKey(topicName)) {
+            terminatedDataNodeIdsByTopic.remove(topicName);
+            return;
+          }
+          final Set<Integer> terminated =
+              terminatedDataNodeIdsByTopic.computeIfAbsent(
+                  topicName, ignored -> ConcurrentHashMap.newKeySet());
+          if (dataNodeId >= 0) {
+            terminated.add(dataNodeId);
+          }
+          if (expectedDataNodeIds.isEmpty()
+              || !terminated.containsAll(expectedDataNodeIds)
+              || !autoUnsubscribingTopics.add(topicName)) {
+            return;
+          }
         }
-        final Set<Integer> terminated =
-            terminatedDataNodeIdsByTopic.computeIfAbsent(
-                topicName, ignored -> ConcurrentHashMap.newKeySet());
-        if (dataNodeId >= 0) {
-          terminated.add(dataNodeId);
-        }
-        if (expectedDataNodeIds.isEmpty()
-            || !terminated.containsAll(expectedDataNodeIds)
-            || !autoUnsubscribingTopics.add(topicName)) {
-          return;
-        }
+      } finally {
+        providers.releaseReadLock();
       }
       try {
+        if (providers.getTopologyGeneration() != topologyGeneration) {
+          return;
+        }
         LOGGER.info(
             SubscriptionMessages
                 .LOG_TERMINATION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_UNSUBSCRIBE_TOPIC_ARG_AUTOMATICALLY_E9B695FA,

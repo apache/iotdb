@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,6 +44,7 @@ import java.util.SortedMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -53,6 +55,7 @@ final class AbstractSubscriptionProviders {
   private final SortedMap<Integer, AbstractSubscriptionProvider> subscriptionProviders =
       new ConcurrentSkipListMap<>();
   private final Set<Integer> knownClusterDataNodeIds = ConcurrentHashMap.newKeySet();
+  private final AtomicLong topologyGeneration = new AtomicLong(0);
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private final AtomicBoolean unavailableSyncInFlight = new AtomicBoolean(false);
   private final Set<AbstractSubscriptionProvider> providersWithHeartbeatInFlight =
@@ -131,6 +134,7 @@ final class AbstractSubscriptionProviders {
         allEndPoints = defaultProvider.heartbeat().getEndPoints();
         knownClusterDataNodeIds.clear();
         knownClusterDataNodeIds.addAll(allEndPoints.keySet());
+        topologyGeneration.incrementAndGet();
       } catch (final SubscriptionConsumerFencedException e) {
         consumer.fence(e);
         throw e;
@@ -203,6 +207,7 @@ final class AbstractSubscriptionProviders {
     final List<AbstractSubscriptionProvider> providers = getAllProviders();
     subscriptionProviders.clear();
     knownClusterDataNodeIds.clear();
+    topologyGeneration.incrementAndGet();
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
         if (closeConsumer) {
@@ -238,6 +243,7 @@ final class AbstractSubscriptionProviders {
     }
 
     // the subscription provider is opened
+    topologyGeneration.incrementAndGet();
     LOGGER.info(SubscriptionMessages.ADD_NEW_PROVIDER, provider);
   }
 
@@ -263,6 +269,7 @@ final class AbstractSubscriptionProviders {
     } finally {
       LOGGER.info(SubscriptionMessages.CLOSE_STALE_PROVIDER, provider);
       subscriptionProviders.remove(dataNodeId);
+      topologyGeneration.incrementAndGet();
     }
   }
 
@@ -309,9 +316,16 @@ final class AbstractSubscriptionProviders {
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   Set<Integer> getExpectedDataNodeIds() {
+    if (knownClusterDataNodeIds.isEmpty()) {
+      return Collections.emptySet();
+    }
     final Set<Integer> ids = new HashSet<>(knownClusterDataNodeIds);
     ids.addAll(subscriptionProviders.keySet());
     return ids;
+  }
+
+  long getTopologyGeneration() {
+    return topologyGeneration.get();
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
@@ -482,8 +496,13 @@ final class AbstractSubscriptionProviders {
     final Map<Integer, TEndPoint> allEndPoints;
     try {
       allEndPoints = consumer.fetchAllEndPointsWithRedirection();
+      final boolean membershipChanged = !knownClusterDataNodeIds.equals(allEndPoints.keySet());
       knownClusterDataNodeIds.clear();
       knownClusterDataNodeIds.addAll(allEndPoints.keySet());
+      if (membershipChanged) {
+        consumer.clearTerminatedProviderStates();
+        topologyGeneration.incrementAndGet();
+      }
     } catch (final SubscriptionConsumerFencedException e) {
       consumer.fence(e);
       return;
