@@ -592,16 +592,16 @@ public class TimeSeriesMetadataCacheTest {
       allSensors.add("");
       allSensors.add("absent");
 
-      // A single lookup also warms selected siblings in the same group, even when allSensors
-      // does not include the requested measurement.
+      // Reading s0 also caches s1 from the same metadata group.
       QueryContext queryContext = new QueryContext(false, false);
-      Set<String> siblings = Collections.singleton("s1");
-      for (String measurement : Arrays.asList("s0", "s1")) {
+      List<String> measurements = Arrays.asList("s0", "s1");
+      Set<String> selectedMeasurements = new HashSet<>(measurements);
+      for (String measurement : measurements) {
         assertNotNull(
             cache.get(
                 filePath,
                 new TimeSeriesMetadataCacheKey(tsFileID, deviceID, measurement),
-                siblings,
+                selectedMeasurements,
                 false,
                 false,
                 queryContext));

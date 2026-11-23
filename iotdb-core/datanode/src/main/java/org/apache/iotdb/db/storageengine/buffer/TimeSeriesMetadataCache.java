@@ -145,6 +145,9 @@ public class TimeSeriesMetadataCache {
     return TimeSeriesMetadataCache.TimeSeriesMetadataCacheHolder.INSTANCE;
   }
 
+  /**
+   * @param allSensors measurements queried for this device, including {@code key.measurement}
+   */
   public TimeseriesMetadata get(
       String filePath,
       TimeSeriesMetadataCacheKey key,
@@ -156,6 +159,9 @@ public class TimeSeriesMetadataCache {
     return get(filePath, key, allSensors, ignoreNotExists, debug, queryContext, null);
   }
 
+  /**
+   * @param allSensors measurements queried for this device, including {@code key.measurement}
+   */
   public TimeseriesMetadata get(
       String filePath,
       TimeSeriesMetadataCacheKey key,
@@ -220,7 +226,7 @@ public class TimeSeriesMetadataCache {
         }
       }
       if (!cacheEnabled) {
-        return readSingle(
+        return readTimeseriesMetadataForMeasurement(
             filePath,
             key,
             allSensors,
@@ -241,7 +247,7 @@ public class TimeSeriesMetadataCache {
               StorageEngineMessages.CACHE_MISS_IN_FILE, key.device, key.measurement, filePath);
           DEBUG_LOGGER.info(StorageEngineMessages.DEVICE_ALL_SENSORS, key.device, allSensors);
         }
-        return readSingle(
+        return readTimeseriesMetadataForMeasurement(
             filePath,
             key,
             allSensors,
@@ -263,7 +269,7 @@ public class TimeSeriesMetadataCache {
     }
   }
 
-  private TimeseriesMetadata readSingle(
+  private TimeseriesMetadata readTimeseriesMetadataForMeasurement(
       String filePath,
       TimeSeriesMetadataCacheKey key,
       Set<String> allSensors,
@@ -276,12 +282,8 @@ public class TimeSeriesMetadataCache {
     boolean cacheEnabled = CACHE_ENABLE && !externalTsFile;
     LongConsumer ioSizeRecorder =
         queryContext.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet;
-    Set<String> requested = Collections.singleton(key.measurement);
-    Set<String> returned = cacheEnabled ? allSensors : requested;
-    if (!returned.contains(key.measurement)) {
-      returned = new HashSet<>(returned);
-      returned.add(key.measurement);
-    }
+    Set<String> requestedMeasurements = Collections.singleton(key.measurement);
+    Set<String> measurementsToReturn = cacheEnabled ? allSensors : requestedMeasurements;
     TsFileSequenceReader reader =
         FileReaderManager.getInstance()
             .get(filePath, key.tsFileID, true, ioSizeRecorder, externalTsFile);
@@ -289,8 +291,8 @@ public class TimeSeriesMetadataCache {
         reader.readTimeseriesMetadataForMeasurements(
             key.device,
             deviceMetadataIndexNodeOffset,
-            requested,
-            returned,
+            requestedMeasurements,
+            measurementsToReturn,
             ignoreNotExists,
             ioSizeRecorder);
     for (Map.Entry<String, TimeseriesMetadata> entry : loaded.entrySet()) {
@@ -455,7 +457,7 @@ public class TimeSeriesMetadataCache {
           TsFileSequenceReader reader =
               FileReaderManager.getInstance()
                   .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, false);
-          readAndMerge(
+          readPendingTimeseriesMetadata(
               reader,
               tsFileID,
               device,
@@ -493,7 +495,7 @@ public class TimeSeriesMetadataCache {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
               .get(filePath, tsFileID, true, timeSeriesMetadataIoSizeRecorder, externalTsFile);
-      readAndMerge(
+      readPendingTimeseriesMetadata(
           reader,
           tsFileID,
           device,
@@ -594,7 +596,7 @@ public class TimeSeriesMetadataCache {
    * <p>A pending measurement the reader does not return was routed to a group that was read, so it
    * is absent from the file and is remembered with a negative cache entry.
    */
-  private void readAndMerge(
+  private void readPendingTimeseriesMetadata(
       TsFileSequenceReader reader,
       TsFileID tsFileID,
       IDeviceID device,
