@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.iotconsensusv2;
 
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -255,7 +256,7 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
 
       // Step 3: Delete one timeseries
       LOGGER.info("Step 3: Deleting timeseries root.sg.d1.speed...");
-      statement.execute(DELETE_TIMESERIES_SPEED);
+      TestUtils.deleteTimeSeries(statement, DELETE_TIMESERIES_SPEED);
 
       // Step 4: Flush again to persist the deletion
       LOGGER.info("Step 4: Flushing to persist deletion...");

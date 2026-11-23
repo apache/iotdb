@@ -280,8 +280,8 @@ public class ClusterTestStatement implements Statement {
   }
 
   @Override
-  public Connection getConnection() {
-    throw new UnsupportedOperationException();
+  public Connection getConnection() throws SQLException {
+    return writeStatement.getConnection();
   }
 
   @Override

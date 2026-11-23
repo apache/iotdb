@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.util.AbstractSchemaIT;
@@ -84,7 +85,7 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
         }
       }
 
-      statement.execute("DELETE timeseries root.turbine1.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "DELETE timeseries root.turbine1.d1.s1");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1) ALIGNED VALUES(2,1.1)");
       statement.execute("FLUSH");
 
@@ -130,7 +131,7 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
           cnt++;
         }
       }
-      statement.execute("DELETE timeseries root.turbine1.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "DELETE timeseries root.turbine1.d1.s1");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1) ALIGNED VALUES(2,5)");
       statement.execute("FLUSH");
 
@@ -167,8 +168,8 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
         }
       }
       cnt = 0;
-      statement.execute("DELETE timeseries root.sg3.d1.s1");
-      statement.execute("DELETE timeseries root.sg3.d1.s2");
+      TestUtils.deleteTimeSeries(statement, "DELETE timeseries root.sg3.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "DELETE timeseries root.sg3.d1.s2");
       statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) VALUES(1,1,2)");
       try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg3.**")) {
         while (resultSet.next()) {
@@ -188,8 +189,8 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
         }
       }
       cnt = 0;
-      statement.execute("DELETE timeseries root.sg3.d1.s1");
-      statement.execute("DELETE timeseries root.sg3.d1.s2");
+      TestUtils.deleteTimeSeries(statement, "DELETE timeseries root.sg3.d1.s1");
+      TestUtils.deleteTimeSeries(statement, "DELETE timeseries root.sg3.d1.s2");
       statement.execute("INSERT INTO root.sg3.d1(timestamp,s1,s2) ALIGNED VALUES(1,1,2)");
       try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg3.**")) {
         while (resultSet.next()) {
@@ -266,7 +267,7 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
         }
       }
       // delete series in the middle
-      statement.execute("DELETE timeseries root.turbine1.d1.s4");
+      TestUtils.deleteTimeSeries(statement, "DELETE timeseries root.turbine1.d1.s4");
       statement.execute(
           "INSERT INTO root.turbine1.d1(timestamp,s3,s4) ALIGNED VALUES(2,false,8.0)");
       statement.execute("FLUSH");

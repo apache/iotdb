@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletInsertNodeReq;
@@ -40,14 +42,18 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -72,6 +78,35 @@ public class PipeTransferSerializationSizeTest {
     Assert.assertEquals(
         PipeTransferTabletRawReqV2.calculateAirGapSerializedSize(tablet, database),
         PipeTransferTabletRawReqV2.toTPipeTransferBytes(tablet, false, database).length);
+  }
+
+  @Test
+  public void testAirGapTabletRequestByteFormat() throws Exception {
+    final Tablet tablet = createTablet();
+    final String database = "pipe_db_\u6d4b\u8bd5";
+    Assert.assertArrayEquals(
+        serializeTabletRequestWithStream(tablet, PipeRequestType.TRANSFER_TABLET_RAW, false, null),
+        PipeTransferTabletRawReq.toTPipeTransferBytes(tablet, false));
+    Assert.assertArrayEquals(
+        serializeTabletRequestWithStream(
+            tablet, PipeRequestType.TRANSFER_TABLET_RAW_V2, true, database),
+        PipeTransferTabletRawReqV2.toTPipeTransferBytes(tablet, true, database));
+  }
+
+  @Test
+  public void testAirGapTabletRequestByteFormatWithMixedTypesAndNulls() throws Exception {
+    final Tablet tablet = createAirGapTabletWithMixedTypes();
+    final String database = "pipe_db_\u6d4b\u8bd5";
+    for (final boolean isAligned : new boolean[] {false, true}) {
+      Assert.assertArrayEquals(
+          serializeTabletRequestWithStream(
+              tablet, PipeRequestType.TRANSFER_TABLET_RAW, isAligned, null),
+          PipeTransferTabletRawReq.toTPipeTransferBytes(tablet, isAligned));
+      Assert.assertArrayEquals(
+          serializeTabletRequestWithStream(
+              tablet, PipeRequestType.TRANSFER_TABLET_RAW_V2, isAligned, database),
+          PipeTransferTabletRawReqV2.toTPipeTransferBytes(tablet, isAligned, database));
+    }
   }
 
   @Test
@@ -515,6 +550,87 @@ public class PipeTransferSerializationSizeTest {
     final byte[] actualBytes = new byte[expectedBytes.length];
     buffer.get(actualBytes);
     Assert.assertArrayEquals(expectedBytes, actualBytes);
+  }
+
+  private static byte[] serializeTabletRequestWithStream(
+      final Tablet tablet,
+      final PipeRequestType requestType,
+      final boolean isAligned,
+      final String databaseName)
+      throws IOException {
+    try (final PublicBAOS output = new PublicBAOS();
+        final DataOutputStream stream = new DataOutputStream(output)) {
+      ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), stream);
+      ReadWriteIOUtils.write(requestType.getType(), stream);
+      tablet.serialize(stream);
+      ReadWriteIOUtils.write(isAligned, stream);
+      if (databaseName != null) {
+        ReadWriteIOUtils.write(databaseName, stream);
+      }
+      return output.toByteArray();
+    }
+  }
+
+  private static Tablet createAirGapTabletWithMixedTypes() {
+    final List<String> columnNames =
+        Arrays.asList(
+            "boolean_value",
+            "int32_value",
+            "int64_value",
+            "float_value",
+            "double_value",
+            "date_value",
+            "timestamp_value",
+            "text_value",
+            "string_value",
+            "blob_value",
+            "object_value");
+    final List<TSDataType> dataTypes =
+        Arrays.asList(
+            TSDataType.BOOLEAN,
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.DATE,
+            TSDataType.TIMESTAMP,
+            TSDataType.TEXT,
+            TSDataType.STRING,
+            TSDataType.BLOB,
+            TSDataType.OBJECT);
+    final Tablet tablet =
+        new Tablet(
+            "table1",
+            columnNames,
+            dataTypes,
+            Collections.nCopies(columnNames.size(), ColumnCategory.FIELD),
+            2);
+
+    tablet.addTimestamp(0, Long.MIN_VALUE);
+    tablet.addTimestamp(1, Long.MAX_VALUE);
+    tablet.addValue("boolean_value", 0, true);
+    tablet.addValue("boolean_value", 1, false);
+    tablet.addValue("int32_value", 0, Integer.MIN_VALUE);
+    tablet.addValue("int32_value", 1, Integer.MAX_VALUE);
+    tablet.addValue("int64_value", 0, Long.MIN_VALUE);
+    tablet.addValue("int64_value", 1, Long.MAX_VALUE);
+    tablet.addValue("float_value", 0, Float.intBitsToFloat(0x7fa12345));
+    tablet.addValue("float_value", 1, -0.0f);
+    tablet.addValue("double_value", 0, Double.longBitsToDouble(0x7ff123456789abcdL));
+    tablet.addValue("double_value", 1, -0.0d);
+    tablet.addValue("date_value", 0, LocalDate.of(2024, 2, 29));
+    tablet.addValue("date_value", 1, null);
+    tablet.addValue("timestamp_value", 0, Long.MAX_VALUE);
+    tablet.addValue("timestamp_value", 1, Long.MIN_VALUE);
+    tablet.addValue("text_value", 0, new Binary(new byte[] {1, 0, (byte) 0xff}));
+    tablet.addValue("text_value", 1, null);
+    tablet.addValue("string_value", 0, new Binary("value".getBytes(StandardCharsets.UTF_8)));
+    tablet.addValue("string_value", 1, new Binary(new byte[0]));
+    tablet.addValue("blob_value", 0, null);
+    tablet.addValue("blob_value", 1, new Binary(new byte[] {0, (byte) 0xff, 1, 0}));
+    tablet.addValue("object_value", 0, new Binary(new byte[] {9, 8, 7}));
+    tablet.addValue("object_value", 1, null);
+    return tablet;
   }
 
   private static Tablet createTablet() {

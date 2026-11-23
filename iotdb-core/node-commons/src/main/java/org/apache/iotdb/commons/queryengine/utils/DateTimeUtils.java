@@ -565,9 +565,10 @@ public class DateTimeUtils {
     Instant instant = zonedDateTime.toInstant();
     if ("us".equals(timestampPrecision) || "microsecond".equals(timestampPrecision)) {
       if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
-        // adjustment can reduce the loss of the division
+        // Same as Instant#toEpochMilli: multiply (epochSecond + 1) so that the product cannot
+        // overflow near Long.MIN_VALUE, then subtract that extra second (1_000_000 us).
         long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000L);
-        long adjustment = instant.getNano() / 1000 - 1L;
+        long adjustment = instant.getNano() / 1000 - 1_000_000L;
         return Math.addExact(millis, adjustment);
       } else {
         long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000L);

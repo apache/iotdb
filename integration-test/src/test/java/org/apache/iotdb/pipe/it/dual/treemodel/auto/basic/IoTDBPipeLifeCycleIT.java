@@ -602,6 +602,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTreeModelSharedClusterIT {
           "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
+      // Keep the verified baseline row durable across the receiver restart.
+      TestUtils.executeNonQuery(receiverEnv, "flush");
 
       // Explicitly enqueue events while the receiver is offline instead of relying on a writer's
       // sleep interval to overlap the restart. Failures propagate on the test thread.

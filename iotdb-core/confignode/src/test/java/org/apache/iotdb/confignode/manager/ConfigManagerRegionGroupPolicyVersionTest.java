@@ -71,6 +71,7 @@ public class ConfigManagerRegionGroupPolicyVersionTest {
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   private ConfigManager manager;
+  private ProcedureManager procedureManager;
   private NodeManager nodeManager;
   private ConsensusManager consensusManager;
   private LoadManager loadManager;
@@ -116,12 +117,14 @@ public class ConfigManagerRegionGroupPolicyVersionTest {
     // Run SET dispatch, policy validation and file updates without starting ConfigManager
     // services.
     manager = mock(ConfigManager.class);
+    procedureManager = mock(ProcedureManager.class);
     nodeManager = mock(NodeManager.class);
     consensusManager = mock(ConsensusManager.class);
     loadManager = mock(LoadManager.class);
     schemaManager = mock(ClusterSchemaManager.class);
     manager.nodeManager = nodeManager;
     when(manager.setConfiguration(any())).thenCallRealMethod();
+    when(manager.getProcedureManager()).thenReturn(procedureManager);
     when(manager.getNodeManager()).thenReturn(nodeManager);
     when(manager.getConsensusManager()).thenReturn(consensusManager);
     when(manager.getLoadManager()).thenReturn(loadManager);

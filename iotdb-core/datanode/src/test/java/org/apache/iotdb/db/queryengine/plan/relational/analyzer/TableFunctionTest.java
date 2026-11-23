@@ -871,7 +871,7 @@ public class TableFunctionTest {
         "Table argument with set semantics requires an ORDER BY clause.");
     assertAnalyzeFails(
         "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY time DESC, SAMPLE_INTERVAL => 1ms)",
-        "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
+        "The ORDER BY clause of the DATA argument must be in ascending order.");
     assertAnalyzeFails(
         "SELECT * FROM FFT(DATA => table1 PARTITION BY tag1 ORDER BY s1, SAMPLE_INTERVAL => 1ms)",
         "The ORDER BY clause of the DATA argument must contain exactly the time column specified by the TIMECOL argument.");
@@ -890,6 +890,17 @@ public class TableFunctionTest {
     assertAnalyzeFails(
         "SELECT * FROM FFT(DATA => (SELECT time, tag1 FROM table1) PARTITION BY tag1 ORDER BY time)",
         "No numeric columns found for FFT calculation.");
+  }
+
+  @Test
+  public void testSampleSizeInt32Range() {
+    analyzeSQL(
+        "SELECT * FROM TABLE(SAMPLE(DATA => TABLE(table1), N => 10))",
+        TEST_MATADATA,
+        QUERY_CONTEXT);
+    assertAnalyzeFails(
+        "SELECT * FROM TABLE(SAMPLE(DATA => TABLE(table1), N => 4294967297))",
+        "Invalid scalar argument 'N'. Value out of range for INT32");
   }
 
   private void assertAnalyzeFails(String sql, String message) {
@@ -1083,8 +1094,7 @@ public class TableFunctionTest {
       fail();
     } catch (SemanticException e) {
       assertEquals(
-          "The ORDER BY clause of the DATA argument must sort the time column in ascending order.",
-          e.getMessage());
+          "The ORDER BY clause of the DATA argument must be in ascending order.", e.getMessage());
     }
   }
 
@@ -1269,7 +1279,7 @@ public class TableFunctionTest {
         "The SLIDE argument must have the same window mode as the SIZE argument.");
     assertAnalyzeFails(
         "SELECT * FROM LTTB(DATA => (SELECT time, tag1, s3 FROM table1) PARTITION BY tag1 ORDER BY time DESC, TIMECOL => 'time', N => 10)",
-        "The ORDER BY clause of the DATA argument must sort the time column in ascending order.");
+        "The ORDER BY clause of the DATA argument must be in ascending order.");
     assertAnalyzeFails(
         "SELECT * FROM LTTB(DATA => (SELECT time, tag1, attr1, s3 FROM table1) PARTITION BY tag1 ORDER BY time, TIMECOL => 'time', N => 10)",
         "Only column with double, float, int32, int64 can be calculated by the function, attr1 is the STRING.");

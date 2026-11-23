@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.aligned;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -96,12 +97,12 @@ public class IoTDBAlignedDataDeletionIT {
       if (nestedDatabaseCreated) {
         statement.execute("DROP DATABASE root.ln.wf01.wt01");
       }
-      statement.execute("DELETE TIMESERIES root.vehicle.**");
+      TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES root.vehicle.**");
       if (lnSeriesCreated) {
-        statement.execute("DELETE TIMESERIES root.ln.d1.**");
+        TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES root.ln.d1.**");
       }
       if (lzSeriesCreated) {
-        statement.execute("DELETE TIMESERIES root.lz.dev.GPS.**");
+        TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES root.lz.dev.GPS.**");
       }
     }
   }

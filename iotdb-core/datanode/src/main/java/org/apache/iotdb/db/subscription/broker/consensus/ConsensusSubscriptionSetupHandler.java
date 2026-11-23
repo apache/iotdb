@@ -79,6 +79,9 @@ public class ConsensusSubscriptionSetupHandler {
 
   private static final long FIRST_CONSENSUS_SEARCH_INDEX = 1L;
 
+  /** A point-in-time result that all matching local Region queues are bound for a subscription. */
+  public record QueueReadiness(String topicName, String consumerGroupId, boolean tableModel) {}
+
   /** Last-known preferred writer node ID per region, used to detect routing changes. */
   private static final ConcurrentHashMap<TConsensusGroupId, Integer> lastKnownPreferredWriter =
       new ConcurrentHashMap<>();
@@ -387,6 +390,102 @@ public class ConsensusSubscriptionSetupHandler {
           e);
       return false;
     }
+  }
+
+  public static Set<QueueReadiness> getQueueReadiness() {
+    final Set<QueueReadiness> readySubscriptions = new LinkedHashSet<>();
+    for (final String consumerGroupId :
+        SubscriptionAgent.consumer().getAllSubscriptions().keySet()) {
+      SubscriptionAgent.consumer()
+          .executeWithConsumerGroupLock(
+              consumerGroupId,
+              () -> {
+                final boolean isTableModel =
+                    SubscriptionAgent.consumer().isTableModel(consumerGroupId);
+                for (final String topicName :
+                    SubscriptionAgent.consumer()
+                        .getTopicNamesSubscribedByConsumerGroup(consumerGroupId)) {
+                  if (!isConsensusBasedTopic(topicName, isTableModel)) {
+                    continue;
+                  }
+                  try {
+                    if (!areAllLocalQueuesBound(consumerGroupId, topicName, isTableModel)) {
+                      continue;
+                    }
+                    readySubscriptions.add(
+                        new QueueReadiness(topicName, consumerGroupId, isTableModel));
+                  } catch (final RuntimeException ignored) {
+                    // An uncertain readiness probe must not suppress the normal progress snapshot.
+                  }
+                }
+              });
+    }
+    return readySubscriptions;
+  }
+
+  static boolean isQueueBindingComplete(
+      final Set<String> matchingRegionIds,
+      final Set<String> boundRegionIds,
+      final boolean hasPendingPeerCreationCallback,
+      final boolean regionSetStable) {
+    return !hasPendingPeerCreationCallback
+        && regionSetStable
+        && boundRegionIds.containsAll(matchingRegionIds);
+  }
+
+  private static boolean areAllLocalQueuesBound(
+      final String consumerGroupId, final String topicName, final boolean isTableModel) {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    if (!(dataRegionConsensus instanceof IoTConsensus)) {
+      return false;
+    }
+
+    final Map<String, TopicConfig> topicConfigs =
+        SubscriptionAgent.topic().getTopicConfigs(Collections.singleton(topicName), isTableModel);
+    final TopicConfig topicConfig = topicConfigs.get(topicName);
+    if (topicConfig == null) {
+      return false;
+    }
+
+    final IoTConsensus ioTConsensus = (IoTConsensus) dataRegionConsensus;
+    final Set<String> regionIdsBeforeCheck = getLocalDataRegionIds(ioTConsensus);
+    final Set<String> matchingRegionIds = new LinkedHashSet<>();
+    boolean hasPendingPeerCreationCallback = false;
+    for (final ConsensusGroupId groupId : ioTConsensus.getAllConsensusGroupIds()) {
+      if (!(groupId instanceof DataRegionId)) {
+        continue;
+      }
+      final IoTConsensusServerImpl serverImpl = ioTConsensus.getImpl(groupId);
+      final DataRegion dataRegion =
+          StorageEngine.getInstance().getDataRegion((DataRegionId) groupId);
+      if (serverImpl == null || dataRegion == null) {
+        return false;
+      }
+      if (matchesTopicDataRegion(dataRegion.getDatabaseName(), topicConfig, isTableModel)) {
+        // A pending callback may still be responsible for binding this matching queue.
+        hasPendingPeerCreationCallback |= ioTConsensus.isPeerCreationCallbackPending(groupId);
+        matchingRegionIds.add(groupId.toString());
+      }
+    }
+
+    final Set<String> boundRegionIds =
+        SubscriptionAgent.broker()
+            .getConsensusQueueRegionIds(consumerGroupId, Collections.singleton(topicName))
+            .getOrDefault(topicName, Collections.emptySet());
+    final boolean regionSetStable =
+        regionIdsBeforeCheck.equals(getLocalDataRegionIds(ioTConsensus));
+    return isQueueBindingComplete(
+        matchingRegionIds, boundRegionIds, hasPendingPeerCreationCallback, regionSetStable);
+  }
+
+  private static Set<String> getLocalDataRegionIds(final IoTConsensus ioTConsensus) {
+    final Set<String> regionIds = new LinkedHashSet<>();
+    for (final ConsensusGroupId groupId : ioTConsensus.getAllConsensusGroupIds()) {
+      if (groupId instanceof DataRegionId) {
+        regionIds.add(groupId.toString());
+      }
+    }
+    return regionIds;
   }
 
   private static boolean isConsensusBasedTopicRequired(

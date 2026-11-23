@@ -70,7 +70,10 @@ public class DeletionResource implements PersistentResource {
             DataRegionConsensusImpl.getInstance().getReplicationNum(consensusGroupId) - 1);
   }
 
-  public synchronized void decreaseReference() {
+  // The atomic counter selects one release callback. Do not hold this resource's monitor while
+  // the callback acquires the region lifecycle lock: close waits for synchronized persist
+  // callbacks.
+  public void decreaseReference() {
     if (pipeTaskReferenceCount.decrementAndGet() == 0) {
       removeSelf();
     }
