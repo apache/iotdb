@@ -234,7 +234,7 @@ public class TimeSeriesMetadataCacheTest {
   }
 
   @Test
-  public void testSingleColumnCachesFileIndexMissOnlyAfterRecovery() throws Exception {
+  public void testSingleCachesFileIndexMissesAfterRecovery() throws Exception {
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     FileReaderManager fileReaderManager = FileReaderManager.getInstance();
@@ -275,25 +275,23 @@ public class TimeSeriesMetadataCacheTest {
                   Mockito.any(LongConsumer.class)))
           .thenThrow(new IOException("missing device"));
 
-      QueryContext recovering = Mockito.spy(new QueryContext(false, false));
-      Mockito.when(recovering.startedDuringStorageEngineRecovery()).thenReturn(true);
-      assertNull(cache.get(filePath, key, allSensors, true, false, recovering));
+      assertNull(cache.get(filePath, key, allSensors, true, false, recoveringQueryContext()));
       assertThrows(
           IOException.class,
           () -> cache.get(filePath, key, allSensors, false, false, new QueryContext(false, false)));
-      // File-level indexes also tolerate missing devices, but their stable misses are cacheable.
+
       QueryContext fileIndexQuery = new QueryContext(false, false);
       assertNull(cache.get(filePath, key, allSensors, true, false, fileIndexQuery));
       assertNull(cache.get(filePath, key, allSensors, true, false, fileIndexQuery));
       assertEquals(
           1, fileIndexQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get());
-      Mockito.verify(reader)
+      Mockito.verify(reader, Mockito.times(2))
           .readTimeseriesMetadataForMeasurements(
               Mockito.eq(deviceID),
               Mockito.<long[]>isNull(),
               Mockito.anyCollection(),
               Mockito.anySet(),
-              Mockito.eq(false),
+              Mockito.eq(true),
               Mockito.any(LongConsumer.class));
     } finally {
       cache.clear();
@@ -305,20 +303,27 @@ public class TimeSeriesMetadataCacheTest {
     }
   }
 
-  private static Map<String, TimeseriesMetadata> getAlignedTimeseriesMetadata(
+  private static QueryContext recoveringQueryContext() {
+    QueryContext context = Mockito.spy(new QueryContext(false, false));
+    Mockito.when(context.isStorageEngineRecovering()).thenReturn(true);
+    return context;
+  }
+
+  private static Map<String, TimeseriesMetadata> getTimeseriesMetadata(
       TimeSeriesMetadataCache cache,
       String filePath,
       TsFileID tsFileID,
       IDeviceID deviceID,
       Set<String> allSensors,
-      boolean ignoreMissingDevice)
+      boolean ignoreNotExists)
       throws IOException {
-    return cache.getAlignedTimeseriesMetadata(
+    return cache.getTimeseriesMetadata(
         filePath,
         tsFileID,
         deviceID,
         allSensors,
-        ignoreMissingDevice,
+        ignoreNotExists,
+        false,
         new QueryContext(false, false),
         null);
   }
@@ -326,7 +331,7 @@ public class TimeSeriesMetadataCacheTest {
   private static void stubGroupRead(
       TsFileSequenceReader reader,
       IDeviceID deviceID,
-      boolean ignoreMissingDevice,
+      boolean ignoreNotExists,
       List<TimeseriesMetadata> group)
       throws IOException {
     Map<String, TimeseriesMetadata> loaded = new HashMap<>();
@@ -339,7 +344,7 @@ public class TimeSeriesMetadataCacheTest {
                 Mockito.<long[]>isNull(),
                 Mockito.anyCollection(),
                 Mockito.anySet(),
-                Mockito.eq(ignoreMissingDevice),
+                Mockito.eq(ignoreNotExists),
                 Mockito.any(LongConsumer.class)))
         .thenReturn(loaded);
   }
@@ -395,7 +400,7 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> result =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
 
       assertNotNull(result.get(""));
       assertEquals("", result.get("").getMeasurementId());
@@ -408,7 +413,7 @@ public class TimeSeriesMetadataCacheTest {
       // a second lookup of cached measurements must be served without touching the reader again
       Set<String> cachedSensors = new HashSet<>(Arrays.asList("", "s1"));
       Map<String, TimeseriesMetadata> cachedResult =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, cachedSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, cachedSensors, false);
       assertNotNull(cachedResult.get("s1"));
       Mockito.verify(reader, Mockito.times(1))
           .readTimeseriesMetadataForMeasurements(
@@ -470,8 +475,8 @@ public class TimeSeriesMetadataCacheTest {
           .thenReturn(BloomFilter.getEmptyBloomFilter(0.05, 1));
 
       Map<String, TimeseriesMetadata> result =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
-      assertNull(result);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+      assertNull(result.get(""));
       Mockito.verify(reader, Mockito.never())
           .readTimeseriesMetadataForMeasurements(
               Mockito.any(),
@@ -492,10 +497,13 @@ public class TimeSeriesMetadataCacheTest {
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    boolean mayCacheNonExistSeries =
+        IoTDBDescriptor.getInstance().getMemoryConfig().isMayCacheNonExistSeries();
     TsFileID tsFileID = new TsFileID();
     cache.clear();
     bloomFilterCache.clear();
     try {
+      IoTDBDescriptor.getInstance().getMemoryConfig().setMayCacheNonExistSeries(false);
       String filePath = "target/batch-absent-device-throw.tsfile";
       IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
       Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
@@ -518,18 +526,21 @@ public class TimeSeriesMetadataCacheTest {
       bloomFilter.add(deviceID.toString() + ".s2");
       Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class))).thenReturn(bloomFilter);
 
-      QueryContext recovering = Mockito.spy(new QueryContext(false, false));
-      Mockito.when(recovering.startedDuringStorageEngineRecovery()).thenReturn(true);
-      assertNull(
-          cache.getAlignedTimeseriesMetadata(
-              filePath, tsFileID, deviceID, allSensors, true, recovering, null));
+      // With negative caching disabled, a file-index lookup must leave the next read uncached.
+      Map<String, TimeseriesMetadata> ignored =
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true);
+      assertNull(ignored.get(""));
+      assertNull(ignored.get("s1"));
+      assertNull(ignored.get("s2"));
 
       // a normal query must surface the reader's failure instead of a silently empty device
       assertThrows(
           IOException.class,
-          () ->
-              getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
+          () -> getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
     } finally {
+      IoTDBDescriptor.getInstance()
+          .getMemoryConfig()
+          .setMayCacheNonExistSeries(mayCacheNonExistSeries);
       cache.clear();
       bloomFilterCache.clear();
       fileReaderManager.closeFileAndRemoveReader(tsFileID);
@@ -571,6 +582,26 @@ public class TimeSeriesMetadataCacheTest {
       allSensors.add("");
       allSensors.add("absent");
 
+      // A single lookup also warms selected siblings in the same group, even when allSensors
+      // does not include the requested measurement.
+      QueryContext queryContext = new QueryContext(false, false);
+      Set<String> siblings = Collections.singleton("s1");
+      for (String measurement : Arrays.asList("s0", "s1")) {
+        assertNotNull(
+            cache.get(
+                filePath,
+                new TimeSeriesMetadataCacheKey(tsFileID, deviceID, measurement),
+                siblings,
+                false,
+                false,
+                queryContext));
+      }
+      assertEquals(
+          1, queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().get());
+      assertEquals(
+          1, queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get());
+      cache.clear();
+
       Map<String, TimeseriesMetadata> perColumn = new HashMap<>();
       for (String measurement : allSensors) {
         perColumn.put(
@@ -586,7 +617,7 @@ public class TimeSeriesMetadataCacheTest {
       cache.clear();
 
       Map<String, TimeseriesMetadata> batch =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
 
       assertEquals(allSensors.size(), batch.size());
       for (String measurement : allSensors) {
@@ -657,9 +688,10 @@ public class TimeSeriesMetadataCacheTest {
       Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class))).thenReturn(bloomFilter);
 
       Map<String, TimeseriesMetadata> result =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
 
-      assertNull(result);
+      assertNull(result.get(""));
+      assertNull(result.get("s1"));
       Mockito.verify(reader, Mockito.never())
           .readTimeseriesMetadataForMeasurements(
               Mockito.any(),
@@ -717,14 +749,14 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> first =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNotNull(first.get("s2"));
 
       // evict one measurement: the next call reads only the group that holds it, and that one
       // read also resolves the other members of the group
       cache.remove(new TimeSeriesMetadataCacheKey(tsFileID, deviceID, "s2"));
       Map<String, TimeseriesMetadata> second =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
 
       assertNotNull(second.get("s2"));
       Mockito.verify(reader, Mockito.times(2))
@@ -743,15 +775,15 @@ public class TimeSeriesMetadataCacheTest {
   }
 
   @Test
-  public void testAlignedDeviceCachesFileIndexMissOnlyAfterRecovery() throws Exception {
+  public void testBatchCachesFileIndexMissesAfterRecovery() throws Exception {
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    boolean mayCacheNonExistSeries =
+        IoTDBDescriptor.getInstance().getMemoryConfig().isMayCacheNonExistSeries();
     TsFileID tsFileID = new TsFileID();
     cache.clear();
     bloomFilterCache.clear();
-    boolean mayCacheNonExistSeries =
-        IoTDBDescriptor.getInstance().getMemoryConfig().isMayCacheNonExistSeries();
     try {
       IoTDBDescriptor.getInstance().getMemoryConfig().setMayCacheNonExistSeries(true);
       String filePath = "target/batch-ignore-not-exists.tsfile";
@@ -771,24 +803,25 @@ public class TimeSeriesMetadataCacheTest {
                   Mockito.any(LongConsumer.class)))
           .thenThrow(new IOException("device absent"));
 
-      QueryContext recovering = Mockito.spy(new QueryContext(false, false));
-      Mockito.when(recovering.startedDuringStorageEngineRecovery()).thenReturn(true);
-      assertNull(
-          cache.getAlignedTimeseriesMetadata(
-              filePath, tsFileID, deviceID, allSensors, true, recovering, null));
+      QueryContext recovering = recoveringQueryContext();
+      Map<String, TimeseriesMetadata> ignored =
+          cache.getTimeseriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, true, false, recovering, null);
+      assertNull(ignored.get(""));
+      assertNull(ignored.get("s1"));
 
-      // Recovery must not hide an index inconsistency from a subsequent strict read.
+      // A strict query after recovery must still reach the reader.
       assertThrows(
           IOException.class,
-          () ->
-              getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
+          () -> getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
+
+      assertNull(
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true).get(""));
       QueryContext fileIndexQuery = new QueryContext(false, false);
-      assertNull(
-          cache.getAlignedTimeseriesMetadata(
-              filePath, tsFileID, deviceID, allSensors, true, fileIndexQuery, null));
-      assertNull(
-          cache.getAlignedTimeseriesMetadata(
-              filePath, tsFileID, deviceID, Collections.singleton(""), true, fileIndexQuery, null));
+      Map<String, TimeseriesMetadata> cached =
+          cache.getTimeseriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, true, false, fileIndexQuery, null);
+      assertNull(cached.get(""));
       assertEquals(
           1, fileIndexQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get());
       Mockito.verify(reader, Mockito.times(3))
@@ -839,7 +872,7 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> first =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNotNull(first.get("s5"));
 
       // evict three measurements: they share one leaf group, so a single read must resolve them
@@ -848,7 +881,7 @@ public class TimeSeriesMetadataCacheTest {
       }
 
       Map<String, TimeseriesMetadata> second =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNotNull(second.get("s2"));
       assertNotNull(second.get("s3"));
       assertNotNull(second.get("s4"));
@@ -906,12 +939,12 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> first =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNull(first.get("s2"));
 
       // the reader confirmed s2 absent, so the second query is answered from the cache alone
       Map<String, TimeseriesMetadata> second =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNull(second.get("s2"));
       Mockito.verify(reader, Mockito.times(1))
           .readTimeseriesMetadataForMeasurements(
@@ -959,13 +992,13 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       Map<String, TimeseriesMetadata> first =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNull(first.get("s1"));
 
       // s1 was excluded by the bloom filter, not read, so it is probed again instead of being
       // remembered; the second query still needs no reader call
       Map<String, TimeseriesMetadata> second =
-          getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
       assertNull(second.get("s1"));
       Mockito.verify(reader, Mockito.times(1))
           .readTimeseriesMetadataForMeasurements(
@@ -1027,7 +1060,7 @@ public class TimeSeriesMetadataCacheTest {
       stubGroupRead(reader, deviceID, false, group);
 
       // warm both entries
-      getAlignedTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+      getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
 
       // evict only the time column, and drop the bloom cache so the next call reloads it
       cache.remove(new TimeSeriesMetadataCacheKey(tsFileID, deviceID, ""));
@@ -1035,8 +1068,8 @@ public class TimeSeriesMetadataCacheTest {
 
       QueryContext queryContext = new QueryContext(false, false);
       Map<String, TimeseriesMetadata> result =
-          cache.getAlignedTimeseriesMetadata(
-              filePath, tsFileID, deviceID, allSensors, false, queryContext, null);
+          cache.getTimeseriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, false, false, queryContext, null);
       assertNotNull(result.get(""));
       assertNotNull(result.get("s1"));
       assertTrue(
@@ -1095,11 +1128,12 @@ public class TimeSeriesMetadataCacheTest {
     try {
       Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
       Map<String, TimeseriesMetadata> result =
-          cache.getAlignedTimeseriesMetadata(
+          cache.getTimeseriesMetadata(
               filePath,
               resource.getTsFileID(),
               deviceID,
               allSensors,
+              false,
               false,
               EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
               offset);

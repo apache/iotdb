@@ -103,8 +103,8 @@ public class QueryContext {
     this.timeout = timeout;
   }
 
-  /** Whether the query started during DataRegion recovery. */
-  public boolean startedDuringStorageEngineRecovery() {
+  /** Whether this query started while the storage engine was recovering its data regions. */
+  public boolean isStorageEngineRecovering() {
     return false;
   }
 
