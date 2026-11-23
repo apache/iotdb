@@ -215,6 +215,72 @@ public class ArithmeticAndCompareBinaryColumnTransformerTest {
   }
 
   @Test
+  public void testInt64ComparisonDoesNotRoundThroughDouble() {
+    // Every pair below collides once the INT64 side is converted to double
+    long[] longs = {Long.MAX_VALUE, 9007199254740993L, Long.MIN_VALUE, Long.MAX_VALUE - 1};
+    double[] doubles = {0x1p63, 9007199254740992.0, -0x1p63, 0x1p63};
+    long[] otherLongs = {Long.MAX_VALUE - 1, 9007199254740992L, Long.MIN_VALUE, Long.MAX_VALUE};
+
+    TsBlockBuilder builder =
+        new TsBlockBuilder(
+            longs.length, Arrays.asList(TSDataType.INT64, TSDataType.DOUBLE, TSDataType.INT64));
+    for (int i = 0; i < longs.length; i++) {
+      builder.getTimeColumnBuilder().writeLong(i);
+      builder.getColumnBuilder(0).writeLong(longs[i]);
+      builder.getColumnBuilder(1).writeDouble(doubles[i]);
+      builder.getColumnBuilder(2).writeLong(otherLongs[i]);
+      builder.declarePosition();
+    }
+    TsBlock tsBlock = builder.build();
+
+    // INT64 = DOUBLE
+    Column res = evaluateComparison(tsBlock, TSDataType.INT64, 0, TSDataType.DOUBLE, 1, true);
+    Assert.assertFalse(res.getBoolean(0));
+    Assert.assertFalse(res.getBoolean(1));
+    Assert.assertTrue(res.getBoolean(2));
+    Assert.assertFalse(res.getBoolean(3));
+    // DOUBLE = INT64, with the INT64 side on the right
+    res = evaluateComparison(tsBlock, TSDataType.DOUBLE, 1, TSDataType.INT64, 0, true);
+    Assert.assertFalse(res.getBoolean(0));
+    Assert.assertTrue(res.getBoolean(2));
+    // INT64 > DOUBLE: 9007199254740993 > 9007199254740992.0
+    res = evaluateComparison(tsBlock, TSDataType.INT64, 0, TSDataType.DOUBLE, 1, false);
+    Assert.assertFalse(res.getBoolean(0));
+    Assert.assertTrue(res.getBoolean(1));
+    Assert.assertFalse(res.getBoolean(2));
+    // INT64 = INT64 above 2^53
+    res = evaluateComparison(tsBlock, TSDataType.INT64, 0, TSDataType.INT64, 2, true);
+    Assert.assertFalse(res.getBoolean(0));
+    Assert.assertFalse(res.getBoolean(1));
+    Assert.assertTrue(res.getBoolean(2));
+    Assert.assertFalse(res.getBoolean(3));
+  }
+
+  private static Column evaluateComparison(
+      TsBlock tsBlock,
+      TSDataType leftType,
+      int leftIndex,
+      TSDataType rightType,
+      int rightIndex,
+      boolean equal) {
+    IdentityColumnTransformer left =
+        new IdentityColumnTransformer(TypeFactory.getType(leftType), leftIndex);
+    IdentityColumnTransformer right =
+        new IdentityColumnTransformer(TypeFactory.getType(rightType), rightIndex);
+    left.addReferenceCount();
+    right.addReferenceCount();
+    left.initFromTsBlock(tsBlock);
+    right.initFromTsBlock(tsBlock);
+    BinaryColumnTransformer transformer =
+        equal
+            ? new CompareEqualToColumnTransformer(booleanType, left, right)
+            : new CompareGreaterThanColumnTransformer(booleanType, left, right);
+    transformer.addReferenceCount();
+    transformer.evaluate();
+    return transformer.getColumn();
+  }
+
+  @Test
   public void testNonEqual() {
     BinaryColumnTransformer transformer =
         new CompareNonEqualColumnTransformer(booleanType, leftOperand, rightOperand);

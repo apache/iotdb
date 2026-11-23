@@ -569,12 +569,36 @@ public class IoTDBPredicateConversionTableIT {
         DATABASE_NAME);
 
     // The projection is evaluated by the column transformer instead of the pushed-down filter
+    String[] projectionHeader = {"time", "device", "m"};
+    String[] notMatched = {
+      "1970-01-01T00:00:00.001Z,null_dev,null,",
+      "1970-01-01T00:00:00.001Z,value_dev,false,",
+      "1970-01-01T00:00:00.002Z,null_dev,null,"
+    };
     tableResultSetEqualTest(
         "SELECT time, device, int64_col IN (9223372036854775808.0, 0) AS m FROM InListBoundaryTable ORDER BY time, device",
-        new String[] {"time", "device", "m"},
+        projectionHeader,
+        notMatched,
+        DATABASE_NAME);
+    // Deduplicated into "int64_col = 9223372036854775808.0", which must not round Long.MAX_VALUE
+    // up to 2^63
+    tableResultSetEqualTest(
+        "SELECT time, device, int64_col IN (9223372036854775808.0, 9223372036854775808.0) AS m FROM InListBoundaryTable ORDER BY time, device",
+        projectionHeader,
+        notMatched,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "SELECT time, device, int64_col = 9223372036854775808.0 AS m FROM InListBoundaryTable ORDER BY time, device",
+        projectionHeader,
+        notMatched,
+        DATABASE_NAME);
+    // Long.MAX_VALUE itself still matches on the deduplicated path
+    tableResultSetEqualTest(
+        "SELECT time, device, int64_col IN (9223372036854775807, 9223372036854775807) AS m FROM InListBoundaryTable ORDER BY time, device",
+        projectionHeader,
         new String[] {
           "1970-01-01T00:00:00.001Z,null_dev,null,",
-          "1970-01-01T00:00:00.001Z,value_dev,false,",
+          "1970-01-01T00:00:00.001Z,value_dev,true,",
           "1970-01-01T00:00:00.002Z,null_dev,null,"
         },
         DATABASE_NAME);

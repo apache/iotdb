@@ -98,6 +98,27 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
               Boolean.compare(
                   leftTransformer.getType().getBoolean(leftColumn, index),
                   rightTransformer.getType().getBoolean(rightColumn, index)));
+    } else if (needsExactComparison(leftTransformer.getType(), rightTransformer.getType())) {
+      // A double cannot hold every INT64/TIMESTAMP value (Long.MAX_VALUE rounds up to 2^63), so
+      // these are compared without converting the integer side to double.
+      final Type leftType = leftTransformer.getType();
+      final Type rightType = rightTransformer.getType();
+      if (isFloatingPoint(rightType)) {
+        final double right = rightType.getDouble(rightColumn, index);
+        if (!Double.isNaN(right)) {
+          flag = transform(compareLongToDouble(getLong(leftType, leftColumn, index), right));
+        }
+      } else if (isFloatingPoint(leftType)) {
+        final double left = leftType.getDouble(leftColumn, index);
+        if (!Double.isNaN(left)) {
+          flag = transform(-compareLongToDouble(getLong(rightType, rightColumn, index), left));
+        }
+      } else {
+        flag =
+            transform(
+                Long.compare(
+                    getLong(leftType, leftColumn, index), getLong(rightType, rightColumn, index)));
+      }
     } else {
       final double left = leftTransformer.getType().getDouble(leftColumn, index);
       final double right = rightTransformer.getType().getDouble(rightColumn, index);
@@ -106,6 +127,48 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
       }
     }
     returnType.writeBoolean(builder, flag);
+  }
+
+  /** True when one side is INT64/TIMESTAMP and the other is an integer or floating-point type. */
+  private static boolean needsExactComparison(Type left, Type right) {
+    return (isWideInteger(left) && (isInteger(right) || isFloatingPoint(right)))
+        || (isWideInteger(right) && (isInteger(left) || isFloatingPoint(left)));
+  }
+
+  private static boolean isWideInteger(Type type) {
+    return type.getTypeEnum() == TypeEnum.INT64 || type.getTypeEnum() == TypeEnum.TIMESTAMP;
+  }
+
+  private static boolean isInteger(Type type) {
+    return type.getTypeEnum() == TypeEnum.INT32 || isWideInteger(type);
+  }
+
+  private static boolean isFloatingPoint(Type type) {
+    return type.getTypeEnum() == TypeEnum.FLOAT || type.getTypeEnum() == TypeEnum.DOUBLE;
+  }
+
+  private static long getLong(Type type, Column column, int index) {
+    return type.getTypeEnum() == TypeEnum.INT32
+        ? type.getInt(column, index)
+        : type.getLong(column, index);
+  }
+
+  /** Compares a long with a non-NaN double exactly. */
+  private static int compareLongToDouble(long value, double other) {
+    if (other >= 0x1p63) {
+      return -1;
+    }
+    if (other < -0x1p63) {
+      return 1;
+    }
+    // |other| < 2^63, so the cast is exact truncation toward zero
+    final long truncated = (long) other;
+    if (value != truncated) {
+      return Long.compare(value, truncated);
+    }
+    // value equals the integral part of other, so the fractional part decides
+    final double fraction = other - truncated;
+    return fraction > 0 ? -1 : (fraction < 0 ? 1 : 0);
   }
 
   @Override
