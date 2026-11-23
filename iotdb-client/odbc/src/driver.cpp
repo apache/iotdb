@@ -2102,7 +2102,7 @@ static void PopulateImplementationRowDescriptor(StatementHandle* stmt) {
       record.type = record.conciseType = SQL_LONGVARBINARY;
       record.length = record.octetLength = 2147483647;
     } else {
-      record.type = record.conciseType = SQL_WVARCHAR;
+      record.type = record.conciseType = type == "TEXT" ? SQL_WLONGVARCHAR : SQL_WVARCHAR;
       record.length = WIDE_COLUMN_SIZE;
       record.octetLength = static_cast<SQLLEN>(record.length) * sizeof(SQLWCHAR);
     }
@@ -3157,6 +3157,14 @@ SQLRETURN SQL_API SQLGetData(const SQLHSTMT statementHandle, const SQLUSMALLINT 
     stmt->getDataOffsets.assign(static_cast<size_t>(numCols + 1), 0);
   }
 
+  if (columnNumber != stmt->lastGetDataCol) {
+    stmt->getDataOffsets[columnNumber] = 0;
+  }
+  stmt->lastGetDataCol = columnNumber;
+  // Fixed-size and NULL values are consumed in one successful retrieval.
+  if (stmt->getDataOffsets[columnNumber] == -1)
+    return SQL_NO_DATA;
+
   const ODBCField* valuePtr = nullptr;
 
   // Retrieve data as string and parse as JSON (works for both Session and REST APIs with our new approach)
@@ -3172,6 +3180,7 @@ SQLRETURN SQL_API SQLGetData(const SQLHSTMT statementHandle, const SQLUSMALLINT 
       if (strLenOrInd != nullptr) {
         logMessage(cnct, "SQLGetData: Setting strLenOrInd to SQL_NULL_DATA", LOG_LEVEL_DEBUG);
         *strLenOrInd = SQL_NULL_DATA; // Complies with ODBC specification, marks data as NULL
+        stmt->getDataOffsets[columnNumber] = -1;
         return SQL_SUCCESS;
       } else {
         // Indicator pointer not provided, triggers ODBC standard error: 22002
@@ -3191,12 +3200,6 @@ SQLRETURN SQL_API SQLGetData(const SQLHSTMT statementHandle, const SQLUSMALLINT 
     stmt->addDiagnostic("HY000", "Failed to retrieve data value");
     return SQL_ERROR;
   }
-
-  if (columnNumber != stmt->lastGetDataCol &&
-      stmt->getDataOffsets.size() > static_cast<size_t>(columnNumber)) {
-    stmt->getDataOffsets[columnNumber] = 0;
-  }
-  stmt->lastGetDataCol = columnNumber;
 
   SQLSMALLINT effectiveTargetType = (targetType == SQL_C_DEFAULT)
                                         ? stmt->resultSetPtr->getDefaultCTypeForColumn(columnNumber)
@@ -3222,6 +3225,8 @@ SQLRETURN SQL_API SQLGetData(const SQLHSTMT statementHandle, const SQLUSMALLINT 
     copyResult = CopyFieldToTarget(stmt, *valuePtr, effectiveTargetType,
                                    const_cast<SQLPOINTER>(targetValue), bufferLength, strLenOrInd,
                                    false, targetType == SQL_ARD_TYPE ? columnNumber : 0);
+    if (targetValue && SQL_SUCCEEDED(copyResult))
+      stmt->getDataOffsets[columnNumber] = -1;
   }
   if (copyResult != SQL_SUCCESS && copyResult != SQL_SUCCESS_WITH_INFO &&
       copyResult != SQL_NO_DATA) {
@@ -5629,17 +5634,7 @@ SQLRETURN SQL_API SQLSetStmtAttr(SQLHSTMT statementHandle, SQLINTEGER attribute,
 
   case SQL_ATTR_ROWS_FETCHED_PTR: {
     logMessage(cnct, "SQLSetStmtAttr: Processing SQL_ATTR_ROWS_FETCHED_PTR", LOG_LEVEL_DEBUG);
-    if (value == nullptr) {
-      // Power BI passes value==nullptr for unknown reasons.
-      // We can't modify Power BI's code, so we ignore this error condition.
-      logMessage(cnct, "SQLSetStmtAttr: value is nullptr (Power BI compatibility)",
-                 LOG_LEVEL_DEBUG);
-      break;
-    }
-    if (stringLength != sizeof(SQLULEN)) {
-      logMessage(cnct, "SQLSetStmtAttr: Warning - stringLength != sizeof(SQLULEN)", LOG_LEVEL_WARN);
-    }
-    // Store the pointer to the rows fetched counter
+    // A null value detaches the caller's counter, just like setting the IRD field.
     stmt->rowsFetchedPtr = static_cast<SQLULEN*>(value);
     stmt->implicitImpRowDesc->rowsProcessedPtr = stmt->rowsFetchedPtr;
     logMessage(cnct, "SQLSetStmtAttr: Rows fetched pointer set", LOG_LEVEL_DEBUG);

@@ -235,6 +235,7 @@ def main():
             try:
                 start_server(dist)
                 check(tls + "ISTABLEMODEL=0;")
+                check(tls + "ISTABLEMODEL=0;", "COUNT DATABASES", rows=1)
                 check(tls + "ISTABLEMODEL=1;DATABASE=information_schema;")
                 check(tls + "ISTABLEMODEL=0;", "CREATE DATABASE root.odbc_migration")
                 check(
@@ -250,6 +251,10 @@ def main():
                     tls + "ISTABLEMODEL=0;",
                     "SELECT v FROM root.odbc_migration.d",
                     rows=5,
+                )
+                check(
+                    tls + "ISTABLEMODEL=0;",
+                    "EXPLAIN SELECT v FROM root.odbc_migration.d",
                 )
                 check(tls + "ISTABLEMODEL=0;", "DELETE DATABASE root.odbc_migration")
                 table = tls + "ISTABLEMODEL=1;DATABASE=information_schema;"

@@ -346,16 +346,13 @@ bool ODBCField::toSLong(SQLINTEGER* target) const {
     *target = static_cast<SQLINTEGER>(field_.intV.value());
     return true;
   case TSDataType::INT64:
+  case TSDataType::TIMESTAMP:
     // Check for overflow/underflow
     if (field_.longV.value() >= INT_MIN && field_.longV.value() <= INT_MAX) {
       *target = static_cast<SQLINTEGER>(field_.longV.value());
       return true;
     }
     break;
-  case TSDataType::TIMESTAMP:
-    // Timestamp can be converted to long (seconds since epoch)
-    *target = static_cast<SQLINTEGER>(field_.longV.value() / 1000); // Convert ms to seconds
-    return true;
   default:
     break;
   }
@@ -378,15 +375,9 @@ bool ODBCField::toULong(SQLUINTEGER* target) const {
     }
     break;
   case TSDataType::INT64:
+  case TSDataType::TIMESTAMP:
     if (field_.longV.value() >= 0 && field_.longV.value() <= UINT_MAX) {
       *target = static_cast<SQLUINTEGER>(field_.longV.value());
-      return true;
-    }
-    break;
-  case TSDataType::TIMESTAMP:
-    // Timestamp can be converted to unsigned long (seconds since epoch)
-    if (field_.longV.value() >= 0) {
-      *target = static_cast<SQLUINTEGER>(field_.longV.value() / 1000); // Convert ms to seconds
       return true;
     }
     break;

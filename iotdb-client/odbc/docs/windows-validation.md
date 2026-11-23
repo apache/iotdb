@@ -112,3 +112,35 @@ Record the server version and driver commit with the evidence. Automated
 ODBC/.NET/ADO results and a green package CI do not substitute for this matrix.
 If Office activation, a locked desktop or an unavailable application prevents
 testing, record NOT RUN and the blocker rather than reporting success.
+
+## Recorded desktop run: 2026-11-23
+
+The following manual UI results were obtained with driver commit
+`5d7caa8059556df993b5d952878c5452f33a682c` and a disposable local
+IoTDB 2.0.11-SNAPSHOT server, using table model and `BATCHSIZE=2`.
+They are baseline evidence, not a UI rerun of later review fixes or a newer
+server build. The release workflow tests the current commit separately.
+
+| Evidence | Excel 16.0.20625.20108 x64 | Power BI Desktop 2.159.1231.0 x64 |
+| --- | --- | --- |
+| DSN connection | PASS | PASS |
+| Navigator database/table browsing | NOT RUN | PASS |
+| Initial four-row load | PASS, Power Query Odbc.Query | PASS, Navigator Import |
+| Independent explicit SQL path | PASS | NOT RUN |
+| Unicode, DATE, BOOLEAN; NULL/empty fixture | PASS | PASS |
+| Insert fifth row and refresh to five | PASS | PASS |
+| Save, close, reopen and refresh to five | PASS | PASS |
+
+Excel used the following Power Query expression with the validation DSN:
+
+```powerquery
+Odbc.Query("dsn=IoTDB Desktop Validation", "SELECT time,device,val,txt,day,active FROM samples ORDER BY time")
+```
+
+Local evidence includes the `.xlsx` and `.pbix`, the M expression,
+`excel-refresh-five-rows.png`, `excel-reopen-refresh.png`,
+`powerbi-refresh-five-rows.png`, `powerbi-reopen-refresh.png` and
+`windows-validation-results.txt`. These files remain local; application account
+details and credentials are excluded from the source repository and PR.
+Excel Navigator and the separate Power BI explicit-SQL route still need their
+own acceptance run before being reported as verified.

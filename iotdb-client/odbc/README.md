@@ -27,7 +27,9 @@ The OS libraries and ODBC manager/installer remain system prerequisites.
 
 ## Build
 
-Use CMake 3.20+, a C++14 compiler and the C++ SDK build prerequisites. Windows
+Use CMake 3.20+, a C++17-capable compiler and the C++ SDK build prerequisites. The
+ODBC target uses C++14; the embedded Session target uses C++17 for generated
+Thrift code. Windows
 requires Visual Studio 2022 x64, Strawberry Perl and winflexbison3. Linux requires
 unixODBC development headers. CMake downloads curl 8.4.0 and nlohmann/json 3.11.3
 into the build directory and verifies their SHA-256 checksums. The C++ SDK keeps
@@ -99,6 +101,10 @@ requires prepopulating `<build>/runtime-licenses/GPL-3.0.txt` and
 `GCC-Runtime-Exception.txt` with those verified upstream files.
 
 ## ODBC conformance
+
+See the [interface, Session mapping and verification checklist](docs/interface-support.md)
+for the supported API surface, explicit limits, generated files and reproducible
+tests. Desktop acceptance results are recorded separately from automated tests.
 
 The implementation reference is Microsoft's official
 [ODBC Programmer's Reference](https://learn.microsoft.com/en-us/sql/odbc/reference/odbc-programmer-s-reference),

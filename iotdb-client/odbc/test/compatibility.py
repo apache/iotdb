@@ -75,6 +75,10 @@ def main():
                 names = ["long_label", "flag", "minimum", "floating"]
                 types = ["STRING", "BOOLEAN", "INT64", "DOUBLE"]
                 rows = [["sample", True, -(2**63), 1.5]]
+            elif sql == "SELECT epoch_metadata":
+                names = ["epoch", "text", "unsigned_epoch", "nullable"]
+                types = ["TIMESTAMP", "TEXT", "TIMESTAMP", "INT32"]
+                rows = [[1234567, "text value", 1234567, None]] * 2
             body = {"column_names": names, "data_types": types, "values": rows}
             if "/rest/v2/" in self.path:
                 body["expressions"] = []
@@ -156,6 +160,41 @@ def main():
         )
         assert connect(dbc, None, connection, -3, None, 0, None, 0) == 0
         assert alloc(3, dbc, c.byref(stmt)) == 0
+        # Clearing a caller-owned fetch counter must also clear the IRD field.
+        set_stmt_attr = api("SQLSetStmtAttr", h, integer, h, integer)
+        get_stmt_attr = api("SQLGetStmtAttr", h, integer, h, integer, h)
+        fetched = c.c_size_t(123)
+        assert set_stmt_attr(stmt, 26, c.byref(fetched), 0) == 0
+        assert set_stmt_attr(stmt, 26, None, 0) == 0
+        fetched_pointer = h()
+        assert get_stmt_attr(stmt, 26, c.byref(fetched_pointer), 0, None) == 0
+        assert not fetched_pointer.value, "NULL must detach SQL_ATTR_ROWS_FETCHED_PTR"
+        assert direct(stmt, wide("SELECT epoch_metadata"), -3) == 0
+        assert fetch(stmt) == 0 and fetched.value == 123
+        epoch, epoch_size = integer(), length()
+        assert get(stmt, 1, 4, c.byref(epoch), 0, c.byref(epoch_size)) == 0
+        assert epoch.value == 1234567, "SQL_C_LONG must preserve epoch units"
+        assert get(stmt, 1, 4, c.byref(epoch), 0, c.byref(epoch_size)) == 100
+        unsigned_epoch = c.c_uint()
+        assert get(stmt, 3, -18, c.byref(unsigned_epoch), 0, c.byref(epoch_size)) == 0
+        assert unsigned_epoch.value == 1234567, "SQL_C_ULONG must preserve epoch units"
+        assert get(stmt, 4, 4, c.byref(epoch), 0, c.byref(epoch_size)) == 0
+        assert epoch_size.value == -1
+        assert get(stmt, 4, 4, c.byref(epoch), 0, c.byref(epoch_size)) == 100
+        # Switching columns and fetching a new row each restart retrieval.
+        assert get(stmt, 1, 4, c.byref(epoch), 0, c.byref(epoch_size)) == 0
+        assert epoch.value == 1234567
+        assert fetch(stmt) == 0
+        assert get(stmt, 1, 4, c.byref(epoch), 0, c.byref(epoch_size)) == 0
+        assert epoch.value == 1234567
+        implementation_row, text_type = h(), short()
+        get_desc_field = api("SQLGetDescField", h, short, short, h, integer, h)
+        assert get_stmt_attr(stmt, 10012, c.byref(implementation_row), 0, None) == 0
+        assert (
+            get_desc_field(implementation_row, 2, 2, c.byref(text_type), 0, None) == 0
+        )
+        assert text_type.value == -10, "IRD must describe TEXT as SQL_WLONGVARCHAR"
+        assert close(stmt) == 0
         # SQL_NTS catalog enumeration, standard null padding, and fixed schemas.
         assert tables(stmt, wide("%"), -3, wide(""), -3, wide(""), -3, None, 0) == 0
         rows = read_rows(5)

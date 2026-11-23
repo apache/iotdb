@@ -48,7 +48,7 @@ bool IsQueryStatement(const std::string& sql) {
   std::transform(keyword.begin(), keyword.end(), keyword.begin(),
                  [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
   return keyword == "select" || keyword == "with" || keyword == "show" || keyword == "describe" ||
-         keyword == "desc" || keyword == "list";
+         keyword == "desc" || keyword == "list" || keyword == "count" || keyword == "explain";
 }
 
 std::vector<size_t> ParameterMarkerPositions(const std::string& sql) {

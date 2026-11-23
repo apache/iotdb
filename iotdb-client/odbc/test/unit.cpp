@@ -229,8 +229,11 @@ static void checkReviewedNumeric() {
                         reinterpret_cast<SQLPOINTER>(5), 0) == SQL_SUCCESS);
   check(SQLSetDescField(statement.appRowDesc, 1, SQL_DESC_SCALE, reinterpret_cast<SQLPOINTER>(2),
                         0) == SQL_SUCCESS);
+  // Each conversion case starts a fresh retrieval of the synthetic row.
+  statement.lastGetDataRow = -1;
   check(SQLGetData(&statement, 1, SQL_ARD_TYPE, &value, sizeof(value), &length) == SQL_SUCCESS &&
         value.scale == 2 && value.precision == 5 && numericMagnitude(value) == 12300);
+  statement.lastGetDataRow = -1;
   check(SQLGetData(&statement, 1, SQL_C_NUMERIC, &value, sizeof(value), &length) == SQL_SUCCESS &&
         value.scale == 0 && numericMagnitude(value) == 123);
   statement.curRow = -1;
@@ -245,6 +248,7 @@ static void checkReviewedNumeric() {
   check(SQLSetDescField(statement.appRowDesc, 1, SQL_DESC_PRECISION,
                         reinterpret_cast<SQLPOINTER>(2), 0) == SQL_SUCCESS);
   check(SQLSetDescField(statement.appRowDesc, 1, SQL_DESC_SCALE, nullptr, 0) == SQL_SUCCESS);
+  statement.lastGetDataRow = -1;
   check(SQLGetData(&statement, 1, SQL_ARD_TYPE, &value, sizeof(value), &length) == SQL_ERROR &&
         hasState(statement, "22003"));
   check(SQLFreeStmt(&statement, SQL_UNBIND) == SQL_SUCCESS);
@@ -329,6 +333,8 @@ int main() {
     SetConnectionHandle(&c, "RESTFUL", "0");
     check(IsQueryStatement("  SELECT * FROM t"));
     check(IsQueryStatement("show version"));
+    check(IsQueryStatement("COUNT DATABASES"));
+    check(IsQueryStatement("EXPLAIN SELECT * FROM root.sg.d"));
     check(IsQueryStatement("-- comment\n /* comment */ SELECT/* hint */1"));
     check(!IsQueryStatement("/* comment only */"));
     check(!IsQueryStatement("selection"));
@@ -573,6 +579,20 @@ int main() {
     check(size == 4 && wide[0] == 0x4e2d && wide[1] == 0x6587 && wide[2] == 0);
     Field timestamp;
     timestamp.dataType = TSDataType::TIMESTAMP;
+    timestamp.longV = int64_t(1234);
+    SQLINTEGER signedEpoch = 0;
+    SQLUINTEGER unsignedEpoch = 0;
+    check(ODBCField(timestamp).toSLong(&signedEpoch) && signedEpoch == 1234);
+    check(ODBCField(timestamp).toULong(&unsignedEpoch) && unsignedEpoch == 1234);
+    timestamp.longV = int64_t(INT_MAX) + 1;
+    check(!ODBCField(timestamp).toSLong(&signedEpoch) && signedEpoch == 1234);
+    check(ODBCField(timestamp).toULong(&unsignedEpoch) &&
+          unsignedEpoch == SQLUINTEGER(INT_MAX) + 1);
+    timestamp.longV = int64_t(UINT_MAX) + 1;
+    check(!ODBCField(timestamp).toULong(&unsignedEpoch));
+    timestamp.longV = int64_t(-1);
+    check(ODBCField(timestamp).toSLong(&signedEpoch) && signedEpoch == -1);
+    check(!ODBCField(timestamp).toULong(&unsignedEpoch));
     timestamp.longV = int64_t(1234);
     SQL_TIMESTAMP_STRUCT ts{};
     check(ODBCField(timestamp).toTimestamp(&ts));
