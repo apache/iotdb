@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql;
 
 import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
@@ -33,7 +36,10 @@ import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementHelper;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertValues;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -66,6 +72,12 @@ public class AstMemoryEstimatorTest {
 
   private Statement parseSQL(String sql) {
     return sqlParser.createStatement(sql, ZoneId.systemDefault(), clientSession);
+  }
+
+  private void materialize(InsertValues insert) {
+    insert.materialize(
+        new PlannerContext(new TableMetadataImpl(), new InternalTypeManager()),
+        new SessionInfo(0, "root", ZoneId.systemDefault(), "testdb", SqlDialect.TABLE));
   }
 
   private long estimateMemorySize(Statement statement) {
@@ -851,12 +863,15 @@ public class AstMemoryEstimatorTest {
     config.setEnablePartialInsert(true);
     config.setDataNodeId(0);
     try {
-      InsertRows small =
-          (InsertRows) parseSQL("INSERT INTO insert_failure_memory VALUES(1,'d1',11,'bad')");
-      InsertRows large =
-          (InsertRows)
+      InsertValues small =
+          (InsertValues) parseSQL("INSERT INTO insert_failure_memory VALUES(1,'d1',11,'bad')");
+      InsertValues large =
+          (InsertValues)
               parseSQL(
                   "INSERT INTO insert_failure_memory VALUES(1,'d1',11,'" + "x".repeat(4096) + "')");
+      assertTrue(large.ramBytesUsed() > small.ramBytesUsed() + 4000);
+      materialize(small);
+      materialize(large);
       InsertRowStatement row = large.getInnerTreeStatement().getInsertRowStatementList().get(0);
       assertEquals(1, row.getFailedMeasurementNumber());
       assertNull(row.getValues()[2]);
@@ -899,12 +914,14 @@ public class AstMemoryEstimatorTest {
               parseSQL(
                   "PREPARE insert_partial FROM INSERT INTO insert_partial "
                       + "VALUES(1,'d1',11,'invalid integer')");
-      InsertRows original = (InsertRows) prepare.getSql();
+      InsertValues original = (InsertValues) prepare.getSql();
+      materialize(original);
       InsertRowStatement originalRow =
           original.getInnerTreeStatement().getInsertRowStatementList().get(0);
       assertEquals(1, originalRow.getFailedMeasurementNumber());
       for (int i = 0; i < 2; i++) {
-        InsertRows execution = original.copyForPreparedExecution();
+        InsertValues execution = original.copyForPreparedExecution();
+        materialize(execution);
         InsertRowStatement executionRow =
             execution.getInnerTreeStatement().getInsertRowStatementList().get(0);
         execution.getInnerTreeStatement().semanticCheck();

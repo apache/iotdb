@@ -98,6 +98,7 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -167,6 +168,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDeleteTimeSeriesProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -262,6 +264,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrent
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowConfigurationTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowDeleteTimeSeriesProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowRepairDataPartitionTableProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
@@ -279,6 +282,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
@@ -1544,6 +1548,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
       future.setException(new IoTDBException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showDeleteTimeSeriesProgress() {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TShowDeleteTimeSeriesProceduresResp response = client.showDeleteTimeSeriesProcedures();
+      if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        ShowDeleteTimeSeriesProgressTask.buildTsBlock(response.getProcedureInfoList(), future);
+      } else {
+        future.setException(new IoTDBException(response.getStatus()));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
     }
     return future;
   }
@@ -3462,21 +3483,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     req.setMayDeleteAudit(deleteTimeSeriesStatement.isMayDeleteAudit());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus;
-      do {
-        try {
-          tsStatus = client.deleteTimeSeries(req);
-        } catch (TTransportException e) {
-          if (e.getType() == TTransportException.TIMED_OUT
-              || e.getCause() instanceof SocketTimeoutException) {
-            // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
-          } else {
-            throw e;
-          }
-        }
-        // keep waiting until task ends
-      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+      final TSStatus tsStatus = client.deleteTimeSeries(req);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
@@ -3486,7 +3493,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           future.setException(new IoTDBException(tsStatus));
         }
       } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        future.set(new ConfigTaskResult(tsStatus));
       }
     } catch (final ClientManagerException | TException e) {
       future.setException(e);
@@ -3626,7 +3633,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     createLogicalViewStatement.setSourcePaths(alterLogicalViewStatement.getSourcePaths());
     createLogicalViewStatement.setQueryStatement(alterLogicalViewStatement.getQueryStatement());
 
-    final Analysis analysis = Analyzer.analyze(createLogicalViewStatement, context);
+    final Analysis analysis = analyzeWithUDFQueryScope(createLogicalViewStatement, context);
     analysis.setDatabaseName(context.getDatabaseName().orElse(null));
     if (analysis.isFailed()) {
       future.setException(
@@ -4206,7 +4213,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     final String queryBody = createContinuousQueryStatement.getQueryBody();
     // TODO Do not modify Statement in Analyzer
-    Analyzer.analyze(createContinuousQueryStatement.getQueryBodyStatement(), context);
+    analyzeWithUDFQueryScope(createContinuousQueryStatement.getQueryBodyStatement(), context);
 
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
@@ -4233,6 +4240,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
     return future;
+  }
+
+  private static Analysis analyzeWithUDFQueryScope(
+      final Statement statement, final MPPQueryContext context) {
+    final UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    if (classLoaderManager == null) {
+      return Analyzer.analyze(statement, context);
+    }
+    final UDFClassLoaderManager.QueryScope queryScope =
+        classLoaderManager.openQueryScope(context.getQueryId().getId());
+    try {
+      return classLoaderManager.withQueryScope(
+          queryScope, () -> Analyzer.analyze(statement, context));
+    } finally {
+      classLoaderManager.finalizeUDFQuery(queryScope);
+    }
   }
 
   @Override
@@ -5162,7 +5185,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
           || (TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode() == tsStatus.getCode()
               && columnIfExists)) {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        future.set(
+            new ConfigTaskResult(
+                tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                    ? tsStatus
+                    : isView
+                        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+                        : RpcUtils.getStatus(
+                            TSStatusCode.SUCCESS_STATUS,
+                            DataNodeQueryMessages
+                                .MESSAGE_COLUMN_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_OR_COLUMN_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_08F7DB64)));
       } else {
         future.setException(
             new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
@@ -5373,7 +5405,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        future.set(
+            new ConfigTaskResult(
+                tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                    ? tsStatus
+                    : isView
+                        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+                        : RpcUtils.getStatus(
+                            TSStatusCode.SUCCESS_STATUS,
+                            DataNodeQueryMessages
+                                .MESSAGE_TABLE_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_74E6521A)));
       } else {
         future.setException(
             new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));
@@ -5490,6 +5531,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else if (tsStatus.getCode() == TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()
+          || tsStatus.getCode() == TSStatusCode.MEASUREMENT_NAME_CONFLICT.getStatusCode()) {
+        // Expected user failures: return the status instead of throwing, otherwise
+        // ConfigExecution logs it with a full stack trace.
+        LOGGER.info(
+            DataNodeQueryMessages
+                .LOG_FAILED_TO_CREATE_THE_TREE_TO_TABLE_VIEW_ARG_ARG_WITH_STATUS_CODE_ARG_ARG_0A3C8F10,
+            database,
+            table.getTableName(),
+            tsStatus.getCode(),
+            tsStatus.getMessage());
+        future.set(new ConfigTaskResult(tsStatus));
       } else {
         future.setException(
             new IoTDBException(getTableErrorMessage(tsStatus, database), tsStatus.getCode()));

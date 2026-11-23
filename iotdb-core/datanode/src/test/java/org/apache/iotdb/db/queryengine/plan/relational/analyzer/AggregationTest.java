@@ -24,15 +24,21 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonEx
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
+import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
@@ -55,6 +61,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 // This test covers the remaining DistributionPlan cases that TSBSTest doesn't cover
 public class AggregationTest {
@@ -513,6 +523,55 @@ public class AggregationTest {
                     "testdb.table1",
                     ImmutableList.of("tag3", "count"),
                     ImmutableSet.of("s2", "tag3")))));
+  }
+
+  @Test
+  public void integralTimeUnitSyntaxTest() {
+    PlanTester planTester = new PlanTester();
+
+    // a bare duration and an integer number of ticks are both accepted
+    planTester.createPlan("SELECT integral(s1, 1s) FROM table1");
+    planTester.createPlan("SELECT integral(s1, 1s, time) FROM table1");
+    planTester.createPlan("SELECT integral(s1, 1000) FROM table1");
+
+    // a string literal is no longer accepted, and the unit has to be positive
+    assertIntegralTimeUnitFails(planTester, "SELECT integral(s1, '1s') FROM table1");
+    assertIntegralTimeUnitFails(planTester, "SELECT integral(s1, 0s) FROM table1");
+    assertIntegralTimeUnitFails(planTester, "SELECT integral(s1, -1) FROM table1");
+
+    // the dedicated bare-duration grammar path keeps DISTINCT and OVER
+    FunctionCall distinctCall = parseIntegralCall("SELECT integral(DISTINCT s1, 1s) FROM table1");
+    assertTrue(distinctCall.isDistinct());
+    assertFalse(distinctCall.getWindow().isPresent());
+    assertEquals(2, distinctCall.getArguments().size());
+    assertTrue(distinctCall.getArguments().get(1) instanceof LongLiteral);
+
+    FunctionCall windowedCall =
+        parseIntegralCall(
+            "SELECT integral(s1, 1s) OVER (PARTITION BY tag1 ORDER BY time) FROM table1");
+    assertFalse(windowedCall.isDistinct());
+    assertTrue(windowedCall.getWindow().isPresent());
+    assertEquals(2, windowedCall.getArguments().size());
+    assertTrue(windowedCall.getArguments().get(1) instanceof LongLiteral);
+  }
+
+  private static FunctionCall parseIntegralCall(String sql) {
+    Query query =
+        (Query)
+            new SqlParser()
+                .createStatement(sql, ZoneId.systemDefault(), new InternalClientSession("test"));
+    QuerySpecification querySpecification = (QuerySpecification) query.getQueryBody();
+    SingleColumn selectItem = (SingleColumn) querySpecification.getSelect().getSelectItems().get(0);
+    return (FunctionCall) selectItem.getExpression();
+  }
+
+  private static void assertIntegralTimeUnitFails(PlanTester planTester, String sql) {
+    try {
+      planTester.createPlan(sql);
+      fail();
+    } catch (Throwable e) {
+      assertTrue(e.getMessage().contains("should be a positive duration literal"));
+    }
   }
 
   @Test

@@ -412,16 +412,7 @@ public class SnapshotLoader {
                 targetFile.getParentFile().getAbsolutePath()));
       }
 
-      try {
-        Files.createLink(targetFile.toPath(), file.toPath());
-        LOGGER.debug(StorageEngineMessages.CREATED_HARD_LINK, file, targetFile);
-        fileTarget.put(fileKey, finalDir);
-        return targetFile;
-      } catch (IOException e) {
-        LOGGER.info(StorageEngineMessages.CANNOT_CREATE_LINK_FALLBACK_COPY, file, targetFile);
-      }
-
-      Files.copy(file.toPath(), targetFile.toPath());
+      SnapshotFileUtils.createLinkOrCopy(targetFile.toPath(), file.toPath());
       fileTarget.put(fileKey, finalDir);
       return targetFile;
     } catch (Exception e) {

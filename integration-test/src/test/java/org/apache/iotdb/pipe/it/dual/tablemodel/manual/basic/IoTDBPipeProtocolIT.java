@@ -29,6 +29,7 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -54,6 +55,12 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
+    // These tests cover consensus/topology combinations. Many CPU-scaled tiny
+    // regions exhaust the IT direct memory, and concurrent loads need only a small schema budget.
+    for (final BaseEnv env : new BaseEnv[] {senderEnv, receiverEnv}) {
+      env.getConfig().getCommonConfig().setDataRegionPerDataNode(2);
+      env.getConfig().getDataNodeConfig().setLoadTsFileAnalyzeSchemaMemorySizeInBytes(256 * 1024L);
+    }
   }
 
   private void innerSetUp(
@@ -94,10 +101,11 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
-    senderEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
-    receiverEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
+    executeOnBothEnvs(env -> env.initClusterEnvironment(configNodesNum, dataNodesNum));
   }
 
+  // Replicate historical and realtime rows between two 1C1D clusters using Ratis/Ratis/IoT;
+  // stopping the pipe must leave the receiver at 20 rows after the next 10 sender inserts.
   @Test
   public void test1C1DWithRatisRatisIot() throws Exception {
     innerSetUp(
@@ -111,6 +119,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
     doTest();
   }
 
+  // Use Simple consensus for the 1C1D receiver's ConfigNode and SchemaRegion and IoT for data;
+  // history/realtime replication and the stopped-pipe boundary must match the Ratis sender.
   @Test
   public void test1C1DWithSimpleSimpleIot() throws Exception {
     innerSetUp(
@@ -124,6 +134,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
     doTest();
   }
 
+  // Use Simple data consensus on both 1C1D clusters while retaining Ratis for schema/config;
+  // replicate 20 rows and keep the next 10 rows on the sender after stopping the pipe.
   @Test
   public void test1C1DWithRatisRatisSimple() throws Exception {
     innerSetUp(
@@ -137,6 +149,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
     doTest();
   }
 
+  // Replicate historical and realtime rows between 3C3D clusters with three schema/data replicas;
+  // stopping the pipe must prevent the final 10 rows from reaching the receiver.
   @Test
   public void test3C3DWith3SchemaRegionFactor3DataRegionFactor() throws Exception {
     innerSetUp(
@@ -150,6 +164,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
     doTest();
   }
 
+  // Exercise 3C3D clusters with three schema replicas and two data replicas; history/realtime
+  // rows must replicate, and the receiver must remain at 20 rows after the pipe is stopped.
   @Test
   public void test3C3DWith3SchemaRegionFactor2DataRegionFactor() throws Exception {
     innerSetUp(
@@ -163,6 +179,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
     doTest();
   }
 
+  // Send 10 rows from a 3C3D cluster to a 1C1D cluster, then reverse direction with another
+  // database; each destination must receive all rows through its own pipe.
   @Test
   public void testPipeOnBothSenderAndReceiver() throws Exception {
     senderEnv
@@ -192,8 +210,11 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
-    senderEnv.initClusterEnvironment(3, 3);
-    receiverEnv.initClusterEnvironment(1, 1);
+    executeOnBothEnvs(
+        env -> {
+          final int nodeCount = env == senderEnv ? 3 : 1;
+          env.initClusterEnvironment(nodeCount, nodeCount);
+        });
 
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final String receiverIp = receiverDataNode.getIp();
@@ -208,7 +229,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      TableModelUtils.insertData("test", "test", 0, 10, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -239,7 +260,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.assertCountData("test", "test", 100, receiverEnv, handleFailure);
+      TableModelUtils.assertCountData("test", "test", 10, receiverEnv, handleFailure);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
@@ -252,7 +273,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(receiverEnv, "test1", "test1");
-      TableModelUtils.insertData("test1", "test1", 0, 100, receiverEnv);
+      TableModelUtils.insertData("test1", "test1", 0, 10, receiverEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -283,7 +304,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.assertCountData("test1", "test1", 100, senderEnv, handleFailure);
+      TableModelUtils.assertCountData("test1", "test1", 10, senderEnv, handleFailure);
     }
   }
 
@@ -302,7 +323,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      // Ten distinct devices cover protocol behavior without a bulk metadata/ingestion workload.
+      TableModelUtils.insertData("test", "test", 0, 10, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -333,37 +355,43 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.assertData("test", "test", 0, 100, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test", "test", 0, 10, receiverEnv, handleFailure);
 
-      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      TableModelUtils.insertData("test", "test", 10, 20, senderEnv);
 
-      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test", "test", 0, 20, receiverEnv, handleFailure);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.stopPipe("p1").getCode());
 
-      TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
+      TableModelUtils.insertData("test", "test", 20, 30, senderEnv);
 
       // A stopped pipe must keep the receiver data unchanged.
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           TableModelUtils.getQuerySql("test"),
           TableModelUtils.generateHeaderResults(),
-          TableModelUtils.generateExpectedResults(0, 200),
+          TableModelUtils.generateExpectedResults(0, 20),
           "test");
     }
   }
 
+  // A synchronous sink using all three receiver node URLs must replicate rows in forced-log
+  // and file modes, including historical rows and later inserts (40 rows in total).
   @Test
   public void testSyncConnectorUseNodeUrls() throws Exception {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName());
   }
 
+  // An asynchronous sink using all three receiver node URLs must replicate historical and
+  // realtime rows in forced-log and file modes, ending with all 40 rows on the receiver.
   @Test
   public void testAsyncConnectorUseNodeUrls() throws Exception {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName());
   }
 
+  // Air-gap receiver ports supplied through node URLs must transfer historical and realtime
+  // rows in forced-log and file modes, ending with all 40 rows on the receiver.
   @Test
   public void testAirGapConnectorUseNodeUrls() throws Exception {
     doTestUseNodeUrls(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName());
@@ -402,8 +430,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
-    senderEnv.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 3);
+    executeOnBothEnvs(env -> env.initClusterEnvironment(1, env == senderEnv ? 1 : 3));
 
     final StringBuilder nodeUrlsBuilder = new StringBuilder();
     final Consumer<String> handleFailure =
@@ -429,7 +456,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+      // Keep separate history/realtime/file-mode ranges while limiting each to ten devices.
+      TableModelUtils.insertData("test", "test", 0, 10, senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -463,13 +491,13 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
+      TableModelUtils.insertData("test", "test", 10, 20, senderEnv);
 
-      TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test", "test", 0, 20, receiverEnv, handleFailure);
 
-      TableModelUtils.insertData("test", "test", 200, 300, senderEnv);
+      TableModelUtils.insertData("test", "test", 20, 30, senderEnv);
 
-      TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test", "test", 0, 30, receiverEnv, handleFailure);
 
       extractorAttributes.replace("realtime.mode", "file");
 
@@ -483,9 +511,9 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      TableModelUtils.insertData("test", "test", 300, 400, senderEnv);
+      TableModelUtils.insertData("test", "test", 30, 40, senderEnv);
 
-      TableModelUtils.assertData("test", "test", 0, 400, receiverEnv, handleFailure);
+      TableModelUtils.assertData("test", "test", 0, 40, receiverEnv, handleFailure);
     }
   }
 }

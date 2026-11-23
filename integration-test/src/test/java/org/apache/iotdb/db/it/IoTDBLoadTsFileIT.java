@@ -49,8 +49,10 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.awaitility.Awaitility;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -73,6 +75,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -93,10 +96,18 @@ public class IoTDBLoadTsFileIT {
   private static final long loadTsFileAnalyzeSchemaMemorySizeInBytes = 10 * 1024L;
 
   private File tmpDir;
+  private boolean templateCreated;
+  private boolean testUserCreated;
 
   @Before
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
+    templateCreated = false;
+    testUserCreated = false;
+  }
+
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setPipeMemoryManagementEnabled(false);
@@ -112,12 +123,19 @@ public class IoTDBLoadTsFileIT {
 
   @After
   public void tearDown() throws Exception {
-    deleteSG();
-    EnvFactory.getEnv().cleanClusterEnvironment();
-
-    if (!deleteDir()) {
-      LOGGER.error("Can not delete tmp dir for loading tsfile.");
+    try {
+      // The tests reuse fixed database names, so clear test-owned metadata before the next method.
+      deleteSG();
+    } finally {
+      if (!deleteDir()) {
+        LOGGER.error("Can not delete tmp dir for loading tsfile.");
+      }
     }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private void registerSchema() throws SQLException {
@@ -180,19 +198,61 @@ public class IoTDBLoadTsFileIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
 
-      statement.execute(String.format("delete database %s", SchemaConfig.DATABASE_0));
-      statement.execute(String.format("delete database %s", SchemaConfig.DATABASE_1));
-    } catch (final IoTDBSQLException ignored) {
+      deleteDatabaseIfExists(statement, SchemaConfig.DATABASE_0);
+      deleteDatabaseIfExists(statement, SchemaConfig.DATABASE_1);
+      if (templateCreated) {
+        statement.execute("drop schema template t1");
+        templateCreated = false;
+      }
+      if (testUserCreated) {
+        statement.execute("drop user test");
+        testUserCreated = false;
+      }
+    }
+  }
+
+  private void deleteDatabaseIfExists(final Statement statement, final String database)
+      throws SQLException {
+    try (final ResultSet resultSet = statement.executeQuery("show databases " + database)) {
+      if (resultSet.next()) {
+        statement.execute("delete database " + database);
+      }
     }
   }
 
   private boolean deleteDir() {
-    for (final File file : tmpDir.listFiles()) {
+    if (tmpDir == null) {
+      return true;
+    }
+    final File[] files = tmpDir.listFiles();
+    if (files == null) {
+      return false;
+    }
+    for (final File file : files) {
+      if (file.isDirectory() && !deleteDirectoryContents(file)) {
+        return false;
+      }
       if (!file.delete()) {
         return false;
       }
     }
     return tmpDir.delete();
+  }
+
+  private boolean deleteDirectoryContents(final File directory) {
+    final File[] files = directory.listFiles();
+    if (files == null) {
+      return false;
+    }
+    for (final File file : files) {
+      if (file.isDirectory() && !deleteDirectoryContents(file)) {
+        return false;
+      }
+      if (!file.delete()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Test
@@ -383,7 +443,8 @@ public class IoTDBLoadTsFileIT {
     // Try to delete after loading. Expect no deadlock
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute(
+      TestUtils.deleteTimeSeries(
+          statement,
           String.format(
               "delete timeseries %s.%s",
               SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementName()));
@@ -485,7 +546,8 @@ public class IoTDBLoadTsFileIT {
     // Try to delete after loading. Expect no deadlock
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute(
+      TestUtils.deleteTimeSeries(
+          statement,
           String.format(
               "delete timeseries %s.%s",
               SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementName()));
@@ -573,6 +635,40 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  public void testLoadWithCompatibleDataType() throws Exception {
+    registerSchema();
+
+    final String device = "root.sg.test_0.compatible_type";
+    final MeasurementSchema fileSchema = new MeasurementSchema("s", TSDataType.INT32);
+    final MeasurementSchema targetSchema = new MeasurementSchema("s", TSDataType.INT64);
+    final long seed = 42L;
+    final long expectedValue = new Random(seed).nextInt();
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    try (final TsFileGenerator generator = new TsFileGenerator(file)) {
+      generator.registerTimeseries(device, Collections.singletonList(fileSchema));
+      generator.resetRandom(seed);
+      generator.generateData(device, 1, 1000L, false);
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(convert2SQL(device, targetSchema));
+      statement.execute(
+          String.format(
+              "load \"%s\" with ('tablet-conversion-threshold'='-1')", file.getAbsolutePath()));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("select s from %s where time=1000", device))) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(expectedValue, resultSet.getLong(2));
+        Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  // Loading aligned and non-aligned devices extends the bound template and preserves every point.
+  @Test
   public void testLoadWithExtendTemplate() throws Exception {
     final long writtenPoint1;
     // device 0, device 1, sg 0
@@ -610,6 +706,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute("create database root.sg.test_0");
       statement.execute(
           "create device template t1 (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla)");
+      templateCreated = true;
       statement.execute(" set device template t1 to root.sg.test_0.d_0");
 
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
@@ -738,9 +835,11 @@ public class IoTDBLoadTsFileIT {
     }
   }
 
+  // LOAD must reject missing SYSTEM/schema privileges and succeed after both grants are present.
   @Test
   public void testAuth() throws Exception {
-    createUser("test", "test123123456");
+    createUser("test", "IoTDB!Test2024");
+    testUserCreated = true;
 
     // device 0, device 1, sg 0
     try (final TsFileGenerator generator =
@@ -789,7 +888,7 @@ public class IoTDBLoadTsFileIT {
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
         "No permissions for this operation, please add privilege WRITE_DATA",
         "test",
-        "test123123456");
+        "IoTDB!Test2024");
 
     grantUserSeriesPrivilege("test", PrivilegeType.WRITE_DATA, "root.**");
 
@@ -797,7 +896,7 @@ public class IoTDBLoadTsFileIT {
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
         "No permissions for this operation, please add privilege SYSTEM",
         "test",
-        "test123123456");
+        "IoTDB!Test2024");
 
     grantUserSystemPrivileges("test", PrivilegeType.SYSTEM);
 
@@ -805,12 +904,12 @@ public class IoTDBLoadTsFileIT {
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
         "Auto create or verify schema error when executing statement LoadTsFileStatement",
         "test",
-        "test123123456");
+        "IoTDB!Test2024");
 
     grantUserSystemPrivileges("test", PrivilegeType.WRITE_SCHEMA);
 
     executeNonQuery(
-        String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()), "test", "test123123456");
+        String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()), "test", "IoTDB!Test2024");
   }
 
   @Test

@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.client.sync.MPPDataExchangeClientManager;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -50,10 +48,43 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class MPPDataExchangeManagerTest {
+  @Test
+  public void exchangeExecutorClosesClientsAfterItsLastTask() throws Exception {
+    MPPDataExchangeClientManager clients = Mockito.mock(MPPDataExchangeClientManager.class);
+    ExecutorService executor = MPPDataExchangeService.createExchangeExecutor(clients);
+    CountDownLatch started = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    try {
+      TEndPoint endpoint = new TEndPoint("localhost", 1);
+      Future<?> task =
+          executor.submit(
+              () -> {
+                started.countDown();
+                release.await();
+                return clients.borrowClient(endpoint);
+              });
+      Assert.assertTrue(started.await(5, TimeUnit.SECONDS));
+      executor.shutdown();
+      Mockito.verify(clients, Mockito.never()).close();
+      release.countDown();
+      task.get(5, TimeUnit.SECONDS);
+      Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      org.mockito.InOrder order = Mockito.inOrder(clients);
+      order.verify(clients).borrowClient(endpoint);
+      order.verify(clients).close();
+    } finally {
+      release.countDown();
+      executor.shutdownNow();
+    }
+  }
+
   @Test
   public void testNewDataBlockMemoryFailureMarksTargetFragmentFailed() throws Exception {
     final String queryId = "q_memory_reservation_failure";
@@ -92,7 +123,7 @@ public class MPPDataExchangeManagerTest {
               localMemoryManager,
               new TsBlockSerdeFactory(),
               exchangeExecutor,
-              Mockito.mock(IClientManager.class));
+              Mockito.mock(MPPDataExchangeClientManager.class));
       ISourceHandle sourceHandle =
           exchangeManager.createSourceHandle(
               targetFragmentInstanceId,
@@ -147,9 +178,7 @@ public class MPPDataExchangeManagerTest {
             mockLocalMemoryManager,
             new TsBlockSerdeFactory(),
             Executors.newSingleThreadExecutor(),
-            new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
-                .createClientManager(
-                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+            Mockito.mock(MPPDataExchangeClientManager.class));
 
     ISinkHandle shuffleSinkHandle =
         mppDataExchangeManager.createShuffleSinkHandle(
@@ -211,9 +240,7 @@ public class MPPDataExchangeManagerTest {
             mockLocalMemoryManager,
             new TsBlockSerdeFactory(),
             Executors.newSingleThreadExecutor(),
-            new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
-                .createClientManager(
-                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+            Mockito.mock(MPPDataExchangeClientManager.class));
 
     ISourceHandle localSourceHandle =
         mppDataExchangeManager.createLocalSourceHandleForFragment(

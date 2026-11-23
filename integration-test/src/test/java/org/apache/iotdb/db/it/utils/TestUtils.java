@@ -21,7 +21,14 @@ package org.apache.iotdb.db.it.utils;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -47,6 +54,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.text.DateFormat;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -61,8 +69,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
@@ -81,6 +93,8 @@ public class TestUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
   private static final int MAX_RESULT_SET_DIFF_ROWS = 20;
+  // Retry promptly while asynchronous data becomes visible, without continuously querying.
+  private static final long DATA_ASSERTION_POLL_INTERVAL_MILLIS = 100;
 
   public static final ZoneId DEFAULT_ZONE_ID = ZoneId.ofOffset("UTC", ZoneOffset.of("Z"));
 
@@ -145,6 +159,156 @@ public class TestUtils {
   public static String defaultFormatDataTime(long time) {
     return RpcUtils.formatDatetime(
         RpcUtils.DEFAULT_TIME_FORMAT, TIME_PRECISION_IN_MS, time, DEFAULT_ZONE_ID);
+  }
+
+  /** Submits deletion using the caller's credentials, then waits for its durable task. */
+  public static void deleteTimeSeries(final Statement statement, final String sql)
+      throws SQLException {
+    statement.execute(sql);
+    waitForTimeSeriesDeletion(EnvFactory.getEnv(), sql);
+  }
+
+  public static void deleteTimeSeries(final ISession session, final String sql)
+      throws IoTDBConnectionException, StatementExecutionException {
+    session.executeNonQueryStatement(sql);
+    try {
+      waitForTimeSeriesDeletion(EnvFactory.getEnv(), sql);
+    } catch (SQLException e) {
+      throw new StatementExecutionException(e);
+    }
+  }
+
+  public static void deleteTimeSeries(final ITableSession session, final String sql)
+      throws IoTDBConnectionException, StatementExecutionException {
+    session.executeNonQueryStatement(sql);
+    try {
+      waitForTimeSeriesDeletion(EnvFactory.getEnv(), sql);
+    } catch (SQLException e) {
+      throw new StatementExecutionException(e);
+    }
+  }
+
+  public static void waitForColumnDeletion(
+      final BaseEnv env, final String database, final String table, final String column)
+      throws SQLException {
+    try (final Connection connection = env.getConnection(TABLE_SQL_DIALECT);
+        final Statement statement = createSingleNodeStatement(connection)) {
+      waitForColumnDeletion(statement, database + "." + table, column);
+    }
+  }
+
+  public static void waitForTimeSeriesDeletion(final BaseEnv env, final String sql)
+      throws SQLException {
+    // Use the administrator only for diagnostics; submission keeps the original user's authority.
+    try (final Connection connection = env.getConnection();
+        final Statement statement = createSingleNodeStatement(connection)) {
+      waitForTimeSeriesDeletion(statement, sql);
+    }
+  }
+
+  public static void waitForTimeSeriesDeletion(final Statement statement, final String sql)
+      throws SQLException {
+    final DeleteTimeSeriesStatement deletion =
+        (DeleteTimeSeriesStatement) StatementGenerator.createStatement(sql, DEFAULT_ZONE_ID);
+    final PathPatternTree tree = new PathPatternTree();
+    deletion.getPathPatternList().forEach(tree::appendPathPattern);
+    tree.constructTree();
+    final String paths = tree.getAllPathPatterns().toString();
+    await()
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInSameThread()
+        .pollInterval(20, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              long latestId = -1;
+              String state = null;
+              String error = null;
+              try (final ResultSet result =
+                  statement.executeQuery("SHOW DELETE TIMESERIES PROGRESS")) {
+                while (result.next()) {
+                  if (paths.equals(result.getString("Paths"))
+                      && result.getLong("ProcedureId") > latestId) {
+                    latestId = result.getLong("ProcedureId");
+                    state = result.getString("State");
+                    error = result.getString("ErrorMessage");
+                  }
+                }
+              }
+              if ("ROLLEDBACK".equals(state)) {
+                throw new SQLException(error);
+              }
+              return "SUCCESS".equals(state);
+            });
+  }
+
+  /** Waits for column removal and for the durable task to release conflicting table changes. */
+  public static void waitForColumnDeletion(
+      final Statement statement, final String table, final String column) {
+    await()
+        .atMost(60, TimeUnit.SECONDS)
+        .pollInSameThread()
+        .pollInterval(20, TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              try (final ResultSet result =
+                  statement.executeQuery("DESCRIBE " + table + " DETAILS")) {
+                while (result.next()) {
+                  if (column.equals(result.getString(1))) {
+                    return false;
+                  }
+                }
+              }
+              // Schema removal precedes the terminal procedure store update. No read-only schema
+              // query exposes root cleanup, so probe the absent column with an idempotent no-op.
+              try {
+                statement.execute(
+                    "ALTER TABLE "
+                        + table
+                        + " DROP COLUMN IF EXISTS \""
+                        + column.replace("\"", "\"\"")
+                        + "\"");
+                return true;
+              } catch (SQLException e) {
+                if (e.getErrorCode() == TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()) {
+                  return false;
+                }
+                throw e;
+              }
+            });
+  }
+
+  public static void dropColumn(
+      final Statement statement, final String sql, final String table, final String column)
+      throws SQLException {
+    statement.execute(sql);
+    try (final Statement progress = createSingleNodeStatement(statement.getConnection())) {
+      waitForColumnDeletion(progress, table, column);
+    }
+  }
+
+  public static void dropColumn(final Statement statement, final String sql) throws SQLException {
+    final DropColumn drop =
+        (DropColumn) new SqlParser().createStatement(sql, DEFAULT_ZONE_ID, null);
+    final String table =
+        drop.getTable().getParts().stream()
+            .map(part -> "\"" + part.replace("\"", "\"\"") + "\"")
+            .collect(Collectors.joining("."));
+    dropColumn(statement, sql, table, drop.getField().getValue());
+  }
+
+  private static void executeNonQueryAndWait(
+      final BaseEnv env, final Statement statement, final String sql, final String dialect)
+      throws SQLException {
+    if (TABLE_SQL_DIALECT.equals(dialect)
+        && sql.matches("(?is)^\\s*ALTER\\s+TABLE\\s+.*\\s+DROP\\s+COLUMN\\s+.*")) {
+      dropColumn(statement, sql);
+    } else {
+      statement.execute(sql);
+      if (!TABLE_SQL_DIALECT.equals(dialect)
+          && sql.matches("(?is)^\\s*(DELETE|DROP)\\s+TIMESERIES\\s+(?!OF\\b)\\S.*")) {
+        waitForTimeSeriesDeletion(env, sql);
+      }
+    }
   }
 
   public static void prepareData(String[] sqls) {
@@ -1086,7 +1250,7 @@ public class TestUtils {
   public static void executeNonQuery(String sql, String userName, String password) {
     try (Connection connection = EnvFactory.getEnv().getConnection(userName, password);
         Statement statement = connection.createStatement()) {
-      statement.execute(sql);
+      executeNonQueryAndWait(EnvFactory.getEnv(), statement, sql, TREE_SQL_DIALECT);
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1174,7 +1338,7 @@ public class TestUtils {
         }
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           lastIndex = i;
-          statement.execute(sqlList.get(i));
+          executeNonQueryAndWait(env, statement, sqlList.get(i), sqlDialect);
         }
         return;
       } catch (final SQLException e) {
@@ -1330,7 +1494,7 @@ public class TestUtils {
         statement.execute("use " + dataBase);
       }
       for (int i = lastIndex; i < sqlList.size(); ++i) {
-        statement.execute(sqlList.get(i));
+        executeNonQueryAndWait(env, statement, sqlList.get(i), sqlDialect);
       }
     } catch (SQLException e) {
       throw new RuntimeException(e);
@@ -1402,7 +1566,7 @@ public class TestUtils {
         }
         for (int i = lastIndex; i < sqlList.size(); ++i) {
           lastIndex = i;
-          statement.execute(sqlList.get(i));
+          executeNonQueryAndWait(env, statement, sqlList.get(i), sqlDialect);
         }
         return true;
       } catch (SQLException e) {
@@ -1740,12 +1904,26 @@ public class TestUtils {
   }
 
   public static void restartCluster(BaseEnv env) {
-    env.shutdownAllDataNodes();
-    env.shutdownAllConfigNodes();
-    env.startAllConfigNodes();
-    env.startAllDataNodes();
+    restartCluster(env, (phase, duration) -> {});
+  }
+
+  public static void restartCluster(BaseEnv env, final BiConsumer<String, Duration> phaseProbe) {
+    final long restartStartedNanos = System.nanoTime();
+    long phaseStartedNanos = restartStartedNanos;
+    // Node wrappers wait up to 30 seconds per process. Stop and start nodes in each phase together
+    // so a cluster restart is bounded by the slowest node instead of the sum of all node waits.
+    runConcurrently(env.getDataNodeWrapperList().stream().map(node -> (Runnable) node::stop));
+    phaseStartedNanos = logRestartPhase("stop DataNodes", phaseStartedNanos, phaseProbe);
+    runConcurrently(env.getConfigNodeWrapperList().stream().map(node -> (Runnable) node::stop));
+    phaseStartedNanos = logRestartPhase("stop ConfigNodes", phaseStartedNanos, phaseProbe);
+    runConcurrently(env.getConfigNodeWrapperList().stream().map(node -> (Runnable) node::start));
+    phaseStartedNanos = logRestartPhase("start ConfigNodes", phaseStartedNanos, phaseProbe);
+    runConcurrently(env.getDataNodeWrapperList().stream().map(node -> (Runnable) node::start));
+    phaseStartedNanos = logRestartPhase("start DataNodes", phaseStartedNanos, phaseProbe);
     ((AbstractEnv) env).checkClusterStatusWithoutUnknown();
     awaitAllRegionsRunning(env);
+    logRestartPhase("await cluster readiness", phaseStartedNanos, phaseProbe);
+    logRestartPhase("total", restartStartedNanos, phaseProbe);
   }
 
   /**
@@ -1786,6 +1964,21 @@ public class TestUtils {
     }
   }
 
+  private static long logRestartPhase(
+      final String phase,
+      final long phaseStartedNanos,
+      final BiConsumer<String, Duration> phaseProbe) {
+    final long phaseEndedNanos = System.nanoTime();
+    phaseProbe.accept(phase, Duration.ofNanos(phaseEndedNanos - phaseStartedNanos));
+    return phaseEndedNanos;
+  }
+
+  private static void runConcurrently(final Stream<Runnable> actions) {
+    CompletableFuture.allOf(
+            actions.map(CompletableFuture::runAsync).toArray(CompletableFuture[]::new))
+        .join();
+  }
+
   public static void assertDataEventuallyOnEnv(
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
     assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600);
@@ -1814,7 +2007,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1858,7 +2051,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1894,7 +2087,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -1938,7 +2131,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -2019,7 +2212,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -2094,7 +2287,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
@@ -2138,7 +2331,7 @@ public class TestUtils {
       await()
           .pollInSameThread()
           .pollDelay(0L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollInterval(DATA_ASSERTION_POLL_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {

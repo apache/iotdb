@@ -250,6 +250,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDeleteTimeSeriesProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
@@ -3677,13 +3678,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateTimeFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       try {
-        long duration =
-            DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), precision, false);
-        time =
-            "+".equals(ctx.getChild(i).getText())
-                ? Math.addExact(time, duration)
-                : Math.subtractExact(time, duration);
+        // apply "- duration" backwards from time, so that natural months are counted correctly
+        long offset =
+            DataNodeDateTimeUtils.convertDateExpressionOffset(
+                time,
+                ctx.getChild(i + 1).getText(),
+                precision,
+                "-".equals(ctx.getChild(i).getText()));
+        time = Math.addExact(time, offset);
       } catch (ArithmeticException e) {
         throw new SemanticException(
             String.format(
@@ -3699,13 +3701,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       try {
-        long duration =
-            DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), false);
-        time =
-            "+".equals(ctx.getChild(i).getText())
-                ? Math.addExact(time, duration)
-                : Math.subtractExact(time, duration);
+        // apply "- duration" backwards from time, so that natural months are counted correctly
+        long offset =
+            DataNodeDateTimeUtils.convertDateExpressionOffset(
+                time, ctx.getChild(i + 1).getText(), "-".equals(ctx.getChild(i).getText()));
+        time = Math.addExact(time, offset);
       } catch (ArithmeticException e) {
         throw new SemanticException(
             String.format(
@@ -3874,6 +3874,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitRepairDataPartitionTable(
       IoTDBSqlParser.RepairDataPartitionTableContext ctx) {
     return new RepairDataPartitionTable();
+  }
+
+  @Override
+  public Statement visitShowDeleteTimeSeriesProgress(
+      IoTDBSqlParser.ShowDeleteTimeSeriesProgressContext ctx) {
+    return new ShowDeleteTimeSeriesProgressStatement();
   }
 
   @Override

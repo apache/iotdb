@@ -75,7 +75,11 @@ public class M4TableFunction implements TableFunction {
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
-        TableParameterSpecification.builder().name(DATA_PARAMETER_NAME).setSemantics().build(),
+        TableParameterSpecification.builder()
+            .name(DATA_PARAMETER_NAME)
+            .setSemantics()
+            .ascendingOrder()
+            .build(),
         ScalarParameterSpecification.builder()
             .name(TIMECOL_PARAMETER_NAME)
             .type(Type.STRING)

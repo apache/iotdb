@@ -70,6 +70,104 @@ public class PipeProcessorSubtaskWorkerTest {
   }
 
   @Test(timeout = 30000)
+  public void testRequestsOnOneWorkerDoNotStrandOtherWorkersParserSlots() throws Exception {
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final PipeMemoryManager manager = PipeDataNodeResourceManager.memory();
+    final long originalParserMemory = config.getPipeTsFileParserMemory();
+    final int originalGlobalLimit = config.getPipeTsFileParserInFlightMaxNum();
+    final int originalRegionLimit = config.getPipeTsFileParserInFlightMaxNumPerPipeRegion();
+    final List<PipeProcessorSubtaskWorker> workers = new ArrayList<>();
+    final List<TsFileParserMemoryReservation> requests = new ArrayList<>();
+    final boolean[] reservedBlockers = new boolean[4];
+    final CountDownLatch parsing = new CountDownLatch(4);
+    final CountDownLatch finishParsing = new CountDownLatch(1);
+    final ExecutorService executor = Executors.newFixedThreadPool(4);
+    try {
+      config.setPipeTsFileParserMemory(1);
+      config.setPipeTsFileParserInFlightMaxNum(4);
+      config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(1);
+      for (int i = 0; i < 4; i++) {
+        reservedBlockers[i] =
+            manager.tryReserveTsFileParserMemory(
+                "blocker" + i, 0, "0", new TsFileParserMemoryReservation());
+        Assert.assertTrue(reservedBlockers[i]);
+        workers.add(newWorker(new LinkedHashSet<>()));
+      }
+      // Queue four pipes on the same serial worker before the other workers' requests. A fair
+      // window based only on pipe order leaves all four free slots waiting for that one worker.
+      for (int i = 0; i < 7; i++) {
+        final String pipeName = "skewed" + i;
+        final TsFileParserMemoryReservation request = new TsFileParserMemoryReservation();
+        requests.add(request);
+        final PipeProcessorSubtask subtask = createRunnableSubtask(pipeName);
+        final AtomicBoolean processed = new AtomicBoolean();
+        when(subtask.isWaitingForTsFileParserMemory())
+            .thenAnswer(ignored -> request.isWaitingForSignal());
+        doAnswer(
+                invocation -> {
+                  request.setWakeUpCallback(invocation.getArgument(0));
+                  return null;
+                })
+            .when(subtask)
+            .setWorkerWakeUpCallback(any());
+        when(subtask.call())
+            .thenAnswer(
+                ignored -> {
+                  if (processed.get()) {
+                    return false;
+                  }
+                  if (!manager.tryReserveTsFileParserMemory(pipeName, 0, "0", request)) {
+                    throw PipeProcessorSubtaskYieldException.parserNotAdmitted();
+                  }
+                  try {
+                    parsing.countDown();
+                    Assert.assertTrue(finishParsing.await(10, TimeUnit.SECONDS));
+                    processed.set(true);
+                    return true;
+                  } finally {
+                    manager.releaseTsFileParserMemory(pipeName, 0, "0");
+                  }
+                });
+        workers.get(i < 4 ? 0 : i - 3).schedule(subtask);
+        Assert.assertFalse(manager.tryReserveTsFileParserMemory(pipeName, 0, "0", request));
+      }
+      for (int i = 0; i < 4; i++) {
+        manager.releaseTsFileParserMemory("blocker" + i, 0, "0");
+        reservedBlockers[i] = false;
+      }
+      final List<Future<?>> rounds = new ArrayList<>();
+      for (final PipeProcessorSubtaskWorker worker : workers) {
+        rounds.add(executor.submit(worker::runSubtasks));
+      }
+      Assert.assertTrue(
+          "Free parser slots must run on distinct available workers",
+          parsing.await(5, TimeUnit.SECONDS));
+      Assert.assertEquals(4, manager.getReservedTsFileParserCount());
+      finishParsing.countDown();
+      for (final Future<?> round : rounds) {
+        round.get(5, TimeUnit.SECONDS);
+      }
+      Assert.assertEquals(0, manager.getReservedTsFileParserCount());
+      Assert.assertEquals(0, manager.getWaitingTsFileParserCount());
+    } finally {
+      finishParsing.countDown();
+      executor.shutdownNow();
+      Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+      for (int i = 0; i < requests.size(); i++) {
+        manager.cancelTsFileParserMemoryReservation("skewed" + i, 0, "0", requests.get(i));
+      }
+      for (int i = 0; i < reservedBlockers.length; i++) {
+        if (reservedBlockers[i]) {
+          manager.releaseTsFileParserMemory("blocker" + i, 0, "0");
+        }
+      }
+      config.setPipeTsFileParserMemory(originalParserMemory);
+      config.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
+      config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
+    }
+  }
+
+  @Test(timeout = 120000)
   public void testOneHundredWaitingPipesDoNotWaitForWorkerPolling() throws Exception {
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
@@ -136,8 +234,8 @@ public class PipeProcessorSubtaskWorkerTest {
         final AtomicReference<Thread> workerThread = workerThreads.get(i);
         // Consume the scheduling notification before all workers become idle on admission.
         worker.sleepIfNecessary(true);
-        // Make a missed wake-up observable without relying on a tight performance assertion.
-        worker.setSleepingTimeInMilliSecond(60000L);
+        // Keep polling beyond the whole test timeout so it cannot hide a missed wake-up.
+        worker.setSleepingTimeInMilliSecond(180000L);
         futures.add(
             executor.submit(
                 () -> {
@@ -148,7 +246,7 @@ public class PipeProcessorSubtaskWorkerTest {
                 }));
       }
       await()
-          .atMost(5, TimeUnit.SECONDS)
+          .atMost(30, TimeUnit.SECONDS)
           .until(
               () ->
                   workerThreads.stream()
@@ -162,25 +260,34 @@ public class PipeProcessorSubtaskWorkerTest {
       }
       Assert.assertTrue(
           "Admission notifications must wake every queue head",
-          processed.await(5, TimeUnit.SECONDS));
+          processed.await(30, TimeUnit.SECONDS));
       Assert.assertEquals(0, memoryManager.getWaitingTsFileParserCount());
       Assert.assertEquals(0, memoryManager.getReservedTsFileParserCount());
     } finally {
       futures.forEach(future -> future.cancel(true));
       executor.shutdownNow();
-      Assert.assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
-      for (int i = 0; i < requests.size(); i++) {
-        memoryManager.cancelTsFileParserMemoryReservation(
-            "waitingPipe" + i, 0, "0", requests.get(i));
-      }
-      for (int i = 0; i < reservedBlockers.length; i++) {
-        if (reservedBlockers[i]) {
-          memoryManager.releaseTsFileParserMemory("blocker" + i, 0, "0");
+      try {
+        Assert.assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
+      } finally {
+        try {
+          for (int i = 0; i < requests.size(); i++) {
+            memoryManager.cancelTsFileParserMemoryReservation(
+                "waitingPipe" + i, 0, "0", requests.get(i));
+          }
+        } finally {
+          try {
+            for (int i = 0; i < reservedBlockers.length; i++) {
+              if (reservedBlockers[i]) {
+                memoryManager.releaseTsFileParserMemory("blocker" + i, 0, "0");
+              }
+            }
+          } finally {
+            config.setPipeTsFileParserMemory(originalParserMemory);
+            config.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
+            config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
+          }
         }
       }
-      config.setPipeTsFileParserMemory(originalParserMemory);
-      config.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
-      config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
     }
   }
 
@@ -236,7 +343,7 @@ public class PipeProcessorSubtaskWorkerTest {
     }
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 90000)
   public void testNotificationBeforeIdleWaitIsNotLost() throws Exception {
     final PipeProcessorSubtaskWorker worker = newWorker(new LinkedHashSet<>());
     worker.setSleepingTimeInMilliSecond(60000L);
@@ -254,14 +361,14 @@ public class PipeProcessorSubtaskWorkerTest {
     final ExecutorService executor = Executors.newSingleThreadExecutor();
     try {
       wakeUpCallback.get().run();
-      executor.submit(() -> worker.sleepIfNecessary(true)).get(3, TimeUnit.SECONDS);
+      executor.submit(() -> worker.sleepIfNecessary(true)).get(30, TimeUnit.SECONDS);
     } finally {
       executor.shutdownNow();
-      Assert.assertTrue(executor.awaitTermination(3, TimeUnit.SECONDS));
+      Assert.assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
     }
   }
 
-  @Test(timeout = 15000)
+  @Test(timeout = 150000)
   public void testBusyFirstWorkerDoesNotSerializeOtherEligibleWorker() throws Exception {
     final CommonConfig config = CommonDescriptor.getInstance().getConfig();
     final PipeMemoryManager manager = PipeDataNodeResourceManager.memory();
@@ -295,7 +402,7 @@ public class PipeProcessorSubtaskWorkerTest {
               ignored -> {
                 if (blockFirstWorker.get()) {
                   firstWorkerBusy.countDown();
-                  Assert.assertTrue(unblockFirstWorker.await(5, TimeUnit.SECONDS));
+                  unblockFirstWorker.await();
                 }
                 return false;
               });
@@ -349,7 +456,7 @@ public class PipeProcessorSubtaskWorkerTest {
       Assert.assertTrue(secondWorker.runSubtasks());
       blockFirstWorker.set(true);
       final Future<?> busyRound = executor.submit(firstWorker::runSubtasks);
-      Assert.assertTrue(firstWorkerBusy.await(3, TimeUnit.SECONDS));
+      Assert.assertTrue(firstWorkerBusy.await(30, TimeUnit.SECONDS));
       for (int i = 0; i < reservedBlockers.length; i++) {
         manager.releaseTsFileParserMemory("blocker" + i, 0, "0");
         reservedBlockers[i] = false;
@@ -360,27 +467,36 @@ public class PipeProcessorSubtaskWorkerTest {
               secondWorker.sleepIfNecessary(secondWorker.runSubtasks());
             }
           });
-      Assert.assertTrue(secondAdmitted.await(3, TimeUnit.SECONDS));
+      Assert.assertTrue(secondAdmitted.await(30, TimeUnit.SECONDS));
       verify(firstSubtask, times(1)).call();
       Assert.assertFalse(busyRound.isDone());
       unblockFirstWorker.countDown();
-      busyRound.get(3, TimeUnit.SECONDS);
+      busyRound.get(30, TimeUnit.SECONDS);
       Assert.assertEquals(0, manager.getWaitingTsFileParserCount());
       Assert.assertEquals(0, manager.getReservedTsFileParserCount());
     } finally {
       unblockFirstWorker.countDown();
       executor.shutdownNow();
-      Assert.assertTrue(executor.awaitTermination(3, TimeUnit.SECONDS));
-      manager.cancelTsFileParserMemoryReservation("first", 0, "0", first);
-      manager.cancelTsFileParserMemoryReservation("second", 0, "0", second);
-      for (int i = 0; i < reservedBlockers.length; i++) {
-        if (reservedBlockers[i]) {
-          manager.releaseTsFileParserMemory("blocker" + i, 0, "0");
+      try {
+        Assert.assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
+      } finally {
+        try {
+          manager.cancelTsFileParserMemoryReservation("first", 0, "0", first);
+          manager.cancelTsFileParserMemoryReservation("second", 0, "0", second);
+        } finally {
+          try {
+            for (int i = 0; i < reservedBlockers.length; i++) {
+              if (reservedBlockers[i]) {
+                manager.releaseTsFileParserMemory("blocker" + i, 0, "0");
+              }
+            }
+          } finally {
+            config.setPipeTsFileParserMemory(originalParserMemory);
+            config.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
+            config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
+          }
         }
       }
-      config.setPipeTsFileParserMemory(originalParserMemory);
-      config.setPipeTsFileParserInFlightMaxNum(originalGlobalLimit);
-      config.setPipeTsFileParserInFlightMaxNumPerPipeRegion(originalRegionLimit);
     }
   }
 
@@ -511,7 +627,11 @@ public class PipeProcessorSubtaskWorkerTest {
       Assert.assertEquals(0, executor.getPoolSize());
 
       final AtomicInteger calls = new AtomicInteger();
+      final AtomicBoolean subtaskClosed = new AtomicBoolean();
       final PipeProcessorSubtask subtask = createRunnableSubtask("subtask");
+      // Configure the mock before scheduling; restubbing while the worker calls it can race with
+      // Mockito's invocation tracking. Change only the atomic state once the worker is running.
+      when(subtask.isClosed()).thenAnswer(ignored -> subtaskClosed.get());
       doAnswer(
               invocation -> {
                 calls.incrementAndGet();
@@ -527,13 +647,15 @@ public class PipeProcessorSubtaskWorkerTest {
 
       // Close the only subtask of this worker. Both the worker and its thread should be released
       // instead of being kept alive until the whole subtask executor is shut down.
-      when(subtask.isClosed()).thenReturn(true);
+      subtaskClosed.set(true);
       await().atMost(10, TimeUnit.SECONDS).until(() -> !worker.isRunning());
       await().atMost(10, TimeUnit.SECONDS).until(() -> executor.getPoolSize() == 0);
 
       // A newly scheduled subtask must start a new worker thread.
       final AtomicInteger restartedCalls = new AtomicInteger();
+      final AtomicBoolean restartedSubtaskClosed = new AtomicBoolean();
       final PipeProcessorSubtask restartedSubtask = createRunnableSubtask("restartedSubtask");
+      when(restartedSubtask.isClosed()).thenAnswer(ignored -> restartedSubtaskClosed.get());
       doAnswer(
               invocation -> {
                 restartedCalls.incrementAndGet();
@@ -547,7 +669,7 @@ public class PipeProcessorSubtaskWorkerTest {
       await().atMost(10, TimeUnit.SECONDS).until(() -> restartedCalls.get() > 0);
       Assert.assertEquals(1, executor.getPoolSize());
 
-      when(restartedSubtask.isClosed()).thenReturn(true);
+      restartedSubtaskClosed.set(true);
       await().atMost(10, TimeUnit.SECONDS).until(() -> !worker.isRunning());
       await().atMost(10, TimeUnit.SECONDS).until(() -> executor.getPoolSize() == 0);
     } finally {

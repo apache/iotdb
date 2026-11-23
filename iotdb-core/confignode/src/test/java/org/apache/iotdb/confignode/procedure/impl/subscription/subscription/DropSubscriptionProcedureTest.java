@@ -19,12 +19,21 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.DataNodeTransportFailureUtils;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionReadyDataNodeTracker;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -32,10 +41,17 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
+import org.apache.thrift.TApplicationException;
+import org.apache.thrift.protocol.TProtocolException;
+import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.Assert;
 import org.junit.Test;
@@ -43,6 +59,8 @@ import org.mockito.Mockito;
 
 import java.io.DataOutputStream;
 import java.lang.reflect.Field;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,12 +69,97 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class DropSubscriptionProcedureTest {
+  @Test
+  public void transportFailureClassificationShouldUseExceptionTypes() {
+    Assert.assertTrue(
+        DataNodeTransportFailureUtils.isTransportException(
+            new TTransportException("connection refused")));
+    Assert.assertTrue(
+        DataNodeTransportFailureUtils.isTransportException(new ConnectException("connection")));
+    Assert.assertTrue(
+        DataNodeTransportFailureUtils.isTransportException(new TimeoutException("timeout")));
+    Assert.assertTrue(
+        DataNodeTransportFailureUtils.isTransportException(new SocketTimeoutException("timeout")));
+    Assert.assertTrue(
+        DataNodeTransportFailureUtils.isTransportException(
+            new RuntimeException(new TimeoutException("timeout"))));
+    Assert.assertFalse(
+        DataNodeTransportFailureUtils.isTransportException(
+            new IllegalStateException("local failure")));
+    Assert.assertFalse(
+        DataNodeTransportFailureUtils.isTransportException(
+            new TApplicationException("remote application failure")));
+    Assert.assertFalse(
+        DataNodeTransportFailureUtils.isTransportException(
+            new TProtocolException("invalid reply")));
+    Assert.assertFalse(
+        DataNodeTransportFailureUtils.isTransportException(
+            new TTransportException(TTransportException.CORRUPTED_DATA, "invalid frame")));
+  }
+
+  @Test
+  public void metadataRpcHandlersShouldMarkOnlyTransportFailures() {
+    final TDataNodeLocation target = new TDataNodeLocation().setDataNodeId(1);
+    final Map<Integer, TDataNodeLocation> targetMap = Collections.singletonMap(1, target);
+    for (final Exception exception :
+        new Exception[] {
+          new ConnectException("connection refused"),
+          new TimeoutException("request timed out"),
+          new TTransportException(TTransportException.END_OF_FILE, "connection closed"),
+          new IllegalStateException("local dispatch failure"),
+          new TApplicationException("remote application failure"),
+          new TProtocolException("invalid reply"),
+          new TTransportException(TTransportException.CORRUPTED_DATA, "invalid frame")
+        }) {
+      final Map<Integer, TPushPipeMetaResp> pipeResponses = new HashMap<>();
+      new PipePushMetaRPCHandler(
+              CnToDnAsyncRequestType.PIPE_PUSH_MULTI_META,
+              1,
+              target,
+              targetMap,
+              pipeResponses,
+              new CountDownLatch(1))
+          .onError(exception);
+      final boolean expectedTransportFailure =
+          exception instanceof ConnectException
+              || exception instanceof TimeoutException
+              || (exception instanceof TTransportException
+                  && ((TTransportException) exception).getType()
+                      == TTransportException.END_OF_FILE);
+      assertEquals(
+          expectedTransportFailure,
+          DataNodeTransportFailureUtils.isTransportFailure(pipeResponses.get(1).getStatus()));
+      assertEquals(
+          TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode(),
+          pipeResponses.get(1).getStatus().getCode());
+
+      final Map<Integer, TPushConsumerGroupMetaResp> consumerGroupResponses = new HashMap<>();
+      new ConsumerGroupPushMetaRPCHandler(
+              CnToDnAsyncRequestType.CONSUMER_GROUP_PUSH_SINGLE_META,
+              1,
+              target,
+              targetMap,
+              consumerGroupResponses,
+              new CountDownLatch(1))
+          .onError(exception);
+      assertEquals(
+          expectedTransportFailure,
+          DataNodeTransportFailureUtils.isTransportFailure(
+              consumerGroupResponses.get(1).getStatus()));
+      assertEquals(
+          TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode(),
+          consumerGroupResponses.get(1).getStatus().getCode());
+    }
+  }
+
   @Test
   public void serializeDeserializeTest() {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -146,7 +249,263 @@ public class DropSubscriptionProcedureTest {
 
     Mockito.verify(env, Mockito.never()).pushMultiPipeMetaToDataNodes(Mockito.anyList());
     Mockito.verify(env, Mockito.never()).dropMultiPipeOnDataNodes(Mockito.anyList());
-    Mockito.verify(alterConsumerGroupProcedure).executeFromOperateOnDataNodes(env);
+    Mockito.verify(alterConsumerGroupProcedure).executeFromOperateOnDataNodesForUnsubscribe(env);
+  }
+
+  @Test
+  public void executeFromOperateOnDataNodesShouldIgnoreOfflinePipeTransportFailure()
+      throws Exception {
+    final DropSubscriptionProcedure procedure = new DropSubscriptionProcedure();
+    final AlterConsumerGroupProcedure alterConsumerGroupProcedure =
+        Mockito.mock(AlterConsumerGroupProcedure.class);
+    procedure.setAlterConsumerGroupProcedure(alterConsumerGroupProcedure);
+    procedure.setDropPipeProcedures(Collections.singletonList(mockDropPipeProcedure("pipe")));
+
+    final ConfigNodeProcedureEnv env = mockEnvWithNodeStatus(NodeStatus.Unknown);
+    Mockito.when(env.dropMultiPipeOnDataNodes(Mockito.anyList()))
+        .thenReturn(
+            Collections.singletonMap(
+                1,
+                new TPushPipeMetaResp(
+                    transportFailureStatus(
+                        TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode(), "Connection refused"))));
+
+    procedure.executeFromOperateOnDataNodes(env);
+
+    Mockito.verify(alterConsumerGroupProcedure).executeFromOperateOnDataNodesForUnsubscribe(env);
+  }
+
+  @Test
+  public void executeFromOperateOnDataNodesShouldNotIgnoreOfflineUnmarkedError() throws Exception {
+    final DropSubscriptionProcedure procedure = new DropSubscriptionProcedure();
+    procedure.setAlterConsumerGroupProcedure(Mockito.mock(AlterConsumerGroupProcedure.class));
+    procedure.setDropPipeProcedures(Collections.singletonList(mockDropPipeProcedure("pipe")));
+
+    final ConfigNodeProcedureEnv env = mockEnvWithNodeStatus(NodeStatus.Unknown);
+    Mockito.when(env.dropMultiPipeOnDataNodes(Mockito.anyList()))
+        .thenReturn(
+            Collections.singletonMap(
+                1,
+                new TPushPipeMetaResp(
+                    new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode())
+                        .setMessage("local dispatch failure"))));
+
+    try {
+      procedure.executeFromOperateOnDataNodes(env);
+      fail("Expected an unmarked request failure to fail the unsubscribe");
+    } catch (SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("local dispatch failure"));
+    }
+  }
+
+  @Test
+  public void executeFromOperateOnDataNodesShouldNotIgnoreOfflinePipeMetaRejection()
+      throws Exception {
+    final DropSubscriptionProcedure procedure = new DropSubscriptionProcedure();
+    final AlterConsumerGroupProcedure alterConsumerGroupProcedure =
+        Mockito.mock(AlterConsumerGroupProcedure.class);
+    procedure.setAlterConsumerGroupProcedure(alterConsumerGroupProcedure);
+    procedure.setDropPipeProcedures(Collections.singletonList(mockDropPipeProcedure("pipe")));
+
+    final ConfigNodeProcedureEnv env = mockEnvWithNodeStatus(NodeStatus.Unknown);
+    Mockito.when(env.dropMultiPipeOnDataNodes(Mockito.anyList()))
+        .thenReturn(
+            Collections.singletonMap(
+                1,
+                new TPushPipeMetaResp(
+                        new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+                    .setExceptionMessages(
+                        Collections.singletonList(
+                            new TPushPipeMetaRespExceptionMessage(
+                                "pipe", "metadata rejected", System.currentTimeMillis())))));
+
+    try {
+      procedure.executeFromOperateOnDataNodes(env);
+      fail("Expected the DataNode's metadata rejection to fail the unsubscribe");
+    } catch (SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("metadata rejected"));
+    }
+
+    Mockito.verify(alterConsumerGroupProcedure, Mockito.never())
+        .executeFromOperateOnDataNodesForUnsubscribe(Mockito.any());
+  }
+
+  @Test
+  public void executeFromOperateOnDataNodesShouldNotIgnoreOnlinePipeTransportFailure()
+      throws Exception {
+    final DropSubscriptionProcedure procedure = new DropSubscriptionProcedure();
+    final AlterConsumerGroupProcedure alterConsumerGroupProcedure =
+        Mockito.mock(AlterConsumerGroupProcedure.class);
+    procedure.setAlterConsumerGroupProcedure(alterConsumerGroupProcedure);
+    procedure.setDropPipeProcedures(Collections.singletonList(mockDropPipeProcedure("pipe")));
+
+    final ConfigNodeProcedureEnv env = mockEnvWithNodeStatus(NodeStatus.Running);
+    Mockito.when(env.dropMultiPipeOnDataNodes(Mockito.anyList()))
+        .thenReturn(
+            Collections.singletonMap(
+                1,
+                new TPushPipeMetaResp(
+                    transportFailureStatus(
+                        TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode(), "Connection refused"))));
+
+    try {
+      procedure.executeFromOperateOnDataNodes(env);
+      fail("Expected a transport failure from an online DataNode to fail the unsubscribe");
+    } catch (SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("Connection refused"));
+    }
+
+    Mockito.verify(alterConsumerGroupProcedure, Mockito.never())
+        .executeFromOperateOnDataNodesForUnsubscribe(Mockito.any());
+  }
+
+  @Test
+  public void alterConsumerGroupShouldIgnoreOfflineTransportFailureWhenUnsubscribing()
+      throws Exception {
+    final ConsumerGroupMeta existingMeta =
+        new ConsumerGroupMeta("group", 1, new ConsumerMeta("consumer", 1, Collections.emptyMap()));
+    existingMeta.addSubscription("consumer", Collections.singleton("topic"));
+    final ConsumerGroupMeta updatedMeta = existingMeta.deepCopy();
+    updatedMeta.removeSubscription("consumer", Collections.singleton("topic"));
+    final AlterConsumerGroupProcedure procedure = new AlterConsumerGroupProcedure();
+    procedure.setExistingConsumerGroupMeta(existingMeta);
+    procedure.setUpdatedConsumerGroupMeta(updatedMeta);
+
+    final ConfigNodeProcedureEnv env = mockEnvWithNodeStatus(NodeStatus.Unknown);
+    final ConfigManager configManager = env.getConfigManager();
+    final SubscriptionManager subscriptionManager = Mockito.mock(SubscriptionManager.class);
+    final SubscriptionReadyDataNodeTracker readyDataNodeTracker =
+        new SubscriptionReadyDataNodeTracker();
+    Mockito.when(configManager.getSubscriptionManager()).thenReturn(subscriptionManager);
+    Mockito.when(subscriptionManager.getSubscriptionReadyDataNodeTracker())
+        .thenReturn(readyDataNodeTracker);
+    readyDataNodeTracker.replaceFromFullPush(
+        Collections.singletonList(existingMeta),
+        Collections.singletonMap(
+            1,
+            new TPushConsumerGroupMetaResp(
+                new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))));
+    Mockito.when(env.pushSingleConsumerGroupOnDataNode(Mockito.any(ByteBuffer.class)))
+        .thenReturn(
+            Collections.singletonMap(
+                1,
+                new TPushConsumerGroupMetaResp(
+                    transportFailureStatus(
+                        TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode(),
+                        "Connection refused"))));
+
+    procedure.executeFromOperateOnDataNodesForUnsubscribe(env);
+    procedure.rollbackFromOperateOnDataNodesForUnsubscribe(env);
+
+    assertEquals(
+        Collections.emptyList(),
+        readyDataNodeTracker.getReadyDataNodeIds(
+            "topic", "group", existingMeta.visibleUnder(true), Collections.singleton(1)));
+  }
+
+  @Test
+  public void alterConsumerGroupShouldNotIgnoreOfflineUnmarkedErrorWhenUnsubscribing()
+      throws Exception {
+    final ConsumerGroupMeta existingMeta =
+        new ConsumerGroupMeta("group", 1, new ConsumerMeta("consumer", 1, Collections.emptyMap()));
+    final AlterConsumerGroupProcedure procedure = new AlterConsumerGroupProcedure();
+    procedure.setExistingConsumerGroupMeta(existingMeta);
+    procedure.setUpdatedConsumerGroupMeta(existingMeta.deepCopy());
+
+    final ConfigNodeProcedureEnv env = mockEnvWithNodeStatus(NodeStatus.Unknown);
+    final SubscriptionManager subscriptionManager = Mockito.mock(SubscriptionManager.class);
+    Mockito.when(env.getConfigManager().getSubscriptionManager()).thenReturn(subscriptionManager);
+    Mockito.when(subscriptionManager.getSubscriptionReadyDataNodeTracker())
+        .thenReturn(Mockito.mock(SubscriptionReadyDataNodeTracker.class));
+    Mockito.when(env.pushSingleConsumerGroupOnDataNode(Mockito.any(ByteBuffer.class)))
+        .thenReturn(
+            Collections.singletonMap(
+                1,
+                new TPushConsumerGroupMetaResp(
+                    new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
+                        .setMessage("local dispatch failure"))));
+
+    try {
+      procedure.executeFromOperateOnDataNodesForUnsubscribe(env);
+      fail("Expected an unmarked request failure to fail the consumer group update");
+    } catch (SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("local dispatch failure"));
+    }
+    Assert.assertThrows(
+        SubscriptionException.class,
+        () -> procedure.rollbackFromOperateOnDataNodesForUnsubscribe(env));
+  }
+
+  @Test
+  public void alterConsumerGroupShouldNotIgnoreOnlineTransportFailureWhenUnsubscribing()
+      throws Exception {
+    final ConsumerGroupMeta existingMeta =
+        new ConsumerGroupMeta("group", 1, new ConsumerMeta("consumer", 1, Collections.emptyMap()));
+    final AlterConsumerGroupProcedure procedure = new AlterConsumerGroupProcedure();
+    procedure.setExistingConsumerGroupMeta(existingMeta);
+    procedure.setUpdatedConsumerGroupMeta(existingMeta.deepCopy());
+
+    final ConfigNodeProcedureEnv env = mockEnvWithNodeStatus(NodeStatus.Running);
+    final SubscriptionManager subscriptionManager = Mockito.mock(SubscriptionManager.class);
+    Mockito.when(env.getConfigManager().getSubscriptionManager()).thenReturn(subscriptionManager);
+    Mockito.when(subscriptionManager.getSubscriptionReadyDataNodeTracker())
+        .thenReturn(Mockito.mock(SubscriptionReadyDataNodeTracker.class));
+    Mockito.when(env.pushSingleConsumerGroupOnDataNode(Mockito.any(ByteBuffer.class)))
+        .thenReturn(
+            Collections.singletonMap(
+                1,
+                new TPushConsumerGroupMetaResp(
+                    transportFailureStatus(
+                        TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode(),
+                        "Connection refused"))));
+
+    try {
+      procedure.executeFromOperateOnDataNodesForUnsubscribe(env);
+      fail("Expected a transport failure from an online DataNode to fail the update");
+    } catch (SubscriptionException e) {
+      Assert.assertTrue(e.getMessage().contains("Connection refused"));
+    }
+    Assert.assertThrows(
+        SubscriptionException.class,
+        () -> procedure.rollbackFromOperateOnDataNodesForUnsubscribe(env));
+  }
+
+  @Test
+  public void alterConsumerGroupShouldNotIgnoreOfflineMetadataRejectionWhenUnsubscribing()
+      throws Exception {
+    final ConsumerGroupMeta existingMeta =
+        new ConsumerGroupMeta("group", 1, new ConsumerMeta("consumer", 1, Collections.emptyMap()));
+    final ConsumerGroupMeta updatedMeta = existingMeta.deepCopy();
+    final AlterConsumerGroupProcedure procedure = new AlterConsumerGroupProcedure();
+    procedure.setExistingConsumerGroupMeta(existingMeta);
+    procedure.setUpdatedConsumerGroupMeta(updatedMeta);
+
+    final ConfigNodeProcedureEnv env = mockEnvWithNodeStatus(NodeStatus.Unknown);
+    final ConfigManager configManager = env.getConfigManager();
+    final SubscriptionManager subscriptionManager = Mockito.mock(SubscriptionManager.class);
+    Mockito.when(configManager.getSubscriptionManager()).thenReturn(subscriptionManager);
+    Mockito.when(subscriptionManager.getSubscriptionReadyDataNodeTracker())
+        .thenReturn(Mockito.mock(SubscriptionReadyDataNodeTracker.class));
+    Mockito.when(env.pushSingleConsumerGroupOnDataNode(Mockito.any(ByteBuffer.class)))
+        .thenReturn(
+            Collections.singletonMap(
+                1,
+                new TPushConsumerGroupMetaResp(
+                        new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()))
+                    .setExceptionMessages(
+                        Collections.singletonList(
+                            new TPushConsumerGroupMetaRespExceptionMessage(
+                                "group", "metadata rejected", System.currentTimeMillis())))));
+
+    try {
+      procedure.executeFromOperateOnDataNodesForUnsubscribe(env);
+      fail("Expected the DataNode's metadata rejection to fail the consumer group update");
+    } catch (SubscriptionException e) {
+      Assert.assertNotNull(e.getMessage());
+    }
+    Assert.assertThrows(
+        SubscriptionException.class,
+        () -> procedure.rollbackFromOperateOnDataNodesForUnsubscribe(env));
   }
 
   @Test
@@ -232,6 +591,27 @@ public class DropSubscriptionProcedureTest {
     Mockito.when(consensusManager.write(Mockito.any())).thenReturn(response);
 
     return env;
+  }
+
+  private static ConfigNodeProcedureEnv mockEnvWithNodeStatus(final NodeStatus nodeStatus) {
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final LoadManager loadManager = Mockito.mock(LoadManager.class);
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getLoadManager()).thenReturn(loadManager);
+    Mockito.when(loadManager.getNodeStatus(1)).thenReturn(nodeStatus);
+    return env;
+  }
+
+  private static DropPipeProcedureV2 mockDropPipeProcedure(final String pipeName) {
+    final DropPipeProcedureV2 procedure = Mockito.mock(DropPipeProcedureV2.class);
+    Mockito.when(procedure.getPipeName()).thenReturn(pipeName);
+    return procedure;
+  }
+
+  private static TSStatus transportFailureStatus(final int statusCode, final String message) {
+    return DataNodeTransportFailureUtils.markTransportFailure(
+        new TSStatus(statusCode).setMessage(message));
   }
 
   private static void setField(final Object target, final String fieldName, final Object value)

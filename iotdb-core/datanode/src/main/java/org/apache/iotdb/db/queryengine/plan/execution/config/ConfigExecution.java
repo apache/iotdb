@@ -346,7 +346,7 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public boolean isActive() {
-    return startTimeOfCurrentRpc == -1;
+    return startTimeOfCurrentRpc != -1;
   }
 
   @Override

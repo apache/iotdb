@@ -43,11 +43,15 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,10 +65,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+/**
+ * Load table TsFiles into a shared cluster with separate databases and temporary files per method.
+ * Class cleanup removes the remaining databases and the user created by the permission scenario.
+ */
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBLoadTsFileIT {
@@ -73,11 +83,20 @@ public class IoTDBLoadTsFileIT {
   private static final int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(300);
   private static final long loadTsFileAnalyzeSchemaMemorySizeInBytes = 10 * 1024L;
 
+  @Rule public final TestName testName = new TestName();
+
   private File tmpDir;
+  private String database;
 
   @Before
   public void setUp() throws Exception {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
+    // Isolate table schemas and loaded rows without restarting the identically configured nodes.
+    database = "load_" + testName.getMethodName().toLowerCase(Locale.ROOT);
+  }
+
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setDatanodeMemoryProportion("3:3:1:1:1:0");
@@ -91,11 +110,14 @@ public class IoTDBLoadTsFileIT {
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-
     if (!deleteDir()) {
       LOGGER.error("Can not delete tmp dir for loading tsfile.");
     }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private boolean deleteDir() {
@@ -165,6 +187,10 @@ public class IoTDBLoadTsFileIT {
     return pairs;
   }
 
+  /**
+   * Load 10,000 rows into an empty database as a user with CREATE/INSERT privileges; expect
+   * automatic table creation and the complete input row count.
+   */
   @Test
   public void testLoadWithEmptyDatabaseForTableModel() throws Exception {
     final int lineCount = 10000;
@@ -188,26 +214,25 @@ public class IoTDBLoadTsFileIT {
     // Prepare normal user
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("create user test 'password123456'");
+      adminStmt.execute("create user test 'IoTDB!Test2024'");
       adminStmt.execute(
           String.format(
-              "grant create, insert on %s.%s to user test",
-              SchemaConfig.DATABASE_0, SchemaConfig.TABLE_0));
+              "grant create, insert on %s.%s to user test", database, SchemaConfig.TABLE_0));
 
       // auto-create table
-      adminStmt.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
+      adminStmt.execute(String.format("create database if not exists %s", database));
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection("test", "IoTDB!Test2024", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("use %s", database));
       statement.execute(String.format("load '%s'", file.getAbsolutePath()));
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      adminStmt.execute(String.format("use %s", database));
       try (final ResultSet resultSet =
           adminStmt.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
@@ -219,6 +244,10 @@ public class IoTDBLoadTsFileIT {
     }
   }
 
+  /**
+   * Load 10,000 rows with source and target field types covering all type pairs; expect the
+   * complete row count after conversion. Keep this scenario ignored while conversion is banned.
+   */
   @Test
   @Ignore("Load with conversion is currently banned")
   public void testLoadWithConvertOnTypeMismatchForTableModel() throws Exception {
@@ -244,12 +273,11 @@ public class IoTDBLoadTsFileIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
-      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("create database if not exists %s", database));
+      statement.execute(String.format("use %s", database));
       statement.execute(convert2TableSQL(SchemaConfig.TABLE_0, schemaList1, columnCategories));
       statement.execute(
-          String.format(
-              "load '%s' with ('database'='%s')", file.getAbsolutePath(), SchemaConfig.DATABASE_0));
+          String.format("load '%s' with ('database'='%s')", file.getAbsolutePath(), database));
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
@@ -261,6 +289,47 @@ public class IoTDBLoadTsFileIT {
     }
   }
 
+  @Test
+  public void testLoadWithCompatibleDataType() throws Exception {
+    final String tableName = "load_compatible_type";
+    final MeasurementSchema fileSchema = new MeasurementSchema("f", TSDataType.INT32);
+    final MeasurementSchema targetSchema = new MeasurementSchema("f", TSDataType.INT64);
+    final List<ColumnCategory> columnCategories = Collections.singletonList(ColumnCategory.FIELD);
+    final long seed = 42L;
+    final long expectedValue = new Random(seed).nextInt();
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(tableName, Collections.singletonList(fileSchema), columnCategories);
+      generator.resetRandom(seed);
+      generator.generateData(tableName, 1, 1000L);
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create database if not exists %s", database));
+      statement.execute(String.format("use %s", database));
+      statement.execute(
+          convert2TableSQL(tableName, Collections.singletonList(targetSchema), columnCategories));
+      statement.execute(
+          String.format(
+              "load '%s' with ('database'='%s', 'tablet-conversion-threshold'='-1')",
+              file.getAbsolutePath(), database));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("select f from %s order by time", tableName))) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(expectedValue, resultSet.getLong(1));
+        Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  /**
+   * Generate two tables with 10,000 rows each and delete all rows from the second through TsFile
+   * mods; after loading, expect 10,000 rows in the first table and only that table to be visible.
+   */
   @Test
   public void testLoadWithTableMod() throws Exception {
     final int lineCount = 10000;
@@ -286,11 +355,10 @@ public class IoTDBLoadTsFileIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
-      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("create database if not exists %s", database));
+      statement.execute(String.format("use %s", database));
       statement.execute(
-          String.format(
-              "load '%s' with ('database'='%s')", file.getAbsolutePath(), SchemaConfig.DATABASE_0));
+          String.format("load '%s' with ('database'='%s')", file.getAbsolutePath(), database));
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
@@ -307,6 +375,10 @@ public class IoTDBLoadTsFileIT {
     }
   }
 
+  /**
+   * Load 10,000 rows across 13 source/target combinations of time column positions, names, and
+   * absent target schemas; each load must retain all rows and preserve existing target columns.
+   */
   @Test
   public void testLoadWithTimeColumn() throws Exception {
     final int lineCount = 10000;
@@ -417,16 +489,15 @@ public class IoTDBLoadTsFileIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
-      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
-      ResultSet resultSetOld = null;
+      statement.execute(String.format("create database if not exists %s", database));
+      statement.execute(String.format("use %s", database));
+      List<List<String>> oldTableDescription = null;
       if (Objects.nonNull(schemaList1)) {
         statement.execute(convert2TableSQL(SchemaConfig.TABLE_0, schemaList1, columnCategories));
-        resultSetOld = statement.executeQuery("desc " + SchemaConfig.TABLE_0);
+        oldTableDescription = getTableDescription(statement, SchemaConfig.TABLE_0);
       }
       statement.execute(
-          String.format(
-              "load '%s' with ('database'='%s')", file.getAbsolutePath(), SchemaConfig.DATABASE_0));
+          String.format("load '%s' with ('database'='%s')", file.getAbsolutePath(), database));
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
@@ -442,21 +513,27 @@ public class IoTDBLoadTsFileIT {
       }
 
       // Time column's difference shall not affect the old column
-      if (Objects.nonNull(resultSetOld)) {
-        try (final ResultSet resultSet = statement.executeQuery("desc " + SchemaConfig.TABLE_0)) {
-          while (resultSet.next() && resultSetOld.next()) {
-            Assert.assertEquals(resultSet.getString(1), resultSetOld.getString(1));
-            Assert.assertEquals(resultSet.getString(2), resultSetOld.getString(2));
-            Assert.assertEquals(resultSet.getString(3), resultSetOld.getString(3));
-          }
-          if (resultSet.next() || resultSetOld.next()) {
-            Assert.fail("The table schema has changed after load.");
-          }
-        }
+      if (Objects.nonNull(oldTableDescription)) {
+        final List<List<String>> newTableDescription =
+            getTableDescription(statement, SchemaConfig.TABLE_0);
+        Assert.assertEquals(
+            "The table schema has changed after load.", oldTableDescription, newTableDescription);
       }
 
-      statement.execute(String.format("drop database %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("drop database %s", database));
     }
+  }
+
+  private List<List<String>> getTableDescription(final Statement statement, final String tableName)
+      throws Exception {
+    final List<List<String>> tableDescription = new ArrayList<>();
+    try (final ResultSet resultSet = statement.executeQuery("desc " + tableName)) {
+      while (resultSet.next()) {
+        tableDescription.add(
+            Arrays.asList(resultSet.getString(1), resultSet.getString(2), resultSet.getString(3)));
+      }
+    }
+    return tableDescription;
   }
 
   private List<ColumnCategory> generateTabletColumnCategory(final int fieldNum) {
@@ -499,6 +576,10 @@ public class IoTDBLoadTsFileIT {
     return tableCreation;
   }
 
+  /**
+   * Load 20 rows at timestamps 1,000 through 20,000 with both fields null; expect all timestamps to
+   * survive, zero non-null field counts, and wasNull to be true for every field value.
+   */
   @Test
   public void testLoadWithAllFieldsNullRows() throws Exception {
     final List<IMeasurementSchema> schemas =
@@ -530,11 +611,10 @@ public class IoTDBLoadTsFileIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
-      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("create database if not exists %s", database));
+      statement.execute(String.format("use %s", database));
       statement.execute(
-          String.format(
-              "load '%s' with ('database'='%s')", file.getAbsolutePath(), SchemaConfig.DATABASE_0));
+          String.format("load '%s' with ('database'='%s')", file.getAbsolutePath(), database));
 
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
@@ -599,11 +679,10 @@ public class IoTDBLoadTsFileIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
-      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("create database if not exists %s", database));
+      statement.execute(String.format("use %s", database));
       statement.execute(
-          String.format(
-              "load '%s' with ('database'='%s')", file.getAbsolutePath(), SchemaConfig.DATABASE_0));
+          String.format("load '%s' with ('database'='%s')", file.getAbsolutePath(), database));
 
       try (final ResultSet resultSet =
           statement.executeQuery(
@@ -683,7 +762,6 @@ public class IoTDBLoadTsFileIT {
   }
 
   private static class SchemaConfig {
-    private static final String DATABASE_0 = "root";
     private static final String TABLE_0 = "test";
     private static final String TABLE_1 = "test1";
   }

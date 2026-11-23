@@ -287,8 +287,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         subRanges.add(splitInfo.ranges.get(2 * i + 1));
       }
     }
-    final List<TDataNodeLocation> redirectNodeList = new ArrayList<>(times.length);
-    for (int i = 0; i < times.length; i++) {
+    final List<TDataNodeLocation> redirectNodeList = new ArrayList<>(rowCount);
+    for (int i = 0; i < rowCount; i++) {
       final IDeviceID deviceId = getDeviceID(i);
       redirectNodeList.add(dataNodeLocationMap.get(deviceId));
     }

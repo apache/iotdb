@@ -34,13 +34,16 @@ import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDele
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
+import org.apache.iotdb.confignode.procedure.ProcedureWithPendingCleanup;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.ModFileDeletionProgress;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -56,12 +59,17 @@ import java.util.Map;
 import java.util.Objects;
 
 public class DropTableColumnProcedure
-    extends AbstractAlterOrDropTableProcedure<DropTableColumnState> {
+    extends AbstractAlterOrDropTableProcedure<DropTableColumnState>
+    implements ProcedureWithPendingCleanup {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTableColumnProcedure.class);
 
   private String columnName;
   private boolean isAttributeColumn;
+  private final ModFileDeletionProgress modProgress =
+      new ModFileDeletionProgress(
+          this::getProcId,
+          () -> !isFinished() && getCurrentState() == DropTableColumnState.EXECUTE_ON_REGIONS);
 
   public DropTableColumnProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -75,6 +83,36 @@ public class DropTableColumnProcedure
       final boolean isGeneratedByPipe) {
     super(database, tableName, queryId, isGeneratedByPipe);
     this.columnName = columnName;
+  }
+
+  public String getColumnName() {
+    return columnName;
+  }
+
+  public String getDropProgress() {
+    if (isFinished()) {
+      return getState().name();
+    }
+    final DropTableColumnState state = getCurrentState();
+    return state == null ? getState().name() : state.name();
+  }
+
+  public TDropTableModProgress getModFileProgress() {
+    return modProgress.snapshot();
+  }
+
+  public void updateModFileProgress() {
+    modProgress.update();
+  }
+
+  @Override
+  public boolean hasPendingCleanup() {
+    return modProgress.hasPendingCleanup();
+  }
+
+  @Override
+  public void retryPendingCleanup() {
+    updateModFileProgress();
   }
 
   @Override
@@ -202,21 +240,37 @@ public class DropTableColumnProcedure
             : env.getConfigManager().getRelatedDataRegionGroup4TableModel(database);
 
     if (!relatedRegionGroup.isEmpty()) {
+      if (!isAttributeColumn) {
+        modProgress.setRegionCount(relatedRegionGroup.size());
+        modProgress.trackRegionReplicas(relatedRegionGroup);
+      }
       new TableRegionTaskExecutor<>(
               ProcedureMessages.MESSAGE_DELETE_DATA_FOR_DROP_TABLE_A678391E,
               env,
               relatedRegionGroup,
               CnToDnAsyncRequestType.DELETE_COLUMN_DATA,
-              ((dataNodeLocation, consensusGroupIdList) ->
-                  new TDeleteColumnDataReq(
-                      new ArrayList<>(consensusGroupIdList),
-                      tableName,
-                      columnName,
-                      isAttributeColumn)))
+              ((dataNodeLocation, consensusGroupIdList) -> {
+                if (!isAttributeColumn) {
+                  modProgress.trackRegions(dataNodeLocation, consensusGroupIdList);
+                }
+                return new TDeleteColumnDataReq(
+                        new ArrayList<>(consensusGroupIdList),
+                        tableName,
+                        columnName,
+                        isAttributeColumn)
+                    .setProcedureId(getProcId())
+                    .setTrackModFileProgress(!isAttributeColumn);
+              }))
           .execute();
     }
 
-    setNextState(DropTableColumnState.DROP_COLUMN);
+    if (isAttributeColumn || relatedRegionGroup.isEmpty()) {
+      // Attribute deletion uses schema regions and does not write mod files.
+      modProgress.finishWithoutModFiles();
+      setNextState(DropTableColumnState.DROP_COLUMN);
+    } else {
+      modProgress.finish(() -> setNextState(DropTableColumnState.DROP_COLUMN));
+    }
   }
 
   private void dropColumn(final ConfigNodeProcedureEnv env) {
@@ -269,6 +323,7 @@ public class DropTableColumnProcedure
             ? ProcedureType.PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE.getTypeCode()
             : ProcedureType.DROP_TABLE_COLUMN_PROCEDURE.getTypeCode());
     innerSerialize(stream);
+    modProgress.serialize(stream);
   }
 
   protected void innerSerialize(final DataOutputStream stream) throws IOException {
@@ -284,6 +339,9 @@ public class DropTableColumnProcedure
 
     this.columnName = ReadWriteIOUtils.readString(byteBuffer);
     this.isAttributeColumn = ReadWriteIOUtils.readBool(byteBuffer);
+    if (!(this instanceof DropViewColumnProcedure)) {
+      modProgress.deserialize(byteBuffer);
+    }
   }
 
   @Override

@@ -43,6 +43,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class})
 public class FrequencyIT {
   protected static final int ITERATION_TIMES = 16384;
+  private static final int INSERT_BATCH_SIZE = 100;
   protected static final int DELTA_T = 100;
   protected static final int PERIOD_1 = 10;
   protected static final int PEROID_2 = 200;
@@ -97,15 +98,25 @@ public class FrequencyIT {
     long a = 0, b = 1000000000;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (int i = 0; i < ITERATION_TIMES; ++i) {
-        statement.execute(
-            String.format(
-                Locale.ENGLISH,
-                "insert into root.vehicle.d1(timestamp,s1,s2,s3) values(%d,%f,%f,%f)",
-                (long) (i + 1) * DELTA_T,
-                Math.sin(i % PERIOD_1 * 2 * pi / (double) PERIOD_1),
-                Math.sin(i % PEROID_2 * 2 * pi / (double) PEROID_2),
-                0.5 * Math.sin(i % PERIOD_1 * pi) + Math.sin(i % PEROID_2 * pi)));
+      // Batch the same samples to reduce SQL requests, retaining the six-decimal input rounding.
+      for (int start = 0; start < ITERATION_TIMES; start += INSERT_BATCH_SIZE) {
+        StringBuilder insertSql =
+            new StringBuilder("insert into root.vehicle.d1(timestamp,s1,s2,s3) values");
+        int end = Math.min(start + INSERT_BATCH_SIZE, ITERATION_TIMES);
+        for (int i = start; i < end; i++) {
+          if (i > start) {
+            insertSql.append(',');
+          }
+          insertSql.append(
+              String.format(
+                  Locale.ENGLISH,
+                  "(%d,%f,%f,%f)",
+                  (long) (i + 1) * DELTA_T,
+                  Math.sin(i % PERIOD_1 * 2 * pi / (double) PERIOD_1),
+                  Math.sin(i % PEROID_2 * 2 * pi / (double) PEROID_2),
+                  0.5 * Math.sin(i % PERIOD_1 * pi) + Math.sin(i % PEROID_2 * pi)));
+        }
+        statement.execute(insertSql.toString());
       }
       statement.execute(
           String.format("insert into root.vehicle.d2(timestamp,s1) values(%d, 2)", DELTA_T));

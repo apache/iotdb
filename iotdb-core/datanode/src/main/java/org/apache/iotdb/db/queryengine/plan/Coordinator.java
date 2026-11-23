@@ -320,6 +320,8 @@ public class Coordinator {
     return execution(queryId, session, sql, userQuery, debug, false, iQueryExecutionFactory);
   }
 
+  // Record the SQL for Errors as well, preserving the original failure and finally cleanup.
+  @SuppressWarnings("java:S1181")
   private ExecutionResult execution(
       long queryId,
       SessionInfo session,
@@ -347,7 +349,14 @@ public class Coordinator {
       queryContext.setDebug(debug);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (readOnlyInternalQuery) {
-        InternalQueryExecutor.validateReadOnlyQuery(execution);
+        try {
+          InternalQueryExecutor.validateReadOnlyQuery(execution);
+        } catch (RuntimeException e) {
+          // The execution is neither registered nor started, so nothing else would release what
+          // its analysis acquired, such as the UDF class loaders pinned in its query scope.
+          execution.stopAndCleanup(e);
+          throw e;
+        }
       }
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -362,6 +371,13 @@ public class Coordinator {
         result.status.setNeedRetry(true);
       }
       return result;
+    } catch (RuntimeException | Error e) {
+      // Analysis can fail before registration. Only link the query ID to its SQL here; callers
+      // classify the failure and log its stack, avoiding duplicate stacks and WARNs for user
+      // errors.
+      LOGGER.info(
+          DataNodeQueryMessages.LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9, globalQueryId, sql);
+      throw e;
     } finally {
       if (queryContext != null) {
         queryContext.releaseAllMemoryReservedForFrontEnd();
@@ -1008,14 +1024,18 @@ public class Coordinator {
    * We need to reclaim resources from queries that have exceeded their timeout by more than one
    * minute. This indicates that the associated clients have failed to perform proper resource
    * cleanup.
+   *
+   * <p>Whether an RPC of the query is in progress does not matter here. The timeout bounds the
+   * whole lifetime of a query, so a query without an RPC in progress has been abandoned by its
+   * client, and an RPC that is still in progress this long after the timeout is stuck, e.g. in a
+   * dispatch that never returns, and is only unblocked by stopping the query. Sparing the queries
+   * with an RPC in progress would also keep forever every query whose caller never reports the end
+   * of its RPC through {@link #recordExecutionTime}.
    */
   public void cleanUpStaleQueries() {
     long currentTime = System.currentTimeMillis();
     queryExecutionMap.forEach(
         (queryId, queryExecution) -> {
-          if (queryExecution.isActive()) {
-            return;
-          }
           long timeout = queryExecution.getTimeout();
           long queryStartTime = queryExecution.getStartExecutionTime();
           long executeTime = currentTime - queryStartTime;
@@ -1028,6 +1048,11 @@ public class Coordinator {
                 new QueryTimeoutRuntimeException(queryStartTime, currentTime, timeout));
           }
         });
+  }
+
+  /** Registers an already materialized execution, e.g. an oversized Fast LAST cache hit. */
+  public void registerQueryExecution(Long queryId, IQueryExecution queryExecution) {
+    queryExecutionMap.put(queryId, queryExecution);
   }
 
   public void cleanupQueryExecution(Long queryId) {

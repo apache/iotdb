@@ -20,6 +20,11 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_IS_CLOSED_12143E89 = "Query attempt %s is closed.";
+  public static final String EXCEPTION_QUERY_ATTEMPT_ARG_ADMISSION_EXPIRED_DEADLINE_ARG_NS_NOW_ARG_NS_16A9846C = "Query attempt %s admission expired: deadline=%d ns, now=%d ns.";
+  public static final String EXCEPTION_INVALID_QUERY_ADMISSION_ISSUER_FOR_ATTEMPT_ARG_9D1C4E9C = "Invalid query admission issuer for attempt %s.";
+
+
   public static final String MESSAGE_FAIL_TO_INSERT_MEASUREMENTS_ARG_CAUSED_BY_ARG_B9858E6B =
       "Fail to insert measurements %s caused by %s";
 
@@ -196,8 +201,6 @@ public final class DataNodeQueryMessages {
       "Failed to send new data block event, attempt times: {}";
   public static final String FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT =
       "Failed to send end of data block event, attempt times: {}";
-  public static final String FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT_2 =
-      "Failed to send end of data block event after all retry";
   public static final String SOURCE_HANDLE_IS_BLOCKED =
       "Source handle is blocked.";
   public static final String RESERVED_DATA_BLOCK_SIZE_IS_NULL =
@@ -2197,6 +2200,10 @@ public final class DataNodeQueryMessages {
       "Second argument of Aggregate functions [%s] should be orderable";
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_OR_THREE_ARGUMENTS =
       "Aggregate functions [%s] should only have two or three arguments";
+  public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_TWO_OR_THREE_ARGUMENTS_C1ADA261 =
+      "Aggregate functions [%s] should only have one, two or three arguments";
+  public static final String SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_LITERAL_OR_INTEGER_498530E4 =
+      "Second argument of Aggregate functions [%s] should be a positive duration literal (e.g. 1s, 1m, 1h) or an integer literal";
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_ARGUMENTS =
       "Aggregate functions [%s] should only have two arguments";
   public static final String SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_NUMBERIC_TYPE_AND_DO_NOT_USE =
@@ -2420,6 +2427,12 @@ public final class DataNodeQueryMessages {
       "Invalid argument %s. Partitioning can not be specified for table argument with row semantics";
   public static final String INVALID_ARGUMENT_S_ORDERING_CAN_NOT_BE_SPECIFIED_FOR_TABLE_ARGUMENT_WITH_ROW_SEMANTICS =
       "Invalid argument %s. Ordering can not be specified for table argument with row semantics";
+  public static final String
+      EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_ASCENDING_ORDER_5E26E74A =
+          "The ORDER BY clause of the %s argument must be in ascending order.";
+  public static final String
+      EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_DESCENDING_ORDER_C2B688D7 =
+          "The ORDER BY clause of the %s argument must be in descending order.";
   public static final String INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S =
       "Invalid scalar argument '%s'. Expected type %s, got %s";
   public static final String INVALID_SCALAR_ARGUMENT_S_S =
@@ -2814,6 +2827,9 @@ public final class DataNodeQueryMessages {
       "Failures happened during running ConfigExecution when executing {}, message: {}, status: {}";
   public static final String FAILURES_HAPPENED_DURING_RUNNING_CONFIGEXECUTION_WHEN_EXECUTING_ARG =
       "Failures happened during running ConfigExecution when executing {}.";
+  public static final String
+      LOG_FAILED_TO_CREATE_THE_TREE_TO_TABLE_VIEW_ARG_ARG_WITH_STATUS_CODE_ARG_ARG_0A3C8F10 =
+          "Failed to create the tree to table view {}.{} with status code {}: {}.";
   public static final String FAILED_TO_EXECUTE_CREATE_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG =
       "Failed to execute create database {} in config node, status is {}.";
   public static final String FAILED_TO_EXECUTE_ALTER_DATABASE_ARG_IN_CONFIG_NODE_STATUS_IS_ARG =
@@ -4144,6 +4160,39 @@ public final class DataNodeQueryMessages {
   public static final String MESSAGE_TAGCOLUMNS_ARG_6520A0C2 = "TagColumns: %s";
   public static final String MESSAGE_MEMORYTHRESHOLD_ARG_3676AB46 = "MemoryThreshold: %s";
 
+
+  public static final String EXCEPTION_DATABASENAME_IS_NULL_A811DE1B =
+      "databaseName is null";
+
+  public static final String EXCEPTION_VALUES_IS_NULL_A580EDAA =
+      "values is null";
+
+  public static final String EXCEPTION_ZONEID_IS_NULL_7DAA5E2C =
+      "zoneId is null";
+
+  public static final String EXCEPTION_INSERT_TARGET_TABLE_DOES_NOT_EXIST_ARG_ARG_78F05787 =
+      "Insert target table does not exist: %s.%s";
+
+  public static final String EXCEPTION_EXPRESSIONS_AND_COLUMNS_DO_NOT_MATCH_EXPRESSIONS_SIZE_ARG_COLUMNS_SIZE_ARG_F933A8C1 =
+      "expressions and columns do not match, expressions size: %s, columns size: %s";
+
+  public static final String EXCEPTION_INSERT_EXPRESSION_MUST_BE_CONSTANT_AFTER_CONSTANT_FOLDING_ARG_FOLDED_TO_ARG_D9EE1433 =
+      "Insert expression must be constant after constant folding: %s (folded to %s)";
+
+  public static final String EXCEPTION_CANNOT_EVALUATE_INSERT_EXPRESSION_AS_A_CONSTANT_ARG_ARG_F478C134 =
+      "Cannot evaluate insert expression as a constant: %s. %s";
+
+  public static final String EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_INT_F8E58471 =
+      "The %s is out of range of int.";
+
+  public static final String EXCEPTION_THE_ARG_IS_OUT_OF_RANGE_OF_LONG_9B1C872A =
+      "The %s is out of range of long.";
+
+  public static final String EXCEPTION_INT_OVERFLOW_ARG_ARG_BB287017 =
+      "int overflow: %s / %s";
+
+  public static final String EXCEPTION_LONG_OVERFLOW_ARG_ARG_46CC95E2 =
+      "long overflow: %s / %s";
   public static final String EXCEPTION_CHUNKDATA_CONTAINS_NO_PHYSICAL_CHUNK_607BCFC8 =
       "ChunkData contains no physical chunk";
   public static final String EXCEPTION_DEVICE_CANNOT_BE_NULL_F1EB20B6 = "device cannot be null";
@@ -4933,4 +4982,32 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s: %s ms, %s invocations, %s applications";
+
+  public static final String INVALID_SCALAR_ARGUMENT_S_VALUE_OUT_OF_RANGE_FOR_INT32_A865664C =
+      "Invalid scalar argument '%s'. Value out of range for INT32";
+
+  public static final String
+      EXCEPTION_REQUEST_OFFSET_ARG_DOES_NOT_MATCH_THE_PENDING_RESULT_FRAGMENT_OFFSET_ARG_A1B13DBC =
+          "Request offset %d does not match the pending result fragment offset %d";
+  public static final String
+      EXCEPTION_REQUEST_OFFSET_ARG_IS_INVALID_BECAUSE_NO_RESULT_FRAGMENT_IS_PENDING_C403454F =
+          "Request offset %d is invalid because no result fragment is pending";
+
+  public static final String
+      EXCEPTION_WAITING_FOR_THE_MEMORY_OF_A_PENDING_RESULT_FRAGMENT_WAS_ABORTED_BECAUSE_THE_QUERY_WAS_CLEANED_UP_D51EC67C =
+          "Waiting for the memory of a pending result fragment was aborted because the query was cleaned up";
+
+  public static final String MESSAGE_COLUMN_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_OR_COLUMN_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_08F7DB64 =
+      "Column deletion is asynchronous. The specified table or column does not exist; no task was submitted.";
+  public static final String MESSAGE_TABLE_DELETION_IS_ASYNCHRONOUS_THE_SPECIFIED_TABLE_DOES_NOT_EXIST_NO_TASK_WAS_SUBMITTED_74E6521A =
+      "Table deletion is asynchronous. The specified table does not exist; no task was submitted.";
+
+  public static final String EXCEPTION_NOT_ENOUGH_MEMORY_WHILE_ANALYZING_TIME_PARTITIONS_NARROW_THE_QUERY_TIME_RANGE_OR_INCREASE_QUERY_MEMORY_MEMORY_DETAILS_REQUESTED_THIS_TIME_ARG_CURRENT_FREE_MEMORY_ARG_ORIGINAL_ERROR_ARG_37676B2A =
+      "Not enough memory while analyzing time partitions. Narrow the query time range or increase query memory. Memory details: requested this time %s, current free memory %s. Original error: %s";
+
+  public static final String EXCEPTION_QUERY_ARG_CANNOT_RESERVE_ARG_BYTES_PENDING_FRONT_END_MEMORY_RESERVATION_EXCEEDS_LONG_MAX_VALUE_BYTES_D38CD6D8 =
+      "Query %s cannot reserve %s bytes: pending front-end memory reservation exceeds Long.MAX_VALUE bytes.";
+
+  public static final String LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9 =
+      "[QueryFailed] queryId: {}, sql: {}";
 }

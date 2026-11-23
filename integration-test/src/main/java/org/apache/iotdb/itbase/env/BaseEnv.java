@@ -147,6 +147,16 @@ public interface BaseEnv {
         version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
   }
 
+  default Connection getConnection(
+      Constant.Version version, String sqlDialect, int networkTimeoutMs) throws SQLException {
+    return getConnection(
+        version,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        sqlDialect,
+        networkTimeoutMs);
+  }
+
   default Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException {
     return getConnection(version, username, password, TREE_SQL_DIALECT);
@@ -155,6 +165,16 @@ public interface BaseEnv {
   Connection getConnection(
       Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException;
+
+  default Connection getConnection(
+      Constant.Version version,
+      String username,
+      String password,
+      String sqlDialect,
+      int networkTimeoutMs)
+      throws SQLException {
+    return getConnection(version, username, password, sqlDialect);
+  }
 
   Connection getConnection(
       DataNodeWrapper dataNodeWrapper, String username, String password, String sqlDialect)

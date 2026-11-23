@@ -147,6 +147,12 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         ConsensusPrefetchingQueue::getActiveStatus,
         key.getTags());
     metricService.createAutoGauge(
+        Metric.SUBSCRIPTION_CONSENSUS_ACTIVE_WRITER_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        queue,
+        ConsensusPrefetchingQueue::getActiveWriterCount,
+        key.getTags());
+    metricService.createAutoGauge(
         Metric.SUBSCRIPTION_CONSENSUS_INITIALIZED.toString(),
         MetricLevel.IMPORTANT,
         queue,
@@ -373,6 +379,10 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_WATERMARK.toString(), key.getTags());
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_ACTIVE.toString(), key.getTags());
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SUBSCRIPTION_CONSENSUS_ACTIVE_WRITER_COUNT.toString(),
+        key.getTags());
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.SUBSCRIPTION_CONSENSUS_INITIALIZED.toString(), key.getTags());
     metricService.remove(

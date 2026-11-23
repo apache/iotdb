@@ -34,13 +34,13 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -116,6 +116,7 @@ public class FragmentInstanceContext extends QueryContext {
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
   private static final int MODS_MEMORY_ESTIMATE_READ_INTERVAL = 10_000;
   private final FragmentInstanceId id;
+  private UDFClassLoaderManager.QueryScope udfQueryScope;
 
   private final FragmentInstanceStateMachine stateMachine;
 
@@ -180,8 +181,10 @@ public class FragmentInstanceContext extends QueryContext {
 
   // Outer query deadline (startTime + timeout) for IoTDBLocal UDF
   private long outerQueryDeadlineMs = -1L;
+  private long exchangeDeadlineMs = -1L;
 
-  private final Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap;
+  private QueryAttemptRegistry.Registration queryAttemptRegistration;
+  private boolean executionInitialized;
   private DataNodeQueryContext dataNodeQueryContext;
 
   // Used for EXPLAIN ANALYZE to cache statistics result when the FI is finished,
@@ -242,7 +245,7 @@ public class FragmentInstanceContext extends QueryContext {
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
-      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
+      DataNodeQueryContext dataNodeQueryContext,
       long outerQueryDeadlineMs,
       boolean debug,
       boolean isVerbose) {
@@ -253,7 +256,7 @@ public class FragmentInstanceContext extends QueryContext {
             sessionInfo,
             dataRegion,
             globalTimePredicate,
-            dataNodeQueryContextMap,
+            dataNodeQueryContext,
             outerQueryDeadlineMs,
             debug,
             isVerbose);
@@ -357,7 +360,7 @@ public class FragmentInstanceContext extends QueryContext {
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
-      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
+      DataNodeQueryContext dataNodeQueryContext,
       long outerQueryDeadlineMs,
       boolean debug,
       boolean verbose) {
@@ -373,8 +376,7 @@ public class FragmentInstanceContext extends QueryContext {
             ? null
             : globalTimePredicate.convertPredicateToTimeFilter(
                 sessionInfo.getZoneId(), TimestampPrecisionUtils.currPrecision);
-    this.dataNodeQueryContextMap = dataNodeQueryContextMap;
-    this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
+    this.dataNodeQueryContext = dataNodeQueryContext;
     this.memoryReservationManager =
         new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
@@ -390,7 +392,6 @@ public class FragmentInstanceContext extends QueryContext {
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
-    this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
     this.memoryReservationManager =
         new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
@@ -408,7 +409,6 @@ public class FragmentInstanceContext extends QueryContext {
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
-    this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
     this.memoryReservationManager = memoryReservationManager;
   }
@@ -428,7 +428,6 @@ public class FragmentInstanceContext extends QueryContext {
     this.sessionInfo = sessionInfo;
     this.dataRegion = dataRegion;
     this.globalTimeFilter = globalTimeFilter;
-    this.dataNodeQueryContextMap = null;
     this.memoryReservationManager =
         new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
@@ -450,7 +449,6 @@ public class FragmentInstanceContext extends QueryContext {
     this.queryId = queryId;
     this.id = null;
     this.stateMachine = null;
-    this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
     this.dataRegion = dataRegion;
     this.globalTimeFilter = timeFilter;
@@ -545,12 +543,6 @@ public class FragmentInstanceContext extends QueryContext {
       executionEndTime.compareAndSet(END_TIME_INITIAL_VALUE, now);
       endNanos.compareAndSet(0, System.nanoTime());
 
-      // release some query resource in FragmentInstanceContext
-      // why not release them in releaseResourceWhenAllDriversAreClosed() together?
-      // because we may have no chane to run the releaseResourceWhenAllDriversAreClosed which is
-      // called in callback of FragmentInstanceExecution
-      // FragmentInstanceExecution won't be created if we meet some errors like MemoryNotEnough
-      releaseDataNodeQueryContext();
       sourcePaths = null;
     }
   }
@@ -669,6 +661,18 @@ public class FragmentInstanceContext extends QueryContext {
 
   public long getOuterQueryDeadlineMs() {
     return outerQueryDeadlineMs;
+  }
+
+  void setExchangeDeadlineMs(long deadlineMs) {
+    exchangeDeadlineMs = deadlineMs;
+  }
+
+  public long getExchangeDeadlineMs() {
+    // Legacy coordinators only send the remaining FI timeout. Also honor an earlier local FI limit.
+    if (exchangeDeadlineMs < 0 || outerQueryDeadlineMs < 0) {
+      return Math.max(exchangeDeadlineMs, outerQueryDeadlineMs);
+    }
+    return Math.min(outerQueryDeadlineMs, exchangeDeadlineMs);
   }
 
   public Optional<Throwable> getFailureCause() {
@@ -1351,6 +1355,15 @@ public class FragmentInstanceContext extends QueryContext {
    */
   public synchronized void releaseResource() {
     try {
+      finalizeUDFQuery();
+      releaseResourceInternal();
+    } finally {
+      releaseDataNodeQueryContext();
+    }
+  }
+
+  private void releaseResourceInternal() {
+    try {
       getQueryChunkReaders().close();
     } catch (IOException e) {
       LOGGER.warn(DataNodeQueryMessages.LOG_FAILED_TO_RELEASE_QUERY_CHUNK_RESOURCES_91573FE5, e);
@@ -1483,15 +1496,46 @@ public class FragmentInstanceContext extends QueryContext {
         .recordExecutionCost(QUERY_RESOURCE_INIT, getInitQueryDataSourceCost());
   }
 
-  private void releaseDataNodeQueryContext() {
-    if (dataNodeQueryContextMap == null) {
-      // this process is in fetch schema, nothing need to release
-      return;
-    }
+  void setQueryAttemptRegistration(QueryAttemptRegistry.Registration registration) {
+    this.queryAttemptRegistration = registration;
+  }
 
-    if (dataNodeQueryContext.decreaseDataNodeFINum() == 0) {
-      dataNodeQueryContext = null;
-      dataNodeQueryContextMap.remove(id.getQueryId());
+  void setExecutionInitialized() {
+    executionInitialized = true;
+  }
+
+  boolean isExecutionInitialized() {
+    return executionInitialized;
+  }
+
+  synchronized void releaseDataNodeQueryContext() {
+    if (queryAttemptRegistration != null) {
+      queryAttemptRegistration.close();
+      queryAttemptRegistration = null;
+    }
+    dataNodeQueryContext = null;
+  }
+
+  synchronized void adoptUDFQueryScope(UDFClassLoaderManager.QueryScope transferredScope) {
+    if (udfQueryScope == null) {
+      udfQueryScope = transferredScope;
+    }
+  }
+
+  public synchronized UDFClassLoaderManager.QueryScope getOrCreateUDFQueryScope() {
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    if (udfQueryScope == null && classLoaderManager != null) {
+      udfQueryScope = classLoaderManager.openQueryScope(id.getFullId());
+    }
+    return udfQueryScope;
+  }
+
+  synchronized void finalizeUDFQuery() {
+    UDFClassLoaderManager.QueryScope queryScope = udfQueryScope;
+    udfQueryScope = null;
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    if (queryScope != null && classLoaderManager != null) {
+      classLoaderManager.finalizeUDFQuery(queryScope);
     }
   }
 

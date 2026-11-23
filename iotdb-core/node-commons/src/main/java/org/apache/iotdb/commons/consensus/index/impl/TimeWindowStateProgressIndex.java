@@ -266,6 +266,8 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
       final long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
       final int length = ReadWriteIOUtils.readInt(byteBuffer);
       if (length < 0) {
+        timeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap.put(
+            timeSeries, new Pair<>(timestamp, null));
         continue;
       }
       final byte[] body = new byte[length];
@@ -288,6 +290,8 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
       final long timestamp = ReadWriteIOUtils.readLong(stream);
       final int length = ReadWriteIOUtils.readInt(stream);
       if (length < 0) {
+        timeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap.put(
+            timeSeries, new Pair<>(timestamp, null));
         continue;
       }
       final byte[] body = new byte[length];

@@ -24,10 +24,12 @@ import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ITableSessionPool;
+import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.common.ImportTsFileOperation;
 import org.apache.iotdb.tool.tsfile.ImportTsFileBase;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
@@ -52,6 +54,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -930,6 +933,240 @@ public class DataToolRegressionTest extends AbstractDataTool {
   }
 
   @Test
+  public void testTypeInferKeepsIntegersExact() {
+    // FLOAT holds every integer with |v| <= 2^24, so only those get the FLOAT ("int") type.
+    for (String value : new String[] {"0", "-0", "+5", "-5", "16777215", "16777216", "-16777216"}) {
+      assertInferred(value, TSDataType.FLOAT, Float.parseFloat(value));
+      assertStoredExactly(value, TSDataType.FLOAT);
+    }
+    // 16777218 and 33554432 are exact as FLOAT, but their neighbours in the same column are not.
+    for (String value :
+        new String[] {
+          "16777217",
+          "16777218",
+          "-16777217",
+          "33554431",
+          "33554432",
+          "33554433",
+          "-33554433",
+          "-100000001",
+          "-123456789",
+          "-3000000001",
+          "1099511627776"
+        }) {
+      assertInferred(value, TSDataType.DOUBLE, Double.parseDouble(value));
+      assertStoredExactly(value, TSDataType.DOUBLE);
+    }
+    // Wider than DOUBLE's significand, or than INT64, but inferred without failing.
+    for (String value :
+        new String[] {"9223372036854775807", "-9223372036854775808", "99999999999999999999"}) {
+      assertInferred(value, TSDataType.DOUBLE, Double.parseDouble(value));
+    }
+  }
+
+  @Test
+  public void testTypeInferAcceptsEveryNumberThatIsNumberAccepts() {
+    // Same type as decimals; "1.5f" and "1.5d" were already inferred as FLOAT.
+    for (String value :
+        new String[] {
+          "1.5",
+          ".5",
+          "1.",
+          "1.5f",
+          "1.5d",
+          "12f",
+          "3d",
+          "1e5",
+          "1E10",
+          "1.5e3",
+          "0x1p3",
+          "3.4e38",
+          "Infinity",
+          "-Infinity",
+          "-NaN"
+        }) {
+      assertInferred(value, TSDataType.FLOAT, Float.parseFloat(value));
+    }
+    // Finite values that FLOAT would store as infinity or zero.
+    for (String value : new String[] {"1e39", "-1.0e39", "1e-50"}) {
+      assertInferred(value, TSDataType.DOUBLE, Double.parseDouble(value));
+    }
+    // Beyond DOUBLE as well, so DOUBLE would not keep more of them.
+    assertInferred("1e309", TSDataType.FLOAT, Float.POSITIVE_INFINITY);
+    assertInferred("1e-400", TSDataType.FLOAT, 0f);
+    assertFalse(isNumber("NaN"));
+    assertEquals(TSDataType.DOUBLE, typeInfer("NaN"));
+    assertFalse(isNumber("abc"));
+    assertEquals(TSDataType.STRING, typeInfer("abc"));
+  }
+
+  @Test
+  public void testTypeInferWithInt32MappingTreatsBothSignsAlike() {
+    TSDataType original = Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_INT);
+    Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_INT, TSDataType.INT32);
+    try {
+      assertInferred("16777216", TSDataType.INT32, 16777216);
+      assertInferred("-16777216", TSDataType.INT32, -16777216);
+      assertInferred("20000000", TSDataType.INT32, 20000000);
+      assertInferred("-20000000", TSDataType.INT32, -20000000);
+      assertInferred("2147483647", TSDataType.INT32, Integer.MAX_VALUE);
+      assertInferred("-2147483648", TSDataType.INT32, Integer.MIN_VALUE);
+      assertInferred("2147483648", TSDataType.DOUBLE, 2147483648d);
+      assertInferred("-2147483649", TSDataType.DOUBLE, -2147483649d);
+      assertInferred("3000000001", TSDataType.DOUBLE, 3000000001d);
+      assertInferred("-3000000001", TSDataType.DOUBLE, -3000000001d);
+    } finally {
+      Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_INT, original);
+    }
+  }
+
+  @Test
+  public void testTypeInferRespectsNonFloatMappings() {
+    TSDataType originalInt = Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_INT);
+    TSDataType originalFloat = Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_FLOAT);
+    try {
+      Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_INT, TSDataType.INT64);
+      assertInferred("20000000", TSDataType.INT64, 20000000L);
+      assertInferred("-20000000", TSDataType.INT64, -20000000L);
+      assertInferred("-2000000000", TSDataType.INT64, -2000000000L);
+      assertInferred("9223372036854775807", TSDataType.INT64, Long.MAX_VALUE);
+      assertInferred("-9223372036854775808", TSDataType.INT64, Long.MIN_VALUE);
+      assertInferred("99999999999999999999", TSDataType.DOUBLE, 1e20);
+
+      Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_INT, TSDataType.STRING);
+      assertEquals(TSDataType.STRING, typeInfer("-20000000"));
+      assertEquals(TSDataType.STRING, typeInfer("-2000000000"));
+
+      Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_FLOAT, TSDataType.TEXT);
+      assertEquals(TSDataType.TEXT, typeInfer("1.0e39"));
+      assertEquals(TSDataType.TEXT, typeInfer("1.0e-50"));
+      assertEquals(TSDataType.TEXT, typeInfer("1.5"));
+    } finally {
+      Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_INT, originalInt);
+      Constants.TYPE_INFER_KEY_DICT.put(Constants.DATATYPE_FLOAT, originalFloat);
+    }
+  }
+
+  @Test
+  public void testTreeCsvImportInfersNumbersWithoutLosingRows() throws Exception {
+    batchPointSize = 2;
+    Path csv = directory.resolve("numbers.csv");
+    Files.writeString(
+        csv,
+        "Time,root.a.d1.s1,root.a.d1.s2,root.a.d1.s3,root.a.d1.s4(INT64)\n"
+            + "1,1e5,16777217,-123456789,16777217\n"
+            + "2,7,5,Infinity,3\n"
+            + "3,1.5,-16777217,8,-16777217\n");
+    SessionPool pool = mock(SessionPool.class);
+    SessionDataSetWrapper noSeries = mock(SessionDataSetWrapper.class);
+    when(noSeries.getColumnNames()).thenReturn(List.of());
+    when(pool.executeQueryStatement(anyString())).thenReturn(noSeries);
+    set(ImportDataTree.class, "sessionPool", pool);
+    Map<String, TSDataType> types = new HashMap<>();
+    Map<String, Map<Long, Object>> values = new HashMap<>();
+    AtomicInteger batches = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              batches.incrementAndGet();
+              List<Long> times = invocation.getArgument(1);
+              List<List<String>> measurements = invocation.getArgument(2);
+              List<List<TSDataType>> typesList = invocation.getArgument(3);
+              List<List<Object>> valuesList = invocation.getArgument(4);
+              for (int row = 0; row < times.size(); row++) {
+                for (int i = 0; i < measurements.get(row).size(); i++) {
+                  String measurement = measurements.get(row).get(i);
+                  types.put(measurement, typesList.get(row).get(i));
+                  values
+                      .computeIfAbsent(measurement, k -> new LinkedHashMap<>())
+                      .put(times.get(row), valuesList.get(row).get(i));
+                }
+              }
+              return null;
+            })
+        .when(pool)
+        .insertRecords(any(), any(), any(), any(), any());
+    ImportDataScanTool.putToQueue(csv.toString());
+
+    assertTrue(AbstractImportData.init(new ImportDataTree()));
+
+    assertTrue(batches.get() > 1);
+    assertEquals(
+        Map.of(
+            "s1", TSDataType.FLOAT,
+            "s2", TSDataType.DOUBLE,
+            "s3", TSDataType.DOUBLE,
+            "s4", TSDataType.INT64),
+        types);
+    assertEquals(Map.of(1L, 100000f, 2L, 7f, 3L, 1.5f), values.get("s1"));
+    assertEquals(Map.of(1L, 16777217d, 2L, 5d, 3L, -16777217d), values.get("s2"));
+    assertEquals(Map.of(1L, -123456789d, 2L, Double.POSITIVE_INFINITY, 3L, 8d), values.get("s3"));
+    assertEquals(Map.of(1L, 16777217L, 2L, 3L, 3L, -16777217L), values.get("s4"));
+    assertFalse(Files.exists(directory.resolve("numbers.csv.failed_0")));
+  }
+
+  @Test
+  public void testTableCsvImportInfersNumbersWithoutLosingRows() throws Exception {
+    batchPointSize = 2;
+    Map<String, TSDataType> tableTypes = new LinkedHashMap<>();
+    tableTypes.put("dev", TSDataType.STRING);
+    tableTypes.put("s3", TSDataType.INT64);
+    Map<String, ColumnCategory> categories = new LinkedHashMap<>();
+    categories.put("dev", ColumnCategory.TAG);
+    categories.put("s3", ColumnCategory.FIELD);
+    set(ImportDataTable.class, "dataTypes", tableTypes);
+    set(ImportDataTable.class, "columnCategory", categories);
+    ITableSessionPool pool = mock(ITableSessionPool.class);
+    ITableSession session = mock(ITableSession.class);
+    when(pool.getSession()).thenReturn(session);
+    set(ImportDataTable.class, "sessionPool", pool);
+    Map<String, TSDataType> types = new HashMap<>();
+    Map<String, Map<Long, Object>> values = new HashMap<>();
+    AtomicInteger batches = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              Tablet tablet = invocation.getArgument(0);
+              if (tablet.getRowSize() > 0) {
+                batches.incrementAndGet();
+              }
+              for (int column = 0; column < tablet.getSchemas().size(); column++) {
+                String name = tablet.getSchemas().get(column).getMeasurementName();
+                types.put(name, tablet.getSchemas().get(column).getType());
+                for (int row = 0; row < tablet.getRowSize(); row++) {
+                  if (!tablet.isNull(row, column)) {
+                    values
+                        .computeIfAbsent(name, k -> new LinkedHashMap<>())
+                        .put(tablet.getTimestamp(row), tablet.getValue(row, column));
+                  }
+                }
+              }
+              return null;
+            })
+        .when(session)
+        .insert(any(Tablet.class));
+    Path csv = directory.resolve("numbers.csv");
+    Files.writeString(
+        csv,
+        "time,dev,s1,s2,s3\n"
+            + "1,a,1e5,-16777217,16777217\n"
+            + "2,a,7,16777217,3\n"
+            + "3,a,Infinity,4,-16777217\n"
+            + "4,a,1.5,5,4\n");
+    ImportDataScanTool.putToQueue(csv.toString());
+
+    assertTrue(AbstractImportData.init(new ImportDataTable()));
+
+    assertTrue(batches.get() > 1);
+    assertEquals(TSDataType.FLOAT, types.get("s1"));
+    assertEquals(TSDataType.DOUBLE, types.get("s2"));
+    assertEquals(TSDataType.INT64, types.get("s3"));
+    assertEquals(
+        Map.of(1L, 100000f, 2L, 7f, 3L, Float.POSITIVE_INFINITY, 4L, 1.5f), values.get("s1"));
+    assertEquals(Map.of(1L, -16777217d, 2L, 16777217d, 3L, 4d, 4L, 5d), values.get("s2"));
+    assertEquals(Map.of(1L, 16777217L, 2L, 3L, 3L, -16777217L, 4L, 4L), values.get("s3"));
+    assertFalse(Files.exists(directory.resolve("numbers.csv.failed_0")));
+  }
+
+  @Test
   public void testSuccessArchivalPreservesFilesAndSidecars() throws Exception {
     for (ImportTsFileOperation operation :
         List.of(
@@ -1138,6 +1375,17 @@ public class DataToolRegressionTest extends AbstractDataTool {
 
   private String firstLine(String name) throws IOException {
     return Files.readAllLines(directory.resolve(name)).get(0);
+  }
+
+  private static void assertInferred(String value, TSDataType type, Object stored) {
+    assertTrue(value, isNumber(value));
+    assertEquals(value, type, typeInfer(value));
+    assertEquals(value, stored, typeTrans(value, type));
+  }
+
+  private static void assertStoredExactly(String value, TSDataType type) {
+    double stored = ((Number) typeTrans(value, type)).doubleValue();
+    assertEquals(value, 0, new BigDecimal(value).compareTo(new BigDecimal(stored)));
   }
 
   private static void set(Class<?> owner, String name, Object value) throws Exception {

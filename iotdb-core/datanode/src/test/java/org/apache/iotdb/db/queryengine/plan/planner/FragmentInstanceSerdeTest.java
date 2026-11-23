@@ -31,8 +31,10 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
@@ -53,6 +55,8 @@ import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 
 public class FragmentInstanceSerdeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -86,7 +90,10 @@ public class FragmentInstanceSerdeTest {
             ImmutableList.of(dataNodeLocation));
     fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
     ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
-    FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
+    FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
+    FragmentInstance deserializeFragmentInstance =
+        FragmentInstance.deserializeFrom(fragmentInstanceId, byteBuffer);
+    assertNull(deserializeFragmentInstance.claimUDFQueryScope());
     assertNull(deserializeFragmentInstance.getExecutorType());
     // Because the ExecutorType won't be considered in serialization, we need to set it
     // from original object before comparison.
@@ -161,5 +168,37 @@ public class FragmentInstanceSerdeTest {
     offsetNode.addChild(limitNode);
 
     return offsetNode;
+  }
+
+  @Test
+  public void testUDFQueryScopeCanBeTransferredAndClaimed() throws Exception {
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.setupAndGetInstance();
+    PlanFragmentId planFragmentId = new PlanFragmentId("scope_transfer", 0);
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(
+            new PlanFragment(planFragmentId, constructPlanNodeTree()),
+            planFragmentId.genFragmentInstanceId(),
+            null,
+            QueryType.READ,
+            config.getQueryTimeoutThreshold(),
+            sessionInfo,
+            false,
+            false);
+    ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
+    FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
+    UDFClassLoaderManager.QueryScope queryScope =
+        classLoaderManager.openQueryScope(fragmentInstanceId.getFullId());
+
+    FragmentInstance deserializedFragmentInstance =
+        classLoaderManager.withQueryScope(
+            queryScope, () -> FragmentInstance.deserializeFrom(fragmentInstanceId, byteBuffer));
+    deserializedFragmentInstance.attachUDFQueryScope(queryScope);
+
+    assertSame(queryScope, deserializedFragmentInstance.claimUDFQueryScope());
+    assertNull(deserializedFragmentInstance.claimUDFQueryScope());
+    classLoaderManager.finalizeUDFQuery(queryScope);
+    assertThrows(
+        IllegalStateException.class,
+        () -> classLoaderManager.withQueryScope(queryScope, () -> null));
   }
 }

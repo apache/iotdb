@@ -34,6 +34,7 @@ import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.Striped;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +45,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -62,6 +64,11 @@ public class DeletionResourceManager implements AutoCloseable {
       String.format(
           "^_(?<%s>\\d+)-(?<%s>\\d+)\\%s$",
           REBOOT_TIME, MEM_TABLE_FLUSH_ORDER, DELETION_FILE_SUFFIX);
+  // Stable, bounded locks are shared by creation, ordinary close and region deletion. Never remove
+  // a lock while a waiter may still hold its reference.
+  private static final Striped<Lock> REGION_LOCKS = Striped.lock(1024);
+  private static final Set<Integer> DELETED_REGIONS = ConcurrentHashMap.newKeySet();
+  private boolean closed;
   private final int dataRegionId;
   private final DeletionBuffer deletionBuffer;
   private final File storageDir;
@@ -132,25 +139,50 @@ public class DeletionResourceManager implements AutoCloseable {
 
   @Override
   public void close() {
-    LOGGER.info(DataNodePipeMessages.CLOSING_DELETION_RESOURCE_MANAGER_FOR, dataRegionId);
-    this.deleteNode2ResourcesMap.clear();
-    this.deletionBuffer.close();
-    if (DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP != null) {
-      DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.remove(dataRegionId, this);
+    final Lock lock = REGION_LOCKS.get(dataRegionId);
+    lock.lock();
+    try {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      LOGGER.info(DataNodePipeMessages.CLOSING_DELETION_RESOURCE_MANAGER_FOR, dataRegionId);
+      this.deletionBuffer.close();
+      this.deleteNode2ResourcesMap.clear();
+      if (DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP != null) {
+        DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.remove(dataRegionId, this);
+      }
+      LOGGER.info(
+          DataNodePipeMessages.DELETION_RESOURCE_MANAGER_FOR_HAS_BEEN_SUCCESSFULLY, dataRegionId);
+    } finally {
+      lock.unlock();
     }
-    LOGGER.info(
-        DataNodePipeMessages.DELETION_RESOURCE_MANAGER_FOR_HAS_BEEN_SUCCESSFULLY, dataRegionId);
   }
 
   public DeletionResource registerDeletionResource(AbstractDeleteDataNode deleteDataNode) {
-    DeletionResource deletionResource =
-        deleteNode2ResourcesMap.computeIfAbsent(
-            deleteDataNode,
-            key ->
-                new DeletionResource(deleteDataNode, this::removeDeletionResource, dataRegionId));
-    // register a persist task for current deletionResource
-    deletionBuffer.registerDeletionResource(deletionResource);
-    return deletionResource;
+    final Lock lock = REGION_LOCKS.get(dataRegionId);
+    lock.lock();
+    try {
+      final DeletionResource deletionResource =
+          new DeletionResource(deleteDataNode, this::removeDeletionResource, dataRegionId);
+      // A producer may have obtained this manager before the region deletion barrier.
+      // Complete its result instead of leaving it waiting on an already closed buffer.
+      if (closed || DELETED_REGIONS.contains(dataRegionId)) {
+        deletionResource.onPersistFailed(
+            new IOException(
+                String.format(
+                    DataNodePipeMessages
+                        .EXCEPTION_DELETION_RESOURCE_MANAGER_FOR_DATAREGION_ARG_IS_CLOSED_OR_DELETED_951C0622,
+                    dataRegionId)));
+        return deletionResource;
+      }
+      final DeletionResource resource =
+          deleteNode2ResourcesMap.computeIfAbsent(deleteDataNode, key -> deletionResource);
+      deletionBuffer.registerDeletionResource(resource);
+      return resource;
+    } finally {
+      lock.unlock();
+    }
   }
 
   public DeletionResource getDeletionResource(AbstractDeleteDataNode deleteDataNode) {
@@ -176,7 +208,55 @@ public class DeletionResourceManager implements AutoCloseable {
     }
   }
 
-  public void removeDAL() {
+  /** Block new DAL creation before stopping region producers. Does not wait for producer tasks. */
+  public static void markRegionDeleted(int groupId) {
+    final Lock lock = REGION_LOCKS.get(groupId);
+    lock.lock();
+    try {
+      DELETED_REGIONS.add(groupId);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * Only the storage lifecycle may permit DAL creation again, after old-region cleanup finishes.
+   */
+  public static void onRegionCreated(int groupId) {
+    final Lock lock = REGION_LOCKS.get(groupId);
+    lock.lock();
+    try {
+      DELETED_REGIONS.remove(groupId);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /** Close and remove DAL atomically with respect to creation, without constructing a manager. */
+  public static void closeAndRemoveDAL(int groupId) {
+    final Lock lock = REGION_LOCKS.get(groupId);
+    lock.lock();
+    try {
+      DELETED_REGIONS.add(groupId);
+      if (DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP == null) {
+        return;
+      }
+      final DeletionResourceManager manager =
+          DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.get(groupId);
+      if (manager != null) {
+        manager.close();
+      }
+      removeDAL(
+          groupId,
+          new File(
+              IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir(),
+              Integer.toString(groupId)));
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  private static void removeDAL(int dataRegionId, File storageDir) {
     if (storageDir.exists()) {
       FileUtils.deleteFileOrDirectory(storageDir);
       LOGGER.info(
@@ -195,43 +275,53 @@ public class DeletionResourceManager implements AutoCloseable {
    * This is a hook function, which will be automatically invoked when deletionResource's reference
    * count returns to 0.
    */
-  private synchronized void removeDeletionResource(DeletionResource deletionResource) {
-    // Clean memory
-    deleteNode2ResourcesMap.remove(deletionResource.getDeleteDataNode());
-    // Clean disk
-    ProgressIndex currentProgressIndex =
-        ReplicateProgressDataNodeManager.extractLocalSimpleProgressIndex(
-            deletionResource.getProgressIndex());
-
-    try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {
-      Path[] deletionPaths =
-          pathStream
-              .filter(Files::isRegularFile)
-              .filter(path -> path.getFileName().toString().matches(DELETION_FILE_NAME_PATTERN))
-              .filter(
-                  path ->
-                      isFileProgressCoveredByGivenProgress(
-                          path.getFileName().toString(), currentProgressIndex))
-              .sorted(this::compareFileProgressIndex)
-              .toArray(Path[]::new);
-      // File name represents the max progressIndex in its previous file. If currentProgressIndex is
-      // larger than a fileName's progressIndex, it means that the file before this file has been
-      // fully synchronized and can be deleted.
-      // So here we cannot guarantee that the last file can be deleted, we can only guarantee that
-      // the first n-1 files can be deleted (if the length of deletionPaths is n)
-      for (int i = 0; i < deletionPaths.length - 1; i++) {
-        File fileToDelete = deletionPaths[i].toFile();
-        FileUtils.deleteFileOrDirectory(fileToDelete);
-        LOGGER.info(
-            DataNodePipeMessages.DELETIONMANAGER_DELETE_DELETION_FILE_IN_DIR,
-            dataRegionId,
-            fileToDelete);
+  private void removeDeletionResource(DeletionResource deletionResource) {
+    final Lock lock = REGION_LOCKS.get(dataRegionId);
+    lock.lock();
+    try {
+      // Late reference releases from an old manager must not touch a new lifecycle's DAL.
+      if (closed || DELETED_REGIONS.contains(dataRegionId)) {
+        return;
       }
-    } catch (IOException e) {
-      LOGGER.warn(
-          DataNodePipeMessages.DELETIONMANAGER_FAILED_TO_DELETE_FILE_IN_DIR,
-          dataRegionId,
-          storageDir);
+      // Clean memory
+      deleteNode2ResourcesMap.remove(deletionResource.getDeleteDataNode());
+      // Clean disk
+      ProgressIndex currentProgressIndex =
+          ReplicateProgressDataNodeManager.extractLocalSimpleProgressIndex(
+              deletionResource.getProgressIndex());
+
+      try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {
+        Path[] deletionPaths =
+            pathStream
+                .filter(Files::isRegularFile)
+                .filter(path -> path.getFileName().toString().matches(DELETION_FILE_NAME_PATTERN))
+                .filter(
+                    path ->
+                        isFileProgressCoveredByGivenProgress(
+                            path.getFileName().toString(), currentProgressIndex))
+                .sorted(this::compareFileProgressIndex)
+                .toArray(Path[]::new);
+        // File names describe the previous file's max progressIndex. A larger currentProgressIndex
+        // means that the file before this file has been
+        // fully synchronized and can be deleted.
+        // So here we cannot guarantee that the last file can be deleted, we can only guarantee that
+        // the first n-1 files can be deleted (if the length of deletionPaths is n)
+        for (int i = 0; i < deletionPaths.length - 1; i++) {
+          File fileToDelete = deletionPaths[i].toFile();
+          FileUtils.deleteFileOrDirectory(fileToDelete);
+          LOGGER.info(
+              DataNodePipeMessages.DELETIONMANAGER_DELETE_DELETION_FILE_IN_DIR,
+              dataRegionId,
+              fileToDelete);
+        }
+      } catch (IOException e) {
+        LOGGER.warn(
+            DataNodePipeMessages.DELETIONMANAGER_FAILED_TO_DELETE_FILE_IN_DIR,
+            dataRegionId,
+            storageDir);
+      }
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -291,21 +381,41 @@ public class DeletionResourceManager implements AutoCloseable {
     }
   }
 
-  public static DeletionResourceManager getInstance(int groupId) {
-    // If consensusImpl is not IoTConsensusV2.
-    if (DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP == null) {
-      return null;
+  /** Obtain an existing manager without creating DAL resources for a lookup-only caller. */
+  public static DeletionResourceManager getInstanceIfPresent(int groupId) {
+    final Lock lock = REGION_LOCKS.get(groupId);
+    lock.lock();
+    try {
+      return DELETED_REGIONS.contains(groupId)
+              || DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP == null
+          ? null
+          : DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.get(groupId);
+    } finally {
+      lock.unlock();
     }
-    return DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.computeIfAbsent(
-        groupId,
-        key -> {
-          try {
-            return new DeletionResourceManager(groupId);
-          } catch (IOException e) {
-            LOGGER.error(DataNodePipeMessages.FAILED_TO_INITIALIZE_DELETIONRESOURCEMANAGER, e);
-            throw new RuntimeException(e);
-          }
-        });
+  }
+
+  public static DeletionResourceManager getInstance(int groupId) {
+    final Lock lock = REGION_LOCKS.get(groupId);
+    lock.lock();
+    try {
+      if (DELETED_REGIONS.contains(groupId)
+          || DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP == null) {
+        return null;
+      }
+      return DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.computeIfAbsent(
+          groupId,
+          key -> {
+            try {
+              return new DeletionResourceManager(groupId);
+            } catch (IOException e) {
+              LOGGER.error(DataNodePipeMessages.FAILED_TO_INITIALIZE_DELETIONRESOURCEMANAGER, e);
+              throw new RuntimeException(e);
+            }
+          });
+    } finally {
+      lock.unlock();
+    }
   }
 
   // Only when consensus protocol is IoTConsensusV2, will this class be initialized.

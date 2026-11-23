@@ -58,6 +58,7 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
@@ -504,19 +505,25 @@ public class LoadTsFileTableSchemaCache {
       } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
         ColumnSchema realColumn = fieldColumnNameToSchema.get(fileColumn.getName());
         if (realColumn != null && !fileColumn.getType().equals(realColumn.getType())) {
-          final String message =
-              String.format(
-                  DataNodeQueryMessages
-                      .MESSAGE_DATA_TYPE_MISMATCH_FOR_COLUMN_ARG_IN_TABLE_ARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_ECAD0C63,
-                  fileColumn.getName(),
-                  realSchema.getTableName(),
-                  fileColumn.getType(),
-                  realColumn.getType());
-          if (shouldVerifyDataType) {
-            throw new LoadAnalyzeTypeMismatchException(message);
-          }
-          if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(message);
+          final TSDataType realDataType =
+              TSDataType.valueOf(realColumn.getType().getTypeEnum().name());
+          final TSDataType fileDataType =
+              TSDataType.valueOf(fileColumn.getType().getTypeEnum().name());
+          if (!realDataType.isCompatible(fileDataType)) {
+            final String message =
+                String.format(
+                    DataNodeQueryMessages
+                        .MESSAGE_DATA_TYPE_MISMATCH_FOR_COLUMN_ARG_IN_TABLE_ARG_TYPE_IN_TSFILE_ARG_TYPE_IN_IOTDB_ARG_ECAD0C63,
+                    fileColumn.getName(),
+                    realSchema.getTableName(),
+                    fileColumn.getType(),
+                    realColumn.getType());
+            if (shouldVerifyDataType) {
+              throw new LoadAnalyzeTypeMismatchException(message);
+            }
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(message);
+            }
           }
         } else if (LOGGER.isDebugEnabled() && realColumn == null) {
           LOGGER.debug(

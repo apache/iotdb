@@ -72,7 +72,10 @@ public class Binary implements Comparable<Binary>, Serializable {
         i++;
         continue;
       }
-      return this.values[i] - other.values[i];
+      // Compare the bytes as unsigned values so that the ordering matches the lexicographic
+      // (UTF-8 / memcmp) ordering used by TsFile and java.lang.String. A plain byte subtraction
+      // would treat bytes >= 0x80 as negative and sort them before ASCII bytes.
+      return (this.values[i] & 0xFF) - (other.values[i] & 0xFF);
     }
     return getLength() - other.getLength();
   }
