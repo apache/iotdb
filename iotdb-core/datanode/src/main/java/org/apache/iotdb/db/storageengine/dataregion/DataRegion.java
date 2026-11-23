@@ -4079,7 +4079,7 @@ public class DataRegion implements IDataRegionForQuery {
             }
           }
           if (matchSize == devicesInFile.size()) {
-            if (sealedTsFile.setStatus(TsFileResourceStatus.DELETED)) {
+            if (sealedTsFile.transformStatus(TsFileResourceStatus.DELETED)) {
               deletedByFiles.add(sealedTsFile);
             } else {
               deletedByMods.add(sealedTsFile);
@@ -4249,7 +4249,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (startTime <= fileStartTime
             && endTime >= fileEndTime
             && file.isClosed()
-            && file.setStatus(TsFileResourceStatus.DELETED)) {
+            && file.transformStatus(TsFileResourceStatus.DELETED)) {
           deletedByFiles.add(file);
         } else {
           deletedByMods.add(file);

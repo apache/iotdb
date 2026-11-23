@@ -2713,6 +2713,75 @@ public class DataRegionTest {
   }
 
   @Test
+  public void testTreeDeletionCascadesModsForAlreadyDeletedCompactionSource() throws Exception {
+    final TSRecord record = new TSRecord(deviceId, 1);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, "10"));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    final TsFileResource sourceTsFile = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    final TsFileResource targetTsFile =
+        new TsFileResource(new File(sourceTsFile.getTsFile().getParent(), "tree-target.tsfile"));
+    try {
+      sourceTsFile.link(targetTsFile);
+      sourceTsFile.setStatusForTest(TsFileResourceStatus.DELETED);
+
+      final MeasurementPath deletionPath = new MeasurementPath(deviceId, measurementId);
+      final TreeDeletionEntry deletionEntry =
+          new TreeDeletionEntry(deletionPath, Long.MIN_VALUE, Long.MAX_VALUE);
+      dataRegion.deleteByDevice(
+          deletionPath,
+          new DeleteDataNode(
+              new PlanNodeId("tree-deletion"),
+              Collections.singletonList(deletionPath),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE));
+
+      targetTsFile.getModFileForWrite().close();
+      assertTrue(sourceTsFile.getTsFile().exists());
+      assertTrue(targetTsFile.getTsFile().exists());
+      Assert.assertEquals(
+          Collections.singletonList(deletionEntry),
+          ModificationFile.readAllModifications(targetTsFile.getTsFile(), false));
+    } finally {
+      Assert.assertTrue(targetTsFile.remove());
+    }
+  }
+
+  @Test
+  public void testTableDeletionCascadesModsForAlreadyDeletedCompactionSource() throws Exception {
+    dataRegion.insertTablet(genInsertTabletNode(10, 0));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    final TsFileResource sourceTsFile = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    final TsFileResource targetTsFile =
+        new TsFileResource(new File(sourceTsFile.getTsFile().getParent(), "table-target.tsfile"));
+    try {
+      sourceTsFile.link(targetTsFile);
+      sourceTsFile.setStatusForTest(TsFileResourceStatus.DELETED);
+
+      final TableDeletionEntry deletionEntry =
+          new TableDeletionEntry(
+              new DeletionPredicate(StatementTestUtils.tableName(), new NOP()),
+              new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
+      dataRegion.deleteByTable(
+          new RelationalDeleteDataNode(
+              SchemaDeletionModProgress.dropTablePlanNodeId(53),
+              deletionEntry,
+              dataRegion.getDatabaseName()));
+
+      targetTsFile.getModFileForWrite().close();
+      assertTrue(sourceTsFile.getTsFile().exists());
+      assertTrue(targetTsFile.getTsFile().exists());
+      Assert.assertEquals(
+          Collections.singletonList(deletionEntry),
+          ModificationFile.readAllModifications(targetTsFile.getTsFile(), false));
+    } finally {
+      Assert.assertTrue(targetTsFile.remove());
+    }
+  }
+
+  @Test
   public void testDropTableModProgressWhileClosingSharedFile() throws Exception {
     checkDropTableModProgressWhileClosingFile(true);
   }
