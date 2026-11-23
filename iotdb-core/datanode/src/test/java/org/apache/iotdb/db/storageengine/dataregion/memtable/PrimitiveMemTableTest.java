@@ -86,6 +86,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 
@@ -161,7 +162,8 @@ public class PrimitiveMemTableTest {
 
   @Test
   public void testResidentSeriesAcrossWorkingAndFlushingTables() throws IllegalPathException {
-    ResidentSeriesCounter counter = new ResidentSeriesCounter();
+    ResidentSeriesCounter counter =
+        new ResidentSeriesCounter(new ReentrantReadWriteLock().readLock());
     PrimitiveMemTable first = new PrimitiveMemTable(counter, database, dataRegionId);
     PrimitiveMemTable second = new PrimitiveMemTable(counter, database, dataRegionId);
     IDeviceID device = new StringArrayDeviceID("root.test.d1");
@@ -190,6 +192,13 @@ public class PrimitiveMemTableTest {
         true);
     Assert.assertEquals(2, counter.getSeriesCount());
     second.write(other, s1, 3, new Object[] {3});
+    PrimitiveMemTable third = new PrimitiveMemTable(counter, database, dataRegionId);
+    List<IMeasurementSchema> s3 =
+        Collections.singletonList(new MeasurementSchema("s3", TSDataType.INT32));
+    third.writeAlignedRow(device, s2, 4, new Object[] {4});
+    third.writeAlignedRow(device, s3, 4, new Object[] {4});
+    Assert.assertEquals(4, counter.getSeriesCount());
+    third.release();
     first.release();
     Assert.assertEquals(2, counter.getSeriesCount());
     first.release();

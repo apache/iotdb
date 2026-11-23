@@ -407,7 +407,8 @@ public class DataRegion implements IDataRegionForQuery {
       PerformanceOverviewMetrics.getInstance();
   private final ExecutorService upgradeModFileThreadPool;
 
-  private final ResidentSeriesCounter residentSeriesCounter = new ResidentSeriesCounter();
+  private final ResidentSeriesCounter residentSeriesCounter =
+      new ResidentSeriesCounter(insertLock.readLock());
 
   private final DataRegionMetrics metrics;
 

@@ -39,6 +39,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
@@ -144,7 +145,8 @@ public class DatabaseMemMetricsTest {
   private static DataRegion mockDataRegion(final int regionId, final long memCost) {
     final DataRegion dataRegion = mock(DataRegion.class);
     when(dataRegion.getDataRegionId()).thenReturn(regionId);
-    when(dataRegion.getResidentSeriesCounter()).thenReturn(new ResidentSeriesCounter());
+    when(dataRegion.getResidentSeriesCounter())
+        .thenReturn(new ResidentSeriesCounter(new ReentrantReadWriteLock().readLock()));
     when(dataRegion.getDatabaseName()).thenReturn(DATABASE);
     when(dataRegion.getMemCost()).thenReturn(memCost);
     return dataRegion;
