@@ -57,9 +57,9 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelNotOnSpeci
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelOnSpecifiedDevice;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.concurrentInference;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.hasSurvivingInferenceWorkers;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTable;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTree;
-import static org.apache.iotdb.ainode.utils.AINodeTestUtils.unloadSubmittedModel;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -531,52 +531,153 @@ public class AINodeSharedClusterIT {
     }
   }
 
+  @FunctionalInterface
+  interface ConcurrentForecastAction {
+    void run() throws SQLException, InterruptedException;
+  }
+
+  @FunctionalInterface
+  interface ModelUnloadAction {
+    void unload(
+        Statement statement,
+        String modelId,
+        String devices,
+        boolean loadCompleted,
+        long loadSubmittedNanos)
+        throws SQLException;
+  }
+
+  @FunctionalInterface
+  interface ClusterResetAction {
+    void reset() throws SQLException;
+  }
+
   private void concurrentGPUForecastTest(FakeModelInfo modelInfo, String devices)
       throws SQLException, InterruptedException {
     final int forecastLength = 512;
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+    final String forecastSQL =
+        String.format(CONCURRENT_FORECAST_SQL_TEMPLATE, modelInfo.getModelId(), forecastLength);
+    final int threadCnt = 10;
+    // PR CI keeps a concurrency smoke check; nightly/daily can dial this up if regressions
+    // appear.
+    final int loop = 10;
+    runConcurrentForecastWithModelCleanup(
+        () -> EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT),
+        modelInfo.getModelId(),
+        devices,
+        statement -> checkModelOnSpecifiedDevice(statement, modelInfo.getModelId(), devices),
+        () -> {
+          long startTime = System.currentTimeMillis();
+          concurrentInference(
+              BaseEnv.TABLE_SQL_DIALECT, forecastSQL, threadCnt, loop, forecastLength);
+          long endTime = System.currentTimeMillis();
+          LOGGER.info(
+              String.format(
+                  "Model %s concurrent inference %d reqs (%d threads, %d loops) in GPU takes time: %dms",
+                  modelInfo.getModelId(), threadCnt * loop, threadCnt, loop, endTime - startTime));
+        },
+        AINodeTestUtils::unloadSubmittedModel,
+        AINodeSharedClusterIT::resetSharedCluster);
+  }
+
+  @FunctionalInterface
+  interface ConnectionOpener {
+    Connection open() throws SQLException;
+  }
+
+  @FunctionalInterface
+  interface ReadinessChecker {
+    void check(Statement statement) throws SQLException, InterruptedException;
+  }
+
+  static void runConcurrentForecastWithModelCleanup(
+      ConnectionOpener controlConnectionOpener,
+      String modelId,
+      String devices,
+      ReadinessChecker readinessChecker,
+      ConcurrentForecastAction inferenceAction,
+      ModelUnloadAction unloadAction,
+      ClusterResetAction resetAction)
+      throws SQLException, InterruptedException {
+    boolean resetClusterRequired = false;
+    Throwable primaryFailure = null;
+    try (Connection connection = controlConnectionOpener.open();
         Statement statement = connection.createStatement()) {
-      final String forecastSQL =
-          String.format(CONCURRENT_FORECAST_SQL_TEMPLATE, modelInfo.getModelId(), forecastLength);
-      final int threadCnt = 10;
-      // PR CI keeps a concurrency smoke check; nightly/daily can dial this up if regressions
-      // appear.
-      final int loop = 10;
       boolean loadSubmitted = false;
       boolean loadCompleted = false;
+      boolean workersTerminated = true;
       long loadSubmittedNanos = 0L;
-      Throwable primaryFailure = null;
       try {
         loadSubmittedNanos = System.nanoTime();
-        statement.execute(
-            String.format("LOAD MODEL %s TO DEVICES '%s'", modelInfo.getModelId(), devices));
+        statement.execute(String.format("LOAD MODEL %s TO DEVICES '%s'", modelId, devices));
         loadSubmitted = true;
-        checkModelOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
+        readinessChecker.check(statement);
         loadCompleted = true;
-        long startTime = System.currentTimeMillis();
-        concurrentInference(
-            BaseEnv.TABLE_SQL_DIALECT, forecastSQL, threadCnt, loop, forecastLength);
-        long endTime = System.currentTimeMillis();
-        LOGGER.info(
-            String.format(
-                "Model %s concurrent inference %d reqs (%d threads, %d loops) in GPU takes time: %dms",
-                modelInfo.getModelId(), threadCnt * loop, threadCnt, loop, endTime - startTime));
+        workersTerminated = false;
+        try {
+          inferenceAction.run();
+          workersTerminated = true;
+        } catch (Throwable t) {
+          workersTerminated = !hasSurvivingInferenceWorkers(t);
+          throw t;
+        }
       } catch (Throwable t) {
         primaryFailure = t;
         throw t;
       } finally {
         if (loadSubmitted) {
-          try {
-            unloadSubmittedModel(
-                statement, modelInfo.getModelId(), devices, loadCompleted, loadSubmittedNanos);
-          } catch (Throwable cleanupError) {
-            if (primaryFailure != null) {
-              primaryFailure.addSuppressed(cleanupError);
-            } else {
-              throw cleanupError;
+          if (!workersTerminated) {
+            // Do not unload the model while inference workers are still alive; reset the shared
+            // cluster fixture after closing the control connection.
+            resetClusterRequired = true;
+          } else {
+            try {
+              unloadAction.unload(statement, modelId, devices, loadCompleted, loadSubmittedNanos);
+            } catch (Throwable cleanupError) {
+              resetClusterRequired = true;
+              if (primaryFailure != null) {
+                primaryFailure.addSuppressed(cleanupError);
+              } else {
+                primaryFailure = cleanupError;
+                throw cleanupError;
+              }
             }
           }
         }
+      }
+    } catch (Throwable t) {
+      if (primaryFailure == null) {
+        primaryFailure = t;
+      }
+      throw t;
+    } finally {
+      if (resetClusterRequired) {
+        try {
+          resetAction.reset();
+        } catch (Throwable resetError) {
+          if (primaryFailure != null) {
+            primaryFailure.addSuppressed(resetError);
+          } else {
+            throw resetError;
+          }
+        }
+      }
+    }
+  }
+
+  private static void resetSharedCluster() throws SQLException {
+    LOGGER.warn(
+        "Resetting shared AINode test cluster after unresolved model or worker cleanup failure.");
+    boolean interrupted = Thread.interrupted();
+    try {
+      EnvFactory.getEnv().cleanClusterEnvironment();
+      EnvFactory.getEnv().initClusterEnvironment(1, 1);
+      prepareDataInTree();
+      prepareDataInTable();
+      prepareDataForConcurrentForecast();
+    } finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
       }
     }
   }

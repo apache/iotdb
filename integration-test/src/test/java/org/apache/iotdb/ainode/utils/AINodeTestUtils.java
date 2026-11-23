@@ -103,9 +103,14 @@ public class AINodeTestUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(AINodeTestUtils.class);
 
   private static final long CONCURRENT_INFERENCE_TIMEOUT_MILLIS = TimeUnit.MINUTES.toMillis(10);
-  private static final int CONCURRENT_INFERENCE_QUERY_TIMEOUT_SECONDS = 120;
+  private static final int CONCURRENT_INFERENCE_QUERY_TIMEOUT_SECONDS = 60;
+  // Give worker connections a finite socket timeout above the server query timeout so a hung
+  // response cannot block reads indefinitely; keep drain > 4x network timeout to cover the initial
+  // RPC plus IoTDBConnection.reconnect()'s 3 retry attempts.
+  private static final int CONCURRENT_INFERENCE_NETWORK_TIMEOUT_MILLIS =
+      (int) TimeUnit.SECONDS.toMillis(CONCURRENT_INFERENCE_QUERY_TIMEOUT_SECONDS + 10L);
   private static final long CONCURRENT_INFERENCE_WORKER_DRAIN_TIMEOUT_MILLIS =
-      TimeUnit.SECONDS.toMillis(CONCURRENT_INFERENCE_QUERY_TIMEOUT_SECONDS + 30L);
+      TimeUnit.SECONDS.toMillis(300);
   private static final long MODEL_STATUS_POLL_INTERVAL_MILLIS = TimeUnit.SECONDS.toMillis(3);
   private static final long MODEL_LOAD_SETTLE_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(600);
   private static final long MODEL_UNLOAD_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(150);
@@ -113,6 +118,35 @@ public class AINodeTestUtils {
   @FunctionalInterface
   interface ConnectionSupplier {
     Connection get() throws SQLException;
+  }
+
+  public static final class SurvivingInferenceWorkersException extends IllegalStateException {
+
+    private final List<String> survivingWorkers;
+
+    SurvivingInferenceWorkersException(List<String> survivingWorkers) {
+      super("Inference workers still alive after cancellation drain timeout: " + survivingWorkers);
+      this.survivingWorkers = Collections.unmodifiableList(new ArrayList<>(survivingWorkers));
+    }
+
+    public List<String> getSurvivingWorkers() {
+      return survivingWorkers;
+    }
+  }
+
+  public static boolean hasSurvivingInferenceWorkers(Throwable throwable) {
+    if (throwable == null) {
+      return false;
+    }
+    if (throwable instanceof SurvivingInferenceWorkersException) {
+      return true;
+    }
+    for (Throwable suppressed : throwable.getSuppressed()) {
+      if (hasSurvivingInferenceWorkers(suppressed)) {
+        return true;
+      }
+    }
+    return hasSurvivingInferenceWorkers(throwable.getCause());
   }
 
   public static void checkHeader(ResultSetMetaData resultSetMetaData, String title)
@@ -134,11 +168,16 @@ public class AINodeTestUtils {
   public static void concurrentInference(
       String sqlDialect, String sql, int threadCnt, int loop, int expectedOutputLength)
       throws InterruptedException {
-    // Use the Version overload so profiles with ReadAndVerifyWithMultiNode=false (such as
-    // AIClusterIT) return direct IoTDBConnections instead of ClusterTestConnection, avoiding the
-    // 5-thread cap in RequestThreadPool and exercising all concurrent workers simultaneously.
+    // Use the Version + networkTimeoutMs overload so profiles with
+    // ReadAndVerifyWithMultiNode=false (such as AIClusterIT) return direct IoTDBConnections
+    // (avoiding the 5-thread cap in RequestThreadPool) with bounded socket reads.
     concurrentInference(
-        () -> EnvFactory.getEnv().getConnection(Constant.Version.V_1_0, sqlDialect),
+        () ->
+            EnvFactory.getEnv()
+                .getConnection(
+                    Constant.Version.V_1_0,
+                    sqlDialect,
+                    CONCURRENT_INFERENCE_NETWORK_TIMEOUT_MILLIS),
         sql,
         threadCnt,
         loop,
@@ -257,10 +296,7 @@ public class AINodeTestUtils {
         e.addSuppressed(failure);
       }
       if (!survivingThreads.isEmpty()) {
-        e.addSuppressed(
-            new IllegalStateException(
-                "Inference workers still alive after cancellation drain timeout: "
-                    + survivingThreads));
+        e.addSuppressed(new SurvivingInferenceWorkersException(survivingThreads));
       }
       throw e;
     }
@@ -279,11 +315,17 @@ public class AINodeTestUtils {
         message.append("; still alive after drain timeout: ").append(survivingThreads);
       }
       Throwable failure = firstFailure.get();
+      AssertionError timeoutError;
       if (failure != null) {
         message.append("; first worker failure: ").append(failure.getMessage());
-        throw new AssertionError(message.toString(), failure);
+        timeoutError = new AssertionError(message.toString(), failure);
+      } else {
+        timeoutError = new AssertionError(message.toString());
       }
-      throw new AssertionError(message.toString());
+      if (!survivingThreads.isEmpty()) {
+        timeoutError.addSuppressed(new SurvivingInferenceWorkersException(survivingThreads));
+      }
+      throw timeoutError;
     }
 
     Throwable failure = firstFailure.get();
@@ -409,44 +451,50 @@ public class AINodeTestUtils {
       long unloadTimeoutMillis)
       throws SQLException {
     Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
-    boolean interrupted = Thread.interrupted();
+    AtomicBoolean interrupted = new AtomicBoolean(Thread.interrupted());
     try {
       if (!loadCompleted) {
         // LOAD MODEL returns as soon as the task is queued in AINode's PoolController. If we
         // issue UNLOAD MODEL before any device registers a pool, AINode skips queuing an unload
         // and the later load would leave the model resident for subsequent tests. Wait for the
-        // submitted load to complete or settle before unloading.
-        interrupted |=
-            waitForSubmittedModelLoadToSettle(
-                statement,
-                modelId,
-                device,
-                targetDevices,
-                loadSubmittedNanos,
-                pollIntervalMillis,
-                loadSettleTimeoutMillis);
+        // submitted load to complete or settle before unloading; if it remains unresolved with no
+        // running pool at the deadline, fail cleanup so the caller resets the shared cluster.
+        waitForSubmittedModelLoadToSettle(
+            statement,
+            modelId,
+            device,
+            targetDevices,
+            loadSubmittedNanos,
+            pollIntervalMillis,
+            loadSettleTimeoutMillis,
+            interrupted);
       }
       statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES '%s'", modelId, device));
-      interrupted |=
-          waitForModelRemoval(
-              statement, modelId, device, targetDevices, pollIntervalMillis, unloadTimeoutMillis);
+      waitForModelRemoval(
+          statement,
+          modelId,
+          device,
+          targetDevices,
+          pollIntervalMillis,
+          unloadTimeoutMillis,
+          interrupted);
     } finally {
-      if (interrupted) {
+      if (interrupted.get()) {
         Thread.currentThread().interrupt();
       }
     }
   }
 
-  private static boolean waitForSubmittedModelLoadToSettle(
+  private static void waitForSubmittedModelLoadToSettle(
       Statement statement,
       String modelId,
       String device,
       Set<String> targetDevices,
       long loadSubmittedNanos,
       long pollIntervalMillis,
-      long loadSettleTimeoutMillis)
+      long loadSettleTimeoutMillis,
+      AtomicBoolean interrupted)
       throws SQLException {
-    boolean interrupted = false;
     long settleDeadlineNanos =
         loadSubmittedNanos + TimeUnit.MILLISECONDS.toNanos(loadSettleTimeoutMillis);
     Set<String> everRegisteredDevices = new HashSet<>();
@@ -468,7 +516,7 @@ public class AINodeTestUtils {
             "Submitted load of model {} completed on devices {} before cleanup unload.",
             modelId,
             targetDevices);
-        return interrupted;
+        return;
       }
       if (everRegisteredDevices.containsAll(targetDevices) && !hasInitializingDevice) {
         LOGGER.info(
@@ -476,32 +524,50 @@ public class AINodeTestUtils {
             modelId,
             targetDevices,
             runningDevices);
-        return interrupted;
+        return;
       }
       long remainingNanos = settleDeadlineNanos - System.nanoTime();
       if (remainingNanos <= 0L) {
+        if (runningDevices.isEmpty()) {
+          Set<String> unobservedDevices = new HashSet<>(targetDevices);
+          unobservedDevices.removeAll(everRegisteredDevices);
+          fail(
+              "Submitted load of model "
+                  + modelId
+                  + " on devices "
+                  + device
+                  + " remained unresolved after "
+                  + loadSettleTimeoutMillis
+                  + " ms (current="
+                  + deviceCounts
+                  + ", unobserved="
+                  + unobservedDevices
+                  + "); UNLOAD MODEL cannot guarantee cleanup without a running pool.");
+        }
         LOGGER.warn(
-            "Timed out waiting for submitted load of model {} on devices {} to settle (current={}); proceeding with unload.",
+            "Timed out waiting for submitted load of model {} on devices {} to settle (current={}); queuing unload for registered pools.",
             modelId,
             targetDevices,
             deviceCounts);
-        return interrupted;
+        return;
       }
       long sleepMillis =
           Math.min(pollIntervalMillis, Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remainingNanos)));
-      interrupted |= sleepUninterruptibly(sleepMillis);
+      if (sleepUninterruptibly(sleepMillis)) {
+        interrupted.set(true);
+      }
     }
   }
 
-  private static boolean waitForModelRemoval(
+  private static void waitForModelRemoval(
       Statement statement,
       String modelId,
       String device,
       Set<String> targetDevices,
       long pollIntervalMillis,
-      long unloadTimeoutMillis)
+      long unloadTimeoutMillis,
+      AtomicBoolean interrupted)
       throws SQLException {
-    boolean interrupted = false;
     long unloadDeadlineNanos =
         System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(unloadTimeoutMillis);
     while (true) {
@@ -509,7 +575,7 @@ public class AINodeTestUtils {
           queryModelDeviceCounts(statement, modelId, device, targetDevices);
       if (deviceCounts.isEmpty()) {
         LOGGER.info("Model {} is unloaded from devices {}.", modelId, targetDevices);
-        return interrupted;
+        return;
       }
       long remainingNanos = unloadDeadlineNanos - System.nanoTime();
       if (remainingNanos <= 0L) {
@@ -517,7 +583,9 @@ public class AINodeTestUtils {
       }
       long sleepMillis =
           Math.min(pollIntervalMillis, Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remainingNanos)));
-      interrupted |= sleepUninterruptibly(sleepMillis);
+      if (sleepUninterruptibly(sleepMillis)) {
+        interrupted.set(true);
+      }
     }
   }
 
