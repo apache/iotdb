@@ -61,6 +61,7 @@ public class TimeSeriesRuntimeState {
 
   // Outer set values
   private long lastReportTimeStamp = Long.MIN_VALUE;
+  private boolean hasReportedTimeStamp;
   private final List<TimeSeriesWindow> currentOpeningWindows = new ArrayList<>();
 
   // Variables to avoid "new" operation
@@ -103,7 +104,7 @@ public class TimeSeriesRuntimeState {
       throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
-    if (timestamp <= lastReportTimeStamp) {
+    if (hasReportedTimeStamp && timestamp <= lastReportTimeStamp) {
       return null;
     }
     final Set<TimeSeriesWindow> addedWindows =
@@ -127,8 +128,7 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        lastReportTimeStamp =
-            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
+        updateLastReportTimeStamp(stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
@@ -149,7 +149,7 @@ public class TimeSeriesRuntimeState {
       throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
-    if (timestamp <= lastReportTimeStamp) {
+    if (hasReportedTimeStamp && timestamp <= lastReportTimeStamp) {
       return null;
     }
     final Set<TimeSeriesWindow> addedWindows =
@@ -173,8 +173,7 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        lastReportTimeStamp =
-            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
+        updateLastReportTimeStamp(stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
@@ -195,7 +194,7 @@ public class TimeSeriesRuntimeState {
       throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
-    if (timestamp <= lastReportTimeStamp) {
+    if (hasReportedTimeStamp && timestamp <= lastReportTimeStamp) {
       return null;
     }
     final Set<TimeSeriesWindow> addedWindows =
@@ -219,8 +218,7 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        lastReportTimeStamp =
-            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
+        updateLastReportTimeStamp(stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
@@ -241,7 +239,7 @@ public class TimeSeriesRuntimeState {
       throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
-    if (timestamp <= lastReportTimeStamp) {
+    if (hasReportedTimeStamp && timestamp <= lastReportTimeStamp) {
       return null;
     }
     final Set<TimeSeriesWindow> addedWindows =
@@ -265,8 +263,7 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        lastReportTimeStamp =
-            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
+        updateLastReportTimeStamp(stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
@@ -287,7 +284,7 @@ public class TimeSeriesRuntimeState {
       throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
-    if (timestamp <= lastReportTimeStamp) {
+    if (hasReportedTimeStamp && timestamp <= lastReportTimeStamp) {
       return null;
     }
     final Set<TimeSeriesWindow> addedWindows =
@@ -311,8 +308,7 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        lastReportTimeStamp =
-            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
+        updateLastReportTimeStamp(stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
@@ -333,7 +329,7 @@ public class TimeSeriesRuntimeState {
       throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
-    if (timestamp <= lastReportTimeStamp) {
+    if (hasReportedTimeStamp && timestamp <= lastReportTimeStamp) {
       return null;
     }
     final Set<TimeSeriesWindow> addedWindows =
@@ -357,8 +353,7 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        lastReportTimeStamp =
-            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
+        updateLastReportTimeStamp(stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
@@ -379,7 +374,7 @@ public class TimeSeriesRuntimeState {
       throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
-    if (timestamp <= lastReportTimeStamp) {
+    if (hasReportedTimeStamp && timestamp <= lastReportTimeStamp) {
       return null;
     }
     final Set<TimeSeriesWindow> addedWindows =
@@ -403,8 +398,7 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        lastReportTimeStamp =
-            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
+        updateLastReportTimeStamp(stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
@@ -425,7 +419,7 @@ public class TimeSeriesRuntimeState {
       throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
-    if (timestamp <= lastReportTimeStamp) {
+    if (hasReportedTimeStamp && timestamp <= lastReportTimeStamp) {
       return null;
     }
     final Set<TimeSeriesWindow> addedWindows =
@@ -449,8 +443,7 @@ public class TimeSeriesRuntimeState {
       if (stateWindowOutputPair.getLeft().isEmit()
           && Objects.nonNull(stateWindowOutputPair.getRight())) {
         outputList.add(stateWindowOutputPair.getRight());
-        lastReportTimeStamp =
-            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
+        updateLastReportTimeStamp(stateWindowOutputPair.getRight().getProgressTime());
       }
       if (stateWindowOutputPair.getLeft().isPurge()) {
         windowIterator.remove();
@@ -470,6 +463,11 @@ public class TimeSeriesRuntimeState {
     return currentOpeningWindows.stream()
         .map(TimeSeriesWindow::forceOutput)
         .collect(Collectors.toList());
+  }
+
+  private void updateLastReportTimeStamp(final long timestamp) {
+    lastReportTimeStamp = Math.max(lastReportTimeStamp, timestamp);
+    hasReportedTimeStamp = true;
   }
 
   // A runtime state with window buffer shall be reported after at least output min report
@@ -499,14 +497,20 @@ public class TimeSeriesRuntimeState {
 
   public void restoreTimestampAndWindows(final Pair<Long, ByteBuffer> timestampWindowBufferPair)
       throws IOException {
-    if (timestampWindowBufferPair.getLeft() <= lastReportTimeStamp) {
+    if (hasReportedTimeStamp && timestampWindowBufferPair.getLeft() <= lastReportTimeStamp) {
       // The runtime state may be initialized by different processorSubtasks on one DataNode
       // Only the subtask with the largest timestamp wins
       return;
     }
     this.lastReportTimeStamp = timestampWindowBufferPair.getLeft();
+    hasReportedTimeStamp = true;
+    currentOpeningWindows.clear();
     final ByteBuffer buffer = timestampWindowBufferPair.getRight();
-    final int size = ReadWriteIOUtils.readInt(buffer);
+    if (buffer == null) {
+      return;
+    }
+    final ByteBuffer readBuffer = buffer.duplicate();
+    final int size = ReadWriteIOUtils.readInt(readBuffer);
     for (int i = 0; i < size; ++i) {
       // The runtime value will be deserialized if exists
       final TimeSeriesWindow currentWindow = new TimeSeriesWindow(windowingProcessor, null);
@@ -514,7 +518,7 @@ public class TimeSeriesRuntimeState {
           intermediateResultName2OperatorSupplierMap,
           aggregatorOutputName2OperatorMap,
           systemParameters);
-      currentWindow.deserialize(buffer);
+      currentWindow.deserialize(readBuffer);
       currentOpeningWindows.add(currentWindow);
     }
   }

@@ -93,6 +93,7 @@ public class SqlConstant {
   public static final String INCREASE = "increase";
   public static final String IRATE = "irate";
   public static final String DELTA = "delta";
+  public static final String INTEGRAL = "integral";
 
   // names of scalar functions
   public static final String DIFF = "diff";
