@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
+import org.apache.iotdb.commons.pipe.receiver.PipeReceiverFilePathUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.pipeconsensus.request.PipeConsensusTransferFilePieceReq;
@@ -496,10 +497,7 @@ public class PipeConsensusReceiver {
     File writingFile = tsFileWriter.getWritingFile();
     RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
 
-    final List<File> files =
-        req.getFileNames().stream()
-            .map(fileName -> new File(receiverFileDirWithIdSuffix.get(), fileName))
-            .collect(Collectors.toList());
+    final List<File> files = new ArrayList<>(req.getFileNames().size());
     try {
       if (isWritingFileNonAvailable(tsFileWriter)) {
         final TSStatus status =
@@ -510,6 +508,13 @@ public class PipeConsensusReceiver {
                     req.getFileNames(), writingFile));
         LOGGER.warn(status.getMessage());
         return new TPipeConsensusTransferResp(status);
+      }
+
+      for (final String fileName : req.getFileNames()) {
+        files.add(
+            PipeReceiverFilePathUtils.resolveFilePath(
+                    new File(tsFileWriter.getLocalWritingDirPath()).toPath(), fileName)
+                .toFile());
       }
 
       // Any of the transferred files cannot be empty, or else the receiver
@@ -877,6 +882,10 @@ public class PipeConsensusReceiver {
       final String fileName,
       final boolean isSingleFile)
       throws IOException {
+    final File targetFile =
+        PipeReceiverFilePathUtils.resolveFilePath(
+                new File(tsFileWriter.getLocalWritingDirPath()).toPath(), fileName)
+            .toFile();
     if (isFileExistedAndNameCorrect(tsFileWriter, fileName)) {
       return;
     }
@@ -913,7 +922,7 @@ public class PipeConsensusReceiver {
     }
     // Every tsFileWriter has its own writing path.
     // 1 Thread --> 1 connection --> 1 tsFileWriter --> 1 path
-    tsFileWriter.setWritingFile(new File(tsFileWriter.getLocalWritingDirPath(), fileName));
+    tsFileWriter.setWritingFile(targetFile);
     tsFileWriter.setWritingFileWriter(new RandomAccessFile(tsFileWriter.getWritingFile(), "rw"));
     LOGGER.info(
         "PipeConsensus-PipeName-{}: Writing file {} was created. Ready to write file pieces.",

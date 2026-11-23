@@ -45,6 +45,8 @@ public final class ActiveLoadPathHelper {
 
   private static final String SEGMENT_SEPARATOR = "-";
   public static final String USER_KEY = "user";
+  public static final String AUTHENTICATED_USER_KEY = "authenticated-user";
+  public static final String PIPE_AUTHENTICATED_USER_KEY = "pipe-authenticated-user";
   public static final String PIPE_CONVERSION_TASK_ID_KEY = "pipe-conversion-task-id";
   private static final String TRANSFER_STAGING_DIRECTORY_PREFIX = ".iotdb-load-staging-";
   // Keep a version in the user path segment so future encryption algorithms can be added safely.
@@ -55,6 +57,8 @@ public final class ActiveLoadPathHelper {
       Collections.unmodifiableList(
           Arrays.asList(
               USER_KEY,
+              AUTHENTICATED_USER_KEY,
+              PIPE_AUTHENTICATED_USER_KEY,
               PIPE_CONVERSION_TASK_ID_KEY,
               LoadTsFileConfigurator.DATABASE_NAME_KEY,
               LoadTsFileConfigurator.DATABASE_LEVEL_KEY,
@@ -241,6 +245,26 @@ public final class ActiveLoadPathHelper {
     return attributes;
   }
 
+  public static boolean hasAttributeSegment(
+      final File file, final File pendingDir, final String key) {
+    if (file == null || key == null || key.isEmpty()) {
+      return false;
+    }
+
+    final String prefix = key + SEGMENT_SEPARATOR;
+    File current = file.getParentFile();
+    while (current != null) {
+      if (pendingDir != null && current.getAbsoluteFile().equals(pendingDir.getAbsoluteFile())) {
+        break;
+      }
+      if (current.getName().startsWith(prefix)) {
+        return true;
+      }
+      current = current.getParentFile();
+    }
+    return false;
+  }
+
   public static File findPendingDirectory(final File file) {
     if (file == null) {
       return null;
@@ -377,6 +401,16 @@ public final class ActiveLoadPathHelper {
       case USER_KEY:
         if (value == null || value.isEmpty()) {
           throw new SemanticException("User name must not be empty.");
+        }
+        break;
+      case AUTHENTICATED_USER_KEY:
+        if (!Boolean.TRUE.toString().equals(value)) {
+          throw new SemanticException("Authenticated user marker must be true.");
+        }
+        break;
+      case PIPE_AUTHENTICATED_USER_KEY:
+        if (!Boolean.TRUE.toString().equals(value)) {
+          throw new SemanticException("Pipe user identity marker must be true.");
         }
         break;
       default:

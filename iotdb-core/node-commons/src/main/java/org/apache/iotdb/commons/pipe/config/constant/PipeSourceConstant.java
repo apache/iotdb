@@ -34,6 +34,9 @@ public class PipeSourceConstant {
   public static final String SOURCE_IOTDB_USER_ID = "source.user-id";
   public static final String EXTRACTOR_IOTDB_CLI_HOSTNAME = "extractor.cli-hostname";
   public static final String SOURCE_IOTDB_CLI_HOSTNAME = "source.cli-hostname";
+  public static final String EXTRACTOR_SKIP_IF_KEY = "extractor.skipif";
+  public static final String SOURCE_SKIP_IF_KEY = "source.skipif";
+  public static final String EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES = "no-privileges";
 
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";

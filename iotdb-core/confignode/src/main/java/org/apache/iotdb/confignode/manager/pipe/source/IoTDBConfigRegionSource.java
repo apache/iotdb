@@ -28,23 +28,31 @@ import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.source.IoTDBNonDataRegionSource;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeConfigNodeRemainingTimeMetrics;
 import org.apache.iotdb.confignode.manager.pipe.metric.source.PipeConfigRegionSourceMetrics;
+import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
+import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
@@ -52,6 +60,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
       new PipeConfigPhysicalPlanPatternParseVisitor();
 
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
+  private PipeConfigTreePrivilegeParseVisitor treePrivilegeParseVisitor;
+  private CNPhysicalPlanGenerator parser;
 
   @Override
   public void customize(
@@ -68,6 +78,7 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
     super.customize(parameters, configuration);
     listenedTypeSet = ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters);
+    treePrivilegeParseVisitor = new PipeConfigTreePrivilegeParseVisitor(skipIfNoPrivileges);
 
     PipeConfigRegionSourceMetrics.getInstance().register(this);
     PipeConfigNodeRemainingTimeMetrics.getInstance().register(this);
@@ -81,6 +92,53 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
   @Override
   protected boolean needTransferSnapshot() {
     return PipeConfigRegionSnapshotEvent.needTransferSnapshot(listenedTypeSet);
+  }
+
+  @Override
+  protected boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event) {
+    return treePrivilegeParseVisitor.canSkipSnapshotPrivilegeCheck(
+        ((PipeConfigRegionSnapshotEvent) event).getFileType(), userName);
+  }
+
+  @Override
+  protected void initSnapshotGenerator(final PipeSnapshotEvent event) throws IOException {
+    final PipeConfigRegionSnapshotEvent snapshotEvent = (PipeConfigRegionSnapshotEvent) event;
+    parser =
+        ConfignodeSnapshotParser.translate2PhysicalPlan(
+            Paths.get(snapshotEvent.getSnapshotFile().getPath()),
+            Objects.nonNull(snapshotEvent.getTemplateFile())
+                ? Paths.get(snapshotEvent.getTemplateFile().getPath())
+                : null,
+            snapshotEvent.getFileType());
+    if (Objects.isNull(parser)) {
+      throw new IOException("Unable to parse config-region snapshot.");
+    }
+  }
+
+  @Override
+  protected boolean hasNextEventInCurrentSnapshot() throws Exception {
+    if (Objects.isNull(parser)) {
+      return false;
+    }
+    if (parser.hasNext()) {
+      return true;
+    }
+    parser.checkException();
+    return false;
+  }
+
+  @Override
+  protected PipeWritePlanEvent getNextEventInCurrentSnapshot() {
+    return new PipeConfigRegionWritePlanEvent(parser.next(), false);
+  }
+
+  @Override
+  protected void login(final String password) {
+    if (ConfigNode.getInstance().getConfigManager().login(userName, password).getStatus().getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format("Failed to check source password for pipe %s.", pipeName));
+    }
   }
 
   @Override
@@ -123,6 +181,17 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
         .map(
             configPhysicalPlan ->
                 new PipeConfigRegionWritePlanEvent(configPhysicalPlan, event.isGeneratedByPipe()));
+  }
+
+  @Override
+  protected List<PipeWritePlanEvent> trimRealtimeEventByPrivilege(final PipeWritePlanEvent event) {
+    final ConfigPhysicalPlan plan =
+        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan();
+    return treePrivilegeParseVisitor.processAll(plan, userName).stream()
+        .map(
+            trimmedPlan ->
+                new PipeConfigRegionWritePlanEvent(trimmedPlan, event.isGeneratedByPipe()))
+        .collect(Collectors.toList());
   }
 
   @Override

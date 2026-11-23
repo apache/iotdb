@@ -38,6 +38,7 @@ import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.snapshot.MemMTreeSnapshotUtil;
+import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -305,6 +306,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
             (LogicalViewSchema) node.getAsMeasurementMNode().getSchema();
         if (viewSchema != null) {
           stmt.setTargetFullPaths(Collections.singletonList(path));
+          stmt.setSourceFullPaths(GetSourcePathsVisitor.getSourcePaths(viewSchema.getExpression()));
           stmt.setViewExpressions(Collections.singletonList(viewSchema.getExpression()));
           statementList.add(stmt);
         }

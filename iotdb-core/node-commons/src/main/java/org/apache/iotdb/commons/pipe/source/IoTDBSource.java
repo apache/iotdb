@@ -19,16 +19,23 @@
 
 package org.apache.iotdb.commons.pipe.source;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import java.util.Arrays;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_EXCLUSION_KEY;
@@ -49,6 +56,10 @@ public abstract class IoTDBSource implements PipeExtractor {
   protected PipeTaskMeta pipeTaskMeta;
 
   protected boolean isForwardingPipeRequests;
+  protected String userName;
+  protected String cliHostname;
+  protected UserEntity userEntity;
+  protected boolean skipIfNoPrivileges = true;
 
   // The value is always true after the first start even the extractor is closed
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
@@ -105,6 +116,83 @@ public abstract class IoTDBSource implements PipeExtractor {
                 PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
                 PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
             PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+
+    userName =
+        parameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+            PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+    cliHostname =
+        parameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME,
+            PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME);
+    skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
+
+    final boolean authenticationInjected =
+        parameters.getBooleanOrDefault(
+            org.apache.iotdb.commons.pipe.config.constant.SystemConstant
+                .SOURCE_AUTHENTICATION_INJECTED_KEY,
+            false);
+    final String password =
+        parameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
+    if (userName != null && !userName.isEmpty() && password == null && !authenticationInjected) {
+      throw new PipeParameterNotValidException(
+          "Source password must be set when source username is specified.");
+    }
+    if ((userName == null || userName.isEmpty()) && password != null) {
+      throw new PipeParameterNotValidException(
+          "Source username must be set when source password is specified.");
+    }
+    userEntity =
+        userName == null || userName.isEmpty() ? null : new UserEntity(-1, userName, cliHostname);
+    if (password != null && !authenticationInjected) {
+      try {
+        login(password);
+      } catch (final PipeException e) {
+        throw e;
+      } catch (final Exception e) {
+        throw new PipeException(
+            String.format("Failed to authenticate source user %s for pipe %s.", userName, pipeName),
+            e);
+      }
+    }
+  }
+
+  protected void login(final String password) throws Exception {
+    throw new PipeException(
+        String.format("Source authentication is not supported for pipe %s.", pipeName));
+  }
+
+  protected final void bindSourceAuthentication(final Object event) {
+    if (event instanceof EnrichedEvent) {
+      ((EnrichedEvent) event).bindSourceAuthentication(userEntity, skipIfNoPrivileges);
+    }
+  }
+
+  public static boolean getSkipIfNoPrivileges(final PipeParameters parameters) {
+    final String value =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeSourceConstant.EXTRACTOR_SKIP_IF_KEY,
+                    PipeSourceConstant.SOURCE_SKIP_IF_KEY),
+                PipeSourceConstant.EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES)
+            .trim();
+    final Set<String> options =
+        Arrays.stream(value.split(","))
+            .map(String::trim)
+            .filter(option -> !option.isEmpty())
+            .map(option -> option.toLowerCase(Locale.ENGLISH))
+            .collect(Collectors.toSet());
+    final boolean skip = options.remove(PipeSourceConstant.EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
+    if (!options.isEmpty()) {
+      throw new PipeParameterNotValidException(
+          String.format("Unsupported source skipif options: %s", options));
+    }
+    return skip;
   }
 
   @Override

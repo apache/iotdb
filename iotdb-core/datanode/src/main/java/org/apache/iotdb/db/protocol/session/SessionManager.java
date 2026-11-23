@@ -161,6 +161,9 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public boolean closeSession(IClientSession session, LongConsumer releaseByQueryId) {
+    if (session == null) {
+      return false;
+    }
     releaseSessionResource(session, releaseByQueryId);
     MetricService.getInstance()
         .remove(
@@ -183,6 +186,8 @@ public class SessionManager implements SessionManagerMBean {
       if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(String.format("Session-%s is closing", session), AUTHOR_STATEMENT);
       }
+      session.setLogin(false);
+      session.setUsername(null);
       return true;
     }
   }

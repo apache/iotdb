@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.event;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
@@ -67,6 +68,10 @@ public abstract class EnrichedEvent implements Event {
   protected final long startTime;
   protected final long endTime;
 
+  private UserEntity sourceUserEntity;
+  private boolean sourcePrivilegeCheckEnabled;
+  private boolean skipIfNoPrivileges = true;
+
   protected boolean isPatternParsed;
   protected boolean isTimeParsed;
 
@@ -94,6 +99,35 @@ public abstract class EnrichedEvent implements Event {
 
   protected void trackResource() {
     // do nothing by default
+  }
+
+  public final void bindSourceAuthentication(
+      final UserEntity userEntity, final boolean skipIfNoPrivileges) {
+    sourceUserEntity = userEntity;
+    sourcePrivilegeCheckEnabled = true;
+    this.skipIfNoPrivileges = skipIfNoPrivileges;
+  }
+
+  protected final void inheritSourceAuthentication(final EnrichedEvent sourceEvent) {
+    if (sourceEvent != null && sourceEvent.sourcePrivilegeCheckEnabled) {
+      bindSourceAuthentication(sourceEvent.sourceUserEntity, sourceEvent.skipIfNoPrivileges);
+    }
+  }
+
+  public final UserEntity getSourceUserEntity() {
+    return sourceUserEntity;
+  }
+
+  public final boolean isSourcePrivilegeCheckEnabled() {
+    return sourcePrivilegeCheckEnabled;
+  }
+
+  public final boolean isSkipIfNoPrivileges() {
+    return skipIfNoPrivileges;
+  }
+
+  public void throwIfNoPrivilege() {
+    // Subclasses with data-bearing payloads perform the check before exposing that payload.
   }
 
   /**

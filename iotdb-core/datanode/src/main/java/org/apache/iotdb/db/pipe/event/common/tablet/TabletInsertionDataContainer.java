@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -381,14 +385,14 @@ public class TabletInsertionDataContainer {
       final PipePattern pattern,
       final Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
     final int originColumnSize = originMeasurementList.length;
+    final List<Integer> patternMatchedIndexes = new ArrayList<>();
 
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
     // in this case, all data can be matched without checking the measurements
     if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
-      int filteredCount = 0;
       for (int i = 0; i < originColumnSize; i++) {
         if (originMeasurementList[i] != null) {
-          originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
+          patternMatchedIndexes.add(i);
         }
       }
     }
@@ -396,8 +400,6 @@ public class TabletInsertionDataContainer {
     // case 2: for example, pattern is root.a.b.c and device is root.a.b
     // in this case, we need to check the full path
     else if (pattern.mayOverlapWithDevice(deviceId)) {
-      int filteredCount = 0;
-
       for (int i = 0; i < originColumnSize; i++) {
         final String measurement = originMeasurementList[i];
 
@@ -407,10 +409,71 @@ public class TabletInsertionDataContainer {
         }
 
         if (pattern.matchesMeasurement(deviceId, measurement)) {
-          originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
+          patternMatchedIndexes.add(i);
         }
       }
     }
+
+    final List<Integer> unauthorizedIndexes =
+        getUnauthorizedColumnIndexes(originMeasurementList, patternMatchedIndexes);
+    if (!unauthorizedIndexes.isEmpty()
+        && sourceEvent instanceof EnrichedEvent
+        && !((EnrichedEvent) sourceEvent).isSkipIfNoPrivileges()) {
+      throw new org.apache.iotdb.pipe.api.exception.PipeException(
+          String.format(
+              "Source user %s does not have READ_DATA privilege for measurements %s.",
+              ((EnrichedEvent) sourceEvent).getSourceUserEntity() == null
+                  ? "<unknown>"
+                  : ((EnrichedEvent) sourceEvent).getSourceUserEntity().getUsername(),
+              unauthorizedIndexes.stream()
+                  .map(index -> deviceId + "." + originMeasurementList[index])
+                  .collect(Collectors.toList())));
+    }
+
+    int filteredCount = 0;
+    for (final int index : patternMatchedIndexes) {
+      if (!unauthorizedIndexes.contains(index)) {
+        originColumnIndex2FilteredColumnIndexMapperList[index] = filteredCount++;
+      }
+    }
+  }
+
+  private List<Integer> getUnauthorizedColumnIndexes(
+      final String[] originMeasurementList, final List<Integer> patternMatchedIndexes) {
+    if (!(sourceEvent instanceof EnrichedEvent)
+        || !((EnrichedEvent) sourceEvent).isSourcePrivilegeCheckEnabled()
+        || patternMatchedIndexes.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    final EnrichedEvent enrichedSourceEvent = (EnrichedEvent) sourceEvent;
+    if (enrichedSourceEvent.getSourceUserEntity() == null
+        || enrichedSourceEvent.getSourceUserEntity().getUsername() == null) {
+      return new ArrayList<>(patternMatchedIndexes);
+    }
+    final String username = enrichedSourceEvent.getSourceUserEntity().getUsername();
+    if (AuthorityChecker.SUPER_USER.equals(username)) {
+      return Collections.emptyList();
+    }
+
+    final List<PartialPath> paths = new ArrayList<>(patternMatchedIndexes.size());
+    try {
+      final PartialPath devicePath = new PartialPath(deviceId);
+      for (final int index : patternMatchedIndexes) {
+        paths.add(devicePath.concatAsMeasurementPath(originMeasurementList[index]));
+      }
+    } catch (final IllegalPathException e) {
+      throw new org.apache.iotdb.pipe.api.exception.PipeException(
+          "Failed to construct a source measurement path for privilege checking.", e);
+    }
+    final List<Integer> deniedPathIndexes =
+        AuthorityChecker.checkFullPathListPermission(
+            username, paths, PrivilegeType.READ_DATA.ordinal());
+    final List<Integer> deniedColumnIndexes = new ArrayList<>(deniedPathIndexes.size());
+    for (final int deniedPathIndex : deniedPathIndexes) {
+      deniedColumnIndexes.add(patternMatchedIndexes.get(deniedPathIndex));
+    }
+    return deniedColumnIndexes;
   }
 
   private List<Integer> generateRowIndexList(final long[] originTimestampColumn) {

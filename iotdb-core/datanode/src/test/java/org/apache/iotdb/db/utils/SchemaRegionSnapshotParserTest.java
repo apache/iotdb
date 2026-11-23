@@ -23,12 +23,15 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.view.viewExpression.binary.arithmetic.AdditionViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
@@ -242,6 +245,39 @@ public class SchemaRegionSnapshotParserTest {
       Assert.assertEquals(plan.getTags(), createTimeSeriesStatement.getTags());
     }
     statements.checkException();
+  }
+
+  @Test
+  public void testLogicalViewSnapshotRetainsSourcePaths() throws Exception {
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    final List<PartialPath> sourcePaths =
+        Arrays.asList(new PartialPath("root.sg.d.s_one"), new PartialPath("root.sg.d.s_two"));
+    schemaRegion.createLogicalView(
+        SchemaRegionWritePlanFactory.getCreateLogicalViewPlan(
+            new PartialPath("root.sg.d.view"),
+            new AdditionViewExpression(
+                new TimeSeriesViewOperand(sourcePaths.get(0).getFullPath()),
+                new TimeSeriesViewOperand(sourcePaths.get(1).getFullPath()))));
+
+    final File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
+    Assert.assertTrue(snapshotDir.mkdir());
+    Assert.assertTrue(schemaRegion.createSnapshot(snapshotDir));
+    final SRStatementGenerator statements =
+        SchemaRegionSnapshotParser.translate2Statements(
+            Paths.get(snapshotDir.getAbsolutePath(), snapshotFileName),
+            null,
+            new PartialPath("root.sg"));
+
+    boolean foundLogicalView = false;
+    while (statements.hasNext()) {
+      final Statement statement = statements.next();
+      if (statement instanceof CreateLogicalViewStatement) {
+        foundLogicalView = true;
+        Assert.assertEquals(
+            sourcePaths, ((CreateLogicalViewStatement) statement).getSourcePaths().fullPathList);
+      }
+    }
+    Assert.assertTrue(foundLogicalView);
   }
 
   @Test

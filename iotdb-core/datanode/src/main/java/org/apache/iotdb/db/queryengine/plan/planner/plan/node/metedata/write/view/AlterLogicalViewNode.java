@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.Maps;
@@ -66,6 +67,20 @@ public class AlterLogicalViewNode extends PlanNode {
   public TSStatus checkPermissionBeforeProcess(final String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    final List<PartialPath> sourcePathList = new ArrayList<>();
+    for (final ViewExpression sourceExpression : viewPathToSourceMap.values()) {
+      sourcePathList.addAll(GetSourcePathsVisitor.getSourcePaths(sourceExpression));
+    }
+    final TSStatus sourcePermissionStatus =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkFullPathListPermission(
+                userName, sourcePathList, PrivilegeType.READ_SCHEMA.ordinal()),
+            sourcePathList,
+            PrivilegeType.READ_SCHEMA);
+    if (sourcePermissionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return sourcePermissionStatus;
     }
 
     final List<PartialPath> targetPathList = new ArrayList<>(viewPathToSourceMap.keySet());

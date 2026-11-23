@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
@@ -80,6 +81,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private InsertNode insertNode;
 
   private ProgressIndex progressIndex;
+  private boolean shouldParse4Privilege;
   private long bytes = Long.MIN_VALUE;
 
   private long extractTime = 0;
@@ -106,6 +108,19 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Nonnull
   public InsertNode getInsertNode() {
     return insertNode;
+  }
+
+  @Override
+  public void throwIfNoPrivilege() {
+    if (isSourcePrivilegeCheckEnabled()
+        && (getSourceUserEntity() == null
+            || !AuthorityChecker.SUPER_USER.equals(getSourceUserEntity().getUsername()))) {
+      shouldParse4Privilege = true;
+    }
+  }
+
+  public boolean shouldParse4Privilege() {
+    return shouldParse4Privilege;
   }
 
   public String getDeviceId() {

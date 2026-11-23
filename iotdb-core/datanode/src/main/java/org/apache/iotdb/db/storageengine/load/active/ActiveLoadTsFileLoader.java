@@ -320,21 +320,58 @@ public class ActiveLoadTsFileLoader {
     PipeTsFileConversionTaskManager.enter(conversionTaskId);
     try {
       ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
-      final String userName =
-          attributes.getOrDefault(ActiveLoadPathHelper.USER_KEY, AuthorityChecker.SUPER_USER);
-      session.setUsername(userName);
-
-      final TSStatus result =
-          executeStatement(
-              entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement,
-              session);
-      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        PipeTsFileConversionTaskManager.markSuccess(conversionTaskId);
-      } else {
-        PipeTsFileConversionTaskManager.markPaused(conversionTaskId, result);
+      final String persistedUserName = attributes.get(ActiveLoadPathHelper.USER_KEY);
+      final boolean hasUserAttribute =
+          ActiveLoadPathHelper.hasAttributeSegment(
+              tsFile, pendingDir, ActiveLoadPathHelper.USER_KEY);
+      final boolean hasPipeIdentityMarker =
+          ActiveLoadPathHelper.hasAttributeSegment(
+              tsFile, pendingDir, ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY);
+      final boolean isPipeLoad =
+          entry.isGeneratedByPipe()
+              || statement.isGeneratedByPipe()
+              || conversionTaskId != null
+              || hasPipeIdentityMarker;
+      final boolean hasAcceptedPersistedUser =
+          persistedUserName != null
+              && !persistedUserName.isEmpty()
+              && (Boolean.TRUE
+                      .toString()
+                      .equals(attributes.get(ActiveLoadPathHelper.AUTHENTICATED_USER_KEY))
+                  || (!isPipeLoad && !AuthorityChecker.SUPER_USER.equals(persistedUserName)));
+      if ((hasUserAttribute && !hasAcceptedPersistedUser)
+          || (isPipeLoad
+              && (!hasAcceptedPersistedUser
+                  || !Boolean.TRUE
+                      .toString()
+                      .equals(attributes.get(ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY))))
+          || ((attributes.containsKey(ActiveLoadPathHelper.AUTHENTICATED_USER_KEY)
+                  || attributes.containsKey(ActiveLoadPathHelper.PIPE_AUTHENTICATED_USER_KEY))
+              && !hasAcceptedPersistedUser)) {
+        return new TSStatus(TSStatusCode.NOT_LOGIN.getStatusCode())
+            .setMessage("The persisted user identity for active LOAD could not be resolved.");
       }
-      return result;
+      session.setUsername(
+          persistedUserName == null || persistedUserName.isEmpty()
+              ? AuthorityChecker.SUPER_USER
+              : persistedUserName);
+      session.setLogin(isPipeLoad);
+      try {
+        final TSStatus result =
+            executeStatement(
+                entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement,
+                session);
+        if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          PipeTsFileConversionTaskManager.markSuccess(conversionTaskId);
+        } else {
+          PipeTsFileConversionTaskManager.markPaused(conversionTaskId, result);
+        }
+        return result;
+      } finally {
+        session.setLogin(false);
+        session.setUsername(null);
+      }
     } finally {
       PipeTsFileConversionTaskManager.leave();
     }

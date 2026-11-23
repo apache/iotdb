@@ -120,6 +120,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   // False when generated tablet events should wait for an external progress report.
   private volatile boolean shouldReportGeneratedEventsOnCommit = true;
   private String tsFileParser;
+  private boolean shouldParse4Privilege;
 
   public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
     // The modFile must be copied before the event is assigned to the listening pipes
@@ -326,6 +327,20 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   public boolean isWithMod() {
     return isWithMod;
+  }
+
+  @Override
+  public void throwIfNoPrivilege() {
+    if (isSourcePrivilegeCheckEnabled()
+        && (getSourceUserEntity() == null
+            || !org.apache.iotdb.db.auth.AuthorityChecker.SUPER_USER.equals(
+                getSourceUserEntity().getUsername()))) {
+      shouldParse4Privilege = true;
+    }
+  }
+
+  public boolean shouldParse4Privilege() {
+    return shouldParse4Privilege;
   }
 
   // If the previous "isWithMod" is false, the modFile has been set to "null", then the isWithMod

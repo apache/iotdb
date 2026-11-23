@@ -299,14 +299,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(status);
     }
 
-    long userId = -1;
     String cliHostname = "";
-
-    final String userIdString =
-        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID);
-    if (userIdString != null) {
-      userId = Long.parseLong(userIdString);
-    }
     final String cliHostnameString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME);
     if (cliHostnameString != null) {
@@ -323,9 +316,19 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               TSStatusCode.NOT_LOGIN, "Pipe handshake missing username or password."));
     }
 
+    final String loggedInSessionUsername = getLoggedInSessionUsername();
+    if (loggedInSessionUsername != null && !loggedInSessionUsername.equals(usernameString)) {
+      return new TPipeTransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.NO_PERMISSION,
+              String.format(
+                  "This connection is already authenticated as %s and cannot transfer data as %s.",
+                  loggedInSessionUsername, usernameString)));
+    }
+
     username = usernameString;
     password = passwordString;
-    userEntity = new UserEntity(userId, username, cliHostname);
+    userEntity = null;
     hasPipeHandshakeCredential = true;
 
     final TSStatus status;
@@ -333,10 +336,14 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       status = login();
     } catch (final Exception e) {
       hasPipeHandshakeCredential = false;
+      username = null;
+      password = null;
       throw e;
     }
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       hasPipeHandshakeCredential = false;
+      username = null;
+      password = null;
       PipeLogger.log(
           LOGGER::warn,
           "Receiver id = %s: Handshake failed because login failed, response status = %s.",
@@ -345,6 +352,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return new TPipeTransferResp(status);
     } else {
       lastSuccessfulLoginTime = System.currentTimeMillis();
+      userEntity = createAuditEntity(username, cliHostname);
       LOGGER.info("Receiver id = {}: User {} login successfully.", receiverId.get(), username);
     }
 
@@ -389,6 +397,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             }.convertToTPipeTransferReq(timestampPrecision));
     hasPipeHandshakeCredential =
         handshakeResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    if (!hasPipeHandshakeCredential) {
+      userEntity = null;
+    }
     return handshakeResp;
   }
 
@@ -431,6 +442,14 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   }
 
   protected abstract TSStatus login();
+
+  protected String getLoggedInSessionUsername() {
+    return null;
+  }
+
+  protected UserEntity createAuditEntity(final String username, final String cliHostname) {
+    return new UserEntity(-1, username, cliHostname);
+  }
 
   protected final TPipeTransferResp handleTransferFilePiece(
       final PipeTransferFilePieceReq req,
@@ -1079,6 +1098,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
     // Close the session
     closeSession();
+
+    username = null;
+    password = null;
+    userEntity = null;
+    hasPipeHandshakeCredential = false;
 
     LOGGER.info("Receiver id = {}: Handling exit: Receiver exited.", receiverId.get());
 

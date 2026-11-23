@@ -34,6 +34,9 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
@@ -163,13 +166,47 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
         new EventProcessingContext(event, System.nanoTime());
     eventProcessingContext.set(currentEventProcessingContext);
     try {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).throwIfNoPrivilege();
+      }
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
         if (event instanceof TabletInsertionEvent) {
-          pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+          if (event instanceof PipeInsertNodeTabletInsertionEvent
+              && ((PipeInsertNodeTabletInsertionEvent) event).shouldParse4Privilege()) {
+            for (final PipeRawTabletInsertionEvent rawEvent :
+                ((PipeInsertNodeTabletInsertionEvent) event).toRawTabletInsertionEvents()) {
+              pipeProcessor.process(rawEvent, outputEventCollector);
+            }
+          } else {
+            pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+          }
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
         } else if (event instanceof TsFileInsertionEvent) {
-          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+          if (event instanceof PipeTsFileInsertionEvent
+              && ((PipeTsFileInsertionEvent) event).shouldParse4Privilege()) {
+            final PipeTsFileInsertionEvent tsFileEvent = (PipeTsFileInsertionEvent) event;
+            tsFileEvent.consumeTabletInsertionEventsWithRetry(
+                tabletEvent -> {
+                  try {
+                    pipeProcessor.process(tabletEvent, outputEventCollector);
+                  } catch (final PipeProcessorSubtaskYieldException
+                      | PipeRuntimeOutOfMemoryCriticalException retryableException) {
+                    throw retryableException;
+                  } catch (final Exception exception) {
+                    throw new PipeException(exception.getMessage(), exception);
+                  }
+                },
+                "PipeProcessorSubtask::executeOnce",
+                executionGuard);
+            tsFileEvent.close();
+            if (tsFileEvent.isGeneratedByHistoricalExtractor()) {
+              PipeTerminateEvent.markHistoricalTsFileSplit(
+                  tsFileEvent.getPipeName(), tsFileEvent.getCreationTime(), regionId);
+            }
+          } else {
+            pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+          }
           PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
           PipeDataNodeSinglePipeMetrics.getInstance()
               .markTsFileCollectInvocationCount(
