@@ -49,7 +49,7 @@ class FakeSession:
         self.result = result
         self.statements = []
 
-    def execute_statement(self, statement):
+    def execute_statement(self, statement, timeout=0, fetch_size=None):
         self.statements.append(statement)
         return self.result
 

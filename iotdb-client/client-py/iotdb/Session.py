@@ -1682,14 +1682,18 @@ class Session(object):
                     except Exception as e:
                         self.__endpoint_to_connection.pop(endpoint)
 
-    def execute_statement(self, sql: str, timeout=0):
+    def execute_statement(self, sql: str, timeout=0, fetch_size=None):
+        effective_fetch_size = (
+            self.__fetch_size if fetch_size is None else fetch_size
+        )
         request = TSExecuteStatementReq(
             self.__session_id,
             sql,
             self.__statement_id,
-            fetchSize=self.__fetch_size,
             timeout=timeout,
         )
+        if fetch_size is not None:
+            request.fetchSize = fetch_size
         try:
             resp = self.__client.executeStatementV2(request)
         except TTransport.TException as e:
@@ -1719,7 +1723,7 @@ class Session(object):
                 resp.ignoreTimeStamp,
                 timeout,
                 resp.moreData,
-                self.__fetch_size,
+                effective_fetch_size,
                 self.__zone_id,
                 self.__time_precision,
                 resp.columnIndex2TsBlockColumnIndexList,

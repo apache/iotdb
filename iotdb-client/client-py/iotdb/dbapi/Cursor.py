@@ -36,10 +36,11 @@ from .Parameters import format_operation
 
 
 class Cursor(object):
-    def __init__(self, connection, session: Session, sqlalchemy_mode=False):
+    def __init__(self, connection, session: Session, sqlalchemy_mode=False, fetch_size=None):
         self.__connection = connection
         self.__session = session
         self.__sqlalchemy_mode = bool(sqlalchemy_mode)
+        self.__fetch_size = fetch_size
         self.__arraysize = 1
         self.__is_close = False
         self.__data_set = None
@@ -87,7 +88,12 @@ class Cursor(object):
                 )
             self.__operation = operation
             sql = format_operation(operation, parameters)
-            data_set = self.__session.execute_statement(sql)
+            if self.__fetch_size is None:
+                data_set = self.__session.execute_statement(sql)
+            else:
+                data_set = self.__session.execute_statement(
+                    sql, timeout=0, fetch_size=self.__fetch_size
+                )
             if data_set is None:
                 return None
 

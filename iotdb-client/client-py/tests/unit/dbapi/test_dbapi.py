@@ -220,16 +220,24 @@ def test_connection_defaults_to_table_and_closes_cursors(monkeypatch):
         def open(self, enable_compression):
             self.enable_compression = enable_compression
 
+        def execute_statement(self, statement, timeout=0, fetch_size=None):
+            self.execute_args = (statement, timeout, fetch_size)
+            return None
+
         def close(self):
             self.closed = True
 
     monkeypatch.setattr(connection_module, "Session", SessionStub)
-    connection = connection_module.Connection("localhost", 6667, database="db1")
+    connection = connection_module.Connection(
+        "localhost", 6667, fetch_size=1024, database="db1"
+    )
     session = SessionStub.instances[-1]
     assert session.sql_dialect == "table"
     assert session.database == "db1"
 
     cursor = connection.cursor()
+    cursor.execute("SHOW DATABASES")
+    assert session.execute_args == ("SHOW DATABASES", 0, 1024)
     connection.close()
     assert session.closed
     with pytest.raises(dbapi.InterfaceError):
@@ -330,8 +338,11 @@ def test_execute_statement_sends_fetch_size_and_timeout():
 
     session._Session__client = SimpleNamespace(executeStatementV2=execute)
     session.execute_statement("SHOW DATABASES", timeout=1234)
-    assert requests[0].fetchSize == 2
+    assert requests[0].fetchSize is None
     assert requests[0].timeout == 1234
+    session.execute_statement("SHOW DATABASES", timeout=1234, fetch_size=2)
+    assert requests[1].fetchSize == 2
+    assert requests[1].timeout == 1234
 
 
 def test_legacy_sqlalchemy_mode_keeps_the_dialect_adapter(monkeypatch):
@@ -349,7 +360,7 @@ def test_legacy_sqlalchemy_mode_keeps_the_dialect_adapter(monkeypatch):
         def open(self, enable_compression):
             pass
 
-        def execute_statement(self, statement):
+        def execute_statement(self, statement, timeout=0, fetch_size=None):
             return None
 
         def close(self):
