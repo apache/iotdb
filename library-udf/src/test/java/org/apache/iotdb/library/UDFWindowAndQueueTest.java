@@ -197,6 +197,32 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testKSigmaUpdatesScaledStatisticsForSlidingExtremeValues() throws Exception {
+    UDFParameters parameters =
+        createSingleDoubleSeriesParameters(Map.of("k", "0.5", "window", "3"));
+    UDTFKSigma kSigma = new UDTFKSigma();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    kSigma.validate(new UDFParameterValidator(parameters));
+    kSigma.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    kSigma.transform(new DoubleRow(1, Double.MAX_VALUE), collector);
+    kSigma.transform(new DoubleRow(2, -Double.MAX_VALUE), collector);
+    kSigma.transform(new DoubleRow(3, Double.MAX_VALUE), collector);
+    for (int i = 0; i < 500; i++) {
+      double value = i % 2 == 0 ? -Double.MAX_VALUE : Double.MAX_VALUE;
+      kSigma.transform(new DoubleRow(i + 4L, value), collector);
+    }
+
+    Assert.assertTrue(usesScaledStatistics(kSigma));
+    for (int i = 0; i < 3; i++) {
+      kSigma.transform(new DoubleRow(i + 504L, 0.0), collector);
+    }
+
+    Assert.assertFalse(usesScaledStatistics(kSigma));
+    assertAllValuesFinite(collector);
+  }
+
+  @Test
   public void testMvAvgUsesRunningWindowSum() throws Exception {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("window", "3");
@@ -553,6 +579,32 @@ public class UDFWindowAndQueueTest {
     lof.transform(new SimpleRowWindow(new DoubleRow(10001, 10001.0)), collector);
     Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L, 4L), collector.timestamps);
     assertAllValuesFinite(collector);
+  }
+
+  @Test
+  public void testLOFSeriesRejectsExcessiveBatchWorkBeforeEmitting() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("k", "3");
+    attributes.put("method", "series");
+    attributes.put("window", "10000");
+    UDTFLOF lof = new UDTFLOF();
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    lof.validate(new UDFParameterValidator(parameters));
+    lof.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    Row[] firstBatch = new Row[10003];
+    Row[] secondBatch = new Row[10003];
+    for (int i = 0; i < firstBatch.length; i++) {
+      firstBatch[i] = new DoubleRow(i, i);
+      secondBatch[i] = new DoubleRow(i + firstBatch.length, i + firstBatch.length);
+    }
+
+    lof.transform(new SimpleRowWindow(firstBatch), collector);
+    Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L), collector.timestamps);
+    Assert.assertThrows(
+        UDFException.class, () -> lof.transform(new SimpleRowWindow(secondBatch), collector));
+    Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L), collector.timestamps);
   }
 
   @Test
@@ -3576,6 +3628,12 @@ public class UDFWindowAndQueueTest {
     Field windowSize = UDTFKSigma.class.getDeclaredField("windowSize");
     windowSize.setAccessible(true);
     return (int) windowSize.get(kSigma);
+  }
+
+  private static boolean usesScaledStatistics(UDTFKSigma kSigma) throws Exception {
+    Field usesScaledStatistics = UDTFKSigma.class.getDeclaredField("usesScaledStatistics");
+    usesScaledStatistics.setAccessible(true);
+    return usesScaledStatistics.getBoolean(kSigma);
   }
 
   private static void runQLB(

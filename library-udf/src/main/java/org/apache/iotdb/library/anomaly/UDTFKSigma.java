@@ -32,6 +32,8 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.util.TreeMap;
+
 /** This function detects outliers which lies over average +/- k * sigma. */
 public class UDTFKSigma implements UDTF {
   private static final int DEFAULT_WINDOW_SIZE = 10000;
@@ -42,6 +44,7 @@ public class UDTFKSigma implements UDTF {
   private double statisticScale;
   private double multipleK;
   private boolean usesScaledStatistics;
+  private final TreeMap<Double, Integer> valueMagnitudes = new TreeMap<>();
   private int windowSize = 0;
   private CircularQueue<Object> v;
   private LongCircularQueue t;
@@ -82,6 +85,7 @@ public class UDTFKSigma implements UDTF {
     this.safeMomentMagnitude = Math.sqrt(Double.MAX_VALUE / (8.0 * windowSize));
     this.statisticScale = 0.0;
     this.usesScaledStatistics = false;
+    this.valueMagnitudes.clear();
     this.v = new CircularQueue<>(windowSize);
     this.t = new LongCircularQueue(windowSize);
   }
@@ -95,7 +99,7 @@ public class UDTFKSigma implements UDTF {
     long timestamp = row.getTime();
     if (Double.isFinite(value) && !Double.isNaN(value)) {
       if (v.isFull()) {
-        final double frontValue = Double.parseDouble(v.pop().toString());
+        final double frontValue = ((Number) v.pop()).doubleValue();
         t.pop();
         removeValue(frontValue);
         Object storedValue = valueReader.read(row);
@@ -114,7 +118,7 @@ public class UDTFKSigma implements UDTF {
           for (int i = 0; i < v.getSize(); i++) {
             Object windowValue = this.v.get(i);
             timestamp = this.t.get(i);
-            if (isOutlier(Double.parseDouble(windowValue.toString()))) {
+            if (isOutlier(((Number) windowValue).doubleValue())) {
               valueWriter.write(collector, timestamp, windowValue);
             }
           }
@@ -129,7 +133,7 @@ public class UDTFKSigma implements UDTF {
       for (int i = 0; i < v.getSize(); i++) {
         Object windowValue = this.v.get(i);
         long timestamp = this.t.get(i);
-        if (isOutlier(Double.parseDouble(windowValue.toString()))) {
+        if (isOutlier(((Number) windowValue).doubleValue())) {
           valueWriter.write(collector, timestamp, windowValue);
         }
       }
@@ -137,8 +141,20 @@ public class UDTFKSigma implements UDTF {
   }
 
   private void addValue(double value) {
-    if (usesScaledStatistics || Math.abs(value) > safeMomentMagnitude) {
-      recomputeStatistics();
+    double magnitude = Math.abs(value);
+    valueMagnitudes.merge(magnitude, 1, Integer::sum);
+    if (usesScaledStatistics) {
+      double newScale = valueMagnitudes.lastKey();
+      if (newScale <= safeMomentMagnitude) {
+        recomputeStatistics();
+        return;
+      }
+      rescaleStatistics(newScale);
+      addScaledValue(value / statisticScale);
+      return;
+    }
+    if (magnitude > safeMomentMagnitude) {
+      recomputeScaledStatistics(magnitude);
       return;
     }
     int newCount = v.getSize();
@@ -151,8 +167,23 @@ public class UDTFKSigma implements UDTF {
   }
 
   private void removeValue(double value) {
+    removeMagnitude(Math.abs(value));
     if (usesScaledStatistics) {
-      recomputeStatistics();
+      int remainingCount = v.getSize();
+      if (remainingCount == 0) {
+        mean = 0;
+        sumSquaredDeviation = 0;
+        statisticScale = 0;
+        usesScaledStatistics = false;
+        return;
+      }
+      double comparedValue = value / statisticScale;
+      double updatedMean = mean - (comparedValue - mean) / remainingCount;
+      sumSquaredDeviation -= (comparedValue - mean) * (comparedValue - updatedMean);
+      mean = updatedMean;
+      if (sumSquaredDeviation < 0 || !Double.isFinite(sumSquaredDeviation)) {
+        recomputeStatistics();
+      }
       return;
     }
     int remainingCount = v.getSize();
@@ -172,10 +203,7 @@ public class UDTFKSigma implements UDTF {
   }
 
   private void recomputeStatistics() {
-    double maxMagnitude = 0;
-    for (int i = 0; i < v.getSize(); i++) {
-      maxMagnitude = Math.max(maxMagnitude, Math.abs(Double.parseDouble(v.get(i).toString())));
-    }
+    double maxMagnitude = valueMagnitudes.isEmpty() ? 0 : valueMagnitudes.lastKey();
     if (maxMagnitude > safeMomentMagnitude) {
       recomputeScaledStatistics(maxMagnitude);
       return;
@@ -186,7 +214,7 @@ public class UDTFKSigma implements UDTF {
     mean = 0;
     sumSquaredDeviation = 0;
     for (int i = 0; i < v.getSize(); i++) {
-      double value = Double.parseDouble(v.get(i).toString());
+      double value = ((Number) v.get(i)).doubleValue();
       int count = i + 1;
       double delta = value - mean;
       mean += delta / count;
@@ -208,11 +236,37 @@ public class UDTFKSigma implements UDTF {
     }
 
     for (int i = 0; i < v.getSize(); i++) {
-      double value = Double.parseDouble(v.get(i).toString()) / scale;
+      double value = ((Number) v.get(i)).doubleValue() / scale;
       int count = i + 1;
       double delta = value - mean;
       mean += delta / count;
       sumSquaredDeviation += delta * (value - mean);
+    }
+  }
+
+  private void addScaledValue(double value) {
+    int newCount = v.getSize();
+    double delta = value - mean;
+    mean += delta / newCount;
+    sumSquaredDeviation += delta * (value - mean);
+  }
+
+  private void rescaleStatistics(double newScale) {
+    if (newScale == statisticScale) {
+      return;
+    }
+    double ratio = statisticScale / newScale;
+    mean *= ratio;
+    sumSquaredDeviation *= ratio * ratio;
+    statisticScale = newScale;
+  }
+
+  private void removeMagnitude(double magnitude) {
+    int count = valueMagnitudes.get(magnitude);
+    if (count == 1) {
+      valueMagnitudes.remove(magnitude);
+    } else {
+      valueMagnitudes.put(magnitude, count - 1);
     }
   }
 

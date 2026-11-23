@@ -25,6 +25,11 @@ public final class LibraryUdfMessages {
   public static final String NO_SUCH_DATA_TYPE = "No such kind of data type.";
 
   // UDTFLOF
+  public static final String EXCEPTION_LOF_WORKING_MEMORY_EXCEEDS_THE_64_MIB_LIMIT_A21CB57F =
+      "LOF working memory exceeds the 64 MiB limit.";
+  public static final String
+      EXCEPTION_LOF_SERIES_CALCULATION_EXCEEDS_THE_64_MI_DISTANCE_COORDINATE_OPERATION_LIMIT_PER_ACCESS_WINDOW_9A1E82AD =
+          "LOF series calculation exceeds the 64 Mi distance-coordinate operation limit per access window.";
   public static final String
       EXCEPTION_LOF_NEIGHBOR_GRAPH_EXCEEDS_THE_64_MIB_WORKING_MEMORY_LIMIT_7BF9B997 =
           "LOF neighbor graph exceeds the 64 MiB working-memory limit.";
