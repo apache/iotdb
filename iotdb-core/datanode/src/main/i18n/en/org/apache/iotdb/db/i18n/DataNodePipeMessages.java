@@ -31,6 +31,9 @@ public final class DataNodePipeMessages {
 
   private DataNodePipeMessages() {}
 
+  public static final String EXCEPTION_THE_AGGREGATOR_AND_OUTPUT_NAME_ARG_IS_INVALID_2C76EEE3 =
+      "The aggregator and output name %s is invalid.";
+
   public static final String
       EXCEPTION_FORCERESIZE_FAILED_AFTER_ARG_RETRIES_TOTAL_ARG_BYTES_USED_ARG_BYTES_USEDTABLETS_ARG_BYTES_USEDTSFILES_ARG_BYTES_TABLETLIMIT_ARG_BYTES_TSFILELIMIT_ARG_BYTES_TABLETANDTSFILELIMIT_ARG_BYTES_PROTECTEDPARSERLIMIT_ARG_BYTES_REQUESTED_ARG_BYTES_311C8C7E =
           "forceResize failed after %d retries: total=%d bytes, used=%d bytes, "

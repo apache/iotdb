@@ -25,8 +25,11 @@ import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimePartitionProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMetaVersion;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -51,6 +54,8 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -58,6 +63,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -727,6 +733,70 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
   }
 
   @Test
+  public void testFilterAndSortTsFilesUsingRestoredWindowStateProgressIndex() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalWindowStateOrder").toFile();
+
+    try {
+      final TimeWindowStateProgressIndex windowStateProgressIndex =
+          new TimeWindowStateProgressIndex(
+              Map.of(
+                  "root.sg.d.completed", new Pair<Long, ByteBuffer>(100L, null),
+                  "root.sg.d.open", new Pair<>(200L, ByteBuffer.wrap(new byte[] {1}))));
+      final ProgressIndex wrappedProgressIndex =
+          new StateProgressIndex(
+              1L,
+              Collections.emptyMap(),
+              hybridProgressIndex(windowStateProgressIndex, new SimpleProgressIndex(0, 10)));
+      final PipeTaskMeta restoredTaskMeta =
+          roundTripTaskMeta(new PipeTaskMeta(wrappedProgressIndex, 1));
+
+      final TsFileResource beforeWatermark =
+          createClosedTsFileResource(tempDir, "50-1-0-0.tsfile", new SimpleProgressIndex(0, 11));
+      final TsFileResource atWatermark =
+          createClosedTsFileResource(tempDir, "90-1-0-0.tsfile", new SimpleProgressIndex(0, 2));
+      final TsFileResource afterWatermark =
+          createClosedTsFileResource(tempDir, "95-1-0-0.tsfile", new SimpleProgressIndex(0, 1));
+      final PlainDeviceID device = new PlainDeviceID("root.sg.d");
+      beforeWatermark.updateStartTime(device, 50L);
+      beforeWatermark.updateEndTime(device, 99L);
+      atWatermark.updateStartTime(device, 90L);
+      atWatermark.updateEndTime(device, 100L);
+      afterWatermark.updateStartTime(device, 95L);
+      afterWatermark.updateEndTime(device, 101L);
+
+      final PipeHistoricalDataRegionTsFileSource source =
+          new PipeHistoricalDataRegionTsFileSource();
+      final PipeParameters parameters =
+          new PipeParameters(
+              Map.of(
+                  PipeSourceConstant.SOURCE_INCLUSION_KEY,
+                  "data.insert",
+                  PipeSourceConstant.SOURCE_HISTORY_TSFILE_ORDER_BY_QUERY_PRIORITY_KEY,
+                  "false"));
+      source.validate(new PipeParameterValidator(parameters));
+      source.customize(
+          parameters, () -> new PipeTaskSourceRuntimeEnvironment("test", 123, 1, restoredTaskMeta));
+      final ProgressIndex restoredStartIndex =
+          (ProgressIndex) getPrivateField(source, "startIndex");
+      Assert.assertNotNull(
+          restoredStartIndex
+              .getProgressIndexByType(TimeWindowStateProgressIndex.class)
+              .orElse(null));
+
+      assertMayTsFileContainUnprocessedData(restoredStartIndex, beforeWatermark, false);
+      assertMayTsFileContainUnprocessedData(restoredStartIndex, atWatermark, true);
+      assertMayTsFileContainUnprocessedData(restoredStartIndex, afterWatermark, true);
+      final List<TsFileResource> resources =
+          new ArrayList<>(Arrays.asList(afterWatermark, atWatermark));
+      sortExtractedResources(source, resources);
+
+      Assert.assertEquals(Arrays.asList(atWatermark, afterWatermark), resources);
+    } finally {
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test
   public void testMissingTsFileResourceDoesNotBlockHistoricalExtraction() throws Exception {
     final File tempDir = Files.createTempDirectory("pipeHistoricalMissingResource").toFile();
 
@@ -880,6 +950,14 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
       result = result.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
     }
     return result;
+  }
+
+  private static PipeTaskMeta roundTripTaskMeta(final PipeTaskMeta taskMeta) throws IOException {
+    try (final PublicBAOS output = new PublicBAOS()) {
+      taskMeta.serialize(output);
+      return PipeTaskMeta.deserialize(
+          PipeRuntimeMetaVersion.VERSION_2, ByteBuffer.wrap(output.getBuf(), 0, output.size()));
+    }
   }
 
   private static IoTProgressIndex iotProgressIndex(

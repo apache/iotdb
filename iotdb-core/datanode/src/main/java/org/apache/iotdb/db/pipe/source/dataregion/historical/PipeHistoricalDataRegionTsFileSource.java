@@ -567,7 +567,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
     resourceList.sort(
         (o1, o2) ->
-            getInnerProgressIndex(startIndex) instanceof TimeWindowStateProgressIndex
+            getTimeWindowStateProgressIndex(startIndex) != null
                 ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                 : o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
   }
@@ -649,10 +649,11 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
   private boolean mayTsFileContainUnprocessedData(final TsFileResource resource) {
     final ProgressIndex innerStartIndex = getInnerProgressIndex(startIndex);
-    if (innerStartIndex instanceof TimeWindowStateProgressIndex) {
+    final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
+        getTimeWindowStateProgressIndex(startIndex);
+    if (Objects.nonNull(timeWindowStateProgressIndex)) {
       // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
-      return ((TimeWindowStateProgressIndex) innerStartIndex).getMinTime()
-          <= resource.getFileEndTime();
+      return timeWindowStateProgressIndex.getMinTime() <= resource.getFileEndTime();
     }
 
     final ProgressIndex resourceProgressIndex = resource.getMaxProgressIndex();
