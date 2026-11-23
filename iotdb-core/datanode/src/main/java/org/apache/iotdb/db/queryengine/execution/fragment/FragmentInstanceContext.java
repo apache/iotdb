@@ -1643,7 +1643,7 @@ public class FragmentInstanceContext extends QueryContext {
     return unclosedSeqFileNum.get();
   }
 
-  /** Whether this query started while the storage engine was still recovering its data regions. */
+  @Override
   public boolean isStorageEngineRecovering() {
     return isStorageEngineRecovering;
   }

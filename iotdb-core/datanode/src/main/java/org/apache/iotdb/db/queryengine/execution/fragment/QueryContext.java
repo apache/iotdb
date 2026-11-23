@@ -103,6 +103,11 @@ public class QueryContext {
     this.timeout = timeout;
   }
 
+  /** Whether this query started while the storage engine was recovering its data regions. */
+  public boolean isStorageEngineRecovering() {
+    return false;
+  }
+
   public boolean isExternalTsFileScan() {
     return false;
   }

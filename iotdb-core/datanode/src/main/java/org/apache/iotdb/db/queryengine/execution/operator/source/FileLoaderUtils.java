@@ -357,7 +357,6 @@ public class FileLoaderUtils {
             resource.getTsFileID(),
             alignedPath.getDeviceId(),
             allSensors,
-            allSensors,
             ignoreNotExists,
             context.isDebug(),
             context,

@@ -234,7 +234,7 @@ public class TimeSeriesMetadataCacheTest {
   }
 
   @Test
-  public void testIgnoreNotExistsResultIsNotCached() throws Exception {
+  public void testSingleCachesFileIndexMissesAfterRecovery() throws Exception {
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     FileReaderManager fileReaderManager = FileReaderManager.getInstance();
@@ -275,17 +275,23 @@ public class TimeSeriesMetadataCacheTest {
                   Mockito.any(LongConsumer.class)))
           .thenThrow(new IOException("missing device"));
 
-      assertNull(cache.get(filePath, key, allSensors, true, false, new QueryContext(false, false)));
+      assertNull(cache.get(filePath, key, allSensors, true, false, recoveringQueryContext()));
       assertThrows(
           IOException.class,
           () -> cache.get(filePath, key, allSensors, false, false, new QueryContext(false, false)));
-      Mockito.verify(reader)
+
+      QueryContext fileIndexQuery = new QueryContext(false, false);
+      assertNull(cache.get(filePath, key, allSensors, true, false, fileIndexQuery));
+      assertNull(cache.get(filePath, key, allSensors, true, false, fileIndexQuery));
+      assertEquals(
+          1, fileIndexQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get());
+      Mockito.verify(reader, Mockito.times(2))
           .readTimeseriesMetadataForMeasurements(
               Mockito.eq(deviceID),
               Mockito.<long[]>isNull(),
               Mockito.anyCollection(),
               Mockito.anySet(),
-              Mockito.eq(false),
+              Mockito.eq(true),
               Mockito.any(LongConsumer.class));
     } finally {
       cache.clear();
@@ -295,6 +301,12 @@ public class TimeSeriesMetadataCacheTest {
           .getMemoryConfig()
           .setMayCacheNonExistSeries(mayCacheNonExistSeries);
     }
+  }
+
+  private static QueryContext recoveringQueryContext() {
+    QueryContext context = Mockito.spy(new QueryContext(false, false));
+    Mockito.when(context.isStorageEngineRecovering()).thenReturn(true);
+    return context;
   }
 
   private static Map<String, TimeseriesMetadata> getTimeseriesMetadata(
@@ -309,7 +321,6 @@ public class TimeSeriesMetadataCacheTest {
         filePath,
         tsFileID,
         deviceID,
-        allSensors,
         allSensors,
         ignoreNotExists,
         false,
@@ -486,10 +497,13 @@ public class TimeSeriesMetadataCacheTest {
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    boolean mayCacheNonExistSeries =
+        IoTDBDescriptor.getInstance().getMemoryConfig().isMayCacheNonExistSeries();
     TsFileID tsFileID = new TsFileID();
     cache.clear();
     bloomFilterCache.clear();
     try {
+      IoTDBDescriptor.getInstance().getMemoryConfig().setMayCacheNonExistSeries(false);
       String filePath = "target/batch-absent-device-throw.tsfile";
       IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
       Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
@@ -512,7 +526,7 @@ public class TimeSeriesMetadataCacheTest {
       bloomFilter.add(deviceID.toString() + ".s2");
       Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class))).thenReturn(bloomFilter);
 
-      // ignoreNotExists keeps the missing device silent, but caches nothing
+      // With negative caching disabled, a file-index lookup must leave the next read uncached.
       Map<String, TimeseriesMetadata> ignored =
           getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true);
       assertNull(ignored.get(""));
@@ -524,6 +538,9 @@ public class TimeSeriesMetadataCacheTest {
           IOException.class,
           () -> getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
     } finally {
+      IoTDBDescriptor.getInstance()
+          .getMemoryConfig()
+          .setMayCacheNonExistSeries(mayCacheNonExistSeries);
       cache.clear();
       bloomFilterCache.clear();
       fileReaderManager.closeFileAndRemoveReader(tsFileID);
@@ -564,6 +581,26 @@ public class TimeSeriesMetadataCacheTest {
       }
       allSensors.add("");
       allSensors.add("absent");
+
+      // A single lookup also warms selected siblings in the same group, even when allSensors
+      // does not include the requested measurement.
+      QueryContext queryContext = new QueryContext(false, false);
+      Set<String> siblings = Collections.singleton("s1");
+      for (String measurement : Arrays.asList("s0", "s1")) {
+        assertNotNull(
+            cache.get(
+                filePath,
+                new TimeSeriesMetadataCacheKey(tsFileID, deviceID, measurement),
+                siblings,
+                false,
+                false,
+                queryContext));
+      }
+      assertEquals(
+          1, queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().get());
+      assertEquals(
+          1, queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get());
+      cache.clear();
 
       Map<String, TimeseriesMetadata> perColumn = new HashMap<>();
       for (String measurement : allSensors) {
@@ -738,14 +775,17 @@ public class TimeSeriesMetadataCacheTest {
   }
 
   @Test
-  public void testBatchIgnoreNotExistsDoesNotCachePlaceholders() throws Exception {
+  public void testBatchCachesFileIndexMissesAfterRecovery() throws Exception {
     TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    boolean mayCacheNonExistSeries =
+        IoTDBDescriptor.getInstance().getMemoryConfig().isMayCacheNonExistSeries();
     TsFileID tsFileID = new TsFileID();
     cache.clear();
     bloomFilterCache.clear();
     try {
+      IoTDBDescriptor.getInstance().getMemoryConfig().setMayCacheNonExistSeries(true);
       String filePath = "target/batch-ignore-not-exists.tsfile";
       IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
       Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
@@ -763,18 +803,28 @@ public class TimeSeriesMetadataCacheTest {
                   Mockito.any(LongConsumer.class)))
           .thenThrow(new IOException("device absent"));
 
+      QueryContext recovering = recoveringQueryContext();
       Map<String, TimeseriesMetadata> ignored =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true);
+          cache.getTimeseriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, true, false, recovering, null);
       assertNull(ignored.get(""));
       assertNull(ignored.get("s1"));
 
-      // ignoreNotExists must not write NULL placeholders: a normal query still has to read
+      // A strict query after recovery must still reach the reader.
       assertThrows(
           IOException.class,
           () -> getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
-      // the empty group read resolves the time column as absent, which ends the load for the
-      // device, plus the failing normal query
-      Mockito.verify(reader, Mockito.times(2))
+
+      assertNull(
+          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true).get(""));
+      QueryContext fileIndexQuery = new QueryContext(false, false);
+      Map<String, TimeseriesMetadata> cached =
+          cache.getTimeseriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, true, false, fileIndexQuery, null);
+      assertNull(cached.get(""));
+      assertEquals(
+          1, fileIndexQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get());
+      Mockito.verify(reader, Mockito.times(3))
           .readTimeseriesMetadataForMeasurements(
               Mockito.eq(deviceID),
               Mockito.<long[]>isNull(),
@@ -783,6 +833,9 @@ public class TimeSeriesMetadataCacheTest {
               Mockito.anyBoolean(),
               Mockito.any(LongConsumer.class));
     } finally {
+      IoTDBDescriptor.getInstance()
+          .getMemoryConfig()
+          .setMayCacheNonExistSeries(mayCacheNonExistSeries);
       cache.clear();
       bloomFilterCache.clear();
       fileReaderManager.closeFileAndRemoveReader(tsFileID);
@@ -1016,15 +1069,7 @@ public class TimeSeriesMetadataCacheTest {
       QueryContext queryContext = new QueryContext(false, false);
       Map<String, TimeseriesMetadata> result =
           cache.getTimeseriesMetadata(
-              filePath,
-              tsFileID,
-              deviceID,
-              allSensors,
-              allSensors,
-              false,
-              false,
-              queryContext,
-              null);
+              filePath, tsFileID, deviceID, allSensors, false, false, queryContext, null);
       assertNotNull(result.get(""));
       assertNotNull(result.get("s1"));
       assertTrue(
@@ -1087,7 +1132,6 @@ public class TimeSeriesMetadataCacheTest {
               filePath,
               resource.getTsFileID(),
               deviceID,
-              allSensors,
               allSensors,
               false,
               false,
