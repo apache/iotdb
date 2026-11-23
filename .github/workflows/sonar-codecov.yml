@@ -68,16 +68,15 @@ jobs:
 
   sonar:
     runs-on: ubuntu-latest
-    if: >-
-      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb') ||
-      (github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev/1.3'))
+    if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb') || github.event_name == 'push'
     env:
       MAVEN_OPTS: -Xms2g -Xmx8g -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-      - name: Select SonarCloud scan scope
+      - name: Check SonarCloud scan scope
         id: sonar-scope
         shell: bash
         env:
@@ -88,13 +87,12 @@ jobs:
           if [ "${EVENT_NAME}" = "push" ]; then
             echo "Push event on ${GITHUB_REF}: running full SonarCloud scan (excluding distribution)."
             echo 'run_sonar=true' >> "${GITHUB_OUTPUT}"
-            echo 'modules=!distribution' >> "${GITHUB_OUTPUT}"
             exit 0
           fi
           if ! git rev-parse --verify --quiet "refs/remotes/origin/${BASE_REF}" >/dev/null; then
             git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
           fi
-          python3 .github/scripts/select-sonar-modules.py \
+          python3 .github/scripts/check-sonar-pr-diff.py \
             --base-ref "refs/remotes/origin/${BASE_REF}" \
             --head-ref HEAD \
             --github-output "${GITHUB_OUTPUT}"
@@ -126,11 +124,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
-          SONAR_MODULES: ${{ steps.sonar-scope.outputs.modules }}
         run: |
           mvn -B verify sonar:sonar \
           -Dsonar.organization=apache \
           -Dsonar.projectKey=apache_iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.token="${SONAR_TOKEN}" \
-          -DskipTests -pl "${SONAR_MODULES}" -am
+          -DskipTests -pl '!distribution' -am

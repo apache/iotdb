@@ -18,7 +18,7 @@
 # under the License.
 #
 
-"""Resolve Maven modules impacted by Sonar-analyzable PR diff changes.
+"""Check whether a PR diff touches any Sonar-analyzable main Java source.
 
 SonarCloud for apache_iotdb analyzes main Java sources (`src/main/java/**` and
 `src/main/i18n/en/**`) in the default Maven reactor excluding `distribution`
@@ -26,8 +26,8 @@ SonarCloud for apache_iotdb analyzes main Java sources (`src/main/java/**` and
 `iotdb-client/client-cpp`, and `iotdb-core/ainode`).
 
 Given a base Git ref and head ref, this script inspects the three-dot PR diff
-(`<base>...<head>`), maps changed analyzable Java files to their enclosing
-Maven modules, and emits `run_sonar` and `modules` outputs for GitHub Actions.
+(`<base>...<head>`) and emits `run_sonar=true|false` for GitHub Actions so PRs
+without analyzable Java changes can skip the SonarCloud build and scan.
 """
 
 from __future__ import annotations
@@ -102,16 +102,15 @@ def is_analyzable_source(rel_path: str, module_dir: str) -> bool:
     return module_rel.startswith(ANALYZABLE_SOURCE_PREFIXES)
 
 
-def select_modules_for_files(
+def find_analyzable_files(
     changed_files: list[str],
     repo_root: Path,
     eligible_modules: set[str],
     *,
     require_existing: bool = True,
-) -> tuple[list[str], list[str]]:
-    """Map changed repo-relative paths to sorted Sonar-analyzable files and modules."""
+) -> list[str]:
+    """Filter changed repo-relative paths to sorted Sonar-analyzable Java files."""
     analyzable_files: list[str] = []
-    selected_modules: set[str] = set()
 
     for raw_path in changed_files:
         rel_path = raw_path.replace("\\", "/")
@@ -126,9 +125,8 @@ def select_modules_for_files(
             continue
         if is_analyzable_source(rel_path, module_dir):
             analyzable_files.append(rel_path)
-            selected_modules.add(module_dir)
 
-    return sorted(analyzable_files), sorted(selected_modules)
+    return sorted(analyzable_files)
 
 
 def git_changed_files(repo_root: Path, base_ref: str, head_ref: str) -> tuple[str, list[str]]:
@@ -152,19 +150,22 @@ def git_changed_files(repo_root: Path, base_ref: str, head_ref: str) -> tuple[st
         ],
         cwd=repo_root,
     )
-    files = [entry.decode("utf-8", errors="surrogateescape") for entry in diff_output.split(b"\0") if entry]
+    files = [
+        entry.decode("utf-8", errors="surrogateescape")
+        for entry in diff_output.split(b"\0")
+        if entry
+    ]
     return merge_base, files
 
 
-def write_github_outputs(output_path: Path, run_sonar: bool, modules: list[str]) -> None:
+def write_github_outputs(output_path: Path, run_sonar: bool) -> None:
     with output_path.open("a", encoding="utf-8") as fh:
         fh.write(f"run_sonar={'true' if run_sonar else 'false'}\n")
-        fh.write(f"modules={','.join(modules)}\n")
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Select Maven modules for PR-diff SonarCloud analysis."
+        description="Determine whether a PR diff touches Sonar-analyzable Java sources."
     )
     parser.add_argument(
         "--repo-root",
@@ -197,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
 
     eligible_modules = discover_reactor_modules(repo_root)
     merge_base, changed_files = git_changed_files(repo_root, args.base_ref, args.head_ref)
-    analyzable_files, selected_modules = select_modules_for_files(
+    analyzable_files = find_analyzable_files(
         changed_files,
         repo_root,
         eligible_modules,
@@ -213,14 +214,14 @@ def main(argv: list[str] | None = None) -> int:
     if len(analyzable_files) > 50:
         print(f"  ... and {len(analyzable_files) - 50} more")
 
-    run_sonar = bool(selected_modules)
+    run_sonar = bool(analyzable_files)
     if run_sonar:
-        print(f"Selected Maven modules for SonarCloud (-pl): {','.join(selected_modules)}")
+        print("Analyzable Java changes detected; running full-reactor SonarCloud PR analysis.")
     else:
         print("No Sonar-analyzable main Java sources changed in this PR; skipping SonarCloud scan.")
 
     if args.github_output is not None:
-        write_github_outputs(args.github_output, run_sonar, selected_modules)
+        write_github_outputs(args.github_output, run_sonar)
 
     return 0
 
