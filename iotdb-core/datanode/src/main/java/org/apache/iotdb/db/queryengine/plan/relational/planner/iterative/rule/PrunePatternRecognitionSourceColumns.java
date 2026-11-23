@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Pattern
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowsPerMatch.ONE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.restrictChildOutputs;

@@ -25,7 +25,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ta
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 
-import com.google.common.primitives.Ints;
+import org.apache.ratis.thirdparty.com.google.common.primitives.Ints;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;

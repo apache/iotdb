@@ -183,7 +183,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.io.BaseEncoding;
+import org.apache.ratis.thirdparty.com.google.common.io.BaseEncoding;
 import org.apache.thrift.TException;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.external.commons.io.FileUtils;

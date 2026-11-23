@@ -28,7 +28,7 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.ZoneId;
 
-import static com.google.common.math.LongMath.saturatedAdd;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 /**
  * This class iteratively generates aggregated time windows.

@@ -32,10 +32,10 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.CURRENT_ROW;
 import static org.apache.iotdb.calc.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING;
 import static org.apache.iotdb.calc.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class RangeFrame implements Frame {
   private final Partition partition;

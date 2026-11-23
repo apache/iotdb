@@ -37,13 +37,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.LongType;
 
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression.Operator.SUBTRACT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.Except.distinct;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
 
 public class ImplementExceptAll implements Rule<ExceptNode> {
 

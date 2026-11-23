@@ -24,14 +24,14 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.utils.TestOnly;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
-import static com.google.common.util.concurrent.Futures.getDone;
-import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.getDone;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 
 /**
  * Consumes whichever direct child is ready first. Output rows are ordered per child but interleaved

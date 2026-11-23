@@ -30,9 +30,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.TableF
 import org.apache.iotdb.udf.api.relational.EmptyTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
 import java.util.Collections;

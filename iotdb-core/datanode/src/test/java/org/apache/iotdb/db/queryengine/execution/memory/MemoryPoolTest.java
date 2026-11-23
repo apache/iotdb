@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

@@ -38,8 +38,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
 
 public class SerializableTVList implements SerializableList {
   protected final SerializationRecorder serializationRecorder;

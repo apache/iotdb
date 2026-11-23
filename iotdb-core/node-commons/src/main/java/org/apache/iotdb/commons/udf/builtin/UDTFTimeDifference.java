@@ -29,7 +29,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
-import static com.google.common.math.LongMath.saturatedSubtract;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedSubtract;
 
 public class UDTFTimeDifference implements UDTF {
 

@@ -29,7 +29,7 @@ import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
-import static com.google.common.base.Preconditions.checkState;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
 
 @NotThreadSafe
 public class NotThreadSafeMemoryReservationManager implements MemoryReservationManager {

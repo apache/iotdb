@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.mqtt.i18n.MqttMessages;
 
-import com.google.common.base.Preconditions;
+import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

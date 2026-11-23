@@ -35,8 +35,8 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.math.LongMath.saturatedAdd;
 import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.saturateToLong;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
 
