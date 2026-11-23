@@ -33,9 +33,11 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -52,6 +54,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.db.service.RegionMigrateService.isFailed;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -111,6 +114,7 @@ public class ProcedureManagerTest {
   @BeforeClass
   public static void setUp() throws IOException {
     IManager CONFIG_MANAGER = new ConfigManager();
+    IManager CONFIG_MANAGER_SPY = spy(CONFIG_MANAGER);
     ProcedureManager procedureManager = CONFIG_MANAGER.getProcedureManager();
     PROCEDURE_MANAGER = spy(procedureManager);
 
@@ -130,6 +134,10 @@ public class ProcedureManagerTest {
     when(PROCEDURE_EXECUTOR.getProcedures()).thenReturn(procedureMap);
     when(PROCEDURE_MANAGER.getEnv()).thenReturn(ENV);
     when(ENV.getRemoveDataNodeHandler()).thenReturn(REMOVE_DATA_NODE_HANDLER);
+    // Inject the LoadManager spy into the call chain used by checkRemoveDataNodes, so that the
+    // node-status stubs below take effect on the production path
+    when(PROCEDURE_MANAGER.getConfigManager()).thenReturn(CONFIG_MANAGER_SPY);
+    when(CONFIG_MANAGER_SPY.getLoadManager()).thenReturn(LOAD_MANAGER);
   }
 
   @Test
@@ -142,6 +150,19 @@ public class ProcedureManagerTest {
 
     TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
     Assert.assertTrue(isFailed(status));
+  }
+
+  @Test
+  public void testPreSubmissionFailureWithNoProcedureIdIsReportedImmediately() {
+    final Procedure<ConfigNodeProcedureEnv> procedure = mock(Procedure.class);
+    when(procedure.getProcId()).thenReturn(Procedure.NO_PROC_ID);
+    when(procedure.isFinished()).thenReturn(false);
+    when(procedure.isFailed()).thenReturn(true);
+    when(procedure.getException()).thenReturn(new ProcedureException("conflict"));
+
+    Assert.assertEquals(
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+        PROCEDURE_MANAGER.waitingProcedureFinished(procedure, 0).getCode());
   }
 
   @Test
@@ -197,6 +218,26 @@ public class ProcedureManagerTest {
 
     TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
     Assert.assertTrue(isFailed(status));
+    Assert.assertTrue(status.getMessage().contains("unknown"));
+  }
+
+  @Test
+  public void testCheckRemoveDataNodeWithAnotherStoppedDataNode() {
+    Set<TDataNodeLocation> relatedDataNodes = new HashSet<>();
+    relatedDataNodes.add(removeDataNodeLocationA);
+    relatedDataNodes.add(coordinatorDataNodeLocation);
+
+    when(REMOVE_DATA_NODE_HANDLER.getRelatedDataNodeLocations(removeDataNodeLocationA))
+        .thenReturn(relatedDataNodes);
+
+    when(LOAD_MANAGER.getNodeStatus(removeDataNodeLocationA.getDataNodeId()))
+        .thenReturn(NodeStatus.Running);
+    when(LOAD_MANAGER.getNodeStatus(coordinatorDataNodeLocation.getDataNodeId()))
+        .thenReturn(NodeStatus.Stopped);
+
+    TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
+    Assert.assertTrue(isFailed(status));
+    Assert.assertTrue(status.getMessage().contains("stopped"));
   }
 
   @Test

@@ -75,6 +75,12 @@ public class MppConfigNodeConfig extends MppBaseConfig implements ConfigNodeConf
   }
 
   @Override
+  public ConfigNodeConfig setRatisLogAppenderBufferSizeMax(int size) {
+    properties.setProperty("config_node_ratis_log_appender_buffer_size_max", String.valueOf(size));
+    return this;
+  }
+
+  @Override
   public ConfigNodeConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
     properties.setProperty("metadata_lease_fence_ms", String.valueOf(metadataLeaseFenceMs));
     return this;

@@ -25,6 +25,7 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 
 import org.awaitility.Awaitility;
 import org.junit.AfterClass;
@@ -53,6 +54,40 @@ public class IoTDBSetSystemStatusTableIT {
   }
 
   @Test
+  public void testPreparedInsertValuesExecution() throws Exception {
+    try (Connection tableConnection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement table = tableConnection.createStatement();
+        Statement prepared =
+            (tableConnection instanceof ClusterTestConnection
+                    ? ((ClusterTestConnection) tableConnection)
+                        .writeConnection.getUnderlyingConnection()
+                    : tableConnection)
+                .createStatement()) {
+      table.execute("create database prepared_insert_execution");
+      table.execute("use prepared_insert_execution");
+      table.execute("create table prepared_t(d STRING TAG,a STRING ATTRIBUTE,s INT32 FIELD)");
+      prepared.execute(
+          "prepare prepared_insert from insert into prepared_t(time,d,a,s) "
+              + "values(1,'p1','prepared',11),(2,'p2','prepared',12)");
+      prepared.execute("execute prepared_insert");
+      table.execute("update prepared_t set a='changed' where d='p1'");
+      prepared.execute("execute prepared_insert");
+      prepared.execute(
+          "execute immediate 'insert into prepared_t(time,d,a,s) "
+              + "values(3,''p3'',''immediate'',13)'");
+      try (ResultSet result = table.executeQuery("select d,a,s from prepared_t order by time")) {
+        for (int i = 1; i <= 3; i++) {
+          Assert.assertTrue(result.next());
+          Assert.assertEquals("p" + i, result.getString(1));
+          Assert.assertEquals(i == 3 ? "immediate" : "prepared", result.getString(2));
+          Assert.assertEquals(10 + i, result.getInt(3));
+        }
+        Assert.assertFalse(result.next());
+      }
+    }
+  }
+
+  @Test
   public void setSystemStatus() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -64,18 +99,45 @@ public class IoTDBSetSystemStatusTableIT {
               () -> {
                 ResultSet resultSet = statement.executeQuery("SHOW DATANODES");
                 int num = 0;
+                int manualReasonNum = 0;
                 try {
                   while (resultSet.next()) {
                     String status = resultSet.getString("Status");
                     if (status.equals("ReadOnly")) {
                       num++;
                     }
+                    // The ReadOnly requested through SQL is reported with the Manual reason.
+                    // The StatusReason column only appears once at least one node has reported
+                    // its reason, so a missing column means the condition is not satisfied yet.
+                    if ("Manual".equals(resultSet.getString("StatusReason"))) {
+                      manualReasonNum++;
+                    }
                   }
-                } catch (InconsistentDataException e) {
+                } catch (Exception e) {
+                  // The StatusReason column (and the Manual reason behind it) may not be
+                  // propagated yet, or the cluster may be transiently inconsistent while the
+                  // status is changing: treat both as "not satisfied yet".
                   return false;
                 }
-                return num == EnvFactory.getEnv().getDataNodeWrapperList().size();
+                return num == EnvFactory.getEnv().getDataNodeWrapperList().size()
+                    && manualReasonNum == EnvFactory.getEnv().getDataNodeWrapperList().size();
               });
+      assertShowNodeColumns(true);
+
+      // The table-model NODES view keeps the status and its reason in two separate columns
+      // instead of merging them into "ReadOnly(Manual)".
+      try (ResultSet nodesResultSet =
+          statement.executeQuery("select * from information_schema.nodes")) {
+        int dataNodeNum = 0;
+        while (nodesResultSet.next()) {
+          if ("DataNode".equals(nodesResultSet.getString("node_type"))) {
+            dataNodeNum++;
+            Assert.assertEquals("ReadOnly", nodesResultSet.getString("status"));
+            Assert.assertEquals("Manual", nodesResultSet.getString("status_reason"));
+          }
+        }
+        Assert.assertEquals(EnvFactory.getEnv().getDataNodeWrapperList().size(), dataNodeNum);
+      }
 
       statement.execute("SET SYSTEM TO RUNNING ON CLUSTER");
       Awaitility.await()
@@ -87,6 +149,9 @@ public class IoTDBSetSystemStatusTableIT {
 
                 int num = 0;
                 try {
+                  if (resultSet.getMetaData().getColumnCount() != 6) {
+                    return false;
+                  }
                   while (resultSet.next()) {
                     String status = resultSet.getString("Status");
                     if (status.equals("Running")) {
@@ -98,8 +163,44 @@ public class IoTDBSetSystemStatusTableIT {
                 }
                 return num == EnvFactory.getEnv().getDataNodeWrapperList().size();
               });
+      assertShowNodeColumns(false);
     } catch (Exception e) {
       Assert.fail(e.getMessage());
+    }
+  }
+
+  private static void assertShowNodeColumns(boolean hasReason) throws Exception {
+    for (String dialect : new String[] {BaseEnv.TREE_SQL_DIALECT, BaseEnv.TABLE_SQL_DIALECT}) {
+      try (Connection connection = EnvFactory.getEnv().getConnection(dialect);
+          Statement statement = connection.createStatement()) {
+        assertShowColumns(statement, "SHOW CLUSTER", 7, hasReason);
+        assertShowColumns(statement, "SHOW CLUSTER DETAILS", 13, hasReason);
+        assertShowColumns(statement, "SHOW DATANODES", 6, hasReason);
+        // SET SYSTEM changes DataNodes only; ConfigNodes keep the layout without a reason column.
+        assertShowColumns(statement, "SHOW CONFIGNODES", 5, false);
+      }
+    }
+  }
+
+  private static void assertShowColumns(
+      Statement statement, String sql, int baseColumnCount, boolean hasReason) throws Exception {
+    try (ResultSet resultSet = statement.executeQuery(sql)) {
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      Assert.assertEquals(sql, baseColumnCount + (hasReason ? 1 : 0), columnCount);
+      if (hasReason) {
+        Assert.assertEquals(
+            sql, "StatusReason", resultSet.getMetaData().getColumnName(columnCount));
+      }
+      Assert.assertTrue(sql, resultSet.next());
+      do {
+        if (hasReason) {
+          String expectedReason =
+              sql.startsWith("SHOW CLUSTER") && !"DataNode".equals(resultSet.getString("NodeType"))
+                  ? null
+                  : "Manual";
+          Assert.assertEquals(sql, expectedReason, resultSet.getString(columnCount));
+        }
+      } while (resultSet.next());
     }
   }
 }

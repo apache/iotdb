@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.exchange;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.MPPDataExchangeClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -79,7 +80,7 @@ public class SinkChannelFailurePropagationTest {
               Mockito.mock(LocalMemoryManager.class),
               new TsBlockSerdeFactory(),
               exchangeExecutor,
-              Mockito.mock(IClientManager.class));
+              Mockito.mock(MPPDataExchangeClientManager.class));
       AtomicInteger remainingChannels = new AtomicInteger(1);
       AtomicBoolean hasChannelFailedOrAborted = new AtomicBoolean(false);
       AtomicBoolean callbackInvoked = new AtomicBoolean(false);
@@ -131,8 +132,8 @@ public class SinkChannelFailurePropagationTest {
       MemoryPool memoryPool = Utils.createMockNonBlockedMemoryPool();
       Mockito.when(localMemoryManager.getQueryPool()).thenReturn(memoryPool);
 
-      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> exchangeClientManager =
-          Mockito.mock(IClientManager.class);
+      MPPDataExchangeClientManager exchangeClientManager =
+          Mockito.mock(MPPDataExchangeClientManager.class);
       SyncDataNodeMPPDataExchangeServiceClient exchangeClient =
           Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
       TException expectedFailure =
@@ -143,7 +144,8 @@ public class SinkChannelFailurePropagationTest {
                   new TApplicationException(
                       TApplicationException.INTERNAL_ERROR,
                       "Internal error processing onNewDataBlockEvent")));
-      Mockito.when(exchangeClientManager.borrowClient(secondEndpoint)).thenReturn(exchangeClient);
+      Mockito.when(exchangeClientManager.borrowClient(secondEndpoint, Long.MAX_VALUE))
+          .thenReturn(exchangeClient);
       Mockito.doThrow(expectedFailure)
           .when(exchangeClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
@@ -226,12 +228,13 @@ public class SinkChannelFailurePropagationTest {
       MemoryPool memoryPool = Utils.createMockNonBlockedMemoryPool();
       Mockito.when(localMemoryManager.getQueryPool()).thenReturn(memoryPool);
 
-      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> exchangeClientManager =
-          Mockito.mock(IClientManager.class);
+      MPPDataExchangeClientManager exchangeClientManager =
+          Mockito.mock(MPPDataExchangeClientManager.class);
       SyncDataNodeMPPDataExchangeServiceClient exchangeClient =
           Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class);
       TException expectedFailure = new TException("injected onNewDataBlockEvent failure");
-      Mockito.when(exchangeClientManager.borrowClient(exchangeEndpoint)).thenReturn(exchangeClient);
+      Mockito.when(exchangeClientManager.borrowClient(exchangeEndpoint, Long.MAX_VALUE))
+          .thenReturn(exchangeClient);
       Mockito.doThrow(expectedFailure)
           .when(exchangeClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
@@ -308,20 +311,21 @@ public class SinkChannelFailurePropagationTest {
       stateTracker.start();
 
       Assert.assertTrue(sinkHandle.isFull().isDone());
-      long failureStartNanos = System.nanoTime();
       sinkHandle.send(Utils.createMockTsBlocks(1, 1024).get(0));
 
       Mockito.verify(exchangeClient, Mockito.timeout(5_000).times(SinkChannel.MAX_ATTEMPT_TIMES))
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
+      long waitStartNanos = System.nanoTime();
       while (!fragmentStateMachine.getState().isDone()
-          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - failureStartNanos) < 5) {
+          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - waitStartNanos) < 5) {
         Thread.sleep(10);
       }
 
       Assert.assertEquals(FragmentInstanceState.FAILED, fragmentStateMachine.getState());
       Assert.assertEquals(expectedFailure, fragmentStateMachine.getFailureCauses().peek());
-      while (!sinkChannel.isAborted()
-          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - failureStartNanos) < 5) {
+      waitStartNanos = System.nanoTime();
+      while (!sinkHandle.isAborted()
+          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - waitStartNanos) < 5) {
         Thread.sleep(10);
       }
       Assert.assertTrue(sinkHandle.isAborted());
@@ -330,8 +334,9 @@ public class SinkChannelFailurePropagationTest {
       Assert.assertFalse(sinkChannel.isClosed());
       Assert.assertEquals(0, exchangeManager.getShuffleSinkHandleSize());
 
+      waitStartNanos = System.nanoTime();
       while (!queryStateMachine.getState().isDone()
-          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - failureStartNanos) < 5) {
+          && TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - waitStartNanos) < 5) {
         Thread.sleep(10);
       }
       Mockito.verify(stateClient, Mockito.timeout(3_000).atLeastOnce())

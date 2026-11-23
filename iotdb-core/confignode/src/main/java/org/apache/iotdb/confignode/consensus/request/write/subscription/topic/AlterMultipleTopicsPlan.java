@@ -65,8 +65,8 @@ public class AlterMultipleTopicsPlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     if (ReadWriteIOUtils.readBool(buffer)) {
-      subPlans = new ArrayList<>();
       int size = ReadWriteIOUtils.readInt(buffer);
+      subPlans = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         // This will read the type of the plan (AlterTopicPlan), which will be ignored
         ReadWriteIOUtils.readShort(buffer);

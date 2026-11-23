@@ -104,6 +104,7 @@ public abstract class AbstractLinearFillOperator implements ProcessOperator {
 
     TsBlock tempResult = null;
     while (tempResult == null && !cachedTsBlock.isEmpty()) {
+      prepareFill();
       TsBlock originTsBlock = cachedTsBlock.get(0);
       long currentEndRowIndex =
           cachedRowIndex.get(0) + cachedLastRowIndexForNonNullHelperColumn.get(0);
@@ -175,6 +176,14 @@ public abstract class AbstractLinearFillOperator implements ProcessOperator {
     // do nothing
   }
 
+  void prepareFill() {
+    // Grouped fills may reset their state before preparing lookahead for a new group.
+  }
+
+  boolean isGroupEnd(int cachedBlockIndex) {
+    return false;
+  }
+
   @Override
   public boolean hasNext() throws Exception {
     // if child.hasNext() return false, it means that there is no more tsBlocks
@@ -233,6 +242,10 @@ public abstract class AbstractLinearFillOperator implements ProcessOperator {
   private boolean isCachedTsBlockEnough(int columnIndex, long currentEndRowIndex) {
     // next TsBlock has already been in the cachedTsBlock
     while (nextTsBlockIndex[columnIndex] < cachedTsBlock.size()) {
+      if (isGroupEnd(nextTsBlockIndex[columnIndex] - 1)) {
+        // No later value belongs to this group, even if another group's blocks are cached.
+        return true;
+      }
       TsBlock nextTsBlock = cachedTsBlock.get(nextTsBlockIndex[columnIndex]);
       long startRowIndex = cachedRowIndex.get(nextTsBlockIndex[columnIndex]);
       nextTsBlockIndex[columnIndex]++;
@@ -244,7 +257,7 @@ public abstract class AbstractLinearFillOperator implements ProcessOperator {
         return true;
       }
     }
-    return false;
+    return isGroupEnd(nextTsBlockIndex[columnIndex] - 1);
   }
 
   /**

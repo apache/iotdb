@@ -41,6 +41,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Set;
 
 public class InsertTabletNodeSerdeTest {
 
@@ -582,5 +584,74 @@ public class InsertTabletNodeSerdeTest {
         });
 
     return insertTabletNode;
+  }
+
+  @Test
+  public void testActiveRowsDetermineHashCode() throws IllegalPathException {
+    TSDataType[] types = {
+      TSDataType.INT32,
+      TSDataType.INT64,
+      TSDataType.FLOAT,
+      TSDataType.DOUBLE,
+      TSDataType.BOOLEAN,
+      TSDataType.TEXT,
+      TSDataType.STRING,
+      TSDataType.BLOB,
+      TSDataType.OBJECT,
+      TSDataType.DATE,
+      TSDataType.TIMESTAMP
+    };
+    Object[] left = {
+      new int[] {1, 2},
+      new long[] {1, 2},
+      new float[] {Float.NaN, -0.0f, 2},
+      new double[] {Double.NaN, -0.0, 2},
+      new boolean[] {true, false},
+      new Binary[] {new Binary(new byte[] {1}), null},
+      new Binary[] {new Binary(new byte[] {1}), null},
+      new Binary[] {new Binary(new byte[] {1}), null},
+      new Binary[] {new Binary(new byte[] {1}), null},
+      new int[] {20260909, 20260910},
+      new long[] {1, 2}
+    };
+    Object[] right = {
+      new int[] {1, 99, 0},
+      new long[] {1, 99, 0},
+      new float[] {Float.intBitsToFloat(0x7fc00001), 0.0f, 99},
+      new double[] {Double.longBitsToDouble(0x7ff8000000000001L), 0.0, 99},
+      new boolean[] {true, true, true},
+      new Binary[] {new Binary(new byte[] {1})},
+      new Binary[] {new Binary(new byte[] {1})},
+      new Binary[] {new Binary(new byte[] {1})},
+      new Binary[] {new Binary(new byte[] {1})},
+      new int[] {20260909, 19990101},
+      new long[] {1, 99, 0}
+    };
+    for (int i = 0; i < types.length; i++) {
+      InsertTabletNode first = hashTestNode(types[i], left[i]);
+      InsertTabletNode second = hashTestNode(types[i], right[i]);
+      Assert.assertEquals(first, second);
+      Assert.assertEquals(first.hashCode(), second.hashCode());
+      Set<InsertTabletNode> nodes = new HashSet<>();
+      nodes.add(first);
+      Assert.assertTrue(nodes.contains(second));
+    }
+    Assert.assertNotEquals(
+        hashTestNode(TSDataType.FLOAT, new float[] {-0.0f}),
+        hashTestNode(TSDataType.FLOAT, new float[] {0.0f}));
+  }
+
+  private InsertTabletNode hashTestNode(TSDataType type, Object values)
+      throws IllegalPathException {
+    return new InsertTabletNode(
+        new PlanNodeId("hash"),
+        new PartialPath("root.sg.d"),
+        false,
+        new String[] {"s"},
+        new TSDataType[] {type},
+        new long[] {1},
+        null,
+        new Object[] {values},
+        1);
   }
 }

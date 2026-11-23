@@ -25,13 +25,13 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -69,7 +69,7 @@ public class PipeDeactivateTemplatePlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
     final int size = ReadWriteIOUtils.readInt(buffer);
-    templateSetInfo = new HashMap<>();
+    templateSetInfo = Maps.newHashMapWithExpectedSize(size);
     for (int i = 0; i < size; i++) {
       final PartialPath pattern = (PartialPath) PathDeserializeUtil.deserialize(buffer);
       final int templateNum = ReadWriteIOUtils.readInt(buffer);

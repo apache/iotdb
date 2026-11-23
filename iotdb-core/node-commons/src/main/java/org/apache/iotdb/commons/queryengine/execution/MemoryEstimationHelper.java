@@ -48,6 +48,7 @@ public class MemoryEstimationHelper {
       RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
   public static final long INTEGER_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Integer.class);
+  public static final long LONG_INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Long.class);
   public static final long TIME_RANGE_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TimeRange.class);
 
@@ -133,6 +134,18 @@ public class MemoryEstimationHelper {
         (long) RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
             + (long) integerArrayList.size() * (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     size += INTEGER_INSTANCE_SIZE * integerArrayList.size();
+    return RamUsageEstimator.alignObjectSize(size);
+  }
+
+  public static long getEstimatedSizeOfLongArrayList(List<Long> longArrayList) {
+    if (longArrayList == null) {
+      return 0L;
+    }
+    long size = ARRAY_LIST_INSTANCE_SIZE;
+    size +=
+        (long) RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + (long) longArrayList.size() * (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    size += LONG_INSTANCE_SIZE * longArrayList.size();
     return RamUsageEstimator.alignObjectSize(size);
   }
 }

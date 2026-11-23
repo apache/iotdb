@@ -52,6 +52,6 @@ public class AverageOperator implements AggregatedResultOperator {
       TSDataType measurementDataType, CustomizedReadableIntermediateResults intermediateResults) {
     return new Pair<>(
         TSDataType.DOUBLE,
-        intermediateResults.getDouble("sum_x1") / intermediateResults.getInt("count"));
+        intermediateResults.getDouble("sum_x1") / intermediateResults.getLong("count"));
   }
 }

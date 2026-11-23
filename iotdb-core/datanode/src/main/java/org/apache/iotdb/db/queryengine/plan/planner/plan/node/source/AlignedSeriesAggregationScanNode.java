@@ -251,7 +251,8 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
   public static AlignedSeriesAggregationScanNode deserialize(ByteBuffer byteBuffer) {
     AlignedPath alignedPath = (AlignedPath) PathDeserializeUtil.deserialize(byteBuffer);
     int aggregateDescriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+    List<AggregationDescriptor> aggregationDescriptorList =
+        new ArrayList<>(aggregateDescriptorSize);
     for (int i = 0; i < aggregateDescriptorSize; i++) {
       aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
     }

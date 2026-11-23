@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DeviceSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DevicesCountNode;
@@ -147,6 +148,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 
 @SuppressWarnings("java:S6539") // suppress "Monster class" warning
 public interface PlanVisitor<R, C> extends ICoreQueryPlanVisitor<R, C> {
+
+  default R visitLoadTsFileConsensus(LoadTsFileConsensusNode node, C context) {
+    return visitPlan(node, context);
+  }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Data Query Node

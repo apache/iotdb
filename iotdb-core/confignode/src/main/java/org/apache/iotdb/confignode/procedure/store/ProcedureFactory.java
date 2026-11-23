@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnPr
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTableColumnPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
@@ -237,6 +238,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case SET_VIEW_PROPERTIES_PROCEDURE:
         procedure = new SetViewPropertiesProcedure(false);
         break;
+      case SET_TABLE_COLUMN_PROPERTIES_PROCEDURE:
+        procedure = new SetTableColumnPropertiesProcedure(false);
+        break;
       case RENAME_TABLE_COLUMN_PROCEDURE:
         procedure = new RenameTableColumnProcedure(false);
         break;
@@ -318,6 +322,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE:
         procedure = new SetTablePropertiesProcedure(true);
         break;
+      case PIPE_ENRICHED_SET_TABLE_COLUMN_PROPERTIES_PROCEDURE:
+        procedure = new SetTableColumnPropertiesProcedure(true);
+        break;
       case PIPE_ENRICHED_RENAME_TABLE_COLUMN_PROCEDURE:
         procedure = new RenameTableColumnProcedure(true);
         break;
@@ -375,11 +382,20 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_TOPIC_PROCEDURE:
         procedure = new DropTopicProcedure();
         break;
+      case DROP_TOPIC_WITH_RETAINED_PROGRESS_PROCEDURE:
+        procedure = new DropTopicProcedure(true);
+        break;
       case ALTER_TOPIC_PROCEDURE:
         procedure = new AlterTopicProcedure();
         break;
       case ALTER_TOPIC_WITH_ATTRIBUTES_PROCEDURE:
         procedure = new AlterTopicProcedure(true);
+        break;
+      case ALTER_TOPIC_WITH_RETAINED_PROGRESS_PROCEDURE:
+        procedure = new AlterTopicProcedure(false, true);
+        break;
+      case ALTER_TOPIC_WITH_ATTRIBUTES_AND_RETAINED_PROGRESS_PROCEDURE:
+        procedure = new AlterTopicProcedure(true, true);
         break;
       case TOPIC_META_SYNC_PROCEDURE:
         procedure = new TopicMetaSyncProcedure();
@@ -498,6 +514,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.SET_VIEW_PROPERTIES_PROCEDURE;
     } else if (procedure instanceof SetTablePropertiesProcedure) {
       return ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE;
+    } else if (procedure instanceof SetTableColumnPropertiesProcedure) {
+      return ProcedureType.SET_TABLE_COLUMN_PROPERTIES_PROCEDURE;
     } else if (procedure instanceof RenameViewColumnProcedure) {
       return ProcedureType.RENAME_VIEW_COLUMN_PROCEDURE;
     } else if (procedure instanceof RenameTableColumnProcedure) {
@@ -541,9 +559,17 @@ public class ProcedureFactory implements IProcedureFactory {
     } else if (procedure instanceof CreateTopicProcedure) {
       return ProcedureType.CREATE_TOPIC_PROCEDURE;
     } else if (procedure instanceof DropTopicProcedure) {
-      return ProcedureType.DROP_TOPIC_PROCEDURE;
+      return ((DropTopicProcedure) procedure).shouldSerializeRetainedProgressState()
+          ? ProcedureType.DROP_TOPIC_WITH_RETAINED_PROGRESS_PROCEDURE
+          : ProcedureType.DROP_TOPIC_PROCEDURE;
     } else if (procedure instanceof AlterTopicProcedure) {
-      return ((AlterTopicProcedure) procedure).shouldMergeUpdatedTopicAttributes()
+      final AlterTopicProcedure alterTopicProcedure = (AlterTopicProcedure) procedure;
+      if (alterTopicProcedure.shouldSerializeRetainedProgressState()) {
+        return alterTopicProcedure.shouldMergeUpdatedTopicAttributes()
+            ? ProcedureType.ALTER_TOPIC_WITH_ATTRIBUTES_AND_RETAINED_PROGRESS_PROCEDURE
+            : ProcedureType.ALTER_TOPIC_WITH_RETAINED_PROGRESS_PROCEDURE;
+      }
+      return alterTopicProcedure.shouldMergeUpdatedTopicAttributes()
           ? ProcedureType.ALTER_TOPIC_WITH_ATTRIBUTES_PROCEDURE
           : ProcedureType.ALTER_TOPIC_PROCEDURE;
     } else if (procedure instanceof TopicMetaSyncProcedure) {

@@ -143,7 +143,7 @@ public class UDTFExecutor {
         singleExecuteRow(columns, timeColumnBuilder, valueColumnBuilder);
         useBatch = false;
       } catch (Exception e) {
-        onError("Mappable UDTF execution error", e);
+        onError(CalcMessages.EXCEPTION_MAPPABLE_UDTF_EXECUTION_ERROR_CF878D75, e);
       }
 
       isFirstIter = false;
@@ -155,7 +155,7 @@ public class UDTFExecutor {
           singleExecuteRow(columns, timeColumnBuilder, valueColumnBuilder);
         }
       } catch (Exception e) {
-        onError("Mappable UDTF execution error", e);
+        onError(CalcMessages.EXCEPTION_MAPPABLE_UDTF_EXECUTION_ERROR_CF878D75, e);
       }
     }
   }

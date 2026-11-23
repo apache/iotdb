@@ -101,7 +101,7 @@ public class RegionGroupCache {
    * slidingWindow.
    */
   public synchronized void updateCurrentStatistics() {
-    regionCacheMap.values().forEach(regionCache -> regionCache.updateCurrentStatistics(false));
+    regionCacheMap.values().forEach(RegionCache::updateCurrentStatistics);
     Map<Integer, RegionStatistics> regionStatisticsMap =
         regionCacheMap.entrySet().stream()
             .collect(

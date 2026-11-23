@@ -115,7 +115,7 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
 
     this.measurementModsList =
         ModsOperationUtil.initializeMeasurementMods(
-            deviceId, this.measurements, currentModifications);
+            deviceId, this.measurements, currentModifications, false);
   }
 
   private QueryDataSet buildQueryDataSet() throws IOException {
@@ -184,7 +184,6 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
       final int fieldSize = fields.size();
       for (int i = 0; i < fieldSize; i++) {
         final Field field = fields.get(i);
-        final String measurement = measurements.get(i);
         final TSDataType dataType = schemas.get(i).getType();
         // Check if this value is deleted by mods
         if (field == null
@@ -194,8 +193,7 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
           }
           PipeTabletUtils.markNullValue(tablet, rowIndex, i);
         } else {
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, i, dataType, field.getObjectValue(schemas.get(i).getType()));
+          PipeTabletUtils.putFieldValue(tablet, rowIndex, i, dataType, field);
           isNeedFillTime = true;
         }
       }

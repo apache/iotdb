@@ -34,13 +34,13 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -71,11 +71,13 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -87,6 +89,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -113,10 +116,16 @@ public class FragmentInstanceContext extends QueryContext {
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
   private static final int MODS_MEMORY_ESTIMATE_READ_INTERVAL = 10_000;
   private final FragmentInstanceId id;
+  private UDFClassLoaderManager.QueryScope udfQueryScope;
 
   private final FragmentInstanceStateMachine stateMachine;
 
   private final MemoryReservationManager memoryReservationManager;
+
+  // Initialized after the complete local plan is generated, before drivers start. Both are zero
+  // when this FI uses independent per-plan-node exchange quotas.
+  private long inputMaxBytes;
+  private long outputMaxBytes;
 
   protected IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
@@ -172,8 +181,10 @@ public class FragmentInstanceContext extends QueryContext {
 
   // Outer query deadline (startTime + timeout) for IoTDBLocal UDF
   private long outerQueryDeadlineMs = -1L;
+  private long exchangeDeadlineMs = -1L;
 
-  private final Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap;
+  private QueryAttemptRegistry.Registration queryAttemptRegistration;
+  private boolean executionInitialized;
   private DataNodeQueryContext dataNodeQueryContext;
 
   // Used for EXPLAIN ANALYZE to cache statistics result when the FI is finished,
@@ -200,10 +211,12 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
+      long outerQueryDeadlineMs,
       boolean debug,
       boolean isVerbose) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(id, stateMachine, sessionInfo, debug, isVerbose);
+    instanceContext.outerQueryDeadlineMs = outerQueryDeadlineMs;
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -232,7 +245,7 @@ public class FragmentInstanceContext extends QueryContext {
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
-      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
+      DataNodeQueryContext dataNodeQueryContext,
       long outerQueryDeadlineMs,
       boolean debug,
       boolean isVerbose) {
@@ -243,7 +256,7 @@ public class FragmentInstanceContext extends QueryContext {
             sessionInfo,
             dataRegion,
             globalTimePredicate,
-            dataNodeQueryContextMap,
+            dataNodeQueryContext,
             outerQueryDeadlineMs,
             debug,
             isVerbose);
@@ -347,7 +360,7 @@ public class FragmentInstanceContext extends QueryContext {
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
-      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
+      DataNodeQueryContext dataNodeQueryContext,
       long outerQueryDeadlineMs,
       boolean debug,
       boolean verbose) {
@@ -363,8 +376,7 @@ public class FragmentInstanceContext extends QueryContext {
             ? null
             : globalTimePredicate.convertPredicateToTimeFilter(
                 sessionInfo.getZoneId(), TimestampPrecisionUtils.currPrecision);
-    this.dataNodeQueryContextMap = dataNodeQueryContextMap;
-    this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
+    this.dataNodeQueryContext = dataNodeQueryContext;
     this.memoryReservationManager =
         new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
@@ -380,7 +392,6 @@ public class FragmentInstanceContext extends QueryContext {
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
-    this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
     this.memoryReservationManager =
         new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
@@ -398,7 +409,6 @@ public class FragmentInstanceContext extends QueryContext {
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
-    this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
     this.memoryReservationManager = memoryReservationManager;
   }
@@ -418,7 +428,6 @@ public class FragmentInstanceContext extends QueryContext {
     this.sessionInfo = sessionInfo;
     this.dataRegion = dataRegion;
     this.globalTimeFilter = globalTimeFilter;
-    this.dataNodeQueryContextMap = null;
     this.memoryReservationManager =
         new ThreadSafeMemoryReservationManager(id.getQueryId(), this.getClass().getName());
   }
@@ -440,7 +449,6 @@ public class FragmentInstanceContext extends QueryContext {
     this.queryId = queryId;
     this.id = null;
     this.stateMachine = null;
-    this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
     this.dataRegion = dataRegion;
     this.globalTimeFilter = timeFilter;
@@ -490,9 +498,7 @@ public class FragmentInstanceContext extends QueryContext {
         getQueryModificationLoader(
             tsFileResource,
             modification ->
-                deviceID.isTableModel()
-                    ? modification.affects(deviceID)
-                    : modification.affectsAll(deviceID),
+                isTableModel() ? modification.affects(deviceID) : modification.affectsAll(deviceID),
             mods -> getPathModifications(mods, deviceID))) {
       return modificationLoader.getPathModifications();
     }
@@ -514,11 +520,11 @@ public class FragmentInstanceContext extends QueryContext {
         modsTreeMatcher);
   }
 
-  // the state change listener is added here in a separate initialize() method
+  // the final-state listener is added here in a separate initialize() method
   // instead of the constructor to prevent leaking the "this" reference to
-  // another thread, which will cause unsafe publication of this instance.
+  // listener code before this instance has been fully constructed.
   private void initialize() {
-    stateMachine.addStateChangeListener(this::updateStatsIfDone);
+    stateMachine.addFinalStateChangeListener(this::updateStatsIfDone);
   }
 
   private void updateStatsIfDone(FragmentInstanceState newState) {
@@ -537,18 +543,25 @@ public class FragmentInstanceContext extends QueryContext {
       executionEndTime.compareAndSet(END_TIME_INITIAL_VALUE, now);
       endNanos.compareAndSet(0, System.nanoTime());
 
-      // release some query resource in FragmentInstanceContext
-      // why not release them in releaseResourceWhenAllDriversAreClosed() together?
-      // because we may have no chane to run the releaseResourceWhenAllDriversAreClosed which is
-      // called in callback of FragmentInstanceExecution
-      // FragmentInstanceExecution won't be created if we meet some errors like MemoryNotEnough
-      releaseDataNodeQueryContext();
       sourcePaths = null;
     }
   }
 
   public FragmentInstanceId getId() {
     return id;
+  }
+
+  public void initializeExchangeMemoryBudget(long inputMaxBytes, long outputMaxBytes) {
+    this.inputMaxBytes = inputMaxBytes;
+    this.outputMaxBytes = outputMaxBytes;
+  }
+
+  public long getInputMaxBytes() {
+    return inputMaxBytes;
+  }
+
+  public long getOutputMaxBytes() {
+    return outputMaxBytes;
   }
 
   public void failed(Throwable cause) {
@@ -648,6 +661,18 @@ public class FragmentInstanceContext extends QueryContext {
 
   public long getOuterQueryDeadlineMs() {
     return outerQueryDeadlineMs;
+  }
+
+  void setExchangeDeadlineMs(long deadlineMs) {
+    exchangeDeadlineMs = deadlineMs;
+  }
+
+  public long getExchangeDeadlineMs() {
+    // Legacy coordinators only send the remaining FI timeout. Also honor an earlier local FI limit.
+    if (exchangeDeadlineMs < 0 || outerQueryDeadlineMs < 0) {
+      return Math.max(exchangeDeadlineMs, outerQueryDeadlineMs);
+    }
+    return Math.min(outerQueryDeadlineMs, exchangeDeadlineMs);
   }
 
   public Optional<Throwable> getFailureCause() {
@@ -774,16 +799,16 @@ public class FragmentInstanceContext extends QueryContext {
   public boolean initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
     return initializeQueryDataSource(
         sourcePaths,
-        () -> {
+        deferredReleases -> {
           sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
           return true;
         },
         () -> false,
-        dataSource -> {
+        (dataSource, deferredReleases) -> {
           sharedQueryDataSource = dataSource;
           closedFilePaths = new HashSet<>();
           unClosedFilePaths = new HashSet<>();
-          addUsedFilesForQuery(dataSource, closedFilePaths, unClosedFilePaths);
+          addUsedFilesForQuery(dataSource, closedFilePaths, unClosedFilePaths, deferredReleases);
           return true;
         });
   }
@@ -792,7 +817,8 @@ public class FragmentInstanceContext extends QueryContext {
       throws QueryProcessException {
     return initializeQueryDataSource(
         sourcePaths,
-        () -> createBatchQueryDataSourceLease(EMPTY_QUERY_DATA_SOURCE),
+        deferredReleases ->
+            createBatchQueryDataSourceLease(EMPTY_QUERY_DATA_SOURCE, deferredReleases),
         () -> {
           recordQueryDataSourceRetry();
           return null;
@@ -802,14 +828,14 @@ public class FragmentInstanceContext extends QueryContext {
 
   private <T> T initializeQueryDataSource(
       List<IFullPath> sourcePaths,
-      Supplier<T> emptyResultSupplier,
+      Function<DeferredFileReaderReleases, T> emptyResultSupplier,
       Supplier<T> unfinishedResultSupplier,
-      Function<QueryDataSource, T> initializer)
+      BiFunction<QueryDataSource, DeferredFileReaderReleases, T> initializer)
       throws QueryProcessException {
     long startTime = System.nanoTime();
-    try {
+    try (DeferredFileReaderReleases deferredReleases = new DeferredFileReaderReleases()) {
       if (sourcePaths == null || sourcePaths.isEmpty()) {
-        return emptyResultSupplier.get();
+        return emptyResultSupplier.apply(deferredReleases);
       }
 
       IDeviceID singleDeviceId = findSingleDeviceId(sourcePaths);
@@ -843,7 +869,7 @@ public class FragmentInstanceContext extends QueryContext {
         dataSource.setSingleDevice(singleDeviceId != null);
         // The initializer retains referenced files while the DataRegion read lock is held;
         // otherwise a concurrent merge may delete them after the lock is released.
-        return initializer.apply(dataSource);
+        return initializer.apply(dataSource, deferredReleases);
       } finally {
         dataRegion.readUnlock();
       }
@@ -869,14 +895,23 @@ public class FragmentInstanceContext extends QueryContext {
     return selectedDeviceIdSet.iterator().next();
   }
 
-  private QueryDataSourceLease createBatchQueryDataSourceLease(QueryDataSource dataSource) {
+  private QueryDataSourceLease createBatchQueryDataSourceLease(
+      QueryDataSource dataSource, DeferredFileReaderReleases deferredReleases) {
     Set<TsFileResource> closedResources = new HashSet<>();
     Set<TsFileResource> unclosedResources = new HashSet<>();
-    addUsedFilesForQuery(dataSource, closedResources, unclosedResources);
-    QueryDataSourceLease lease =
-        new QueryDataSourceLease(dataSource, closedResources, unclosedResources, this);
-    batchQueryDataSourceLeases.add(lease);
-    return lease;
+    try {
+      addUsedFilesForQuery(dataSource, closedResources, unclosedResources, deferredReleases);
+      QueryDataSourceLease lease =
+          new QueryDataSourceLease(dataSource, closedResources, unclosedResources, this);
+      batchQueryDataSourceLeases.add(lease);
+      return lease;
+    } catch (RuntimeException | Error e) {
+      // No lease owns a partially initialized batch. Release its retained files after region
+      // unlock.
+      deferredReleases.addAll(closedResources, true);
+      deferredReleases.addAll(unclosedResources, false);
+      throw e;
+    }
   }
 
   public boolean initRegionScanQueryDataSource(Map<IDeviceID, DeviceContext> devicePathsToContext) {
@@ -885,8 +920,11 @@ public class FragmentInstanceContext extends QueryContext {
       return true;
     }
 
-    long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
-    if (dataRegion.tryReadLock(waitForLockTime)) {
+    try (DeferredFileReaderReleases deferredReleases = new DeferredFileReaderReleases()) {
+      long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
+      if (!dataRegion.tryReadLock(waitForLockTime)) {
+        return false;
+      }
       try {
         // minus already consumed time
         waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
@@ -906,19 +944,18 @@ public class FragmentInstanceContext extends QueryContext {
         if (sharedQueryDataSource != null) {
           closedFilePaths = new HashSet<>();
           unClosedFilePaths = new HashSet<>();
-          addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+          addUsedFilesForRegionQuery(
+              (QueryDataSourceForRegionScan) sharedQueryDataSource, deferredReleases);
           return true;
         } else {
           // failed to acquire lock within the specific time
           return false;
         }
       } finally {
-        addInitQueryDataSourceCost(System.nanoTime() - startTime);
         dataRegion.readUnlock();
       }
-    } else {
+    } finally {
       addInitQueryDataSourceCost(System.nanoTime() - startTime);
-      return false;
     }
   }
 
@@ -927,16 +964,20 @@ public class FragmentInstanceContext extends QueryContext {
     if (pathList == null) {
       return true;
     }
-    long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
-    if (dataRegion.tryReadLock(waitForLockTime)) {
-      // minus already consumed time
-      waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
 
-      // no remaining time slice
-      if (waitForLockTime <= 0) {
+    try (DeferredFileReaderReleases deferredReleases = new DeferredFileReaderReleases()) {
+      long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
+      if (!dataRegion.tryReadLock(waitForLockTime)) {
         return false;
       }
       try {
+        // minus already consumed time
+        waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
+
+        // no remaining time slice
+        if (waitForLockTime <= 0) {
+          return false;
+        }
         this.sharedQueryDataSource =
             dataRegion.queryForSeriesRegionScan(
                 pathList,
@@ -948,19 +989,18 @@ public class FragmentInstanceContext extends QueryContext {
         if (sharedQueryDataSource != null) {
           closedFilePaths = new HashSet<>();
           unClosedFilePaths = new HashSet<>();
-          addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+          addUsedFilesForRegionQuery(
+              (QueryDataSourceForRegionScan) sharedQueryDataSource, deferredReleases);
           return true;
         } else {
           // failed to acquire lock within the specific time
           return false;
         }
       } finally {
-        addInitQueryDataSourceCost(System.nanoTime() - startTime);
         dataRegion.readUnlock();
       }
-    } else {
+    } finally {
       addInitQueryDataSourceCost(System.nanoTime() - startTime);
-      return false;
     }
   }
 
@@ -1021,24 +1061,78 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
+  /** Owns pending file references until they can be released outside region locks. */
+  static final class DeferredFileReaderReleases implements AutoCloseable {
+    private final List<Pair<TsFileResource, Boolean>> references = new ArrayList<>();
+
+    private void add(TsFileResource resource, boolean isClosed, Set<TsFileResource> owners) {
+      if (!owners.contains(resource)) {
+        return;
+      }
+      // Allocate the pending record before removing its old owner, including on allocation failure.
+      references.add(new Pair<>(resource, isClosed));
+      if (!owners.remove(resource)) {
+        references.remove(references.size() - 1);
+      }
+    }
+
+    void addAll(Set<TsFileResource> owners, boolean isClosed) {
+      Iterator<TsFileResource> iterator = owners.iterator();
+      while (iterator.hasNext()) {
+        references.add(new Pair<>(iterator.next(), isClosed));
+        iterator.remove();
+      }
+    }
+
+    @Override
+    public void close() {
+      Throwable failure = null;
+      try {
+        for (Pair<TsFileResource, Boolean> reference : references) {
+          try {
+            FileReaderManager.getInstance()
+                .decreaseFileReaderReference(reference.left, reference.right);
+          } catch (RuntimeException | Error e) {
+            if (failure == null) {
+              failure = e;
+            } else if (failure != e) {
+              failure.addSuppressed(e);
+            }
+          }
+        }
+      } finally {
+        references.clear();
+      }
+      if (failure instanceof Error) {
+        throw (Error) failure;
+      }
+      if (failure != null) {
+        throw (RuntimeException) failure;
+      }
+    }
+  }
+
   /** Lock and check if tsFileResource is deleted */
-  private boolean processTsFileResource(TsFileResource tsFileResource, boolean isClosed) {
-    return processTsFileResource(tsFileResource, isClosed, closedFilePaths, unClosedFilePaths);
+  private boolean processTsFileResource(
+      TsFileResource tsFileResource,
+      boolean isClosed,
+      DeferredFileReaderReleases deferredReleases) {
+    return processTsFileResource(
+        tsFileResource, isClosed, closedFilePaths, unClosedFilePaths, deferredReleases);
   }
 
   private boolean processTsFileResource(
       TsFileResource tsFileResource,
       boolean isClosed,
       Set<TsFileResource> closedResources,
-      Set<TsFileResource> unclosedResources) {
+      Set<TsFileResource> unclosedResources,
+      DeferredFileReaderReleases deferredReleases) {
     addFilePathToMap(tsFileResource, isClosed, closedResources, unclosedResources);
     // this file may be deleted just before we lock it
     if (tsFileResource.isDeleted()) {
       Set<TsFileResource> pathSet = isClosed ? closedResources : unclosedResources;
-      // This resource may be removed by other threads of this query.
-      if (pathSet.remove(tsFileResource)) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
-      }
+      // Keep the file reference until region unlock; the last release may wait for reader I/O.
+      deferredReleases.add(tsFileResource, isClosed, pathSet);
       return true;
     } else {
       return false;
@@ -1049,7 +1143,8 @@ public class FragmentInstanceContext extends QueryContext {
   private void addUsedFilesForQuery(
       QueryDataSource dataSource,
       Set<TsFileResource> closedResources,
-      Set<TsFileResource> unclosedResources) {
+      Set<TsFileResource> unclosedResources,
+      DeferredFileReaderReleases deferredReleases) {
 
     // sequence data
     dataSource
@@ -1057,7 +1152,11 @@ public class FragmentInstanceContext extends QueryContext {
         .removeIf(
             tsFileResource ->
                 processTsFileResource(
-                    tsFileResource, tsFileResource.isClosed(), closedResources, unclosedResources));
+                    tsFileResource,
+                    tsFileResource.isClosed(),
+                    closedResources,
+                    unclosedResources,
+                    deferredReleases));
 
     // Record statistics of seqFiles
     int unclosedSeqFileCount = unclosedResources.size();
@@ -1071,19 +1170,25 @@ public class FragmentInstanceContext extends QueryContext {
         .removeIf(
             tsFileResource ->
                 processTsFileResource(
-                    tsFileResource, tsFileResource.isClosed(), closedResources, unclosedResources));
+                    tsFileResource,
+                    tsFileResource.isClosed(),
+                    closedResources,
+                    unclosedResources,
+                    deferredReleases));
 
     // Record statistics of files of unseqFiles
     unclosedUnseqFileNum.addAndGet(unclosedResources.size() - unclosedSeqFileCount);
     closedUnseqFileNum.addAndGet(closedResources.size() - closedSeqFileCount);
   }
 
-  private void addUsedFilesForRegionQuery(QueryDataSourceForRegionScan dataSource) {
+  private void addUsedFilesForRegionQuery(
+      QueryDataSourceForRegionScan dataSource, DeferredFileReaderReleases deferredReleases) {
     dataSource
         .getSeqFileScanHandles()
         .removeIf(
             fileScanHandle ->
-                processTsFileResource(fileScanHandle.getTsResource(), fileScanHandle.isClosed()));
+                processTsFileResource(
+                    fileScanHandle.getTsResource(), fileScanHandle.isClosed(), deferredReleases));
 
     int unclosedSeqFileCount = unClosedFilePaths.size();
     int closedSeqFileCount = closedFilePaths.size();
@@ -1094,7 +1199,8 @@ public class FragmentInstanceContext extends QueryContext {
         .getUnseqFileScanHandles()
         .removeIf(
             fileScanHandle ->
-                processTsFileResource(fileScanHandle.getTsResource(), fileScanHandle.isClosed()));
+                processTsFileResource(
+                    fileScanHandle.getTsResource(), fileScanHandle.isClosed(), deferredReleases));
 
     unclosedUnseqFileNum.addAndGet(unClosedFilePaths.size() - unclosedSeqFileCount);
     closedUnseqFileNum.addAndGet(closedFilePaths.size() - closedSeqFileCount);
@@ -1110,14 +1216,20 @@ public class FragmentInstanceContext extends QueryContext {
     addFilePathToMap(tsFile, isClosed, closedFilePaths, unClosedFilePaths);
   }
 
-  private void addFilePathToMap(
+  static void addFilePathToMap(
       TsFileResource tsFile,
       boolean isClosed,
       Set<TsFileResource> closedResources,
       Set<TsFileResource> unclosedResources) {
     Set<TsFileResource> pathSet = isClosed ? closedResources : unclosedResources;
     if (pathSet.add(tsFile)) {
-      FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
+      try {
+        FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
+      } catch (RuntimeException | Error e) {
+        // Registration already rolled back its read lock. Do not release it a second time later.
+        pathSet.remove(tsFile);
+        throw e;
+      }
     }
   }
 
@@ -1242,6 +1354,20 @@ public class FragmentInstanceContext extends QueryContext {
    * be decreased.
    */
   public synchronized void releaseResource() {
+    try {
+      finalizeUDFQuery();
+      releaseResourceInternal();
+    } finally {
+      releaseDataNodeQueryContext();
+    }
+  }
+
+  private void releaseResourceInternal() {
+    try {
+      getQueryChunkReaders().close();
+    } catch (IOException e) {
+      LOGGER.warn(DataNodeQueryMessages.LOG_FAILED_TO_RELEASE_QUERY_CHUNK_RESOURCES_91573FE5, e);
+    }
     batchQueryDataSourceLeases.forEach(QueryDataSourceLease::close);
     // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
     if (closedFilePaths != null) {
@@ -1370,15 +1496,46 @@ public class FragmentInstanceContext extends QueryContext {
         .recordExecutionCost(QUERY_RESOURCE_INIT, getInitQueryDataSourceCost());
   }
 
-  private void releaseDataNodeQueryContext() {
-    if (dataNodeQueryContextMap == null) {
-      // this process is in fetch schema, nothing need to release
-      return;
-    }
+  void setQueryAttemptRegistration(QueryAttemptRegistry.Registration registration) {
+    this.queryAttemptRegistration = registration;
+  }
 
-    if (dataNodeQueryContext.decreaseDataNodeFINum() == 0) {
-      dataNodeQueryContext = null;
-      dataNodeQueryContextMap.remove(id.getQueryId());
+  void setExecutionInitialized() {
+    executionInitialized = true;
+  }
+
+  boolean isExecutionInitialized() {
+    return executionInitialized;
+  }
+
+  synchronized void releaseDataNodeQueryContext() {
+    if (queryAttemptRegistration != null) {
+      queryAttemptRegistration.close();
+      queryAttemptRegistration = null;
+    }
+    dataNodeQueryContext = null;
+  }
+
+  synchronized void adoptUDFQueryScope(UDFClassLoaderManager.QueryScope transferredScope) {
+    if (udfQueryScope == null) {
+      udfQueryScope = transferredScope;
+    }
+  }
+
+  public synchronized UDFClassLoaderManager.QueryScope getOrCreateUDFQueryScope() {
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    if (udfQueryScope == null && classLoaderManager != null) {
+      udfQueryScope = classLoaderManager.openQueryScope(id.getFullId());
+    }
+    return udfQueryScope;
+  }
+
+  synchronized void finalizeUDFQuery() {
+    UDFClassLoaderManager.QueryScope queryScope = udfQueryScope;
+    udfQueryScope = null;
+    UDFClassLoaderManager classLoaderManager = UDFClassLoaderManager.getInstance();
+    if (queryScope != null && classLoaderManager != null) {
+      classLoaderManager.finalizeUDFQuery(queryScope);
     }
   }
 

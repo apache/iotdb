@@ -32,6 +32,44 @@ import java.util.Arrays;
 public class PipeTabletEventTsFileBatchTest {
 
   @Test
+  public void testTransformerReceivesModelDatabaseAndAlignment() throws Exception {
+    for (final boolean tableModel : new boolean[] {false, true}) {
+      for (final boolean aligned : new boolean[] {false, true}) {
+        final PipeTabletEventTsFileBatch batch =
+            new PipeTabletEventTsFileBatch(
+                100_000,
+                1024 * 1024,
+                (databaseName, tablet, isTableModel, isAligned) -> {
+                  Assert.assertEquals(tableModel, isTableModel);
+                  Assert.assertEquals(tableModel ? "db" : null, databaseName);
+                  Assert.assertEquals(tableModel || aligned, isAligned);
+                  return null;
+                });
+        try {
+          final PipeRawTabletInsertionEvent event =
+              new PipeRawTabletInsertionEvent(
+                  tableModel,
+                  "root.db",
+                  "db",
+                  "root.db",
+                  createTablet(),
+                  aligned,
+                  "pipe",
+                  1L,
+                  null,
+                  null,
+                  false);
+          Assert.assertEquals(tableModel ? "db" : null, event.getTableModelDatabaseName());
+          batch.onEvent(event);
+          Assert.assertTrue(event.isReleased());
+        } finally {
+          batch.close();
+        }
+      }
+    }
+  }
+
+  @Test
   public void testFullyPrunedTableModelTabletIsReleasedAndNotRetained() throws Exception {
     final PipeTabletEventTsFileBatch batch =
         new PipeTabletEventTsFileBatch(100_000, 1024 * 1024, (databaseName, tablet) -> null);

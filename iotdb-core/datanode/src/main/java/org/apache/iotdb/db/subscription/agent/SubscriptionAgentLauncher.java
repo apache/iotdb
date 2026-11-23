@@ -64,7 +64,8 @@ class SubscriptionAgentLauncher {
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           final String exceptionMessage =
               String.format(
-                  "Failed to get all topic info in config node, status is %s",
+                  DataNodePipeMessages
+                      .EXCEPTION_FAILED_TO_GET_ALL_TOPIC_INFO_IN_CONFIG_NODE_STATUS_IS_ARG_68B91348,
                   getAllTopicInfoResp.getStatus());
           LOGGER.warn(exceptionMessage);
           throw new SubscriptionException(exceptionMessage);
@@ -125,7 +126,8 @@ class SubscriptionAgentLauncher {
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           final String exceptionMessage =
               String.format(
-                  "Failed to get all subscription info in config node, status is %s",
+                  DataNodePipeMessages
+                      .EXCEPTION_FAILED_TO_GET_ALL_SUBSCRIPTION_INFO_IN_CONFIG_NODE_STATUS_IS_ARG_1522CE8B,
                   getAllSubscriptionInfoResp.getStatus());
           LOGGER.warn(exceptionMessage);
           throw new SubscriptionException(exceptionMessage);

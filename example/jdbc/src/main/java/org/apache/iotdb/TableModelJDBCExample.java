@@ -62,7 +62,7 @@ public class TableModelJDBCExample {
         ResultSetMetaData metaData = resultSet.getMetaData();
         System.out.println(metaData.getColumnCount());
         while (resultSet.next()) {
-          System.out.println(resultSet.getString(1) + ", " + resultSet.getInt(2));
+          System.out.println(resultSet.getString(1) + ", " + resultSet.getString(2));
         }
       }
 
@@ -72,7 +72,7 @@ public class TableModelJDBCExample {
         ResultSetMetaData metaData = resultSet.getMetaData();
         System.out.println(metaData.getColumnCount());
         while (resultSet.next()) {
-          System.out.println(resultSet.getString(1) + ", " + resultSet.getInt(2));
+          System.out.println(resultSet.getString(1) + ", " + resultSet.getString(2));
         }
       }
 
@@ -90,7 +90,7 @@ public class TableModelJDBCExample {
         ResultSetMetaData metaData = resultSet.getMetaData();
         System.out.println(metaData.getColumnCount());
         while (resultSet.next()) {
-          System.out.println(resultSet.getString(1) + ", " + resultSet.getInt(2));
+          System.out.println(resultSet.getString(1) + ", " + resultSet.getString(2));
         }
       }
 
@@ -101,7 +101,7 @@ public class TableModelJDBCExample {
         ResultSetMetaData metaData = resultSet.getMetaData();
         System.out.println(metaData.getColumnCount());
         while (resultSet.next()) {
-          System.out.println(resultSet.getString(1) + ", " + resultSet.getInt(2));
+          System.out.println(resultSet.getString(1) + ", " + resultSet.getString(2));
         }
       }
     }

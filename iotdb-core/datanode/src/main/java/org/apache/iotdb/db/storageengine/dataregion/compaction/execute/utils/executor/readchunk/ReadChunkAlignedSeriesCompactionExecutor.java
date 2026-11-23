@@ -22,8 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.MetadataUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
@@ -56,6 +56,7 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
@@ -109,7 +110,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.targetResource = targetResource;
     this.summary = summary;
     this.ignoreAllNullRows = ignoreAllNullRows;
-    if (device.isTableModel()) {
+    if (PathUtils.isTableModelDatabase(database)) {
       collectValueColumnSchemaListForTable(database);
     } else {
       collectValueColumnSchemaListForTree();
@@ -663,38 +664,14 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
     private long estimateMemorySizeAsPageWriter(PageLoader pageLoader) {
       long count = pageLoader.getHeader().getStatistics().getCount();
-      long size;
-      switch (pageLoader.getDataType()) {
-        case INT32:
-        case DATE:
-          size = count * Integer.BYTES;
-          break;
-        case TIMESTAMP:
-        case INT64:
-        case VECTOR:
-          size = count * Long.BYTES;
-          break;
-        case FLOAT:
-          size = count * Float.BYTES;
-          break;
-        case DOUBLE:
-          size = count * Double.BYTES;
-          break;
-        case BOOLEAN:
-          size = count * Byte.BYTES;
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          size = pageLoader.getHeader().getUncompressedSize();
-          break;
-        default:
-          throw new IllegalArgumentException(
-              String.format(
-                  StorageEngineMessages.STORAGE_EXCEPTION_UNSUPPORTED_DATA_TYPE_S_D16A1E9A,
-                  pageLoader.getDataType().toString()));
-      }
+      TSDataType dataType = pageLoader.getDataType();
+      long size =
+          dataType.isBinary()
+              ? pageLoader.getHeader().getUncompressedSize()
+              : count
+                  * (dataType == TSDataType.VECTOR
+                      ? Long.BYTES
+                      : Type.fromTsDataType(dataType).estimateValueSize());
       // Due to the fact that the page writer in memory includes some other objects
       // and has a special calculation method, the estimated size will actually be
       // larger. So we simply adopt the method of multiplying by 1.05 times. If this

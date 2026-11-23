@@ -107,10 +107,14 @@ public class IoTDBDeviceIT {
               "show devices from table0 where region_id < plant_id offset 0 limit 1"),
           "region_id,plant_id,device_id,model,",
           Collections.singleton("1,木兰,3,A,"));
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("show devices from table0 where region_id < plant_id limit 0"),
-          "region_id,plant_id,device_id,model,",
-          Collections.emptySet());
+      try {
+        statement.executeQuery("show devices from table0 where region_id < plant_id limit 0");
+        fail("Expected LIMIT 0 to be rejected");
+      } catch (SQLException e) {
+        assertTrue(
+            e.getMessage(),
+            e.getMessage().contains("LIMIT row count must be greater than 0 (actual value: 0)"));
+      }
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from table0 where region_id < plant_id"),
           "count(devices),",
@@ -192,7 +196,18 @@ public class IoTDBDeviceIT {
         statement.execute("update table0 set device_id = '1'");
         fail("Update shall fail for tag");
       } catch (final Exception e) {
-        assertEquals("701: Update can only specify attribute columns.", e.getMessage());
+        assertEquals(
+            "701: Cannot update TAG column 'device_id'. UPDATE can only specify ATTRIBUTE columns.",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute("update table0 set time = 1");
+        fail("Update shall fail for time column");
+      } catch (final Exception e) {
+        assertEquals(
+            "701: Cannot update TIME column 'time'. UPDATE can only specify ATTRIBUTE columns.",
+            e.getMessage());
       }
 
       try {
@@ -207,6 +222,25 @@ public class IoTDBDeviceIT {
         fail("Update shall fail for non-exist column");
       } catch (final Exception e) {
         assertEquals("616: Column 'col' cannot be resolved", e.getMessage());
+      }
+
+      try {
+        statement.execute("update table0 set temperature = '1'");
+        fail("Update shall fail for field column");
+      } catch (final Exception e) {
+        assertEquals(
+            "701: Cannot update FIELD column 'temperature'. UPDATE can only specify ATTRIBUTE columns.",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "update table0 set temperature = '1' " + "where region_id = '1' and region_id = '2'");
+        fail("Update shall validate field column before finishing an empty update");
+      } catch (final Exception e) {
+        assertEquals(
+            "701: Cannot update FIELD column 'temperature'. UPDATE can only specify ATTRIBUTE columns.",
+            e.getMessage());
       }
 
       try {
@@ -241,7 +275,18 @@ public class IoTDBDeviceIT {
         statement.execute("update table0 set model = humidity");
         fail("Update shall fail for non-tag/attribute columns");
       } catch (final Exception e) {
-        assertTrue(e.getMessage().contains("Column 'humidity' is not an attribute or tag column"));
+        assertEquals(
+            "701: Cannot reference FIELD column 'humidity' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute("update table0 set model = time");
+        fail("Update shall fail for time column in value expression");
+      } catch (final Exception e) {
+        assertEquals(
+            "701: Cannot reference TIME column 'time' in an UPDATE value. UPDATE values can only reference ATTRIBUTE or TAG columns.",
+            e.getMessage());
       }
 
       // Test filter with no effect

@@ -40,10 +40,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.KB;
@@ -174,12 +177,23 @@ public class CommonConfig {
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
 
-  private NodeStatus lastStatus = NodeStatus.Unknown;
-  private String lastStatusReason = "";
+  /**
+   * Reason reported in heartbeats and SHOW results. For unrecoverable errors, {@link
+   * HandleSystemErrorStrategy} formats the exception before setting this field.
+   */
+  private volatile String statusReason = null;
 
   private volatile boolean isStopping = false;
 
-  private volatile String statusReason = null;
+  // Only failed sources are retained. Directory initialization uses its folder list as the key;
+  // a live FolderManager uses its identity so its health restrictions are also checked.
+  private final Map<Object, BooleanSupplier> diskFullRecoveryChecks = new HashMap<>();
+
+  /**
+   * Invalidates a recovery check that was evaluated before another disk failure or directory
+   * reload.
+   */
+  private long diskFullRecoveryVersion;
 
   private final int TTimePartitionSlotTransmitLimit = 1000;
 
@@ -341,6 +355,7 @@ public class CommonConfig {
       Math.min(
           64 * 1024 * 1024,
           (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
+  private int pipeAirGapReceiverUdpSocketBufferSizeInBytes = 32 * 1024 * 1024;
   private boolean pipeReceiverLoadConversionEnabled = false;
   private volatile long loggerPeriodicalLogMinIntervalSeconds = 60;
   private volatile long loggerCacheMaxSizeInBytes = 64 * MB;
@@ -426,8 +441,10 @@ public class CommonConfig {
 
   private int subscriptionConsensusBatchMaxDelayInMs = 50;
   private long subscriptionConsensusBatchMaxSizeInBytes = 8 * MB;
-  private int subscriptionConsensusBatchMaxTabletCount = 64;
-  private int subscriptionConsensusBatchMaxWalEntries = 128;
+  // Favor fewer poll/commit round trips during WAL catch-up. The byte limit remains the primary
+  // memory and RPC payload guard for large tablets.
+  private int subscriptionConsensusBatchMaxTabletCount = 512;
+  private int subscriptionConsensusBatchMaxWalEntries = 1024;
 
   private long subscriptionConsensusWalRetentionSizeInBytes = 512 * MB;
   private long subscriptionConsensusWalRetentionTimeMs = -1L;
@@ -438,6 +455,9 @@ public class CommonConfig {
   private long subscriptionConsensusConsumerEvictionTimeoutMs = 60_000;
 
   private boolean subscriptionConsensusLagBasedPriority = true;
+
+  // Disable fallback polling to keep each region's events with its assigned consumer.
+  private boolean subscriptionConsensusFallbackPollingEnabled = true;
 
   private int subscriptionConsensusPrefetchingQueueCapacity = 256;
 
@@ -781,8 +801,8 @@ public class CommonConfig {
     this.handleSystemErrorStrategy = handleSystemErrorStrategy;
   }
 
-  public void handleUnrecoverableError() {
-    handleSystemErrorStrategy.handle();
+  public void handleUnrecoverableError(Throwable e) {
+    handleSystemErrorStrategy.handle(NodeStatus.UNRECOVERABLE_ERROR, e);
   }
 
   public double getDiskSpaceWarningThreshold() {
@@ -825,14 +845,72 @@ public class CommonConfig {
     return status;
   }
 
-  public synchronized void setNodeStatus(NodeStatus newStatus) {
+  /**
+   * Sets the node status without a new reason. An existing ReadOnly reason is preserved when
+   * ReadOnly is requested again; requests for other statuses clear the reason.
+   */
+  public void setNodeStatus(NodeStatus newStatus) {
+    setNodeStatusWithReason(newStatus, null);
+  }
+
+  /** Records the recovery condition together with the disk-full transition. */
+  public synchronized void setReadOnlyForDiskFull(Object source, BooleanSupplier recoveryCheck) {
+    diskFullRecoveryChecks.put(source, recoveryCheck);
+    setNodeStatusWithReason(NodeStatus.ReadOnly, NodeStatus.DISK_FULL);
+  }
+
+  public synchronized void invalidateDiskFullRecoverySnapshot() {
+    diskFullRecoveryVersion++;
+  }
+
+  public synchronized boolean isReadOnlyForDiskFull() {
+    return status == NodeStatus.ReadOnly && NodeStatus.DISK_FULL.equals(statusReason);
+  }
+
+  /** Called after the aggregate disk-space check passes. */
+  public void tryRecoverFromDiskFull() {
+    final List<BooleanSupplier> recoveryChecks;
+    final long recoveryVersion;
+    synchronized (this) {
+      if (!isReadOnlyForDiskFull()) {
+        return;
+      }
+      recoveryChecks = new ArrayList<>(diskFullRecoveryChecks.values());
+      recoveryVersion = diskFullRecoveryVersion;
+    }
+    // Do not hold the status monitor during filesystem I/O.
+    if (recoveryChecks.stream().allMatch(BooleanSupplier::getAsBoolean)) {
+      synchronized (this) {
+        if (recoveryVersion == diskFullRecoveryVersion && isReadOnlyForDiskFull()) {
+          setNodeStatus(NodeStatus.Running);
+        }
+      }
+    }
+  }
+
+  /**
+   * Sets the node status and reason together. ReadOnly-to-ReadOnly updates select the reason
+   * through {@link NodeStatus#transitionReadOnlyReason(String, String)}. Other statuses clear the
+   * reason.
+   */
+  public synchronized void setNodeStatusWithReason(NodeStatus newStatus, String newReason) {
+    if (newStatus == NodeStatus.ReadOnly && NodeStatus.DISK_FULL.equals(newReason)) {
+      diskFullRecoveryVersion++;
+    }
+    if (newStatus != NodeStatus.ReadOnly) {
+      diskFullRecoveryChecks.clear();
+      newReason = null;
+    } else if (status == NodeStatus.ReadOnly) {
+      newReason = NodeStatus.transitionReadOnlyReason(statusReason, newReason);
+    }
     if (status == newStatus) {
+      this.statusReason = newReason;
       return;
     }
 
     logger.info(ConfigMessages.SET_SYSTEM_MODE, status, newStatus);
     this.status = newStatus;
-    this.statusReason = null;
+    this.statusReason = newReason;
 
     switch (newStatus) {
       case ReadOnly:
@@ -848,10 +926,6 @@ public class CommonConfig {
 
   public String getStatusReason() {
     return statusReason;
-  }
-
-  public void setStatusReason(String statusReason) {
-    this.statusReason = statusReason;
   }
 
   public int getTTimePartitionSlotTransmitLimit() {
@@ -1988,6 +2062,18 @@ public class CommonConfig {
     return pipeAirGapReceiverMaxPayloadSizeInBytes;
   }
 
+  public int getPipeAirGapReceiverUdpSocketBufferSizeInBytes() {
+    return pipeAirGapReceiverUdpSocketBufferSizeInBytes;
+  }
+
+  public void setPipeAirGapReceiverUdpSocketBufferSizeInBytes(
+      int pipeAirGapReceiverUdpSocketBufferSizeInBytes) {
+    if (pipeAirGapReceiverUdpSocketBufferSizeInBytes > 0) {
+      this.pipeAirGapReceiverUdpSocketBufferSizeInBytes =
+          pipeAirGapReceiverUdpSocketBufferSizeInBytes;
+    }
+  }
+
   public double getPipeMetaReportMaxLogNumPerRound() {
     return pipeMetaReportMaxLogNumPerRound;
   }
@@ -2835,6 +2921,15 @@ public class CommonConfig {
   public void setSubscriptionConsensusLagBasedPriority(
       final boolean subscriptionConsensusLagBasedPriority) {
     this.subscriptionConsensusLagBasedPriority = subscriptionConsensusLagBasedPriority;
+  }
+
+  public boolean isSubscriptionConsensusFallbackPollingEnabled() {
+    return subscriptionConsensusFallbackPollingEnabled;
+  }
+
+  public void setSubscriptionConsensusFallbackPollingEnabled(
+      final boolean subscriptionConsensusFallbackPollingEnabled) {
+    this.subscriptionConsensusFallbackPollingEnabled = subscriptionConsensusFallbackPollingEnabled;
   }
 
   public int getSubscriptionConsensusPrefetchingQueueCapacity() {

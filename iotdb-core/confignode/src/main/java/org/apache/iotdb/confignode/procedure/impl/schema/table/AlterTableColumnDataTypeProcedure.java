@@ -68,7 +68,7 @@ public class AlterTableColumnDataTypeProcedure
 
   @Override
   protected String getActionMessage() {
-    return "Alter table column data type";
+    return ProcedureMessages.MESSAGE_ALTER_TABLE_COLUMN_DATA_TYPE_CE3B07A5;
   }
 
   @Override
@@ -103,7 +103,7 @@ public class AlterTableColumnDataTypeProcedure
               ProcedureMessages.COMMIT_RELEASE_INFO_OF_TABLE_WHEN_ALTERING_COLUMN,
               database,
               tableName);
-          commitRelease(env);
+          commitReleaseWithHA(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(
@@ -161,6 +161,7 @@ public class AlterTableColumnDataTypeProcedure
     setNextState(AlterTableColumnDataTypeState.COMMIT_RELEASE);
   }
 
+  /** The rollback of this procedure is a no-op, so it is never rolled back. */
   @Override
   protected boolean isRollbackSupported(final AlterTableColumnDataTypeState state) {
     return false;

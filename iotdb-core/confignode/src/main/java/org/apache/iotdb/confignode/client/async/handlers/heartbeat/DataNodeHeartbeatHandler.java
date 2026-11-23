@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -105,7 +104,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
   }
 
   private void cacheRegionGroupHeartbeatSamples(TDataNodeHeartbeatResp heartbeatResp) {
-    RegionStatus regionStatus = RegionStatus.valueOf(heartbeatResp.getStatus());
+    RegionStatus regionStatus =
+        RegionStatus.fromNodeStatus(NodeStatus.parse(heartbeatResp.getStatus()));
 
     Map<TConsensusGroupId, Boolean> judgedLeaders =
         heartbeatResp.isSetJudgedLeaders()
@@ -220,8 +220,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
   @Override
   public void onError(Exception e) {
     if (ThriftClient.isConnectionBroken(e)) {
-      loadManager.forceUpdateNodeCache(
-          NodeType.DataNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
+      loadManager.trySetNodeStatus(nodeId, NodeStatus.Unknown, false);
     }
     loadManager.getLoadCache().resetHeartbeatProcessing(nodeId);
   }

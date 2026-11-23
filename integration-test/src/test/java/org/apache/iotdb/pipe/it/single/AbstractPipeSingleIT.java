@@ -30,7 +30,7 @@ abstract class AbstractPipeSingleIT {
   protected BaseEnv env;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     MultiEnvFactory.createEnv(1);
     env = MultiEnvFactory.getEnv(0);
     env.getConfig()
@@ -45,6 +45,11 @@ abstract class AbstractPipeSingleIT {
 
   @After
   public final void tearDown() {
+    cleanEnvironment();
+  }
+
+  // A shared-cluster subclass can reset its scenario without stopping the class-owned nodes.
+  protected void cleanEnvironment() {
     env.cleanClusterEnvironment();
   }
 }

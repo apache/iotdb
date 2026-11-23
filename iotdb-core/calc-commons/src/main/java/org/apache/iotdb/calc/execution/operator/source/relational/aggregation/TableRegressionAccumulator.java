@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
@@ -26,7 +31,6 @@ import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 
@@ -78,8 +82,8 @@ public class TableRegressionAccumulator implements TableAccumulator {
         if (arguments[0].isNull(i) || arguments[1].isNull(i)) {
           continue;
         }
-        double y = getDoubleValue(arguments[0], i, yDataType);
-        double x = getDoubleValue(arguments[1], i, xDataType);
+        double y = getDoubleValue(arguments[0], i);
+        double x = getDoubleValue(arguments[1], i);
         update(x, y);
       }
     } else {
@@ -89,31 +93,15 @@ public class TableRegressionAccumulator implements TableAccumulator {
         if (arguments[0].isNull(position) || arguments[1].isNull(position)) {
           continue;
         }
-        double y = getDoubleValue(arguments[0], position, yDataType);
-        double x = getDoubleValue(arguments[1], position, xDataType);
+        double y = getDoubleValue(arguments[0], position);
+        double x = getDoubleValue(arguments[1], position);
         update(x, y);
       }
     }
   }
 
-  private double getDoubleValue(Column column, int position, TSDataType dataType) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        return column.getFloat(position);
-      case DOUBLE:
-        return column.getDouble(position);
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_REGRESSION_AGGREGATION_ARG_7BB08DA2,
-                dataType));
-    }
+  private double getDoubleValue(Column column, int position) {
+    return column.getDouble(position);
   }
 
   private void update(double x, double y) {
@@ -230,8 +218,8 @@ public class TableRegressionAccumulator implements TableAccumulator {
       return;
     }
 
-    double otherY = getDoubleValue(arguments[0], 0, yDataType);
-    double otherX = getDoubleValue(arguments[1], 0, xDataType);
+    double otherY = getDoubleValue(arguments[0], 0);
+    double otherX = getDoubleValue(arguments[1], 0);
 
     if (count == 1) {
       reset();

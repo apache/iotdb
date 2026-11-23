@@ -28,8 +28,9 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -51,6 +52,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
+import static org.apache.iotdb.db.it.utils.TestUtils.dropDatabaseWithRetry;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -62,13 +64,23 @@ import static org.junit.Assert.fail;
 public class IoTDBSimpleQueryTableIT {
   private static final String DATABASE_NAME = "test";
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() throws SQLException {
+    // Keep the catalog empty for the database-listing test while reusing the cluster.
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      dropDatabaseWithRetry(statement, DATABASE_NAME);
+      dropDatabaseWithRetry(statement, "group_with_hyphen");
+    }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -92,6 +104,30 @@ public class IoTDBSimpleQueryTableIT {
 
     } catch (SQLException e) {
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testLimitZeroRejected() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE " + DATABASE_NAME);
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute("CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD)");
+
+      assertLimitZeroRejected(statement, "SELECT * FROM table1 LIMIT 0");
+      assertLimitZeroRejected(statement, "SELECT * FROM table1 ORDER BY time LIMIT 0");
+    }
+  }
+
+  private static void assertLimitZeroRejected(Statement statement, String sql) {
+    try {
+      statement.executeQuery(sql);
+      fail("Expected LIMIT 0 to be rejected");
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage(),
+          e.getMessage().contains("LIMIT row count must be greater than 0 (actual value: 0)"));
     }
   }
 
@@ -577,31 +613,29 @@ public class IoTDBSimpleQueryTableIT {
       statement.execute("insert into table1(time,device,s0,s1) values(1000,'d1',1000,1000)");
       statement.execute("insert into table1(time,device,s0,s1) values(10,'d0',10,10)");
 
-      List<ResultSet> resultSetList = new ArrayList<>();
+      try (ResultSet r1 =
+          statement.executeQuery("select * from table1 where device='d0' and time <= 1")) {
+        Assert.assertTrue(r1.next());
+        Assert.assertEquals(r1.getLong(1), 1L);
+        Assert.assertEquals(r1.getLong(3), 1L);
+        Assert.assertEquals(r1.getLong(4), 1L);
+      }
 
-      ResultSet r1 = statement.executeQuery("select * from table1 where device='d0' and time <= 1");
-      resultSetList.add(r1);
+      try (ResultSet r2 =
+          statement.executeQuery("select * from table1 where device='d1' and s0 = 1000")) {
+        Assert.assertTrue(r2.next());
+        Assert.assertEquals(r2.getLong(1), 1000L);
+        Assert.assertEquals(r2.getLong(3), 1000L);
+        Assert.assertEquals(r2.getLong(4), 1000L);
+      }
 
-      ResultSet r2 = statement.executeQuery("select * from table1 where device='d1' and s0 = 1000");
-      resultSetList.add(r2);
-
-      ResultSet r3 = statement.executeQuery("select * from table1 where device='d0' and s1 = 10");
-      resultSetList.add(r3);
-
-      r1.next();
-      Assert.assertEquals(r1.getLong(1), 1L);
-      Assert.assertEquals(r1.getLong(3), 1L);
-      Assert.assertEquals(r1.getLong(4), 1L);
-
-      r2.next();
-      Assert.assertEquals(r2.getLong(1), 1000L);
-      Assert.assertEquals(r2.getLong(3), 1000L);
-      Assert.assertEquals(r2.getLong(4), 1000L);
-
-      r3.next();
-      Assert.assertEquals(r3.getLong(1), 10L);
-      Assert.assertEquals(r3.getLong(3), 10L);
-      Assert.assertEquals(r3.getLong(4), 10L);
+      try (ResultSet r3 =
+          statement.executeQuery("select * from table1 where device='d0' and s1 = 10")) {
+        Assert.assertTrue(r3.next());
+        Assert.assertEquals(r3.getLong(1), 10L);
+        Assert.assertEquals(r3.getLong(3), 10L);
+        Assert.assertEquals(r3.getLong(4), 10L);
+      }
     }
   }
 

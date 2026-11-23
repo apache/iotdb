@@ -43,7 +43,8 @@ import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 public class RecordIterator implements Iterator<Record> {
 
   public static final String OBJECT_ERR_MSG =
-      "OBJECT Type only support getString, getObjectFile, objectLength and readObject";
+      CalcMessages
+          .EXCEPTION_OBJECT_TYPE_ONLY_SUPPORT_GETSTRING_GETOBJECTFILE_OBJECTLENGTH_AND_READOBJECT_3C0EC792;
 
   private final List<Column> childrenColumns;
   private final List<org.apache.tsfile.read.common.type.Type> dataTypes;

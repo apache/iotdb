@@ -35,4 +35,10 @@ public final class StorageMessages {
   public static final String STORAGE_EXCEPTION_CONFLICT_IS_DETECTED_IN_DIRECTORY_S_WHICH_MAY_BE_BEING_USED_CB5C77FC =
       "Conflict is detected in directory %s, which may be being used by another IoTDB "
           + "(ProcessId=%s). Please check configuration and restart.";
+
+  public static final String EXCEPTION_DELETE_FORMAL_SYSTEM_PROPERTIES_FILE_FAIL_ARG_BB18DD99 =
+      "Delete formal system properties file fail: %s";
+
+  public static final String EXCEPTION_UNSUPPORTED_FILE_SYSTEM_3C31AA63 =
+      "Unsupported file system: ";
 }

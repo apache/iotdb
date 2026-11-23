@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistr
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapUdpProtocol;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
@@ -36,6 +37,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -43,17 +45,24 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.CRC32;
 
 public class IoTDBAirGapReceiverTest {
 
@@ -135,11 +144,226 @@ public class IoTDBAirGapReceiverTest {
 
       final Method handleReq =
           IoTDBAirGapReceiver.class.getDeclaredMethod(
-              "handleReq", AirGapPseudoTPipeTransferRequest.class, long.class);
+              "handleReq", AirGapPseudoTPipeTransferRequest.class, long.class, String.class);
       handleReq.setAccessible(true);
-      handleReq.invoke(receiver, req, System.currentTimeMillis() - 10_000L);
+      handleReq.invoke(receiver, req, System.currentTimeMillis() - 10_000L, null);
 
       Assert.assertArrayEquals(AirGapOneByteResponse.FAIL, socket.getWrittenBytes());
+    } finally {
+      commonConfig.setPipeAirGapRetryLocalIntervalMs(originalRetryLocalIntervalMs);
+      commonConfig.setPipeAirGapRetryMaxMs(originalRetryMaxMs);
+    }
+  }
+
+  @Test
+  public void testReceiveAirGapPayloadWithSpecifiedReceiverKey() throws Exception {
+    final RecordingSocket socket = new RecordingSocket();
+    final IoTDBAirGapReceiver receiver = new IoTDBAirGapReceiver(socket, 4L);
+    final StubIoTDBDataNodeReceiverAgent stubAgent = new StubIoTDBDataNodeReceiverAgent();
+    stubAgent.setStubReceiver(
+        "udp-client", new StubReceiver(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    setField(receiver, "agent", stubAgent);
+
+    Assert.assertTrue(receiver.receive(toAirGapData(toRawRequestBytes()), "udp-client"));
+    Assert.assertArrayEquals(AirGapOneByteResponse.OK, socket.getWrittenBytes());
+  }
+
+  @Test
+  public void testUdpResponseContainsRequestId() throws Exception {
+    try (final DatagramSocket receiverSocket = new DatagramSocket(0);
+        final DatagramSocket senderSocket = new DatagramSocket()) {
+      final long requestId = 73L;
+      final byte[] request = toUdpDatagram(requestId, toRawRequestBytes());
+      senderSocket.send(
+          new DatagramPacket(
+              request,
+              request.length,
+              InetAddress.getLoopbackAddress(),
+              receiverSocket.getLocalPort()));
+
+      final byte[] buffer = new byte[65_507];
+      final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+      receiverSocket.receive(packet);
+
+      final RecordingSocket socket = new RecordingSocket();
+      final IoTDBAirGapReceiver receiver = new IoTDBAirGapReceiver(socket, 5L);
+      final StubIoTDBDataNodeReceiverAgent stubAgent = new StubIoTDBDataNodeReceiverAgent();
+      stubAgent.setStubReceiver(
+          "udp-client",
+          new StubReceiver(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+      setField(receiver, "agent", stubAgent);
+      receiver.receiveUdp(receiverSocket, packet, "udp-client", buffer, () -> {});
+
+      final byte[] response = new byte[Long.BYTES + 2];
+      final DatagramPacket responsePacket = new DatagramPacket(response, response.length);
+      senderSocket.setSoTimeout(1000);
+      senderSocket.receive(responsePacket);
+      Assert.assertEquals(Long.BYTES + 1, responsePacket.getLength());
+      Assert.assertEquals(requestId, ByteBuffer.wrap(response).getLong());
+      Assert.assertEquals(AirGapOneByteResponse.OK[0], response[Long.BYTES]);
+    }
+  }
+
+  @Test
+  public void testStrictUnidirectionalUdpNeverRespondsToSuccessOrFailure() throws Exception {
+    for (final TSStatusCode status :
+        new TSStatusCode[] {
+          TSStatusCode.SUCCESS_STATUS, TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
+        }) {
+      try (final DatagramSocket receiverSocket = new NoResponseDatagramSocket()) {
+        final byte[] request =
+            toUdpDatagram(AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK | 73L, toRawRequestBytes());
+        final DatagramPacket packet =
+            new DatagramPacket(request, request.length, InetAddress.getLoopbackAddress(), 12345);
+        final IoTDBAirGapReceiver receiver = new IoTDBAirGapReceiver(new RecordingSocket(), 5L);
+        final StubIoTDBDataNodeReceiverAgent stubAgent = new StubIoTDBDataNodeReceiverAgent();
+        final AtomicInteger receivedRequests = new AtomicInteger();
+        stubAgent.setStubReceiver(
+            "udp-client",
+            new StubReceiver(new TSStatus(status.getStatusCode())) {
+              @Override
+              public TPipeTransferResp receive(final TPipeTransferReq req) {
+                Assert.assertTrue(
+                    ((AirGapPseudoTPipeTransferRequest) req).isStrictUnidirectional());
+                receivedRequests.incrementAndGet();
+                return super.receive(req);
+              }
+            });
+        setField(receiver, "agent", stubAgent);
+        receiver.receiveUdp(receiverSocket, packet, "udp-client", request, () -> {});
+        Assert.assertEquals(1, receivedRequests.get());
+      }
+    }
+  }
+
+  @Test
+  public void testStrictUnidirectionalUdpDoesNotRespondToCorruptRequest() throws Exception {
+    try (final DatagramSocket receiverSocket = new NoResponseDatagramSocket()) {
+      final byte[] request =
+          toUdpDatagram(AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK | 74L, toRawRequestBytes());
+      request[request.length - 1] ^= 1;
+      final DatagramPacket packet =
+          new DatagramPacket(request, request.length, InetAddress.getLoopbackAddress(), 12345);
+      final AtomicBoolean registered = new AtomicBoolean();
+      new IoTDBAirGapReceiver(new RecordingSocket(), 6L)
+          .receiveUdp(receiverSocket, packet, "udp-client", request, () -> registered.set(true));
+      Assert.assertFalse(registered.get());
+    }
+  }
+
+  private static class NoResponseDatagramSocket extends DatagramSocket {
+
+    private NoResponseDatagramSocket() throws SocketException {}
+
+    @Override
+    public void send(final DatagramPacket packet) {
+      Assert.fail("Strictly unidirectional requests must never send an ACK or NACK");
+    }
+  }
+
+  @Test
+  public void testInterruptedUdpRetryStopsWithoutReenteringReceiver() throws Exception {
+    final AtomicInteger receiveCount = new AtomicInteger();
+    final IoTDBAirGapReceiver receiver = new IoTDBAirGapReceiver(new RecordingSocket(), 7L);
+    final StubIoTDBDataNodeReceiverAgent stubAgent = new StubIoTDBDataNodeReceiverAgent();
+    stubAgent.setStubReceiver(
+        "udp-client",
+        new StubReceiver(
+            new TSStatus(
+                TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())) {
+          @Override
+          public TPipeTransferResp receive(final TPipeTransferReq req) {
+            Assert.assertEquals(1, receiveCount.incrementAndGet());
+            return super.receive(req);
+          }
+        });
+    setField(receiver, "agent", stubAgent);
+    try (final DatagramSocket receiverSocket = new NoResponseDatagramSocket()) {
+      final byte[] request =
+          toUdpDatagram(AirGapUdpProtocol.NO_ACK_REQUEST_ID_MASK | 75L, toRawRequestBytes());
+      final DatagramPacket packet =
+          new DatagramPacket(request, request.length, InetAddress.getLoopbackAddress(), 12345);
+      Thread.currentThread().interrupt();
+      try {
+        Assert.assertThrows(
+            InterruptedIOException.class,
+            () -> receiver.receiveUdp(receiverSocket, packet, "udp-client", request, () -> {}));
+        Assert.assertTrue(Thread.currentThread().isInterrupted());
+        Assert.assertEquals(1, receiveCount.get());
+      } finally {
+        Thread.interrupted();
+      }
+    }
+  }
+
+  @Test
+  public void testTemporaryUnavailableRetryUsesFreshRequestBody() throws Exception {
+    assertTemporaryUnavailableRetryUsesFreshRequestBody(null);
+  }
+
+  @Test
+  public void testTemporaryUnavailableRetryUsesFreshRequestBodyWithSpecifiedReceiverKey()
+      throws Exception {
+    assertTemporaryUnavailableRetryUsesFreshRequestBody("udp-client");
+  }
+
+  private void assertTemporaryUnavailableRetryUsesFreshRequestBody(final String receiverKey)
+      throws Exception {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    final long originalRetryLocalIntervalMs = commonConfig.getPipeAirGapRetryLocalIntervalMs();
+    final long originalRetryMaxMs = commonConfig.getPipeAirGapRetryMaxMs();
+
+    try {
+      commonConfig.setPipeAirGapRetryLocalIntervalMs(0);
+      commonConfig.setPipeAirGapRetryMaxMs(10_000);
+
+      final RecordingSocket socket = new RecordingSocket();
+      final IoTDBAirGapReceiver receiver = new IoTDBAirGapReceiver(socket, 4L);
+      final StubIoTDBDataNodeReceiverAgent stubAgent = new StubIoTDBDataNodeReceiverAgent();
+      final byte[] expectedBody = new byte[] {1, 2, 3};
+      final AtomicInteger receiveCount = new AtomicInteger();
+      stubAgent.setStubReceiver(
+          receiverKey,
+          new IoTDBReceiver() {
+            @Override
+            public TPipeTransferResp receive(final TPipeTransferReq req) {
+              final byte[] actualBody = new byte[req.body.remaining()];
+              req.body.get(actualBody);
+              Assert.assertArrayEquals(expectedBody, actualBody);
+              return new TPipeTransferResp(
+                  new TSStatus(
+                      receiveCount.getAndIncrement() == 0
+                          ? TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
+                              .getStatusCode()
+                          : TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+            }
+
+            @Override
+            public void handleExit() {
+              // noop for unit test
+            }
+
+            @Override
+            public IoTDBSinkRequestVersion getVersion() {
+              return IoTDBSinkRequestVersion.VERSION_1;
+            }
+          });
+      setField(receiver, "agent", stubAgent);
+
+      final AirGapPseudoTPipeTransferRequest req = new AirGapPseudoTPipeTransferRequest();
+      req.setVersion(IoTDBSinkRequestVersion.VERSION_1.getVersion());
+      req.setType((short) 0);
+      req.setBody(ByteBuffer.wrap(expectedBody));
+
+      final Method handleReq =
+          IoTDBAirGapReceiver.class.getDeclaredMethod(
+              "handleReq", AirGapPseudoTPipeTransferRequest.class, long.class, String.class);
+      handleReq.setAccessible(true);
+      handleReq.invoke(receiver, req, System.currentTimeMillis(), receiverKey);
+
+      Assert.assertEquals(2, receiveCount.get());
+      Assert.assertEquals(0, req.body.position());
+      Assert.assertArrayEquals(AirGapOneByteResponse.OK, socket.getWrittenBytes());
     } finally {
       commonConfig.setPipeAirGapRetryLocalIntervalMs(originalRetryLocalIntervalMs);
       commonConfig.setPipeAirGapRetryMaxMs(originalRetryMaxMs);
@@ -176,7 +400,7 @@ public class IoTDBAirGapReceiverTest {
   @Test
   public void testIdleReadTimeoutDoesNotRespondOrCloseSocket() throws Exception {
     final RecordingSocket socket = new RecordingSocket(new TimeoutInputStream(new byte[0]));
-    invokeReceive(new IoTDBAirGapReceiver(socket, 4L));
+    invokeReceive(new IoTDBAirGapReceiver(socket, 5L));
 
     Assert.assertArrayEquals(new byte[0], socket.getWrittenBytes());
     Assert.assertFalse(socket.isClosed());
@@ -186,7 +410,7 @@ public class IoTDBAirGapReceiverTest {
   public void testPartialRequestReadTimeoutClosesSocketWithoutResponse() throws Exception {
     final RecordingSocket socket =
         new RecordingSocket(new TimeoutInputStream(new byte[] {(byte) 0xFF}));
-    invokeReceive(new IoTDBAirGapReceiver(socket, 5L));
+    invokeReceive(new IoTDBAirGapReceiver(socket, 6L));
 
     Assert.assertArrayEquals(new byte[0], socket.getWrittenBytes());
     Assert.assertTrue(socket.isClosed());
@@ -324,6 +548,10 @@ public class IoTDBAirGapReceiverTest {
     void setStubReceiver(final IoTDBReceiver receiver) {
       setReceiverWithSpecifiedClient(null, receiver);
     }
+
+    void setStubReceiver(final String key, final IoTDBReceiver receiver) {
+      setReceiverWithSpecifiedClient(key, receiver);
+    }
   }
 
   private static class StubReceiver implements IoTDBReceiver {
@@ -348,6 +576,33 @@ public class IoTDBAirGapReceiverTest {
     public IoTDBSinkRequestVersion getVersion() {
       return IoTDBSinkRequestVersion.VERSION_1;
     }
+  }
+
+  private static byte[] toRawRequestBytes() throws IOException {
+    try (final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
+      ReadWriteIOUtils.write((short) 0, outputStream);
+      return byteArrayOutputStream.toByteArray();
+    }
+  }
+
+  private static byte[] toAirGapData(final byte[] rawRequestBytes) {
+    final CRC32 crc32 = new CRC32();
+    crc32.update(rawRequestBytes, 0, rawRequestBytes.length);
+    return BytesUtils.concatByteArrayList(
+        Arrays.asList(BytesUtils.longToBytes(crc32.getValue()), rawRequestBytes));
+  }
+
+  private static byte[] toUdpDatagram(final long requestId, final byte[] rawRequestBytes) {
+    final byte[] data = toAirGapData(rawRequestBytes);
+    final ByteBuffer datagram =
+        ByteBuffer.allocate(Long.BYTES + 2 * Integer.BYTES + data.length)
+            .putLong(requestId)
+            .putInt(data.length)
+            .putInt(data.length)
+            .put(data);
+    return datagram.array();
   }
 
   private static class RuntimeCleanupReceiver implements IoTDBReceiver {

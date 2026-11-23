@@ -24,10 +24,11 @@ import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.RowComparator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
 
@@ -44,6 +45,7 @@ public class RangeFrame implements Frame {
   private List<ColumnList> allSortedColumns;
   private ColumnList column;
   private TSDataType dataType;
+  private TypeServices.RangeFrameComparator rangeFrameComparator;
 
   private int partitionSize;
   private RowComparator peerGroupComparator;
@@ -69,6 +71,8 @@ public class RangeFrame implements Frame {
     this.allSortedColumns = sortedColumns;
     this.column = sortedColumns.get(0);
     this.dataType = column.getDataType();
+    this.rangeFrameComparator =
+        TypeServices.RANGE_FRAME_COMPARATOR_SERVICE.call(Type.fromTsDataType(dataType));
     this.peerGroupComparator = comparator;
     this.recentRange = new Range(0, 0);
   }
@@ -285,34 +289,14 @@ public class RangeFrame implements Frame {
 
   private boolean compareInAscFrameStartFollowing(int currentIndex, int recentIndex, int channel) {
     checkArgument(!partition.isNull(channel, currentIndex));
-    switch (column.getDataType()) {
-      case INT32:
-      case DATE:
-        int currentInt = column.getInt(currentIndex);
-        int followInt = column.getInt(recentIndex);
-        int deltaInt = partition.getInt(channel, currentIndex);
-        return followInt >= currentInt + deltaInt;
-      case INT64:
-      case TIMESTAMP:
-        long currentLong = column.getLong(currentIndex);
-        long followLong = column.getLong(recentIndex);
-        long deltaLong = partition.getLong(channel, currentIndex);
-        return followLong >= currentLong + deltaLong;
-      case FLOAT:
-        float currentFloat = column.getFloat(currentIndex);
-        float followFloat = column.getFloat(recentIndex);
-        float deltaFloat = partition.getFloat(channel, currentIndex);
-        return followFloat >= currentFloat + deltaFloat;
-      case DOUBLE:
-        double currentDouble = column.getDouble(currentIndex);
-        double followDouble = column.getDouble(recentIndex);
-        double deltaDouble = partition.getDouble(channel, currentIndex);
-        return followDouble >= currentDouble + deltaDouble;
-      default:
-        // Unreachable
-        throw new UnSupportedDataTypeException(
-            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
-    }
+    return rangeFrameComparator.compare(
+        column,
+        partition,
+        currentIndex,
+        recentIndex,
+        channel,
+        TypeServices.RangeFrameOffsetOperation.ADD,
+        TypeServices.RangeFrameComparison.GREATER_THAN_OR_EQUAL);
   }
 
   // Find first row which satisfy:
@@ -331,34 +315,14 @@ public class RangeFrame implements Frame {
 
   private boolean compareInAscFrameEndFollowing(int currentIndex, int recentIndex, int channel) {
     checkArgument(!partition.isNull(channel, currentIndex));
-    switch (column.getDataType()) {
-      case INT32:
-      case DATE:
-        int currentInt = column.getInt(currentIndex);
-        int followInt = column.getInt(recentIndex);
-        int deltaInt = partition.getInt(channel, currentIndex);
-        return followInt > currentInt + deltaInt;
-      case INT64:
-      case TIMESTAMP:
-        long currentLong = column.getLong(currentIndex);
-        long followLong = column.getLong(recentIndex);
-        long deltaLong = partition.getLong(channel, currentIndex);
-        return followLong > currentLong + deltaLong;
-      case FLOAT:
-        float currentFloat = column.getFloat(currentIndex);
-        float followFloat = column.getFloat(recentIndex);
-        float deltaFloat = partition.getFloat(channel, currentIndex);
-        return followFloat > currentFloat + deltaFloat;
-      case DOUBLE:
-        double currentDouble = column.getDouble(currentIndex);
-        double followDouble = column.getDouble(recentIndex);
-        double deltaDouble = partition.getDouble(channel, currentIndex);
-        return followDouble > currentDouble + deltaDouble;
-      default:
-        // Unreachable
-        throw new UnSupportedDataTypeException(
-            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
-    }
+    return rangeFrameComparator.compare(
+        column,
+        partition,
+        currentIndex,
+        recentIndex,
+        channel,
+        TypeServices.RangeFrameOffsetOperation.ADD,
+        TypeServices.RangeFrameComparison.GREATER_THAN);
   }
 
   // Find first row which satisfy:
@@ -377,34 +341,14 @@ public class RangeFrame implements Frame {
 
   private boolean compareInAscFrameStartPreceding(int currentIndex, int recentIndex, int channel) {
     checkArgument(!partition.isNull(channel, currentIndex));
-    switch (column.getDataType()) {
-      case INT32:
-      case DATE:
-        int currentInt = column.getInt(currentIndex);
-        int precedeInt = column.getInt(recentIndex);
-        int deltaInt = partition.getInt(channel, currentIndex);
-        return precedeInt >= currentInt - deltaInt;
-      case INT64:
-      case TIMESTAMP:
-        long currentLong = column.getLong(currentIndex);
-        long precedeLong = column.getLong(recentIndex);
-        long deltaLong = partition.getLong(channel, currentIndex);
-        return precedeLong >= currentLong - deltaLong;
-      case FLOAT:
-        float currentFloat = column.getFloat(currentIndex);
-        float precedeFollow = column.getFloat(recentIndex);
-        float deltaFloat = partition.getFloat(channel, currentIndex);
-        return precedeFollow >= currentFloat - deltaFloat;
-      case DOUBLE:
-        double currentDouble = column.getDouble(currentIndex);
-        double precedeDouble = column.getDouble(recentIndex);
-        double deltaDouble = partition.getDouble(channel, currentIndex);
-        return precedeDouble >= currentDouble - deltaDouble;
-      default:
-        // Unreachable
-        throw new UnSupportedDataTypeException(
-            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
-    }
+    return rangeFrameComparator.compare(
+        column,
+        partition,
+        currentIndex,
+        recentIndex,
+        channel,
+        TypeServices.RangeFrameOffsetOperation.SUBTRACT,
+        TypeServices.RangeFrameComparison.GREATER_THAN_OR_EQUAL);
   }
 
   // Find first row which satisfy:
@@ -423,34 +367,14 @@ public class RangeFrame implements Frame {
 
   private boolean compareInAscFrameEndPreceding(int currentIndex, int recentIndex, int channel) {
     checkArgument(!partition.isNull(channel, currentIndex));
-    switch (column.getDataType()) {
-      case INT32:
-      case DATE:
-        int currentInt = column.getInt(currentIndex);
-        int precedeInt = column.getInt(recentIndex);
-        int deltaInt = partition.getInt(channel, currentIndex);
-        return precedeInt > currentInt - deltaInt;
-      case INT64:
-      case TIMESTAMP:
-        long currentLong = column.getLong(currentIndex);
-        long precedeLong = column.getLong(recentIndex);
-        long deltaLong = partition.getLong(channel, currentIndex);
-        return precedeLong > currentLong - deltaLong;
-      case FLOAT:
-        float currentFloat = column.getFloat(currentIndex);
-        float precedeFollow = column.getFloat(recentIndex);
-        float deltaFloat = partition.getFloat(channel, currentIndex);
-        return precedeFollow > currentFloat - deltaFloat;
-      case DOUBLE:
-        double currentDouble = column.getDouble(currentIndex);
-        double precedeDouble = column.getDouble(recentIndex);
-        double deltaDouble = partition.getDouble(channel, currentIndex);
-        return precedeDouble > currentDouble - deltaDouble;
-      default:
-        // Unreachable
-        throw new UnSupportedDataTypeException(
-            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
-    }
+    return rangeFrameComparator.compare(
+        column,
+        partition,
+        currentIndex,
+        recentIndex,
+        channel,
+        TypeServices.RangeFrameOffsetOperation.SUBTRACT,
+        TypeServices.RangeFrameComparison.GREATER_THAN);
   }
 
   // Find first row which satisfy:
@@ -469,34 +393,14 @@ public class RangeFrame implements Frame {
 
   private boolean compareInDescFrameStartFollowing(int currentIndex, int recentIndex, int channel) {
     checkArgument(!partition.isNull(channel, currentIndex));
-    switch (column.getDataType()) {
-      case INT32:
-      case DATE:
-        int currentInt = column.getInt(currentIndex);
-        int followInt = column.getInt(recentIndex);
-        int deltaInt = partition.getInt(channel, currentIndex);
-        return followInt <= currentInt - deltaInt;
-      case INT64:
-      case TIMESTAMP:
-        long currentLong = column.getLong(currentIndex);
-        long followLong = column.getLong(recentIndex);
-        long deltaLong = partition.getLong(channel, currentIndex);
-        return followLong <= currentLong - deltaLong;
-      case FLOAT:
-        float currentFloat = column.getFloat(currentIndex);
-        float followFloat = column.getFloat(recentIndex);
-        float deltaFloat = partition.getFloat(channel, currentIndex);
-        return followFloat <= currentFloat - deltaFloat;
-      case DOUBLE:
-        double currentDouble = column.getDouble(currentIndex);
-        double followDouble = column.getDouble(recentIndex);
-        double deltaDouble = partition.getDouble(channel, currentIndex);
-        return followDouble <= currentDouble - deltaDouble;
-      default:
-        // Unreachable
-        throw new UnSupportedDataTypeException(
-            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
-    }
+    return rangeFrameComparator.compare(
+        column,
+        partition,
+        currentIndex,
+        recentIndex,
+        channel,
+        TypeServices.RangeFrameOffsetOperation.SUBTRACT,
+        TypeServices.RangeFrameComparison.LESS_THAN_OR_EQUAL);
   }
 
   // Find first row which satisfy:
@@ -515,34 +419,14 @@ public class RangeFrame implements Frame {
 
   private boolean compareInDescFrameEndFollowing(int currentIndex, int recentIndex, int channel) {
     checkArgument(!partition.isNull(channel, currentIndex));
-    switch (column.getDataType()) {
-      case INT32:
-      case DATE:
-        int currentInt = column.getInt(currentIndex);
-        int followInt = column.getInt(recentIndex);
-        int deltaInt = partition.getInt(channel, currentIndex);
-        return followInt < currentInt - deltaInt;
-      case INT64:
-      case TIMESTAMP:
-        long currentLong = column.getLong(currentIndex);
-        long followLong = column.getLong(recentIndex);
-        long deltaLong = partition.getLong(channel, currentIndex);
-        return followLong < currentLong - deltaLong;
-      case FLOAT:
-        float currentFloat = column.getFloat(currentIndex);
-        float followFloat = column.getFloat(recentIndex);
-        float deltaFloat = partition.getFloat(channel, currentIndex);
-        return followFloat < currentFloat - deltaFloat;
-      case DOUBLE:
-        double currentDouble = column.getDouble(currentIndex);
-        double followDouble = column.getDouble(recentIndex);
-        double deltaDouble = partition.getDouble(channel, currentIndex);
-        return followDouble < currentDouble - deltaDouble;
-      default:
-        // Unreachable
-        throw new UnSupportedDataTypeException(
-            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
-    }
+    return rangeFrameComparator.compare(
+        column,
+        partition,
+        currentIndex,
+        recentIndex,
+        channel,
+        TypeServices.RangeFrameOffsetOperation.SUBTRACT,
+        TypeServices.RangeFrameComparison.LESS_THAN);
   }
 
   // Find first row which satisfy:
@@ -561,34 +445,14 @@ public class RangeFrame implements Frame {
 
   private boolean compareInDescFrameStartPreceding(int currentIndex, int recentIndex, int channel) {
     checkArgument(!partition.isNull(channel, currentIndex));
-    switch (column.getDataType()) {
-      case INT32:
-      case DATE:
-        int currentInt = column.getInt(currentIndex);
-        int precedeInt = column.getInt(recentIndex);
-        int deltaInt = partition.getInt(channel, currentIndex);
-        return precedeInt <= currentInt + deltaInt;
-      case INT64:
-      case TIMESTAMP:
-        long currentLong = column.getLong(currentIndex);
-        long precedeLong = column.getLong(recentIndex);
-        long deltaLong = partition.getLong(channel, currentIndex);
-        return precedeLong <= currentLong + deltaLong;
-      case FLOAT:
-        float currentFloat = column.getFloat(currentIndex);
-        float precedeFollow = column.getFloat(recentIndex);
-        float deltaFloat = partition.getFloat(channel, currentIndex);
-        return precedeFollow <= currentFloat + deltaFloat;
-      case DOUBLE:
-        double currentDouble = column.getDouble(currentIndex);
-        double precedeDouble = column.getDouble(recentIndex);
-        double deltaDouble = partition.getDouble(channel, currentIndex);
-        return precedeDouble <= currentDouble + deltaDouble;
-      default:
-        // Unreachable
-        throw new UnSupportedDataTypeException(
-            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
-    }
+    return rangeFrameComparator.compare(
+        column,
+        partition,
+        currentIndex,
+        recentIndex,
+        channel,
+        TypeServices.RangeFrameOffsetOperation.ADD,
+        TypeServices.RangeFrameComparison.LESS_THAN_OR_EQUAL);
   }
 
   // Find first row which satisfy:
@@ -607,33 +471,13 @@ public class RangeFrame implements Frame {
 
   private boolean compareInDescFrameEndPreceding(int currentIndex, int recentIndex, int channel) {
     checkArgument(!partition.isNull(channel, currentIndex));
-    switch (column.getDataType()) {
-      case INT32:
-      case DATE:
-        int currentInt = column.getInt(currentIndex);
-        int precedeInt = column.getInt(recentIndex);
-        int deltaInt = partition.getInt(channel, currentIndex);
-        return precedeInt < currentInt + deltaInt;
-      case INT64:
-      case TIMESTAMP:
-        long currentLong = column.getLong(currentIndex);
-        long precedeLong = column.getLong(recentIndex);
-        long deltaLong = partition.getLong(channel, currentIndex);
-        return precedeLong < currentLong + deltaLong;
-      case FLOAT:
-        float currentFloat = column.getFloat(currentIndex);
-        float precedeFollow = column.getFloat(recentIndex);
-        float deltaFloat = partition.getFloat(channel, currentIndex);
-        return precedeFollow < currentFloat + deltaFloat;
-      case DOUBLE:
-        double currentDouble = column.getDouble(currentIndex);
-        double precedeDouble = column.getDouble(recentIndex);
-        double deltaDouble = partition.getDouble(channel, currentIndex);
-        return precedeDouble < currentDouble + deltaDouble;
-      default:
-        // Unreachable
-        throw new UnSupportedDataTypeException(
-            CalcMessages.UNSUPPORTED_DATA_TYPE + column.getDataType());
-    }
+    return rangeFrameComparator.compare(
+        column,
+        partition,
+        currentIndex,
+        recentIndex,
+        channel,
+        TypeServices.RangeFrameOffsetOperation.ADD,
+        TypeServices.RangeFrameComparison.LESS_THAN);
   }
 }

@@ -62,6 +62,10 @@ public class PipeRealtimeEventFactory {
         new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null);
   }
 
+  public static PipeRealtimeEvent createCompletionBarrierEvent(final int dataRegionId) {
+    return new PipeRealtimeEvent(new PipeHeartbeatEvent(dataRegionId, false, true), null, null);
+  }
+
   public static PipeRealtimeEvent createRealtimeEvent(final AbstractDeleteDataNode node) {
     PipeDeleteDataNodeEvent deleteDataNodeEvent =
         new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe());

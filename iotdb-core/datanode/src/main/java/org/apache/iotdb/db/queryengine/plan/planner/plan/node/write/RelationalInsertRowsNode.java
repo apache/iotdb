@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -115,10 +115,9 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
 
   public static RelationalInsertRowsNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId;
-    List<InsertRowNode> insertRowNodeList = new ArrayList<>();
-    List<Integer> insertRowNodeIndex = new ArrayList<>();
-
     int size = byteBuffer.getInt();
+    List<InsertRowNode> insertRowNodeList = new ArrayList<>(size);
+    List<Integer> insertRowNodeIndex = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       RelationalInsertRowNode insertRowNode = new RelationalInsertRowNode(new PlanNodeId(""));
       insertRowNode.subDeserialize(byteBuffer);
@@ -197,21 +196,21 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     List<WritePlanNode> writePlanNodeList = new ArrayList<>();
     Map<TRegionReplicaSet, RelationalInsertRowsNode> splitMap = new HashMap<>();
-    List<TEndPoint> redirectInfo = new ArrayList<>();
+    List<TDataNodeLocation> redirectInfo = new ArrayList<>();
+    String databaseName = getDatabaseName(analysis);
     for (int i = 0; i < getInsertRowNodeList().size(); i++) {
       InsertRowNode insertRowNode = getInsertRowNodeList().get(i);
       // Data region for insert row node
-      // each row may belong to different database, pass null for auto-detection
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.getDeviceID(),
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
-                  analysis.getDatabaseName());
+                  databaseName);
 
       // Collect redirectInfo
-      redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
+      redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0));
       RelationalInsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
       if (tmpNode != null) {
         tmpNode.addOneInsertRowNode(insertRowNode, i);
@@ -229,6 +228,14 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
     writePlanNodeList.addAll(splitMap.values());
 
     return writePlanNodeList;
+  }
+
+  private String getDatabaseName(IAnalysis analysis) {
+    if (analysis.getDataPartitionInfo() != null
+        && analysis.getDataPartitionInfo().getDataPartitionMap().size() == 1) {
+      return analysis.getDataPartitionInfo().getDataPartitionMap().keySet().iterator().next();
+    }
+    return analysis.getDatabaseName();
   }
 
   public RelationalInsertRowsNode emptyClone() {

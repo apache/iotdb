@@ -77,7 +77,7 @@ public class LogicAndColumnTransformer extends LogicBinaryColumnTransformer {
       }
     }
 
-    initializeColumnCache(rightColumn);
+    initializeColumnCache(builder.build());
     this.leftTransformer.clearCache();
     this.rightTransformer.clearCache();
   }

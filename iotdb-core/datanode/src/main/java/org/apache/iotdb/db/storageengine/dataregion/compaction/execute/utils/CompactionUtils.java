@@ -428,12 +428,13 @@ public class CompactionUtils {
       PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> patternTreeMap,
       IDeviceID deviceID,
       String measurement,
-      ModEntry ttlDeletion)
+      ModEntry ttlDeletion,
+      boolean isTableModel)
       throws IllegalPathException {
     if ((patternTreeMap == null) || patternTreeMap.isEmpty()) {
       return ttlDeletion == null ? Collections.emptyList() : Collections.singletonList(ttlDeletion);
     }
-    PartialPath path = CompactionPathUtils.getPath(deviceID, measurement);
+    PartialPath path = CompactionPathUtils.getPath(deviceID, measurement, isTableModel);
     List<ModEntry> modEntries = patternTreeMap.getOverlapped(path);
     if (ttlDeletion != null) {
       if (!(modEntries instanceof ArrayList)) {
@@ -443,7 +444,7 @@ public class CompactionUtils {
       }
       modEntries.add(ttlDeletion);
     }
-    if (path.getIDeviceID().isTableModel()) {
+    if (isTableModel) {
       modEntries =
           modEntries.stream()
               .filter(e -> e.affects(path.getIDeviceID()) && e.affects(path.getMeasurement()))
@@ -500,9 +501,9 @@ public class CompactionUtils {
     return resource.buildDeviceTimeIndex();
   }
 
-  public static ModEntry convertTtlToDeletion(IDeviceID deviceID, long timeLowerBound)
-      throws IllegalPathException {
-    if (!deviceID.isTableModel()) {
+  public static ModEntry convertTtlToDeletion(
+      IDeviceID deviceID, long timeLowerBound, boolean isTableModel) throws IllegalPathException {
+    if (!isTableModel) {
       return new TreeDeletionEntry(
           new MeasurementPath(deviceID, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
           Long.MIN_VALUE,
@@ -524,7 +525,7 @@ public class CompactionUtils {
     PartialPath devicePath;
     PathPatternTree patternTree = new PathPatternTree();
     try {
-      devicePath = CompactionPathUtils.getPath(deviceID);
+      devicePath = CompactionPathUtils.getPath(deviceID, false);
       for (String measurement : measurements) {
         patternTree.appendFullPath(devicePath, measurement);
       }

@@ -29,6 +29,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMetricPrometheusReporterAsyncUpdate(boolean asyncUpdate) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
     return this;
   }
@@ -45,6 +50,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
 
   @Override
   public DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize) {
     return this;
   }
 
@@ -83,6 +93,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
 
   @Override
   public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMqttHandlerPoolSize(int mqttHandlerPoolSize) {
     return this;
   }
 
@@ -128,6 +143,12 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
 
   @Override
   public DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes) {
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(
+      int mppDataExchangeMaxPayloadSizeInBytes) {
     return this;
   }
 }

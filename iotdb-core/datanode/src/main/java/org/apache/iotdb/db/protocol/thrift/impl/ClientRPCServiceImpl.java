@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.path.AlignedFullPath;
@@ -48,14 +49,9 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
@@ -63,6 +59,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -71,6 +68,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
@@ -90,6 +88,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.MaterializedResultExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementHelper;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
@@ -143,6 +142,7 @@ import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.utils.TypeServices;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
@@ -218,6 +218,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.tsfile.utils.Binary;
@@ -242,6 +243,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
@@ -273,6 +275,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   public static final String ERROR_CODE = DataNodeMiscMessages.ERROR_CODE;
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
+  private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
+  private static final String ENABLE_RESULT_CHUNKING_KEY = "enable_result_chunking";
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -296,29 +300,152 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private static final String NO_QUERY_EXECUTION_ERR_MSG =
-      "Query is not found, it may be killed by others, timeout or some other runtime errors, you can see more details in server log.";
+      DataNodeMiscMessages
+          .EXCEPTION_QUERY_IS_NOT_FOUND_IT_MAY_BE_KILLED_BY_OTHERS_TIMEOUT_OR_SOME_OTHER_RUNTIME_ERRORS_YOU_CAN_SEE_MORE_DETAILS_IN_SERVER_LOG_90BD085E;
 
   @FunctionalInterface
   public interface SelectResult {
 
-    boolean apply(TSExecuteStatementResp resp, IQueryExecution queryExecution, int fetchSize)
+    boolean apply(
+        TSExecuteStatementResp resp,
+        IQueryExecution queryExecution,
+        int fetchSize,
+        int maxPayloadSize)
         throws IoTDBException, IOException;
   }
 
   private static final SelectResult SELECT_RESULT =
-      (resp, queryExecution, fetchSize) -> {
-        Pair<List<ByteBuffer>, Boolean> pair =
-            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize);
-        resp.setQueryResult(pair.left);
-        return pair.right;
-      };
+      (resp, queryExecution, fetchSize, maxPayloadSize) ->
+          fillQueryResult(resp, fetchResultChunk(queryExecution, fetchSize, 0, maxPayloadSize));
 
   private static final SelectResult OLD_SELECT_RESULT =
-      (resp, queryExecution, fetchSize) -> {
+      (resp, queryExecution, fetchSize, maxPayloadSize) -> {
         Pair<TSQueryDataSet, Boolean> pair = convertTsBlockByFetchSize(queryExecution, fetchSize);
         resp.setQueryDataSet(pair.left);
         return pair.right;
       };
+
+  /**
+   * Fetches one response-worth of query results. Fragmentation is disabled when {@code
+   * maxPayloadSize} is not positive, i.e. the client cannot assemble fragments.
+   */
+  private static QueryDataSetUtils.ResultChunk fetchResultChunk(
+      IQueryExecution queryExecution, int fetchSize, int requestOffset, int maxPayloadSize)
+      throws IoTDBException {
+    if (maxPayloadSize > 0) {
+      return QueryDataSetUtils.convertQueryResultByFetchSize(
+          queryExecution, fetchSize, requestOffset, maxPayloadSize);
+    }
+    Pair<List<ByteBuffer>, Boolean> pair =
+        QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize);
+    return QueryDataSetUtils.ResultChunk.complete(pair.left, pair.right);
+  }
+
+  private static boolean fillQueryResult(
+      TSExecuteStatementResp resp, QueryDataSetUtils.ResultChunk chunk) {
+    resp.setQueryResult(chunk.getQueryResult());
+    if (chunk.hasNextOffset()) {
+      resp.setOffset(chunk.getNextOffset());
+      if (chunk.hasTotalLength()) {
+        resp.setTotalLength(chunk.getTotalLength());
+      }
+    }
+    return chunk.isFinished();
+  }
+
+  private static boolean fillQueryResult(
+      TSFetchResultsResp resp, QueryDataSetUtils.ResultChunk chunk) {
+    resp.setQueryResult(chunk.getQueryResult());
+    if (chunk.hasNextOffset()) {
+      resp.setOffset(chunk.getNextOffset());
+      if (chunk.hasTotalLength()) {
+        resp.setTotalLength(chunk.getTotalLength());
+      }
+    }
+    return chunk.isFinished();
+  }
+
+  /**
+   * The last element being a fragment means the block just starts, so it is charged by {@code
+   * totalLength}: its tails sent by the following responses are not charged again.
+   */
+  private static long chargedResultBytes(TSExecuteStatementResp resp) {
+    List<ByteBuffer> blocks = resp.getQueryResult();
+    if (blocks == null) {
+      return 0L;
+    }
+    long size = 0L;
+    for (int i = 0, last = blocks.size() - 1; i <= last; i++) {
+      if (resp.isSetOffset() && i == last) {
+        size += resp.isSetTotalLength() ? resp.getTotalLength() : 0L;
+      } else {
+        size += blocks.get(i).remaining();
+      }
+    }
+    return size;
+  }
+
+  /**
+   * Returns the maximum payload size of one response carrying query results, or 0 if the session's
+   * client cannot assemble fragmented results. The payload bound is shared with the MPP data
+   * exchange RPC response, see mpp_data_exchange_max_payload_size_in_bytes.
+   */
+  private static int getMaxResultPayloadSize(IClientSession clientSession) {
+    return clientSession.isEnableResultChunking()
+        ? config.getMppDataExchangeMaxPayloadSizeInBytes()
+        : 0;
+  }
+
+  private static boolean canFitInOneResponse(ByteBuffer cachedResult, int maxPayloadSize) {
+    return cachedResult == null
+        || maxPayloadSize <= 0
+        || cachedResult.remaining() <= maxPayloadSize;
+  }
+
+  /**
+   * Transfers an oversized materialized result in fragments; the registered execution lets {@code
+   * fetchResultsV2} continue from the pending fragment.
+   *
+   * @param maxPayloadSize the bound read once by the caller, so that the decision to fragment and
+   *     the transfer use the same hot-reloadable value
+   */
+  private TSExecuteStatementResp respondWithFragmentedResult(
+      long queryId,
+      ByteBuffer cachedResult,
+      int fetchSize,
+      long timeout,
+      int maxPayloadSize,
+      String sql,
+      IClientSession clientSession)
+      throws IoTDBException, IOException {
+    MaterializedResultExecution execution =
+        new MaterializedResultExecution(
+            COORDINATOR.createQueryId(),
+            cachedResult,
+            DatasetHeaderFactory.getLastQueryHeader(),
+            StatementType.FAST_LAST_QUERY.name(),
+            sql,
+            timeout,
+            clientSession.getUsername(),
+            clientSession.getClientAddress());
+    COORDINATOR.registerQueryExecution(queryId, execution);
+    try {
+      TSExecuteStatementResp resp =
+          createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
+      boolean finished = SELECT_RESULT.apply(resp, execution, fetchSize, maxPayloadSize);
+      // the cached result exceeds the payload bound, so the first response is always a fragment
+      checkState(
+          !finished,
+          DataNodeMiscMessages
+              .EXCEPTION_THE_FIRST_RESPONSE_OF_A_FRAGMENTED_FAST_LAST_RESULT_MUST_NOT_BE_COMPLETE_DEF121D5);
+      resp.setMoreData(true);
+      return resp;
+    } catch (Throwable t) {
+      COORDINATOR.cleanupQueryExecution(queryId);
+      throw t;
+    }
+  }
 
   public ClientRPCServiceImpl() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
@@ -360,7 +487,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (s == null) {
           return RpcUtils.getTSExecuteStatementResp(
               RpcUtils.getStatus(
-                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+                  TSStatusCode.SQL_PARSE_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE));
         }
 
         if (s instanceof CreateTableViewStatement) {
@@ -438,7 +566,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (s == null) {
           return RpcUtils.getTSExecuteStatementResp(
               RpcUtils.getStatus(
-                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+                  TSStatusCode.SQL_PARSE_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE));
         }
 
         queryId = SESSION_MANAGER.requestQueryId(clientSession, statementId);
@@ -491,10 +620,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           statementType = statementType == null ? StatementType.QUERY : statementType;
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          finished = setResult.apply(resp, queryExecution, request.getFetchSize());
+          finished =
+              setResult.apply(
+                  resp,
+                  queryExecution,
+                  request.getFetchSize(),
+                  getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
           if (quota != null) {
-            quota.addReadResult(resp.getQueryResult());
+            quota.addReadResult(chargedResultBytes(resp));
           }
           // Should return SUCCESS_MESSAGE for insert into query
           if (queryExecution.getQueryType() == QueryType.READ_WRITE) {
@@ -582,6 +716,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       Throwable t) {
     COORDINATOR.cleanupQueryExecution(queryId, req, t);
     clientSession.removeQueryId(statementId, queryId);
+  }
+
+  /** Runs a query to its end and discards its result. */
+  private static void consumeResult(IQueryExecution queryExecution) throws IoTDBException {
+    if (queryExecution == null) {
+      // only queries are registered, any other statement has already been executed
+      return;
+    }
+    while (queryExecution.hasNextResult()) {
+      if (!queryExecution.getBatchResult().isPresent()) {
+        break;
+      }
+    }
   }
 
   /** Adapter that wraps TSExecuteStatementReq to implement NativeStatementRequest. */
@@ -701,34 +848,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return new Pair<>(new NullLiteral(), "NULL");
       }
 
-      switch (param.type) {
-        case BOOLEAN:
-          String boolStr = (Boolean) param.value ? "true" : "false";
-          return new Pair<>(new BooleanLiteral(boolStr), boolStr);
-        case INT32:
-        case INT64:
-          String numStr = String.valueOf(param.value);
-          return new Pair<>(new LongLiteral(numStr), numStr);
-        case FLOAT:
-          String floatStr = String.valueOf(param.value);
-          return new Pair<>(new DoubleLiteral((Float) param.value), floatStr);
-        case DOUBLE:
-          String doubleStr = String.valueOf(param.value);
-          return new Pair<>(new DoubleLiteral((Double) param.value), doubleStr);
-        case TEXT:
-        case STRING:
-          String strVal = (String) param.value;
-          // Escape single quotes for SQL
-          String escapedStr = "'" + strVal.replace("'", "''") + "'";
-          return new Pair<>(new StringLiteral(strVal), escapedStr);
-        case BLOB:
-          byte[] bytes = (byte[]) param.value;
-          String hexStr = "X'" + PreparedParameterSerde.bytesToHex(bytes) + "'";
-          return new Pair<>(new BinaryLiteral(bytes), hexStr);
-        default:
-          throw new IllegalArgumentException(
-              DataNodeMiscMessages.UNKNOWN_PARAMETER_TYPE + param.type);
-      }
+      return TypeServices.ValueConversion.PREPARED_PARAMETER_LITERAL_SERVICE
+          .call(Type.fromTsDataType(param.type))
+          .apply(param.value);
     }
   }
 
@@ -789,9 +911,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          finished = setResult.apply(resp, queryExecution, req.fetchSize);
+          finished =
+              setResult.apply(
+                  resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -885,9 +1009,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          finished = setResult.apply(resp, queryExecution, req.fetchSize);
+          finished =
+              setResult.apply(
+                  resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -983,9 +1109,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          finished = setResult.apply(resp, queryExecution, req.fetchSize);
+          finished =
+              setResult.apply(
+                  resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -1250,14 +1378,24 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
       }
 
+      ByteBuffer cachedResult = builder.isEmpty() ? null : serde.serialize(builder.build());
+      int maxPayloadSize = getMaxResultPayloadSize(clientSession);
+      if (!canFitInOneResponse(cachedResult, maxPayloadSize)) {
+        return respondWithFragmentedResult(
+            queryId,
+            cachedResult,
+            req.isSetFetchSize() ? req.getFetchSize() : -1,
+            req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold(),
+            maxPayloadSize,
+            String.format("SELECT LAST %s.**", String.join(".", req.getPrefixes())),
+            clientSession);
+      }
+
       final TSExecuteStatementResp resp =
           createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
-      if (builder.isEmpty()) {
-        resp.setQueryResult(Collections.emptyList());
-      } else {
-        resp.setQueryResult(Collections.singletonList(serde.serialize(builder.build())));
-      }
+      resp.setQueryResult(
+          cachedResult == null ? Collections.emptyList() : Collections.singletonList(cachedResult));
 
       resp.setMoreData(false);
 
@@ -1427,14 +1565,25 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
         // cache hit
         if (allCached) {
+          ByteBuffer cachedResult = builder.isEmpty() ? null : serde.serialize(builder.build());
+          int maxPayloadSize = getMaxResultPayloadSize(clientSession);
+          if (!canFitInOneResponse(cachedResult, maxPayloadSize)) {
+            return respondWithFragmentedResult(
+                queryId,
+                cachedResult,
+                req.isSetFetchSize() ? req.getFetchSize() : -1,
+                req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold(),
+                maxPayloadSize,
+                String.format("SELECT LAST %s", String.join(", ", convert(req).getPaths())),
+                clientSession);
+          }
           TSExecuteStatementResp resp =
               createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
           resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
-          if (builder.isEmpty()) {
-            resp.setQueryResult(Collections.emptyList());
-          } else {
-            resp.setQueryResult(Collections.singletonList(serde.serialize(builder.build())));
-          }
+          resp.setQueryResult(
+              cachedResult == null
+                  ? Collections.emptyList()
+                  : Collections.singletonList(cachedResult));
           finished = true;
           resp.setMoreData(false);
           sampleForCacheHitFastLastDataQueryForOneDevice(req);
@@ -1472,15 +1621,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           TSStatus tsstatus = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
           tsstatus.setRedirectNode(
-              regionReplicaSets
-                  .get(regionReplicaSets.size() - 1)
-                  .dataNodeLocations
-                  .get(0)
-                  .clientRpcEndPoint);
+              DataNodeEndPoints.getRedirectEndPoint(
+                  regionReplicaSets.get(regionReplicaSets.size() - 1).dataNodeLocations.get(0),
+                  clientSession.isInternalRpcSession()));
           resp.setStatus(tsstatus);
-          finished = SELECT_RESULT.apply(resp, queryExecution, req.fetchSize);
+          finished =
+              SELECT_RESULT.apply(
+                  resp, queryExecution, req.fetchSize, getMaxResultPayloadSize(clientSession));
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          quota.addReadResult(chargedResultBytes(resp));
         } else {
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
         }
@@ -1561,6 +1710,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     String statementType = null;
     Throwable t = null;
     IQueryExecution queryExecution = null;
+    boolean queryOwnedBySession = false;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     Long statementId = req.isSetStatementId() ? req.getStatementId() : null;
     try {
@@ -1570,12 +1720,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       queryExecution = COORDINATOR.getQueryExecution(req.queryId);
-
       if (queryExecution == null) {
         TSStatus noQueryExecutionStatus = new TSStatus(QUERY_WAS_KILLED.getStatusCode());
         noQueryExecutionStatus.setMessage(NO_QUERY_EXECUTION_ERR_MSG);
         return RpcUtils.getTSFetchResultsResp(noQueryExecutionStatus);
       }
+
+      if (!clientSession.containsQueryId(statementId, req.queryId)) {
+        // The query is still running, but it was submitted by another session: do not stream its
+        // result and do not release it, so that the query which owns it is left untouched.
+        return RpcUtils.getTSFetchResultsResp(
+            RpcUtils.getStatus(
+                TSStatusCode.NO_PERMISSION,
+                DataNodeMiscMessages.MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237));
+      }
+      queryOwnedBySession = true;
 
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
 
@@ -1583,14 +1742,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       statementType = queryExecution.getStatementType();
 
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
-        Pair<List<ByteBuffer>, Boolean> pair =
-            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, req.fetchSize);
-        List<ByteBuffer> result = pair.left;
-        finished = pair.right;
-        boolean hasResultSet = !result.isEmpty();
-        resp.setHasResultSet(hasResultSet);
+        // decide by the session capability, so a continuation without offset fails the offset
+        // check instead of silently dropping the tail of a pending fragment
+        QueryDataSetUtils.ResultChunk chunk =
+            fetchResultChunk(
+                queryExecution,
+                req.fetchSize,
+                req.isSetOffset() ? req.getOffset() : 0,
+                getMaxResultPayloadSize(clientSession));
+        finished = fillQueryResult(resp, chunk);
+        resp.setHasResultSet(!chunk.getQueryResult().isEmpty());
         resp.setIsAlign(true);
-        resp.setQueryResult(result);
         resp.setMoreData(!finished);
         return resp;
       }
@@ -1605,19 +1767,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       throw error;
     } finally {
 
-      long currentOperationCost = System.nanoTime() - startTime;
-      COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
+      if (queryOwnedBySession) {
+        long currentOperationCost = System.nanoTime() - startTime;
+        COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
 
-      // record each operation time cost
-      CommonUtils.addStatementExecutionLatency(
-          OperationType.FETCH_RESULTS, statementType, currentOperationCost);
+        // record each operation time cost
+        CommonUtils.addStatementExecutionLatency(
+            OperationType.FETCH_RESULTS, statementType, currentOperationCost);
 
-      if (finished) {
-        // record total time cost for one query
-        long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
-        CommonUtils.addQueryLatency(
-            StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        clearUp(clientSession, statementId, req.queryId, req, t);
+        if (finished) {
+          // record total time cost for one query
+          long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
+          CommonUtils.addQueryLatency(
+              StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
+          clearUp(clientSession, statementId, req.queryId, req, t);
+        }
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -1637,26 +1801,45 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     Optional<String> database = parseDatabase(req);
     IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    BasicOpenSessionResp openSessionResp =
-        SESSION_MANAGER.login(
-            SESSION_MANAGER.getCurrSession(),
-            req.username,
-            req.password,
-            req.zoneId,
-            req.client_protocol,
-            clientVersion,
-            sqlDialect,
-            parseUseEncryptedPassword(req));
+    BasicOpenSessionResp openSessionResp = login(clientSession, req, clientVersion, sqlDialect);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
 
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && database.isPresent()) {
-      clientSession.setDatabaseName(database.get().toLowerCase(Locale.ENGLISH));
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (database.isPresent()) {
+        clientSession.setDatabaseName(database.get().toLowerCase(Locale.ENGLISH));
+      }
+      clientSession.setEnableAutoCreateSchema(parseEnableAutoCreateSchema(req));
+      clientSession.setEnableResultChunking(parseEnableResultChunking(req));
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     Map<String, String> configuration = new HashMap<>();
     configuration.put(
         TIME_PRECISION, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     return resp.setSessionId(openSessionResp.getSessionId()).setConfiguration(configuration);
+  }
+
+  private BasicOpenSessionResp login(
+      IClientSession session,
+      TSOpenSessionReq req,
+      IoTDBConstant.ClientVersion clientVersion,
+      SqlDialect sqlDialect) {
+    if (useInternalSessionLogin()) {
+      return SESSION_MANAGER.loginInternal(
+          session, req.username, req.zoneId, req.client_protocol, clientVersion, sqlDialect);
+    }
+    return SESSION_MANAGER.login(
+        session,
+        req.username,
+        req.password,
+        req.zoneId,
+        req.client_protocol,
+        clientVersion,
+        sqlDialect,
+        parseUseEncryptedPassword(req));
+  }
+
+  protected boolean useInternalSessionLogin() {
+    return false;
   }
 
   private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {
@@ -1694,6 +1877,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         && Boolean.parseBoolean(configuration.get(USE_ENCRYPTED_PASSWORD_KEY));
   }
 
+  private boolean parseEnableAutoCreateSchema(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    return configuration == null
+        || !configuration.containsKey(ENABLE_AUTO_CREATE_SCHEMA_KEY)
+        || Boolean.parseBoolean(configuration.get(ENABLE_AUTO_CREATE_SCHEMA_KEY));
+  }
+
+  private boolean parseEnableResultChunking(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    return configuration != null
+        && Boolean.parseBoolean(configuration.get(ENABLE_RESULT_CHUNKING_KEY));
+  }
+
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
     return new TSStatus(
@@ -1706,13 +1902,34 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus cancelOperation(TSCancelOperationReq req) {
     // TODO implement
-    return RpcUtils.getStatus(TSStatusCode.QUERY_NOT_ALLOWED, "Cancellation is not implemented");
+    return RpcUtils.getStatus(
+        TSStatusCode.QUERY_NOT_ALLOWED,
+        DataNodeMiscMessages.EXCEPTION_CANCELLATION_IS_NOT_IMPLEMENTED_91FA6607);
   }
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
+    IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    if (req.isSetQueryId()
+        && req.isSetStatementId()
+        && clientSession != null
+        && clientSession.isLogin()
+        && !clientSession.containsQueryId(req.getStatementId(), req.queryId)) {
+      // The queryId indexes the process-wide map of running queries, so only the session that
+      // submitted the query may release it.
+      if (COORDINATOR.getQueryExecution(req.queryId) != null) {
+        return RpcUtils.getStatus(
+            TSStatusCode.NO_PERMISSION,
+            DataNodeMiscMessages.MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237);
+      }
+      // A queryId that is no longer running keeps the previous behaviour: releasing it stays a
+      // no-op. It must not fall through to the global cleanup below: query ids are allocated
+      // before their execution is published, so the session that owns this queryId can register
+      // it between the lookup above and the cleanup.
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
     return SESSION_MANAGER.closeOperation(
-        SESSION_MANAGER.getCurrSession(),
+        clientSession,
         req.queryId,
         req.statementId,
         req.isSetStatementId(),
@@ -1739,7 +1956,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (statement == null) {
         return new TSPrepareResp(
-            RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, "Failed to parse SQL: " + sql));
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR,
+                String.format(
+                    DataNodeMiscMessages.EXCEPTION_FAILED_TO_PARSE_SQL_ARG_20075759,
+                    Objects.toString(sql))));
       }
 
       int parameterCount = ParameterExtractor.getParameterCount(statement);
@@ -1758,7 +1979,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executePreparedStatement(TSExecutePreparedReq req) {
-    return executeStatementInternal(new TSExecutePreparedReqAdapter(req), setResultForPrepared);
+    // Use V2 format (queryResult) to match IoTDBTablePreparedStatement client
+    return executeStatementInternal(new TSExecutePreparedReqAdapter(req), SELECT_RESULT);
   }
 
   @Override
@@ -1779,15 +2001,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  private final SelectResult setResultForPrepared =
-      (resp, queryExecution, fetchSize) -> {
-        // Use V2 format (queryResult) to match IoTDBTablePreparedStatement client
-        Pair<List<ByteBuffer>, Boolean> pair =
-            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize);
-        resp.setQueryResult(pair.left);
-        return pair.right;
-      };
-
   // ========================= End PreparedStatement RPC Methods =========================
 
   @Override
@@ -1796,12 +2009,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       ZoneId zoneId = SESSION_MANAGER.getCurrSession().getZoneId();
       return new TSGetTimeZoneResp(
           RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
-          zoneId != null ? zoneId.toString() : "Unknown time zone");
+          zoneId != null
+              ? zoneId.toString()
+              : DataNodeMiscMessages.EXCEPTION_UNKNOWN_TIME_ZONE_D224D82D);
     } catch (Exception e) {
       return new TSGetTimeZoneResp(
           onQueryException(
               e, OperationType.GET_TIME_ZONE.getName(), TSStatusCode.GENERATE_TIME_ZONE_ERROR),
-          "Unknown time zone");
+          DataNodeMiscMessages.EXCEPTION_UNKNOWN_TIME_ZONE_D224D82D);
     }
   }
 
@@ -2121,7 +2336,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
     return new TSFetchMetadataResp(
-        RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION, "Fetch Metadata is not supported."));
+        RpcUtils.getStatus(
+            TSStatusCode.UNSUPPORTED_OPERATION,
+            DataNodeMiscMessages.EXCEPTION_FETCH_METADATA_IS_NOT_SUPPORTED_20489A74));
   }
 
   @Override
@@ -2147,14 +2364,16 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long t2 = System.nanoTime();
         String type = null;
         OperationQuota quota = null;
+        Long queryId = null;
+        Throwable t = null;
         try {
-          long queryId;
           ExecutionResult result;
           if (clientSession.getSqlDialect() == SqlDialect.TREE) {
             Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
             if (s == null) {
               return RpcUtils.getStatus(
-                  TSStatusCode.EXECUTE_STATEMENT_ERROR, "This operation type is not supported");
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE);
             }
 
             if (s instanceof CreateTableViewStatement) {
@@ -2230,7 +2449,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
             if (s == null) {
               return RpcUtils.getStatus(
-                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
+                  TSStatusCode.SQL_PARSE_ERROR,
+                  DataNodeMiscMessages.EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE);
             }
 
             // TODO audit log, quota, StatementType
@@ -2266,8 +2486,18 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             }
           }
 
+          if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && result.status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            isAllSuccessful = false;
+          } else if (queryId != null) {
+            // A batch returns no result set, so nobody fetches the result of a statement that is a
+            // query. Without a consumer such a statement is not run to its end, which matters for
+            // the ones that write, such as SELECT INTO.
+            consumeResult(COORDINATOR.getQueryExecution(queryId));
+          }
           results.add(result.status);
         } catch (Exception e) {
+          t = e;
           LOGGER.warn(DataNodeMiscMessages.ERROR_EXECUTING_BATCH_STATEMENT, e);
           TSStatus status =
               onQueryException(
@@ -2275,6 +2505,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           isAllSuccessful = false;
           results.add(status);
         } finally {
+          if (queryId != null) {
+            // Nobody can fetch or close the query of this statement once the batch has returned.
+            COORDINATOR.cleanupQueryExecution(queryId, req, t);
+          }
           CommonUtils.addStatementExecutionLatency(
               OperationType.EXECUTE_STATEMENT, type, System.nanoTime() - t2);
           if (quota != null) {
@@ -2290,7 +2524,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     if (isAllSuccessful) {
       TSStatus res =
-          RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully");
+          RpcUtils.getStatus(
+              TSStatusCode.SUCCESS_STATUS,
+              DataNodeMiscMessages.EXCEPTION_EXECUTE_BATCH_STATEMENTS_SUCCESSFULLY_38422BA6);
       if (useDatabase || isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
         final TSStatus useDB =
             RpcUtils.getStatus(TSStatusCode.USE_OR_DROP_DB, clientSession.getDatabaseName());
@@ -2298,6 +2534,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
       return res;
     } else {
+      if (useDatabase || isDatabaseSetBefore && Objects.isNull(clientSession.getDatabaseName())) {
+        // Keep the JDBC connection's cached database synchronized after a partially failed batch.
+        results.add(
+            RpcUtils.getStatus(TSStatusCode.USE_OR_DROP_DB, clientSession.getDatabaseName()));
+      }
       return RpcUtils.getStatus(results);
     }
   }
@@ -2319,6 +2560,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     String statementType = null;
     Throwable t = null;
     IQueryExecution queryExecution = null;
+    boolean queryOwnedBySession = false;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     Long statementId = req.isSetStatementId() ? req.getStatementId() : null;
     try {
@@ -2333,6 +2575,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         noQueryExecutionStatus.setMessage(NO_QUERY_EXECUTION_ERR_MSG);
         return RpcUtils.getTSFetchResultsResp(noQueryExecutionStatus);
       }
+
+      if (!clientSession.containsQueryId(statementId, req.queryId)) {
+        // The query is still running, but it was submitted by another session: do not stream its
+        // result and do not release it, so that the query which owns it is left untouched.
+        return RpcUtils.getTSFetchResultsResp(
+            RpcUtils.getStatus(
+                TSStatusCode.NO_PERMISSION,
+                DataNodeMiscMessages.MESSAGE_QUERY_DOES_NOT_BELONG_TO_CURRENT_SESSION_A1198237));
+      }
+      queryOwnedBySession = true;
+
       queryExecution.updateCurrentRpcStartTime(startTime);
       statementType = queryExecution.getStatementType();
 
@@ -2360,19 +2613,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       throw error;
     } finally {
 
-      long currentOperationCost = System.nanoTime() - startTime;
-      COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
+      if (queryOwnedBySession) {
+        long currentOperationCost = System.nanoTime() - startTime;
+        COORDINATOR.recordExecutionTime(req.queryId, currentOperationCost);
 
-      // record each operation time cost
-      CommonUtils.addStatementExecutionLatency(
-          OperationType.FETCH_RESULTS, statementType, currentOperationCost);
+        // record each operation time cost
+        CommonUtils.addStatementExecutionLatency(
+            OperationType.FETCH_RESULTS, statementType, currentOperationCost);
 
-      if (finished) {
-        // record total time cost for one query
-        long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
-        CommonUtils.addQueryLatency(
-            StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        clearUp(clientSession, statementId, req.queryId, req, t);
+        if (finished) {
+          // record total time cost for one query
+          long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
+          CommonUtils.addQueryLatency(
+              StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
+          clearUp(clientSession, statementId, req.queryId, req, t);
+        }
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -3022,13 +3277,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
     return RpcUtils.getStatus(
-        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        DataNodeMiscMessages.EXCEPTION_MODIFY_TEMPLATE_HAS_NOT_BEEN_SUPPORTED_976B19DE);
   }
 
   @Override
   public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
     return RpcUtils.getStatus(
-        TSStatusCode.UNSUPPORTED_OPERATION, "Modify template has not been supported.");
+        TSStatusCode.UNSUPPORTED_OPERATION,
+        DataNodeMiscMessages.EXCEPTION_MODIFY_TEMPLATE_HAS_NOT_BEEN_SUPPORTED_976B19DE);
   }
 
   @Override
@@ -3051,7 +3308,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setStatus(
             RpcUtils.getStatus(
                 TSStatusCode.UNSUPPORTED_OPERATION,
-                TemplateQueryType.values()[req.getQueryType()].name() + "has not been supported."));
+                String.format(
+                    DataNodeMiscMessages.EXCEPTION_ARG_HAS_NOT_BEEN_SUPPORTED_F90BAF99,
+                    Objects.toString(TemplateQueryType.values()[req.getQueryType()].name()))));
         return resp;
       }
       switch (TemplateQueryType.values()[req.getQueryType()]) {
@@ -3152,6 +3411,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       Statement statement, TSQueryTemplateReq req, TSQueryTemplateResp resp) {
     long startTime = System.nanoTime();
     OperationQuota quota = null;
+    Long queryId = null;
+    Throwable t = null;
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       // permission check
@@ -3171,7 +3432,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
 
-      long queryId = SESSION_MANAGER.requestQueryId();
+      queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult executionResult =
           COORDINATOR.executeForTreeModel(
@@ -3211,14 +3472,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           }
         }
         resp.setMeasurements(result);
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
+        resp.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.SUCCESS_STATUS,
+                DataNodeMiscMessages.EXCEPTION_EXECUTE_SUCCESSFULLY_BF983B59));
         return resp;
       }
     } catch (Exception e) {
+      t = e;
       resp.setStatus(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
       return null;
     } finally {
+      if (queryId != null) {
+        // The whole result is part of the response, so nobody can fetch or close the query later.
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+      }
       CommonUtils.addStatementExecutionLatency(
           OperationType.EXECUTE_STATEMENT,
           statement.getType().name(),
@@ -3484,6 +3753,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInPipeSubscribeResp();
       }
+      if (!PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
+        return new TPipeSubscribeResp(
+            RpcUtils.getStatus(
+                TSStatusCode.UNSUPPORTED_OPERATION,
+                PipeMessages
+                    .MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431),
+            PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+            PipeSubscribeResponseType.ACK.getType());
+      }
 
       return SubscriptionAgent.receiver().handle(req, clientSession.getUsername());
     } finally {
@@ -3607,8 +3885,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   protected TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
-        TSStatusCode.NOT_LOGIN,
-        "Log in failed. Either you are not authorized or the session has timed out.");
+        TSStatusCode.NOT_LOGIN, DataNodePipeMessages.LOGIN_FAILED_OR_SESSION_TIMED_OUT);
   }
 
   private String checkIdentifierAndRemoveBackQuotesIfNecessary(String identifier) {
@@ -3635,7 +3912,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     PipeDataNodeAgent.receiver().thrift().handleClientExit();
     PipeDataNodeAgent.receiver().legacy().handleClientExit();
-    if (COMMON_CONFIG.getSubscriptionEnabled()) {
+    if (COMMON_CONFIG.getSubscriptionEnabled()
+        && PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
       SubscriptionAgent.receiver().handleClientExit();
     }
   }

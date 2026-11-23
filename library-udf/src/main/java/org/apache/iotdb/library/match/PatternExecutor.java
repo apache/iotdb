@@ -112,7 +112,7 @@ public class PatternExecutor {
   }
 
   public List<Point> scalePoint(List<Long> times, List<Double> values) {
-    List<Point> points = new ArrayList<>();
+    List<Point> points = new ArrayList<>(times.size());
     TimeScale xScale = new TimeScale(times.get(0), times.get(times.size() - 1), 0, 1000);
     double minY = values.stream().min(Double::compare).orElseGet(() -> 0.0);
     double maxY = values.stream().max(Double::compare).orElseGet(() -> 0.0);
@@ -129,7 +129,7 @@ public class PatternExecutor {
   }
 
   public List<Point> scalePoint(List<Point> sourcePoints) {
-    List<Point> points = new ArrayList<>();
+    List<Point> points = new ArrayList<>(sourcePoints.size());
     TimeScale xScale =
         new TimeScale(
             (long) sourcePoints.get(0).getX(),
@@ -199,7 +199,7 @@ public class PatternExecutor {
     if (points.size() < 2) {
       return new ArrayList<>();
     }
-    List<Double> tangents = new ArrayList<>();
+    List<Double> tangents = new ArrayList<>(points.size());
     tangents.add(tangent(points.get(0), points.get(1)));
     for (int i = 1; i < points.size(); i++) {
       tangents.add(tangent(points.get(i - 1), points.get(i)));

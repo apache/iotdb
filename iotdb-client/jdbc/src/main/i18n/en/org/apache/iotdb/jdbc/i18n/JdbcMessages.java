@@ -64,6 +64,10 @@ public final class JdbcMessages {
       "Not support setEscapeProcessing";
   public static final String CANNOT_AFTER_CONNECTION_CLOSED =
       "Cannot %s after connection has been closed!";
+  public static final String EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C =
+      "Cannot %s after statement has been closed!";
+  public static final String EXCEPTION_RESULTSET_HAS_BEEN_CLOSED_45F3BF52 =
+      "ResultSet has been closed";
 
   // IoTDBTablePreparedStatement
   public static final String FAILED_TO_PREPARE_STATEMENT = "Failed to prepare statement: ";
@@ -80,6 +84,8 @@ public final class JdbcMessages {
       "Failed to read binary stream: ";
 
   // IoTDBPreparedStatement
+  public static final String EXCEPTION_PARAMETER_INDEX_OUT_OF_RANGE_ARG_EXPECTED_1_ARG_65BF83C6 =
+      "Parameter index out of range: %d (expected 1-%d)";
   public static final String NO_TYPE_MATCHED = "No type was matched";
   public static final String SQL_DEBUG = "SQL {}";
   public static final String PARAMETERS_DEBUG = "parameters {}";
@@ -91,6 +97,8 @@ public final class JdbcMessages {
 
   // IoTDBAbstractDatabaseMetadata
   public static final String NO_DATA_TYPE_MATCHED = "No data type was matched: {}";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E =
+      "Unsupported data type: %s";
   public static final String GET_READ_ONLY_ERROR = "Get is readOnly error: {}";
   public static final String CANNOT_GET_READ_ONLY_MODE = "Can not get the read-only mode";
   public static final String GET_SYSTEM_FUNCTIONS_ERROR = "Get system functions error: {}";
@@ -131,10 +139,11 @@ public final class JdbcMessages {
       "Get primary keys error: {}";
 
   // IoTDBDataSource
+  public static final String EXCEPTION_INVALID_VALUE_FOR_JDBC_CONNECTION_PROPERTY_ARG_ARG_2193D0EE =
+      "Invalid value for JDBC connection property %s: %s";
+  public static final String EXCEPTION_LOGINTIMEOUT_MUST_BE_0_A213D684 =
+      "loginTimeout must be >= 0";
   public static final String GET_CONNECTION_ERROR = "get connection error:";
-
-  // IoTDBDataSourceFactory
-  public static final String REMAINING_PROPERTIES = "Remaining properties {}";
 
   // IoTDBJDBCResultSet
   public static final String CLOSE_SERVER_SIDE_ERROR =
@@ -165,7 +174,6 @@ public final class JdbcMessages {
       "Does not support setTransactionIsolation";
   public static final String NOT_SUPPORT_GET_TYPE_MAP = "Does not support getTypeMap";
   public static final String NOT_SUPPORT_SET_TYPE_MAP = "Does not support setTypeMap";
-  public static final String NOT_SUPPORT_READ_ONLY = "Does not support readOnly";
   public static final String NOT_SUPPORT_NATIVE_SQL = "Does not support nativeSQL";
   public static final String NOT_SUPPORT_RELEASE_SAVEPOINT =
       "Does not support releaseSavepoint";
@@ -174,6 +182,7 @@ public final class JdbcMessages {
       "Does not support this type of client info: ";
   public static final String NOT_SUPPORT_SET_NETWORK_TIMEOUT =
       "Does not support setNetworkTimeout";
+  public static final String EXCEPTION_TIMEOUT_MUST_BE_0_80BF04B8 = "timeout must be >= 0";
   public static final String QUERY_TIMEOUT_MUST_BE_NON_NEGATIVE =
       "queryTimeout %d must be >= 0!";
   public static final String NOT_SUPPORT_SET_SAVEPOINT = "Does not support setSavepoint";
@@ -186,6 +195,11 @@ public final class JdbcMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_SCHEMA_CANNOT_BE_NULL_E93264A3 =
+      "schema cannot be null";
+  public static final String EXCEPTION_INVALID_TIME_ZONE_ARG_625F2BE2 =
+      "Invalid time_zone: %s";
+  public static final String EXCEPTION_LENGTH_MUST_BE_0_53AF26C8 = "length must be >= 0";
   public static final String EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_NETWORK_AVAILABLE_SERVER_CA72E0D6 = "Connection Error, please check whether the network is available or the server";
   public static final String EXCEPTION_HAS_STARTED_BD7BC366 = " has started.";
   public static final String EXCEPTION_ERROR_URL_FORMAT_URL_SHOULD_JDBC_IOTDB_ANYTHING_PORT_DATABASE_17D1DCFB =
@@ -226,5 +240,72 @@ public final class JdbcMessages {
       "Can not establish connection with %s : You may try to connect an old version IoTDB instance"
       + " using a client with new version: %s. ";
   public static final String EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_ARG_D7246055 = "Can not establish connection with %s : %s. ";
+  public static final String EXCEPTION_TIMESTAMP_ARG_OUT_RANGE_TIME_PRECISION_ARG_E25E3001 = "Timestamp %s is out of range for the time precision %s";
+  public static final String EXCEPTION_CANNOT_CONVERT_ARG_COLUMN_ARG_FBFBC158 = "Cannot convert a %s column to %s";
+  public static final String EXCEPTION_TARGET_TYPE_GETOBJECT_MUST_NOT_NULL_2E310BEC = "The target type of getObject must not be null";
+  public static final String LOG_SHOW_TABLES_ERROR_ARG_068CF1BA = "Show tables error: {}";
+  public static final String EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278 = "Unknown column name: %s";
+  public static final String EXCEPTION_CANNOT_BIND_ARG_IOTDB_SQL_HAS_NO_LITERAL_INFINITE_FLOATING_4068FF32 = "Cannot bind %s: IoTDB SQL has no literal for an infinite floating-point value";
 
+  public static final String EXCEPTION_NOT_SUPPORT_EXECUTE_24A68DC9 = "Not support execute";
+
+  public static final String EXCEPTION_NOT_SUPPORT_EXECUTEUPDATE_157D0E87 =
+      "Not support executeUpdate";
+
+  public static final String EXCEPTION_FOR_SQL_86DB3FB4 = " for SQL: \"";
+
+  public static final String EXCEPTION_EXECUTE_QUERY_F033E009 = "execute query";
+
+  public static final String EXCEPTION_EXECUTE_UPDATE_0E5C5873 = "execute update";
+
+  public static final String EXCEPTION_OBJECT_TYPE_ONLY_SUPPORT_GETSTRING_B4BD14B4 =
+      "OBJECT Type only support getString";
+
+  public static final String EXCEPTION_DOES_NOT_SUPPORT_PREPARECALL_2E958060 =
+      "Does not support prepareCall";
+
+  public static final String EXCEPTION_DOES_NOT_SUPPORT_PREPARESTATEMENT_93B9FAF1 =
+      "Does not support prepareStatement";
+
+  public static final String EXCEPTION_YOUR_PASSWORD_WILL_EXPIRE_AT_49098220 =
+      "Your password will expire at ";
+
+  public static final String EXCEPTION_REQUIRED_FIELD_CLIENT_PROTOCOL_WAS_NOT_PRESENT_2059BC1E =
+      "Required field 'client_protocol' was not present!";
+
+  public static final String EXCEPTION_CONVERT_TSBLOCK_ERROR_ARG_D9D4A78D =
+      "Convert tsBlock error: {}";
+
+  public static final String EXCEPTION_THE_PARAMETER_CANNOT_BE_NULL_6CD5B7DE =
+      "The parameter cannot be null";
+
+  public static final String
+      EXCEPTION_PARAMETER_ONLY_SUPPORTS_BOOLEAN_INT32_INT64_FLOAT_DOUBLE_TEXT_DATA_TYPE_58CD5656 =
+          "Parameter only supports BOOLEAN,INT32,INT64,FLOAT,DOUBLE,TEXT data type";
+
+  public static final String EXCEPTION_NUM_OF_SERIES_PATHS_ARG_5AAACC65 =
+      "* Num of series paths: %d";
+
+  public static final String EXCEPTION_NUM_OF_SEQUENCE_FILES_READ_ARG_002C1609 =
+      "* Num of sequence files read: %d";
+
+  public static final String EXCEPTION_NUM_OF_UNSEQUENCE_FILES_READ_ARG_686A2478 =
+      "* Num of unsequence files read: %d";
+
+  public static final String EXCEPTION_NUM_OF_SEQUENCE_CHUNKS_ARG_AVG_POINTS_ARG_B119F7E6 =
+      "* Num of sequence chunks: %d, avg points: %.1f";
+
+  public static final String EXCEPTION_NUM_OF_UNSEQUENCE_CHUNKS_ARG_AVG_POINTS_ARG_723DCD8F =
+      "* Num of unsequence chunks: %d, avg points: %.1f";
+
+  public static final String EXCEPTION_NUM_OF_PAGES_ARG_OVERLAPPED_PAGES_ARG_ARG_ARG_9F985997 =
+      "* Num of Pages: %d, overlapped pages: %d (%.1f%%)";
+
+  public static final String EXCEPTION_LINES_OF_RESULT_ARG_26F474C0 = "* Lines of result: %d";
+
+  public static final String EXCEPTION_SQL_STATEMENT_CANNOT_BE_NULL_163667FF =
+      "SQL statement cannot be null";
+
+  public static final String EXCEPTION_NUM_OF_RPC_ARG_AVG_COST_ARG_MS_435D62C7 =
+      "* Num of RPC: %d, avg cost: %d ms";
 }

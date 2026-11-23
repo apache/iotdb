@@ -52,6 +52,20 @@ public class MetricRegistryManager extends MetricRegistries {
     this.registries.clear();
   }
 
+  /** Registers the metrics of all registries again, e.g. after the metric service restarts. */
+  void bindMetrics() {
+    registries.values().stream()
+        .map(IoTDBMetricRegistry.class::cast)
+        .forEach(IoTDBMetricRegistry::bindMetrics);
+  }
+
+  /** Removes the metrics of all registries from the metric service without dropping them. */
+  void unbindMetrics() {
+    registries.values().stream()
+        .map(IoTDBMetricRegistry.class::cast)
+        .forEach(IoTDBMetricRegistry::unbindMetrics);
+  }
+
   @Override
   public RatisMetricRegistry create(MetricRegistryInfo metricRegistryInfo) {
     return registries.put(

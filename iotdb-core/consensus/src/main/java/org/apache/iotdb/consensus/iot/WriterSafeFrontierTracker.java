@@ -39,16 +39,19 @@ public class WriterSafeFrontierTracker {
   private static final Logger LOGGER = LoggerFactory.getLogger(WriterSafeFrontierTracker.class);
 
   private final Map<Integer, WriterFrontierState> states = new HashMap<>();
+  private volatile long effectiveSafePtVersion;
 
   public synchronized void recordAppliedProgress(
       final long physicalTime, final int writerNodeId, final long appliedLocalSeq) {
     final WriterFrontierState state =
         states.computeIfAbsent(writerNodeId, ignored -> new WriterFrontierState());
     state.appliedLocalSeq = Math.max(state.appliedLocalSeq, appliedLocalSeq);
-    if (physicalTime > 0) {
-      state.effectiveSafePt = Math.max(state.effectiveSafePt, physicalTime);
+    long effectiveSafePt = Math.max(state.effectiveSafePt, physicalTime);
+    if (state.hasPendingSafeTime() && state.appliedLocalSeq >= state.pendingSafeLocalSeq) {
+      effectiveSafePt = Math.max(effectiveSafePt, state.pendingSafePhysicalTime);
+      state.clearPendingSafeTime();
     }
-    promotePendingIfReady(state);
+    advanceEffectiveSafePt(state, effectiveSafePt);
   }
 
   public synchronized void observePendingWriterSafeTimeBarrier(
@@ -59,7 +62,7 @@ public class WriterSafeFrontierTracker {
     final WriterFrontierState state =
         states.computeIfAbsent(writerNodeId, ignored -> new WriterFrontierState());
     if (state.appliedLocalSeq >= barrierLocalSeq) {
-      state.effectiveSafePt = Math.max(state.effectiveSafePt, safePhysicalTime);
+      advanceEffectiveSafePt(state, safePhysicalTime);
       state.clearPendingSafeTime();
       return;
     }
@@ -107,13 +110,74 @@ public class WriterSafeFrontierTracker {
     return Collections.unmodifiableMap(snapshot);
   }
 
-  private void promotePendingIfReady(final WriterFrontierState state) {
-    if (!state.hasPendingSafeTime()) {
-      return;
+  public synchronized Snapshot snapshotEffectiveSafePtsWithVersion() {
+    final Map<Integer, Long> snapshot = new HashMap<>();
+    for (final Map.Entry<Integer, WriterFrontierState> entry : states.entrySet()) {
+      snapshot.put(entry.getKey(), entry.getValue().effectiveSafePt);
     }
-    if (state.appliedLocalSeq >= state.pendingSafeLocalSeq) {
-      state.effectiveSafePt = Math.max(state.effectiveSafePt, state.pendingSafePhysicalTime);
-      state.clearPendingSafeTime();
+    return new Snapshot(effectiveSafePtVersion, Collections.unmodifiableMap(snapshot));
+  }
+
+  public long getEffectiveSafePtVersion() {
+    return effectiveSafePtVersion;
+  }
+
+  private void advanceEffectiveSafePt(
+      final WriterFrontierState state, final long safePhysicalTime) {
+    if (safePhysicalTime > state.effectiveSafePt) {
+      state.effectiveSafePt = safePhysicalTime;
+      effectiveSafePtVersion++;
+    }
+  }
+
+  public static final class Snapshot {
+    private final long version;
+    private final Map<Integer, Long> effectiveSafePts;
+
+    private Snapshot(final long version, final Map<Integer, Long> effectiveSafePts) {
+      this.version = version;
+      this.effectiveSafePts = effectiveSafePts;
+    }
+
+    public long getVersion() {
+      return version;
+    }
+
+    public Map<Integer, Long> getEffectiveSafePts() {
+      return effectiveSafePts;
+    }
+  }
+
+  /**
+   * Returns each safe time together with the applied sequence it covers. A subscription may use the
+   * safe time only after consuming that sequence; applying records to the state machine does not
+   * imply that an independent WAL reader has consumed them.
+   */
+  public synchronized Map<Integer, SafeFrontier> snapshotSafeFrontiers() {
+    final Map<Integer, SafeFrontier> snapshot = new HashMap<>();
+    for (final Map.Entry<Integer, WriterFrontierState> entry : states.entrySet()) {
+      snapshot.put(
+          entry.getKey(),
+          new SafeFrontier(entry.getValue().effectiveSafePt, entry.getValue().appliedLocalSeq));
+    }
+    return Collections.unmodifiableMap(snapshot);
+  }
+
+  public static final class SafeFrontier {
+    private final long physicalTime;
+    private final long localSeq;
+
+    private SafeFrontier(final long physicalTime, final long localSeq) {
+      this.physicalTime = physicalTime;
+      this.localSeq = localSeq;
+    }
+
+    public long getPhysicalTime() {
+      return physicalTime;
+    }
+
+    public long getLocalSeq() {
+      return localSeq;
     }
   }
 

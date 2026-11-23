@@ -48,7 +48,8 @@ public class TopKRuntimeFilterTreeViewPlanTest {
     tsTable.addProp(TsTable.TTL_PROPERTY, Long.MAX_VALUE + "");
     tsTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.test.**");
     DataNodeTableCache.getInstance().preUpdateTable(TREE_VIEW_DB, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE, null, null);
   }
 
   @After

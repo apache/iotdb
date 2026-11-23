@@ -23,11 +23,6 @@ import org.apache.iotdb.calc.execution.aggregation.CentralMomentAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.CovarianceAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.RegressionAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.VarianceAccumulator;
-import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.BinaryGroupedApproxMostFrequentAccumulator;
-import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.BlobGroupedApproxMostFrequentAccumulator;
-import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.BooleanGroupedApproxMostFrequentAccumulator;
-import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.DoubleGroupedApproxMostFrequentAccumulator;
-import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.FloatGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedApproxCountDistinctAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedApproxPercentileAccumulator;
@@ -54,8 +49,8 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedUserDefinedAggregateAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.GroupedVarianceAccumulator;
-import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.IntGroupedApproxMostFrequentAccumulator;
-import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.LongGroupedApproxMostFrequentAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.integral.GroupedNaiveIntegralAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.integral.GroupedOrderedIntegralAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedNaiveDeltaAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedNaiveIncreaseAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedNaiveIrateAccumulator;
@@ -64,6 +59,8 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedIncreaseAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedIrateAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate.GroupedOrderedRateAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.integral.NaiveIntegralAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.integral.OrderedIntegralAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.NaiveDeltaAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.NaiveIncreaseAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.NaiveIrateAccumulator;
@@ -74,6 +71,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.ra
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.OrderedRateAccumulator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
@@ -94,7 +92,6 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import javax.annotation.Nullable;
 
@@ -364,7 +361,8 @@ public class AccumulatorFactory {
       List<TSDataType> inputDataTypes,
       Map<String, String> inputAttributes,
       IoTDBLocal ioTDBLocal) {
-    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for UDAF");
+    checkArgument(
+        ioTDBLocal != null, CalcMessages.EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_UDAF_CF7EF593);
     AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
     FunctionArguments functionArguments =
         new FunctionArguments(
@@ -382,7 +380,8 @@ public class AccumulatorFactory {
       List<TSDataType> inputDataTypes,
       Map<String, String> inputAttributes,
       IoTDBLocal ioTDBLocal) {
-    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for UDAF");
+    checkArgument(
+        ioTDBLocal != null, CalcMessages.EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_UDAF_CF7EF593);
     AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
     FunctionArguments functionArguments =
         new FunctionArguments(
@@ -506,6 +505,10 @@ public class AccumulatorFactory {
         return useOrderedImplementation
             ? new GroupedOrderedDeltaAccumulator(inputDataTypes.get(0))
             : new GroupedNaiveDeltaAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case INTEGRAL:
+        return useOrderedImplementation
+            ? new GroupedOrderedIntegralAccumulator(inputDataTypes.get(0))
+            : new GroupedNaiveIntegralAccumulator(inputDataTypes.get(0), memoryReservationManager);
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
@@ -634,6 +637,10 @@ public class AccumulatorFactory {
         return useOrderedImplementation
             ? new OrderedDeltaAccumulator(inputDataTypes.get(0))
             : new NaiveDeltaAccumulator(inputDataTypes.get(0), memoryReservationManager);
+      case INTEGRAL:
+        return useOrderedImplementation
+            ? new OrderedIntegralAccumulator(inputDataTypes.get(0))
+            : new NaiveIntegralAccumulator(inputDataTypes.get(0), memoryReservationManager);
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
@@ -641,61 +648,12 @@ public class AccumulatorFactory {
   }
 
   public static GroupedAccumulator getGroupedApproxMostFrequentAccumulator(TSDataType type) {
-    switch (type) {
-      case BOOLEAN:
-        return new BooleanGroupedApproxMostFrequentAccumulator();
-      case INT32:
-      case DATE:
-        return new IntGroupedApproxMostFrequentAccumulator();
-      case INT64:
-      case TIMESTAMP:
-        return new LongGroupedApproxMostFrequentAccumulator();
-      case FLOAT:
-        return new FloatGroupedApproxMostFrequentAccumulator();
-      case DOUBLE:
-        return new DoubleGroupedApproxMostFrequentAccumulator();
-      case TEXT:
-      case STRING:
-        return new BinaryGroupedApproxMostFrequentAccumulator();
-      case BLOB:
-        return new BlobGroupedApproxMostFrequentAccumulator();
-      case OBJECT:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages
-                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_COUNT_DISTINCT_AGGREGATION_ARG_58F0391E,
-                type));
-    }
+    return TypeServices.GROUPED_APPROX_MOST_FREQUENT_ACCUMULATOR_SERVICE.call(
+        Type.fromTsDataType(type));
   }
 
   public static TableAccumulator getApproxMostFrequentAccumulator(TSDataType type) {
-    switch (type) {
-      case BOOLEAN:
-        return new BooleanApproxMostFrequentAccumulator();
-      case INT32:
-      case DATE:
-        return new IntApproxMostFrequentAccumulator();
-      case INT64:
-      case TIMESTAMP:
-        return new LongApproxMostFrequentAccumulator();
-      case FLOAT:
-        return new FloatApproxMostFrequentAccumulator();
-      case DOUBLE:
-        return new DoubleApproxMostFrequentAccumulator();
-      case TEXT:
-      case STRING:
-        return new BinaryApproxMostFrequentAccumulator();
-      case BLOB:
-        return new BlobApproxMostFrequentAccumulator();
-      case OBJECT:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                CalcMessages
-                    .EXCEPTION_UNSUPPORTED_DATA_TYPE_APPROX_COUNT_DISTINCT_AGGREGATION_ARG_58F0391E,
-                type));
-    }
+    return TypeServices.APPROX_MOST_FREQUENT_ACCUMULATOR_SERVICE.call(Type.fromTsDataType(type));
   }
 
   public static boolean isMultiInputAggregation(TAggregationType aggregationType) {

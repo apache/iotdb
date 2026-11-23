@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.calc.utils.TypeServices.DefaultEncodingProvider;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
@@ -82,7 +83,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PIPE_FOLDER_NAME;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-public class IoTDBConfig {
+public class IoTDBConfig implements DefaultEncodingProvider {
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
@@ -185,6 +186,9 @@ public class IoTDBConfig {
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
 
+  /** Maximum size of one WAL entry. A non-positive value follows walBufferSize. Unit: byte */
+  private int walEntrySizeLimitInByte = -1;
+
   /** Blocking queue capacity of each delete ahead log buffer */
   private int deletionAheadLogBufferQueueCapacity = 500;
 
@@ -259,12 +263,6 @@ public class IoTDBConfig {
   /** Query directory, stores temporary files of query */
   private String queryDir =
       IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
-
-  /**
-   * Maximum DeviceEntry bytes kept in memory before a table-query spill, capped by the effective
-   * Thrift frame size minus 1 KiB reserved for the RPC response envelope.
-   */
-  private long tableQueryDeviceEntryBatchSizeInBytes;
 
   /** External lib directory, stores user-uploaded JAR files */
   private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
@@ -956,6 +954,8 @@ public class IoTDBConfig {
   /** Core pool size of mpp data exchange. */
   private int mppDataExchangeCorePoolSize = 10;
 
+  private int mppDataExchangeMaxPayloadSizeInBytes = 4 * 1024 * 1024;
+
   /** Max pool size of mpp data exchange. */
   private int mppDataExchangeMaxPoolSize = 10;
 
@@ -1174,9 +1174,13 @@ public class IoTDBConfig {
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
+  private long loadCleanupTaskIdleTimeoutSeconds = 900L; // 15 min, idle LOAD staging is reclaimed
+
   private int loadTsFileRetryCountOnRegionChange = 10;
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
+
+  private int loadTsFileWriteBufferSize = 1024 * 1024; // 1 MiB
 
   private long loadTabletConversionThresholdBytes = -1;
 
@@ -1235,6 +1239,18 @@ public class IoTDBConfig {
   private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
 
   private boolean loadActiveListeningVerifyEnable = true;
+
+  /**
+   * Whether a LOAD requires a logged in session with a user name instead of falling back to the
+   * default user. Disabled by default to keep the legacy fallback.
+   */
+  private boolean loadRequireUserIdentity = false;
+
+  /**
+   * Whether the pipe receiver rejects an asynchronous LOAD without an authenticated sender. Enabled
+   * by default; set to false to fall back to the default user.
+   */
+  private boolean pipeReceiverRequireUserIdentity = true;
 
   private String loadDiskSelectStrategy = LoadDiskSelectorType.MIN_IO_FIRST.getValue();
 
@@ -1501,7 +1517,9 @@ public class IoTDBConfig {
     // format data directories
     formulateDataDirs(newTierDataDirs);
     if (newTierDataDirs.length < this.tierDataDirs.length) {
-      String msg = "some data dirs are removed from data_dirs parameter, please add them back.";
+      String msg =
+          DataNodeMiscMessages
+              .EXCEPTION_SOME_DATA_DIRS_ARE_REMOVED_FROM_DATA_DIRS_PARAMETER_PLEASE_ADD_THEM_BACK_7BF4DBFE;
       logger.error(msg);
       throw new LoadConfigurationException(msg);
     }
@@ -1704,6 +1722,11 @@ public class IoTDBConfig {
     return this.loadTsFileDirs;
   }
 
+  public void setLoadTsFileDirs(final String[] loadTsFileDirs) {
+    this.loadTsFileDirs = loadTsFileDirs;
+    this.loadTsFileDirCanonicalPaths = canonicalPaths(loadTsFileDirs);
+  }
+
   public String[] getLoadTsFileAllowedDirs() {
     return this.loadTsFileAllowedDirs.length == 0
         ? getLoadTsFileDirs()
@@ -1775,8 +1798,10 @@ public class IoTDBConfig {
       } catch (final IOException e) {
         return new CanonicalPaths(
             String.format(
-                "Failed to resolve canonical path for Load TsFile allowed directory %s: %s",
-                dirs[i], e.getMessage()));
+                DataNodeMiscMessages
+                    .EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_ALLOWED_DIRECTORY_ARG_ARG_9BD3ABDA,
+                dirs[i],
+                e.getMessage()));
       }
     }
     return new CanonicalPaths(paths);
@@ -1819,14 +1844,6 @@ public class IoTDBConfig {
 
   public void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
-  }
-
-  public long getTableQueryDeviceEntryBatchSizeInBytes() {
-    return tableQueryDeviceEntryBatchSizeInBytes;
-  }
-
-  public void setTableQueryDeviceEntryBatchSizeInBytes(long tableQueryDeviceEntryBatchSizeInBytes) {
-    this.tableQueryDeviceEntryBatchSizeInBytes = tableQueryDeviceEntryBatchSizeInBytes;
   }
 
   public String getRatisDataRegionSnapshotDir() {
@@ -1965,8 +1982,10 @@ public class IoTDBConfig {
     }
     String msg =
         String.format(
-            "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
-            multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
+            DataNodeMiscMessages
+                .EXCEPTION_CANNOT_SET_MULTI_DIR_STRATEGY_TO_ARG_BECAUSE_CLUSTER_MODE_ONLY_ALLOWS_ARG_B0E64F6D,
+            multiDirStrategyClassName,
+            Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
     logger.error(msg);
     throw new RuntimeException(msg);
   }
@@ -2161,6 +2180,14 @@ public class IoTDBConfig {
 
   public void setWalBufferSize(int walBufferSize) {
     this.walBufferSize = walBufferSize;
+  }
+
+  public int getWalEntrySizeLimitInByte() {
+    return walEntrySizeLimitInByte > 0 ? walEntrySizeLimitInByte : walBufferSize;
+  }
+
+  public void setWalEntrySizeLimitInByte(int walEntrySizeLimitInByte) {
+    this.walEntrySizeLimitInByte = walEntrySizeLimitInByte;
   }
 
   public int getDeletionAheadLogBufferQueueCapacity() {
@@ -2613,6 +2640,7 @@ public class IoTDBConfig {
     this.defaultDatabaseLevel = defaultDatabaseLevel;
   }
 
+  @Override
   public TSEncoding getDefaultBooleanEncoding() {
     return defaultBooleanEncoding;
   }
@@ -2625,6 +2653,7 @@ public class IoTDBConfig {
     this.defaultBooleanEncoding = TSEncoding.valueOf(defaultBooleanEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultInt32Encoding() {
     return defaultInt32Encoding;
   }
@@ -2637,6 +2666,7 @@ public class IoTDBConfig {
     this.defaultInt32Encoding = TSEncoding.valueOf(defaultInt32Encoding);
   }
 
+  @Override
   public TSEncoding getDefaultInt64Encoding() {
     return defaultInt64Encoding;
   }
@@ -2649,6 +2679,7 @@ public class IoTDBConfig {
     this.defaultInt64Encoding = TSEncoding.valueOf(defaultInt64Encoding);
   }
 
+  @Override
   public TSEncoding getDefaultFloatEncoding() {
     return defaultFloatEncoding;
   }
@@ -2661,6 +2692,7 @@ public class IoTDBConfig {
     this.defaultFloatEncoding = TSEncoding.valueOf(defaultFloatEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultDoubleEncoding() {
     return defaultDoubleEncoding;
   }
@@ -2673,6 +2705,7 @@ public class IoTDBConfig {
     this.defaultDoubleEncoding = TSEncoding.valueOf(defaultDoubleEncoding);
   }
 
+  @Override
   public TSEncoding getDefaultTextEncoding() {
     return defaultTextEncoding;
   }
@@ -3429,6 +3462,14 @@ public class IoTDBConfig {
 
   public void setMppDataExchangeKeepAliveTimeInMs(int mppDataExchangeKeepAliveTimeInMs) {
     this.mppDataExchangeKeepAliveTimeInMs = mppDataExchangeKeepAliveTimeInMs;
+  }
+
+  public int getMppDataExchangeMaxPayloadSizeInBytes() {
+    return mppDataExchangeMaxPayloadSizeInBytes;
+  }
+
+  public void setMppDataExchangeMaxPayloadSizeInBytes(int mppDataExchangeMaxPayloadSizeInBytes) {
+    this.mppDataExchangeMaxPayloadSizeInBytes = mppDataExchangeMaxPayloadSizeInBytes;
   }
 
   public int getConnectionTimeoutInMS() {
@@ -4281,6 +4322,14 @@ public class IoTDBConfig {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
   }
 
+  public long getLoadCleanupTaskIdleTimeoutSeconds() {
+    return loadCleanupTaskIdleTimeoutSeconds;
+  }
+
+  public void setLoadCleanupTaskIdleTimeoutSeconds(final long loadCleanupTaskIdleTimeoutSeconds) {
+    this.loadCleanupTaskIdleTimeoutSeconds = loadCleanupTaskIdleTimeoutSeconds;
+  }
+
   public int getLoadTsFileRetryCountOnRegionChange() {
     return loadTsFileRetryCountOnRegionChange;
   }
@@ -4295,6 +4344,19 @@ public class IoTDBConfig {
 
   public void setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond) {
     this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
+  }
+
+  public int getLoadTsFileWriteBufferSize() {
+    return loadTsFileWriteBufferSize;
+  }
+
+  public void setLoadTsFileWriteBufferSize(final int loadTsFileWriteBufferSize) {
+    if (loadTsFileWriteBufferSize <= 0) {
+      throw new IllegalArgumentException(
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_LOAD_TSFILE_WRITE_BUFFER_SIZE_SHOULD_BE_GREATER_THAN_0_AB1BA936);
+    }
+    this.loadTsFileWriteBufferSize = loadTsFileWriteBufferSize;
   }
 
   public long getLoadTabletConversionThresholdBytes() {
@@ -4319,6 +4381,22 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningVerifyEnable(boolean loadActiveListeningVerifyEnable) {
     this.loadActiveListeningVerifyEnable = loadActiveListeningVerifyEnable;
+  }
+
+  public boolean isLoadRequireUserIdentity() {
+    return loadRequireUserIdentity;
+  }
+
+  public void setLoadRequireUserIdentity(boolean loadRequireUserIdentity) {
+    this.loadRequireUserIdentity = loadRequireUserIdentity;
+  }
+
+  public boolean isPipeReceiverRequireUserIdentity() {
+    return pipeReceiverRequireUserIdentity;
+  }
+
+  public void setPipeReceiverRequireUserIdentity(boolean pipeReceiverRequireUserIdentity) {
+    this.pipeReceiverRequireUserIdentity = pipeReceiverRequireUserIdentity;
   }
 
   public String getLoadDiskSelectStrategy() {
@@ -4467,10 +4545,12 @@ public class IoTDBConfig {
   }
 
   public void setLoadTsFileSpiltPartitionMaxSize(int loadTsFileSpiltPartitionMaxSize) {
+    // A cap of 0 would reject every LOAD whose source file spans at least one time partition,
+    // i.e. every LOAD, so the smallest usable value is 1.
     if (loadTsFileSpiltPartitionMaxSize <= 0) {
       throw new IllegalArgumentException(
           DataNodeMiscMessages
-              .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23);
+              .MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_0_17B75192);
     }
 
     if (this.loadTsFileSpiltPartitionMaxSize == loadTsFileSpiltPartitionMaxSize) {

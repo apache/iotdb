@@ -21,13 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model;
 
 import org.apache.iotdb.commons.model.ModelInformation;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -57,7 +57,7 @@ public class ModelInferenceDescriptor {
     if (inferenceAttributesSize == 0) {
       this.inferenceAttributes = null;
     } else {
-      this.inferenceAttributes = new HashMap<>();
+      this.inferenceAttributes = Maps.newHashMapWithExpectedSize(inferenceAttributesSize);
       for (int i = 0; i < inferenceAttributesSize; i++) {
         this.inferenceAttributes.put(
             ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readString(buffer));

@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
@@ -34,9 +35,10 @@ public class EnforceSingleRowOperator implements ProcessOperator {
       RamUsageEstimator.shallowSizeOfInstance(EnforceSingleRowOperator.class);
 
   private static final String MULTIPLE_ROWS_ERROR_MESSAGE =
-      "Scalar sub-query has returned multiple rows.";
+      CalcMessages.EXCEPTION_SCALAR_SUB_QUERY_HAS_RETURNED_MULTIPLE_ROWS_0C87D6E6;
 
-  private static final String NO_RESULT_ERROR_MESSAGE = "Scalar sub-query does not have output.";
+  private static final String NO_RESULT_ERROR_MESSAGE =
+      CalcMessages.EXCEPTION_SCALAR_SUB_QUERY_DOES_NOT_HAVE_OUTPUT_E64DBE29;
 
   private final CommonOperatorContext operatorContext;
   private final Operator child;

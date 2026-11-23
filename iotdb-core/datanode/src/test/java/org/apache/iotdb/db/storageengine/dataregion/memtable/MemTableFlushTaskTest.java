@@ -20,14 +20,23 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.TsFileReader;
@@ -37,6 +46,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -48,18 +58,33 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class MemTableFlushTaskTest {
 
@@ -86,6 +111,95 @@ public class MemTableFlushTaskTest {
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
   }
 
+  @Test(timeout = 20000)
+  public void testIoFailureReleasesTemporaryReservation() throws Exception {
+    MemTableTestUtils.produceVectorData(memTable);
+    SystemInfo system = SystemInfo.getInstance();
+    boolean old = system.isEncodingFasterThanIo();
+    long before = system.getFlushMemoryManager().getMemoryUsageInBytes();
+    RestorableTsFileIOWriter failing = mock(RestorableTsFileIOWriter.class);
+    when(failing.getFile()).thenReturn(new File(filePath));
+    IOException error = new IOException("injected IO failure");
+    doThrow(error).when(failing).startChunkGroup(any(IDeviceID.class));
+    try {
+      system.setEncodingFasterThanIo(true);
+      ExecutionException actual =
+          assertThrows(
+              ExecutionException.class,
+              () ->
+                  new MemTableFlushTask(memTable, failing, storageGroup, dataRegionId, true)
+                      .syncFlushMemTable());
+      assertSame(error, actual.getCause());
+      assertEquals(before, system.getFlushMemoryManager().getMemoryUsageInBytes());
+    } finally {
+      system.setEncodingFasterThanIo(old);
+    }
+  }
+
+  @Test(timeout = 20000)
+  public void testInterruptedFlushWaitsForIoExitBeforeRelease() throws Exception {
+    MemTableTestUtils.produceVectorData(memTable);
+    SystemInfo system = SystemInfo.getInstance();
+    boolean old = system.isEncodingFasterThanIo();
+    long before = system.getFlushMemoryManager().getMemoryUsageInBytes();
+    CountDownLatch entered = new CountDownLatch(1);
+    CountDownLatch interrupted = new CountDownLatch(1);
+    CountDownLatch mayExit = new CountDownLatch(1);
+    RestorableTsFileIOWriter slow = mock(RestorableTsFileIOWriter.class);
+    when(slow.getFile()).thenReturn(new File(filePath));
+    doAnswer(
+            invocation -> {
+              entered.countDown();
+              while (true) {
+                try {
+                  mayExit.await();
+                  break;
+                } catch (InterruptedException e) {
+                  interrupted.countDown();
+                }
+              }
+              return null;
+            })
+        .when(slow)
+        .startChunkGroup(any(IDeviceID.class));
+    AtomicReference<Throwable> failure = new AtomicReference<>();
+    Thread caller =
+        new Thread(
+            () -> {
+              try {
+                new MemTableFlushTask(memTable, slow, storageGroup, dataRegionId, true)
+                    .syncFlushMemTable();
+                failure.set(new AssertionError("flush should be interrupted"));
+              } catch (InterruptedException expected) {
+                if (!Thread.currentThread().isInterrupted())
+                  failure.set(new AssertionError("interrupt flag lost"));
+              } catch (Throwable e) {
+                failure.set(e);
+              }
+            });
+    try {
+      system.setEncodingFasterThanIo(true);
+      caller.start();
+      assertTrue(entered.await(5, TimeUnit.SECONDS));
+      caller.interrupt();
+      assertTrue(interrupted.await(5, TimeUnit.SECONDS));
+      // Another interruption during cancellation must not let cleanup release live worker memory.
+      caller.interrupt();
+      assertTrue(caller.isAlive());
+      assertTrue(system.getFlushMemoryManager().getMemoryUsageInBytes() > before);
+      mayExit.countDown();
+      caller.join(5000);
+      assertFalse(caller.isAlive());
+      if (failure.get() != null) throw new AssertionError(failure.get());
+      assertEquals(before, system.getFlushMemoryManager().getMemoryUsageInBytes());
+    } finally {
+      mayExit.countDown();
+      caller.interrupt();
+      caller.join(5000);
+      system.setEncodingFasterThanIo(old);
+    }
+  }
+
   @Test
   public void testFlushMemTable()
       throws ExecutionException, InterruptedException, IllegalPathException {
@@ -97,7 +211,7 @@ public class MemTableFlushTaskTest {
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId, true);
     assertTrue(
         writer
             .getVisibleMetadataList(
@@ -134,7 +248,7 @@ public class MemTableFlushTaskTest {
       throws ExecutionException, InterruptedException, IllegalPathException, WriteProcessException {
     MemTableTestUtils.produceVectorData(memTable);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId, true);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
@@ -162,7 +276,7 @@ public class MemTableFlushTaskTest {
       throws ExecutionException, InterruptedException, IllegalPathException, WriteProcessException {
     MemTableTestUtils.produceNullableVectorData(memTable);
     MemTableFlushTask memTableFlushTask =
-        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId);
+        new MemTableFlushTask(memTable, writer, storageGroup, dataRegionId, true);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
@@ -192,7 +306,7 @@ public class MemTableFlushTaskTest {
     memChunk.sortTvListForFlush();
 
     BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
-    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100);
+    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100, true);
 
     assertFalse(memChunk.isColumnMappingBuilt());
     assertFalse(ioTaskQueue.isEmpty());
@@ -206,10 +320,184 @@ public class MemTableFlushTaskTest {
     memChunk.sortTvListForFlush();
 
     BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
-    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100);
+    memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100, true);
 
     assertTrue(memChunk.isColumnMappingBuilt());
     assertFalse(ioTaskQueue.isEmpty());
+  }
+
+  @Test
+  public void testAlignedFlushMergesDuplicateTimestampsUsingLastNonNullValue() throws Exception {
+    checkAlignedFlushMergesDuplicateTimestamps(false);
+  }
+
+  @Test
+  public void testAlignedFlushMergesDuplicateTimestampsAfterMeasurementDeletion() throws Exception {
+    checkAlignedFlushMergesDuplicateTimestamps(true);
+  }
+
+  private void checkAlignedFlushMergesDuplicateTimestamps(boolean removeSecondMeasurement)
+      throws Exception {
+    List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
+    String alignedFilePath =
+        TestConstant.OUTPUT_DATA_DIR.concat(
+            "duplicateAlignedRows-" + removeSecondMeasurement + ".tsfile");
+
+    try {
+      memChunk.putAlignedRow(1, new Object[] {10L, 100L});
+      memChunk.putAlignedRow(2, new Object[] {20L, null});
+      memChunk.putAlignedRow(2, new Object[] {null, 200L});
+      memChunk.putAlignedRow(2, new Object[] {null, null});
+      memChunk.putAlignedRow(3, new Object[] {30L, null});
+      if (removeSecondMeasurement) {
+        memChunk.removeColumn("s1");
+      }
+      memChunk.sortTvListForFlush();
+
+      BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 100, 100, false);
+      try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
+        alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
+        Object task;
+        while ((task = ioTaskQueue.poll()) != null) {
+          if (task instanceof IChunkWriter chunkWriter) {
+            chunkWriter.writeToFileWriter(alignedWriter);
+          }
+        }
+        alignedWriter.endChunkGroup();
+        alignedWriter.endFile();
+      }
+
+      try (TsFileSequenceReader sequenceReader = new TsFileSequenceReader(alignedFilePath);
+          TsFileReader fileReader = new TsFileReader(sequenceReader)) {
+        List<Path> paths = new ArrayList<>();
+        paths.add(new Path("root.d", "s0", false));
+        if (!removeSecondMeasurement) {
+          paths.add(new Path("root.d", "s1", false));
+        }
+        QueryDataSet dataSet = fileReader.query(QueryExpression.create(paths, null));
+
+        RowRecord row = dataSet.next();
+        assertEquals(1, row.getTimestamp());
+        assertEquals(10L, row.getFields().get(0).getLongV());
+        if (!removeSecondMeasurement) {
+          assertEquals(100L, row.getFields().get(1).getLongV());
+        }
+
+        row = dataSet.next();
+        assertEquals(2, row.getTimestamp());
+        assertEquals(20L, row.getFields().get(0).getLongV());
+        if (!removeSecondMeasurement) {
+          assertEquals(200L, row.getFields().get(1).getLongV());
+        }
+
+        row = dataSet.next();
+        assertEquals(3, row.getTimestamp());
+        assertEquals(30L, row.getFields().get(0).getLongV());
+        if (!removeSecondMeasurement) {
+          assertTrue(
+              row.getFields().get(1) == null || row.getFields().get(1).getDataType() == null);
+        }
+        assertFalse(dataSet.hasNext());
+      }
+    } finally {
+      memChunk.release();
+    }
+  }
+
+  @Test
+  public void testAlignedFlushMergesDuplicateTimestampsAcrossBoundaries() throws Exception {
+    checkAlignedFlushMergesDuplicateTimestampsAcrossBoundaries(false, false);
+  }
+
+  @Test
+  public void testAlignedFlushMergesDuplicateTimestampsAcrossBoundariesAfterDeletion()
+      throws Exception {
+    checkAlignedFlushMergesDuplicateTimestampsAcrossBoundaries(true, false);
+  }
+
+  @Test
+  public void testAlignedFlushSkipsAllNullDuplicateRowsAcrossBoundaries() throws Exception {
+    checkAlignedFlushMergesDuplicateTimestampsAcrossBoundaries(false, true);
+  }
+
+  private void checkAlignedFlushMergesDuplicateTimestampsAcrossBoundaries(
+      boolean removeSecondMeasurement, boolean ignoreAllNullRows) throws Exception {
+    List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
+    String alignedFilePath =
+        TestConstant.OUTPUT_DATA_DIR.concat(
+            "duplicateBoundary-" + removeSecondMeasurement + "-" + ignoreAllNullRows + ".tsfile");
+
+    try {
+      // Timestamp 5 has four duplicate rows, so it spans page and chunk caps 2 and 3.
+      memChunk.putAlignedRow(6, new Object[] {6L, 66L});
+      memChunk.putAlignedRow(5, new Object[] {null, 55L});
+      memChunk.putAlignedRow(1, new Object[] {1L, null});
+      memChunk.putAlignedRow(3, new Object[] {3L, null});
+      memChunk.putAlignedRow(5, new Object[] {5L, null});
+      memChunk.putAlignedRow(1, new Object[] {null, 11L});
+      memChunk.putAlignedRow(5, new Object[] {null, null});
+      memChunk.putAlignedRow(3, new Object[] {null, 33L});
+      memChunk.putAlignedRow(1, new Object[] {null, null});
+      memChunk.putAlignedRow(5, new Object[] {null, null});
+      memChunk.putAlignedRow(2, new Object[] {2L, 22L});
+      if (ignoreAllNullRows) {
+        memChunk.putAlignedRow(4, new Object[] {null, null});
+      } else {
+        memChunk.putAlignedRow(4, new Object[] {4L, 44L});
+      }
+      if (removeSecondMeasurement) {
+        memChunk.removeColumn("s1");
+      }
+      memChunk.sortTvListForFlush();
+
+      BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, 3, 2, ignoreAllNullRows);
+      try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
+        alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
+        Object task;
+        while ((task = ioTaskQueue.poll()) != null) {
+          if (task instanceof IChunkWriter chunkWriter) {
+            chunkWriter.writeToFileWriter(alignedWriter);
+          }
+        }
+        alignedWriter.endChunkGroup();
+        alignedWriter.endFile();
+      }
+
+      try (TsFileSequenceReader sequenceReader = new TsFileSequenceReader(alignedFilePath);
+          TsFileReader fileReader = new TsFileReader(sequenceReader)) {
+        List<Path> paths = new ArrayList<>();
+        paths.add(new Path("root.d", "s0", false));
+        if (!removeSecondMeasurement) {
+          paths.add(new Path("root.d", "s1", false));
+        }
+        QueryDataSet dataSet = fileReader.query(QueryExpression.create(paths, null));
+
+        int[] expectedTimes =
+            ignoreAllNullRows ? new int[] {1, 2, 3, 5, 6} : new int[] {1, 2, 3, 4, 5, 6};
+        for (int time : expectedTimes) {
+          assertTrue(dataSet.hasNext());
+          RowRecord row = dataSet.next();
+          assertEquals(time, row.getTimestamp());
+          assertEquals(time, row.getFields().get(0).getLongV());
+          if (!removeSecondMeasurement) {
+            assertEquals(time * 11L, row.getFields().get(1).getLongV());
+          }
+        }
+        assertFalse(dataSet.hasNext());
+      }
+    } finally {
+      memChunk.release();
+    }
   }
 
   @Test
@@ -221,7 +509,7 @@ public class MemTableFlushTaskTest {
         Arrays.asList(
             new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
             new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, false);
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
     String alignedFilePath = TestConstant.OUTPUT_DATA_DIR.concat("testAlignedFastPath.tsfile");
 
     try {
@@ -237,7 +525,7 @@ public class MemTableFlushTaskTest {
       memChunk.sortTvListForFlush();
 
       BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
-      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, rowCount, 1024);
+      memChunk.encodeWorkingAlignedTVList(ioTaskQueue, rowCount, 1024, true);
       try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
         alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
         Object task;
@@ -273,6 +561,72 @@ public class MemTableFlushTaskTest {
   }
 
   @Test
+  public void testAlignedFlushKeepsAllRowsWhenChunkCapIsNotAPageMultiple() throws Exception {
+    // With tvlist_sort_threshold > 0 the aligned memchunk is encoded through the single-TVLIST
+    // iterator. A wide TEXT column narrows the chunk cap to target_chunk_size / avg point size,
+    // which is not a multiple of the page cap, so a chunk is sealed in the middle of a page.
+    int originalThreshold = IoTDBDescriptor.getInstance().getConfig().getTvListSortThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(100_000);
+    int pageCap = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN));
+    AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
+    String alignedFilePath =
+        TestConstant.OUTPUT_DATA_DIR.concat("testAlignedWideTextChunkCap.tsfile");
+    try {
+      int rowCount = 3000;
+      char[] chars = new char[300];
+      Arrays.fill(chars, 'x');
+      Binary binary = new Binary(new String(chars), TSFileConfig.STRING_CHARSET);
+      for (int index = 0; index < rowCount; index++) {
+        memChunk.putAlignedRow(index, new Object[] {(long) index, binary});
+      }
+      memChunk.sortTvListForFlush();
+
+      BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+      // target_chunk_size / avg point size is below the page cap, so a chunk is sealed with a
+      // pending partial page whose values are already in the value chunk writers.
+      BatchEncodeInfo encodeInfo = new BatchEncodeInfo(0, 0, 0, pageCap, 10_000, 262_144);
+      memChunk.encode(ioTaskQueue, encodeInfo, new long[pageCap], false);
+      try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
+        alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
+        Object task;
+        while ((task = ioTaskQueue.poll()) != null) {
+          if (task instanceof IChunkWriter chunkWriter) {
+            chunkWriter.writeToFileWriter(alignedWriter);
+          }
+        }
+        alignedWriter.endChunkGroup();
+        alignedWriter.endFile();
+      }
+
+      try (TsFileSequenceReader sequenceReader = new TsFileSequenceReader(alignedFilePath);
+          TsFileReader fileReader = new TsFileReader(sequenceReader)) {
+        QueryDataSet dataSet =
+            fileReader.query(
+                QueryExpression.create(
+                    Arrays.asList(new Path("root.d", "s0", false), new Path("root.d", "s1", false)),
+                    null));
+        int index = 0;
+        while (dataSet.hasNext()) {
+          RowRecord row = dataSet.next();
+          assertEquals(index, row.getTimestamp());
+          assertEquals((long) index, row.getFields().get(0).getLongV());
+          assertEquals(binary, row.getFields().get(1).getBinaryV());
+          index++;
+        }
+        // The rows of the pending pages must be readable, not silently dropped.
+        assertEquals(rowCount, index);
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(originalThreshold);
+      memChunk.release();
+    }
+  }
+
+  @Test
   public void testAlignedFlushKeepsValuesAlignedAfterTimeDeletion() throws IOException {
     // Deleted rows must be omitted from both time and value pages, including after sorting.
     checkAlignedFlushAfterTimeDeletion(false);
@@ -290,7 +644,7 @@ public class MemTableFlushTaskTest {
           Arrays.asList(
               new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN),
               new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas, false);
+      AlignedWritableMemChunk memChunk = new AlignedWritableMemChunk(schemas);
       String alignedFilePath =
           TestConstant.OUTPUT_DATA_DIR.concat("testAlignedTimeDeletion" + pageSize + ".tsfile");
       try {
@@ -306,7 +660,7 @@ public class MemTableFlushTaskTest {
 
         BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
         // Cover a single page and boundaries between pages and chunks.
-        memChunk.encodeWorkingAlignedTVList(ioTaskQueue, pageSize + 1, pageSize);
+        memChunk.encodeWorkingAlignedTVList(ioTaskQueue, pageSize + 1, pageSize, true);
         try (TsFileIOWriter alignedWriter = new TsFileIOWriter(new File(alignedFilePath))) {
           alignedWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
           Object task;
@@ -381,7 +735,7 @@ public class MemTableFlushTaskTest {
       schemas.add(new MeasurementSchema("s" + column, types.get(column), TSEncoding.PLAIN));
     }
     schemas.add(new MeasurementSchema("empty", TSDataType.INT64, TSEncoding.PLAIN));
-    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas, true);
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemas);
     Object[][] expected = new Object[rowCount][types.size()];
     String path = TestConstant.OUTPUT_DATA_DIR.concat("unmaterialized-" + moved + ".tsfile");
     try {
@@ -419,7 +773,7 @@ public class MemTableFlushTaskTest {
       }
       chunk.sortTvListForFlush();
       BlockingQueue<Object> queue = new LinkedBlockingQueue<>();
-      chunk.encodeWorkingAlignedTVList(queue, ARRAY_SIZE * 5 + 3, ARRAY_SIZE + 3);
+      chunk.encodeWorkingAlignedTVList(queue, ARRAY_SIZE * 5 + 3, ARRAY_SIZE + 3, false);
       try (TsFileIOWriter fileWriter = new TsFileIOWriter(new File(path))) {
         fileWriter.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.d"));
         Object task;
@@ -476,7 +830,7 @@ public class MemTableFlushTaskTest {
     private boolean columnMappingBuilt;
 
     private TrackingAlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
-      super(schemaList, false);
+      super(schemaList);
     }
 
     @Override
@@ -488,5 +842,202 @@ public class MemTableFlushTaskTest {
     private boolean isColumnMappingBuilt() {
       return columnMappingBuilt;
     }
+  }
+
+  /**
+   * With the IO consumer stalled the encoder fills the IO queue; the temporary reservation must
+   * cover the capacity of the queued chunk buffers, which grow by doubling and can exceed the raw
+   * data counted by memSize (up to 2x), and whose encoded data can itself exceed the raw values
+   * (variable-length integers: up to 1.25x).
+   */
+  @Test(timeout = 60000)
+  public void testReservationCoversQueuedChunkBuffersWithStalledIo() throws Exception {
+    String oldTimeEncoder = TSFileDescriptor.getInstance().getConfig().getTimeEncoder();
+    TSFileDescriptor.getInstance().getConfig().setTimeEncoder("PLAIN");
+    try {
+      // fewer series than queue slots
+      assertReservationCoversQueuedBuffers(9, 60_000, TSDataType.DOUBLE, TSEncoding.PLAIN);
+      assertReservationCoversQueuedBuffers(1, 60_000, TSDataType.DOUBLE, TSEncoding.PLAIN);
+      // more series than queue slots
+      assertReservationCoversQueuedBuffers(300, 6_000, TSDataType.DOUBLE, TSEncoding.PLAIN);
+      // the encoded values are larger than the raw ones (5 bytes per PLAIN INT32), and the buffer
+      // has just grown past 512 KiB to 1 MiB: 1,048,912 B for a memSize of 492,000 B
+      assertReservationCoversQueuedBuffers(1, 41_000, TSDataType.INT32, TSEncoding.PLAIN);
+    } finally {
+      TSFileDescriptor.getInstance().getConfig().setTimeEncoder(oldTimeEncoder);
+    }
+  }
+
+  private void assertReservationCoversQueuedBuffers(
+      int seriesNumber, int rowCount, TSDataType dataType, TSEncoding encoding) throws Exception {
+    IMemTable table = new PrimitiveMemTable(storageGroup, dataRegionId);
+    String[] measurements = new String[seriesNumber];
+    TSDataType[] dataTypes = new TSDataType[seriesNumber];
+    MeasurementSchema[] schemas = new MeasurementSchema[seriesNumber];
+    Object[] columns = new Object[seriesNumber];
+    long[] times = new long[rowCount];
+    for (int row = 0; row < rowCount; row++) {
+      times[row] = row;
+    }
+    for (int i = 0; i < seriesNumber; i++) {
+      measurements[i] = String.format("s%03d", i);
+      dataTypes[i] = dataType;
+      schemas[i] =
+          new MeasurementSchema(measurements[i], dataType, encoding, CompressionType.UNCOMPRESSED);
+      columns[i] = largeValues(dataType, rowCount, i);
+    }
+    table.insertTablet(
+        new InsertTabletNode(
+            new PlanNodeId("stalled-io"),
+            new PartialPath("root.sg.d1"),
+            false,
+            measurements,
+            dataTypes,
+            schemas,
+            times,
+            null,
+            columns,
+            rowCount),
+        0,
+        rowCount);
+
+    SystemInfo system = SystemInfo.getInstance();
+    boolean old = system.isEncodingFasterThanIo();
+    long before = system.getFlushMemoryManager().getMemoryUsageInBytes();
+    CountDownLatch stalled = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    RestorableTsFileIOWriter stalledWriter = mock(RestorableTsFileIOWriter.class);
+    when(stalledWriter.getFile()).thenReturn(new File(filePath));
+    doAnswer(
+            invocation -> {
+              stalled.countDown();
+              release.await();
+              throw new IOException("stalled IO released");
+            })
+        .when(stalledWriter)
+        .startChunkGroup(any(IDeviceID.class));
+    system.setEncodingFasterThanIo(true);
+    MemTableFlushTask task =
+        new MemTableFlushTask(table, stalledWriter, storageGroup, dataRegionId, false);
+    Field queueField = MemTableFlushTask.class.getDeclaredField("ioTaskQueue");
+    queueField.setAccessible(true);
+    BlockingQueue<?> ioQueue = (BlockingQueue<?>) queueField.get(task);
+    Thread flusher =
+        new Thread(
+            () -> {
+              try {
+                task.syncFlushMemTable();
+              } catch (ExecutionException expected) {
+                // the stalled writer fails once released
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            });
+    try {
+      flusher.start();
+      assertTrue(stalled.await(10, TimeUnit.SECONDS));
+      // the encoder either blocks on the full queue or has queued every series, the end of the
+      // chunk group and the end of the task
+      int expectedQueued = Math.min(config().getIoTaskQueueSizeForFlushing(), seriesNumber + 2);
+      long deadline = System.currentTimeMillis() + 20_000;
+      while (ioQueue.size() < expectedQueued && System.currentTimeMillis() < deadline) {
+        Thread.sleep(10);
+      }
+      assertEquals(expectedQueued, ioQueue.size());
+      long reserved = system.getFlushMemoryManager().getMemoryUsageInBytes() - before;
+      long buffers = 0;
+      for (Object queued : new ArrayList<>(ioQueue)) {
+        if (queued instanceof IChunkWriter) {
+          buffers += retainedArrayBytes(queued);
+        }
+      }
+      assertTrue(buffers > table.memSize() / seriesNumber); // the probe found the buffers
+      assertTrue(
+          String.format(
+              "%d series: queued chunk buffers %d B exceed the reservation %d B (memSize %d B)",
+              seriesNumber, buffers, reserved, table.memSize()),
+          buffers <= reserved);
+    } finally {
+      release.countDown();
+      flusher.join(10_000);
+      system.setEncodingFasterThanIo(old);
+    }
+    assertEquals(before, system.getFlushMemoryManager().getMemoryUsageInBytes());
+  }
+
+  /** Values of large magnitude, which take the most bytes in variable-length encodings. */
+  private static Object largeValues(TSDataType dataType, int rowCount, int series) {
+    switch (dataType) {
+      case INT32:
+        int[] ints = new int[rowCount];
+        for (int row = 0; row < rowCount; row++) {
+          ints[row] = Integer.MAX_VALUE - row - series;
+        }
+        return ints;
+      case DOUBLE:
+        double[] doubles = new double[rowCount];
+        for (int row = 0; row < rowCount; row++) {
+          doubles[row] = row * 1.5 + series;
+        }
+        return doubles;
+      default:
+        throw new IllegalArgumentException(dataType.toString());
+    }
+  }
+
+  private static org.apache.iotdb.db.conf.IoTDBConfig config() {
+    return org.apache.iotdb.db.conf.IoTDBDescriptor.getInstance().getConfig();
+  }
+
+  /** Capacity of the byte buffers and primitive arrays a queued chunk writer keeps alive. */
+  private static long retainedArrayBytes(Object root) throws IllegalAccessException {
+    IdentityHashMap<Object, Boolean> seen = new IdentityHashMap<>();
+    ArrayDeque<Object> todo = new ArrayDeque<>();
+    todo.add(root);
+    long bytes = 0;
+    while (!todo.isEmpty()) {
+      Object o = todo.poll();
+      if (seen.put(o, Boolean.TRUE) != null) {
+        continue;
+      }
+      Class<?> c = o.getClass();
+      if (o instanceof PublicBAOS) {
+        bytes += ((PublicBAOS) o).getBuf().length;
+      } else if (c.isArray()) {
+        if (c.getComponentType().isPrimitive()) {
+          bytes += (long) Array.getLength(o) * primitiveBytes(c.getComponentType());
+        } else {
+          for (int i = 0; i < Array.getLength(o); i++) {
+            Object element = Array.get(o, i);
+            if (element != null) {
+              todo.add(element);
+            }
+          }
+        }
+      } else if (!c.getName().startsWith("java.")) {
+        for (Class<?> k = c; k != null && !k.getName().startsWith("java."); k = k.getSuperclass()) {
+          for (Field f : k.getDeclaredFields()) {
+            if (!Modifier.isStatic(f.getModifiers()) && !f.getType().isPrimitive()) {
+              f.setAccessible(true);
+              Object value = f.get(o);
+              if (value != null) {
+                todo.add(value);
+              }
+            }
+          }
+        }
+      }
+    }
+    return bytes;
+  }
+
+  private static int primitiveBytes(Class<?> type) {
+    if (type == long.class || type == double.class) {
+      return 8;
+    }
+    if (type == int.class || type == float.class) {
+      return 4;
+    }
+    return type == short.class || type == char.class ? 2 : 1;
   }
 }

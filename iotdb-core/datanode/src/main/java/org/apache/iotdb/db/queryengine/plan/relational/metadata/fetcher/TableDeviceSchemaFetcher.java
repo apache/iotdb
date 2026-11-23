@@ -147,7 +147,7 @@ public class TableDeviceSchemaFetcher {
                   ? SessionManager.getInstance()
                       .getSessionInfoOfTableModel(SessionManager.getInstance().getCurrSession())
                   : context.getSession(),
-              "Fetch Device for insert",
+              DataNodeQueryMessages.MESSAGE_FETCH_DEVICE_FOR_INSERT_E0AF591F,
               LocalExecutionPlanner.getInstance().metadata,
               // Never timeout for insert
               Long.MAX_VALUE,
@@ -330,7 +330,8 @@ public class TableDeviceSchemaFetcher {
 
   private AbstractDeviceEntryMaterializer createDataSetMaterializer(
       MPPQueryContext queryContext, PlanNodeId planNodeId, boolean distinct) {
-    long batchSize = CONFIG.getTableQueryDeviceEntryBatchSizeInBytes();
+    long batchSize =
+        IoTDBDescriptor.getInstance().getMemoryConfig().getTableQueryDeviceEntryBatchSizeInBytes();
     if (distinct) {
       return new DeviceEntrySortedMaterializer(
           queryContext.getQueryId().getId(),
@@ -414,7 +415,7 @@ public class TableDeviceSchemaFetcher {
         // will be a memory source and combine filter
         check =
             Objects.nonNull(fuzzyFilter) && !TreeViewSchema.isTreeViewTable(tableInstance)
-                ? o -> filterVisitor.process(fuzzyFilter, o)
+                ? o -> Boolean.TRUE.equals(filterVisitor.process(fuzzyFilter, o))
                 : null;
       }
 
@@ -647,7 +648,7 @@ public class TableDeviceSchemaFetcher {
                       .getSessionInfo(SessionManager.getInstance().getCurrSession())
                   : mppQueryContext.getSession(),
               String.format(
-                  "fetch device for query %s : %s",
+                  DataNodeQueryMessages.MESSAGE_FETCH_DEVICE_FOR_QUERY_ARG_ARG_160027C4,
                   mppQueryContext == null ? "unknown" : mppQueryContext.getQueryId(),
                   mppQueryContext == null ? "unknown" : mppQueryContext.getSql()),
               LocalExecutionPlanner.getInstance().metadata,

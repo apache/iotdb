@@ -97,6 +97,9 @@ import static org.apache.iotdb.jdbc.Config.VERSION;
 public abstract class AbstractEnv implements BaseEnv {
   private static final Logger logger = IoTDBTestLogger.logger;
   private static final int DEFAULT_CLUSTER_READY_RETRY_COUNT = 30;
+  // Shutdown hooks may wait for Pipe events, progress persistence, and Ratis snapshots.
+  private static final int DATA_NODE_SHUTDOWN_TIMEOUT_SECONDS = 60;
+  private static final long READINESS_RETRY_INTERVAL_NANOS = TimeUnit.MILLISECONDS.toNanos(100);
   private static final String CLUSTER_READY_RETRY_COUNT_PROPERTY =
       "integrationTest.clusterReadyRetryCount";
 
@@ -380,8 +383,8 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   /**
-   * check whether all nodes' status match the provided predicate with RPC. after retryCount times,
-   * if the status of all nodes still not match the predicate, throw AssertionError.
+   * check whether all nodes' status match the provided predicate with RPC. after retryCount
+   * seconds, if the status of all nodes still not match the predicate, throw AssertionError.
    *
    * @param nodeStatusCheck the predicate to test the status of nodes
    */
@@ -400,10 +403,14 @@ public abstract class AbstractEnv implements BaseEnv {
     int actualNodeSize = 0;
     Map<Integer, String> lastNodeStatus = null;
     Map<AbstractNodeWrapper, Integer> processStatusMap = new HashMap<>();
+    // retryCount historically allowed one second per retry. Preserve that time budget while
+    // checking more frequently, and share the deadline with leader discovery to avoid nested waits.
+    final long deadlineNanos = readinessDeadline(retryCount);
 
-    for (int i = 0; i < retryCount; i++) {
+    int attempt = 0;
+    do {
       try (final SyncConfigNodeIServiceClient client =
-          (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
+          getLeaderConfigNodeConnection(deadlineNanos)) {
         passed = true;
         showClusterPassed = true;
         nodeSizePassed = true;
@@ -478,23 +485,33 @@ public abstract class AbstractEnv implements BaseEnv {
           logger.info("The cluster is now ready for testing!");
           return;
         }
-        logger.info(
-            "Retry {}: showClusterPassed={}, nodeSizePassed={}, nodeStatusPassed={}, processStatusPassed={}",
-            i,
-            showClusterPassed,
-            nodeSizePassed,
-            nodeStatusPassed,
-            processStatusPassed);
-      } catch (final Exception e) {
-        lastException = e;
-      }
-      try {
-        TimeUnit.SECONDS.sleep(1L);
+        if (attempt % 10 == 0) {
+          logger.info(
+              "Retry {}: showClusterPassed={}, nodeSizePassed={}, nodeStatusPassed={}, processStatusPassed={}",
+              attempt,
+              showClusterPassed,
+              nodeSizePassed,
+              nodeStatusPassed,
+              processStatusPassed);
+        }
       } catch (final InterruptedException e) {
         lastException = e;
         Thread.currentThread().interrupt();
+        break;
+      } catch (final Exception e) {
+        lastException = e;
       }
-    }
+      attempt++;
+      try {
+        if (!waitForNextReadinessCheck(deadlineNanos)) {
+          break;
+        }
+      } catch (final InterruptedException e) {
+        lastException = e;
+        Thread.currentThread().interrupt();
+        break;
+      }
+    } while (true);
     if (lastException != null) {
       logger.error(
           "exception in test Cluster with RPC, message: {}",
@@ -547,7 +564,10 @@ public abstract class AbstractEnv implements BaseEnv {
       final Exception lastException) {
     final StringBuilder builder =
         new StringBuilder(
-            String.format("After %d times retry, the cluster status check failed", retryCount));
+            String.format(
+                IntegrationTestEnvMessages
+                    .EXCEPTION_CLUSTER_STATUS_CHECK_FAILED_RETRY_BUDGET_ARG_SECONDS_AEB4010E,
+                retryCount));
     builder
         .append(": showClusterPassed=")
         .append(showClusterPassed)
@@ -677,6 +697,13 @@ public abstract class AbstractEnv implements BaseEnv {
             nodeWrapper -> logger.info("You can find logs at {}", nodeWrapper.getLogDirPath()));
     for (final AbstractNodeWrapper nodeWrapper : allNodeWrappers) {
       nodeWrapper.stopForcibly();
+      if (nodeWrapper.isAlive()) {
+        logger.error(
+            IntegrationTestEnvMessages
+                .LOG_NODE_ARG_IS_STILL_ALIVE_AFTER_STOPFORCIBLY_SKIPPING_DIRECTORY_CLEANUP_AND_LOCK_FILE_REMOVAL_55F75817,
+            nodeWrapper.getId());
+        continue;
+      }
       nodeWrapper.destroyDir();
       final String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());
       try {
@@ -868,12 +895,24 @@ public abstract class AbstractEnv implements BaseEnv {
       final String password,
       final String sqlDialect)
       throws SQLException {
+    return getConnection(version, username, password, sqlDialect, NODE_NETWORK_TIMEOUT_MS);
+  }
+
+  @Override
+  public Connection getConnection(
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect,
+      final int networkTimeoutMs)
+      throws SQLException {
     return System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")
         ? new ClusterTestConnection(
-            getWriteConnection(version, username, password, sqlDialect),
-            getReadConnections(version, username, password, sqlDialect),
+            getWriteConnection(version, username, password, sqlDialect, networkTimeoutMs),
+            getReadConnections(version, username, password, sqlDialect, networkTimeoutMs),
             this)
-        : getWriteConnection(version, username, password, sqlDialect).getUnderlyingConnection();
+        : getWriteConnection(version, username, password, sqlDialect, networkTimeoutMs)
+            .getUnderlyingConnection();
   }
 
   @Override
@@ -1033,8 +1072,18 @@ public abstract class AbstractEnv implements BaseEnv {
   protected NodeConnection getWriteConnection(
       Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException {
+    return getWriteConnection(version, username, password, sqlDialect, NODE_NETWORK_TIMEOUT_MS);
+  }
+
+  protected NodeConnection getWriteConnection(
+      Constant.Version version,
+      String username,
+      String password,
+      String sqlDialect,
+      int networkTimeoutMs)
+      throws SQLException {
     return getWriteConnectionFromDataNodeList(
-        this.dataNodeWrapperList, version, username, password, sqlDialect);
+        this.dataNodeWrapperList, version, username, password, sqlDialect, networkTimeoutMs);
   }
 
   protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
@@ -1044,13 +1093,25 @@ public abstract class AbstractEnv implements BaseEnv {
       final String password,
       final String sqlDialect)
       throws SQLException {
+    return getWriteConnectionWithSpecifiedDataNode(
+        dataNode, version, username, password, sqlDialect, NODE_NETWORK_TIMEOUT_MS);
+  }
+
+  protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
+      final DataNodeWrapper dataNode,
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect,
+      final int networkTimeoutMs)
+      throws SQLException {
     final String endpoint =
         UrlUtils.formatTEndPointIpv4AndIpv6Url(dataNode.getIp(), dataNode.getPort());
     final Connection writeConnection =
         DriverManager.getConnection(
             Config.IOTDB_URL_PREFIX
                 + endpoint
-                + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
+                + getParam(version, networkTimeoutMs, ZERO_TIME_ZONE),
             constructConnectionProperties(username, password, sqlDialect));
     return new NodeConnection(
         endpoint,
@@ -1066,13 +1127,25 @@ public abstract class AbstractEnv implements BaseEnv {
       final String password,
       final String sqlDialect)
       throws SQLException {
+    return getWriteConnectionFromDataNodeList(
+        dataNodeList, version, username, password, sqlDialect, NODE_NETWORK_TIMEOUT_MS);
+  }
+
+  protected NodeConnection getWriteConnectionFromDataNodeList(
+      final List<DataNodeWrapper> dataNodeList,
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect,
+      final int networkTimeoutMs)
+      throws SQLException {
     final List<DataNodeWrapper> dataNodeWrapperListCopy = new ArrayList<>(dataNodeList);
     Collections.shuffle(dataNodeWrapperListCopy);
     SQLException lastException = null;
     for (final DataNodeWrapper dataNode : dataNodeWrapperListCopy) {
       try {
         return getWriteConnectionWithSpecifiedDataNode(
-            dataNode, version, username, password, sqlDialect);
+            dataNode, version, username, password, sqlDialect, networkTimeoutMs);
       } catch (final SQLException e) {
         lastException = e;
       }
@@ -1088,6 +1161,16 @@ public abstract class AbstractEnv implements BaseEnv {
       final String username,
       final String password,
       final String sqlDialect)
+      throws SQLException {
+    return getReadConnections(version, username, password, sqlDialect, NODE_NETWORK_TIMEOUT_MS);
+  }
+
+  protected List<NodeConnection> getReadConnections(
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect,
+      final int networkTimeoutMs)
       throws SQLException {
     final List<String> endpoints = new ArrayList<>();
     final ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
@@ -1107,7 +1190,7 @@ public abstract class AbstractEnv implements BaseEnv {
                           DriverManager.getConnection(
                               Config.IOTDB_URL_PREFIX
                                   + endpoint
-                                  + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
+                                  + getParam(version, networkTimeoutMs, ZERO_TIME_ZONE),
                               constructConnectionProperties(username, password, sqlDialect))));
             });
     return readConnRequestDelegate.requestAll();
@@ -1164,7 +1247,7 @@ public abstract class AbstractEnv implements BaseEnv {
   // because it is hard to add retry and handle exception when getting jdbc connections in
   // getWriteConnectionWithSpecifiedDataNode and getReadConnections.
   // so use this function to add retry when cluster is ready.
-  // after retryCount times, if the jdbc can't connect, throw
+  // after retryCount seconds, if the jdbc can't connect, throw
   // AssertionError.
   protected void testJDBCConnection() {
     logger.info("Testing JDBC connection...");
@@ -1180,7 +1263,8 @@ public abstract class AbstractEnv implements BaseEnv {
       testDelegate.addRequest(
           () -> {
             Exception lastException = null;
-            for (int i = 0; i < retryCount; i++) {
+            final long deadlineNanos = readinessDeadline(retryCount);
+            do {
               try (final IoTDBConnection ignored =
                   (IoTDBConnection)
                       DriverManager.getConnection(
@@ -1188,8 +1272,8 @@ public abstract class AbstractEnv implements BaseEnv {
                               + dataNodeEndpoint
                               + getParam(null, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
                           constructConnectionProperties(
-                              System.getProperty("User", "root"),
-                              System.getProperty("Password", "root"),
+                              System.getProperty("User", SessionConfig.DEFAULT_USER),
+                              System.getProperty("Password", SessionConfig.DEFAULT_PASSWORD),
                               TREE_SQL_DIALECT))) {
                 logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
                 return null;
@@ -1197,9 +1281,8 @@ public abstract class AbstractEnv implements BaseEnv {
                 lastException = e;
                 lastConnectionFailures.put(
                     dataNodeEndpoint, e.getClass().getName() + ": " + e.getMessage());
-                TimeUnit.SECONDS.sleep(1L);
               }
-            }
+            } while (waitForNextReadinessCheck(deadlineNanos));
             if (lastException != null) {
               throw lastException;
             }
@@ -1213,8 +1296,12 @@ public abstract class AbstractEnv implements BaseEnv {
       dumpTestJVMSnapshotQuietly("JDBC connection check failed");
       throw new AssertionError(
           String.format(
-              "After %d times retry, JDBC connections to DataNodes are not ready. endpoints=%s, lastConnectionFailures=%s, logDirs=%s",
-              retryCount, endpoints, lastConnectionFailures, getClusterLogDirs()));
+              IntegrationTestEnvMessages
+                  .EXCEPTION_JDBC_CONNECTIONS_TO_DATANODES_ARE_NOT_READY_RETRY_BUDGET_ARG_SECONDS_ENDPOINTS_ARG_LASTCONNECTIONFAILURES_ARG_LOGDIRS_ARG_D822C35C,
+              retryCount,
+              endpoints,
+              lastConnectionFailures,
+              getClusterLogDirs()));
     }
   }
 
@@ -1287,17 +1374,29 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
       throws IOException, InterruptedException {
+    // Previously each ConfigNode incurred a one-second delay in every retry round.
+    return getLeaderConfigNodeConnection(
+        readinessDeadline((long) retryCount * Math.max(1, configNodeWrapperList.size())));
+  }
+
+  private SyncConfigNodeIServiceClient getLeaderConfigNodeConnection(final long deadlineNanos)
+      throws IOException, InterruptedException {
     Exception lastException = null;
     ConfigNodeWrapper lastErrorNode = null;
-    for (int i = 0; i < retryCount; i++) {
+    if (configNodeWrapperList.isEmpty()) {
+      throw new IOException("Empty configNode set");
+    }
+    do {
       for (final ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
+        lastErrorNode = configNodeWrapper;
+        SyncConfigNodeIServiceClient client = null;
+        boolean leaderFound = false;
         try {
           if (!configNodeWrapper.getInstance().isAlive()) {
             throw new IOException("ConfigNode " + configNodeWrapper.getId() + " is not alive");
           }
 
-          lastErrorNode = configNodeWrapper;
-          final SyncConfigNodeIServiceClient client =
+          client =
               clientManager.borrowClient(
                   new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
           final TShowClusterResp resp = client.showCluster();
@@ -1305,10 +1404,9 @@ public abstract class AbstractEnv implements BaseEnv {
           if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             // Only the ConfigNodeClient who connects to the ConfigNode-leader
             // will respond the SUCCESS_STATUS
+            leaderFound = true;
             return client;
           } else {
-            // Return client otherwise
-            client.close();
             throw new Exception(
                 "Bad status: "
                     + resp.getStatus().getCode()
@@ -1317,38 +1415,58 @@ public abstract class AbstractEnv implements BaseEnv {
           }
         } catch (final Exception e) {
           lastException = e;
+        } finally {
+          // The caller owns the leader client; return every failed probe, including RPC failures.
+          if (!leaderFound && client != null) {
+            client.close();
+          }
         }
-
-        // Sleep 1s before next retry
-        TimeUnit.SECONDS.sleep(1);
+        if (deadlineNanos - System.nanoTime() <= 0) {
+          break;
+        }
       }
-    }
-    if (lastErrorNode != null) {
-      throw new IOException(
-          "Failed to get connection to ConfigNode-Leader. Last error configNode: "
-              + lastErrorNode.getIpAndPortString(),
-          lastException);
-    } else {
-      throw new IOException("Empty configNode set");
-    }
+      // Probe all candidates before waiting, so a follower does not delay the next leader probe.
+    } while (waitForNextReadinessCheck(deadlineNanos));
+    throw new IOException(
+        "Failed to get connection to ConfigNode-Leader. Last error configNode: "
+            + lastErrorNode.getIpAndPortString(),
+        lastException);
   }
 
   @Override
   public IConfigNodeRPCService.Iface getConfigNodeConnection(int index) throws Exception {
     Exception lastException = null;
     final ConfigNodeWrapper configNodeWrapper = configNodeWrapperList.get(index);
-    for (int i = 0; i < 30; i++) {
+    final long deadlineNanos = readinessDeadline(30);
+    do {
       try {
         return clientManager.borrowClient(
             new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()));
       } catch (final Exception e) {
         lastException = e;
       }
-      // Sleep 1s before next retry
-      TimeUnit.SECONDS.sleep(1);
-    }
+    } while (waitForNextReadinessCheck(deadlineNanos));
     throw new IOException(
-        "Failed to get connection to this ConfigNode. Last error: " + lastException);
+        String.format(
+            IntegrationTestEnvMessages
+                .EXCEPTION_FAILED_TO_GET_CONNECTION_TO_CONFIGNODE_ARG_DF03F50F,
+            configNodeWrapper.getIpAndPortString()),
+        lastException);
+  }
+
+  private static long readinessDeadline(final long timeoutSeconds) {
+    return System.nanoTime() + TimeUnit.SECONDS.toNanos(timeoutSeconds);
+  }
+
+  private static boolean waitForNextReadinessCheck(final long deadlineNanos)
+      throws InterruptedException {
+    final long remainingNanos = deadlineNanos - System.nanoTime();
+    if (remainingNanos <= 0) {
+      return false;
+    }
+    // Keep the network timeout independent: the deadline bounds retries, not an in-flight RPC.
+    TimeUnit.NANOSECONDS.sleep(Math.min(READINESS_RETRY_INTERVAL_NANOS, remainingNanos));
+    return deadlineNanos - System.nanoTime() > 0;
   }
 
   @Override
@@ -1607,12 +1725,14 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public void shutdownDataNode(final int index) {
-    dataNodeWrapperList.get(index).stop();
+    dataNodeWrapperList.get(index).stop(DATA_NODE_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
   @Override
   public void shutdownAllDataNodes() {
-    dataNodeWrapperList.forEach(AbstractNodeWrapper::stop);
+    dataNodeWrapperList.forEach(
+        dataNodeWrapper ->
+            dataNodeWrapper.stop(DATA_NODE_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS));
   }
 
   @Override

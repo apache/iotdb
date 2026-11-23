@@ -266,14 +266,14 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
   private static AlignedWritableMemChunk[] createMemChunks(Scenario scenario, int count) {
     AlignedWritableMemChunk[] memChunks = new AlignedWritableMemChunk[count];
     for (int i = 0; i < count; i++) {
-      memChunks[i] = new AlignedWritableMemChunk(new ArrayList<>(scenario.schemas), false);
+      memChunks[i] = new AlignedWritableMemChunk(new ArrayList<>(scenario.schemas));
     }
     return memChunks;
   }
 
   private static AccountingTarget createAccountingTarget(Scenario scenario) {
     AlignedWritableMemChunk memChunk =
-        new AlignedWritableMemChunk(new ArrayList<>(scenario.schemas), false);
+        new AlignedWritableMemChunk(new ArrayList<>(scenario.schemas));
     memChunk.writeAlignedTablet(
         scenario.times,
         scenario.columns,
@@ -289,8 +289,7 @@ public class AlignedBitmapMemoryAccountingPerformanceTest {
             "0",
             Collections.singletonMap(
                 deviceId,
-                new AlignedWritableMemChunkGroup(
-                    memChunk, new ArrayList<>(scenario.schemas), false)));
+                new AlignedWritableMemChunkGroup(memChunk, new ArrayList<>(scenario.schemas))));
     return new AccountingTarget(memTable, deviceId);
   }
 

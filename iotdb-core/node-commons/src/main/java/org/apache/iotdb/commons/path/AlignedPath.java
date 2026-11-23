@@ -377,14 +377,14 @@ public class AlignedPath extends PartialPath {
     PartialPath partialPath = PartialPath.deserialize(byteBuffer);
     AlignedPath alignedPath = new AlignedPath();
     int measurementSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> measurements = new ArrayList<>();
+    List<String> measurements = new ArrayList<>(measurementSize);
     for (int i = 0; i < measurementSize; i++) {
       measurements.add(ReadWriteIOUtils.readString(byteBuffer));
     }
     int measurementSchemaSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<IMeasurementSchema> measurementSchemas = null;
     if (measurementSchemaSize != -1) {
-      measurementSchemas = new ArrayList<>();
+      measurementSchemas = new ArrayList<>(measurementSchemaSize);
       for (int i = 0; i < measurementSchemaSize; i++) {
         byte type = ReadWriteIOUtils.readByte(byteBuffer);
         if (type == 0) {

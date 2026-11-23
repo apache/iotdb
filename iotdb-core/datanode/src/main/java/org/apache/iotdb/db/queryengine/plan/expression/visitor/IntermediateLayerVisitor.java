@@ -428,7 +428,8 @@ public class IntermediateLayerVisitor
 
   private IntermediateLayer constructUdfInputIntermediateLayer(
       FunctionExpression functionExpression, IntermediateLayerVisitorContext context) {
-    List<IntermediateLayer> intermediateLayers = new ArrayList<>();
+    List<IntermediateLayer> intermediateLayers =
+        new ArrayList<>(functionExpression.getExpressions().size());
     for (Expression expression : functionExpression.getExpressions()) {
       intermediateLayers.add(this.process(expression, context));
     }

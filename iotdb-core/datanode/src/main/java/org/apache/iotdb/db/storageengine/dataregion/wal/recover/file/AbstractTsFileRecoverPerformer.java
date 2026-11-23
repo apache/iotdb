@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -38,6 +40,11 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 
 /** This class is used to help recover TsFile. */
 public abstract class AbstractTsFileRecoverPerformer implements Closeable {
@@ -63,6 +70,8 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
    */
   protected void recoverWithWriter() throws DataRegionException, IOException {
     File tsFile = tsFileResource.getTsFile();
+    boolean reinitialize =
+        tsFile.exists() && !tsFileResource.resourceFileExists() && hasNoPersistedData(tsFile);
     File chunkMetadataTempFile =
         new File(tsFile.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX);
     if (chunkMetadataTempFile.exists()) {
@@ -82,8 +91,11 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
     }
 
     writer =
-        new RestorableTsFileIOWriter(
-            tsFile, EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFile.getAbsolutePath()));
+        reinitialize
+            ? reinitializeWriter(tsFile)
+            : new RestorableTsFileIOWriter(
+                tsFile,
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFile.getAbsolutePath()));
     if (writer.hasCrashed()) {
       byte versionNumber;
       try (TsFileSequenceReader sequenceReader =
@@ -100,12 +112,49 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
         writer.close();
         org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(tsFile);
         writer =
-            new RestorableTsFileIOWriter(
+            EncryptDBUtils.createRestorableWriterForNewFile(
                 tsFile,
+                tsFileResource.getDatabaseName(),
                 EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFile.getAbsolutePath()));
       }
     } else {
       reconstructResourceFile();
+    }
+  }
+
+  private static boolean hasNoPersistedData(File file) throws IOException {
+    byte[] magic = TSFileConfig.MAGIC_STRING.getBytes(StandardCharsets.UTF_8);
+    try (FileChannel input = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
+      if (input.size() == 0) {
+        return true;
+      }
+      if (input.size() != magic.length + Byte.BYTES) {
+        return false;
+      }
+      byte[] expected = Arrays.copyOf(magic, magic.length + Byte.BYTES);
+      expected[magic.length] = TSFileConfig.VERSION_NUMBER;
+      ByteBuffer header = ByteBuffer.allocate(expected.length);
+      IOUtils.readFully(input, header);
+      return Arrays.equals(expected, header.array());
+    }
+  }
+
+  private RestorableTsFileIOWriter reinitializeWriter(File file) throws IOException {
+    // Resolve the new-file policy before modifying even a header-only file.
+    EncryptParameter parameter =
+        EncryptDBUtils.createEncryptParameterForNewFile(
+            file,
+            tsFileResource.getDatabaseName(),
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(file.getAbsolutePath()));
+    try {
+      try (FileChannel output = FileChannel.open(file.toPath(), StandardOpenOption.WRITE)) {
+        output.truncate(0);
+      }
+      return new RestorableTsFileIOWriter(file, parameter);
+    } finally {
+      if (parameter != null && parameter.isTdePageAead()) {
+        parameter.close();
+      }
     }
   }
 

@@ -43,9 +43,8 @@ public class TElasticFramedTransport extends TTransport {
   public static class Factory extends TTransportFactory {
 
     /**
-     * It is used to prevent the size of the parsing package from being too large and allocating the
-     * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
-     * reading.
+     * Maximum size of a frame on the wire. Uncompressed writes are checked before buffering;
+     * compressed writes are checked after compression.
      */
     protected final int thriftMaxFrameSize;
 
@@ -87,16 +86,55 @@ public class TElasticFramedTransport extends TTransport {
       int thriftMaxFrameSize,
       boolean copyBinary)
       throws TTransportException {
+    this(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary, Integer.MAX_VALUE);
+  }
+
+  protected TElasticFramedTransport(
+      TTransport underlying,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean copyBinary,
+      int maxReusableBufferSize)
+      throws TTransportException {
     this.underlying = underlying;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.copyBinary = copyBinary;
+    alignUnderlyingConfiguration();
     try {
-      readBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
-      writeBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
+      readBuffer =
+          new AutoScalingBufferReadTransport(thriftDefaultBufferSize, maxReusableBufferSize);
+      writeBuffer =
+          new AutoScalingBufferWriteTransport(
+              Math.min(
+                  thriftDefaultBufferSize,
+                  Math.min(thriftMaxFrameSize, AutoResizingBuffer.MAX_ARRAY_SIZE)),
+              maxReusableBufferSize);
     } catch (IOException e) {
       closeAllocatedBuffers();
       throw new TTransportException(e);
+    }
+  }
+
+  private void alignUnderlyingConfiguration() throws TTransportException {
+    TConfiguration configuration = underlying.getConfiguration();
+    if (configuration == null) {
+      return;
+    }
+    long maxMessageSize = (long) thriftMaxFrameSize + Integer.BYTES;
+    if (maxMessageSize > Integer.MAX_VALUE) {
+      throw new TTransportException(
+          TTransportException.MESSAGE_SIZE_LIMIT,
+          String.format(
+              RpcMessages
+                  .EXCEPTION_FRAME_SIZE_ARG_EXCEEDS_THE_MAXIMUM_SUPPORTED_MESSAGE_SIZE_E83C0952,
+              thriftMaxFrameSize));
+    }
+    if (configuration.getMaxFrameSize() < thriftMaxFrameSize) {
+      configuration.setMaxFrameSize(thriftMaxFrameSize);
+    }
+    if (configuration.getMaxMessageSize() < maxMessageSize) {
+      configuration.setMaxMessageSize((int) maxMessageSize);
     }
   }
 
@@ -194,10 +232,14 @@ public class TElasticFramedTransport extends TTransport {
   }
 
   protected void readFrame() throws TTransportException {
+    // Discard the previous frame's budget before reading the next frame header and payload.
+    resetMessageSizeAndConsumedBytes();
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
     validateFrame(size);
     readBuffer.fill(underlying, size);
+    // Bind subsequent protocol reads to the current frame size.
+    resetMessageSizeAndConsumedBytes(size);
   }
 
   protected void validateFrame(int size) throws TTransportException {
@@ -245,7 +287,9 @@ public class TElasticFramedTransport extends TTransport {
     TLS_REQUEST(RpcMessages.FRAME_ERROR_TLS_REQUEST),
     NEGATIVE_FRAME_SIZE(RpcMessages.FRAME_ERROR_NEGATIVE_FRAME_SIZE),
     FRAME_SIZE_EXCEEDED(RpcMessages.FRAME_ERROR_FRAME_SIZE_EXCEEDED),
-    STRING_LENGTH_EXCEEDED(RpcMessages.FRAME_ERROR_STRING_LENGTH_EXCEEDED);
+    STRING_LENGTH_EXCEEDED(RpcMessages.FRAME_ERROR_STRING_LENGTH_EXCEEDED),
+    INSUFFICIENT_FRAME_DATA(
+        RpcMessages.EXCEPTION_REQUIRED_READ_SIZE_ARG_EXCEEDS_REMAINING_FRAME_SIZE_ARG_ARG_9C0541EE);
 
     private final String messageFormat;
 
@@ -255,7 +299,9 @@ public class TElasticFramedTransport extends TTransport {
 
     void throwException(long size, String remoteInfo, int maxSize) throws TTransportException {
       String message =
-          (this == FRAME_SIZE_EXCEEDED || this == STRING_LENGTH_EXCEEDED)
+          (this == FRAME_SIZE_EXCEEDED
+                  || this == STRING_LENGTH_EXCEEDED
+                  || this == INSUFFICIENT_FRAME_DATA)
               ? String.format(messageFormat, size, maxSize, remoteInfo)
               : String.format(messageFormat, size, remoteInfo);
       throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
@@ -285,13 +331,10 @@ public class TElasticFramedTransport extends TTransport {
     TFramedTransport.encodeFrameSize(length, i32buf);
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuffer(), 0, length);
-    writeBuffer.reset();
-    if (length > thriftDefaultBufferSize) {
-      try {
-        writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
-      } catch (IOException e) {
-        throw new TTransportException(e);
-      }
+    try {
+      writeBuffer.resetAndResize();
+    } catch (IOException e) {
+      throw new TTransportException(e);
     }
     underlying.flush();
   }
@@ -308,23 +351,85 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void checkReadBytesAvailable(long numBytes) throws TTransportException {
+    // RPC messages are flushed as complete frames. Container checks pass their minimum encoded
+    // size here, before generated code allocates the container. Compare it with actual buffered
+    // data, not just the configured frame cap. Use readBuffer directly because copyBinary makes
+    // this transport's getBytesRemainingInBuffer() return -1.
+    int remaining = readBuffer.getBytesRemainingInBuffer();
+    FrameError error;
+    int limit;
     if (numBytes >= thriftMaxFrameSize) {
-      SocketAddress remoteAddress = null;
-      if (underlying instanceof TSocket) {
-        remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
-      }
-      String remoteInfo =
-          (remoteAddress == null)
-              ? RpcMessages.EMPTY_MESSAGE
-              : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress;
-      close();
-      FrameError.STRING_LENGTH_EXCEEDED.throwException(numBytes, remoteInfo, thriftMaxFrameSize);
+      error = FrameError.STRING_LENGTH_EXCEEDED;
+      limit = thriftMaxFrameSize;
+    } else if (numBytes > remaining) {
+      error = FrameError.INSUFFICIENT_FRAME_DATA;
+      limit = remaining;
+    } else {
+      return;
     }
+    SocketAddress remoteAddress = null;
+    if (underlying instanceof TSocket) {
+      remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+    }
+    String remoteInfo =
+        (remoteAddress == null)
+            ? RpcMessages.EMPTY_MESSAGE
+            : RpcMessages.REMOTE_ADDRESS_PREFIX + remoteAddress;
+    close();
+    error.throwException(numBytes, remoteInfo, limit);
+  }
+
+  @Override
+  public void resetMessageSizeAndConsumedBytes(long newSize) throws TTransportException {
+    underlying.resetMessageSizeAndConsumedBytes(newSize);
   }
 
   @Override
   public void write(byte[] buf, int off, int len) throws TTransportException {
-    writeBuffer.write(buf, off, len);
+    if (writeBuffer.tryWriteWithinCapacity(buf, off, len)) {
+      return;
+    }
+    long size = (long) writeBuffer.getPos() + len;
+    int maxSize = getMaxWriteBufferSize();
+    if (size > maxSize) {
+      // Thrift serializes the whole request before flush. Reject it before growing the buffer so
+      // an oversized request cannot keep allocating and retain the caller's query memory.
+      // TSocket.close() clears its socket, so retain the destination before invalidating it.
+      SocketAddress remoteAddress = null;
+      if (underlying instanceof TSocket socket && socket.getSocket() != null) {
+        remoteAddress = socket.getSocket().getRemoteSocketAddress();
+      }
+      close();
+      String message;
+      if (remoteAddress == null) {
+        message =
+            String.format(
+                maxSize == AutoResizingBuffer.MAX_ARRAY_SIZE
+                    ? RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_E21E05CA
+                    : RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_1CDD4BB9,
+                size,
+                maxSize);
+      } else {
+        message =
+            String.format(
+                maxSize == AutoResizingBuffer.MAX_ARRAY_SIZE
+                    ? RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_TO_ARG_6F166F0C
+                    : RpcMessages
+                        .EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_TO_ARG_7EF64898,
+                size,
+                maxSize,
+                remoteAddress);
+      }
+      throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
+    }
+    writeBuffer.write(buf, off, len, maxSize);
+  }
+
+  protected int getMaxWriteBufferSize() {
+    return Math.min(thriftMaxFrameSize, AutoResizingBuffer.MAX_ARRAY_SIZE);
   }
 
   public TTransport getSocket() {

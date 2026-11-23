@@ -78,7 +78,8 @@ public class ClusterQuotaManager {
     if (!checkSpaceQuota(req)) {
       return RpcUtils.getStatus(
           TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
-          "The used quota exceeds the preset quota. Please set a larger value.");
+          ManagerMessages
+              .EXCEPTION_THE_USED_QUOTA_EXCEEDS_THE_PRESET_QUOTA_PLEASE_SET_A_LARGER_VALUE_2AAE5636);
     }
     // TODO: Datanode failed to receive rpc
     try {
@@ -272,11 +273,10 @@ public class ClusterQuotaManager {
           .forEach(
               schemaRegionId -> {
                 if (deviceNum.containsKey(schemaRegionId)) {
-                  deviceCount.addAndGet(deviceCount.get() + deviceNum.get(schemaRegionId));
+                  deviceCount.addAndGet(deviceNum.get(schemaRegionId));
                 }
                 if (timeSeriesNum.containsKey(schemaRegionId)) {
-                  timeSeriesCount.addAndGet(
-                      timeSeriesCount.get() + timeSeriesNum.get(schemaRegionId));
+                  timeSeriesCount.addAndGet(timeSeriesNum.get(schemaRegionId));
                 }
               });
       quotaInfo.getSpaceQuotaUsage().get(entry.getKey()).setDeviceNum(deviceCount.get());

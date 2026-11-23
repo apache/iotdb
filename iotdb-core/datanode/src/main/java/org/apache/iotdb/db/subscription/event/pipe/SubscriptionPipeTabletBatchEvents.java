@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.event.pipe;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletIterationSnapshot;
 
@@ -54,8 +55,13 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
   @Override
   public void cleanUp(final boolean force) {
     batch.cleanUp(force);
+    cleanUpIterationSnapshot();
+  }
+
+  public void cleanUpIterationSnapshot() {
     if (Objects.nonNull(iterationSnapshot)) {
       iterationSnapshot.cleanUp();
+      iterationSnapshot = null;
     }
   }
 
@@ -85,7 +91,9 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
             .collect(Collectors.toList());
     if (enrichedEvents.size() > threshold) {
       eventMessageList.add(
-          String.format("omit the remaining %s event(s)...", enrichedEvents.size() - threshold));
+          String.format(
+              DataNodePipeMessages.MESSAGE_OMIT_THE_REMAINING_ARG_EVENT_S_E57A9B74,
+              enrichedEvents.size() - threshold));
     }
     return eventMessageList.toString();
   }

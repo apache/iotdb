@@ -88,7 +88,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
-  private static final String CONNECTERROR = "Failed to connect to config node.";
+  private static final String CONNECTERROR =
+      DataNodeMiscMessages.EXCEPTION_FAILED_TO_CONNECT_TO_CONFIG_NODE_DE88B1B7;
 
   public ClusterAuthorityFetcher(IAuthorCache iAuthorCache) {
     this.iAuthorCache = iAuthorCache;
@@ -532,16 +533,22 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         if (useEncryptedPassword) {
           return password.equals(user.getPassword())
               ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
-              : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+              : RpcUtils.getStatus(
+                  TSStatusCode.WRONG_LOGIN_PASSWORD,
+                  DataNodeMiscMessages.EXCEPTION_AUTHENTICATION_FAILED_802B207B);
         } else {
           return AuthUtils.validatePassword(password, user.getPassword())
                   || AuthUtils.validatePassword(
                       password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)
               ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
-              : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+              : RpcUtils.getStatus(
+                  TSStatusCode.WRONG_LOGIN_PASSWORD,
+                  DataNodeMiscMessages.EXCEPTION_AUTHENTICATION_FAILED_802B207B);
         }
       } else {
-        return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+        return RpcUtils.getStatus(
+            TSStatusCode.WRONG_LOGIN_PASSWORD,
+            DataNodeMiscMessages.EXCEPTION_AUTHENTICATION_FAILED_802B207B);
       }
     } else {
       TLoginReq req =

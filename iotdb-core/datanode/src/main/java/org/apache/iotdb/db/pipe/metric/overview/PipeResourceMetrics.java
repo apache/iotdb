@@ -29,8 +29,15 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeResourceMetrics implements IMetricSet {
 
@@ -44,6 +51,27 @@ public class PipeResourceMetrics implements IMetricSet {
   private static final String PIPE_TOTAL_MEMORY = "PipeTotalMemory";
 
   private Counter diskIOCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private volatile Counter tsFileParserAdmissionRejectCounter =
+      DoNothingMetricManager.DO_NOTHING_COUNTER;
+
+  public enum TsFileParserAdmissionRejectReason {
+    CAP("cap"),
+    MEMORY("memory"),
+    FAIRNESS("fairness");
+
+    private final String tag;
+
+    TsFileParserAdmissionRejectReason(final String tag) {
+      this.tag = tag;
+    }
+  }
+
+  // Replaced as a whole on bind/unbind; the published map is never modified.
+  private final AtomicReference<Map<TsFileParserAdmissionRejectReason, Counter>>
+      tsFileParserAdmissionRejectCounters = new AtomicReference<>(Collections.emptyMap());
+  private volatile Counter tsFileParserAdmissionYieldCounter =
+      DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private volatile Timer tsFileParserAdmissionWaitTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private static final String PIPE_FLOATING_MEMORY = "PipeFloatingMemory";
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
@@ -103,6 +131,38 @@ public class PipeResourceMetrics implements IMetricSet {
     diskIOCounter =
         metricService.getOrCreateCounter(
             Metric.PIPE_TSFILE_SEND_DISK_IO.toString(), MetricLevel.IMPORTANT);
+    final Map<TsFileParserAdmissionRejectReason, Counter> rejectCounters =
+        new EnumMap<>(TsFileParserAdmissionRejectReason.class);
+    tsFileParserAdmissionRejectCounter =
+        metricService.getOrCreateCounter(
+            Metric.PIPE_TSFILE_PARSER_ADMISSION_REJECT.toString(), MetricLevel.IMPORTANT);
+    for (final TsFileParserAdmissionRejectReason reason :
+        TsFileParserAdmissionRejectReason.values()) {
+      rejectCounters.put(
+          reason,
+          metricService.getOrCreateCounter(
+              Metric.PIPE_TSFILE_PARSER_ADMISSION_REJECT_REASON.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.REASON.toString(),
+              reason.tag));
+    }
+    tsFileParserAdmissionRejectCounters.set(Collections.unmodifiableMap(rejectCounters));
+    tsFileParserAdmissionYieldCounter =
+        metricService.getOrCreateCounter(
+            Metric.PIPE_TSFILE_PARSER_ADMISSION_YIELD.toString(), MetricLevel.IMPORTANT);
+    tsFileParserAdmissionWaitTimer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_TSFILE_PARSER_ADMISSION_WAIT.toString(), MetricLevel.IMPORTANT);
+    metricService.createAutoGauge(
+        Metric.PIPE_TSFILE_PARSER_IN_FLIGHT.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.memory(),
+        PipeMemoryManager::getReservedTsFileParserCount);
+    metricService.createAutoGauge(
+        Metric.PIPE_TSFILE_PARSER_WAITING.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.memory(),
+        PipeMemoryManager::getWaitingTsFileParserCount);
   }
 
   @Override
@@ -139,10 +199,43 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
 
     metricService.remove(MetricType.COUNTER, Metric.PIPE_TSFILE_SEND_DISK_IO.toString());
+    metricService.remove(MetricType.COUNTER, Metric.PIPE_TSFILE_PARSER_ADMISSION_REJECT.toString());
+    for (final TsFileParserAdmissionRejectReason reason :
+        TsFileParserAdmissionRejectReason.values()) {
+      metricService.remove(
+          MetricType.COUNTER,
+          Metric.PIPE_TSFILE_PARSER_ADMISSION_REJECT_REASON.toString(),
+          Tag.REASON.toString(),
+          reason.tag);
+    }
+    metricService.remove(MetricType.COUNTER, Metric.PIPE_TSFILE_PARSER_ADMISSION_YIELD.toString());
+    metricService.remove(MetricType.TIMER, Metric.PIPE_TSFILE_PARSER_ADMISSION_WAIT.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_TSFILE_PARSER_IN_FLIGHT.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_TSFILE_PARSER_WAITING.toString());
+    tsFileParserAdmissionRejectCounters.set(Collections.emptyMap());
+    tsFileParserAdmissionRejectCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    tsFileParserAdmissionYieldCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    tsFileParserAdmissionWaitTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   }
 
   public void recordDiskIO(final long bytes) {
     diskIOCounter.inc(bytes);
+  }
+
+  public void recordTsFileParserAdmissionReject(final TsFileParserAdmissionRejectReason reason) {
+    tsFileParserAdmissionRejectCounter.inc();
+    tsFileParserAdmissionRejectCounters
+        .get()
+        .getOrDefault(reason, DoNothingMetricManager.DO_NOTHING_COUNTER)
+        .inc();
+  }
+
+  public void recordTsFileParserAdmissionYield() {
+    tsFileParserAdmissionYieldCounter.inc();
+  }
+
+  public void recordTsFileParserAdmissionWait(final long waitTimeInNanos) {
+    tsFileParserAdmissionWaitTimer.update(waitTimeInNanos, TimeUnit.NANOSECONDS);
   }
 
   //////////////////////////// singleton ////////////////////////////

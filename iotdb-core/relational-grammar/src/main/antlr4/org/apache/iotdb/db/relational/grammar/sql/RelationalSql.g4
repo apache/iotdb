@@ -102,6 +102,7 @@ statement
     | dropPipeStatement
     | startPipeStatement
     | stopPipeStatement
+    | showPipeMemoryStatement
     | showPipesStatement
     | showReceiversStatement
     | showCreatePipeStatement
@@ -526,6 +527,10 @@ stopPipeStatement
 
 showPipesStatement
     : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
+    ;
+
+showPipeMemoryStatement
+    : SHOW PIPE MEMORY
     ;
 
 showReceiversStatement
@@ -963,8 +968,8 @@ copyToStatementOption
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
-    | EXPLAIN ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explain
-    | EXPLAIN ANALYZE VERBOSE? ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explainAnalyze
+    | EXPLAIN ('(' FORMAT identifier ')')? (query | copyToStatement | executeStatement | executeImmediateStatement) #explain
+    | EXPLAIN ANALYZE VERBOSE? ('(' FORMAT identifier ')')? (query | copyToStatement | executeStatement | executeImmediateStatement) #explainAnalyze
     ;
 
 query
@@ -1297,6 +1302,7 @@ primaryExpression
     | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
     | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
+    | INTEGRAL '(' setQuantifier? expression ',' timeDuration (',' expression)? ')' over? #integralCall
     | '(' expression ')'                                                                  #parenthesizedExpression
     ;
 
@@ -1522,11 +1528,11 @@ nonReserved
     | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORCEDLY | FORMAT | FUNCTION | FUNCTIONS
     | GRACE | GRANT | GRANTED | GRANTS | GRAPHVIZ | GROUPS
     | HOUR | HYPERPARAMETERS
-    | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
+    | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTEGRAL | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
-    | MANAGE_ROLE | MANAGE_USER | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | MEMORY_THRESHOLD | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODEL | MODELS | MODIFY | MONTH
+    | MANAGE_ROLE | MANAGE_USER | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | MEMORY | MEMORY_THRESHOLD | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODEL | MODELS | MODIFY | MONTH
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
@@ -1700,6 +1706,7 @@ INNER: 'INNER';
 INPUT: 'INPUT';
 INSERT: 'INSERT';
 INTERSECT: 'INTERSECT';
+INTEGRAL: 'INTEGRAL';
 INTERVAL: 'INTERVAL';
 INTO: 'INTO';
 INVOKER: 'INVOKER';
@@ -1747,6 +1754,7 @@ MATCHES: 'MATCHES';
 MATCH_RECOGNIZE: 'MATCH_RECOGNIZE';
 MATERIALIZED: 'MATERIALIZED';
 MEASURES: 'MEASURES';
+MEMORY: 'MEMORY';
 MEMORY_THRESHOLD: 'MEMORY_THRESHOLD';
 METHOD: 'METHOD';
 MERGE: 'MERGE';

@@ -55,7 +55,7 @@ ddlStatement
     // ExternalService
     | createService | startService | stopService | dropService | showService
     // Pipe Task
-    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes | showReceivers
+    | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipeMemory | showPipes | showReceivers
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
@@ -97,6 +97,7 @@ utilityStatement
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
     | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
     | repairDataPartitionTable | showRepairDataPartitionTableProgress
+    | showDeleteTimeSeriesProgress
     ;
 
 /**
@@ -702,6 +703,10 @@ showPipes
     : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE (CONNECTOR | SINK) USED BY pipeName=identifier)?)
     ;
 
+showPipeMemory
+    : SHOW PIPE MEMORY
+    ;
+
 showReceivers
     : SHOW RECEIVERS
     ;
@@ -1291,6 +1296,10 @@ repairDataPartitionTable
 // Show Repair Data Partition Table Progress
 showRepairDataPartitionTableProgress
     : SHOW REPAIR DATA PARTITION TABLE PROGRESS
+    ;
+
+showDeleteTimeSeriesProgress
+    : SHOW DELETE TIMESERIES PROGRESS
     ;
 
 // Explain

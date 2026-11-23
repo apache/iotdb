@@ -37,9 +37,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -54,22 +54,25 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE_BIN
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBDatabaseSetAndDeleteIT {
 
-  @Before
-  public void setUp() throws Exception {
+  // Each scenario owns a separate database prefix so the cluster can be reused across methods.
+  @BeforeClass
+  public static void setUp() throws Exception {
     // Init 1C1D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // Exact and wildcard lookups return default/custom settings; duplicate registration fails and
+  // later queries reflect replication-factor and partition-interval updates.
   @Test
   public void testSetAndQueryDatabase() throws Exception {
     TSStatus status;
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
+    final String sg0 = "root.query0";
+    final String sg1 = "root.query1";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -90,7 +93,7 @@ public class IoTDBDatabaseSetAndDeleteIT {
       // test count all Databases
       TCountDatabaseResp countResp =
           client.countMatchedDatabases(
-              new TGetDatabaseReq(Arrays.asList("root", "sg*"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "query*"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(2, countResp.getCount());
@@ -98,7 +101,7 @@ public class IoTDBDatabaseSetAndDeleteIT {
       // test count one Database
       countResp =
           client.countMatchedDatabases(
-              new TGetDatabaseReq(Arrays.asList("root", "sg0"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "query0"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(1, countResp.getCount());
@@ -106,7 +109,7 @@ public class IoTDBDatabaseSetAndDeleteIT {
       // test query all DatabaseSchemas
       TDatabaseSchemaResp getResp =
           client.getMatchedDatabaseSchemas(
-              new TGetDatabaseReq(Arrays.asList("root", "sg*"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "query*"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
       Map<String, TDatabaseSchema> schemaMap = getResp.getDatabaseSchemaMap();
@@ -144,7 +147,7 @@ public class IoTDBDatabaseSetAndDeleteIT {
       // test setter results
       getResp =
           client.getMatchedDatabaseSchemas(
-              new TGetDatabaseReq(Arrays.asList("root", "sg1"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "query1"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
       schemaMap = getResp.getDatabaseSchemaMap();
@@ -158,11 +161,12 @@ public class IoTDBDatabaseSetAndDeleteIT {
     }
   }
 
+  // Delete two registered databases and verify that no schema remains under their database prefix.
   @Test
   public void testDeleteDatabase() throws Exception {
     TSStatus status;
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
+    final String sg0 = "root.delete0";
+    final String sg1 = "root.delete1";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -180,7 +184,7 @@ public class IoTDBDatabaseSetAndDeleteIT {
       TSStatus deleteSgStatus = client.deleteDatabases(deleteDatabasesReq);
       TDatabaseSchemaResp root =
           client.getMatchedDatabaseSchemas(
-              new TGetDatabaseReq(Arrays.asList("root", "sg*"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "delete*"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertTrue(root.getDatabaseSchemaMap().isEmpty());
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), deleteSgStatus.getCode());
     }

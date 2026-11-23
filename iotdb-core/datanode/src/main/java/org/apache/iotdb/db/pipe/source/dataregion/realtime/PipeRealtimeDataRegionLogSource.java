@@ -117,6 +117,7 @@ public class PipeRealtimeDataRegionLogSource extends PipeRealtimeDataRegionSourc
                 DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
                 realtimeEvent.getEvent());
         LOGGER.error(errorMessage);
+        markDataRegionCompletionInvalid();
         PipeDataNodeAgent.runtime()
             .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }

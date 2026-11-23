@@ -54,6 +54,7 @@ import org.apache.iotdb.consensus.iotconsensusv2.thrift.TWaitReleaseAllRegionRel
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ReplicateProgressManager;
 import org.apache.iotdb.consensus.pipe.metric.IoTConsensusV2ServerMetrics;
+import org.apache.iotdb.consensus.pipe.metric.IoTConsensusV2SyncLagManager;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -122,12 +123,16 @@ public class IoTConsensusV2ServerImpl {
 
   public synchronized void stop() {
     MetricService.getInstance().removeMetricSet(this.iotConsensusV2ServerMetrics);
+    // Release it here rather than when unbinding the metrics, which also happens when the metric
+    // service restarts
+    IoTConsensusV2SyncLagManager.release(consensusGroupId);
     stateMachine.stop();
     isStarted.set(false);
   }
 
   public synchronized void clear() {
     MetricService.getInstance().removeMetricSet(this.iotConsensusV2ServerMetrics);
+    IoTConsensusV2SyncLagManager.release(consensusGroupId);
     peerManager.clear();
     stateMachine.stop();
     isStarted.set(false);

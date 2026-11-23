@@ -26,8 +26,41 @@ import java.util.function.LongUnaryOperator;
 
 public abstract class PipeFixedMemoryBlock extends PipeMemoryBlock {
 
-  public PipeFixedMemoryBlock(long memoryUsageInBytes) {
-    super(memoryUsageInBytes);
+  public PipeFixedMemoryBlock(final String name, final long memoryUsageInBytes) {
+    super(name, memoryUsageInBytes);
+  }
+
+  PipeFixedMemoryBlock(
+      final String name, final long memoryUsageInBytes, final long maxMemorySizeInBytes) {
+    super(name, memoryUsageInBytes, maxMemorySizeInBytes);
+  }
+
+  PipeFixedMemoryBlock(
+      final PipeMemoryManager pipeMemoryManager,
+      final String name,
+      final long memoryUsageInBytes,
+      final PipeMemoryBlockCategory category,
+      final String assigner,
+      final PipeMemoryBlock parent) {
+    this(pipeMemoryManager, name, memoryUsageInBytes, category, assigner, parent, -1);
+  }
+
+  PipeFixedMemoryBlock(
+      final PipeMemoryManager pipeMemoryManager,
+      final String name,
+      final long memoryUsageInBytes,
+      final PipeMemoryBlockCategory category,
+      final String assigner,
+      final PipeMemoryBlock parent,
+      final long maxMemorySizeInBytes) {
+    super(
+        pipeMemoryManager,
+        name,
+        memoryUsageInBytes,
+        category,
+        assigner,
+        parent,
+        maxMemorySizeInBytes);
   }
 
   @Override

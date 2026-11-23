@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
@@ -32,7 +32,6 @@ import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Arrays;
 
@@ -73,35 +72,12 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     this.times = new long[rowLimit];
     this.columns = new Object[this.measurements.length];
     for (int i = 0; i < this.measurements.length; i++) {
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          columns[i] = new boolean[rowLimit];
-          break;
-        case INT32:
-        case DATE:
-          columns[i] = new int[rowLimit];
-          break;
-        case INT64:
-        case TIMESTAMP:
-          columns[i] = new long[rowLimit];
-          break;
-        case FLOAT:
-          columns[i] = new float[rowLimit];
-          break;
-        case DOUBLE:
-          columns[i] = new double[rowLimit];
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-          columns[i] = new Binary[rowLimit];
-          Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  DataNodeQueryMessages.QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
-                  dataTypes[i]));
+      columns[i] =
+          TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
+              .call(Type.fromTsDataType(dataTypes[i]))
+              .apply(rowLimit);
+      if (dataTypes[i].isBinary()) {
+        Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
       }
     }
     this.bitMaps = new BitMap[this.measurements.length];
@@ -127,35 +103,12 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
       times = Arrays.copyOf(times, rowCount);
       for (int i = 0; i < columns.length; i++) {
         bitMaps[i] = bitMaps[i].getRegion(0, rowCount);
-        switch (dataTypes[i]) {
-          case BOOLEAN:
-            columns[i] = Arrays.copyOf((boolean[]) columns[i], rowCount);
-            break;
-          case INT32:
-          case DATE:
-            columns[i] = Arrays.copyOf((int[]) columns[i], rowCount);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            columns[i] = Arrays.copyOf((long[]) columns[i], rowCount);
-            break;
-          case FLOAT:
-            columns[i] = Arrays.copyOf((float[]) columns[i], rowCount);
-            break;
-          case DOUBLE:
-            columns[i] = Arrays.copyOf((double[]) columns[i], rowCount);
-            break;
-          case TEXT:
-          case STRING:
-          case BLOB:
-            columns[i] = Arrays.copyOf((Binary[]) columns[i], rowCount);
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(
-                    DataNodeQueryMessages.QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
-                    dataTypes[i]));
-        }
+        Object copiedColumn =
+            TypeServices.StorageEngine.PRIMITIVE_ARRAY_ALLOCATOR_SERVICE
+                .call(Type.fromTsDataType(dataTypes[i]))
+                .apply(rowCount);
+        System.arraycopy(columns[i], 0, copiedColumn, 0, rowCount);
+        columns[i] = copiedColumn;
       }
     }
 
@@ -199,36 +152,9 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
       TSDataType dataType,
       Type sourceTypeConvertor,
       int rowIndex) {
-    switch (dataType) {
-      case INT32:
-      case DATE:
-        ((int[]) columns)[rowCount] = sourceTypeConvertor.getInt(valueColumn, rowIndex);
-        break;
-      case INT64:
-      case TIMESTAMP:
-        ((long[]) columns)[rowCount] = sourceTypeConvertor.getLong(valueColumn, rowIndex);
-        break;
-      case FLOAT:
-        ((float[]) columns)[rowCount] = sourceTypeConvertor.getFloat(valueColumn, rowIndex);
-        break;
-      case DOUBLE:
-        ((double[]) columns)[rowCount] = sourceTypeConvertor.getDouble(valueColumn, rowIndex);
-        break;
-      case BOOLEAN:
-        ((boolean[]) columns)[rowCount] = sourceTypeConvertor.getBoolean(valueColumn, rowIndex);
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        ((Binary[]) columns)[rowCount] = sourceTypeConvertor.getBinary(valueColumn, rowIndex);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(
-                DataNodeQueryMessages
-                    .QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC,
-                valueColumn.getDataType()));
-    }
+    TypeServices.StorageEngine.SOURCE_COLUMN_TO_TABLET_VALUE_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(sourceTypeConvertor, valueColumn, rowIndex, columns, rowCount);
   }
 
   protected long sizeOf(Object[] arr, Class<?> clazz) {
@@ -259,36 +185,7 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
     }
     long bytes = 0L;
     for (int i = 0; i < columns.length; i++) {
-      switch (dataTypes[i]) {
-        case INT32:
-        case DATE:
-          bytes += RamUsageEstimator.sizeOf((int[]) columns[i]);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          bytes += RamUsageEstimator.sizeOf((long[]) columns[i]);
-          break;
-        case FLOAT:
-          bytes += RamUsageEstimator.sizeOf((float[]) columns[i]);
-          break;
-        case DOUBLE:
-          bytes += RamUsageEstimator.sizeOf((double[]) columns[i]);
-          break;
-        case BOOLEAN:
-          bytes += RamUsageEstimator.sizeOf((boolean[]) columns[i]);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          bytes += RamUsageEstimator.sizeOf((Binary[]) columns[i]);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  DataNodeQueryMessages
-                      .QUERY_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC,
-                  dataTypes[i]));
-      }
+      bytes += Type.fromTsDataType(dataTypes[i]).estimateArraySize(columns[i]);
     }
     return bytes;
   }

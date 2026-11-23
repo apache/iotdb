@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
@@ -42,7 +43,8 @@ public abstract class UDTFEqualSizeBucketSample implements UDTF {
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             proportion -> (double) proportion > 0 && (double) proportion <= 1,
-            "Illegal sample proportion. proportion > 0 and proportion <= 1",
+            CommonMessages
+                .EXCEPTION_ILLEGAL_SAMPLE_PROPORTION_PROPORTION_0_AND_PROPORTION_1_E96EE649,
             proportion);
     dataType =
         UDFDataTypeTransformer.transformToTsDataType(validator.getParameters().getDataType(0));

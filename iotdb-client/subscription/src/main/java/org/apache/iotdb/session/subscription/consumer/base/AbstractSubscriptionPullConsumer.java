@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -163,6 +164,13 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     try {
       synchronized (this) {
         if (isClosed.get()) {
+          return;
+        }
+
+        if (isFenced()) {
+          isClosed.set(true);
+          prepareClose();
+          super.close();
           return;
         }
 
@@ -303,7 +311,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     if (isClosed()) {
       final String errorMessage =
           String.format(
-              "%s is not yet open, please open the subscription consumer before draining buffered messages.",
+              SubscriptionMessages
+                  .MESSAGE_ARG_IS_NOT_YET_OPEN_PLEASE_OPEN_THE_SUBSCRIPTION_CONSUMER_BEFORE_DRAINING_BUFFERED_MESSAGES_C73D871C,
               this);
       LOGGER.error(errorMessage);
       throw new SubscriptionException(errorMessage);
@@ -432,7 +441,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
 
     final String errorMessage =
         String.format(
-            "SubscriptionPullConsumer %s still has processor-buffered or drained messages when closing in manual-commit mode. Call drainBufferedMessages() and commit the returned messages before close.",
+            SubscriptionMessages
+                .MESSAGE_SUBSCRIPTIONPULLCONSUMER_ARG_STILL_HAS_PROCESSOR_BUFFERED_OR_DRAINED_MESSAGES_WHEN_CLOSING_IN_MANUAL_COMMIT_MODE_CALL_DRAINBUFFEREDMESSAGES_AND_COMMIT_THE_RETURNED_MESSAGES_BEFORE_CLOSE_389DC354,
             this);
     LOGGER.warn(errorMessage);
     throw new SubscriptionException(errorMessage);
@@ -543,6 +553,24 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     super.commitAsync(messages, callback);
   }
 
+  @Override
+  protected void onAckedCommitContexts(
+      final Collection<SubscriptionCommitContext> acceptedCommitContexts) {
+    if (!autoCommit
+        || Objects.isNull(uncommittedCommitContexts)
+        || acceptedCommitContexts.isEmpty()) {
+      return;
+    }
+
+    for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
+        uncommittedCommitContexts.entrySet()) {
+      entry.getValue().removeAll(acceptedCommitContexts);
+      if (entry.getValue().isEmpty()) {
+        uncommittedCommitContexts.remove(entry.getKey(), entry.getValue());
+      }
+    }
+  }
+
   private List<SubscriptionMessage> filterUserVisibleMessages(
       final List<SubscriptionMessage> messages) {
     if (messages.isEmpty()) {
@@ -640,7 +668,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     future[0] =
         SubscriptionExecutorServiceManager.submitAutoCommitWorker(
             () -> {
-              if (isClosed()) {
+              if (isClosed() || isFenced()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
                   LOGGER.info(SubscriptionMessages.PULL_CONSUMER_CANCEL_AUTO_COMMIT, this);
@@ -656,7 +684,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   private class AutoCommitWorker implements Runnable {
     @Override
     public void run() {
-      if (isClosed()) {
+      if (isClosed() || isFenced()) {
         return;
       }
 
@@ -690,6 +718,9 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   }
 
   private void commitAllUncommittedMessages() {
+    if (isFenced()) {
+      return;
+    }
     for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
         uncommittedCommitContexts.entrySet()) {
       try {

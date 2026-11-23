@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.session.subscription.util.PollTimer;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
@@ -34,7 +39,12 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,7 +52,22 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
 
   private static final String CONSUMER_GROUP_ID = "consumerGroup";
   private static final String CONSUMER_ID = "consumer";
+  private static final String OTHER_CONSUMER_ID = "otherConsumer";
   private static final String TOPIC_NAME = "topic";
+
+  private final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  private boolean originalFallbackPollingEnabled;
+
+  @Before
+  public void setUp() {
+    originalFallbackPollingEnabled = config.isSubscriptionConsensusFallbackPollingEnabled();
+    config.setSubscriptionConsensusFallbackPollingEnabled(true);
+  }
+
+  @After
+  public void tearDown() {
+    config.setSubscriptionConsensusFallbackPollingEnabled(originalFallbackPollingEnabled);
+  }
 
   @Test
   public void testPollRequeuesEventThatWouldExceedPayloadLimit() throws Exception {
@@ -56,8 +81,8 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
 
     when(firstQueue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
     when(secondQueue.getConsensusGroupId()).thenReturn(new DataRegionId(2));
-    when(firstQueue.poll(CONSUMER_ID, null)).thenReturn(firstEvent);
-    when(secondQueue.poll(CONSUMER_ID, null)).thenReturn(secondEvent);
+    when(firstQueue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class))).thenReturn(firstEvent);
+    when(secondQueue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class))).thenReturn(secondEvent);
     when(firstEvent.getCurrentResponseSize()).thenReturn(40);
     when(secondEvent.getCurrentResponseSize()).thenReturn(30);
     when(firstEvent.getCommitContext()).thenReturn(firstCommitContext);
@@ -71,6 +96,125 @@ public class ConsensusSubscriptionBrokerPayloadLimitTest {
     assertEquals(1, events.size());
     assertSame(firstEvent, events.get(0));
     verify(secondQueue).requeue(CONSUMER_ID, secondCommitContext);
+  }
+
+  @Test
+  public void testPollBorrowsReadyEventWhenAssignedQueueIsEmpty() throws Exception {
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker(CONSUMER_GROUP_ID);
+    final ConsensusPrefetchingQueue fallbackQueue = mock(ConsensusPrefetchingQueue.class);
+    final ConsensusPrefetchingQueue assignedQueue = mock(ConsensusPrefetchingQueue.class);
+    final SubscriptionEvent fallbackEvent = mock(SubscriptionEvent.class);
+
+    when(fallbackQueue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
+    when(assignedQueue.getConsensusGroupId()).thenReturn(new DataRegionId(2));
+    when(fallbackQueue.getPrefetchedEventCount()).thenReturn(1);
+    when(fallbackQueue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class)))
+        .thenReturn(fallbackEvent);
+    when(fallbackEvent.getCurrentResponseSize()).thenReturn(30);
+    bindQueues(broker, Arrays.asList(fallbackQueue, assignedQueue));
+
+    // The first consumer initially owns both regions. After the second consumer joins, the stable
+    // ownership balancer moves DataRegion[2] to it and keeps DataRegion[1] with the first consumer.
+    broker.poll(OTHER_CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+    final List<SubscriptionEvent> events =
+        broker.poll(CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+
+    assertEquals(1, events.size());
+    assertSame(fallbackEvent, events.get(0));
+    verify(assignedQueue).poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class));
+    verify(fallbackQueue).poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class));
+  }
+
+  @Test
+  public void testPollKeepsOwnershipAffinityWhenAssignedQueueHasData() throws Exception {
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker(CONSUMER_GROUP_ID);
+    final ConsensusPrefetchingQueue fallbackQueue = mock(ConsensusPrefetchingQueue.class);
+    final ConsensusPrefetchingQueue assignedQueue = mock(ConsensusPrefetchingQueue.class);
+    final SubscriptionEvent fallbackEvent = mock(SubscriptionEvent.class);
+    final SubscriptionEvent assignedEvent = mock(SubscriptionEvent.class);
+
+    when(fallbackQueue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
+    when(assignedQueue.getConsensusGroupId()).thenReturn(new DataRegionId(2));
+    when(fallbackQueue.getPrefetchedEventCount()).thenReturn(1);
+    when(fallbackQueue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class)))
+        .thenReturn(fallbackEvent);
+    when(assignedQueue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class)))
+        .thenReturn(assignedEvent);
+    when(assignedEvent.getCurrentResponseSize()).thenReturn(30);
+    bindQueues(broker, Arrays.asList(fallbackQueue, assignedQueue));
+
+    broker.poll(OTHER_CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+    final List<SubscriptionEvent> events =
+        broker.poll(CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+
+    assertEquals(1, events.size());
+    assertSame(assignedEvent, events.get(0));
+    verify(fallbackQueue, never()).poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class));
+  }
+
+  @Test
+  public void testPollDoesNotBorrowReadyEventWhenFallbackDisabled() throws Exception {
+    config.setSubscriptionConsensusFallbackPollingEnabled(false);
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker(CONSUMER_GROUP_ID);
+    final ConsensusPrefetchingQueue fallbackQueue = mock(ConsensusPrefetchingQueue.class);
+    final ConsensusPrefetchingQueue assignedQueue = mock(ConsensusPrefetchingQueue.class);
+    final SubscriptionEvent fallbackEvent = mock(SubscriptionEvent.class);
+
+    when(fallbackQueue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
+    when(assignedQueue.getConsensusGroupId()).thenReturn(new DataRegionId(2));
+    when(fallbackQueue.getPrefetchedEventCount()).thenReturn(1);
+    when(fallbackQueue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class)))
+        .thenReturn(fallbackEvent);
+    when(fallbackEvent.getCurrentResponseSize()).thenReturn(30);
+    bindQueues(broker, Arrays.asList(fallbackQueue, assignedQueue));
+
+    broker.poll(OTHER_CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+    final List<SubscriptionEvent> events =
+        broker.poll(CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+
+    assertTrue(events.isEmpty());
+    verify(assignedQueue).poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class));
+    verify(fallbackQueue, never()).poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class));
+
+    // The ready event remains available to the region's owner.
+    when(fallbackQueue.poll(eq(OTHER_CONSUMER_ID), isNull(), any(PollTimer.class)))
+        .thenReturn(fallbackEvent);
+    final List<SubscriptionEvent> ownerEvents =
+        broker.poll(OTHER_CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+    assertEquals(1, ownerEvents.size());
+    assertSame(fallbackEvent, ownerEvents.get(0));
+  }
+
+  @Test
+  public void testPollWithoutAssignedRegionDoesNotBorrowWhenFallbackDisabled() throws Exception {
+    config.setSubscriptionConsensusFallbackPollingEnabled(false);
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker(CONSUMER_GROUP_ID);
+    final ConsensusPrefetchingQueue queue = mock(ConsensusPrefetchingQueue.class);
+    final SubscriptionEvent event = mock(SubscriptionEvent.class);
+
+    when(queue.getConsensusGroupId()).thenReturn(new DataRegionId(1));
+    when(queue.getPrefetchedEventCount()).thenReturn(1);
+    when(queue.poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class))).thenReturn(event);
+    bindQueues(broker, Collections.singletonList(queue));
+
+    broker.poll(OTHER_CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L);
+    assertTrue(broker.poll(CONSUMER_ID, Collections.singleton(TOPIC_NAME), 60L).isEmpty());
+
+    verify(queue, never()).poll(eq(CONSUMER_ID), isNull(), any(PollTimer.class));
+  }
+
+  @Test
+  public void testRequeueInFlightEventsAcrossRegionQueues() throws Exception {
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker(CONSUMER_GROUP_ID);
+    final ConsensusPrefetchingQueue firstQueue = mock(ConsensusPrefetchingQueue.class);
+    final ConsensusPrefetchingQueue secondQueue = mock(ConsensusPrefetchingQueue.class);
+    when(firstQueue.requeueInFlightEvents(CONSUMER_ID)).thenReturn(2);
+    when(secondQueue.requeueInFlightEvents(CONSUMER_ID)).thenReturn(3);
+    bindQueues(broker, Arrays.asList(firstQueue, secondQueue));
+
+    assertEquals(5, broker.requeueInFlightEvents(CONSUMER_ID));
+    verify(firstQueue).requeueInFlightEvents(CONSUMER_ID);
+    verify(secondQueue).requeueInFlightEvents(CONSUMER_ID);
   }
 
   private static SubscriptionCommitContext newCommitContext(

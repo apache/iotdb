@@ -30,8 +30,8 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -61,7 +61,10 @@ public class SessionDataSet implements ISessionDataSet {
       ZoneId zoneId,
       int timeFactor,
       boolean tableModel,
-      List<Integer> columnIndex2TsBlockColumnIndexList) {
+      List<Integer> columnIndex2TsBlockColumnIndexList,
+      boolean offsetSet,
+      int offset,
+      int totalLength) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -81,7 +84,95 @@ public class SessionDataSet implements ISessionDataSet {
             RpcUtils.DEFAULT_TIME_FORMAT,
             timeFactor,
             tableModel,
-            columnIndex2TsBlockColumnIndexList);
+            columnIndex2TsBlockColumnIndexList,
+            offsetSet,
+            offset,
+            totalLength);
+  }
+
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      long queryId,
+      long statementId,
+      IClientRPCService.Iface client,
+      long sessionId,
+      List<ByteBuffer> queryResult,
+      boolean ignoreTimeStamp,
+      boolean moreData,
+      ZoneId zoneId,
+      int timeFactor,
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList) {
+    this(
+        sql,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        queryId,
+        statementId,
+        client,
+        sessionId,
+        queryResult,
+        ignoreTimeStamp,
+        moreData,
+        zoneId,
+        timeFactor,
+        tableModel,
+        columnIndex2TsBlockColumnIndexList,
+        false,
+        0,
+        0);
+  }
+
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      long queryId,
+      long statementId,
+      IClientRPCService.Iface client,
+      long sessionId,
+      List<ByteBuffer> queryResult,
+      boolean ignoreTimeStamp,
+      long timeout,
+      boolean moreData,
+      int fetchSize,
+      ZoneId zoneId,
+      int timeFactor,
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList,
+      boolean offsetSet,
+      int offset,
+      int totalLength) {
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            moreData,
+            queryId,
+            statementId,
+            client,
+            sessionId,
+            queryResult,
+            fetchSize,
+            timeout,
+            zoneId,
+            RpcUtils.DEFAULT_TIME_FORMAT,
+            timeFactor,
+            tableModel,
+            columnIndex2TsBlockColumnIndexList,
+            offsetSet,
+            offset,
+            totalLength);
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -103,26 +194,27 @@ public class SessionDataSet implements ISessionDataSet {
       int timeFactor,
       boolean tableModel,
       List<Integer> columnIndex2TsBlockColumnIndexList) {
-    this.ioTDBRpcDataSet =
-        new IoTDBRpcDataSet(
-            sql,
-            columnNameList,
-            columnTypeList,
-            columnNameIndex,
-            ignoreTimeStamp,
-            moreData,
-            queryId,
-            statementId,
-            client,
-            sessionId,
-            queryResult,
-            fetchSize,
-            timeout,
-            zoneId,
-            RpcUtils.DEFAULT_TIME_FORMAT,
-            timeFactor,
-            tableModel,
-            columnIndex2TsBlockColumnIndexList);
+    this(
+        sql,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        queryId,
+        statementId,
+        client,
+        sessionId,
+        queryResult,
+        ignoreTimeStamp,
+        timeout,
+        moreData,
+        fetchSize,
+        zoneId,
+        timeFactor,
+        tableModel,
+        columnIndex2TsBlockColumnIndexList,
+        false,
+        0,
+        0);
   }
 
   public int getFetchSize() {
@@ -161,40 +253,9 @@ public class SessionDataSet implements ISessionDataSet {
       if (!ioTDBRpcDataSet.isNull(columnIndex)) {
         TSDataType dataType = ioTDBRpcDataSet.getDataType(columnIndex);
         field = new Field(dataType);
-        switch (dataType) {
-          case BOOLEAN:
-            boolean booleanValue = ioTDBRpcDataSet.getBoolean(columnIndex);
-            field.setBoolV(booleanValue);
-            break;
-          case INT32:
-          case DATE:
-            int intValue = ioTDBRpcDataSet.getInt(columnIndex);
-            field.setIntV(intValue);
-            break;
-          case INT64:
-          case TIMESTAMP:
-            long longValue = ioTDBRpcDataSet.getLong(columnIndex);
-            field.setLongV(longValue);
-            break;
-          case FLOAT:
-            float floatValue = ioTDBRpcDataSet.getFloat(columnIndex);
-            field.setFloatV(floatValue);
-            break;
-          case DOUBLE:
-            double doubleValue = ioTDBRpcDataSet.getDouble(columnIndex);
-            field.setDoubleV(doubleValue);
-            break;
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            field.setBinaryV(ioTDBRpcDataSet.getBinary(columnIndex));
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(
-                    ISessionMessages.EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160, dataType));
-        }
+        TypeServices.FIELD_VALUE_READER_SERVICE
+            .call(Type.fromTsDataType(dataType))
+            .read(ioTDBRpcDataSet, columnIndex, field);
       } else {
         field = new Field(null);
       }

@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutorManager;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,7 +65,8 @@ public class SubscriptionRuntimeAgent implements IService {
 
   @Override
   public void start() throws StartupException {
-    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        || !PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
       return;
     }
 
@@ -72,6 +75,7 @@ public class SubscriptionRuntimeAgent implements IService {
 
     SubscriptionAgentLauncher.launchSubscriptionTopicAgent();
     SubscriptionAgentLauncher.launchSubscriptionConsumerAgent();
+    ConsensusSubscriptionSetupHandler.restoreDetachedRetentions();
 
     isShutdown.set(false);
   }

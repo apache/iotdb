@@ -22,7 +22,7 @@ package org.apache.iotdb.udf.api.relational.table.specification;
 import java.util.Optional;
 
 /**
- * TableParameterSpecification are classified by two characteristics:
+ * TableParameterSpecification are classified by three characteristics:
  *
  * <ul>
  *   <li>1. Input tables have either row semantics or set semantics, as follows:
@@ -37,19 +37,27 @@ import java.util.Optional;
  *   <li>2. Whether the input table supports pass-through columns or not. Pass-through columns isa
  *       mechanism enabling the PTF to copy every column of an input row into columns of an output
  *       row.
+ *   <li>3. Which requirement the ORDER BY clause of the input table has to satisfy, if any. See
+ *       {@link OrderByRequirement}.
  * </ul>
  */
 public class TableParameterSpecification extends ParameterSpecification {
   // set semantics or row semantics (default is set semantics)
   private final boolean rowSemantics;
   private final boolean passThroughColumns;
+  // empty means the ORDER BY clause is not constrained
+  private final Optional<OrderByRequirement> orderByRequirement;
 
   private TableParameterSpecification(
-      String name, boolean rowSemantics, boolean passThroughColumns) {
+      String name,
+      boolean rowSemantics,
+      boolean passThroughColumns,
+      Optional<OrderByRequirement> orderByRequirement) {
     // table arguments are always required
     super(name, true, Optional.empty());
     this.rowSemantics = rowSemantics;
     this.passThroughColumns = passThroughColumns;
+    this.orderByRequirement = orderByRequirement;
   }
 
   public boolean isRowSemantics() {
@@ -60,6 +68,10 @@ public class TableParameterSpecification extends ParameterSpecification {
     return passThroughColumns;
   }
 
+  public Optional<OrderByRequirement> getOrderByRequirement() {
+    return orderByRequirement;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -68,6 +80,7 @@ public class TableParameterSpecification extends ParameterSpecification {
     private String name;
     private boolean rowSemantics;
     private boolean passThroughColumns;
+    private Optional<OrderByRequirement> orderByRequirement = Optional.empty();
 
     private Builder() {}
 
@@ -91,8 +104,24 @@ public class TableParameterSpecification extends ParameterSpecification {
       return this;
     }
 
+    public Builder ascendingOrder() {
+      this.orderByRequirement = Optional.of(OrderByRequirement.ASCENDING);
+      return this;
+    }
+
+    public Builder descendingOrder() {
+      this.orderByRequirement = Optional.of(OrderByRequirement.DESCENDING);
+      return this;
+    }
+
+    public Builder ordered() {
+      this.orderByRequirement = Optional.of(OrderByRequirement.ORDERED);
+      return this;
+    }
+
     public TableParameterSpecification build() {
-      return new TableParameterSpecification(name, rowSemantics, passThroughColumns);
+      return new TableParameterSpecification(
+          name, rowSemantics, passThroughColumns, orderByRequirement);
     }
   }
 }

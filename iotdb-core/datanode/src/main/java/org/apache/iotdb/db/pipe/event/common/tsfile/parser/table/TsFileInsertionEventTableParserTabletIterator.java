@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
+import org.apache.iotdb.calc.utils.TypeServices;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
@@ -44,20 +45,20 @@ import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.controller.IMetadataQuerier;
 import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.TableChunkReader;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -66,7 +67,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
 
-public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
+public class TsFileInsertionEventTableParserTabletIterator
+    implements Iterator<Tablet>, AutoCloseable {
 
   private final long startTime;
   private final long endTime;
@@ -188,11 +190,15 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               break;
             }
           case INIT_CHUNK_READER:
+            closeChunkReader();
             if (currentChunkMetadata != null
                 || (chunkMetadataList != null && chunkMetadataList.hasNext())) {
               if (currentChunkMetadata == null) {
                 currentChunkMetadata = chunkMetadataList.next();
-                timeChunk = null;
+                if (timeChunk != null) {
+                  timeChunk.close();
+                  timeChunk = null;
+                }
                 offset = 0;
               }
               initChunkReader(currentChunkMetadata);
@@ -285,6 +291,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               state = State.INIT_CHUNK_METADATA;
               break;
             }
+            close();
             return false;
         }
       }
@@ -422,6 +429,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         Chunk chunk = null;
         if (metadata != null) {
           chunk = reader.readMemChunk((ChunkMetadata) metadata);
+          valueChunkList.add(chunk);
           final long newSize = size + PipeMemoryWeightUtil.calculateChunkRamBytesUsed(chunk);
           if (newSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
             if (!hasSelectedNonNullChunk) {
@@ -429,6 +437,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               size = newSize;
               allocatedMemoryBlockForChunk.forceResize(size);
             } else {
+              valueChunkList.remove(valueChunkList.size() - 1);
+              chunk.close();
               break;
             }
           } else {
@@ -439,10 +449,18 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         columnTypes.add(ColumnCategory.FIELD);
         measurementList.add(measurementName);
         dataTypeList.add(schema.getType());
-        valueChunkList.add(chunk);
+        if (chunk == null) {
+          valueChunkList.add(null);
+        }
         hasSelectedField = true;
       }
     } catch (final PipeRuntimeOutOfMemoryCriticalException | LoadRuntimeOutOfMemoryException e) {
+      valueChunkList.forEach(
+          chunk -> {
+            if (chunk != null) {
+              chunk.close();
+            }
+          });
       // The current field subset has not been published to a chunk reader yet. Restart that subset
       // from the same offset after memory pressure is relieved. Remove fields appended before the
       // failed reservation as well; otherwise the retry would expose duplicate columns in the
@@ -452,6 +470,14 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       dataTypeList.subList(deviceIdSize, dataTypeList.size()).clear();
       offset = initialOffset;
       throw e;
+    } catch (IOException | RuntimeException | Error failure) {
+      valueChunkList.forEach(
+          chunk -> {
+            if (chunk != null) {
+              chunk.close();
+            }
+          });
+      throw failure;
     }
 
     if (offset >= fieldSchemaList.size()) {
@@ -464,9 +490,38 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       return;
     }
 
-    this.chunkReader = new TableChunkReader(timeChunk, valueChunkList, null);
+    Chunk retainedTimeChunk =
+        new Chunk(
+            timeChunk.getHeader(),
+            timeChunk.getData().duplicate(),
+            timeChunk.getDeleteIntervalList(),
+            timeChunk.getChunkStatistic(),
+            timeChunk.getEncryptParam());
+    this.chunkReader = new TableChunkReader(retainedTimeChunk, valueChunkList, null);
     this.modsInfoList =
-        ModsOperationUtil.initializeMeasurementMods(deviceID, measurementList, modifications);
+        ModsOperationUtil.initializeMeasurementMods(deviceID, measurementList, modifications, true);
+  }
+
+  private void closeChunkReader() throws IOException {
+    IChunkReader previous = chunkReader;
+    chunkReader = null;
+    if (previous != null) {
+      previous.close();
+    }
+  }
+
+  @Override
+  public void close() {
+    try {
+      closeChunkReader();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    } finally {
+      if (timeChunk != null) {
+        timeChunk.close();
+        timeChunk = null;
+      }
+    }
   }
 
   private boolean areAllFieldsDeletedByMods(
@@ -481,7 +536,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           internMeasurementName(schema),
           alignedChunkMetadata.getStartTime(),
           alignedChunkMetadata.getEndTime(),
-          modifications)) {
+          modifications,
+          true)) {
         return false;
       }
     }
@@ -492,7 +548,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final String measurementID, final long startTime, final long endTime) {
     return !modifications.isEmpty()
         && ModsOperationUtil.isAllDeletedByMods(
-            deviceID, measurementID, startTime, endTime, modifications);
+            deviceID, measurementID, startTime, endTime, modifications, true);
   }
 
   private String internMeasurementName(final IMeasurementSchema schema) {
@@ -510,6 +566,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     boolean hasNonDeletedField = dataTypeList.size() == deviceIdSize;
 
     for (int i = deviceIdSize, size = dataTypeList.size(); i < size; i++) {
+      final TSDataType dataType = dataTypeList.get(i);
       final TsPrimitiveType primitiveType =
           i - deviceIdSize < primitiveTypes.length ? primitiveTypes[i - deviceIdSize] : null;
       final boolean isDeleted = ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i));
@@ -517,64 +574,21 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         hasNonDeletedField = true;
       }
       if (primitiveType == null || isDeleted) {
-        switch (dataTypeList.get(i)) {
-          case TEXT:
-          case BLOB:
-          case STRING:
-            PipeTabletUtils.putValue(tablet, rowIndex, i, dataTypeList.get(i), Binary.EMPTY_VALUE);
+        if (dataType.isTextStringOrBlob()) {
+          PipeTabletUtils.putValue(tablet, rowIndex, i, dataType, Binary.EMPTY_VALUE);
         }
         PipeTabletUtils.markNullValue(tablet, rowIndex, i);
         continue;
       }
       needFillTime = true;
-
-      switch (dataTypeList.get(i)) {
-        case BOOLEAN:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getBoolean());
-          break;
-        case INT32:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getInt());
-          break;
-        case DATE:
-          PipeTabletUtils.putValue(
-              tablet,
-              rowIndex,
-              i,
-              dataTypeList.get(i),
-              DateUtils.parseIntToLocalDate(primitiveType.getInt()));
-          break;
-        case INT64:
-        case TIMESTAMP:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getLong());
-          break;
-        case FLOAT:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getFloat());
-          break;
-        case DOUBLE:
-          PipeTabletUtils.putValue(
-              tablet, rowIndex, i, dataTypeList.get(i), primitiveType.getDouble());
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          Binary binary = primitiveType.getBinary();
-          PipeTabletUtils.putValue(
-              tablet,
-              rowIndex,
-              i,
-              dataTypeList.get(i),
-              Objects.isNull(binary) || Objects.isNull(binary.getValues())
-                  ? Binary.EMPTY_VALUE
-                  : binary);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              DataNodePipeMessages.UNSUPPORTED + primitiveType.getDataType());
-      }
+      PipeTabletUtils.putValue(
+          tablet,
+          rowIndex,
+          i,
+          dataType,
+          TypeServices.PRIMITIVE_TYPE_VALUE_EXTRACTOR_SERVICE
+              .call(Type.fromTsDataType(dataType))
+              .apply(primitiveType));
     }
     return needFillTime || hasNonDeletedField;
   }

@@ -77,12 +77,12 @@ public class CheckSchemaRegionUsingTemplateRPCHandler
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Count paths using template error on DataNode: {id="
-            + targetNode.getDataNodeId()
-            + ", internalEndPoint="
-            + targetNode.getInternalEndPoint()
-            + "}"
-            + e.getMessage();
+        String.format(
+            ConfigNodeMessages
+                .EXCEPTION_COUNT_PATHS_USING_TEMPLATE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_E05E0F5B,
+            String.valueOf(targetNode.getDataNodeId()),
+            String.valueOf(targetNode.getInternalEndPoint()),
+            String.valueOf(e.getMessage()));
     LOGGER.error(errorMsg);
 
     TCheckSchemaRegionUsingTemplateResp resp = new TCheckSchemaRegionUsingTemplateResp();

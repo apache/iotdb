@@ -46,6 +46,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -137,6 +138,22 @@ public class DatabasePartitionTable {
     }
 
     return result;
+  }
+
+  /**
+   * @param type The specified TConsensusGroupType
+   * @return Sum of N * (N - 1) over the Regions of the specified type, i.e. their ordered replica
+   *     pairs, without copying any replica set
+   */
+  public long getReplicaPairCount(TConsensusGroupType type) {
+    long count = 0;
+    for (RegionGroup regionGroup : regionGroupMap.values()) {
+      if (type.equals(regionGroup.getId().getType())) {
+        final long replicaNum = regionGroup.getReplicaNum();
+        count += replicaNum * (replicaNum - 1);
+      }
+    }
+    return count;
   }
 
   /**
@@ -244,7 +261,7 @@ public class DatabasePartitionTable {
                 result.getAndIncrement();
               }
             });
-    return result.getAndIncrement();
+    return result.get();
   }
 
   /**
@@ -265,6 +282,21 @@ public class DatabasePartitionTable {
     return Math.max(
         schemaPartitionTable.getSchemaPartitionMap().size(),
         dataPartitionTable.getDataPartitionMap().size());
+  }
+
+  /** Count distinct series slots after allocation, independently for schema and data partitions. */
+  public int getSeriesPartitionSlotsCount(
+      TConsensusGroupType type, Collection<TSeriesPartitionSlot> unassignedSlots) {
+    final Set<TSeriesPartitionSlot> assignedSlots =
+        type == TConsensusGroupType.SchemaRegion
+            ? schemaPartitionTable.getSchemaPartitionMap().keySet()
+            : dataPartitionTable.getDataPartitionMap().entrySet().stream()
+                .filter(entry -> !entry.getValue().getSeriesPartitionMap().isEmpty())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+    final Set<TSeriesPartitionSlot> newSlots = new HashSet<>(unassignedSlots);
+    newSlots.removeAll(assignedSlots);
+    return assignedSlots.size() + newSlots.size();
   }
 
   /**

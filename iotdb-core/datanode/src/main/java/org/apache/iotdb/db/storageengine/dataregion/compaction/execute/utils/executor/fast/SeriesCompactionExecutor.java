@@ -474,7 +474,7 @@ public abstract class SeriesCompactionExecutor {
    * modification from ttl cache.
    */
   protected List<ModEntry> getModificationsFromCache(
-      TsFileResource tsFileResource, IDeviceID deviceId, String measurement)
+      TsFileResource tsFileResource, IDeviceID deviceId, String measurement, boolean isTableModel)
       throws IllegalPathException {
     PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allModifications =
         modificationCacheMap.get(tsFileResource.getTsFile().getName());
@@ -482,7 +482,8 @@ public abstract class SeriesCompactionExecutor {
         allModifications,
         deviceId,
         measurement,
-        compactionWriter.getTTLLowerBoundForCurrentDevice());
+        compactionWriter.getTTLLowerBoundForCurrentDevice(),
+        isTableModel);
   }
 
   @SuppressWarnings("squid:S3776")

@@ -44,9 +44,8 @@ import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.page.PageReader;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -149,6 +148,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
           DataNodeMiscMessages
               .MISC_EXCEPTION_THE_VERSION_OF_THIS_TSFILE_IS_TOO_LOW_PLEASE_UPGRADE_IT_19CC276C);
     }
+    reader.position(reader.getDataStartOffset());
     // start to scan chunks and chunkGroups
     byte marker;
     IDeviceID deviceId = null;
@@ -179,16 +179,24 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
             List<ByteBuffer> dataInChunk = new ArrayList<>();
             List<Boolean> needToDecodeInfo = new ArrayList<>();
             int dataSize = header.getDataSize();
+            int pageIndex = 0;
             while (dataSize > 0) {
               // a new Page
               PageHeader pageHeader =
                   reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              boolean needToDecode = checkIfNeedToDecode(measurementSchema, deviceId, pageHeader);
+              boolean needToDecode =
+                  reader.hasFileEncryptionHeader()
+                      || checkIfNeedToDecode(measurementSchema, deviceId, pageHeader);
               needToDecodeInfo.add(needToDecode);
               ByteBuffer pageData =
                   !needToDecode
                       ? reader.readCompressedPage(pageHeader)
-                      : reader.readPage(pageHeader, header.getCompressionType());
+                      : reader.readPage(
+                          pageHeader,
+                          header.getCompressionType(),
+                          pageIndex,
+                          header.getChunkOrdinal());
+              pageIndex++;
               pageHeadersInChunk.add(pageHeader);
               dataInChunk.add(pageData);
               dataSize -= pageHeader.getSerializedPageSize();
@@ -404,44 +412,20 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       BatchData batchData,
       MeasurementSchema schema,
       Map<Long, ChunkWriterImpl> partitionChunkWriterMap) {
+    final Type type = Type.fromTsDataType(schema.getType());
+    long previousPartitionId = 0;
+    ChunkWriterImpl chunkWriter = null;
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
-      Object value = batchData.currentValue();
       long partitionId = TimePartitionUtils.getTimePartitionId(time);
 
-      ChunkWriterImpl chunkWriter =
-          partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
-      getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
-      switch (schema.getType()) {
-        case INT32:
-        case DATE:
-          chunkWriter.write(time, (int) value);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          chunkWriter.write(time, (long) value);
-          break;
-        case FLOAT:
-          chunkWriter.write(time, (float) value);
-          break;
-        case DOUBLE:
-          chunkWriter.write(time, (double) value);
-          break;
-        case BOOLEAN:
-          chunkWriter.write(time, (boolean) value);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-        case OBJECT:
-          chunkWriter.write(time, (Binary) value);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format(
-                  DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
-                  schema.getType()));
+      if (chunkWriter == null || partitionId != previousPartitionId) {
+        previousPartitionId = partitionId;
+        chunkWriter =
+            partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
+        getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
       }
+      type.write(chunkWriter, time, batchData);
       batchData.next();
     }
     partitionChunkWriterMap

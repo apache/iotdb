@@ -164,7 +164,9 @@ public class FilterAndProjectOperator implements ProcessOperator {
     // reuse this builder
     filterTsBlockBuilder.reset();
 
-    List<Column> resultColumns = new ArrayList<>();
+    List<Column> resultColumns =
+        new ArrayList<>(
+            input.getValueColumnCount() + (hasNonMappableUDF ? 0 : commonTransformerList.size()));
     for (int i = 0, n = input.getValueColumnCount(); i < n; i++) {
       resultColumns.add(input.getColumn(i));
     }
@@ -268,7 +270,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
       leafColumnTransformer.initFromTsBlock(input);
     }
 
-    List<Column> resultColumns = new ArrayList<>();
+    List<Column> resultColumns = new ArrayList<>(projectOutputTransformerList.size());
     for (ColumnTransformer columnTransformer : projectOutputTransformerList) {
       columnTransformer.tryEvaluate();
       resultColumns.add(columnTransformer.getColumn());

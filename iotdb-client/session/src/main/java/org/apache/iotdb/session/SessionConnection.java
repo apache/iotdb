@@ -22,6 +22,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
@@ -73,6 +74,8 @@ import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TMultiplexedProtocol;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.utils.Pair;
@@ -84,6 +87,7 @@ import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -99,8 +103,10 @@ public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
+  private static final String ENABLE_AUTO_CREATE_SCHEMA_KEY = "enable_auto_create_schema";
+  private static final String ENABLE_RESULT_CHUNKING_KEY = "enable_result_chunking";
   public static final String MSG_RECONNECTION_FAIL =
-      "Fail to reconnect to server. Please check server status.";
+      SessionMessages.EXCEPTION_FAIL_TO_RECONNECT_TO_SERVER_PLEASE_CHECK_SERVER_STATUS_D9A2790F;
   protected Session session;
   private TTransport transport;
   protected IClientRPCService.Iface client;
@@ -123,6 +129,8 @@ public class SessionConnection {
 
   // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
   private int timeFactor = 1_000;
+
+  private volatile boolean forceClosed;
 
   // TestOnly
   public SessionConnection(String sqlDialect) {
@@ -199,7 +207,9 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException {
     DeepCopyRpcTransportFactory transportFactory =
         DeepCopyRpcTransportFactory.getInstance(
-            session.thriftDefaultBufferSize, session.thriftMaxFrameSize);
+            session.thriftDefaultBufferSize,
+            session.thriftMaxFrameSize,
+            session.thriftMaxReusableBufferSize);
     try {
       if (transport != null && transport.isOpen()) {
         close();
@@ -228,11 +238,15 @@ public class SessionConnection {
       throw new IoTDBConnectionException(e);
     }
 
-    if (session.enableThriftRpcCompaction) {
-      client = new IClientRPCService.Client(new TCompactProtocol(transport));
-    } else {
-      client = new IClientRPCService.Client(new TBinaryProtocol(transport));
+    TProtocol protocol =
+        session.enableThriftRpcCompaction
+            ? new TCompactProtocol(transport)
+            : new TBinaryProtocol(transport);
+    final String rpcServiceName = session.getRpcServiceName();
+    if (rpcServiceName != null) {
+      protocol = new TMultiplexedProtocol(protocol, rpcServiceName);
     }
+    client = new IClientRPCService.Client(protocol);
     client = RpcUtils.newSynchronizedClient(client);
 
     TSOpenSessionReq openReq = new TSOpenSessionReq();
@@ -241,8 +255,13 @@ public class SessionConnection {
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", session.version.toString());
     openReq.putToConfiguration("sql_dialect", sqlDialect);
+    // this client can assemble fragmented query results, see TSFetchResultsReq#offset
+    openReq.putToConfiguration(ENABLE_RESULT_CHUNKING_KEY, Boolean.TRUE.toString());
     if (session.useEncryptedPassword) {
       openReq.putToConfiguration(USE_ENCRYPTED_PASSWORD_KEY, Boolean.TRUE.toString());
+    }
+    if (!session.enableAutoCreateSchema) {
+      openReq.putToConfiguration(ENABLE_AUTO_CREATE_SCHEMA_KEY, Boolean.FALSE.toString());
     }
     if (database != null) {
       openReq.putToConfiguration("db", database);
@@ -341,6 +360,7 @@ public class SessionConnection {
   }
 
   protected void forceCloseTransport() {
+    forceClosed = true;
     if (transport == null) {
       return;
     }
@@ -484,7 +504,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         execResp.isSetTableModel() && execResp.isTableModel(),
-        execResp.getColumnIndex2TsBlockColumnIndexList());
+        execResp.getColumnIndex2TsBlockColumnIndexList(),
+        execResp.isSetOffset(),
+        execResp.offset,
+        execResp.totalLength);
   }
 
   protected void executeNonQueryStatement(String sql)
@@ -553,7 +576,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         execResp.isSetTableModel() && execResp.isTableModel(),
-        execResp.getColumnIndex2TsBlockColumnIndexList());
+        execResp.getColumnIndex2TsBlockColumnIndexList(),
+        execResp.isSetOffset(),
+        execResp.offset,
+        execResp.totalLength);
   }
 
   protected SessionDataSet executeLastDataQueryForOnePrefixPath(final List<String> prefixes)
@@ -593,7 +619,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         false,
-        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+        tsExecuteStatementResp.isSetOffset(),
+        tsExecuteStatementResp.offset,
+        tsExecuteStatementResp.totalLength);
   }
 
   protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
@@ -643,7 +672,10 @@ public class SessionConnection {
             zoneId,
             timeFactor,
             tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
-            tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList()),
+            tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+            tsExecuteStatementResp.isSetOffset(),
+            tsExecuteStatementResp.offset,
+            tsExecuteStatementResp.totalLength),
         redirectedEndPoint);
   }
 
@@ -686,7 +718,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
-        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+        tsExecuteStatementResp.isSetOffset(),
+        tsExecuteStatementResp.offset,
+        tsExecuteStatementResp.totalLength);
   }
 
   protected SessionDataSet executeAggregationQuery(
@@ -768,7 +803,10 @@ public class SessionConnection {
         zoneId,
         timeFactor,
         tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
-        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList(),
+        tsExecuteStatementResp.isSetOffset(),
+        tsExecuteStatementResp.offset,
+        tsExecuteStatementResp.totalLength);
   }
 
   private TSAggregationQueryReq createAggregationQueryReq(
@@ -932,6 +970,11 @@ public class SessionConnection {
     TSStatus status = null;
     int i;
     for (i = 0; i <= maxRetryCount; i++) {
+      if (forceClosed) {
+        status = null;
+        lastTException = new TException(SessionMessages.SESSION_NOT_OPEN);
+        break;
+      }
       if (i > 0) {
         // re-init the TException and TSStatus
         lastTException = null;
@@ -964,12 +1007,18 @@ public class SessionConnection {
         // all network exception need retry until reaching maxRetryCount
         lastTException = e;
       }
+      if (forceClosed) {
+        status = null;
+        lastTException = new TException(SessionMessages.SESSION_NOT_OPEN);
+        break;
+      }
     }
 
     return new RetryResult<>(status, lastTException, i);
   }
 
-  private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc) {
+  private RetryResult<TSStatus> callWithRetryAndReconnect(TFunction<TSStatus> rpc)
+      throws IoTDBConnectionException {
     return callWithRetryAndReconnect(
         rpc,
         status -> status.isSetNeedRetry() && status.isNeedRetry(),
@@ -977,7 +1026,7 @@ public class SessionConnection {
   }
 
   private <T> RetryResult<T> callWithRetryAndReconnect(
-      TFunction<T> rpc, Function<T, TSStatus> statusGetter) {
+      TFunction<T> rpc, Function<T, TSStatus> statusGetter) throws IoTDBConnectionException {
     return callWithRetryAndReconnect(
         rpc,
         t -> {
@@ -989,14 +1038,23 @@ public class SessionConnection {
                 == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 
-  /** reconnect if the remote datanode is unreachable retry if the status is set to needRetry */
+  /**
+   * reconnect if the remote datanode is unreachable retry if the status is set to needRetry
+   *
+   * @throws IoTDBConnectionException if no attempt produced a result, i.e. the last attempt failed
+   *     with a TException. The TException is the cause.
+   */
   private <T> RetryResult<T> callWithRetryAndReconnect(
-      TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect) {
+      TFunction<T> rpc, Predicate<T> shouldRetry, Predicate<T> forceReconnect)
+      throws IoTDBConnectionException {
     TException lastTException = null;
     T result = null;
     int retryAttempt;
     int maxRetryCountRead = 10;
     for (retryAttempt = 0; retryAttempt <= maxRetryCountRead; retryAttempt++) {
+      if (forceClosed) {
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+      }
       // 1. try to execute the rpc
       try {
         result = rpc.run();
@@ -1004,6 +1062,10 @@ public class SessionConnection {
       } catch (TException e) {
         result = null;
         lastTException = e;
+      }
+
+      if (forceClosed) {
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
       }
 
       // success, return immediately
@@ -1039,6 +1101,10 @@ public class SessionConnection {
       }
     }
 
+    if (result == null) {
+      // all attempts failed with a TException, callers must not see a null result
+      throw new IoTDBConnectionException(lastTException);
+    }
     return new RetryResult<>(result, lastTException, retryAttempt);
   }
 
@@ -1123,23 +1189,36 @@ public class SessionConnection {
     "squid:S3776"
   }) // ignore Cognitive Complexity of methods should not be too high
   private boolean reconnect() {
+    if (forceClosed) {
+      return false;
+    }
     boolean connectedSuccess = false;
     SecureRandom random = new SecureRandom();
     for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
+      if (forceClosed) {
+        return false;
+      }
       if (transport != null) {
         transport.close();
-        endPointList = availableNodes.get();
-        int currHostIndex = random.nextInt(endPointList.size());
-        int tryHostNum = 0;
-        for (int j = currHostIndex; j < endPointList.size(); j++) {
-          if (tryHostNum == endPointList.size()) {
-            break;
+        List<TEndPoint> discoveredNodes = availableNodes.get();
+        endPointList = new ArrayList<>(discoveredNodes);
+        if (!endPointList.isEmpty()) {
+          Collections.rotate(endPointList, -random.nextInt(endPointList.size()));
+        }
+        if (availableNodes instanceof INodeSupplier) {
+          List<TEndPoint> seeds = new ArrayList<>(((INodeSupplier) availableNodes).getSeedNodes());
+          if (!seeds.isEmpty()) {
+            Collections.rotate(seeds, -random.nextInt(seeds.size()));
           }
-          this.endPoint = endPointList.get(j);
-          if (j == endPointList.size() - 1) {
-            j = -1;
+          endPointList.addAll(seeds);
+        }
+        // Try every discovered endpoint before falling back to seeds, once per endpoint per round.
+        endPointList = new ArrayList<>(new LinkedHashSet<>(endPointList));
+        for (TEndPoint candidate : endPointList) {
+          if (forceClosed) {
+            return false;
           }
-          tryHostNum++;
+          this.endPoint = candidate;
           try {
             init(
                 endPoint,
@@ -1149,7 +1228,14 @@ public class SessionConnection {
                 session.keyStore,
                 session.keyStorePwd,
                 session.sslProtocol);
+            if (forceClosed) {
+              forceCloseTransport();
+              return false;
+            }
             connectedSuccess = true;
+            if (!discoveredNodes.contains(endPoint) && availableNodes instanceof INodeSupplier) {
+              ((INodeSupplier) availableNodes).requestRefresh();
+            }
           } catch (IoTDBConnectionException e) {
             logger.warn(SessionMessages.NODE_DOWN_TRY_NEXT, endPoint);
             continue;
@@ -1160,6 +1246,10 @@ public class SessionConnection {
         }
       }
       if (connectedSuccess) {
+        if (forceClosed) {
+          forceCloseTransport();
+          return false;
+        }
         // remove the broken end point
         session.removeBrokenSessionConnection(this);
         session.defaultEndPoint = this.endPoint;
@@ -1341,7 +1431,7 @@ public class SessionConnection {
     if (endPointList == null) {
       return MSG_RECONNECTION_FAIL;
     }
-    List<String> urls = new ArrayList<>();
+    List<String> urls = new ArrayList<>(endPointList.size());
     for (TEndPoint end : endPointList) {
       urls.add(UrlUtils.convertTEndPointIpv4AndIpv6Url(end));
     }

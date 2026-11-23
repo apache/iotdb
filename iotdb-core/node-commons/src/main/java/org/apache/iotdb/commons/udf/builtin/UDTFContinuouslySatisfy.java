@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -32,19 +33,20 @@ import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.util.Objects;
 
 public abstract class UDTFContinuouslySatisfy implements UDTF {
   protected long min;
   protected long max;
-  protected TSDataType dataType;
   protected long satisfyValueCount;
   protected long satisfyValueLastTime;
   protected long satisfyValueStartTime;
   protected Pair<Long, Long> interval;
+  private TypeServices.ContinuouslySatisfyRowTransformer rowTransformer;
+  private TypeServices.ContinuouslySatisfyTerminator terminator;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -54,12 +56,14 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
             0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.BOOLEAN)
         .validate(
             args -> (Long) args[1] >= (Long) args[0],
-            "max can not be smaller than min.",
+            CommonMessages.EXCEPTION_MAX_CAN_NOT_BE_SMALLER_THAN_MIN_D6EA3271,
             validator.getParameters().getLongOrDefault("min", getDefaultMin()),
             validator.getParameters().getLongOrDefault("max", getDefaultMax()))
         .validate(
             min -> (Long) min >= getDefaultMin(),
-            "min can not be smaller than " + getDefaultMin() + ".",
+            String.format(
+                CommonMessages.EXCEPTION_MIN_CAN_NOT_BE_SMALLER_THAN_ARG_CBF3792E,
+                Objects.toString(getDefaultMin())),
             validator.getParameters().getLongOrDefault("min", getDefaultMin()));
   }
 
@@ -74,7 +78,12 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
     satisfyValueStartTime = 0L;
     satisfyValueLastTime = -1L;
 
-    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    rowTransformer =
+        TypeServices.CONTINUOUSLY_SATISFY_ROW_TRANSFORMER_SERVICE.call(
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(parameters.getDataType(0)));
+    terminator =
+        TypeServices.CONTINUOUSLY_SATISFY_TERMINATOR_SERVICE.call(
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(parameters.getDataType(0)));
     min = parameters.getLongOrDefault("min", getDefaultMin());
     max = parameters.getLongOrDefault("max", getDefaultMax());
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.INT64);
@@ -83,40 +92,7 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector)
       throws IOException, UDFInputSeriesDataTypeNotValidException {
-    boolean needAddNewRecord;
-    switch (dataType) {
-      case INT32:
-        needAddNewRecord = transformInt(row.getTime(), row.getInt(0));
-        break;
-      case INT64:
-        needAddNewRecord = transformLong(row.getTime(), row.getLong(0));
-        break;
-      case FLOAT:
-        needAddNewRecord = transformFloat(row.getTime(), row.getFloat(0));
-        break;
-      case DOUBLE:
-        needAddNewRecord = transformDouble(row.getTime(), row.getDouble(0));
-        break;
-      case BOOLEAN:
-        needAddNewRecord = transformBoolean(row.getTime(), row.getBoolean(0));
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case TIMESTAMP:
-      case DATE:
-      default:
-        // This will not happen
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
-    if (needAddNewRecord) {
+    if (rowTransformer.transform(this, row)) {
       collector.putLong(interval.left, interval.right);
     }
   }
@@ -215,33 +191,12 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
   @Override
   public void terminate(PointCollector collector)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
-    switch (dataType) {
-      case INT32:
-      case INT64:
-      case FLOAT:
-      case DOUBLE:
-      case BOOLEAN:
-        if (satisfyValueCount > 0) {
-          if (getRecord() >= min && getRecord() <= max) {
-            collector.putLong(satisfyValueStartTime, getRecord());
-          }
-        }
-        break;
-      case TIMESTAMP:
-      case DATE:
-      case STRING:
-      case BLOB:
-      case OBJECT:
-      case TEXT:
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
+    terminator.terminate(this, collector);
+  }
+
+  void terminateSupportedType(PointCollector collector) throws IOException {
+    if (satisfyValueCount > 0 && getRecord() >= min && getRecord() <= max) {
+      collector.putLong(satisfyValueStartTime, getRecord());
     }
   }
 

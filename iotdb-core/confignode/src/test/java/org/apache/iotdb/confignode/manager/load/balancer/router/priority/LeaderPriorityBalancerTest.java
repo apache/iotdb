@@ -65,7 +65,7 @@ public class LeaderPriorityBalancerTest {
             .cacheHeartbeatSample(new NodeHeartbeatSample(currentTimeNs, NodeStatus.Running));
       }
     }
-    nodeCacheMap.values().forEach(baseNodeCache -> baseNodeCache.updateCurrentStatistics(false));
+    nodeCacheMap.values().forEach(BaseNodeCache::updateNodeStatistics);
 
     // Build TRegionReplicaSet
     TConsensusGroupId groupId1 = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1);

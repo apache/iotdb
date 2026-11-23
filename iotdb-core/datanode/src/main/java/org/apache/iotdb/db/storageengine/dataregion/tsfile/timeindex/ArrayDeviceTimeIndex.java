@@ -27,6 +27,7 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.CommonUtils;
 
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
@@ -42,7 +43,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -200,7 +200,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   public static Set<IDeviceID> getDevices(InputStream inputStream) throws IOException {
     int deviceNum = ReadWriteIOUtils.readInt(inputStream);
     ReadWriteIOUtils.skip(inputStream, 2L * deviceNum * ReadWriteIOUtils.LONG_LEN);
-    Set<IDeviceID> devices = new HashSet<>();
+    Set<IDeviceID> devices = Sets.newHashSetWithExpectedSize(deviceNum);
     for (int i = 0; i < deviceNum; i++) {
       IDeviceID deviceID = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(inputStream);
       ReadWriteIOUtils.skip(inputStream, ReadWriteIOUtils.INT_LEN);

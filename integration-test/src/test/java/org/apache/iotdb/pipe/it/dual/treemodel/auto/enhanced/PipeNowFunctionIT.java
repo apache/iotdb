@@ -30,11 +30,10 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,14 +49,10 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
-public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
+public class PipeNowFunctionIT extends AbstractPipeTreeModelSharedClusterIT {
 
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
-
+  // CREATE/ALTER PIPE through RPC accepts "now" for prefixed and unprefixed history/source time
+  // bounds; each created pipe remains visible and RUNNING until explicitly stopped.
   @Test
   public void testPipeNowFunction() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -76,7 +71,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
       sourceAttributes.put("source.history.start-time", "now");
       sourceAttributes.put("source.history.end-time", "now");
       sourceAttributes.put("source.history.enable", "true");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.batch.enable", "false");
@@ -96,7 +91,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
       sourceAttributes.put("history.start-time", "now");
       sourceAttributes.put("history.end-time", "now");
       sourceAttributes.put("history.enable", "true");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       status =
           client.createPipe(
@@ -111,7 +106,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
       sourceAttributes.put("source.history.start-time", "now");
       sourceAttributes.put("source.history.end-time", "now");
       sourceAttributes.put("history.enable", "true");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       status =
           client.createPipe(
@@ -140,7 +135,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
       sourceAttributes.put("source.end-time", "now");
       sourceAttributes.put("source.history.start-time", "now");
       sourceAttributes.put("source.history.end-time", "now");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
       client.alterPipe(
           new TAlterPipeReq()
               .setPipeName("p1")
@@ -162,7 +157,7 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
       sourceAttributes.put("end-time", "now");
       sourceAttributes.put("history.start-time", "now");
       sourceAttributes.put("history.end-time", "now");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
       client.alterPipe(
           new TAlterPipeReq()
               .setPipeName("p1")
@@ -183,6 +178,8 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
+  // Tree-model CREATE/ALTER PIPE must accept now in prefixed and unprefixed history/source time
+  // attributes; execute all six variants in order on the same connection.
   @Test
   public void testTreeModeSQLSupportNowFunc() {
     doTest(BaseEnv.TREE_SQL_DIALECT);
@@ -212,94 +209,69 @@ public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
     try (final Connection connection = senderEnv.getConnection(dialect);
         final Statement statement = connection.createStatement()) {
       statement.execute(p1);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    final String p2 =
-        String.format(
-            "create pipe p2"
-                + " with source ("
-                + "'source.history.enable'='true',"
-                + "'start-time'='now',"
-                + "'end-time'='now',"
-                + "'history.start-time'='now',"
-                + "'history.end-time'='now')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection(dialect);
-        final Statement statement = connection.createStatement()) {
+      final String p2 =
+          String.format(
+              "create pipe p2"
+                  + " with source ("
+                  + "'source.history.enable'='true',"
+                  + "'start-time'='now',"
+                  + "'end-time'='now',"
+                  + "'history.start-time'='now',"
+                  + "'history.end-time'='now')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p2);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    final String p3 =
-        String.format(
-            "create pipe p3"
-                + " with source ("
-                + "'source.history.enable'='true',"
-                + "'source.start-time'='now',"
-                + "'source.end-time'='now',"
-                + "'source.history.start-time'='now',"
-                + "'source.history.end-time'='now')"
-                + " with sink ("
-                + "'sink'='iotdb-thrift-sink',"
-                + "'sink.ip'='%s',"
-                + "'sink.port'='%s',"
-                + "'sink.batch.enable'='false')",
-            receiverIp, receiverPort);
-    try (final Connection connection = senderEnv.getConnection(dialect);
-        final Statement statement = connection.createStatement()) {
+      final String p3 =
+          String.format(
+              "create pipe p3"
+                  + " with source ("
+                  + "'source.history.enable'='true',"
+                  + "'source.start-time'='now',"
+                  + "'source.end-time'='now',"
+                  + "'source.history.start-time'='now',"
+                  + "'source.history.end-time'='now')"
+                  + " with sink ("
+                  + "'sink'='iotdb-thrift-sink',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp, receiverPort);
       statement.execute(p3);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    String alterP3 =
-        "alter pipe p3"
-            + " modify source ("
-            + "'history.enable'='true',"
-            + "'start-time'='now',"
-            + "'end-time'='now',"
-            + "'history.start-time'='now',"
-            + "'history.end-time'='now')";
-    try (final Connection connection = senderEnv.getConnection(dialect);
-        final Statement statement = connection.createStatement()) {
+      String alterP3 =
+          "alter pipe p3"
+              + " modify source ("
+              + "'history.enable'='true',"
+              + "'start-time'='now',"
+              + "'end-time'='now',"
+              + "'history.start-time'='now',"
+              + "'history.end-time'='now')";
       statement.execute(alterP3);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    alterP3 =
-        "alter pipe p3"
-            + " modify source ("
-            + "'source.history.enable'='true',"
-            + "'source.start-time'='now',"
-            + "'source.end-time'='now',"
-            + "'source.history.start-time'='now',"
-            + "'source.history.end-time'='now')";
-    try (final Connection connection = senderEnv.getConnection(dialect);
-        final Statement statement = connection.createStatement()) {
+      alterP3 =
+          "alter pipe p3"
+              + " modify source ("
+              + "'source.history.enable'='true',"
+              + "'source.start-time'='now',"
+              + "'source.end-time'='now',"
+              + "'source.history.start-time'='now',"
+              + "'source.history.end-time'='now')";
       statement.execute(alterP3);
-    } catch (final SQLException e) {
-      fail(e.getMessage());
-    }
 
-    alterP3 =
-        "alter pipe p3"
-            + " modify source ("
-            + "'source.history.enable'='true',"
-            + "'source.start-time'='now',"
-            + "'source.end-time'='now',"
-            + "'source.history.start-time'='now',"
-            + "'source.history.end-time'='now')";
-    try (final Connection connection = senderEnv.getConnection(dialect);
-        final Statement statement = connection.createStatement()) {
+      alterP3 =
+          "alter pipe p3"
+              + " modify source ("
+              + "'source.history.enable'='true',"
+              + "'source.start-time'='now',"
+              + "'source.end-time'='now',"
+              + "'source.history.start-time'='now',"
+              + "'source.history.end-time'='now')";
       statement.execute(alterP3);
     } catch (final SQLException e) {
       fail(e.getMessage());

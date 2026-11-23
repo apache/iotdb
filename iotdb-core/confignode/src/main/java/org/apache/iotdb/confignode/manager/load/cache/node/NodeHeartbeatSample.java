@@ -37,9 +37,14 @@ public class NodeHeartbeatSample extends AbstractHeartbeatSample {
 
   /** Constructor for generating default sample with specified status */
   public NodeHeartbeatSample(NodeStatus status) {
+    this(status, null);
+  }
+
+  /** Constructor for an explicit management status with its reason. */
+  public NodeHeartbeatSample(NodeStatus status, String statusReason) {
     super(System.nanoTime());
     this.status = status;
-    this.statusReason = null;
+    this.statusReason = statusReason;
     this.loadSample = null;
   }
 

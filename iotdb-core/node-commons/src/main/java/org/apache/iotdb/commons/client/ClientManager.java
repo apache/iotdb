@@ -38,7 +38,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   private final GenericKeyedObjectPool<K, V> pool;
 
-  ClientManager(IClientPoolFactory<K, V> factory) {
+  protected ClientManager(IClientPoolFactory<K, V> factory) {
     pool = factory.createClientPool(this);
   }
 
@@ -49,11 +49,23 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public V borrowClient(K node) throws ClientManagerException {
+    return borrowClientWithTimeout(node, Long.MAX_VALUE);
+  }
+
+  protected V borrowClientWithTimeout(K node, long maxWaitMs) throws ClientManagerException {
     if (node == null) {
       throw new BorrowNullClientManagerException();
     }
     try {
-      return pool.borrowObject(node);
+      if (maxWaitMs == Long.MAX_VALUE) {
+        return pool.borrowObject(node);
+      }
+      maxWaitMs = Math.max(0L, maxWaitMs);
+      long poolWaitMs = pool.getMaxWaitDuration().toMillis();
+      return pool.borrowObject(node, poolWaitMs < 0 ? maxWaitMs : Math.min(poolWaitMs, maxWaitMs));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ClientManagerException(e);
     } catch (Exception e) {
       throw new ClientManagerException(e);
     }
@@ -125,10 +137,21 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public void close() {
-    pool.close();
-    // we need to release tManagers for AsyncThriftClientFactory
-    if (pool.getFactory() instanceof AsyncThriftClientFactory) {
-      ((AsyncThriftClientFactory<K, V>) pool.getFactory()).close();
+    try {
+      pool.close();
+      // we need to release tManagers for AsyncThriftClientFactory
+      if (pool.getFactory() instanceof AsyncThriftClientFactory) {
+        ((AsyncThriftClientFactory<K, V>) pool.getFactory()).close();
+      }
+    } finally {
+      try {
+        ClientManagerMetrics.getInstance().unregisterClientManager(pool);
+      } catch (RuntimeException e) {
+        LOGGER.warn(
+            ClientMessages
+                .LOG_FAILED_TO_UNREGISTER_CLIENT_POOL_METRICS_WHILE_CLOSING_CLIENT_MANAGER_101A9751,
+            e);
+      }
     }
   }
 }

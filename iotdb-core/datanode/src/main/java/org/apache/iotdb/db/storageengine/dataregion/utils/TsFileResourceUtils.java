@@ -47,6 +47,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
@@ -70,7 +71,8 @@ public class TsFileResourceUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceUtils.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final String VALIDATE_FAILED = "validate failed,";
+  private static final String VALIDATE_FAILED =
+      StorageEngineMessages.MESSAGE_VALIDATE_FAILED_BABCDFC5;
 
   private TsFileResourceUtils() {
     // util class
@@ -157,7 +159,7 @@ public class TsFileResourceUtils {
 
       List<List<long[]>> alignedTimeBatches = new ArrayList<>();
       Map<String, Integer> valueColumn2TimeBatchIndex = new HashMap<>();
-      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+      reader.position(reader.getDataStartOffset());
       int pageIndex = 0;
       byte marker;
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
@@ -210,7 +212,9 @@ public class TsFileResourceUtils {
             while (dataSize > 0) {
               valueDecoder.reset();
               PageHeader pageHeader = reader.readPageHeader(header.getDataType(), isHasStatistic);
-              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+              ByteBuffer pageData =
+                  reader.readPage(
+                      pageHeader, header.getCompressionType(), pageIndex, header.getChunkOrdinal());
 
               if ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
                   == TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
@@ -470,11 +474,11 @@ public class TsFileResourceUtils {
           if (timeseriesMetaData.getTsDataType() != TSDataType.BLOB) {
             TsPrimitiveType value;
             value =
-                TsPrimitiveType.getByType(
-                    timeseriesMetaData.getTsDataType() == TSDataType.VECTOR
-                        ? TSDataType.INT64
-                        : timeseriesMetaData.getTsDataType(),
-                    timeseriesMetaData.getStatistics().getLastValue());
+                Type.fromTsDataType(
+                        timeseriesMetaData.getTsDataType() == TSDataType.VECTOR
+                            ? TSDataType.INT64
+                            : timeseriesMetaData.getTsDataType())
+                    .getTsPrimitiveType(timeseriesMetaData.getStatistics().getLastValue());
             seriesLastValues.add(
                 new Pair<>(
                     timeseriesMetaData.getMeasurementId(),

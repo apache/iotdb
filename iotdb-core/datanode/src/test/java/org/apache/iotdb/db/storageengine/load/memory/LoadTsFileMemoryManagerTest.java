@@ -89,7 +89,7 @@ public class LoadTsFileMemoryManagerTest {
     final LoadTsFileMemoryManager manager = LoadTsFileMemoryManager.getInstance();
     final long usedMemoryBefore = manager.getUsedMemorySizeInBytes();
     final TsFileInsertionEventParserMemoryBlock block =
-        LoadTsFileParserMemoryManager.getInstance().forceAllocate(0);
+        LoadTsFileParserMemoryManager.getInstance().forceAllocate("test", 0);
 
     Assert.assertEquals(0L, block.getMemoryUsageInBytes());
     block.forceResize(1024);

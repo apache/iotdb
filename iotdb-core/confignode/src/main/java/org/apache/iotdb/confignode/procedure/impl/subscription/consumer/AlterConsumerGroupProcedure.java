@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSu
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -43,6 +44,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -81,6 +83,9 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
     LOGGER.info(ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_EXECUTEFROMVALIDATE_TRY_TO_VALIDATE);
 
     validateAndGetOldAndNewMeta(env);
+    subscriptionInfo
+        .get()
+        .retainSubscriptionProgress(existingConsumerGroupMeta, updatedConsumerGroupMeta);
     return true;
   }
 
@@ -122,12 +127,41 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
+    executeFromOperateOnDataNodes(env, false);
+  }
+
+  public void executeFromOperateOnDataNodesForUnsubscribe(ConfigNodeProcedureEnv env)
+      throws SubscriptionException, IOException {
+    executeFromOperateOnDataNodes(env, true);
+  }
+
+  private void executeFromOperateOnDataNodes(
+      ConfigNodeProcedureEnv env, boolean ignoreOfflineDataNodeTransportFailures)
+      throws SubscriptionException, IOException {
     LOGGER.info(
         ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_EXECUTEFROMOPERATEONDATANODES,
         updatedConsumerGroupMeta.getConsumerGroupId());
 
-    final List<TSStatus> statuses =
+    final Map<Integer, TPushConsumerGroupMetaResp> responseMap =
         env.pushSingleConsumerGroupOnDataNode(updatedConsumerGroupMeta.serialize());
+    env.getConfigManager()
+        .getSubscriptionManager()
+        .getSubscriptionReadyDataNodeTracker()
+        .recordSinglePush(existingConsumerGroupMeta, updatedConsumerGroupMeta, responseMap);
+    final List<TSStatus> statuses =
+        responseMap.entrySet().stream()
+            .filter(
+                entry ->
+                    !ignoreOfflineDataNodeTransportFailures
+                        || !isOfflineDataNodeTransportFailure(
+                            env,
+                            entry.getKey(),
+                            entry.getValue().getStatus(),
+                            TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode(),
+                            entry.getValue().isSetExceptionMessages()
+                                && !entry.getValue().getExceptionMessages().isEmpty()))
+            .map(entry -> entry.getValue().getStatus())
+            .toList();
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // throw exception instead of logging warn, do not rely on metadata synchronization
@@ -177,10 +211,39 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
+    rollbackFromOperateOnDataNodes(env, false);
+  }
+
+  public void rollbackFromOperateOnDataNodesForUnsubscribe(ConfigNodeProcedureEnv env)
+      throws SubscriptionException, IOException {
+    rollbackFromOperateOnDataNodes(env, true);
+  }
+
+  private void rollbackFromOperateOnDataNodes(
+      ConfigNodeProcedureEnv env, boolean ignoreOfflineDataNodeTransportFailures)
+      throws SubscriptionException, IOException {
     LOGGER.info(ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
 
-    final List<TSStatus> statuses =
+    final Map<Integer, TPushConsumerGroupMetaResp> responseMap =
         env.pushSingleConsumerGroupOnDataNode(existingConsumerGroupMeta.serialize());
+    env.getConfigManager()
+        .getSubscriptionManager()
+        .getSubscriptionReadyDataNodeTracker()
+        .recordSinglePush(updatedConsumerGroupMeta, existingConsumerGroupMeta, responseMap);
+    final List<TSStatus> statuses =
+        responseMap.entrySet().stream()
+            .filter(
+                entry ->
+                    !ignoreOfflineDataNodeTransportFailures
+                        || !isOfflineDataNodeTransportFailure(
+                            env,
+                            entry.getKey(),
+                            entry.getValue().getStatus(),
+                            TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode(),
+                            entry.getValue().isSetExceptionMessages()
+                                && !entry.getValue().getExceptionMessages().isEmpty()))
+            .map(entry -> entry.getValue().getStatus())
+            .toList();
     if (RpcUtils.squashResponseStatusList(statuses).getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // throw exception instead of logging warn, do not rely on metadata synchronization

@@ -21,17 +21,18 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.utils.BitMapUtils;
+import org.apache.iotdb.db.utils.TypeServices;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -167,38 +168,31 @@ public final class PipeTabletUtils {
       final int columnIndex,
       final TSDataType dataType,
       final Object value) {
-    switch (dataType) {
-      case BOOLEAN:
-        ((boolean[]) tablet.getValues()[columnIndex])[rowIndex] = (Boolean) value;
-        break;
-      case INT32:
-        ((int[]) tablet.getValues()[columnIndex])[rowIndex] = (Integer) value;
-        break;
-      case DATE:
-        ((LocalDate[]) tablet.getValues()[columnIndex])[rowIndex] = (LocalDate) value;
-        break;
-      case INT64:
-      case TIMESTAMP:
-        ((long[]) tablet.getValues()[columnIndex])[rowIndex] = (Long) value;
-        break;
-      case FLOAT:
-        ((float[]) tablet.getValues()[columnIndex])[rowIndex] = (Float) value;
-        break;
-      case DOUBLE:
-        ((double[]) tablet.getValues()[columnIndex])[rowIndex] = (Double) value;
-        break;
-      case TEXT:
-      case BLOB:
-      case STRING:
-        ((Binary[]) tablet.getValues()[columnIndex])[rowIndex] = toBinary(value);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(DataNodePipeMessages.UNSUPPORTED + dataType);
-    }
+    Type type = Type.fromTsDataType(dataType);
+    type.addValue(rowIndex, value, tablet.getValues()[columnIndex]);
     unmarkNullValue(tablet, rowIndex, columnIndex);
   }
 
-  private static void unmarkNullValue(
+  /** Copy a query field without boxing primitive values on the way to the tablet. */
+  public static void putFieldValue(
+      final Tablet tablet,
+      final int rowIndex,
+      final int columnIndex,
+      final TSDataType dataType,
+      final Field field) {
+    if (field.getDataType() == null) {
+      putValue(tablet, rowIndex, columnIndex, dataType, null);
+      return;
+    }
+
+    TypeServices.Pipe.PIPE_FIELD_TABLET_VALUE_WRITER_SERVICE
+        .call(Type.fromTsDataType(dataType))
+        .write(field, tablet.getValues()[columnIndex], rowIndex);
+    // A row discarded after applying mods may have marked this slot before it is reused.
+    unmarkNullValue(tablet, rowIndex, columnIndex);
+  }
+
+  public static void unmarkNullValue(
       final Tablet tablet, final int rowIndex, final int columnIndex) {
     final BitMap[] bitMaps = tablet.getBitMaps();
     if (Objects.nonNull(bitMaps)

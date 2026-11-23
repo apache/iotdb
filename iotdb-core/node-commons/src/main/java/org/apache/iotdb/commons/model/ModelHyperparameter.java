@@ -56,7 +56,7 @@ public class ModelHyperparameter {
   }
 
   public List<String> toStringList() {
-    List<String> resultList = new ArrayList<>();
+    List<String> resultList = new ArrayList<>(keyValueMap.size());
     for (Map.Entry<String, String> keyValuePair : keyValueMap.entrySet()) {
       resultList.add(keyValuePair.getKey() + "=" + keyValuePair.getValue());
     }

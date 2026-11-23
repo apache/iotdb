@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 
 public class SchemaUpdateRPCHandler extends DataNodeTSStatusRPCHandler {
@@ -68,13 +69,13 @@ public class SchemaUpdateRPCHandler extends DataNodeTSStatusRPCHandler {
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        requestType
-            + " error on DataNode: {id="
-            + targetNode.getDataNodeId()
-            + ", internalEndPoint="
-            + targetNode.getInternalEndPoint()
-            + "}"
-            + e.getMessage();
+        String.format(
+            ConfigNodeMessages
+                .EXCEPTION_ARG_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_14CDDEFD,
+            Objects.toString(requestType),
+            Objects.toString(targetNode.getDataNodeId()),
+            Objects.toString(targetNode.getInternalEndPoint()),
+            Objects.toString(e.getMessage()));
     LOGGER.warn(errorMsg);
 
     responseMap.put(

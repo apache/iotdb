@@ -70,10 +70,8 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -83,15 +81,15 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -108,6 +106,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntToLongFunction;
 import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
@@ -116,9 +115,11 @@ public class Session implements ISession {
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
   protected static final TSProtocolVersion protocolVersion =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-  public static final String MSG_UNSUPPORTED_DATA_TYPE = "Unsupported data type:";
+  public static final String MSG_UNSUPPORTED_DATA_TYPE =
+      SessionMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_07BE17C0;
   public static final String MSG_DONOT_ENABLE_REDIRECT =
-      "Query do not enable redirect," + " please confirm the session and server conf.";
+      SessionMessages
+          .EXCEPTION_QUERY_DO_NOT_ENABLE_REDIRECT_PLEASE_CONFIRM_THE_SESSION_AND_SERVER_CONF_AE321ADB;
   private static final ThreadPoolExecutor OPERATION_EXECUTOR =
       new ThreadPoolExecutor(
           SessionConfig.DEFAULT_SESSION_EXECUTOR_THREAD_NUM,
@@ -128,6 +129,7 @@ public class Session implements ISession {
           new LinkedBlockingQueue<>(SessionConfig.DEFAULT_SESSION_EXECUTOR_TASK_NUM),
           ThreadUtils.createThreadFactory("SessionExecutor", true));
   protected List<String> nodeUrls;
+  private final List<String> initialNodeUrls;
   protected String username;
   protected String password;
   protected boolean useEncryptedPassword;
@@ -152,9 +154,11 @@ public class Session implements ISession {
   protected ZoneId zoneId;
   protected int thriftDefaultBufferSize;
   protected int thriftMaxFrameSize;
+  protected int thriftMaxReusableBufferSize = Integer.MAX_VALUE;
   protected TEndPoint defaultEndPoint;
   protected SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
+  private volatile boolean closing;
 
   // this field only take effect in write request, nothing to do with any other type requests,
   // like query, load and so on.
@@ -207,18 +211,25 @@ public class Session implements ISession {
   // may be null
   protected volatile String database;
 
-  private static final String VALUES_SIZE_SHOULD_BE_EQUAL =
-      "times, measurementsList and valuesList's size should be equal";
+  protected volatile boolean enableAutoCreateSchema = true;
 
-  private static final String SESSION_CANNOT_CONNECT = "Session can not connect to {}";
+  private static final String VALUES_SIZE_SHOULD_BE_EQUAL =
+      SessionMessages
+          .EXCEPTION_TIMES_MEASUREMENTSLIST_AND_VALUESLIST_S_SIZE_SHOULD_BE_EQUAL_626B0CD6;
+
+  private static final String SESSION_CANNOT_CONNECT =
+      SessionMessages.EXCEPTION_SESSION_CAN_NOT_CONNECT_TO_ARG_226FBA66;
 
   private static final String ALL_VALUES_ARE_NULL =
-      "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]";
+      SessionMessages
+          .EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIME_IS_ARG_MEASUREMENTS_IS_ARG_5524221C;
 
   private static final String ALL_VALUES_ARE_NULL_WITH_TIME =
-      "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]";
+      SessionMessages
+          .EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEID_IS_ARG_TIMES_ARE_ARG_MEASUREMENTS_ARE_ARG_12C45858;
   private static final String ALL_VALUES_ARE_NULL_MULTI_DEVICES =
-      "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]";
+      SessionMessages
+          .EXCEPTION_ALL_VALUES_ARE_NULL_AND_THIS_SUBMISSION_IS_IGNORED_DEVICEIDS_ARE_ARG_TIMES_ARE_ARG_MEASUREMENTS_ARE_ARG_6A993BCB;
   private static final String ALL_INSERT_DATA_IS_NULL = SessionMessages.ALL_INSERT_DATA_IS_NULL;
 
   protected static final String TABLE = "table";
@@ -368,6 +379,8 @@ public class Session implements ISession {
       boolean enableRedirection,
       Version version) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
+    this.initialNodeUrls =
+        Collections.singletonList(UrlUtils.convertTEndPointIpv4AndIpv6Url(defaultEndPoint));
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -435,8 +448,9 @@ public class Session implements ISession {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
     }
-    nodeUrls = shuffleNodeUrls(nodeUrls);
+    nodeUrls = shuffleNodeUrls(new ArrayList<>(nodeUrls));
     this.nodeUrls = nodeUrls;
+    this.initialNodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -452,11 +466,13 @@ public class Session implements ISession {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
       }
-      builder.nodeUrls = shuffleNodeUrls(builder.nodeUrls);
-      this.nodeUrls = builder.nodeUrls;
+      this.nodeUrls = shuffleNodeUrls(new ArrayList<>(builder.nodeUrls));
+      this.initialNodeUrls = Collections.unmodifiableList(new ArrayList<>(nodeUrls));
       this.enableQueryRedirection = true;
     } else {
       this.defaultEndPoint = new TEndPoint(builder.host, builder.rpcPort);
+      this.initialNodeUrls =
+          Collections.singletonList(UrlUtils.convertTEndPointIpv4AndIpv6Url(defaultEndPoint));
       this.enableQueryRedirection = builder.enableRedirection;
     }
     this.enableThriftRpcCompaction = builder.isThriftRpcCompactionEnabled;
@@ -473,6 +489,7 @@ public class Session implements ISession {
     this.zoneId = builder.zoneId;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.thriftMaxReusableBufferSize = builder.thriftMaxReusableBufferSize;
     this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.version = builder.version;
     this.useSSL = builder.useSSL;
@@ -487,6 +504,7 @@ public class Session implements ISession {
     this.sqlDialect = builder.sqlDialect;
     this.queryTimeoutInMs = builder.timeOut;
     this.database = builder.database;
+    this.enableAutoCreateSchema = builder.enableAutoCreateSchema;
   }
 
   @Override
@@ -531,35 +549,24 @@ public class Session implements ISession {
       this.executorService = null;
     }
     if (this.availableNodes != null) {
-      this.availableNodes.close();
+      if (!this.availableNodes.isCallerManaged()) {
+        this.availableNodes.close();
+      }
       this.availableNodes = null;
     }
 
     if (enableAutoFetch) {
       initThreadPool();
-      this.availableNodes =
-          NodesSupplier.createNodeSupplier(
-              getNodeUrls(),
-              executorService,
-              username,
-              password,
-              zoneId,
-              thriftDefaultBufferSize,
-              thriftMaxFrameSize,
-              connectionTimeoutInMs,
-              useSSL,
-              trustStore,
-              trustStorePwd,
-              keyStore,
-              keyStorePwd,
-              sslProtocol,
-              enableRPCCompaction,
-              version.toString());
+      initAvailableNodes(enableRPCCompaction, connectionTimeoutInMs);
     } else {
-      this.availableNodes = new DummyNodesSupplier(getNodeUrls());
+      // A static supplier has no separate seed tier. Keep every configured address after reopen.
+      Set<TEndPoint> staticNodes = new LinkedHashSet<>(getNodeUrls());
+      staticNodes.addAll(SessionUtils.parseSeedNodeUrls(initialNodeUrls));
+      this.availableNodes = new DummyNodesSupplier(new ArrayList<>(staticNodes));
     }
 
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    closing = false;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
     isClosed = false;
@@ -571,7 +578,7 @@ public class Session implements ISession {
     }
   }
 
-  private void initThreadPool() {
+  protected void initThreadPool() {
     this.executorService =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
@@ -588,6 +595,30 @@ public class Session implements ISession {
             });
   }
 
+  protected void initAvailableNodes(
+      final boolean enableRPCCompaction, final int connectionTimeoutInMs) {
+    this.availableNodes =
+        NodesSupplier.createNodeSupplier(
+            getNodeUrls(),
+            SessionUtils.parseSeedNodeUrls(initialNodeUrls),
+            executorService,
+            username,
+            password,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            connectionTimeoutInMs,
+            useSSL,
+            trustStore,
+            trustStorePwd,
+            keyStore,
+            keyStorePwd,
+            sslProtocol,
+            enableRPCCompaction,
+            version.toString(),
+            thriftMaxReusableBufferSize);
+  }
+
   private static List<String> shuffleNodeUrls(List<String> endPoints) {
     try {
       Collections.shuffle(endPoints);
@@ -599,11 +630,9 @@ public class Session implements ISession {
   }
 
   private List<TEndPoint> getNodeUrls() {
-    if (defaultEndPoint != null) {
-      return Collections.singletonList(defaultEndPoint);
-    } else {
-      return SessionUtils.parseSeedNodeUrls(nodeUrls);
-    }
+    return defaultEndPoint == null
+        ? SessionUtils.parseSeedNodeUrls(initialNodeUrls)
+        : Collections.singletonList(defaultEndPoint.deepCopy());
   }
 
   @Override
@@ -620,6 +649,7 @@ public class Session implements ISession {
     this.availableNodes = nodesSupplier;
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    closing = false;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
     isClosed = false;
@@ -646,6 +676,7 @@ public class Session implements ISession {
     this.availableNodes = nodesSupplier;
     this.enableThriftRpcCompaction = enableThriftRpcCompaction;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    closing = false;
     setDefaultSessionConnection(constructSessionConnection(this, defaultEndPoint, zoneId));
     getDefaultSessionConnection().setEnableRedirect(enableQueryRedirection);
     isClosed = false;
@@ -659,28 +690,85 @@ public class Session implements ISession {
 
   @Override
   public synchronized void close() throws IoTDBConnectionException {
+    closing = true;
+    Throwable closeException = null;
     try {
       if (isClosed) {
         return;
       }
-      if (enableRedirection) {
-        for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
+
+      for (SessionConnection sessionConnection : getSessionConnections()) {
+        try {
           sessionConnection.close();
+        } catch (IoTDBConnectionException | RuntimeException e) {
+          if (closeException == null) {
+            closeException = e;
+          } else if (closeException != e) {
+            closeException.addSuppressed(e);
+          }
         }
-        endPointToSessionConnection.clear();
       }
-      getDefaultSessionConnection().close();
-      setDefaultSessionConnection(null);
     } finally {
-      // if executorService is null, it means that availableNodes is got from SessionPool and we
-      // shouldn't clean that
-      if (this.executorService != null) {
-        this.executorService.shutdown();
-        this.executorService = null;
-        this.availableNodes.close();
-        this.availableNodes = null;
+      finishClose();
+    }
+
+    if (closeException instanceof IoTDBConnectionException) {
+      throw (IoTDBConnectionException) closeException;
+    }
+    if (closeException instanceof RuntimeException) {
+      throw (RuntimeException) closeException;
+    }
+  }
+
+  /** Closes the underlying transports without waiting for a close-session RPC. */
+  public synchronized void forceClose() {
+    closing = true;
+    if (isClosed) {
+      return;
+    }
+    try {
+      for (SessionConnection sessionConnection : getSessionConnections()) {
+        sessionConnection.forceCloseTransport();
       }
-      isClosed = true;
+    } finally {
+      finishClose();
+    }
+  }
+
+  private List<SessionConnection> getSessionConnections() {
+    List<SessionConnection> connections = new ArrayList<>();
+    Set<SessionConnection> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+    if (endPointToSessionConnection != null) {
+      for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
+        if (sessionConnection != null && seen.add(sessionConnection)) {
+          connections.add(sessionConnection);
+        }
+      }
+    }
+    if (defaultSessionConnection != null && seen.add(defaultSessionConnection)) {
+      connections.add(defaultSessionConnection);
+    }
+    return connections;
+  }
+
+  private void finishClose() {
+    if (!isClosed) {
+      if (endPointToSessionConnection != null) {
+        // Do not wait for a concurrent computeIfAbsent that is still opening a connection.
+        endPointToSessionConnection = new ConcurrentHashMap<>();
+      }
+      setDefaultSessionConnection(null);
+    }
+    isClosed = true;
+    // if executorService is null, it means that availableNodes is got from SessionPool and we
+    // shouldn't clean that
+    if (this.executorService != null) {
+      this.executorService.shutdown();
+      this.executorService = null;
+      if (!this.availableNodes.isCallerManaged()) {
+        this.availableNodes.close();
+      }
+      this.availableNodes = null;
     }
   }
 
@@ -990,6 +1078,9 @@ public class Session implements ISession {
   }
 
   private SessionConnection getQuerySessionConnection() throws IoTDBConnectionException {
+    if (closing) {
+      throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+    }
     Optional<TEndPoint> endPoint =
         availableNodes == null ? Optional.empty() : availableNodes.getQueryEndPoint();
     if (!endPoint.isPresent() || endPointToSessionConnection == null) {
@@ -999,12 +1090,27 @@ public class Session implements ISession {
         endPointToSessionConnection.computeIfAbsent(
             endPoint.get(),
             k -> {
+              if (closing) {
+                return null;
+              }
               try {
-                return constructSessionConnection(this, endPoint.get(), zoneId);
+                SessionConnection newConnection =
+                    constructSessionConnection(this, endPoint.get(), zoneId);
+                if (closing) {
+                  newConnection.forceCloseTransport();
+                  return null;
+                }
+                return newConnection;
               } catch (IoTDBConnectionException ex) {
                 return null;
               }
             });
+    if (closing) {
+      if (connection != null) {
+        connection.forceCloseTransport();
+      }
+      throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+    }
     return connection == null ? getDefaultSessionConnection() : connection;
   }
 
@@ -1414,6 +1520,9 @@ public class Session implements ISession {
 
   private void handleRedirection(String deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
+      if (closing) {
+        return;
+      }
       // no need to redirection
       if (UrlUtils.isWildcardAddress(endpoint.ip)) {
         return;
@@ -1426,12 +1535,28 @@ public class Session implements ISession {
           endPointToSessionConnection.computeIfAbsent(
               endpoint,
               k -> {
+                if (closing) {
+                  return null;
+                }
                 try {
-                  return constructSessionConnection(this, endpoint, zoneId);
+                  SessionConnection newConnection =
+                      constructSessionConnection(this, endpoint, zoneId);
+                  if (closing) {
+                    newConnection.forceCloseTransport();
+                    return null;
+                  }
+                  return newConnection;
                 } catch (IoTDBConnectionException ex) {
                   return null;
                 }
               });
+      if (closing) {
+        if (connection != null) {
+          connection.forceCloseTransport();
+        }
+        deviceIdToEndpoint.remove(deviceId);
+        return;
+      }
       if (connection == null) {
         deviceIdToEndpoint.remove(deviceId);
       }
@@ -1440,6 +1565,9 @@ public class Session implements ISession {
 
   private void handleRedirection(IDeviceID deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
+      if (closing) {
+        return;
+      }
       // no need to redirection
       if (UrlUtils.isWildcardAddress(endpoint.ip)) {
         return;
@@ -1452,12 +1580,28 @@ public class Session implements ISession {
           endPointToSessionConnection.computeIfAbsent(
               endpoint,
               k -> {
+                if (closing) {
+                  return null;
+                }
                 try {
-                  return constructSessionConnection(this, endpoint, zoneId);
+                  SessionConnection newConnection =
+                      constructSessionConnection(this, endpoint, zoneId);
+                  if (closing) {
+                    newConnection.forceCloseTransport();
+                    return null;
+                  }
+                  return newConnection;
                 } catch (IoTDBConnectionException ex) {
                   return null;
                 }
               });
+      if (closing) {
+        if (connection != null) {
+          connection.forceCloseTransport();
+        }
+        tableModelDeviceIdToEndpoint.remove(deviceId);
+        return;
+      }
       if (connection == null) {
         tableModelDeviceIdToEndpoint.remove(deviceId);
       }
@@ -1466,14 +1610,24 @@ public class Session implements ISession {
 
   private void handleQueryRedirection(TEndPoint endPoint) throws IoTDBConnectionException {
     if (enableQueryRedirection) {
+      if (closing) {
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+      }
       AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       SessionConnection connection =
           endPointToSessionConnection.computeIfAbsent(
               endPoint,
               k -> {
+                if (closing) {
+                  return null;
+                }
                 try {
                   SessionConnection sessionConnection =
                       constructSessionConnection(this, endPoint, zoneId);
+                  if (closing) {
+                    sessionConnection.forceCloseTransport();
+                    return null;
+                  }
                   sessionConnection.setEnableRedirect(enableQueryRedirection);
                   return sessionConnection;
                 } catch (IoTDBConnectionException ex) {
@@ -1481,6 +1635,12 @@ public class Session implements ISession {
                   return null;
                 }
               });
+      if (closing) {
+        if (connection != null) {
+          connection.forceCloseTransport();
+        }
+        throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
+      }
       if (connection == null) {
         throw new IoTDBConnectionException(exceptionReference.get());
       }
@@ -2504,11 +2664,7 @@ public class Session implements ISession {
 
     if (!checkSorted(times)) {
       // sort
-      Integer[] index = new Integer[times.size()];
-      for (int i = 0; i < times.size(); i++) {
-        index[i] = i;
-      }
-      Arrays.sort(index, Comparator.comparingLong(times::get));
+      int[] index = sortedIndex(times);
       times.sort(Long::compareTo);
       // sort measurementList
       measurementsList = sortList(measurementsList, index);
@@ -2561,11 +2717,7 @@ public class Session implements ISession {
     }
 
     if (!checkSorted(times)) {
-      Integer[] index = new Integer[times.size()];
-      for (int i = 0; i < index.length; i++) {
-        index[i] = i;
-      }
-      Arrays.sort(index, Comparator.comparingLong(times::get));
+      int[] index = sortedIndex(times);
       times.sort(Long::compareTo);
       // sort measurementsList
       measurementsList = sortList(measurementsList, index);
@@ -2592,7 +2744,7 @@ public class Session implements ISession {
    * @param <T> Input type
    * @return ordered list
    */
-  private static <T> List<T> sortList(List<T> source, Integer[] index) {
+  private static <T> List<T> sortList(List<T> source, int[] index) {
     List<T> sortedList = new ArrayList<>(index.length);
     for (int position : index) {
       sortedList.add(source.get(position));
@@ -2659,7 +2811,7 @@ public class Session implements ISession {
       List<List<TSDataType>> typesList,
       List<List<String>> measurementsList)
       throws IoTDBConnectionException {
-    List<ByteBuffer> buffersList = new ArrayList<>();
+    List<ByteBuffer> buffersList = new ArrayList<>(valuesList.size());
     for (int i = 0; i < valuesList.size(); i++) {
       ByteBuffer buffer =
           SessionUtils.getValueBuffer(typesList.get(i), valuesList.get(i), measurementsList.get(i));
@@ -2890,7 +3042,7 @@ public class Session implements ISession {
             (k, v) -> {
               if (v == null) {
                 List<String> measurements = new ArrayList<>(tablet.getSchemas().size());
-                List<TSDataType> dataTypes = new ArrayList<>();
+                List<TSDataType> dataTypes = new ArrayList<>(tablet.getSchemas().size());
                 tablet
                     .getSchemas()
                     .forEach(
@@ -3018,6 +3170,7 @@ public class Session implements ISession {
             .collect(Collectors.toList());
 
     StringBuilder errMsgBuilder = new StringBuilder();
+    List<Throwable> errors = new ArrayList<>();
     for (CompletableFuture<Void> completableFuture : completableFutures) {
       try {
         completableFuture.join();
@@ -3027,6 +3180,7 @@ public class Session implements ISession {
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
+          errors.add(cause);
           if (errMsgBuilder.length() > 0) {
             errMsgBuilder.append(";");
           }
@@ -3035,7 +3189,10 @@ public class Session implements ISession {
       }
     }
     if (errMsgBuilder.length() > 0) {
-      throw new StatementExecutionException(errMsgBuilder.toString());
+      StatementExecutionException exception =
+          new StatementExecutionException(errMsgBuilder.toString());
+      errors.forEach(exception::addSuppressed);
+      throw exception;
     }
   }
 
@@ -3300,8 +3457,8 @@ public class Session implements ISession {
       return;
     }
     request.addToPrefixPaths(filtered.getDeviceId());
-    List<String> measurements = new ArrayList<>();
-    List<Integer> dataTypes = new ArrayList<>();
+    List<String> measurements = new ArrayList<>(filtered.getSchemas().size());
+    List<Integer> dataTypes = new ArrayList<>(filtered.getSchemas().size());
     request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : filtered.getSchemas()) {
       if (measurementSchema.getMeasurementName() == null) {
@@ -3748,10 +3905,15 @@ public class Session implements ISession {
     return true;
   }
 
+  public void sortTablet(Tablet tablet) {
+    sortTabletInMemory(tablet);
+  }
+
+  /** Sorts the rows of the tablet by timestamp without using a server connection. */
   @SuppressWarnings({
     "squid:S3776"
   }) // ignore Cognitive Complexity of methods should not be too high
-  public void sortTablet(Tablet tablet) {
+  public static void sortTabletInMemory(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
@@ -3760,11 +3922,7 @@ public class Session implements ISession {
     long[] timestamps = tablet.getTimestamps();
     Object[] values = tablet.getValues();
     BitMap[] bitMaps = tablet.getBitMaps();
-    Integer[] index = new Integer[tablet.getRowSize()];
-    for (int i = 0; i < tablet.getRowSize(); i++) {
-      index[i] = i;
-    }
-    Arrays.sort(index, Comparator.comparingLong(o -> timestamps[o]));
+    int[] index = sortedIndex(timestamps, tablet.getRowSize());
     Arrays.sort(timestamps, 0, tablet.getRowSize());
     int columnIndex = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
@@ -3798,64 +3956,8 @@ public class Session implements ISession {
    * @param index index
    * @return sorted list
    */
-  private Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) valueList;
-        boolean[] sortedValues = new boolean[boolValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedValues[i] = boolValues[index[i]];
-        }
-        return sortedValues;
-      case INT32:
-        int[] intValues = (int[]) valueList;
-        int[] sortedIntValues = new int[intValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedIntValues[i] = intValues[index[i]];
-        }
-        return sortedIntValues;
-      case DATE:
-        LocalDate[] date = (LocalDate[]) valueList;
-        LocalDate[] sortedDateValues = new LocalDate[date.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedDateValues[i] = date[index[i]];
-        }
-        return sortedDateValues;
-      case INT64:
-      case TIMESTAMP:
-        long[] longValues = (long[]) valueList;
-        long[] sortedLongValues = new long[longValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedLongValues[i] = longValues[index[i]];
-        }
-        return sortedLongValues;
-      case FLOAT:
-        float[] floatValues = (float[]) valueList;
-        float[] sortedFloatValues = new float[floatValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedFloatValues[i] = floatValues[index[i]];
-        }
-        return sortedFloatValues;
-      case DOUBLE:
-        double[] doubleValues = (double[]) valueList;
-        double[] sortedDoubleValues = new double[doubleValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedDoubleValues[i] = doubleValues[index[i]];
-        }
-        return sortedDoubleValues;
-      case TEXT:
-      case BLOB:
-      case STRING:
-      case OBJECT:
-        Binary[] binaryValues = (Binary[]) valueList;
-        Binary[] sortedBinaryValues = new Binary[binaryValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedBinaryValues[i] = binaryValues[index[i]];
-        }
-        return sortedBinaryValues;
-      default:
-        throw new UnSupportedDataTypeException(MSG_UNSUPPORTED_DATA_TYPE + dataType);
-    }
+  private static Object sortList(Object valueList, TSDataType dataType, int[] index) {
+    return SessionUtils.sortValueList(valueList, dataType, index);
   }
 
   /**
@@ -3865,7 +3967,7 @@ public class Session implements ISession {
    * @param index index
    * @return sorted bitMap
    */
-  private BitMap sortBitMap(BitMap bitMap, Integer[] index) {
+  private static BitMap sortBitMap(BitMap bitMap, int[] index) {
     BitMap sortedBitMap = new BitMap(bitMap.getSize());
     for (int i = 0; i < index.length; i++) {
       if (bitMap.isMarked(index[i])) {
@@ -3873,6 +3975,86 @@ public class Session implements ISession {
       }
     }
     return sortedBitMap;
+  }
+
+  private static int[] sortedIndex(List<Long> values) {
+    return sortedIndex(values.size(), index -> values.get(index));
+  }
+
+  private static int[] sortedIndex(long[] values, int size) {
+    return sortedIndex(size, index -> values[index]);
+  }
+
+  private static int[] sortedIndex(int size, IntToLongFunction valueProvider) {
+    int[] index = new int[size];
+    for (int i = 0; i < size; i++) {
+      index[i] = i;
+    }
+    // A strictly descending input can be reversed without changing equal-timestamp order.
+    int descendingEnd = 1;
+    while (descendingEnd < size
+        && valueProvider.applyAsLong(index[descendingEnd - 1])
+            > valueProvider.applyAsLong(index[descendingEnd])) {
+      descendingEnd++;
+    }
+    if (descendingEnd == size) {
+      for (int left = 0, right = size - 1; left < right; left++, right--) {
+        int originalIndex = index[left];
+        index[left] = index[right];
+        index[right] = originalIndex;
+      }
+    } else if (size > 1) {
+      sortIndexes(index, new int[size], 0, size, valueProvider);
+    }
+    return index;
+  }
+
+  private static void sortIndexes(
+      int[] index, int[] scratch, int from, int to, IntToLongFunction valueProvider) {
+    if (to - from < 2) {
+      return;
+    }
+    // Stop at existing ordered runs before recursing. Restrict the scan to larger ranges
+    // to avoid adding per-leaf probes on random inputs.
+    if (to - from >= 1024) {
+      int orderedEnd = from + 1;
+      while (orderedEnd < to
+          && valueProvider.applyAsLong(index[orderedEnd - 1])
+              <= valueProvider.applyAsLong(index[orderedEnd])) {
+        orderedEnd++;
+      }
+      if (orderedEnd == to) {
+        return;
+      }
+    }
+    int middle = (from + to) >>> 1;
+    sortIndexes(index, scratch, from, middle, valueProvider);
+    sortIndexes(index, scratch, middle, to, valueProvider);
+    // Skip ordered merges above small leaf ranges; probing every leaf costs random-input
+    // throughput.
+    if (to - from >= 32
+        && valueProvider.applyAsLong(index[middle - 1])
+            <= valueProvider.applyAsLong(index[middle])) {
+      return;
+    }
+
+    int left = from;
+    int right = middle;
+    int destination = from;
+    while (left < middle && right < to) {
+      if (valueProvider.applyAsLong(index[left]) <= valueProvider.applyAsLong(index[right])) {
+        scratch[destination++] = index[left++];
+      } else {
+        scratch[destination++] = index[right++];
+      }
+    }
+    while (left < middle) {
+      scratch[destination++] = index[left++];
+    }
+    while (right < to) {
+      scratch[destination++] = index[right++];
+    }
+    System.arraycopy(scratch, from, index, from, to - from);
   }
 
   @Override
@@ -3971,9 +4153,9 @@ public class Session implements ISession {
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors)
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> flatMeasurements = new ArrayList<>();
-    List<TSDataType> flatDataTypes = new ArrayList<>();
-    List<TSEncoding> flatEncodings = new ArrayList<>();
+    List<String> flatMeasurements = new ArrayList<>(measurements.size());
+    List<TSDataType> flatDataTypes = new ArrayList<>(measurements.size());
+    List<TSEncoding> flatEncodings = new ArrayList<>(measurements.size());
     for (int idx = 0; idx < measurements.size(); idx++) {
       flatMeasurements.add(measurements.get(idx).get(0));
       flatDataTypes.add(dataTypes.get(idx).get(0));
@@ -4404,6 +4586,10 @@ public class Session implements ISession {
     this.defaultSessionConnection = defaultSessionConnection;
   }
 
+  protected String getRpcServiceName() {
+    return null;
+  }
+
   public boolean isEnableThriftRpcCompaction() {
     return enableThriftRpcCompaction;
   }
@@ -4464,6 +4650,17 @@ public class Session implements ISession {
       return this;
     }
 
+    /**
+     * Buffer requests larger than this number of bytes use temporary arrays and reset reusable
+     * buffers to {@code thriftDefaultBufferSize}. Applies to compressed and uncompressed
+     * transports. The default {@link Integer#MAX_VALUE} keeps the original reuse policy; zero makes
+     * every nonempty buffer request use temporary storage.
+     */
+    public Builder thriftMaxReusableBufferSize(int thriftMaxReusableBufferSize) {
+      this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
+      return this;
+    }
+
     public Builder enableRedirection(boolean enableRedirection) {
       this.enableRedirection = enableRedirection;
       return this;
@@ -4474,6 +4671,10 @@ public class Session implements ISession {
       return this;
     }
 
+    /**
+     * Configure recovery seeds using the same host/IP form as each DataNode's dn_rpc_address.
+     * Hostname aliases and IP literals are not DNS-deduplicated during recovery.
+     */
     public Builder nodeUrls(List<String> nodeUrls) {
       this.nodeUrls = nodeUrls;
       return this;
@@ -4514,6 +4715,11 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+      this.enableAutoCreateSchema = enableAutoCreateSchema;
+      return this;
+    }
+
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
       return this;
@@ -4551,6 +4757,10 @@ public class Session implements ISession {
             SessionMessages
                 .EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084);
       }
+      return createSession();
+    }
+
+    protected Session createSession() {
       return new Session(this);
     }
   }

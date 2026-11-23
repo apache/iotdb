@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.tools.validate;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -50,7 +51,7 @@ public class TsFileOverlapValidationAndRepairTool {
 
   public static void main(String[] args) throws IOException {
     if (args.length == 0) {
-      System.out.println("Please input sequence data dir path.");
+      System.out.println(DataNodeMiscMessages.LOG_PLEASE_INPUT_SEQUENCE_DATA_DIR_PATH_6B8E0450);
       return;
     }
     List<String> sequenceDataDirs = getDataDirs(args);
@@ -66,18 +67,20 @@ public class TsFileOverlapValidationAndRepairTool {
   }
 
   private static boolean confirmMoveOverlapFilesToUnsequenceSpace() {
-    System.out.println("TimePartitions which have overlap files:");
+    System.out.println(DataNodeMiscMessages.LOG_TIMEPARTITIONS_WHICH_HAVE_OVERLAP_FILES_B50DEB6C);
     for (File partitionDirsWhichHaveOverlapFile : partitionDirsWhichHaveOverlapFiles) {
       System.out.println(partitionDirsWhichHaveOverlapFile.getAbsolutePath());
     }
     System.out.println();
 
     System.out.printf(
-        "Overlap tsfile num is %d, total tsfile num is %d\n", overlapTsFileNum, totalTsFileNum);
+        DataNodeMiscMessages.LOG_OVERLAP_TSFILE_NUM_IS_ARG_TOTAL_TSFILE_NUM_IS_ARG_892F7267,
+        overlapTsFileNum,
+        totalTsFileNum);
     if (overlapTsFileNum == 0) {
       return false;
     }
-    System.out.println("Repair overlap tsfiles (y/n)");
+    System.out.println(DataNodeMiscMessages.LOG_REPAIR_OVERLAP_TSFILES_Y_N_D8587D19);
     Scanner scanner = new Scanner(System.in);
     String input = scanner.nextLine();
     return "y".equals(input);
@@ -92,7 +95,10 @@ public class TsFileOverlapValidationAndRepairTool {
 
   private static void moveSeqResourceToUnsequenceDir(TsFileResource resource) throws IOException {
     if (!resource.tsFileExists()) {
-      System.out.println(resource.getTsFile().getAbsolutePath() + " does not exist when repairing");
+      System.out.println(
+          String.format(
+              DataNodeMiscMessages.LOG_ARG_DOES_NOT_EXIST_WHEN_REPAIRING_763A5B2F,
+              Objects.toString(resource.getTsFile().getAbsolutePath())));
       return;
     }
     String dirPath = resource.getTsFile().getParentFile().getAbsolutePath();
@@ -149,9 +155,14 @@ public class TsFileOverlapValidationAndRepairTool {
   private static void moveFile(File from, File to) {
     boolean success = from.renameTo(to);
     if (!success) {
-      System.out.println("Failed to repair " + from.getAbsolutePath());
+      System.out.println(
+          String.format(
+              DataNodeMiscMessages.LOG_FAILED_TO_REPAIR_ARG_6522A1E2,
+              Objects.toString(from.getAbsolutePath())));
     }
-    System.out.println("Repair file " + from.getName());
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_REPAIR_FILE_ARG_BEFC61E6, Objects.toString(from.getName())));
   }
 
   private static void validateSequenceDataDirs(List<String> sequenceDataDirPaths)
@@ -162,7 +173,10 @@ public class TsFileOverlapValidationAndRepairTool {
       if (!sequenceDataDir.exists()
           || sequenceDataDir.isFile()
           || !sequenceDataDir.getName().equals("sequence")) {
-        System.out.println(sequenceDataDir.getAbsolutePath() + " is not a correct path");
+        System.out.println(
+            String.format(
+                DataNodeMiscMessages.LOG_ARG_IS_NOT_A_CORRECT_PATH_F2B497AA,
+                Objects.toString(sequenceDataDir.getAbsolutePath())));
         continue;
       }
       for (File sg : Objects.requireNonNull(sequenceDataDir.listFiles())) {
@@ -199,7 +213,10 @@ public class TsFileOverlapValidationAndRepairTool {
         continue;
       }
       System.out.println(
-          "TimePartition " + partitionName + " has overlap file, dir is " + partition.getValue());
+          String.format(
+              DataNodeMiscMessages.LOG_TIMEPARTITION_ARG_HAS_OVERLAP_FILE_DIR_IS_ARG_3F69AA70,
+              Objects.toString(partitionName),
+              Objects.toString(partition.getValue())));
       partitionDirsWhichHaveOverlapFiles.addAll(partition.getValue());
       overlapTsFileNum += overlapTsFileNumInCurrentTimePartition;
     }
@@ -231,8 +248,8 @@ public class TsFileOverlapValidationAndRepairTool {
         long deviceEndTimeInPreviousFile = deviceEndTimeMap.get(device);
         if (deviceStartTimeInCurrentFile <= deviceEndTimeInPreviousFile) {
           System.out.printf(
-              "previous file: %s, current file: %s, device %s in previous file end time is %d,"
-                  + " device in current file start time is %d\n",
+              DataNodeMiscMessages
+                  .LOG_PREVIOUS_FILE_ARG_CURRENT_FILE_ARG_DEVICE_ARG_IN_PREVIOUS_FILE_END_TIME_IS_ARG_DEVICE_IN_CURRENT_FILE_START_TIME_IS_ARG_6AB6F44C,
               deviceLastExistTsFileMap.get(device).getTsFilePath(),
               resource.getTsFilePath(),
               device.toString(),
@@ -269,9 +286,10 @@ public class TsFileOverlapValidationAndRepairTool {
         if (filePath.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
             || filePath.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)) {
           System.out.println(
-              "Time partition "
-                  + timePartitionDir.getName()
-                  + " is skipped because a compaction is not finished");
+              String.format(
+                  DataNodeMiscMessages
+                      .LOG_TIME_PARTITION_ARG_IS_SKIPPED_BECAUSE_A_COMPACTION_IS_NOT_FINISHED_4A775D07,
+                  Objects.toString(timePartitionDir.getName())));
           return Collections.emptyList();
         }
 
@@ -282,7 +300,10 @@ public class TsFileOverlapValidationAndRepairTool {
 
         if (!new File(resourcePath).exists()) {
           System.out.println(
-              tsfile.getAbsolutePath() + " is skipped because resource file is not exist.");
+              String.format(
+                  DataNodeMiscMessages
+                      .LOG_ARG_IS_SKIPPED_BECAUSE_RESOURCE_FILE_IS_NOT_EXIST_24044E7F,
+                  Objects.toString(tsfile.getAbsolutePath())));
           continue;
         }
 

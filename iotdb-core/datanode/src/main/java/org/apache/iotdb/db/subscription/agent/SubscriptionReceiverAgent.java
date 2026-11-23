@@ -22,9 +22,11 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiverV1;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -47,6 +49,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
@@ -59,6 +62,24 @@ public class SubscriptionReceiverAgent {
           RpcUtils.getStatus(
               TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR,
               DataNodeQueryMessages.QUERY_EXCEPTION_SUBSCRIPTION_IS_NOT_ENABLED_7F43DCBB),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
+  private static final TPipeSubscribeResp SUBSCRIPTION_DISABLED_BY_RATIS_RESP =
+      new TPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION,
+              PipeMessages
+                  .MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
+  private static final TPipeSubscribeResp SUBSCRIPTION_CONSUMER_FENCED_RESP =
+      new TPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.SUBSCRIPTION_CONSUMER_FENCED,
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_CONSUMER_CONNECTION_WAS_FENCED_BECAUSE_A_NEWER_CONNECTION_WITH_THE_SAME_CONSUMER_ID_AND_CONSUMER_GROUP_ID_COMPLETED_THE_HANDSHAKE_THIS_CONSUMER_INSTANCE_CANNOT_BE_REUSED_CREATE_A_NEW_CONSUMER_INSTANCE_TO_RECONNECT_B0C2CCBE),
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
@@ -80,8 +101,13 @@ public class SubscriptionReceiverAgent {
   SubscriptionReceiverAgent() {
     this(
         SubscriptionReceiverV1::new,
-        SubscriptionConfig.getInstance().getSubscriptionEnabled(),
-        () -> SubscriptionConfig.getInstance().getSubscriptionEnabled());
+        isSubscriptionEnabled(),
+        SubscriptionReceiverAgent::isSubscriptionEnabled);
+  }
+
+  private static boolean isSubscriptionEnabled() {
+    return SubscriptionConfig.getInstance().getSubscriptionEnabled()
+        && PipeDataNodeAgent.isSubscriptionFeatureEnabled();
   }
 
   SubscriptionReceiverAgent(
@@ -119,6 +145,9 @@ public class SubscriptionReceiverAgent {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
     }
+    if (!PipeDataNodeAgent.isSubscriptionFeatureEnabled()) {
+      return SUBSCRIPTION_DISABLED_BY_RATIS_RESP;
+    }
     if (!subscriptionEnabledSupplier.getAsBoolean()) {
       return SUBSCRIPTION_NOT_ENABLED_ERROR_RESP;
     }
@@ -127,7 +156,8 @@ public class SubscriptionReceiverAgent {
     if (receiverConstructors.containsKey(reqVersion)) {
       final SubscriptionReceiver receiver = getReceiver(reqVersion);
       receiver.setAuthenticatedUsername(username);
-      final ConsumerIdentity consumerIdentity = getConsumerIdentity(req, receiver);
+      final ConsumerConnection consumerConnection = getConsumerConnection(req, receiver);
+      final ConsumerIdentity consumerIdentity = consumerConnection.identity();
       final RequestResult requestResult = new RequestResult();
 
       if (Objects.isNull(consumerIdentity)) {
@@ -136,12 +166,24 @@ public class SubscriptionReceiverAgent {
         consumerReceivers.compute(
             consumerIdentity,
             (identity, currentReceiver) -> {
+              if (isHandshake(req)
+                  && currentReceiver != null
+                  && currentReceiver != receiver
+                  && shouldKeepCurrentReceiver(
+                      currentReceiver, consumerConnection.consumerInstanceId())) {
+                receiver.invalidateConsumer();
+                requestResult.response = SUBSCRIPTION_CONSUMER_FENCED_RESP;
+                return currentReceiver;
+              }
               requestResult.response = handleRequest(receiver, req, currentReceiver);
 
               if (isHandshake(req)) {
                 if (isSuccessful(requestResult.response)) {
                   if (currentReceiver != null && currentReceiver != receiver) {
-                    currentReceiver.invalidateConsumer();
+                    releaseInFlightEventsOnNewInstanceTakeover(
+                        currentReceiver, receiver.getConsumerInstanceId());
+                    invalidateReplacedReceiver(
+                        currentReceiver, identity, receiver.getConsumerInstanceId());
                   }
                   return receiver;
                 }
@@ -158,7 +200,9 @@ public class SubscriptionReceiverAgent {
       if (isHandshake(req) && isSuccessful(requestResult.response)) {
         final ConsumerIdentity activeIdentity = getConsumerIdentity(receiver);
         if (!Objects.equals(consumerIdentity, activeIdentity)) {
-          registerReceiver(receiver, activeIdentity);
+          if (!registerReceiver(receiver, activeIdentity)) {
+            requestResult.response = SUBSCRIPTION_CONSUMER_FENCED_RESP;
+          }
         } else {
           removeReceiverMappingsExcept(receiver, activeIdentity);
         }
@@ -170,7 +214,9 @@ public class SubscriptionReceiverAgent {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.SUBSCRIPTION_VERSION_ERROR,
-              String.format("Unknown PipeSubscribeRequestVersion %s.", reqVersion));
+              String.format(
+                  DataNodePipeMessages.MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTVERSION_ARG_CA584E58,
+                  reqVersion));
       LOGGER.warn(
           DataNodePipeMessages
               .PIPE_LOG_SUBSCRIPTION_UNKNOWN_PIPESUBSCRIBEREQUESTVERSION_RESPONSE_56E5D93F,
@@ -276,26 +322,44 @@ public class SubscriptionReceiverAgent {
       final TPipeSubscribeReq req,
       final SubscriptionReceiver currentReceiver) {
     if (!isHandshake(req) && currentReceiver != null && currentReceiver != receiver) {
-      receiver.invalidateConsumer();
+      invalidateReplacedReceiver(
+          receiver, getConsumerIdentity(receiver), currentReceiver.getConsumerInstanceId());
     }
     return receiver.handle(req);
   }
 
-  private void registerReceiver(
+  private boolean registerReceiver(
       final SubscriptionReceiver receiver, final ConsumerIdentity identity) {
     if (Objects.isNull(identity)) {
       removeReceiverMappings(receiver);
-      return;
+      return true;
     }
+    final AtomicBoolean registered = new AtomicBoolean(false);
     consumerReceivers.compute(
         identity,
         (key, currentReceiver) -> {
-          if (currentReceiver != null && currentReceiver != receiver) {
-            currentReceiver.invalidateConsumer();
+          if (currentReceiver == null || currentReceiver == receiver) {
+            registered.set(true);
+            return receiver;
           }
-          return receiver;
+          if (receiver.getConsumerInstanceId() != null
+              && !shouldKeepCurrentReceiver(currentReceiver, receiver.getConsumerInstanceId())) {
+            releaseInFlightEventsOnNewInstanceTakeover(
+                currentReceiver, receiver.getConsumerInstanceId());
+            invalidateReplacedReceiver(currentReceiver, key, receiver.getConsumerInstanceId());
+            registered.set(true);
+            return receiver;
+          }
+          // The receiver completed its handshake after another receiver had already claimed the
+          // identity. Keep the current owner and fence this late receiver instead of allowing an
+          // old connection to take the consumer back.
+          invalidateReplacedReceiver(receiver, key, currentReceiver.getConsumerInstanceId());
+          return currentReceiver;
         });
-    removeReceiverMappingsExcept(receiver, identity);
+    if (registered.get()) {
+      removeReceiverMappingsExcept(receiver, identity);
+    }
+    return registered.get();
   }
 
   private void removeReceiverMappingsExcept(
@@ -314,7 +378,32 @@ public class SubscriptionReceiverAgent {
         (identity, currentReceiver) -> consumerReceivers.remove(identity, receiver));
   }
 
-  private static ConsumerIdentity getConsumerIdentity(
+  private void invalidateReplacedReceiver(
+      final SubscriptionReceiver receiver,
+      final ConsumerIdentity identity,
+      final String incomingConsumerInstanceId) {
+    if (incomingConsumerInstanceId != null
+        && incomingConsumerInstanceId.equals(receiver.getConsumerInstanceId())) {
+      receiver.invalidateConnection();
+      return;
+    }
+    LOGGER.info(
+        DataNodePipeMessages
+            .LOG_SUBSCRIPTION_CONSUMER_ARG_IN_CONSUMER_GROUP_ARG_WAS_TAKEN_OVER_BY_A_NEWER_CONNECTION_FENCED_THE_PREVIOUS_CONNECTION_4E72DBD9,
+        identity.consumerId(),
+        identity.consumerGroupId());
+    receiver.invalidateConsumer();
+  }
+
+  private static void releaseInFlightEventsOnNewInstanceTakeover(
+      final SubscriptionReceiver currentReceiver, final String incomingConsumerInstanceId) {
+    if (incomingConsumerInstanceId != null
+        && !Objects.equals(currentReceiver.getConsumerInstanceId(), incomingConsumerInstanceId)) {
+      currentReceiver.releaseInFlightEvents();
+    }
+  }
+
+  private static ConsumerConnection getConsumerConnection(
       final TPipeSubscribeReq req, final SubscriptionReceiver receiver) {
     if (isHandshake(req) && req.isSetBody()) {
       try {
@@ -325,7 +414,7 @@ public class SubscriptionReceiverAgent {
               ConsumerIdentity.of(
                   consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
           if (Objects.nonNull(identity)) {
-            return identity;
+            return new ConsumerConnection(identity, consumerConfig.getConsumerInstanceId());
           }
         }
       } catch (final RuntimeException ignored) {
@@ -333,7 +422,20 @@ public class SubscriptionReceiverAgent {
         // original buffer, so parsing is intentionally done on a duplicate above.
       }
     }
-    return getConsumerIdentity(receiver);
+    return new ConsumerConnection(getConsumerIdentity(receiver), receiver.getConsumerInstanceId());
+  }
+
+  private static boolean shouldKeepCurrentReceiver(
+      final SubscriptionReceiver currentReceiver, final String incomingConsumerInstanceId) {
+    final String currentConsumerInstanceId = currentReceiver.getConsumerInstanceId();
+    if (Objects.equals(currentConsumerInstanceId, incomingConsumerInstanceId)) {
+      return false;
+    }
+    if (currentConsumerInstanceId == null) {
+      return false;
+    }
+    return incomingConsumerInstanceId == null
+        || currentConsumerInstanceId.compareTo(incomingConsumerInstanceId) > 0;
   }
 
   private static ConsumerIdentity getConsumerIdentity(final SubscriptionReceiver receiver) {
@@ -365,4 +467,6 @@ public class SubscriptionReceiverAgent {
           : new ConsumerIdentity(consumerGroupId, consumerId);
     }
   }
+
+  private record ConsumerConnection(ConsumerIdentity identity, String consumerInstanceId) {}
 }

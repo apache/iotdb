@@ -20,18 +20,47 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.concurrent.Executor;
+
+import static org.apache.iotdb.db.queryengine.common.QueryId.MOCK_QUERY_ID;
+
 public class LocalExecutionPlannerOperatorsMemoryTest {
 
   private static final LocalExecutionPlanner PLANNER = LocalExecutionPlanner.getInstance();
 
   private long bytesHeldByTest = 0L;
+
+  @Test
+  public void testPendingReservationOverflowDoesNotCorruptAccounting() {
+    for (boolean highestPriority : new boolean[] {false, true}) {
+      long freeBefore = PLANNER.getFreeMemoryForOperators();
+      NotThreadSafeMemoryReservationManager manager =
+          new NotThreadSafeMemoryReservationManager(new QueryId("overflow_query"), "test");
+      manager.setHighestPriority(highestPriority);
+      try {
+        manager.reserveMemoryCumulatively(128);
+        Assert.assertThrows(
+            MemoryNotEnoughException.class,
+            () -> manager.reserveMemoryCumulatively(Long.MAX_VALUE));
+        manager.reserveMemoryImmediately();
+        Assert.assertEquals(128, manager.getReservedBytesInTotalForTest());
+        Assert.assertEquals(freeBefore - 128, PLANNER.getFreeMemoryForOperators());
+      } finally {
+        manager.releaseAllReservedMemory();
+      }
+      Assert.assertEquals(freeBefore, PLANNER.getFreeMemoryForOperators());
+    }
+  }
 
   @After
   public void tearDown() {
@@ -76,6 +105,33 @@ public class LocalExecutionPlannerOperatorsMemoryTest {
 
     Assert.assertEquals(0L, PLANNER.allocateOperatorsMemoryForTest(request, true));
     Assert.assertEquals(freeBefore, PLANNER.getFreeMemoryForOperators());
+  }
+
+  @Test
+  public void testEstimatedMemoryIsReleasedWithoutWaitingForAsyncStateListeners() {
+    long request = Math.min(1024L, PLANNER.getFreeMemoryForOperators());
+    if (request <= 0) {
+      return;
+    }
+    long freeBefore = PLANNER.getFreeMemoryForOperators();
+    long reserved = PLANNER.allocateOperatorsMemoryForTest(request, false);
+    Assert.assertEquals(request, reserved);
+    bytesHeldByTest = reserved;
+
+    Executor stalledNotificationExecutor = command -> {};
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(
+            new FragmentInstanceId(new PlanFragmentId(MOCK_QUERY_ID, 0), "0"),
+            stalledNotificationExecutor);
+    PLANNER.registerOperatorsMemoryReleaseForTest(reserved, stateMachine);
+
+    stateMachine.failed(new RuntimeException("Unknown"));
+
+    long freeAfterFailure = PLANNER.getFreeMemoryForOperators();
+    if (freeAfterFailure == freeBefore) {
+      bytesHeldByTest = 0L;
+    }
+    Assert.assertEquals(freeBefore, freeAfterFailure);
   }
 
   @Test

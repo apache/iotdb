@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -97,6 +98,7 @@ public class FragmentInstanceExecution {
         new FragmentInstanceExecution(
             instanceId, context, drivers, sinkHandle, stateMachine, timeOut, exchangeManager);
     execution.initialize(scheduler, isExplainAnalyze);
+    context.setExecutionInitialized();
     scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
     return execution;
   }
@@ -332,7 +334,9 @@ public class FragmentInstanceExecution {
             try {
               clearShuffleSinkHandle(newState);
             } catch (Throwable t) {
-              LOGGER.error(DataNodeQueryMessages.ERRORS_RELEASING_SINK, t);
+              if (!CommonDescriptor.getInstance().getConfig().isStopping()) {
+                LOGGER.error(DataNodeQueryMessages.ERRORS_RELEASING_SINK, t);
+              }
             }
 
             // close the driver after sink is aborted or closed because in driver.close() it
@@ -358,8 +362,10 @@ public class FragmentInstanceExecution {
               exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
                   instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), true);
             } catch (Throwable t) {
-              LOGGER.error(
-                  DataNodeQueryMessages.ERRORS_DEREGISTER_FI_FROM_MEMORY_POOL, newState, t);
+              if (!CommonDescriptor.getInstance().getConfig().isStopping()) {
+                LOGGER.error(
+                    DataNodeQueryMessages.ERRORS_DEREGISTER_FI_FROM_MEMORY_POOL, newState, t);
+              }
             }
 
             try {
@@ -374,6 +380,10 @@ public class FragmentInstanceExecution {
           } catch (Throwable t) {
             try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
               LOGGER.error(DataNodeQueryMessages.ERRORS_FINISHING_FI_PROCESS, t);
+            }
+          } finally {
+            if (newState.isDone()) {
+              context.releaseDataNodeQueryContext();
             }
           }
         });

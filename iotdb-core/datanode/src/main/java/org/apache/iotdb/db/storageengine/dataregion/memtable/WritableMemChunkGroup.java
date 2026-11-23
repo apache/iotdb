@@ -93,10 +93,10 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long count() {
+  public long count(boolean ignoreAllNullRows) {
     long count = 0;
     for (IWritableMemChunk memChunk : memChunkMap.values()) {
-      count += memChunk.count();
+      count += memChunk.count(ignoreAllNullRows);
     }
     return count;
   }
@@ -118,17 +118,19 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public Map<String, IWritableMemChunk> getMemChunkMap() {
+  public Map<String, IWritableMemChunk> getMemChunkMap(boolean ignoreAllNullRows) {
+    // a group of non-aligned chunks never stores all-null rows, so ignoreAllNullRows makes no
+    // difference
     return memChunkMap;
   }
 
   @Override
-  public boolean isEmpty() {
-    return memChunkMap.isEmpty() || count() == 0;
+  public boolean isEmpty(boolean ignoreAllNullRows) {
+    return memChunkMap.isEmpty() || count(ignoreAllNullRows) == 0;
   }
 
   @Override
-  public long delete(ModEntry modEntry) {
+  public long delete(ModEntry modEntry, boolean ignoreAllNullRows) {
     Iterator<Entry<String, IWritableMemChunk>> iter = memChunkMap.entrySet().iterator();
     long deletedPointsNumber = 0;
     while (iter.hasNext()) {
@@ -140,11 +142,11 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       IWritableMemChunk chunk = entry.getValue();
       if (modEntry.getStartTime() == Long.MIN_VALUE && modEntry.getEndTime() == Long.MAX_VALUE) {
         iter.remove();
-        deletedPointsNumber += chunk.count();
+        deletedPointsNumber += chunk.count(ignoreAllNullRows);
         chunk.release();
       } else {
         deletedPointsNumber += chunk.delete(modEntry.getStartTime(), modEntry.getEndTime());
-        if (chunk.count() == 0) {
+        if (chunk.count(ignoreAllNullRows) == 0) {
           iter.remove();
         }
       }
@@ -153,8 +155,8 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long deleteTime(ModEntry modEntry) {
-    return delete(modEntry);
+  public long deleteTime(ModEntry modEntry, boolean ignoreAllNullRows) {
+    return delete(modEntry, ignoreAllNullRows);
   }
 
   @Override
@@ -166,10 +168,10 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getMaxTime() {
+  public long getMaxTime(boolean ignoreAllNullRows) {
     long maxTime = Long.MIN_VALUE;
     for (IWritableMemChunk memChunk : memChunkMap.values()) {
-      maxTime = Math.max(maxTime, memChunk.getMaxTime());
+      maxTime = Math.max(maxTime, memChunk.getMaxTime(ignoreAllNullRows));
     }
     return maxTime;
   }

@@ -1,7 +1,7 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional inString.formation
+ * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
@@ -86,6 +87,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -129,6 +132,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -148,6 +152,7 @@ import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.INTEGRAL;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_AGGREGATION;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
@@ -232,7 +237,8 @@ public class ExpressionAnalyzer {
   private final Function<Node, Analysis.ResolvedWindow> getResolvedWindow;
 
   private static final String SUBQUERY_COLUMN_NUM_CHECK =
-      "Subquery must return only one column for now. Row Type is not supported for now.";
+      DataNodeQueryMessages
+          .EXCEPTION_SUBQUERY_MUST_RETURN_ONLY_ONE_COLUMN_FOR_NOW_ROW_TYPE_IS_NOT_SUPPORTED_FOR_NOW_A2D2C5AC;
 
   private ExpressionAnalyzer(
       Metadata metadata,
@@ -714,7 +720,11 @@ public class ExpressionAnalyzer {
     @Override
     public Type visitNotExpression(
         NotExpression node, StackableAstVisitorContext<Context> context) {
-      coerceType(context, node.getValue(), BOOLEAN, "Value of logical NOT expression");
+      coerceType(
+          context,
+          node.getValue(),
+          BOOLEAN,
+          DataNodeQueryMessages.EXCEPTION_VALUE_OF_LOGICAL_NOT_EXPRESSION_00F6E838);
 
       return setExpressionType(node, BOOLEAN);
     }
@@ -723,7 +733,11 @@ public class ExpressionAnalyzer {
     public Type visitLogicalExpression(
         LogicalExpression node, StackableAstVisitorContext<Context> context) {
       for (Expression term : node.getTerms()) {
-        coerceType(context, term, BOOLEAN, "Logical expression term");
+        coerceType(
+            context,
+            term,
+            BOOLEAN,
+            DataNodeQueryMessages.EXCEPTION_LOGICAL_EXPRESSION_TERM_C65A7562);
       }
 
       return setExpressionType(node, BOOLEAN);
@@ -789,7 +803,11 @@ public class ExpressionAnalyzer {
 
     @Override
     public Type visitIfExpression(IfExpression node, StackableAstVisitorContext<Context> context) {
-      coerceType(context, node.getCondition(), BOOLEAN, "IF condition");
+      coerceType(
+          context,
+          node.getCondition(),
+          BOOLEAN,
+          DataNodeQueryMessages.EXCEPTION_IF_CONDITION_70B1DBB9);
 
       Type type;
       if (node.getFalseValue().isPresent()) {
@@ -797,7 +815,7 @@ public class ExpressionAnalyzer {
             coerceToSingleType(
                 context,
                 node,
-                "Result types for IF must be the same",
+                DataNodeQueryMessages.EXCEPTION_RESULT_TYPES_FOR_IF_MUST_BE_THE_SAME_71714769,
                 node.getTrueValue(),
                 node.getFalseValue().get());
       } else {
@@ -811,13 +829,17 @@ public class ExpressionAnalyzer {
     public Type visitSearchedCaseExpression(
         SearchedCaseExpression node, StackableAstVisitorContext<Context> context) {
       for (WhenClause whenClause : node.getWhenClauses()) {
-        coerceType(context, whenClause.getOperand(), BOOLEAN, "CASE WHEN clause");
+        coerceType(
+            context,
+            whenClause.getOperand(),
+            BOOLEAN,
+            DataNodeQueryMessages.EXCEPTION_CASE_WHEN_CLAUSE_454D7201);
       }
 
       Type type =
           coerceToSingleType(
               context,
-              "All CASE results",
+              DataNodeQueryMessages.EXCEPTION_ALL_CASE_RESULTS_09DB7E1B,
               getCaseResultExpressions(node.getWhenClauses(), node.getDefaultValue()));
       setExpressionType(node, type);
 
@@ -837,7 +859,7 @@ public class ExpressionAnalyzer {
       Type type =
           coerceToSingleType(
               context,
-              "All CASE results",
+              DataNodeQueryMessages.EXCEPTION_ALL_CASE_RESULTS_09DB7E1B,
               getCaseResultExpressions(node.getWhenClauses(), node.getDefaultValue()));
       setExpressionType(node, type);
 
@@ -899,7 +921,11 @@ public class ExpressionAnalyzer {
     @Override
     public Type visitCoalesceExpression(
         CoalesceExpression node, StackableAstVisitorContext<Context> context) {
-      Type type = coerceToSingleType(context, "All COALESCE operands", node.getOperands());
+      Type type =
+          coerceToSingleType(
+              context,
+              DataNodeQueryMessages.EXCEPTION_ALL_COALESCE_OPERANDS_A5374A6A,
+              node.getOperands());
 
       return setExpressionType(node, type);
     }
@@ -1033,6 +1059,15 @@ public class ExpressionAnalyzer {
     @Override
     public Type visitFunctionCall(FunctionCall node, StackableAstVisitorContext<Context> context) {
       String functionName = node.getName().getSuffix();
+      if (ExpressionAnalyzer.this.context.isUdfForbidden()
+          && UDFManagementService.getInstance().getUDFInformation(Model.TABLE, functionName)
+              != null) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_EXTERNAL_USER_DEFINED_FUNCTION_ARG_IS_NOT_SUPPORTED_IN_THIS_WRITE_STATEMENT_8329DC8E,
+                functionName));
+      }
       boolean isAggregation = metadata.isAggregationFunction(session, functionName, accessControl);
       boolean isRowPatternCount =
           context.getContext().isPatternRecognition()
@@ -1121,6 +1156,11 @@ public class ExpressionAnalyzer {
 
       int argumentsNum = node.getArguments().size();
       RelationType relationType = context.getContext().getScope().getRelationType();
+      // The explicit time argument is validated only after the argument types are resolved, so
+      // that a qualified column is checked against its own type instead of the first visible
+      // field with the same name, which depends on the JOIN order. -1 means no check is needed.
+      int timeArgumentIndex = -1;
+      String invalidTimeArgumentMessage = null;
       // Syntactic sugar: first(s1) => first(s1,time), first_by(s1,s2) => first_by(s1,s2,time)
       // So do last and last_by.
       switch (functionName.toLowerCase()) {
@@ -1129,14 +1169,9 @@ public class ExpressionAnalyzer {
           if (argumentsNum == 1) {
             addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
           } else if (argumentsNum == 2) {
-            if (!checkArgumentIsTimestamp(
-                node.getArguments().get(1), (List<Field>) relationType.getVisibleFields())) {
-              throw new SemanticException(
-                  String.format(
-                      DataNodeQueryMessages
-                          .THE_SECOND_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME,
-                      functionName));
-            }
+            timeArgumentIndex = 1;
+            invalidTimeArgumentMessage =
+                DataNodeQueryMessages.THE_SECOND_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME;
           }
           break;
         case FIRST_BY_AGGREGATION:
@@ -1144,18 +1179,52 @@ public class ExpressionAnalyzer {
           if (argumentsNum == 2) {
             addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
           } else if (argumentsNum == 3) {
-            if (!checkArgumentIsTimestamp(
-                node.getArguments().get(2), (List<Field>) relationType.getVisibleFields())) {
-              throw new SemanticException(
-                  String.format(
-                      DataNodeQueryMessages
-                          .THE_THIRD_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME,
-                      functionName));
-            }
+            timeArgumentIndex = 2;
+            invalidTimeArgumentMessage =
+                DataNodeQueryMessages.THE_THIRD_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME;
           }
+          break;
+        case INTEGRAL:
+          // Syntactic sugar: integral(c1) => integral(c1, <1s in ticks>, time)
+          //                 integral(c1, time_unit) => integral(c1, time_unit, time)
+          if (argumentsNum == 1) {
+            node.getArguments()
+                .add(
+                    new LongLiteral(
+                        String.valueOf(
+                            TimestampPrecisionUtils.currPrecision.convert(1, TimeUnit.SECONDS))));
+            addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
+          } else if (argumentsNum == 2) {
+            addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
+          } else if (argumentsNum == 3) {
+            timeArgumentIndex = 2;
+            invalidTimeArgumentMessage =
+                DataNodeQueryMessages.THE_THIRD_ARGUMENT_OF_S_FUNCTION_MUST_BE_ACTUAL_TIME_NAME;
+          } else {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_TWO_OR_THREE_ARGUMENTS_C1ADA261,
+                    functionName));
+          }
+          // The bare duration form has already been normalized to ticks of the current timestamp
+          // precision by the parser; a string literal is not accepted.
+          Expression timeUnitArgument = node.getArguments().get(1);
+          if (!(timeUnitArgument instanceof LongLiteral)
+              || ((LongLiteral) timeUnitArgument).getParsedValue() <= 0) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_LITERAL_OR_INTEGER_498530E4,
+                    functionName));
+          }
+          break;
       }
 
       List<Type> argumentTypes = getCallArgumentTypes(node.getArguments(), context);
+      if (timeArgumentIndex >= 0 && !TIMESTAMP.equals(argumentTypes.get(timeArgumentIndex))) {
+        throw new SemanticException(String.format(invalidTimeArgumentMessage, functionName));
+      }
 
       if (node.getArguments().size() > 127) {
         throw new SemanticException(
@@ -1252,34 +1321,6 @@ public class ExpressionAnalyzer {
       }
     }
 
-    private boolean checkArgumentIsTimestamp(Expression argument, List<Field> visibleFields) {
-
-      String argumentName =
-          (argument instanceof DereferenceExpression)
-              ? ((DereferenceExpression) argument)
-                  .getField()
-                  .orElseThrow(
-                      () ->
-                          new SemanticException(
-                              DataNodeQueryMessages.THE_INPUT_FIELD_DOES_NOT_EXIST))
-                  .toString()
-              : argument.toString();
-
-      for (Field field : visibleFields) {
-        if (field
-            .getName()
-            .orElseThrow(
-                () ->
-                    new SemanticException(
-                        DataNodeQueryMessages.THE_FIELD_IN_TABLE_DOES_NOT_HAVE_A_NAME))
-            .equalsIgnoreCase(argumentName)) {
-          return field.getType() == TIMESTAMP;
-        }
-      }
-      // should never reach here
-      throw new SemanticException(DataNodeQueryMessages.THE_INPUT_ARGUMENT_DOES_NOT_EXIST);
-    }
-
     /** Retrieves the effective time column name from the relation's visible fields. */
     private String getActualTimeFieldName(RelationType relation) {
 
@@ -1306,6 +1347,7 @@ public class ExpressionAnalyzer {
                           .MISSING_VALID_TIME_COLUMN_THE_TABLE_MUST_CONTAIN_EITHER_A_COLUMN_WITH_THE_TIME_CATEGORY));
     }
 
+    /** Parses the time unit and converts it to ticks of the current timestamp precision. */
     private Type analyzeMatchNumber(
         FunctionCall node, StackableAstVisitorContext<Context> context) {
       if (!node.getArguments().isEmpty()) {
@@ -1862,7 +1904,7 @@ public class ExpressionAnalyzer {
         Type type =
             coerceToSingleType(
                 context,
-                "IN value and list items",
+                DataNodeQueryMessages.EXCEPTION_IN_VALUE_AND_LIST_ITEMS_5D5CF98A,
                 ImmutableList.<Expression>builder()
                     .add(value)
                     .addAll(inListExpression.getValues())
@@ -2778,7 +2820,7 @@ public class ExpressionAnalyzer {
         accessControl,
         session,
         parameters,
-        "Constant expression cannot contain a subquery",
+        DataNodeQueryMessages.EXCEPTION_CONSTANT_EXPRESSION_CANNOT_CONTAIN_A_SUBQUERY_60319D92,
         warningCollector);
   }
 

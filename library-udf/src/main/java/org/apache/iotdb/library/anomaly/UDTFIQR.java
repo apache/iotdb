@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.anomaly;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -56,11 +57,12 @@ public class UDTFIQR implements UDTF {
             x ->
                 ((String) x).equalsIgnoreCase(BATCH_COMPUTE)
                     || ((String) x).equalsIgnoreCase(STREAM_COMPUTE),
-            "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
+            LibraryUdfMessages
+                .EXCEPTION_PARAMETER_COMPUTE_IS_ILLEGAL_PLEASE_USE_BATCH_FOR_DEFAULT_OR_STREAM_C46DD729,
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
             params -> (double) params[0] < (double) params[1],
-            "parameter $q1$ should be smaller than $q3$",
+            LibraryUdfMessages.EXCEPTION_PARAMETER_Q1_SHOULD_BE_SMALLER_THAN_Q3_74CEA186,
             validator.getParameters().getDoubleOrDefault("q1", -1),
             validator.getParameters().getDoubleOrDefault("q3", 1));
   }

@@ -45,6 +45,11 @@ public class RemoteConfigNodeConfig implements ConfigNodeConfig {
   }
 
   @Override
+  public ConfigNodeConfig setRatisLogAppenderBufferSizeMax(int size) {
+    return this;
+  }
+
+  @Override
   public ConfigNodeConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
     return this;
   }

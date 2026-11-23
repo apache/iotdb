@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceFinishedException;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.queryengine.metric.QueryMetricsManager;
@@ -98,7 +99,9 @@ public abstract class Driver implements IDriver {
 
   @Override
   public boolean isFinished() {
-    checkLockNotHeld("Cannot check finished status while holding the driver lock");
+    checkLockNotHeld(
+        DataNodeQueryMessages
+            .EXCEPTION_CANNOT_CHECK_FINISHED_STATUS_WHILE_HOLDING_THE_DRIVER_LOCK_E3421709);
 
     // if we can get the lock, attempt a clean shutdown; otherwise someone else will shutdown
     Optional<Boolean> result = tryWithLockUnInterruptibly(this::isFinishedInternal);
@@ -209,7 +212,8 @@ public abstract class Driver implements IDriver {
   @SuppressWarnings("squid:S112")
   @GuardedBy("exclusiveLock")
   private boolean isFinishedInternal() {
-    checkLockHeld("Lock must be held to call isFinishedInternal");
+    checkLockHeld(
+        DataNodeQueryMessages.EXCEPTION_LOCK_MUST_BE_HELD_TO_CALL_ISFINISHEDINTERNAL_9D600B8D);
 
     boolean finished;
     try {
@@ -247,6 +251,11 @@ public abstract class Driver implements IDriver {
           sink.send(tsBlock);
         }
       }
+      return NOT_BLOCKED;
+    } catch (FragmentInstanceFinishedException e) {
+      // The fragment may finish before its notification thread closes this driver. Release the
+      // driver through the normal cleanup path without aborting other fragments of the query.
+      state.compareAndSet(State.ALIVE, State.NEED_DESTRUCTION);
       return NOT_BLOCKED;
     } catch (Throwable t) {
       Throwable actualCause = t;
@@ -325,7 +334,7 @@ public abstract class Driver implements IDriver {
    */
   private <T> Optional<T> tryWithLock(
       long timeout, TimeUnit unit, boolean interruptOnClose, Supplier<T> task) {
-    checkLockNotHeld("Lock cannot be reacquired");
+    checkLockNotHeld(DataNodeQueryMessages.EXCEPTION_LOCK_CANNOT_BE_REACQUIRED_073CBCAD);
 
     boolean acquired = false;
     try {
@@ -384,7 +393,8 @@ public abstract class Driver implements IDriver {
   @SuppressWarnings({"squid:S1181", "squid:S112"})
   @GuardedBy("exclusiveLock")
   private void destroyIfNecessary() {
-    checkLockHeld("Lock must be held to call destroyIfNecessary");
+    checkLockHeld(
+        DataNodeQueryMessages.EXCEPTION_LOCK_MUST_BE_HELD_TO_CALL_DESTROYIFNECESSARY_A70D64C2);
 
     if (!state.compareAndSet(State.NEED_DESTRUCTION, State.DESTROYED)) {
       return;
@@ -401,7 +411,7 @@ public abstract class Driver implements IDriver {
           addSuppressedException(
               inFlightException,
               t,
-              "Error destroying driver for task %s",
+              DataNodeQueryMessages.EXCEPTION_ERROR_DESTROYING_DRIVER_FOR_TASK_ARG_D695D81F,
               driverContext.getDriverTaskID());
     } finally {
       releaseResource();
@@ -452,7 +462,8 @@ public abstract class Driver implements IDriver {
           addSuppressedException(
               inFlightException,
               t,
-              "Error closing operator {} for driver task {}",
+              DataNodeQueryMessages
+                  .EXCEPTION_ERROR_CLOSING_OPERATOR_ARG_FOR_DRIVER_TASK_ARG_4DE74330,
               root.getOperatorContext().getOperatorId(),
               driverContext.getDriverTaskID());
     } finally {

@@ -30,8 +30,14 @@ public final class RpcMessages {
   public static final String FRAME_ERROR_NEGATIVE_FRAME_SIZE = "读取到负数帧大小 (%d)%s！";
   public static final String FRAME_ERROR_FRAME_SIZE_EXCEEDED =
       "帧大小 (%d) 超过保护最大值 (%d)%s！";
+  public static final String
+      EXCEPTION_FRAME_SIZE_ARG_EXCEEDS_THE_MAXIMUM_SUPPORTED_MESSAGE_SIZE_E83C0952 =
+      "帧大小 (%d) 超过支持的最大消息大小！";
   public static final String FRAME_ERROR_STRING_LENGTH_EXCEEDED =
       "字符串长度 (%d) 超过保护最大值 (%d)%s！";
+  public static final String
+      EXCEPTION_REQUIRED_READ_SIZE_ARG_EXCEEDS_REMAINING_FRAME_SIZE_ARG_ARG_9C0541EE =
+          "请求读取的大小 (%d) 超过当前帧剩余大小 (%d)%s！";
 
   // TElasticFramedTransport - SSL
   public static final String NON_SSL_TO_SSL_PORT =
@@ -95,5 +101,44 @@ public final class RpcMessages {
       "加载 keystore 或 truststore 文件失败";
   public static final String EXCEPTION_KEYSTORE_OR_TRUSTSTORE_FILE_NOT_FOUND_5A6845B2 =
       "未找到 keystore 或 truststore 文件：";
+
+  public static final String EXCEPTION_MULTIPLE_ERROR_OCCUR_MESSAGES_75A34A00 = "发生多个错误，消息：";
+
+  public static final String EXCEPTION_THE_VALUE_GOT_BY_ARG_COLUMN_NAME_IS_NULL_65408BDE =
+      "通过列名 %s 获取的值为 NULL。";
+
+  public static final String EXCEPTION_DATA_TYPE_ARG_IS_NOT_SUPPORTED_31213160 = "不支持数据类型 %s。";
+
+  public static final String EXCEPTION_EMPTY_FRAGMENT_RECEIVED_WHEN_ASSEMBLING_A_CHUNKED_QUERY_RESULT_03A0EF39 =
+      "拼装分片查询结果时收到空分片";
+  public static final String
+      EXCEPTION_FRAGMENT_OFFSET_ARG_DOES_NOT_MATCH_THE_ACCUMULATED_LENGTH_ARG_1EB45347 =
+          "分片 offset %d 与已累计的长度 %d 不一致";
+  public static final String EXCEPTION_MISSING_TOTALLENGTH_FOR_THE_FIRST_FRAGMENT_OF_A_CHUNKED_TSBLOCK_1D11374F =
+      "分片 TsBlock 的首个分片缺少 totalLength";
+  public static final String
+      EXCEPTION_ASSEMBLED_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_THE_TOTAL_LENGTH_ARG_925DCB15 =
+          "拼装后的分片长度 %d 与 totalLength %d 不一致";
+
+  public static final String EXCEPTION_INVALID_BUFFER_SIZE_ARG_5131C6CA =
+      "无效的缓冲区大小：%d";
+
+  public static final String EXCEPTION_WRITE_BUFFER_SIZE_ARG_LARGER_THAN_MAXIMUM_BUFFER_SIZE_ARG_C0A47F3D =
+      "写缓冲区大小（%d）超过最大缓冲区大小（%d）！";
+
+  public static final String EXCEPTION_INVALID_COMPRESSION_BUFFER_SIZE_ARG_D677543D =
+      "无效的压缩缓冲区大小：%d";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_E21E05CA =
+      "序列化帧大小至少为 %d 字节，超过 Java 数组最大大小 %d 字节。";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_1CDD4BB9 =
+      "序列化帧大小至少为 %d 字节，超过配置的 Thrift 最大帧大小 %d 字节。";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_TO_ARG_6F166F0C =
+      "序列化帧大小至少为 %d 字节，超过 Java 数组最大大小 %d 字节，目标地址为 %s。";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_TO_ARG_7EF64898 =
+      "序列化帧大小至少为 %d 字节，超过配置的 Thrift 最大帧大小 %d 字节，目标地址为 %s。";
 
 }

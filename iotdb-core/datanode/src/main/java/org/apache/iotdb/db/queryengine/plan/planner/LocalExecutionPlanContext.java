@@ -32,8 +32,11 @@ import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -41,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimat
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -55,6 +59,7 @@ import javax.annotation.Nullable;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +76,7 @@ import static java.util.Objects.requireNonNull;
 public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
+
   // Save operators in this pipeline, a new one will be created when creating another pipeline
   private final DriverContext driverContext;
   private final AtomicInteger nextOperatorId;
@@ -83,6 +89,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   private List<PipelineDriverFactory> pipelineDriverFactories;
   private List<ExchangeOperator> exchangeOperatorList = new ArrayList<>();
   private int exchangeSumNum = 0;
+  private final long fragmentExchangeMaxBytes;
+  private Map<ISink, Long> legacySinkLimits = new IdentityHashMap<>();
 
   private List<TSDataType> cachedDataTypes;
 
@@ -110,6 +118,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
       TypeProvider typeProvider,
       FragmentInstanceContext instanceContext,
       DataNodeQueryContext dataNodeQueryContext) {
+    this.fragmentExchangeMaxBytes =
+        IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
     this.typeProvider = typeProvider;
     this.allSensorsMap = new ConcurrentHashMap<>();
     this.nextOperatorId = new AtomicInteger(0);
@@ -121,6 +131,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
 
   // For creating subContext, differ from parent context mainly in driver context
   public LocalExecutionPlanContext(LocalExecutionPlanContext parentContext) {
+    this.fragmentExchangeMaxBytes = parentContext.fragmentExchangeMaxBytes;
+    this.legacySinkLimits = parentContext.legacySinkLimits;
     this.nextOperatorId = parentContext.nextOperatorId;
     this.typeProvider = parentContext.typeProvider;
     this.allSensorsMap = parentContext.allSensorsMap;
@@ -142,6 +154,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
       final TypeProvider typeProvider,
       final FragmentInstanceContext instanceContext,
       final ISchemaRegion schemaRegion) {
+    this.fragmentExchangeMaxBytes =
+        IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
     this.allSensorsMap = new ConcurrentHashMap<>();
     this.typeProvider = typeProvider;
     this.nextOperatorId = new AtomicInteger(0);
@@ -247,10 +261,11 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.exchangeSumNum = exchangeSumNum;
   }
 
+  /** Original per-handle quota for tree planning and independent table FI accounting. */
   public long getMaxBytesOneHandleCanReserve() {
-    long maxBytesPerFI =
-        IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
-    return exchangeSumNum == 0 ? maxBytesPerFI : maxBytesPerFI / exchangeSumNum;
+    return exchangeSumNum == 0
+        ? fragmentExchangeMaxBytes
+        : fragmentExchangeMaxBytes / exchangeSumNum;
   }
 
   public void addExchangeSumNum(int addValue) {
@@ -271,6 +286,59 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     exchangeOperatorList.forEach(
         exchangeOperator ->
             exchangeOperator.getSourceHandle().setMaxBytesCanReserve(maxBytesOneHandleCanReserve));
+  }
+
+  /** Called after operator generation, before root memory estimation and factory registration. */
+  public void setExchangeMemoryLimits(PlanNode plan, MemoryPool memoryPool) {
+    // Only remote sources charge this FI's INPUT. Local inputs are owned by the producing FI;
+    // internal pipeline queues cannot enable sharing because of the pipeline check below.
+    long inputExchangeCount =
+        exchangeOperatorList.stream()
+            .filter(exchange -> exchange.getSourceHandle() instanceof SourceHandle)
+            .count();
+    int outputSinkCount = legacySinkLimits.size();
+    long inputMaxBytes =
+        inputExchangeCount == 0
+            ? 0
+            : (outputSinkCount == 0 ? fragmentExchangeMaxBytes : fragmentExchangeMaxBytes / 2);
+    long outputMaxBytes = outputSinkCount == 0 ? 0 : fragmentExchangeMaxBytes - inputMaxBytes;
+    long maxBlockBytes = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    boolean sharedBudget =
+        (inputMaxBytes > 0 || outputMaxBytes > 0)
+            && SharedExchangeBudgetEligibility.isEligible(plan)
+            // Only the root pipeline may exist. Child factories are registered during generation;
+            // the root factory is registered after its memory has been estimated below.
+            && pipelineDriverFactories.isEmpty()
+            && driverContext.getDependencyDriverIndex() == -1
+            && (inputExchangeCount == 0 || inputMaxBytes >= maxBlockBytes)
+            && (outputSinkCount == 0 || outputMaxBytes >= maxBlockBytes);
+    FragmentInstanceContext instanceContext = driverContext.getFragmentInstanceContext();
+    instanceContext.initializeExchangeMemoryBudget(
+        sharedBudget ? inputMaxBytes : 0, sharedBudget ? outputMaxBytes : 0);
+    if (sharedBudget) {
+      memoryPool.registerFragmentInstanceSharedBudget(
+          instanceContext.getId().getQueryId().getId(),
+          instanceContext.getId().getFragmentInstanceId());
+      LOGGER.debug(
+          DataNodeQueryMessages.LOG_SHARED_EXCHANGE_BUDGET_FOR_FI_ARG_INPUT_ARG_OUTPUT_ARG_98AE1109,
+          instanceContext.getId(),
+          instanceContext.getInputMaxBytes(),
+          instanceContext.getOutputMaxBytes());
+    } else {
+      LOGGER.debug(
+          DataNodeQueryMessages
+              .MAXBYTESONEHANDLECANRESERVE_FOR_EXCHANGEOPERATOR_IS_ARG_EXCHANGESUMNUM_IS_ARG,
+          getMaxBytesOneHandleCanReserve(),
+          exchangeSumNum);
+    }
+    legacySinkLimits.forEach(
+        (sink, legacyLimit) ->
+            sink.setMaxBytesCanReserve(
+                sharedBudget ? instanceContext.getOutputMaxBytes() : legacyLimit));
+    long sourceLimit =
+        sharedBudget ? instanceContext.getInputMaxBytes() : getMaxBytesOneHandleCanReserve();
+    exchangeOperatorList.forEach(
+        exchangeOperator -> exchangeOperator.getSourceHandle().setMaxBytesCanReserve(sourceLimit));
   }
 
   public Set<String> getAllSensors(IDeviceID deviceId, String sensorId) {
@@ -303,6 +371,9 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     checkArgument(
         driverContext.getSink() == null,
         DataNodeQueryMessages.EXCEPTION_THERE_MUST_BE_AT_MOST_ONE_SINKNODE_A965AFE7);
+    if (sink instanceof ISinkHandle) {
+      legacySinkLimits.put(sink, getMaxBytesOneHandleCanReserve());
+    }
     driverContext.setSink(sink);
   }
 

@@ -19,30 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
-
 import org.junit.Test;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertAnalyzeSemanticException;
 
 public class EvaluateEmptyIntersectTest {
 
   @Test
   public void EvaluateEmptyIntersectTest() {
-    // Normal case
-    assertPlan(
-        new PlanTester()
-            .createPlan(
-                "(select tag1 from t1 limit 0) intersect (select tag1 from t2)  intersect (select tag1 from t3)"),
-        output((limit(0, tableScan("testdb.t1")))));
-
-    assertPlan(
-        new PlanTester()
-            .createPlan(
-                "(select tag1 from t1 ) intersect all (select tag1 from t2 limit 0)  intersect all (select tag1 from t3)"),
-        output((limit(0, tableScan("testdb.t2")))));
+    assertAnalyzeSemanticException(
+        "(select tag1 from t1 limit 0) intersect (select tag1 from t2) intersect (select tag1 from t3)",
+        "LIMIT row count must be greater than 0 (actual value: 0)");
+    assertAnalyzeSemanticException(
+        "(select tag1 from t1) intersect all (select tag1 from t2 limit 0) intersect all (select tag1 from t3)",
+        "LIMIT row count must be greater than 0 (actual value: 0)");
   }
 }

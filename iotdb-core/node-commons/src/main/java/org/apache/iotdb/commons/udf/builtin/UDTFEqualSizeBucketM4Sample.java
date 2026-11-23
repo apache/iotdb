@@ -27,16 +27,20 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
-import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.udf.api.type.Type;
+
+import org.apache.tsfile.read.common.type.Type;
 
 import java.io.IOException;
 
 public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
 
+  private TypeServices.NumericWindowTransformer<UDTFEqualSizeBucketM4Sample> windowTransformer;
+
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     bucketSize *= 4;
+    windowTransformer =
+        TypeServices.BUCKET_M4_WINDOW_TRANSFORMER_SERVICE.call(Type.fromTsDataType(dataType));
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(bucketSize))
         .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
@@ -45,36 +49,7 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector)
       throws UDFException, IOException {
-    switch (dataType) {
-      case INT32:
-        transformInt(rowWindow, collector);
-        break;
-      case INT64:
-        transformLong(rowWindow, collector);
-        break;
-      case FLOAT:
-        transformFloat(rowWindow, collector);
-        break;
-      case DOUBLE:
-        transformDouble(rowWindow, collector);
-        break;
-      case TIMESTAMP:
-      case BOOLEAN:
-      case DATE:
-      case STRING:
-      case TEXT:
-      case BLOB:
-      case OBJECT:
-      default:
-        // This will not happen
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            UDFDataTypeTransformer.transformToUDFDataType(dataType),
-            Type.INT32,
-            Type.INT64,
-            Type.FLOAT,
-            Type.DOUBLE);
-    }
+    windowTransformer.transform(this, rowWindow, collector);
   }
 
   public void transformInt(RowWindow rowWindow, PointCollector collector) throws IOException {

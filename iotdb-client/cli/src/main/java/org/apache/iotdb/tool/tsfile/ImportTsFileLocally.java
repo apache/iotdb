@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.tool.tsfile;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.session.pool.SessionPool;
+
+import java.util.Objects;
 
 public class ImportTsFileLocally extends ImportTsFileBase implements Runnable {
 
@@ -45,7 +48,10 @@ public class ImportTsFileLocally extends ImportTsFileBase implements Runnable {
         }
       }
     } catch (final Exception e) {
-      ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
+      ioTPrinter.println(
+          String.format(
+              CliMessages.EXCEPTION_UNEXPECTED_ERROR_OCCURRED_ARG_402FA331,
+              Objects.toString(e.getMessage())));
     }
   }
 

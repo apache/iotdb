@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputN
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.CopyToTsFileOptions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
@@ -96,6 +98,15 @@ public class PlanGraphJsonPrinter {
     } else if (node instanceof ExplainAnalyzeNode) {
       ExplainAnalyzeNode n = (ExplainAnalyzeNode) node;
       properties.add("ChildPermittedOutputs", toJsonArray(n.getChildPermittedOutputs()));
+    } else if (node instanceof CopyToNode n) {
+      properties.addProperty("TargetFile", n.getTargetFilePath());
+      properties.addProperty("Format", n.getCopyToOptions().getFormat().name());
+      if (n.getCopyToOptions() instanceof CopyToTsFileOptions options) {
+        properties.addProperty("TargetTable", options.getTargetTableName());
+        properties.addProperty("TimeColumn", options.getTargetTimeColumn());
+        properties.add("TagColumns", toJsonArray(options.getTargetTagColumns()));
+        properties.addProperty("MemoryThreshold", options.getTargetMemoryThreshold());
+      }
     } else if (node instanceof TableScanNode) {
       buildTableScanProperties(properties, (TableScanNode) node);
     } else if (node instanceof ExchangeNode) {

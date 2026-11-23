@@ -99,6 +99,24 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   protected abstract void rollback(Env env)
       throws IOException, InterruptedException, ProcedureException;
 
+  /**
+   * Whether the states this procedure has already executed may still be undone. The executor asks
+   * this once, before it starts to roll back the root procedure stack. A procedure which returns
+   * false is finished without undoing any of its states, see {@link #abandonRollback()}.
+   */
+  protected boolean isRollbackSupported() {
+    return true;
+  }
+
+  /**
+   * Drops the bookkeeping of the states this procedure has executed. The persisted stack indexes
+   * are what a recovered rollback rebuilds its stack from, so dropping them is what makes the
+   * decision survive a leader switch.
+   */
+  protected synchronized void abandonRollback() {
+    stackIndexes = null;
+  }
+
   public void serialize(DataOutputStream stream) throws IOException {
     // procid
     stream.writeLong(this.procId);
@@ -265,6 +283,15 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   protected boolean isYieldAfterExecution(Env env) {
     return false;
+  }
+
+  /**
+   * Delay in milliseconds before retrying a failed rollback. A negative value keeps the default
+   * behavior of completing rollback after an exception. Procedures opting in must make rollback
+   * idempotent and retain the state needed by the next attempt.
+   */
+  protected long getRollbackRetryTimeout() {
+    return -1;
   }
 
   // -------------------------Internal methods - called by the procedureExecutor------------------
@@ -696,6 +723,11 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   protected synchronized boolean setTimeoutFailure(Env env) {
     if (state == ProcedureState.WAITING_TIMEOUT) {
+      if (exception != null && getRollbackRetryTimeout() >= 0) {
+        // Resume compensation without replacing the original execution failure.
+        setState(ProcedureState.FAILED);
+        return true;
+      }
       long timeDiff = System.currentTimeMillis() - lastUpdate;
       setFailure(
           "ProcedureExecutor",

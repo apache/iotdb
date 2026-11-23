@@ -55,7 +55,7 @@ public class RandomOnDiskUsableSpaceStrategy extends DirectoryStrategy {
 
   /** get space list of all folders. */
   public List<Long> getFolderUsableSpaceList() {
-    List<Long> spaceList = new ArrayList<>();
+    List<Long> spaceList = new ArrayList<>(folders.size());
     for (int i = 0; i < folders.size(); i++) {
       String folder = folders.get(i);
       if (isUnavailableFolder(folder)) {

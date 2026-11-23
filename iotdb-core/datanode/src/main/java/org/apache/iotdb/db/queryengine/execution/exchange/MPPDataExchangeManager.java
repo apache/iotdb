@@ -22,8 +22,10 @@ package org.apache.iotdb.db.queryengine.execution.exchange;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.MPPDataExchangeClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
@@ -79,6 +81,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.common.FragmentInstanceId.createFullId;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.GET_DATA_BLOCK_TASK_SERVER;
@@ -176,6 +179,48 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         }
         // index of the channel must be a SinkChannel
         SinkChannel sinkChannel = (SinkChannel) (sinkHandle.getChannel(req.getIndex()));
+        if (req.isSetOffset()) {
+          int remainingPayloadSize =
+              IoTDBDescriptor.getInstance().getConfig().getMppDataExchangeMaxPayloadSizeInBytes();
+          int offset = req.getOffset();
+          for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
+            try {
+              ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
+              int blockOffset = i == req.getStartSequenceId() ? offset : 0;
+              int serializedTsBlockSize = serializedTsBlock.remaining();
+              checkArgument(
+                  blockOffset >= 0 && blockOffset <= serializedTsBlockSize,
+                  DataNodeQueryMessages
+                      .EXCEPTION_INVALID_SERIALIZED_TSBLOCK_FRAGMENT_OFFSET_ARG_FOR_BLOCK_SIZE_ARG_53BC0284,
+                  blockOffset,
+                  serializedTsBlockSize);
+              int remainingBlockSize = serializedTsBlockSize - blockOffset;
+              ByteBuffer fragment = serializedTsBlock;
+              fragment.position(blockOffset);
+              if (remainingBlockSize <= remainingPayloadSize) {
+                fragment.limit(blockOffset + remainingBlockSize);
+                resp.addToTsBlocks(fragment.slice());
+                remainingPayloadSize -= remainingBlockSize;
+                if (remainingPayloadSize == 0) {
+                  break;
+                }
+              } else {
+                fragment.limit(blockOffset + remainingPayloadSize);
+                resp.addToTsBlocks(fragment.slice());
+                resp.setOffset(blockOffset + remainingPayloadSize);
+                if (blockOffset == 0) {
+                  resp.setTotalLength(serializedTsBlockSize);
+                }
+                break;
+              }
+            } catch (GetTsBlockFromClosedOrAbortedChannelException e) {
+              return new TGetDataBlockResponse(new ArrayList<>());
+            } catch (IllegalArgumentException | IllegalStateException | IOException e) {
+              throw new TException(e);
+            }
+          }
+          return resp;
+        }
         for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
           try {
             ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
@@ -376,6 +421,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   public interface SinkListener {
     void onFinish(ISink sink);
 
+    /**
+     * Remote channels may publish the end under their monitor before an outstanding ACK. This
+     * callback must be non-blocking and must not acquire the owning shuffle handle's lock.
+     */
     void onEndOfBlocks(ISink sink);
 
     Optional<Throwable> onAborted(ISink sink);
@@ -648,8 +697,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   private final LocalMemoryManager localMemoryManager;
   private final Supplier<TsBlockSerde> tsBlockSerdeFactory;
   private final ExecutorService executorService;
-  private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
-      mppDataExchangeServiceClientManager;
+  private final MPPDataExchangeClientManager mppDataExchangeServiceClientManager;
   private final Map<TFragmentInstanceId, Map<String, ISourceHandle>> sourceHandles;
 
   /** Each FI has only one ShuffleSinkHandle. */
@@ -661,8 +709,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       LocalMemoryManager localMemoryManager,
       Supplier<TsBlockSerde> tsBlockSerdeFactory,
       ExecutorService executorService,
-      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
-          mppDataExchangeServiceClientManager) {
+      MPPDataExchangeClientManager mppDataExchangeServiceClientManager) {
     this.localMemoryManager =
         Validate.notNull(
             localMemoryManager,
@@ -811,23 +858,29 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           localFragmentInstanceId);
     }
 
-    return new SinkChannel(
-        remoteEndpoint,
-        remoteFragmentInstanceId,
-        remotePlanNodeId,
-        localPlanNodeId,
-        localFragmentInstanceId,
-        localMemoryManager,
-        executorService,
-        tsBlockSerdeFactory.get(),
-        new ISinkChannelListenerImpl(
+    SinkChannel channel =
+        new SinkChannel(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
+            localPlanNodeId,
             localFragmentInstanceId,
-            instanceContext,
-            instanceContext::failed,
-            cnt,
-            hasChannelFailedOrAborted),
-        instanceContext.isHighestPriority(),
-        mppDataExchangeServiceClientManager);
+            localMemoryManager,
+            executorService,
+            tsBlockSerdeFactory.get(),
+            new ISinkChannelListenerImpl(
+                localFragmentInstanceId,
+                instanceContext,
+                instanceContext::failed,
+                cnt,
+                hasChannelFailedOrAborted),
+            instanceContext.isHighestPriority(),
+            instanceContext.getExchangeDeadlineMs(),
+            mppDataExchangeServiceClientManager);
+    instanceContext
+        .getStateMachine()
+        .addFinalStateChangeListener(state -> channel.stopNotifications(state.isFailed()));
+    return channel;
   }
 
   @Override

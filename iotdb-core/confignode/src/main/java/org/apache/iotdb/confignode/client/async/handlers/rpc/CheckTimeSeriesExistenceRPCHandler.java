@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 
 public class CheckTimeSeriesExistenceRPCHandler
@@ -75,12 +76,12 @@ public class CheckTimeSeriesExistenceRPCHandler
   @Override
   public void onError(Exception e) {
     String errorMsg =
-        "Check timeseries existence error on DataNode: {id="
-            + targetNode.getDataNodeId()
-            + ", internalEndPoint="
-            + targetNode.getInternalEndPoint()
-            + "}"
-            + e.getMessage();
+        String.format(
+            ConfigNodeMessages
+                .EXCEPTION_CHECK_TIMESERIES_EXISTENCE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_D2A3135E,
+            Objects.toString(targetNode.getDataNodeId()),
+            Objects.toString(targetNode.getInternalEndPoint()),
+            Objects.toString(e.getMessage()));
     LOGGER.error(errorMsg);
 
     TCheckTimeSeriesExistenceResp resp = new TCheckTimeSeriesExistenceResp();

@@ -21,6 +21,7 @@ package org.apache.iotdb.library.drepair;
 
 import org.apache.iotdb.library.drepair.util.TimestampRepair;
 import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -37,6 +38,7 @@ public class UDTFTimestampRepair implements UDTF {
   String intervalMethod;
   long interval;
   long intervalMode;
+  private TypeServices.NumericWindowWriter windowWriter;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -57,7 +59,8 @@ public class UDTFTimestampRepair implements UDTF {
       }
       validator.validate(
           x -> interval > 0,
-          "Invalid time unit input. Supported units are ns, us, ms, s, m, h, d.");
+          LibraryUdfMessages
+              .EXCEPTION_INVALID_TIME_UNIT_INPUT_SUPPORTED_UNITS_ARE_NS_US_MS_S_M_H_D_15CD3A00);
     }
   }
 
@@ -67,6 +70,9 @@ public class UDTFTimestampRepair implements UDTF {
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
         .setOutputDataType(parameters.getDataType(0));
+    windowWriter =
+        TypeServices.NUMERIC_CAST_WINDOW_WRITER_SERVICE.call(
+            TypeServices.toReadType(parameters.getDataType(0)));
 
     intervalMethod = parameters.getStringOrDefault("method", "Median");
     String intervalString = parameters.getStringOrDefault("interval", null);
@@ -100,35 +106,6 @@ public class UDTFTimestampRepair implements UDTF {
     ts.dpRepair();
     long[] timestamp = ts.getRepaired();
     double[] value = ts.getRepairedValue();
-    switch (rowWindow.getDataType(0)) {
-      case DOUBLE:
-        for (int i = 0; i < timestamp.length; i++) {
-          collector.putDouble(timestamp[i], value[i]);
-        }
-        break;
-      case FLOAT:
-        for (int i = 0; i < timestamp.length; i++) {
-          collector.putFloat(timestamp[i], (float) value[i]);
-        }
-        break;
-      case INT32:
-        for (int i = 0; i < timestamp.length; i++) {
-          collector.putInt(timestamp[i], (int) value[i]);
-        }
-        break;
-      case INT64:
-        for (int i = 0; i < timestamp.length; i++) {
-          collector.putLong(timestamp[i], (long) value[i]);
-        }
-        break;
-      case DATE:
-      case TIMESTAMP:
-      case BLOB:
-      case BOOLEAN:
-      case TEXT:
-      case STRING:
-      default:
-        throw new UDFException("");
-    }
+    windowWriter.write(timestamp, value, collector);
   }
 }

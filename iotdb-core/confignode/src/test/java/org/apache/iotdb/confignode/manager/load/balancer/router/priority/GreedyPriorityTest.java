@@ -65,7 +65,7 @@ public class GreedyPriorityTest {
       nodeCacheMap.put(i, new DataNodeHeartbeatCache(i));
       nodeCacheMap.get(i).cacheHeartbeatSample(new NodeHeartbeatSample(currentTimeNs, statuses[i]));
     }
-    nodeCacheMap.values().forEach(baseNodeCache -> baseNodeCache.updateCurrentStatistics(false));
+    nodeCacheMap.values().forEach(BaseNodeCache::updateNodeStatistics);
 
     /* Build TRegionReplicaSet */
     TConsensusGroupId groupId1 = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1);

@@ -31,6 +31,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertAnalyzeSemanticException;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
@@ -128,31 +129,22 @@ public class UnionOptimizeTest {
 
   @Test
   public void removeEmptyUnionBranchesTest1() {
-    // Normal case
-    assertPlan(
-        new PlanTester()
-            .createPlan(
-                "(select tag1 from t1 limit 0) union all (select tag1 from t2)  union all (select tag1 from t3)"),
-        output((union(tableScan("testdb.t2"), tableScan("testdb.t3")))));
+    assertAnalyzeSemanticException(
+        "(select tag1 from t1 limit 0) union all (select tag1 from t2) union all (select tag1 from t3)",
+        "LIMIT row count must be greater than 0 (actual value: 0)");
   }
 
   @Test
   public void removeEmptyUnionBranchesTest2() {
-    // One non-empty branch
-    assertPlan(
-        new PlanTester()
-            .createPlan(
-                "(select tag1 from t1 limit 0) union all (select tag1 from t2 limit 0)  union all (select tag1 from t3 limit 1)"),
-        output(limit(1, tableScan("testdb.t3"))));
+    assertAnalyzeSemanticException(
+        "(select tag1 from t1 limit 0) union all (select tag1 from t2 limit 0) union all (select tag1 from t3 limit 1)",
+        "LIMIT row count must be greater than 0 (actual value: 0)");
   }
 
   @Test
   public void removeEmptyUnionBranchesTest3() {
-    // All branches are empty
-    assertPlan(
-        new PlanTester()
-            .createPlan(
-                "(select tag1 from t1 limit 0) union all (select tag1 from t2 limit 0)  union all (select tag1 from t3 limit 0)"),
-        output(limit(0, tableScan("testdb.t1"))));
+    assertAnalyzeSemanticException(
+        "(select tag1 from t1 limit 0) union all (select tag1 from t2 limit 0) union all (select tag1 from t3 limit 0)",
+        "LIMIT row count must be greater than 0 (actual value: 0)");
   }
 }

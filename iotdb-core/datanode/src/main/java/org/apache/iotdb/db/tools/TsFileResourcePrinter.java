@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -30,6 +31,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Objects;
 
 /**
  * This tool can analyze the tsfile.resource files from a folder, or analyze a single
@@ -55,11 +57,17 @@ public class TsFileResourcePrinter {
       for (File file : files) {
         printResource(file.getAbsolutePath());
       }
-      System.out.println("Analyzing the resource file folder " + folder + " finished.");
+      System.out.println(
+          String.format(
+              DataNodeMiscMessages.LOG_ANALYZING_THE_RESOURCE_FILE_FOLDER_ARG_FINISHED_75334FCE,
+              Objects.toString(folder)));
     } else {
       // analyze a tsfile.resource file
       printResource(folderFile.getAbsolutePath());
-      System.out.println("Analyzing the resource file " + folder + " finished.");
+      System.out.println(
+          String.format(
+              DataNodeMiscMessages.LOG_ANALYZING_THE_RESOURCE_FILE_ARG_FINISHED_95367812,
+              Objects.toString(folder)));
     }
   }
 
@@ -68,20 +76,24 @@ public class TsFileResourcePrinter {
     filename = filename.substring(0, filename.length() - 9);
     TsFileResource resource = new TsFileResource();
     resource.setFile(SystemFileFactory.INSTANCE.getFile(filename));
-    System.out.printf("Analyzing %s ...%n", filename);
+    System.out.printf(DataNodeMiscMessages.LOG_ANALYZING_ARG_ARG_0AFCE795, filename);
     System.out.println();
     resource.deserialize();
-    System.out.println("Time index type: " + resource.getTimeIndexType());
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_TIME_INDEX_TYPE_ARG_63B81EC5,
+            Objects.toString(resource.getTimeIndexType())));
 
     System.out.printf(
-        "Resource plan index range [%d, %d]%n",
-        resource.getMinPlanIndex(), resource.getMaxPlanIndex());
+        DataNodeMiscMessages.LOG_RESOURCE_PLAN_INDEX_RANGE_ARG_ARG_ARG_BB9E5A74,
+        resource.getMinPlanIndex(),
+        resource.getMaxPlanIndex());
 
     for (IDeviceID device : resource.getDevices()) {
       // iterating the index, must present
       //noinspection OptionalGetWithoutIsPresent
       System.out.printf(
-          "device %s, start time %d (%s), end time %d (%s)%n",
+          DataNodeMiscMessages.LOG_DEVICE_ARG_START_TIME_ARG_ARG_END_TIME_ARG_ARG_ARG_7CC98253,
           device,
           resource.getStartTime(device).get(),
           DateTimeUtils.convertLongToDate(resource.getStartTime(device).get()),

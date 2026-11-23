@@ -201,6 +201,13 @@ public class CopyToTsFileOptions implements CopyToOptions {
     if (columns.size() != columnHeaders.size()) {
       throw new SemanticException(DataNodeQueryMessages.DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET);
     }
+    if (!generateNewTimeColumn && !columns.contains(targetTimeColumn)) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_SPECIFIED_TIME_COLUMN_ARG_DOES_NOT_EXIST_IN_THE_QUERY_RESULT_34791B26,
+              targetTimeColumn));
+    }
     if (foundTagColumns != targetTagColumns.size()) {
       throw new SemanticException(
           DataNodeQueryMessages.SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN);

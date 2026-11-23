@@ -7,12 +7,14 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * <p>http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * <p>Unless required by applicable law or agreed to in writing, software distributed under the
- * License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.protocol.thrift.handler;
@@ -31,9 +33,12 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class RPCServiceThriftHandlerMetrics implements IMetricSet {
+  // The singleton owns the decoding metrics, and each handler registers its own instance owning the
+  // connection metric. A metric must have a single owner, otherwise rebinding one of the instances,
+  // e.g. when the metric service restarts, drops the metrics bound by the other.
   private static final RPCServiceThriftHandlerMetrics INSTANCE =
-      new RPCServiceThriftHandlerMetrics(new AtomicLong(0));
-  private AtomicLong thriftConnectionNumber;
+      new RPCServiceThriftHandlerMetrics(null);
+  private final AtomicLong thriftConnectionNumber;
 
   // region begin
   private Gauge unCompressionSizeTimer = DoNothingMetricManager.DO_NOTHING_GAUGE;
@@ -70,13 +75,16 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.createAutoGauge(
-        Metric.THRIFT_CONNECTIONS.toString(),
-        MetricLevel.CORE,
-        thriftConnectionNumber,
-        AtomicLong::get,
-        Tag.NAME.toString(),
-        "ClientRPC");
+    if (Objects.nonNull(thriftConnectionNumber)) {
+      metricService.createAutoGauge(
+          Metric.THRIFT_CONNECTIONS.toString(),
+          MetricLevel.CORE,
+          thriftConnectionNumber,
+          AtomicLong::get,
+          Tag.NAME.toString(),
+          "ClientRPC");
+      return;
+    }
 
     unCompressionSizeTimer =
         metricService.getOrCreateGauge(
@@ -116,11 +124,14 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.THRIFT_CONNECTIONS.toString(),
-        Tag.NAME.toString(),
-        "ClientRPC");
+    if (Objects.nonNull(thriftConnectionNumber)) {
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          Metric.THRIFT_CONNECTIONS.toString(),
+          Tag.NAME.toString(),
+          "ClientRPC");
+      return;
+    }
 
     metricService.remove(
         MetricType.GAUGE,

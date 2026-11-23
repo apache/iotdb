@@ -240,6 +240,14 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
 
     DataRegionTableSizeQueryContext context = new DataRegionTableSizeQueryContext(true);
     queryTableSize(context);
+    boolean writeLockAcquired = resource1.tryWriteLock();
+    try {
+      Assert.assertTrue("Disk usage statistics should release all read locks", writeLockAcquired);
+    } finally {
+      if (writeLockAcquired) {
+        resource1.writeUnlock();
+      }
+    }
     Assert.assertEquals(1, context.getTimePartitionTableSizeQueryContextMap().size());
     TimePartitionTableSizeQueryContext timePartitionContext =
         context.getTimePartitionTableSizeQueryContextMap().values().iterator().next();

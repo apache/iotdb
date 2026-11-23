@@ -87,6 +87,7 @@ public class DataNodeMetricsHelper {
     metricService.addMetricSet(DataExchangeCountMetricSet.getInstance());
     metricService.addMetricSet(DriverSchedulerMetricSet.getInstance());
     metricService.addMetricSet(QueryRelatedResourceMetricSet.getInstance());
+    metricService.addMetricSet(CacheMetrics.getInstance());
 
     // bind performance overview related metrics
     metricService.addMetricSet(PerformanceOverviewMetrics.getInstance());

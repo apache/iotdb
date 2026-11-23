@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -34,6 +36,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AuthUtilsTest {
+
+  @Test
+  public void testStrongPasswordListsMissingRequirements() throws AuthException {
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final boolean previousEnforceStrongPassword = config.isEnforceStrongPassword();
+    try {
+      config.setEnforceStrongPassword(true);
+      AuthUtils.validatePassword("abcDEF123!");
+      final AuthException error =
+          Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePassword("abc12345"));
+      Assert.assertTrue(
+          error.getMessage(),
+          "Invalid password, must contain at least one uppercase letter, one special character."
+                  .equals(error.getMessage())
+              || "密码无效，必须至少包含一个大写字母，一个特殊字符。".equals(error.getMessage()));
+    } finally {
+      config.setEnforceStrongPassword(previousEnforceStrongPassword);
+    }
+  }
 
   @Test
   public void authUtilsTest_ParameterCheck() throws AuthException, IllegalPathException {

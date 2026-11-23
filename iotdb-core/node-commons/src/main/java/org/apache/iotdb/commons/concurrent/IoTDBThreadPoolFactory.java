@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.WrappedScheduledExecutorSe
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedSingleThreadExecutorService;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedSingleThreadScheduledExecutor;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import org.apache.thrift.server.TThreadPoolServer;
 import org.slf4j.Logger;
@@ -48,16 +49,19 @@ public class IoTDBThreadPoolFactory {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBThreadPoolFactory.class);
 
   private static final String NEW_FIXED_THREAD_POOL_LOGGER_FORMAT =
-      "new fixed thread pool: {}, thread number: {}";
-  private static final String NEW_SINGLE_THREAD_POOL_LOGGER_FORMAT = "new single thread pool: {}";
-  private static final String NEW_CACHED_THREAD_POOL_LOGGER_FORMAT = "new cached thread pool: {}";
+      CommonMessages.EXCEPTION_NEW_FIXED_THREAD_POOL_ARG_THREAD_NUMBER_ARG_465A36AF;
+  private static final String NEW_SINGLE_THREAD_POOL_LOGGER_FORMAT =
+      CommonMessages.EXCEPTION_NEW_SINGLE_THREAD_POOL_ARG_CB233F2A;
+  private static final String NEW_CACHED_THREAD_POOL_LOGGER_FORMAT =
+      CommonMessages.EXCEPTION_NEW_CACHED_THREAD_POOL_ARG_3169566A;
   private static final String NEW_SINGLE_SCHEDULED_THREAD_POOL_LOGGER_FORMAT =
-      "new single scheduled thread pool: {}";
+      CommonMessages.EXCEPTION_NEW_SINGLE_SCHEDULED_THREAD_POOL_ARG_4B7C159F;
   private static final String NEW_SCHEDULED_THREAD_POOL_LOGGER_FORMAT =
-      "new scheduled thread pool: {}";
+      CommonMessages.EXCEPTION_NEW_SCHEDULED_THREAD_POOL_ARG_37283992;
   private static final String NEW_SYNCHRONOUS_QUEUE_THREAD_POOL_LOGGER_FORMAT =
-      "new SynchronousQueue thread pool: {}";
-  private static final String NEW_THREAD_POOL_LOGGER_FORMAT = "new thread pool: {}";
+      CommonMessages.EXCEPTION_NEW_SYNCHRONOUSQUEUE_THREAD_POOL_ARG_F3261435;
+  private static final String NEW_THREAD_POOL_LOGGER_FORMAT =
+      CommonMessages.EXCEPTION_NEW_THREAD_POOL_ARG_E17F65A1;
 
   private IoTDBThreadPoolFactory() {}
 

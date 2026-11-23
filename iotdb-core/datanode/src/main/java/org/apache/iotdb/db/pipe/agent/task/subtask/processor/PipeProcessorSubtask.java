@@ -119,17 +119,21 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskScheduler = subtaskScheduler;
 
-    // double check locking for constructing PipeProcessorSubtaskWorkerManager
-    if (subtaskWorkerManager.get() == null) {
+    // Double-checked locking. Recreate the manager if the cached one is bound to a shut-down
+    // executor, so subtasks are not scheduled to workers that can never run.
+    PipeProcessorSubtaskWorkerManager manager = subtaskWorkerManager.get();
+    if (manager == null || manager.isShutdown()) {
       synchronized (PipeProcessorSubtaskWorkerManager.class) {
-        if (subtaskWorkerManager.get() == null) {
-          subtaskWorkerManager.set(
+        manager = subtaskWorkerManager.get();
+        if (manager == null || manager.isShutdown()) {
+          manager =
               new PipeProcessorSubtaskWorkerManager(
-                  subtaskWorkerThreadPoolExecutor, subtaskWorkerScheduledExecutor));
+                  subtaskWorkerThreadPoolExecutor, subtaskWorkerScheduledExecutor);
+          subtaskWorkerManager.set(manager);
         }
       }
     }
-    subtaskWorkerManager.get().schedule(this);
+    manager.schedule(this);
   }
 
   @Override
@@ -173,7 +177,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       }
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
-        if (event instanceof TabletInsertionEvent) {
+        if (event.shouldSkipProcessing()) {
+          outputEventCollector.collect(event);
+        } else if (event instanceof TabletInsertionEvent) {
           if (event instanceof PipeInsertNodeTabletInsertionEvent
               && ((PipeInsertNodeTabletInsertionEvent) event).shouldParse4Privilege()) {
             final AtomicReference<Exception> ex = new AtomicReference<>();
@@ -229,14 +235,16 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                   pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);
-          ((PipeHeartbeatEvent) event).onProcessed();
-          PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         } else {
           pipeProcessor.process(
               event instanceof UserDefinedEnrichedEvent
                   ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
                   : event,
               outputEventCollector);
+        }
+        if (event instanceof PipeHeartbeatEvent) {
+          ((PipeHeartbeatEvent) event).onProcessed();
+          PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         }
       }
 
@@ -308,7 +316,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       } else {
         LOGGER.info(
             DataNodePipeMessages.EXCEPTION_IN_PIPE_EVENT_PROCESSING_IGNORED_BECAUSE,
-            e.getMessage() != null ? " Message: " + e.getMessage() : "");
+            e.getMessage() != null
+                ? String.format(
+                    DataNodePipeMessages.MESSAGE_MESSAGE_ARG_F49E6C85,
+                    String.valueOf(e.getMessage()))
+                : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
     } finally {
@@ -323,6 +335,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // this subtask won't be submitted to the executor directly
     // instead, it will be executed by the PipeProcessorSubtaskWorker
     // and the worker will be submitted to the executor
+  }
+
+  void setWorkerWakeUpCallback(final Runnable wakeUpCallback) {
+    executionGuard.setWorkerWakeUpCallback(wakeUpCallback);
   }
 
   @Override
@@ -341,6 +357,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   public boolean isStoppedByException() {
     return lastEvent instanceof EnrichedEvent && retryCount.get() > MAX_RETRY_TIMES;
+  }
+
+  boolean isWaitingForTsFileParserMemory() {
+    final Event event = lastEvent;
+    return event instanceof PipeTsFileInsertionEvent
+        && ((PipeTsFileInsertionEvent) event).isWaitingForTsFileParserMemory();
   }
 
   @Override

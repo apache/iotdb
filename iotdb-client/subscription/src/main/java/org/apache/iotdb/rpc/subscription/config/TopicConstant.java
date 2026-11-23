@@ -31,11 +31,16 @@ public class TopicConstant {
   public static final String DATABASE_KEY = "database";
   public static final String TABLE_KEY = "table";
   public static final String COLUMN_FILTER_KEY = "column-filter";
+  public static final String TAG_FILTER_KEY = "tag-filter";
   public static final String RETENTION_BYTES_KEY = "retention.bytes";
   public static final String RETENTION_MS_KEY = "retention.ms";
+  public static final String RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY =
+      "retain.progress.after.unsubscribe";
+  public static final String RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_DEFAULT_VALUE = "false";
   public static final String DATABASE_DEFAULT_VALUE = ".*";
   public static final String TABLE_DEFAULT_VALUE = ".*";
   public static final String COLUMN_FILTER_DEFAULT_VALUE = "true";
+  public static final String TAG_FILTER_DEFAULT_VALUE = "true";
 
   public static final String START_TIME_KEY = "start-time";
   public static final String END_TIME_KEY = "end-time";
@@ -84,6 +89,10 @@ public class TopicConstant {
 
   public static final String STRICT_KEY = "strict";
   public static final String STRICT_DEFAULT_VALUE = "true";
+
+  // Overrides subscription_recycle_uncommitted_event_interval_ms for this topic.
+  public static final String RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY =
+      "recycle-uncommitted-event-interval-ms";
 
   public static final String OWNER_ID_KEY = "owner-id";
   public static final String OWNER_EPOCH_KEY = "owner-epoch";

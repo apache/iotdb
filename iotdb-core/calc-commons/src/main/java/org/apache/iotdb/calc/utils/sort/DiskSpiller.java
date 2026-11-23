@@ -155,7 +155,7 @@ public abstract class DiskSpiller {
   }
 
   private List<String> getFilePaths() {
-    List<String> filePaths = new ArrayList<>();
+    List<String> filePaths = new ArrayList<>(fileIndex);
     for (int i = 0; i < fileIndex; i++) {
       filePaths.add(filePrefix + String.format("%05d", i) + FILE_SUFFIX);
     }
@@ -164,7 +164,7 @@ public abstract class DiskSpiller {
 
   public List<SortReader> getReaders(SortBufferManager sortBufferManager) throws IoTDBException {
     List<String> filePaths = getFilePaths();
-    List<SortReader> sortReaders = new ArrayList<>();
+    List<SortReader> sortReaders = new ArrayList<>(filePaths.size());
     try {
       for (String filePath : filePaths) {
         sortReaders.add(new FileSpillerReader(filePath, sortBufferManager, serde));

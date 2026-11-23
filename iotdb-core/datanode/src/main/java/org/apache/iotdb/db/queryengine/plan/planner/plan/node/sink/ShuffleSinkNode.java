@@ -100,7 +100,7 @@ public class ShuffleSinkNode extends MultiChildrenSinkNode {
 
   public static ShuffleSinkNode deserialize(ByteBuffer byteBuffer) {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<DownStreamChannelLocation> downStreamChannelLocationList = new ArrayList<>();
+    List<DownStreamChannelLocation> downStreamChannelLocationList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       downStreamChannelLocationList.add(DownStreamChannelLocation.deserialize(byteBuffer));
     }

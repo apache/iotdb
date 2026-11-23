@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.confignode.it.cluster;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -39,7 +42,6 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -75,29 +77,57 @@ public class IoTDBClusterNodeShutdownHookIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      // The unknown Nodes should be detected immediately with the help of shutdown hook
+      // Unix shutdown hooks report Stopped; Windows local stop is detected as Unknown.
+      // A ConfigNode whose report cannot reach the newly elected leader remains Unknown too.
+      TShowClusterResp showClusterResp = client.showCluster();
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showClusterResp.getStatus().getCode());
+
+      int stoppedDataNodeId = -1;
+      for (TDataNodeLocation dataNodeLocation : showClusterResp.getDataNodeList()) {
+        if (dataNodeLocation.getInternalEndPoint().getPort()
+            == EnvFactory.getEnv().getDataNodeWrapper(0).getInternalPort()) {
+          stoppedDataNodeId = dataNodeLocation.getDataNodeId();
+        }
+      }
+      Assert.assertNotEquals(-1, stoppedDataNodeId);
+
+      int stoppedConfigNodeId = -1;
+      for (TConfigNodeLocation configNodeLocation : showClusterResp.getConfigNodeList()) {
+        if (configNodeLocation.getConsensusEndPoint().getPort()
+            == EnvFactory.getEnv().getConfigNodeWrapper(1).getConsensusPort()) {
+          stoppedConfigNodeId = configNodeLocation.getConfigNodeId();
+        }
+      }
+      Assert.assertNotEquals(-1, stoppedConfigNodeId);
+
       boolean isDetected = false;
-      for (int retry = 0; retry < 5; retry++) {
-        TShowClusterResp showClusterResp = client.showCluster();
+      for (int retry = 0; retry < 30; retry++) {
+        showClusterResp = client.showCluster();
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), showClusterResp.getStatus().getCode());
-        AtomicInteger unknownNum = new AtomicInteger(0);
-        showClusterResp
-            .getNodeStatus()
-            .forEach(
-                (nodeId, nodeStatus) -> {
-                  if (NodeStatus.Unknown.getStatus().equals(nodeStatus)) {
-                    unknownNum.getAndIncrement();
-                  }
-                });
-        if (unknownNum.get() == 2) {
+
+        // Windows does not run the shutdown hook, so allow heartbeat failure detection to finish.
+        final String dataNodeStatus = showClusterResp.getNodeStatus().get(stoppedDataNodeId);
+        final boolean isDataNodeStopped =
+            EnvUtils.getNodeStatusAfterLocalStop().getStatus().equals(dataNodeStatus);
+
+        // The stopped ConfigNode is Stopped when its report reached a leader, and may otherwise
+        // remain Unknown until heartbeat timeout
+        final String configNodeStatus = showClusterResp.getNodeStatus().get(stoppedConfigNodeId);
+        final boolean isConfigNodeDetected =
+            NodeStatus.Stopped.getStatus().equals(configNodeStatus)
+                || NodeStatus.Unknown.getStatus().equals(configNodeStatus);
+
+        if (isDataNodeStopped && isConfigNodeDetected) {
           isDetected = true;
           break;
         }
 
         TimeUnit.SECONDS.sleep(1);
       }
-      Assert.assertTrue(isDetected);
+      Assert.assertTrue(
+          "Timed out waiting for the stopped DataNode and ConfigNode to be detected", isDetected);
     }
   }
 }

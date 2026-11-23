@@ -17,8 +17,112 @@ grant the users the right to the use of patent under the requirement of Apache 2
 
 ============================================================================
 
-Apache Commons Collections
-Copyright 2001-2019 The Apache Software Foundation
+The binary distribution of this product bundles the following software
+licensed under the Apache License 2.0, whose NOTICE files contain these
+notices.
 
-This product includes software developed at
-The Apache Software Foundation (http://www.apache.org/).
+----------------------------------------------------------------------------
+
+Apache Commons CLI
+Copyright 2002-2021 The Apache Software Foundation
+
+Apache Commons Codec
+Copyright 2002-2024 The Apache Software Foundation
+
+Apache Commons CSV
+Copyright 2005-2023 The Apache Software Foundation
+
+Apache Commons Lang
+Copyright 2001-2025 The Apache Software Foundation
+
+Apache Commons Pool
+Copyright 2001-2021 The Apache Software Foundation
+
+Apache log4j (reload4j)
+Copyright 2007 The Apache Software Foundation
+
+Apache Ratis
+Copyright 2017-2026 The Apache Software Foundation
+
+Apache Ratis Thirdparty Miscellaneous
+Copyright 2017-2026 The Apache Software Foundation
+
+This product bundles protobuf-java which includes the following:
+Copyright 2008 Google Inc.
+
+This product bundles gRPC which includes the following text:
+Copyright 2014 The gRPC Authors
+
+This product bundles Netty which includes the following text:
+Copyright 2014 The Netty Project
+
+This product bundles Gson which includes the following text:
+Copyright 2008 Google Inc.
+
+Apache Thrift
+Copyright (C) 2006 - 2019, The Apache Software Foundation
+
+----------------------------------------------------------------------------
+
+The Netty Project
+Copyright 2014 The Netty Project
+
+netty-tcnative contains a forked and modified version of Tomcat Native
+(Apache License 2.0, http://tomcat.apache.org/native-doc/), the Maven wrapper
+scripts from 'Maven Wrapper' (Apache License 2.0,
+https://github.com/takari/maven-wrapper) and code from BoringSSL
+(Apache License 2.0, https://boringssl.googlesource.com/boringssl/).
+
+----------------------------------------------------------------------------
+
+Micrometer
+Copyright (c) 2017-Present VMware, Inc. All Rights Reserved.
+
+This product contains a modified portion of 'io.netty.util.internal.logging',
+in the Netty/Common library distributed by The Netty Project:
+  * Copyright 2013 The Netty Project
+  * License: Apache License v2.0
+  * Homepage: https://netty.io
+
+This product contains a modified portion of 'StringUtils.isBlank()',
+in the Commons Lang library distributed by The Apache Software Foundation:
+  * Copyright 2001-2019 The Apache Software Foundation
+  * License: Apache License v2.0
+  * Homepage: https://commons.apache.org/proper/commons-lang/
+
+This product contains a modified portion of 'JsonUtf8Writer',
+in the Moshi library distributed by Square, Inc:
+  * Copyright 2010 Google Inc.
+  * License: Apache License v2.0
+  * Homepage: https://github.com/square/moshi
+
+This product contains a modified portion of the 'org.springframework.lang'
+package in the Spring Framework library, distributed by VMware, Inc:
+  * Copyright 2002-2019 the original author or authors.
+  * License: Apache License v2.0
+  * Homepage: https://spring.io/projects/spring-framework
+
+----------------------------------------------------------------------------
+
+Jackson JSON processor
+Copyright 2007-, Tatu Saloranta (tatu.saloranta@iki.fi)
+
+jackson-core bundles a shaded copy of FastDoubleParser
+(https://github.com/wrandelshofer/FastDoubleParser), available under the
+MIT License:
+Copyright © 2023 Werner Randelshofer, Switzerland.
+
+jackson-core bundles a copy of the Schubfach number writing code
+(https://github.com/c4f7fcce9cb06515/Schubfach), available under the
+MIT License:
+Copyright 2018-2020 Raffaello Giulietti
+
+----------------------------------------------------------------------------
+
+Swagger Core
+Copyright (c) 2015. SmartBear Software Inc.
+
+----------------------------------------------------------------------------
+
+Jakarta Dependency Injection
+Jakarta Dependency Injection is a trademark of the Eclipse Foundation.

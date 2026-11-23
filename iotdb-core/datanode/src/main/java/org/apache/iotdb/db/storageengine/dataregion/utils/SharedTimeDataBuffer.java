@@ -61,18 +61,20 @@ public class SharedTimeDataBuffer {
     if (timeBuffer != null) {
       return;
     }
-    Chunk timeChunk = reader.readMemChunk(timeChunkMetaData.getOffsetOfChunkHeader());
-    timeChunkHeader = timeChunk.getHeader();
-    timeBuffer = timeChunk.getData();
-    encryptParam = timeChunk.getEncryptParam();
+    try (Chunk timeChunk = reader.readMemChunk(timeChunkMetaData.getOffsetOfChunkHeader())) {
+      timeChunkHeader = timeChunk.getHeader();
+      timeBuffer = timeChunk.getData();
+      encryptParam = reader.getEncryptParam();
+    }
   }
 
   public long[] getPageTime(int pageId) throws IOException {
-    int size = timeData.size();
-    if (pageId < size) {
+    if (pageId >= 0 && pageId < timeData.size()) {
       return timeData.get(pageId);
-    } else if (pageId == size) {
-      loadPageData();
+    } else if (pageId >= timeData.size()) {
+      while (timeData.size() <= pageId) {
+        loadPageData();
+      }
       return timeData.get(pageId);
     } else {
       throw new UnsupportedOperationException(
@@ -92,7 +94,8 @@ public class SharedTimeDataBuffer {
             : PageHeader.deserializeFrom(timeBuffer, timeChunkHeader.getDataType());
     IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
     ByteBuffer timePageData =
-        ChunkReader.deserializePageData(timePageHeader, timeBuffer, timeChunkHeader, decryptor);
+        ChunkReader.deserializePageData(
+            timePageHeader, timeBuffer, timeChunkHeader, decryptor, encryptParam, timeData.size());
     long[] pageData = new long[(int) timePageHeader.getNumOfValues()];
     int index = 0;
     while (defaultTimeDecoder.hasNext(timePageData)) {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.utils.MetadataUtils;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -348,8 +349,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
       }
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-        session.executeNonQueryStatement(
-            "DELETE TIMESERIES " + database + ".write_and_alter_column_type.s1");
+        TestUtils.deleteTimeSeries(
+            session, "DELETE TIMESERIES " + database + ".write_and_alter_column_type.s1");
       }
     }
   }
@@ -375,12 +376,14 @@ public class IoTDBAlterTimeSeriesTypeIT {
               Collections.singletonList("s1"),
               Collections.singletonList(from),
               Collections.singletonList(ColumnCategory.FIELD));
+      // Batch fixture writes without crossing data type changes or flush boundaries.
       for (int i = 1; i <= 512; i++) {
-        tablet.addTimestamp(0, i);
-        tablet.addValue("s1", 0, genValue(from, i));
-        session.insertTablet(tablet);
-        tablet.reset();
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, i);
+        tablet.addValue("s1", rowIndex, genValue(from, i));
       }
+      session.insertTablet(tablet);
+      tablet.reset();
       session.executeNonQueryStatement("FLUSH");
 
       // alter the type to "to"
@@ -413,11 +416,12 @@ public class IoTDBAlterTimeSeriesTypeIT {
               Collections.singletonList(to),
               Collections.singletonList(ColumnCategory.FIELD));
       for (int i = 513; i <= 1024; i++) {
-        tablet.addTimestamp(0, i);
-        tablet.addValue("s1", 0, genValue(to, i));
-        session.insertTablet(tablet);
-        tablet.reset();
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, i);
+        tablet.addValue("s1", rowIndex, genValue(to, i));
       }
+      session.insertTablet(tablet);
+      tablet.reset();
       session.executeNonQueryStatement("FLUSH");
 
       standardAccumulatorQueryByTimeOnlyInvolveOldDataTypeTest(session, from, to);
@@ -425,8 +429,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
       standardAccumulatorQueryByTimeInvolveAllDataTypeTest(session, from, to);
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-        session.executeNonQueryStatement(
-            "DELETE TIMESERIES " + database + ".write_and_alter_column_type_write.s1");
+        TestUtils.deleteTimeSeries(
+            session, "DELETE TIMESERIES " + database + ".write_and_alter_column_type_write.s1");
       }
     }
   }
@@ -509,8 +513,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
       assertFalse(dataSet.hasNext());
 
-      session.executeNonQueryStatement(
-          "DELETE TIMESERIES " + database + ".just_alter_column_type.**");
+      TestUtils.deleteTimeSeries(
+          session, "DELETE TIMESERIES " + database + ".just_alter_column_type.**");
     }
   }
 
@@ -1152,7 +1156,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
             resourceFile.delete();
           });
       filesToLoad.clear();
-      session.executeNonQueryStatement("DELETE TIMESERIES root.sg1.d1.s1");
+      TestUtils.deleteTimeSeries(session, "DELETE TIMESERIES root.sg1.d1.s1");
     }
   }
 
@@ -1186,23 +1190,23 @@ public class IoTDBAlterTimeSeriesTypeIT {
       //      session.executeNonQueryStatement("FLUSH");
       for (int i = 1; i <= 512; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
 
       session.executeNonQueryStatement("FLUSH");
 
       for (int i = 513; i <= 1024; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
 
       String columns;
       if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(from)
@@ -1282,8 +1286,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }
@@ -1323,23 +1327,23 @@ public class IoTDBAlterTimeSeriesTypeIT {
       //      session.executeNonQueryStatement("FLUSH");
       for (int i = 1; i <= 512; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
 
       session.executeNonQueryStatement("FLUSH");
 
       for (int i = 513; i <= 1024; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
 
       String columns;
       if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(from)
@@ -1422,8 +1426,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }
@@ -1452,23 +1456,23 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
       for (int i = 513; i <= 1024; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
 
       session.executeNonQueryStatement("FLUSH");
 
       for (int i = 1; i <= 512; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
       //        session.executeNonQueryStatement("FLUSH");
 
       String columns;
@@ -1552,8 +1556,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }
@@ -1585,23 +1589,23 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
       for (int i = 513; i <= 1024; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
 
       session.executeNonQueryStatement("FLUSH");
 
       for (int i = 1; i <= 512; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
       //        session.executeNonQueryStatement("FLUSH");
 
       String columns;
@@ -1685,8 +1689,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }
@@ -1715,23 +1719,23 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
       for (int i = 513; i <= 1024; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
 
       session.executeNonQueryStatement("FLUSH");
 
       for (int i = 1; i <= 520; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
       //        session.executeNonQueryStatement("FLUSH");
 
       String columns;
@@ -1815,8 +1819,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }
@@ -1849,23 +1853,23 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
       for (int i = 513; i <= 1024; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
 
       session.executeNonQueryStatement("FLUSH");
 
       for (int i = 1; i <= 520; i++) {
         int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(0, i);
+        tablet.addTimestamp(rowIndex, i);
         tablet.addValue("s1", rowIndex, genValue(from, i));
         tablet.addValue("s2", rowIndex, genValue(from, i * 2));
-        session.insertTablet(tablet);
-        tablet.reset();
       }
+      session.insertTablet(tablet);
+      tablet.reset();
       //        session.executeNonQueryStatement("FLUSH");
 
       String columns;
@@ -1946,8 +1950,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }

@@ -245,8 +245,10 @@ public class TwoStageAggregateSender implements AutoCloseable {
     if (Objects.isNull(sourceUserEntity) || Objects.isNull(sourcePassword)) {
       throw new PipeException(
           String.format(
-              "Missing source credentials for two-stage aggregate pipe %s-%s.",
-              pipeName, creationTime));
+              DataNodePipeMessages
+                  .EXCEPTION_MISSING_SOURCE_CREDENTIALS_FOR_TWO_STAGE_AGGREGATE_PIPE_ARG_ARG_FF84ED01,
+              pipeName,
+              creationTime));
     }
 
     final TSOpenSessionReq openSessionReq = new TSOpenSessionReq();
@@ -261,8 +263,11 @@ public class TwoStageAggregateSender implements AutoCloseable {
     if (openSessionResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Failed to login for two-stage aggregate pipe %s-%s, status: %s.",
-              pipeName, creationTime, openSessionResp.getStatus()));
+              DataNodePipeMessages
+                  .EXCEPTION_FAILED_TO_LOGIN_FOR_TWO_STAGE_AGGREGATE_PIPE_ARG_ARG_STATUS_ARG_4CEBC1C1,
+              pipeName,
+              creationTime,
+              openSessionResp.getStatus()));
     }
     client.setTimeout(PIPE_CONFIG.getPipeSinkTransferTimeoutMs());
   }

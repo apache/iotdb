@@ -247,7 +247,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
       // get time modifications of this file
       List<ModEntry> timeModifications =
-          getModificationsFromCache(resource, deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+          getModificationsFromCache(
+              resource, deviceId, AlignedPath.VECTOR_PLACEHOLDER, !ignoreAllNullRows);
       // get value modifications of this file
       List<List<ModEntry>> valueModifications = new ArrayList<>();
       alignedChunkMetadataList
@@ -260,7 +261,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                     valueModifications.add(null);
                   } else {
                     valueModifications.add(
-                        getModificationsFromCache(resource, deviceId, x.getMeasurementUid()));
+                        getModificationsFromCache(
+                            resource, deviceId, x.getMeasurementUid(), !ignoreAllNullRows));
                   }
                 } catch (IllegalPathException e) {
                   throw new RuntimeException(e);
@@ -332,19 +334,34 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       valuePagesList.add(valuesPages);
     }
 
+    List<IChunkMetadata> valueChunkMetadataList =
+        ((AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
+            .getValueChunkMetadataList();
+
     // add aligned pages into page queue
     for (int i = 0; i < timePages.size(); i++) {
+      PageHeader timePageHeader = timePages.get(i).left;
       List<PageHeader> alignedPageHeaders = new ArrayList<>();
       List<ByteBuffer> alignedPageDatas = new ArrayList<>();
       for (int j = 0; j < valuePagesList.size(); j++) {
         if (valuePagesList.get(j) == null) {
+          // value chunk has been deleted completely
           alignedPageHeaders.add(null);
           alignedPageDatas.add(null);
           continue;
         }
         Pair<PageHeader, ByteBuffer> valuePage = valuePagesList.get(j).get(i);
-        alignedPageHeaders.add(valuePage == null ? null : valuePage.left);
-        alignedPageDatas.add(valuePage == null ? null : valuePage.right);
+        if (valuePage == null
+            || isValuePageFullyDeleted(valueChunkMetadataList.get(j), timePageHeader)) {
+          // A fully deleted value page is kept as an empty page (null header and data), so that
+          // it is written as an empty page when flushed directly and reads all null values when
+          // it is deserialized. Otherwise the deleted data would be revived in the target file.
+          alignedPageHeaders.add(null);
+          alignedPageDatas.add(null);
+          continue;
+        }
+        alignedPageHeaders.add(valuePage.left);
+        alignedPageDatas.add(valuePage.right);
       }
 
       AlignedPageElement alignedPageElement =
@@ -360,6 +377,16 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       pageQueue.add(alignedPageElement);
     }
     chunkMetadataElement.clearChunks();
+  }
+
+  private static boolean isValuePageFullyDeleted(
+      IChunkMetadata valueChunkMetadata, PageHeader timePageHeader) {
+    return valueChunkMetadata != null
+        && AlignedSeriesBatchCompactionUtils.checkIsModified(
+                timePageHeader.getStartTime(),
+                timePageHeader.getEndTime(),
+                valueChunkMetadata.getDeleteIntervalList())
+            == ModifiedStatus.ALL_DELETED;
   }
 
   @Override
@@ -446,8 +473,9 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
    * PARTIAL_DELETED means that there is data on this page been deleted. <br>
    * ALL_DELETED means that all data on this page has been deleted.
    *
-   * <p>Notice: If is aligned page, return ALL_DELETED if and only if all value pages are deleted.
-   * Return NONE_DELETED if and only if no data exists on all value pages is deleted
+   * <p>Notice: a fully deleted value page is assembled as an empty page in {@link
+   * #deserializeChunkIntoPageQueue}, so it is written as an empty page when flushed directly and
+   * reads all null values otherwise.
    */
   protected ModifiedStatus isPageModified(PageElement pageElement) {
     long startTime = pageElement.getStartTime();

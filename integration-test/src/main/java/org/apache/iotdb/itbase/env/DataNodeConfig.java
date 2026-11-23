@@ -25,6 +25,8 @@ import java.util.List;
 public interface DataNodeConfig {
   DataNodeConfig setMetricReporterType(List<String> metricReporterTypes);
 
+  DataNodeConfig setMetricPrometheusReporterAsyncUpdate(boolean asyncUpdate);
+
   DataNodeConfig setMetricPrometheusReporterUsername(String username);
 
   DataNodeConfig setMetricPrometheusReporterPassword(String password);
@@ -32,6 +34,8 @@ public interface DataNodeConfig {
   DataNodeConfig setEnableRestService(boolean enableRestService);
 
   DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS);
+
+  DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize);
 
   DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes);
@@ -50,6 +54,8 @@ public interface DataNodeConfig {
 
   DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
 
+  DataNodeConfig setMqttHandlerPoolSize(int mqttHandlerPoolSize);
+
   DataNodeConfig setLoadLastCacheStrategy(String strategyName);
 
   DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad);
@@ -67,4 +73,6 @@ public interface DataNodeConfig {
   DataNodeConfig setDnMultiDirStrategy(String multiDirStrategy);
 
   DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes);
+
+  DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(int mppDataExchangeMaxPayloadSizeInBytes);
 }

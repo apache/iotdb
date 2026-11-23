@@ -47,6 +47,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser {
+  private TsFileInsertionEventTableParserTabletIterator activeTabletIterator;
 
   private final long startTime;
   private final long endTime;
@@ -119,11 +120,20 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
-          memoryManager.forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
-      this.allocatedMemoryBlockForChunk = memoryManager.forceAllocateForTabletWithRetry(0);
-      this.allocatedMemoryBlockForBatchData = memoryManager.forceAllocateForTabletWithRetry(0);
-      this.allocatedMemoryBlockForChunkMeta = memoryManager.forceAllocateForTabletWithRetry(0);
-      this.allocatedMemoryBlockForTableSchemas = memoryManager.forceAllocateForTabletWithRetry(0);
+          allocateTabletMemory(
+              TsFileInsertionEventTableParser.class.getSimpleName() + "#modifications",
+              currentModifications.ramBytesUsed());
+      this.allocatedMemoryBlockForChunk =
+          allocateTabletMemory(TsFileInsertionEventTableParser.class.getSimpleName() + "#chunk", 0);
+      this.allocatedMemoryBlockForBatchData =
+          allocateTabletMemory(
+              TsFileInsertionEventTableParser.class.getSimpleName() + "#batchData", 0);
+      this.allocatedMemoryBlockForChunkMeta =
+          allocateTabletMemory(
+              TsFileInsertionEventTableParser.class.getSimpleName() + "#chunkMetadata", 0);
+      this.allocatedMemoryBlockForTableSchemas =
+          allocateTabletMemory(
+              TsFileInsertionEventTableParser.class.getSimpleName() + "#tableSchemas", 0);
 
       this.startTime = startTime;
       this.endTime = endTime;
@@ -282,6 +292,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                             currentModifications,
                             startTime,
                             endTime);
+                    activeTabletIterator = tabletIterator;
                   }
 
                   while (tabletIterator.hasNext()) {
@@ -365,22 +376,29 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
   @Override
   public void close() {
-    super.close();
+    try {
+      if (activeTabletIterator != null) {
+        activeTabletIterator.close();
+        activeTabletIterator = null;
+      }
+    } finally {
+      super.close();
 
-    if (allocatedMemoryBlockForBatchData != null) {
-      allocatedMemoryBlockForBatchData.close();
-    }
+      if (allocatedMemoryBlockForBatchData != null) {
+        allocatedMemoryBlockForBatchData.close();
+      }
 
-    if (allocatedMemoryBlockForChunk != null) {
-      allocatedMemoryBlockForChunk.close();
-    }
+      if (allocatedMemoryBlockForChunk != null) {
+        allocatedMemoryBlockForChunk.close();
+      }
 
-    if (allocatedMemoryBlockForChunkMeta != null) {
-      allocatedMemoryBlockForChunkMeta.close();
-    }
+      if (allocatedMemoryBlockForChunkMeta != null) {
+        allocatedMemoryBlockForChunkMeta.close();
+      }
 
-    if (allocatedMemoryBlockForTableSchemas != null) {
-      allocatedMemoryBlockForTableSchemas.close();
+      if (allocatedMemoryBlockForTableSchemas != null) {
+        allocatedMemoryBlockForTableSchemas.close();
+      }
     }
   }
 }

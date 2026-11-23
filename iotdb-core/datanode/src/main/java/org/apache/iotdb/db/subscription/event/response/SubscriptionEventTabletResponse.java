@@ -23,10 +23,9 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
-import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -38,7 +37,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,11 +93,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
     this.commitContext = commitContext;
     this.rootCommitContext = rootCommitContext;
-    this.columnFilterMatcher =
-        SubscriptionAgent.broker()
-            .getColumnFilterMatcher(
-                queue.getTopicName(),
-                SubscriptionAgent.consumer().isTableModel(queue.getConsumerGroupId()));
+    this.columnFilterMatcher = batch.getColumnFilterMatcher();
 
     init();
   }
@@ -129,6 +123,9 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   @Override
   public synchronized void nack() {
     cleanUp();
+    // A completed download has already moved its parsed tablets out of the batch's current
+    // snapshot. Release that delivery's snapshot before rewinding, without acknowledging it.
+    events.cleanUpIterationSnapshot();
 
     // should not reset the iterator of batch when init
     // TODO: avoid completely rewinding the iterator
@@ -197,20 +194,17 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     // waitForResourceEnough4Parsing(SubscriptionAgent.receiver().remainingMs());
 
     while (batch.hasNext()) {
-      final Pair<String, List<Tablet>> tablets = batch.next();
-      if (Objects.isNull(tablets)) {
+      final SubscriptionPipeTabletEventBatch.TabletBatch tabletBatch = batch.next();
+      if (Objects.isNull(tabletBatch)) {
         continue;
       }
 
+      final List<Tablet> tablets = tabletBatch.getTablets();
       currentTablets
-          .computeIfAbsent(tablets.left, databaseName -> new ArrayList<>())
-          .addAll(tablets.right);
-      final long bufferSize =
-          tablets.right.stream()
-              .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-              .reduce(Long::sum)
-              .orElse(0L);
-      totalTablets += tablets.right.size();
+          .computeIfAbsent(tabletBatch.getDatabaseName(), databaseName -> new ArrayList<>())
+          .addAll(tablets);
+      final long bufferSize = tabletBatch.getEstimatedSizeInBytes();
+      totalTablets += tablets.size();
       totalBufferSize += bufferSize;
       currentBufferSize += bufferSize;
 
@@ -278,7 +272,12 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     final List<Tablet> tablets = ((TabletsPayload) response.getPayload()).getTablets();
     if (Objects.nonNull(tablets) && !tablets.isEmpty()) {
       final PipeTabletMemoryBlock memoryBlock =
-          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(currentBufferSize);
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  SubscriptionEventTabletResponse.class.getSimpleName(),
+                  currentBufferSize,
+                  PipeMemoryBlockCategory.SUBSCRIPTION,
+                  SubscriptionEventTabletResponse.class.getSimpleName());
       response.setMemoryBlock(memoryBlock);
     }
 

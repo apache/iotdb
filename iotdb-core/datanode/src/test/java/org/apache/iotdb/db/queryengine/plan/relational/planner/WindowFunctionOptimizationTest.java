@@ -31,6 +31,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.group;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.rowNumber;
@@ -123,6 +124,25 @@ public class WindowFunctionOptimizationTest {
   }
 
   @Test
+  public void testReorderedSubsetWindowPartitionKeepsSingleInstance() {
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT count(s1) OVER (PARTITION BY tag2, tag1) FROM "
+            + "(SELECT *, max(s1) OVER (PARTITION BY tag1, tag2, tag3) AS m FROM table1)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // The outer PARTITION BY is a reordered strict subset of the inner one. It must not reuse the
+    // inner grouping, whose partitions are finer than the outer window's, so the outer window
+    // stays single-instance above a sort.
+    assertPlan(logicalQueryPlan, output(project(window(sort(project(group(tableScan)))))));
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(project(window(mergeSort(exchange(), exchange(), exchange())))));
+  }
+
+  @Test
   public void testTopKRankingPushDown() {
     PlanTester planTester = new PlanTester();
 
@@ -151,14 +171,19 @@ public class WindowFunctionOptimizationTest {
      *               │        └──TableScan
      *               └──ExchangeNode
      *                    └──TopKRankingNode
-     *                        └──SortNode
-     *                            └──TableScan
+     *                        └──MergeSortNode
+     *                            ├──ExchangeNode ← TableScan
+     *                            └──ExchangeNode ← TableScan
      */
     assertPlan(
         planTester.getFragmentPlan(0), output((collect(exchange(), exchange(), exchange()))));
     assertPlan(planTester.getFragmentPlan(1), topKRanking(tableScan));
     assertPlan(planTester.getFragmentPlan(2), topKRanking(tableScan));
-    assertPlan(planTester.getFragmentPlan(3), topKRanking(sort(tableScan)));
+    // A device spanning regions must retain both inputs. TopK ranks them without an input field
+    // sort.
+    assertPlan(planTester.getFragmentPlan(3), topKRanking(mergeSort(exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(4), tableScan);
+    assertPlan(planTester.getFragmentPlan(5), tableScan);
   }
 
   @Test

@@ -79,6 +79,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTab
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnPropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
@@ -116,6 +117,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnPr
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTableColumnPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
@@ -133,6 +135,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -572,6 +575,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case AddTableColumn:
       case AddViewColumn:
       case SetTableProperties:
+      case SetTableColumnProperties:
       case SetViewProperties:
       case CommitDeleteColumn:
       case CommitDeleteViewColumn:
@@ -1034,6 +1038,22 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     queryId,
                     ((SetTablePropertiesPlan) plan).getProperties(),
                     shouldMarkAsPipeRequest.get()));
+      case SetTableColumnProperties:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((SetTableColumnPropertiesPlan) plan).getDatabase(),
+                null,
+                ((SetTableColumnPropertiesPlan) plan).getTableName(),
+                queryId,
+                ProcedureType.SET_TABLE_COLUMN_PROPERTIES_PROCEDURE,
+                new SetTableColumnPropertiesProcedure(
+                    ((SetTableColumnPropertiesPlan) plan).getDatabase(),
+                    ((SetTableColumnPropertiesPlan) plan).getTableName(),
+                    ((SetTableColumnPropertiesPlan) plan).getColumnName(),
+                    queryId,
+                    ((SetTableColumnPropertiesPlan) plan).getProperties(),
+                    shouldMarkAsPipeRequest.get()));
       case SetViewProperties:
         return configManager
             .getProcedureManager()
@@ -1377,6 +1397,34 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
+  protected String getLoggedInSessionUsername() {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+    return clientSession != null && clientSession.isLogin() ? clientSession.getUsername() : null;
+  }
+
+  @Override
+  protected IAuditEntity createAuditEntity(final String username, final String cliHostname) {
+    // The user id must be resolved from the local permission manager instead of the handshake,
+    // because the id supplied by the sender is not authoritative.
+    long userId = -1L;
+    if (username != null) {
+      try {
+        final TUserResp user = configManager.getPermissionManager().getUser(username).getUserInfo();
+        if (user != null) {
+          userId = user.getUserId();
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            ManagerMessages
+                .LOG_FAILED_TO_RESOLVE_THE_USER_ID_OF_THE_PIPE_SENDER_ARG_THE_AUDIT_RECORDS_OF_THIS_TRANSFER_WILL_NOT_CONTAIN_A_USER_ID_0F8C4256,
+            username,
+            e);
+      }
+    }
+    return new UserEntity(userId, username, cliHostname);
+  }
+
+  @Override
   protected String getReceiverFileBaseDir() {
     return ConfigNodeDescriptor.getInstance().getConf().getPipeReceiverFileDir();
   }
@@ -1449,6 +1497,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           .ifPresent(
               configPhysicalPlan ->
                   results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
+    }
+    // Surface parsing failures (e.g. an unsupported profile version written by a newer version)
+    // instead of silently returning success after having applied only part of the snapshot.
+    try {
+      generator.checkException();
+    } catch (final Exception e) {
+      throw new IOException(e.getMessage(), e);
     }
     return PipeReceiverStatusHandler.getPriorStatus(results);
   }

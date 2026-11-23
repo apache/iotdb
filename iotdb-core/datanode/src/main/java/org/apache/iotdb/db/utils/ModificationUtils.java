@@ -280,16 +280,17 @@ public class ModificationUtils {
       final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
       final IDeviceID device,
       final long startTime,
-      final long endTime)
+      final long endTime,
+      final boolean isTableModel)
       throws IllegalPathException {
     final List<ModEntry> mods =
         modifications.getOverlapped(
-            CompactionPathUtils.getPath(device, AlignedPath.VECTOR_PLACEHOLDER));
+            CompactionPathUtils.getPath(device, AlignedPath.VECTOR_PLACEHOLDER, isTableModel));
     return mods.stream()
         .anyMatch(
             modification ->
                 modification.getTimeRange().contains(startTime, endTime)
-                    && (!device.isTableModel() || modification.affects(device)));
+                    && (!isTableModel || modification.affects(device)));
   }
 
   public static boolean isAllDeletedByMods(
@@ -310,15 +311,16 @@ public class ModificationUtils {
       final IDeviceID device,
       final String measurement,
       final long startTime,
-      final long endTime)
+      final long endTime,
+      final boolean isTableModel)
       throws IllegalPathException {
     final List<ModEntry> mods =
-        modifications.getOverlapped(CompactionPathUtils.getPath(device, measurement));
+        modifications.getOverlapped(CompactionPathUtils.getPath(device, measurement, isTableModel));
     return mods.stream()
         .anyMatch(
             modification ->
                 modification.getTimeRange().contains(startTime, endTime)
-                    && (!device.isTableModel()
+                    && (!isTableModel
                         || modification.affects(device) && modification.affects(measurement)));
   }
 
@@ -452,7 +454,8 @@ public class ModificationUtils {
   public static boolean isDeviceDeletedByMods(
       final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications,
       final ITimeIndex currentTimeIndex,
-      final IDeviceID device)
+      final IDeviceID device,
+      final boolean isTableModel)
       throws IllegalPathException {
     return isAllDeletedByMods(
         currentModifications,
@@ -462,6 +465,7 @@ public class ModificationUtils {
             : currentTimeIndex.getStartTime(device).orElse(Long.MIN_VALUE),
         Objects.isNull(currentTimeIndex)
             ? Long.MAX_VALUE
-            : currentTimeIndex.getEndTime(device).orElse(Long.MAX_VALUE));
+            : currentTimeIndex.getEndTime(device).orElse(Long.MAX_VALUE),
+        isTableModel);
   }
 }

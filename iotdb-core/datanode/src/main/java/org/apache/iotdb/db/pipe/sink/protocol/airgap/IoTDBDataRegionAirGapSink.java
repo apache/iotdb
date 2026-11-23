@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlockCategory;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
@@ -223,7 +224,12 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       return;
     }
 
-    final int socketIndex = nextSocketIndex();
+    final boolean hasBatchToTransfer = isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty();
+    final boolean shouldRefreshReceiverSession =
+        !(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)
+            || hasBatchToTransfer;
+    final int socketIndex =
+        shouldRefreshReceiverSession ? nextSocketIndex() : nextSocketIndex(false);
     final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
@@ -275,7 +281,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         toTPipeTransferBytes(batchToTransfer.toTPipeTransferReq()),
         batchToTransfer.getPipe2BytesAccumulated())) {
       final String errorMessage =
-          String.format("Transfer PipeTransferTabletBatchReq error. Socket: %s.", socket);
+          String.format(
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_PIPETRANSFERTABLETBATCHREQ_ERROR_SOCKET_ARG_1AFDAB57,
+              socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
@@ -347,8 +356,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
             pipeDeleteDataNodeEvent.getDeleteDataNode()))) {
       final String errorMessage =
           String.format(
-              "Transfer deletion %s error. Socket: %s.",
-              pipeDeleteDataNodeEvent.getDeleteDataNode().getType(), socket);
+              DataNodePipeMessages.MESSAGE_TRANSFER_DELETION_ARG_ERROR_SOCKET_ARG_A64BC982,
+              pipeDeleteDataNodeEvent.getDeleteDataNode().getType(),
+              socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
@@ -393,8 +403,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         bytes)) {
       final String errorMessage =
           String.format(
-              "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
-              pipeInsertNodeTabletInsertionEvent, socket);
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_PIPEINSERTNODETABLETINSERTIONEVENT_ARG_ERROR_SOCKET_ARG_62185FF1,
+              pipeInsertNodeTabletInsertionEvent,
+              socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
@@ -434,8 +446,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
                 : pipeRawTabletInsertionEvent.getTreeModelDatabaseName()))) {
       final String errorMessage =
           String.format(
-              "Transfer PipeRawTabletInsertionEvent %s error. Socket: %s.",
-              pipeRawTabletInsertionEvent, socket);
+              DataNodePipeMessages
+                  .MESSAGE_TRANSFER_PIPERAWTABLETINSERTIONEVENT_ARG_ERROR_SOCKET_ARG_42F2BAD5,
+              pipeRawTabletInsertionEvent,
+              socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
@@ -491,7 +505,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final Iterable<? extends EnrichedEvent> events,
       final int outputIndex)
       throws PipeException, IOException {
-    final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
+    final String errorMessage =
+        String.format(
+            DataNodePipeMessages.MESSAGE_SEAL_FILE_ARG_ERROR_SOCKET_ARG_A442249B, tsFile, socket);
     final String conversionTaskId =
         shouldAsyncLoadTsFileOnTypeMismatch
             ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
@@ -553,7 +569,11 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final int readFileBufferSize = getReadFileBufferSize(file);
     try (final PipeTsFileMemoryBlock ignored =
             PipeDataNodeResourceManager.memory()
-                .forceAllocateForTsFileWithRetry(readFileBufferSize);
+                .forceAllocateForTsFileWithRetry(
+                    IoTDBDataRegionAirGapSink.class.getSimpleName(),
+                    readFileBufferSize,
+                    PipeMemoryBlockCategory.SINK,
+                    IoTDBDataRegionAirGapSink.class.getSimpleName());
         final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       final byte[] readBuffer = new byte[readFileBufferSize];
       long position = 0;
@@ -575,7 +595,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
                 : getTransferSingleFilePieceBytes(file.getName(), position, payload),
             pipe2WeightMap)) {
           final String errorMessage =
-              String.format("Transfer file %s error. Socket %s.", file, socket);
+              String.format(
+                  DataNodePipeMessages.MESSAGE_TRANSFER_FILE_ARG_ERROR_SOCKET_ARG_E5731EE7,
+                  file,
+                  socket);
           receiverStatusHandler.handle(
               new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                   .setMessage(errorMessage),
@@ -665,7 +688,8 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
   @Override
   protected byte[] compressIfNeeded(final byte[] reqInBytes) throws IOException {
-    if (Objects.isNull(compressionTimer) && Objects.nonNull(sinkTaskId)) {
+    if (Objects.nonNull(sinkTaskId)) {
+      // Do not cache the timer, the metric service replaces it when it restarts
       compressionTimer = PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(sinkTaskId);
     }
     return super.compressIfNeeded(reqInBytes);

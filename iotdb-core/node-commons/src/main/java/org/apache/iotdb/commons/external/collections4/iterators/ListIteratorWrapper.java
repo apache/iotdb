@@ -48,10 +48,12 @@ public class ListIteratorWrapper<E> implements ResettableListIterator<E> {
 
   /** Message used when set or add are called. */
   private static final String UNSUPPORTED_OPERATION_MESSAGE =
-      "ListIteratorWrapper does not support optional operations of ListIterator.";
+      CommonMessages
+          .EXCEPTION_LISTITERATORWRAPPER_DOES_NOT_SUPPORT_OPTIONAL_OPERATIONS_OF_LISTITERATOR_A5C61A70;
 
   /** Message used when set or add are called. */
-  private static final String CANNOT_REMOVE_MESSAGE = "Cannot remove element at index {0}.";
+  private static final String CANNOT_REMOVE_MESSAGE =
+      CommonMessages.EXCEPTION_CANNOT_REMOVE_ELEMENT_AT_INDEX_0_42A1988F;
 
   /** The underlying iterator being decorated. */
   private final Iterator<? extends E> iterator;

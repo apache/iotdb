@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
 
-import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.UnaryColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.read.common.type.TypeEnum;
 
 public class RoundFunctionColumnTransformer extends UnaryColumnTransformer {
 
@@ -40,7 +38,7 @@ public class RoundFunctionColumnTransformer extends UnaryColumnTransformer {
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
-    TypeEnum sourceType = childColumnTransformer.getType().getTypeEnum();
+    Type sourceType = childColumnTransformer.getType();
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
         transform(column, columnBuilder, sourceType, i);
@@ -52,7 +50,7 @@ public class RoundFunctionColumnTransformer extends UnaryColumnTransformer {
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
-    TypeEnum sourceType = childColumnTransformer.getType().getTypeEnum();
+    Type sourceType = childColumnTransformer.getType();
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (selection[i] && !column.isNull(i)) {
         transform(column, columnBuilder, sourceType, i);
@@ -62,35 +60,8 @@ public class RoundFunctionColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
-  private void transform(Column column, ColumnBuilder columnBuilder, TypeEnum sourceType, int i) {
-    switch (sourceType) {
-      case INT32:
-        columnBuilder.writeDouble(
-            Math.rint(column.getInt(i) * Math.pow(10, places)) / Math.pow(10, places));
-        break;
-      case INT64:
-        columnBuilder.writeDouble(
-            Math.rint(column.getLong(i) * Math.pow(10, places)) / Math.pow(10, places));
-        break;
-      case FLOAT:
-        columnBuilder.writeDouble(
-            Math.rint(column.getFloat(i) * Math.pow(10, places)) / Math.pow(10, places));
-        break;
-      case DOUBLE:
-        columnBuilder.writeDouble(
-            Math.rint(column.getDouble(i) * Math.pow(10, places)) / Math.pow(10, places));
-        break;
-      case TIMESTAMP:
-      case STRING:
-      case BOOLEAN:
-      case BLOB:
-      case TEXT:
-      case DATE:
-      default:
-        throw new UnsupportedOperationException(
-            String.format(
-                CalcMessages.EXCEPTION_UNSUPPORTED_SOURCE_DATATYPE_ARG_678B759C,
-                childColumnTransformer.getType().getTypeEnum()));
-    }
+  private void transform(Column column, ColumnBuilder columnBuilder, Type sourceType, int i) {
+    double scale = Math.pow(10, places);
+    columnBuilder.writeDouble(Math.rint(sourceType.getDouble(column, i) * scale) / scale);
   }
 }

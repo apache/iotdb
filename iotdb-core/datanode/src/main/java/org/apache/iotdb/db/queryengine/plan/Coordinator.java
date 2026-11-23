@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
@@ -102,6 +103,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
@@ -117,6 +119,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
@@ -156,6 +159,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewr
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipeMemoryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.udf.InternalQueryExecutor;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -316,6 +320,8 @@ public class Coordinator {
     return execution(queryId, session, sql, userQuery, debug, false, iQueryExecutionFactory);
   }
 
+  // Record the SQL for Errors as well, preserving the original failure and finally cleanup.
+  @SuppressWarnings("java:S1181")
   private ExecutionResult execution(
       long queryId,
       SessionInfo session,
@@ -343,7 +349,14 @@ public class Coordinator {
       queryContext.setDebug(debug);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (readOnlyInternalQuery) {
-        InternalQueryExecutor.validateReadOnlyQuery(execution);
+        try {
+          InternalQueryExecutor.validateReadOnlyQuery(execution);
+        } catch (RuntimeException e) {
+          // The execution is neither registered nor started, so nothing else would release what
+          // its analysis acquired, such as the UDF class loaders pinned in its query scope.
+          execution.stopAndCleanup(e);
+          throw e;
+        }
       }
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -358,6 +371,13 @@ public class Coordinator {
         result.status.setNeedRetry(true);
       }
       return result;
+    } catch (RuntimeException | Error e) {
+      // Analysis can fail before registration. Only link the query ID to its SQL here; callers
+      // classify the failure and log its stack, avoiding duplicate stacks and WARNs for user
+      // errors.
+      LOGGER.info(
+          DataNodeQueryMessages.LOG_QUERYFAILED_QUERYID_ARG_SQL_ARG_249264E9, globalQueryId, sql);
+      throw e;
     } finally {
       if (queryContext != null) {
         queryContext.releaseAllMemoryReservedForFrontEnd();
@@ -429,6 +449,22 @@ public class Coordinator {
       long startTime) {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
+    if (statement instanceof ShowPipeMemoryStatement) {
+      // Reuse the information_schema scan and access checks.
+      // The fragment planner selects its operators using the query's session dialect.
+      final SessionInfo session = queryContext.getSession();
+      final SessionInfo tableSessionInfo =
+          new SessionInfo(session, session.getZoneId(), SqlDialect.TABLE);
+      queryContext.setSession(tableSessionInfo);
+      return createQueryExecutionForTableModel(
+          statement,
+          new SqlParser(),
+          null,
+          queryContext,
+          LocalExecutionPlanner.getInstance().metadata,
+          timeOut,
+          startTime);
+    }
     final Statement configStatement =
         statement instanceof PipeEnrichedStatement
                 && ((PipeEnrichedStatement) statement).getInnerStatement()
@@ -696,6 +732,7 @@ public class Coordinator {
         || statement instanceof AddColumn
         || statement instanceof AlterColumnDataType
         || statement instanceof SetProperties
+        || statement instanceof SetColumnProperties
         || statement instanceof DropColumn
         || statement instanceof DropTable
         || statement instanceof SetTableComment
@@ -790,6 +827,10 @@ public class Coordinator {
 
       org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement resolvedSql =
           preparedInfo.getSql();
+      if (resolvedSql instanceof InsertRows) {
+        resolvedSql = ((InsertRows) resolvedSql).copyForPreparedExecution();
+      }
+      innerStatement = resolvedSql;
       parameterLookup =
           ParameterExtractor.bindParameters(resolvedSql, executeStatement.getParameters());
       parameters = new ArrayList<>(executeStatement.getParameters());
@@ -813,6 +854,7 @@ public class Coordinator {
 
       org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement resolvedSql =
           sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
+      innerStatement = resolvedSql;
 
       if (!literalParameters.isEmpty()) {
         parameterLookup = ParameterExtractor.bindParameters(resolvedSql, literalParameters);
@@ -831,8 +873,8 @@ public class Coordinator {
       }
     }
 
-    if (statement instanceof WrappedInsertStatement) {
-      ((WrappedInsertStatement) statement).setContext(queryContext);
+    if (innerStatement instanceof WrappedInsertStatement) {
+      ((WrappedInsertStatement) innerStatement).setContext(queryContext);
     }
 
     // Create QueryExecution with TableModelPlanner
@@ -982,14 +1024,18 @@ public class Coordinator {
    * We need to reclaim resources from queries that have exceeded their timeout by more than one
    * minute. This indicates that the associated clients have failed to perform proper resource
    * cleanup.
+   *
+   * <p>Whether an RPC of the query is in progress does not matter here. The timeout bounds the
+   * whole lifetime of a query, so a query without an RPC in progress has been abandoned by its
+   * client, and an RPC that is still in progress this long after the timeout is stuck, e.g. in a
+   * dispatch that never returns, and is only unblocked by stopping the query. Sparing the queries
+   * with an RPC in progress would also keep forever every query whose caller never reports the end
+   * of its RPC through {@link #recordExecutionTime}.
    */
   public void cleanUpStaleQueries() {
     long currentTime = System.currentTimeMillis();
     queryExecutionMap.forEach(
         (queryId, queryExecution) -> {
-          if (queryExecution.isActive()) {
-            return;
-          }
           long timeout = queryExecution.getTimeout();
           long queryStartTime = queryExecution.getStartExecutionTime();
           long executeTime = currentTime - queryStartTime;
@@ -1002,6 +1048,11 @@ public class Coordinator {
                 new QueryTimeoutRuntimeException(queryStartTime, currentTime, timeout));
           }
         });
+  }
+
+  /** Registers an already materialized execution, e.g. an oversized Fast LAST cache hit. */
+  public void registerQueryExecution(Long queryId, IQueryExecution queryExecution) {
+    queryExecutionMap.put(queryId, queryExecution);
   }
 
   public void cleanupQueryExecution(Long queryId) {

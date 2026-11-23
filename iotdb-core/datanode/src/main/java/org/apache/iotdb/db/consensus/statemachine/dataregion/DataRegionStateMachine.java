@@ -265,11 +265,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
                   .PIPE_LOG_WRITE_OPERATION_STILL_FAILED_AFTER_RETRY_TIMES_BECAUSE_15EEA702,
               MAX_WRITE_RETRY_TIMES,
               result.getCode());
+          break;
         }
         try {
-          Thread.sleep(WRITE_RETRY_WAIT_TIME_IN_MS);
+          waitBeforeNextWriteRetry();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
+          break;
         }
       } else {
         if (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == result.getCode()
@@ -280,6 +282,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
       }
     }
     return result;
+  }
+
+  protected void waitBeforeNextWriteRetry() throws InterruptedException {
+    Thread.sleep(WRITE_RETRY_WAIT_TIME_IN_MS);
   }
 
   @Override
@@ -298,7 +304,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
         logger.error(DataNodeMiscMessages.GET_FRAGMENT_INSTANCE_FAILED, e);
         return null;
       }
-      return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
+      try {
+        return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
+      } finally {
+        fragmentInstance.closeUDFQueryScopeIfPresent();
+      }
     }
   }
 

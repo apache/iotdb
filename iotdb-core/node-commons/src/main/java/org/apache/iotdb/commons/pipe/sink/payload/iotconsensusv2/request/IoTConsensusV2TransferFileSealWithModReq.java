@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferReq;
 
+import com.google.common.collect.Maps;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -31,7 +32,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -117,26 +117,26 @@ public abstract class IoTConsensusV2TransferFileSealWithModReq extends TIoTConse
 
   public IoTConsensusV2TransferFileSealWithModReq translateFromTIoTConsensusV2TransferReq(
       TIoTConsensusV2TransferReq req) {
-    fileNames = new ArrayList<>();
     int size = ReadWriteIOUtils.readInt(req.body);
+    fileNames = new ArrayList<>(size);
     for (int i = 0; i < size; ++i) {
       fileNames.add(ReadWriteIOUtils.readString(req.body));
     }
 
-    fileLengths = new ArrayList<>();
     size = ReadWriteIOUtils.readInt(req.body);
+    fileLengths = new ArrayList<>(size);
     for (int i = 0; i < size; ++i) {
       fileLengths.add(ReadWriteIOUtils.readLong(req.body));
     }
 
-    pointCounts = new ArrayList<>();
     size = ReadWriteIOUtils.readInt(req.body);
+    pointCounts = new ArrayList<>(size);
     for (int i = 0; i < size; ++i) {
       pointCounts.add(ReadWriteIOUtils.readLong(req.body));
     }
 
-    parameters = new HashMap<>();
     size = ReadWriteIOUtils.readInt(req.body);
+    parameters = Maps.newHashMapWithExpectedSize(size);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(req.body);
       final String value = ReadWriteIOUtils.readString(req.body);

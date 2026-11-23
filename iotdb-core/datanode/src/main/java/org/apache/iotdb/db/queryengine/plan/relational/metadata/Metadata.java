@@ -116,6 +116,7 @@ public interface Metadata extends ITypeMetadata, ITableFunctionFactory {
    * <p>The caller need to recheck the dataType of measurement columns to decide whether to do
    * partial insert
    *
+   * @param allowAutoCreateSchema whether to allow automatic creation of missing tables and columns
    * @param isStrictTagColumn if {@code true}, when the table already exists, the tag columns in the
    *     existing table should be the prefix of those in the input tableSchema, or input tag columns
    *     be the prefix of existing tag columns.
@@ -129,7 +130,7 @@ public interface Metadata extends ITypeMetadata, ITableFunctionFactory {
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
-      final boolean allowCreateTable,
+      final boolean allowAutoCreateSchema,
       final boolean isStrictTagColumn,
       final AtomicBoolean needDecode4DifferentTimeColumn)
       throws LoadAnalyzeTableColumnDisorderException;

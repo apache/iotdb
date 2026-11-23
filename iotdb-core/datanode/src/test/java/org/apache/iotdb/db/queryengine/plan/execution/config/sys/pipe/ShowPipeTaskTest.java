@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -41,6 +42,8 @@ public class ShowPipeTaskTest {
   @Test
   public void testBuildTSBlockWritesRuntimeColumns() throws Exception {
     final TShowPipeInfo degradedPipe = createPipeInfo("degraded_pipe");
+    degradedPipe.setState(PipeStatus.STOPPED.name());
+    degradedPipe.setExceptionMessage("nodeIds: [1], construction failed");
     degradedPipe.setIsDegraded(true);
     final Map<String, Long> recentFailures = new HashMap<>();
     recentFailures.put("network_timeout", 10L);
@@ -62,6 +65,10 @@ public class ShowPipeTaskTest {
     assertEquals(
         ColumnHeaderConstant.RECENT_FAILURES, result.getResultSetHeader().getRespColumns().get(10));
     assertEquals(3, resultSet.getPositionCount());
+    assertEquals(PipeStatus.STOPPED.name(), resultSet.getColumn(2).getBinary(0).toString());
+    assertEquals(
+        "nodeIds: [1], construction failed", resultSet.getColumn(6).getBinary(0).toString());
+    assertEquals("", resultSet.getColumn(6).getBinary(1).toString());
     assertTrue(resultSet.getColumn(9).getBoolean(0));
     assertFalse(resultSet.getColumn(9).getBoolean(1));
     assertTrue(resultSet.getColumn(9).isNull(2));

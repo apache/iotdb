@@ -57,6 +57,13 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMetricPrometheusReporterAsyncUpdate(boolean asyncUpdate) {
+    properties.setProperty(
+        "dn_metric_prometheus_reporter_async_update", String.valueOf(asyncUpdate));
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
     properties.setProperty("metric_prometheus_reporter_username", username);
     return this;
@@ -77,6 +84,12 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   @Override
   public DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     properties.setProperty("dn_connection_timeout_ms", String.valueOf(connectionTimeoutInMS));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    properties.setProperty("dn_thrift_max_frame_size", String.valueOf(thriftMaxFrameSize));
     return this;
   }
 
@@ -134,6 +147,12 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMqttHandlerPoolSize(int mqttHandlerPoolSize) {
+    setProperty("mqtt_handler_pool_size", String.valueOf(mqttHandlerPoolSize));
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
     setProperty("last_cache_operation_on_load", strategyName);
     return this;
@@ -184,6 +203,15 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   @Override
   public DataNodeConfig setTableQueryDeviceEntryBatchSizeInBytes(long batchSizeInBytes) {
     setProperty("table_query_device_entry_batch_size_in_bytes", String.valueOf(batchSizeInBytes));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMppDataExchangeMaxPayloadSizeInBytes(
+      int mppDataExchangeMaxPayloadSizeInBytes) {
+    setProperty(
+        "mpp_data_exchange_max_payload_size_in_bytes",
+        String.valueOf(mppDataExchangeMaxPayloadSizeInBytes));
     return this;
   }
 }

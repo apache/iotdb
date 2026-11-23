@@ -54,7 +54,7 @@ public class SkewnessOperator implements AggregatedResultOperator {
     double sumX3 = intermediateResults.getDouble("sum_x3");
     double sumX2 = intermediateResults.getDouble("sum_x2");
     double sumX1 = intermediateResults.getDouble("sum_x1");
-    int count = intermediateResults.getInt("count");
+    long count = intermediateResults.getLong("count");
 
     return new Pair<>(
         TSDataType.DOUBLE,

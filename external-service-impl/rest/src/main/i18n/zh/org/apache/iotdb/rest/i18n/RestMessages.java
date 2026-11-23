@@ -124,4 +124,18 @@ public final class RestMessages {
   // ---------------------------------------------------------------------------
   public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_0521CEDE = "不支持的数据类型: ";
 
+  public static final String EXCEPTION_UNSUPPORTED_QUERY_DATA_TYPE_ARG_05BDDFBA = "不支持的查询数据类型：%s";
+
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_3D7368DD = "不支持的数据类型：%s";
+
+  public static final String EXCEPTION_THIS_OPERATION_TYPE_IS_NOT_SUPPORTED_DD44BACE = "不支持此操作类型";
+
+  public static final String EXCEPTION_ALL_INSERTED_DATA_IS_NULL_6B1A58B6 = "所有插入数据均为空。";
+
+  public static final String EXCEPTION_THRIFT_SERVICE_IS_UNAVAILABLE_6DF40C0F = "Thrift 服务不可用";
+
+  public static final String EXCEPTION_ILLEGAL_FORMAT_OF_AUTHORIZATION_HEADER_D34F8A26 =
+      "授权请求头格式无效。";
+
+  public static final String EXCEPTION_INVALID_TIME_ZONE_ARG_43D4C03A = "无效的时区：%s";
 }

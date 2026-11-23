@@ -33,5 +33,9 @@ public final class PipeApiMessages {
   public static final String EXCEPTION_ATTRIBUTE_ARG_IS_REQUIRED_BUT_WAS_NOT_PROVIDED_5A6C1F93 =
       "属性 \"%s\" 是必填的，但未提供。";
 
+  public static final String
+      EXCEPTION_ERROR_OCCURRED_WHILE_CONNECTING_TO_RECEIVER_ARG_ARG_PLEASE_CHECK_NETWORK_CONNECTIVITY_OR_SSL_CONFIGURATIONS_WHEN_ENABLE_SSL_TRANSMISSION_5C0C2E01 =
+          "连接接收端 %s:%s 时发生错误，请检查网络连接，启用 SSL 传输时还需检查 SSL 配置";
+
   private PipeApiMessages() {}
 }

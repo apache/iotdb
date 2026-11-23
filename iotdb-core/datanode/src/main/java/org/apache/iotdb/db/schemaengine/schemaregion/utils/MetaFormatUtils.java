@@ -22,15 +22,18 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.SDT;
@@ -102,6 +105,26 @@ public class MetaFormatUtils {
     }
   }
 
+  /** Validate the shared measurement/alias namespace before creating any member of a batch. */
+  public static void checkSchemaMeasurementAliases(
+      final PartialPath devicePath, final List<String> measurements, final List<String> aliases)
+      throws MetadataException {
+    if (aliases == null) {
+      return;
+    }
+    final Set<String> measurementNames = new HashSet<>(measurements);
+    final Set<String> aliasNames = new HashSet<>();
+    for (int i = 0; i < measurements.size(); i++) {
+      final String alias = aliases.get(i);
+      if (alias != null
+          && (!aliasNames.add(alias)
+              || (measurementNames.contains(alias) && !alias.equals(measurements.get(i))))) {
+        throw new AliasAlreadyExistException(
+            devicePath.concatAsMeasurementPath(measurements.get(i)).getFullPath(), alias);
+      }
+    }
+  }
+
   /** check whether the database name uses illegal characters */
   public static void checkDatabase(final String database) throws IllegalPathException {
     if (!IoTDBConfig.DATABASE_PATTERN.matcher(database).matches()) {
@@ -130,11 +153,16 @@ public class MetaFormatUtils {
       double d = Double.parseDouble(props.get(SDT_COMP_DEV));
       if (d < 0) {
         throw new IllegalParameterOfPathException(
-            DataNodeSchemaMessages.SDT_COMPRESSION_DEVIATION_NEGATIVE, path);
+            String.format(
+                DataNodeSchemaMessages.SDT_COMPRESSION_DEVIATION_NEGATIVE, props.get(SDT_COMP_DEV)),
+            path);
       }
     } catch (NumberFormatException e) {
       throw new IllegalParameterOfPathException(
-          DataNodeSchemaMessages.SDT_COMPRESSION_DEVIATION_FORMAT_ERROR, path);
+          String.format(
+              DataNodeSchemaMessages.SDT_COMPRESSION_DEVIATION_FORMAT_ERROR,
+              props.get(SDT_COMP_DEV)),
+          path);
     }
 
     long compMinTime = sdtCompressionTimeFormat(SDT_COMP_MIN_TIME, props, path);
@@ -142,7 +170,11 @@ public class MetaFormatUtils {
 
     if (compMaxTime <= compMinTime) {
       throw new IllegalParameterOfPathException(
-          DataNodeSchemaMessages.SDT_COMPRESSION_MAX_GREATER_THAN_MIN, path);
+          String.format(
+              DataNodeSchemaMessages.SDT_COMPRESSION_MAX_GREATER_THAN_MIN,
+              compMaxTime,
+              compMinTime),
+          path);
     }
   }
 
@@ -151,20 +183,23 @@ public class MetaFormatUtils {
       throws IllegalParameterOfPathException {
     boolean isCompMaxTime = compTime.equals(SDT_COMP_MAX_TIME);
     long time = isCompMaxTime ? Long.MAX_VALUE : 0;
-    String s = isCompMaxTime ? "maximum" : "minimum";
     if (props.containsKey(compTime)) {
+      String value = props.get(compTime);
       try {
-        time = Long.parseLong(props.get(compTime));
-        if (time < 0) {
-          throw new IllegalParameterOfPathException(
-              String.format(DataNodeSchemaMessages.SDT_COMPRESSION_TIME_NEGATIVE, s), path);
-        }
-      } catch (IllegalParameterOfPathException e) {
+        time = Long.parseLong(value);
+      } catch (NumberFormatException e) {
         throw new IllegalParameterOfPathException(
-            String.format(DataNodeSchemaMessages.SDT_COMPRESSION_TIME_FORMAT_ERROR, s), path);
+            String.format(
+                DataNodeSchemaMessages.SDT_COMPRESSION_TIME_FORMAT_ERROR, compTime, value),
+            path);
+      }
+      if (time < 0) {
+        throw new IllegalParameterOfPathException(
+            String.format(DataNodeSchemaMessages.SDT_COMPRESSION_TIME_NEGATIVE, compTime, value),
+            path);
       }
     } else {
-      logger.info(DataNodeSchemaMessages.SDT_ENABLED_NO_COMPRESSION_TIME, path, s);
+      logger.debug(DataNodeSchemaMessages.SDT_ENABLED_NO_COMPRESSION_TIME, path, compTime, time);
     }
     return time;
   }

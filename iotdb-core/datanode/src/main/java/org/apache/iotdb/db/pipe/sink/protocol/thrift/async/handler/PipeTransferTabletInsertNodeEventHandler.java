@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.db.pipe.sink.util.cacher.LeaderCacheUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 
 public class PipeTransferTabletInsertNodeEventHandler
     extends PipeTransferTabletInsertionEventHandler {
@@ -46,7 +49,13 @@ public class PipeTransferTabletInsertNodeEventHandler
 
   @Override
   protected void updateLeaderCache(final TSStatus status) {
-    sink.updateLeaderCache(
-        ((PipeInsertNodeTabletInsertionEvent) event).getDeviceId(), status.getRedirectNode());
+    if (status.isSetRedirectNode()) {
+      sink.updateLeaderCache(
+          ((PipeInsertNodeTabletInsertionEvent) event).getDeviceId(), status.getRedirectNode());
+    }
+    for (final Pair<String, TEndPoint> redirectPair :
+        LeaderCacheUtils.parseRecommendedRedirections(status)) {
+      sink.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
+    }
   }
 }

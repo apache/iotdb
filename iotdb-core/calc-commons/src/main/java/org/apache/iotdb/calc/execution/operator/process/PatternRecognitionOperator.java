@@ -117,7 +117,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
     // Partition Part
     this.partitionChannels = ImmutableList.copyOf(partitionChannels);
     // Acquire partition channels' data types
-    List<TSDataType> partitionDataTypes = new ArrayList<>();
+    List<TSDataType> partitionDataTypes = new ArrayList<>(partitionChannels.size());
     for (Integer channel : partitionChannels) {
       partitionDataTypes.add(inputDataTypes.get(channel));
     }

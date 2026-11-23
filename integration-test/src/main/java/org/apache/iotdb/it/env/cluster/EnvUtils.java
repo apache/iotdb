@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.it.env.cluster;
 
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 
 import org.apache.tsfile.external.commons.lang3.SystemUtils;
@@ -68,6 +69,17 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 
 public class EnvUtils {
+
+  /**
+   * The status a node locally stopped via {@code AbstractNodeWrapper.stop()} is expected to be in.
+   * On Windows, {@code Process.destroy()} terminates the node process without running the JVM
+   * shutdown hooks, so the graceful-shutdown report is never sent and the ConfigNode marks the node
+   * Unknown by heartbeat timeout. On Unix, the shutdown hook reports the stop and the node becomes
+   * Stopped.
+   */
+  public static NodeStatus getNodeStatusAfterLocalStop() {
+    return SystemUtils.IS_OS_WINDOWS ? NodeStatus.Unknown : NodeStatus.Stopped;
+  }
 
   public static int[] searchAvailablePorts() {
     int length = 10;
@@ -163,12 +175,15 @@ public class EnvUtils {
   /**
    * List occupied port and the associated pid on Unix.
    *
+   * <p>A line of the lsof output splits into 10 columns, e.g. {@code java 1234 user 77u IPv6 0x1a2b
+   * 0t0 TCP 127.0.0.1:6667 (LISTEN)}. The address is in column 8 and the state in column 9.
+   *
    * @param ports ports to be checked
    * @return (occupiedPort, pid) pairs
    */
   public static Map<Integer, Long> listPortOccupationUnix(final List<Integer> ports)
       throws IOException {
-    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN,TIME_WAIT -P -n", 10, 9, 1);
+    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN,TIME_WAIT -P -n", 10, 8, 1);
   }
 
   private static Pair<Integer, Integer> getClusterNodesNum(final int index) {

@@ -29,6 +29,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 public class ClientManagerMetrics implements IMetricSet {
@@ -58,35 +59,50 @@ public class ClientManagerMetrics implements IMetricSet {
     // empty constructor
   }
 
-  public void registerClientManager(String poolName, GenericKeyedObjectPool<?, ?> clientPool) {
-    synchronized (this) {
-      if (metricService == null) {
-        poolMap.put(poolName, clientPool);
-      } else {
-        if (!poolMap.containsKey(poolName)) {
-          poolMap.put(poolName, clientPool);
-          createMetrics(poolName);
+  public synchronized void registerClientManager(
+      String poolName, GenericKeyedObjectPool<?, ?> clientPool) {
+    GenericKeyedObjectPool<?, ?> existingPool = poolMap.get(poolName);
+    if (metricService != null && existingPool != null && !existingPool.isClosed()) {
+      return;
+    }
+    if (metricService != null && existingPool != null) {
+      removeMetrics(metricService, poolName);
+    }
+    poolMap.put(poolName, clientPool);
+    if (metricService != null) {
+      createMetrics(poolName, clientPool);
+    }
+  }
+
+  public synchronized void unregisterClientManager(GenericKeyedObjectPool<?, ?> clientPool) {
+    Iterator<Map.Entry<String, GenericKeyedObjectPool<?, ?>>> iterator =
+        poolMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<String, GenericKeyedObjectPool<?, ?>> entry = iterator.next();
+      // A pool with the same name may have been registered while the old pool was closing.
+      if (entry.getValue() == clientPool) {
+        iterator.remove();
+        if (metricService != null) {
+          removeMetrics(metricService, entry.getKey());
         }
       }
     }
   }
 
   @Override
-  public void bindTo(AbstractMetricService metricService) {
+  public synchronized void bindTo(AbstractMetricService metricService) {
     this.metricService = metricService;
-    synchronized (this) {
-      for (String poolName : poolMap.keySet()) {
-        createMetrics(poolName);
-      }
+    for (Map.Entry<String, GenericKeyedObjectPool<?, ?>> entry : poolMap.entrySet()) {
+      createMetrics(entry.getKey(), entry.getValue());
     }
   }
 
-  private void createMetrics(String poolName) {
+  private void createMetrics(String poolName, GenericKeyedObjectPool<?, ?> clientPool) {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        poolMap,
-        map -> poolMap.get(poolName).getNumActive(),
+        clientPool,
+        GenericKeyedObjectPool::getNumActive,
         Tag.NAME.toString(),
         CLIENT_MANAGER_NUM_ACTIVE,
         Tag.TYPE.toString(),
@@ -94,8 +110,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        poolMap,
-        map -> poolMap.get(poolName).getNumIdle(),
+        clientPool,
+        GenericKeyedObjectPool::getNumIdle,
         Tag.NAME.toString(),
         CLIENT_MANAGER_NUM_IDLE,
         Tag.TYPE.toString(),
@@ -103,8 +119,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        poolMap,
-        map -> poolMap.get(poolName).getBorrowedCount(),
+        clientPool,
+        GenericKeyedObjectPool::getBorrowedCount,
         Tag.NAME.toString(),
         CLIENT_MANAGER_BORROWED_COUNT,
         Tag.TYPE.toString(),
@@ -112,8 +128,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        poolMap,
-        map -> poolMap.get(poolName).getCreatedCount(),
+        clientPool,
+        GenericKeyedObjectPool::getCreatedCount,
         Tag.NAME.toString(),
         CLIENT_MANAGER_CREATED_COUNT,
         Tag.TYPE.toString(),
@@ -121,8 +137,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        poolMap,
-        map -> poolMap.get(poolName).getDestroyedCount(),
+        clientPool,
+        GenericKeyedObjectPool::getDestroyedCount,
         Tag.NAME.toString(),
         CLIENT_MANAGER_DESTROYED_COUNT,
         Tag.TYPE.toString(),
@@ -130,8 +146,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        poolMap,
-        map -> poolMap.get(poolName).getMeanActiveTimeMillis(),
+        clientPool,
+        GenericKeyedObjectPool::getMeanActiveTimeMillis,
         Tag.NAME.toString(),
         MEAN_ACTIVE_TIME_MILLIS,
         Tag.TYPE.toString(),
@@ -139,8 +155,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        poolMap,
-        map -> poolMap.get(poolName).getMeanBorrowWaitTimeMillis(),
+        clientPool,
+        GenericKeyedObjectPool::getMeanBorrowWaitTimeMillis,
         Tag.NAME.toString(),
         MEAN_BORROW_WAIT_TIME_MILLIS,
         Tag.TYPE.toString(),
@@ -148,8 +164,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        poolMap,
-        map -> poolMap.get(poolName).getMeanIdleTimeMillis(),
+        clientPool,
+        GenericKeyedObjectPool::getMeanIdleTimeMillis,
         Tag.NAME.toString(),
         MEAN_IDLE_TIME_MILLIS,
         Tag.TYPE.toString(),
@@ -157,65 +173,73 @@ public class ClientManagerMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    for (String poolName : poolMap.keySet()) {
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.CLIENT_MANAGER.toString(),
-          Tag.NAME.toString(),
-          CLIENT_MANAGER_NUM_ACTIVE,
-          Tag.TYPE.toString(),
-          poolName);
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.CLIENT_MANAGER.toString(),
-          Tag.NAME.toString(),
-          CLIENT_MANAGER_NUM_IDLE,
-          Tag.TYPE.toString(),
-          poolName);
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.CLIENT_MANAGER.toString(),
-          Tag.NAME.toString(),
-          CLIENT_MANAGER_BORROWED_COUNT,
-          Tag.TYPE.toString(),
-          poolName);
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.CLIENT_MANAGER.toString(),
-          Tag.NAME.toString(),
-          CLIENT_MANAGER_CREATED_COUNT,
-          Tag.TYPE.toString(),
-          poolName);
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.CLIENT_MANAGER.toString(),
-          Tag.NAME.toString(),
-          CLIENT_MANAGER_DESTROYED_COUNT,
-          Tag.TYPE.toString(),
-          poolName);
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.CLIENT_MANAGER.toString(),
-          Tag.NAME.toString(),
-          MEAN_ACTIVE_TIME_MILLIS,
-          Tag.TYPE.toString(),
-          poolName);
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.CLIENT_MANAGER.toString(),
-          Tag.NAME.toString(),
-          MEAN_BORROW_WAIT_TIME_MILLIS,
-          Tag.TYPE.toString(),
-          poolName);
-      metricService.remove(
-          MetricType.GAUGE,
-          Metric.CLIENT_MANAGER.toString(),
-          Tag.NAME.toString(),
-          MEAN_IDLE_TIME_MILLIS,
-          Tag.TYPE.toString(),
-          poolName);
+  public synchronized void unbindFrom(AbstractMetricService metricService) {
+    if (this.metricService != metricService) {
+      return;
     }
-    poolMap.clear();
+    this.metricService = null;
+    // Keep live pools registered so a metric service restart can bind them again.
+    for (String poolName : poolMap.keySet()) {
+      removeMetrics(metricService, poolName);
+    }
+  }
+
+  private void removeMetrics(AbstractMetricService metricService, String poolName) {
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.CLIENT_MANAGER.toString(),
+        Tag.NAME.toString(),
+        CLIENT_MANAGER_NUM_ACTIVE,
+        Tag.TYPE.toString(),
+        poolName);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.CLIENT_MANAGER.toString(),
+        Tag.NAME.toString(),
+        CLIENT_MANAGER_NUM_IDLE,
+        Tag.TYPE.toString(),
+        poolName);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.CLIENT_MANAGER.toString(),
+        Tag.NAME.toString(),
+        CLIENT_MANAGER_BORROWED_COUNT,
+        Tag.TYPE.toString(),
+        poolName);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.CLIENT_MANAGER.toString(),
+        Tag.NAME.toString(),
+        CLIENT_MANAGER_CREATED_COUNT,
+        Tag.TYPE.toString(),
+        poolName);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.CLIENT_MANAGER.toString(),
+        Tag.NAME.toString(),
+        CLIENT_MANAGER_DESTROYED_COUNT,
+        Tag.TYPE.toString(),
+        poolName);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.CLIENT_MANAGER.toString(),
+        Tag.NAME.toString(),
+        MEAN_ACTIVE_TIME_MILLIS,
+        Tag.TYPE.toString(),
+        poolName);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.CLIENT_MANAGER.toString(),
+        Tag.NAME.toString(),
+        MEAN_BORROW_WAIT_TIME_MILLIS,
+        Tag.TYPE.toString(),
+        poolName);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.CLIENT_MANAGER.toString(),
+        Tag.NAME.toString(),
+        MEAN_IDLE_TIME_MILLIS,
+        Tag.TYPE.toString(),
+        poolName);
   }
 }

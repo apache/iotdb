@@ -64,7 +64,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
   private final CRC32 crc32 = new CRC32();
 
   private static final String SERVICE_NOT_EXISTED =
-      "ExternalService %s is not existed on DataNode %s.";
+      ManagerMessages.EXCEPTION_EXTERNALSERVICE_ARG_IS_NOT_EXISTED_ON_DATANODE_ARG_E941E787;
 
   public ExternalServiceInfo() {
     datanodeToServiceInfos = new ConcurrentHashMap<>();
@@ -86,8 +86,10 @@ public class ExternalServiceInfo implements SnapshotProcessor {
       res.code = TSStatusCode.EXTERNAL_SERVICE_ALREADY_EXIST.getStatusCode();
       res.message =
           String.format(
-              "ExternalService %s has already been created on DataNode %s.",
-              serviceName, plan.getDatanodeId());
+              ManagerMessages
+                  .EXCEPTION_EXTERNALSERVICE_ARG_HAS_ALREADY_BEEN_CREATED_ON_DATANODE_ARG_CEB6658C,
+              serviceName,
+              plan.getDatanodeId());
     } else {
       serviceInfos.put(serviceName, plan.getServiceInfo());
       res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();

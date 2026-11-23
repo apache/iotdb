@@ -99,6 +99,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePl
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipeMemoryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
@@ -146,6 +147,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDeleteTimeSeriesProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
@@ -529,6 +531,11 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(repairDataPartitionTable, context);
   }
 
+  public R visitShowDeleteTimeSeriesProgress(
+      ShowDeleteTimeSeriesProgressStatement statement, C context) {
+    return visitStatement(statement, context);
+  }
+
   public R visitShowRepairDataPartitionTableProgress(
       ShowRepairDataPartitionTableProgressStatement showRepairDataPartitionTableProgressStatement,
       C context) {
@@ -631,6 +638,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowPipes(ShowPipesStatement showPipesStatement, C context) {
     return visitStatement(showPipesStatement, context);
+  }
+
+  public R visitShowPipeMemory(ShowPipeMemoryStatement statement, C context) {
+    return visitStatement(statement, context);
   }
 
   public R visitCreatePipe(CreatePipeStatement createPipeStatement, C context) {
