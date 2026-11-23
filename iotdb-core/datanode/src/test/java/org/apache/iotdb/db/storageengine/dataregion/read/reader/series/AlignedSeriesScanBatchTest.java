@@ -240,7 +240,10 @@ public class AlignedSeriesScanBatchTest {
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(true);
       metadataCache.clear();
       bloomFilterCache.clear();
-      Assert.assertFalse(hasFile(absentPath, resource));
+      AlignedSeriesScanUtil scan = newScanUtil(absentPath, resource);
+      // The first call skips the only file. The next call sees an exhausted data source.
+      Assert.assertEquals(Optional.empty(), scan.hasNextFile());
+      Assert.assertEquals(Optional.of(false), scan.hasNextFile());
     } finally {
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(previousIgnoreAllNullRows);
       cleanup(file, resource, metadataCache, bloomFilterCache);
@@ -254,18 +257,6 @@ public class AlignedSeriesScanBatchTest {
     SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     return seriesScanUtil.nextPage();
-  }
-
-  private static boolean hasFile(AlignedFullPath scanPath, TsFileResource resource)
-      throws IOException {
-    AlignedSeriesScanUtil seriesScanUtil = newScanUtil(scanPath, resource);
-    for (int attempt = 0; attempt < 1000; attempt++) {
-      Optional<Boolean> hasNextFile = seriesScanUtil.hasNextFile();
-      if (hasNextFile.isPresent()) {
-        return hasNextFile.get();
-      }
-    }
-    throw new IllegalStateException("series scan did not advance after 1000 attempts");
   }
 
   private static AlignedSeriesScanUtil newScanUtil(

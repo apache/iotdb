@@ -334,7 +334,8 @@ public class TimeSeriesMetadataCache {
    *
    * <p>The returned map holds copies of the cached (or freshly read) metadata, so the caller may
    * apply {@code setModified} and {@code setChunkMetadataLoader} without corrupting cached entries.
-   * Load statistics are counted per requested measurement.
+   * Load statistics are counted per requested measurement. A cached absent time column resolves the
+   * whole device in one lookup.
    *
    * @param deviceMetadataIndexNodeOffset non-null for external tsfiles, which address the device
    *     metadata index by offset; bloom filtering is skipped in that case
@@ -351,13 +352,13 @@ public class TimeSeriesMetadataCache {
       QueryContext queryContext,
       long[] deviceMetadataIndexNodeOffset)
       throws IOException {
-    long startTime = System.nanoTime();
+    long startTime = nanoTime();
     long cachePhaseEndTime = 0;
     long loadBloomFilterTime = 0;
     long bloomFilterTimeBeforeCachePhase = 0;
     long bloomFilterTimeAfterCachePhase = 0;
     long cacheHitCount = 0;
-    long diskLookupCount = 0;
+    long lookupCount = requested.size();
     boolean externalTsFile = queryContext.isExternalTsFileScan();
     LongConsumer timeSeriesMetadataIoSizeRecorder =
         queryContext.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet;
@@ -372,26 +373,27 @@ public class TimeSeriesMetadataCache {
         String deviceName = device.toString();
         String devicePrefix = deviceName + IoTDBConstant.PATH_SEPARATOR;
         BloomFilter bloomFilter = null;
+        boolean bloomFilterChecked = false;
+        TimeseriesMetadata cachedTime = null;
         // an aligned device always has its time column, so check it before the per-column cache
         // pass: a file without data for this device then costs one lookup and at most one
         // BloomFilter probe instead of one lookup per selected measurement
         if (requested.contains("")) {
-          TimeseriesMetadata cachedTime =
-              lruCache.getIfPresent(new TimeSeriesMetadataCacheKey(tsFileID, device, ""));
+          cachedTime = lruCache.getIfPresent(new TimeSeriesMetadataCacheKey(tsFileID, device, ""));
           if (cachedTime == NULL_EXISTS_CACHE_PLACE_HOLDER) {
+            lookupCount = 1;
             cacheHitCount = 1;
-            cachePhaseEndTime = System.nanoTime();
+            cachePhaseEndTime = nanoTime();
             fillMissingWithNull(requested, result);
             return result;
           }
-          if (cachedTime != null) {
-            result.put("", new TimeseriesMetadata(cachedTime));
-          } else if (deviceMetadataIndexNodeOffset == null) {
-            long bloomFilterStartTime = System.nanoTime();
+          if (cachedTime == null && deviceMetadataIndexNodeOffset == null) {
+            long bloomFilterStartTime = nanoTime();
             bloomFilter =
                 loadBloomFilter(
                     filePath, tsFileID, queryContext, debug, bloomFilterIoSizeRecorder, false);
-            bloomFilterTimeBeforeCachePhase = System.nanoTime() - bloomFilterStartTime;
+            bloomFilterTimeBeforeCachePhase = nanoTime() - bloomFilterStartTime;
+            bloomFilterChecked = true;
             loadBloomFilterTime += bloomFilterTimeBeforeCachePhase;
             if (bloomFilter != null && !bloomFilter.contains(devicePrefix)) {
               fillMissingWithNull(requested, result);
@@ -399,27 +401,26 @@ public class TimeSeriesMetadataCache {
             }
           }
         }
-        collectCachedMetadata(tsFileID, device, requested, result, pending, filePath, debug);
+        collectCachedMetadata(
+            tsFileID, device, requested, cachedTime, result, pending, filePath, debug);
         cacheHitCount = result.size();
+        cachePhaseEndTime = nanoTime();
         if (pending.isEmpty()) {
-          cachePhaseEndTime = System.nanoTime();
           return result;
         }
-        cachePhaseEndTime = System.nanoTime();
-        if (bloomFilter == null && deviceMetadataIndexNodeOffset == null) {
-          long bloomFilterStartTime = System.nanoTime();
+        if (!bloomFilterChecked && deviceMetadataIndexNodeOffset == null) {
+          long bloomFilterStartTime = nanoTime();
           bloomFilter =
               loadBloomFilter(
                   filePath, tsFileID, queryContext, debug, bloomFilterIoSizeRecorder, false);
-          bloomFilterTimeAfterCachePhase = System.nanoTime() - bloomFilterStartTime;
+          bloomFilterTimeAfterCachePhase = nanoTime() - bloomFilterStartTime;
           loadBloomFilterTime += bloomFilterTimeAfterCachePhase;
         }
         // the filter and the cache are thread-safe, so a rejected measurement never enters the
         // device lock; only the survivors need the locked recheck and the reader
         bloomAbsentMeasurements(
-            tsFileID, device, pending, requested, result, bloomFilter, devicePrefix, debug);
+            tsFileID, device, pending, result, bloomFilter, devicePrefix, debug);
         if (pending.isEmpty()) {
-          fillMissingWithNull(requested, result);
           return result;
         }
         // serialize reads of the same device+file (same lock key as get) so threads don't each
@@ -442,7 +443,6 @@ public class TimeSeriesMetadataCache {
                 cached == NULL_EXISTS_CACHE_PLACE_HOLDER ? null : new TimeseriesMetadata(cached));
           }
           if (pending.isEmpty()) {
-            cachePhaseEndTime = System.nanoTime();
             return result;
           }
           if (debug) {
@@ -461,7 +461,6 @@ public class TimeSeriesMetadataCache {
               device,
               deviceMetadataIndexNodeOffset,
               pending,
-              requested,
               ignoreNotExists,
               queryContext,
               debug,
@@ -477,20 +476,18 @@ public class TimeSeriesMetadataCache {
       // offset-addressed external files may not have a bloom filter that covers their series
       BloomFilter bloomFilter = null;
       if (deviceMetadataIndexNodeOffset == null) {
-        long bloomFilterStartTime = System.nanoTime();
+        long bloomFilterStartTime = nanoTime();
         bloomFilter =
             loadBloomFilter(
                 filePath, tsFileID, queryContext, debug, bloomFilterIoSizeRecorder, externalTsFile);
-        loadBloomFilterTime = System.nanoTime() - bloomFilterStartTime;
+        loadBloomFilterTime = nanoTime() - bloomFilterStartTime;
       }
-      if (deviceAbsent(requested, result, bloomFilter, devicePrefix)) {
+      if (bloomFilter != null && requested.contains("") && !bloomFilter.contains(devicePrefix)) {
         fillMissingWithNull(requested, result);
         return result;
       }
-      bloomAbsentMeasurements(
-          tsFileID, device, pending, requested, result, bloomFilter, devicePrefix, debug);
+      bloomAbsentMeasurements(tsFileID, device, pending, result, bloomFilter, devicePrefix, debug);
       if (pending.isEmpty()) {
-        fillMissingWithNull(requested, result);
         return result;
       }
       TsFileSequenceReader reader =
@@ -502,7 +499,6 @@ public class TimeSeriesMetadataCache {
           device,
           deviceMetadataIndexNodeOffset,
           pending,
-          requested,
           ignoreNotExists,
           queryContext,
           debug,
@@ -510,10 +506,9 @@ public class TimeSeriesMetadataCache {
           timeSeriesMetadataIoSizeRecorder);
       return result;
     } finally {
-      long endTime = System.nanoTime();
-      // every requested measurement that was not served by the cache is a lookup, including the
-      // ones an early return rejected with the BloomFilter
-      diskLookupCount = requested.size() - cacheHitCount;
+      long endTime = nanoTime();
+      // BloomFilter rejections count as misses; columns skipped by a cache hit do not.
+      long diskLookupCount = lookupCount - cacheHitCount;
       long cacheLookupTime;
       long diskLookupTime;
       if (cacheHitCount == 0 || cachePhaseEndTime == 0) {
@@ -538,6 +533,10 @@ public class TimeSeriesMetadataCache {
     }
   }
 
+  long nanoTime() {
+    return System.nanoTime();
+  }
+
   private BloomFilter loadBloomFilter(
       String filePath,
       TsFileID tsFileID,
@@ -557,24 +556,6 @@ public class TimeSeriesMetadataCache {
   }
 
   /**
-   * An aligned device always has its time column. When the cache or the bloom filter proves it
-   * absent, no selected series of the device can be read from this file.
-   */
-  private static boolean deviceAbsent(
-      Set<String> requested,
-      Map<String, TimeseriesMetadata> result,
-      BloomFilter bloomFilter,
-      String devicePrefix) {
-    if (!requested.contains("")) {
-      return false;
-    }
-    if (result.containsKey("")) {
-      return result.get("") == null;
-    }
-    return bloomFilter != null && !bloomFilter.contains(devicePrefix);
-  }
-
-  /**
    * Removes the pending measurements the bloom filter proves absent and answers them with null.
    * They are not remembered: a later query probes the filter again instead of keeping a negative
    * cache entry, which would add one entry per absent column per file.
@@ -583,7 +564,6 @@ public class TimeSeriesMetadataCache {
       TsFileID tsFileID,
       IDeviceID device,
       Set<String> pending,
-      Set<String> requested,
       Map<String, TimeseriesMetadata> result,
       BloomFilter bloomFilter,
       String devicePrefix,
@@ -599,14 +579,12 @@ public class TimeSeriesMetadataCache {
         continue;
       }
       iterator.remove();
-      if (requested.contains(measurement)) {
-        if (debug) {
-          DEBUG_LOGGER.info(
-              StorageEngineMessages.TS_METADATA_FILTERED_BY_BLOOM_FILTER,
-              new TimeSeriesMetadataCacheKey(tsFileID, device, measurement));
-        }
-        result.put(measurement, null);
+      if (debug) {
+        DEBUG_LOGGER.info(
+            StorageEngineMessages.TS_METADATA_FILTERED_BY_BLOOM_FILTER,
+            new TimeSeriesMetadataCacheKey(tsFileID, device, measurement));
       }
+      result.put(measurement, null);
     }
   }
 
@@ -622,7 +600,6 @@ public class TimeSeriesMetadataCache {
       IDeviceID device,
       long[] deviceMetadataIndexNodeOffset,
       Set<String> pending,
-      Set<String> requested,
       boolean ignoreNotExists,
       QueryContext queryContext,
       boolean debug,
@@ -648,24 +625,18 @@ public class TimeSeriesMetadataCache {
               StorageEngineMessages.FILE_NO_SUCH_TIME_SERIES,
               new TimeSeriesMetadataCacheKey(tsFileID, device, measurement));
         }
-        if (requested.contains(measurement)) {
-          result.put(measurement, null);
-        }
+        result.put(measurement, null);
         cacheNonExistenceIfNeeded(tsFileID, device, measurement, cacheEnabled, queryContext);
       } else {
         if (cacheEnabled) {
           lruCache.put(new TimeSeriesMetadataCacheKey(tsFileID, device, measurement), metadata);
         }
-        if (requested.contains(measurement)) {
-          result.put(measurement, new TimeseriesMetadata(metadata));
-        }
+        result.put(measurement, new TimeseriesMetadata(metadata));
       }
     }
     // what is left in pending was routed to a leaf group that was read and not found there
     for (String measurement : pending) {
-      if (requested.contains(measurement)) {
-        result.put(measurement, null);
-      }
+      result.put(measurement, null);
       cacheNonExistenceIfNeeded(tsFileID, device, measurement, cacheEnabled, queryContext);
     }
   }
@@ -720,6 +691,7 @@ public class TimeSeriesMetadataCache {
       TsFileID tsFileID,
       IDeviceID device,
       Collection<String> measurements,
+      TimeseriesMetadata cachedTime,
       Map<String, TimeseriesMetadata> resolved,
       Collection<String> missing,
       String filePath,
@@ -727,7 +699,7 @@ public class TimeSeriesMetadataCache {
     for (String measurement : measurements) {
       TimeSeriesMetadataCacheKey key =
           new TimeSeriesMetadataCacheKey(tsFileID, device, measurement);
-      TimeseriesMetadata metadata = lruCache.getIfPresent(key);
+      TimeseriesMetadata metadata = measurement.isEmpty() ? cachedTime : lruCache.getIfPresent(key);
       if (metadata == null) {
         missing.add(measurement);
       } else if (metadata == NULL_EXISTS_CACHE_PLACE_HOLDER) {
@@ -799,6 +771,11 @@ public class TimeSeriesMetadataCache {
 
   public void remove(TimeSeriesMetadataCacheKey key) {
     lruCache.invalidate(key);
+  }
+
+  @TestOnly
+  long getCacheRequestCount() {
+    return lruCache.stats().requestCount();
   }
 
   @TestOnly

@@ -62,6 +62,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongConsumer;
 
 import static org.junit.Assert.assertEquals;
@@ -334,10 +335,6 @@ public class TimeSeriesMetadataCacheTest {
       boolean ignoreNotExists,
       List<TimeseriesMetadata> group)
       throws IOException {
-    Map<String, TimeseriesMetadata> loaded = new HashMap<>();
-    for (TimeseriesMetadata metadata : group) {
-      loaded.put(metadata.getMeasurementId(), metadata);
-    }
     Mockito.when(
             reader.readTimeseriesMetadataForMeasurements(
                 Mockito.eq(deviceID),
@@ -346,7 +343,17 @@ public class TimeSeriesMetadataCacheTest {
                 Mockito.anySet(),
                 Mockito.eq(ignoreNotExists),
                 Mockito.any(LongConsumer.class)))
-        .thenReturn(loaded);
+        .thenAnswer(
+            invocation -> {
+              Set<String> returnedMeasurements = invocation.getArgument(3);
+              Map<String, TimeseriesMetadata> loaded = new HashMap<>();
+              for (TimeseriesMetadata metadata : group) {
+                if (returnedMeasurements.contains(metadata.getMeasurementId())) {
+                  loaded.put(metadata.getMeasurementId(), metadata);
+                }
+              }
+              return loaded;
+            });
   }
 
   @Test
@@ -401,7 +408,8 @@ public class TimeSeriesMetadataCacheTest {
 
       Map<String, TimeseriesMetadata> result =
           getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
-
+      // This file has no BloomFilter. The device and value checks share that result.
+      Mockito.verify(reader).readBloomFilter(Mockito.any(LongConsumer.class));
       assertNotNull(result.get(""));
       assertEquals("", result.get("").getMeasurementId());
       assertNotNull(result.get("s1"));
@@ -412,8 +420,10 @@ public class TimeSeriesMetadataCacheTest {
 
       // a second lookup of cached measurements must be served without touching the reader again
       Set<String> cachedSensors = new HashSet<>(Arrays.asList("", "s1"));
+      long requestsBefore = cache.getCacheRequestCount();
       Map<String, TimeseriesMetadata> cachedResult =
           getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, cachedSensors, false);
+      assertEquals(cachedSensors.size(), cache.getCacheRequestCount() - requestsBefore);
       assertNotNull(cachedResult.get("s1"));
       Mockito.verify(reader, Mockito.times(1))
           .readTimeseriesMetadataForMeasurements(
@@ -824,6 +834,10 @@ public class TimeSeriesMetadataCacheTest {
       assertNull(cached.get(""));
       assertEquals(
           1, fileIndexQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get());
+      assertEquals(
+          0, fileIndexQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().get());
+      assertEquals(
+          0, fileIndexQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskTime().get());
       Mockito.verify(reader, Mockito.times(3))
           .readTimeseriesMetadataForMeasurements(
               Mockito.eq(deviceID),
@@ -999,6 +1013,7 @@ public class TimeSeriesMetadataCacheTest {
       // remembered; the second query still needs no reader call
       Map<String, TimeseriesMetadata> second =
           getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+      assertEquals(allSensors, second.keySet());
       assertNull(second.get("s1"));
       Mockito.verify(reader, Mockito.times(1))
           .readTimeseriesMetadataForMeasurements(
@@ -1016,8 +1031,10 @@ public class TimeSeriesMetadataCacheTest {
   }
 
   @Test
-  public void testBloomLoadBeforeCachePhaseIsNotSubtractedFromDiskTime() throws Exception {
-    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+  public void testBloomLoadIsExcludedFromItsMetadataLookupPhase() throws Exception {
+    TimeSeriesMetadataCache cache = Mockito.spy(TimeSeriesMetadataCache.getInstance());
+    AtomicLong now = new AtomicLong(1);
+    Mockito.doAnswer(invocation -> now.get()).when(cache).nanoTime();
     BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
     FileReaderManager fileReaderManager = FileReaderManager.getInstance();
     TsFileID tsFileID = new TsFileID();
@@ -1030,17 +1047,24 @@ public class TimeSeriesMetadataCacheTest {
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
       fileReaderManager.setReaderForTest(tsFileID, true, reader);
-      BloomFilter bloomFilter = BloomFilter.getEmptyBloomFilter(0.05, 2);
+      BloomFilter bloomFilter = Mockito.spy(BloomFilter.getEmptyBloomFilter(0.05, 2));
       bloomFilter.add(deviceID.toString() + ".");
       bloomFilter.add(deviceID.toString() + ".s1");
-      // a slow load makes the accounting visible: if the pre-cache load is subtracted from the
-      // disk interval, the recorded disk time turns negative
+      long bloomReadNanos = 20;
+      long deviceCheckNanos = 3;
       Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class)))
           .thenAnswer(
               invocation -> {
-                Thread.sleep(20);
+                now.addAndGet(bloomReadNanos);
                 return bloomFilter;
               });
+      Mockito.doAnswer(
+              invocation -> {
+                now.addAndGet(deviceCheckNanos);
+                return invocation.callRealMethod();
+              })
+          .when(bloomFilter)
+          .contains(deviceID + ".");
 
       Statistics<?> timeStatistics = Statistics.getStatsByType(TSDataType.INT64);
       timeStatistics.setCount(1);
@@ -1072,14 +1096,45 @@ public class TimeSeriesMetadataCacheTest {
               filePath, tsFileID, deviceID, allSensors, false, false, queryContext, null);
       assertNotNull(result.get(""));
       assertNotNull(result.get("s1"));
-      assertTrue(
-          "cache time: "
-              + queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheTime().get(),
-          queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheTime().get() >= 0);
-      assertTrue(
-          "disk time: "
-              + queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskTime().get(),
-          queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskTime().get() >= 0);
+      assertEquals(
+          bloomReadNanos, queryContext.getQueryStatistics().getLoadBloomFilterTime().get());
+      assertEquals(
+          deviceCheckNanos,
+          queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheTime().get());
+      assertEquals(
+          0, queryContext.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskTime().get());
+
+      // With time cached, the filter loads after the cache pass. Populate s1 during that pass
+      // through the filter, so the locked recheck finds it and only "absent" counts as a miss.
+      cache.remove(new TimeSeriesMetadataCacheKey(tsFileID, deviceID, "s1"));
+      bloomFilterCache.clear();
+      long valueCheckNanos = 5;
+      Mockito.doAnswer(
+              invocation -> {
+                getTimeseriesMetadata(
+                    cache, filePath, tsFileID, deviceID, Collections.singleton("s1"), false);
+                now.addAndGet(valueCheckNanos);
+                return false;
+              })
+          .when(bloomFilter)
+          .contains(deviceID + ".absent");
+      allSensors.add("absent");
+      QueryContext mixedQuery = new QueryContext(false, false);
+      result =
+          cache.getTimeseriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, false, false, mixedQuery, null);
+      assertNotNull(result.get("s1"));
+      assertNull(result.get("absent"));
+      assertEquals(
+          2, mixedQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get());
+      assertEquals(
+          1, mixedQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().get());
+      assertEquals(bloomReadNanos, mixedQuery.getQueryStatistics().getLoadBloomFilterTime().get());
+      assertEquals(
+          0, mixedQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheTime().get());
+      assertEquals(
+          valueCheckNanos,
+          mixedQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskTime().get());
     } finally {
       cache.clear();
       bloomFilterCache.clear();
