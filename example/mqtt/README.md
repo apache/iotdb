@@ -47,7 +47,7 @@ CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;
 Install the MQTT client with `python -m pip install paho-mqtt`. Publish a
 reading to the local MQTT port. Set `IOTDB_USER` and `IOTDB_PASSWORD` in
 your shell to the credentials you use in the IoTDB CLI. Keep the MQTT client ID
-non-empty.
+non-empty. The MQTT account needs `WRITE_DATA` on `root.sg.d1.s1`.
 
 ```python
 import json
@@ -63,6 +63,7 @@ reading = {
     "measurements": ["s1"],
     "values": [37.5],
 }
+print(reading["timestamp"])
 
 single(
     "root.sg.d1.s1",
@@ -75,6 +76,12 @@ single(
 )
 ```
 
-Run `SELECT s1 FROM root.sg.d1;` in the CLI to verify that the reading
-`37.5` was stored. If IoTDB is still processing the message, run the
-query again to check for the value.
+Replace `<timestamp>` with the printed timestamp, then run this CLI query:
+
+```sql
+SELECT s1 FROM root.sg.d1 WHERE time = <timestamp>;
+```
+
+Check that this row contains `37.5`. If IoTDB is still processing the message,
+run the same query again. Returning from `single()` does not confirm that IoTDB
+stored the reading; filtering by timestamp avoids reading an earlier value.
