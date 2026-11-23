@@ -208,6 +208,7 @@ public class GapFillWoGroupWMoOperatorTest {
             1730390400000L,
             Arrays.asList(TSDataType.TIMESTAMP, TSDataType.DOUBLE),
             1,
+            1711900800000L,
             ZoneId.of("Asia/Shanghai"))) {
       int count = 0;
       ListenableFuture<?> listenableFuture = gapFillOperator.isBlocked();
@@ -371,6 +372,7 @@ public class GapFillWoGroupWMoOperatorTest {
             1730390400000L,
             Arrays.asList(TSDataType.TIMESTAMP, TSDataType.DOUBLE),
             1,
+            1711900800000L,
             ZoneId.of("Asia/Shanghai"))) {
       int count = 0;
       ListenableFuture<?> listenableFuture = gapFillOperator.isBlocked();

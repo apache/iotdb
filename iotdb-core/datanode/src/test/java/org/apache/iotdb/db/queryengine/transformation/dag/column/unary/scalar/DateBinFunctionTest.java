@@ -161,7 +161,97 @@ public class DateBinFunctionTest {
 
   @Test
   public void testNextDateBinWithSubSecondOrigin() {
-    assertEquals(2678400500L, nextDateBin(1, zoneId, 500));
+    assertEquals(2678400500L, nextDateBin(1, 500, zoneId, 500));
+  }
+
+  @Test
+  public void testMonthIntervalWithMonthEndOrigin() throws ParseException {
+    long origin = getTimestamp("2024-01-31 00:00:00.000");
+    // Feb has no 31st, so the second bin starts on Feb 29 and the third one on Mar 31
+    assertEquals(
+        getTimestamp("2024-02-29 00:00:00.000"),
+        dateBin(getTimestamp("2024-02-29 00:00:00.000"), origin, 1, 0, zoneId));
+    assertEquals(
+        getTimestamp("2024-02-29 00:00:00.000"),
+        dateBin(getTimestamp("2024-02-29 12:00:00.000"), origin, 1, 0, zoneId));
+    assertEquals(
+        getTimestamp("2024-02-29 00:00:00.000"),
+        dateBin(getTimestamp("2024-03-30 00:00:00.000"), origin, 1, 0, zoneId));
+    assertEquals(
+        getTimestamp("2024-03-31 00:00:00.000"),
+        dateBin(getTimestamp("2024-03-31 00:00:00.000"), origin, 1, 0, zoneId));
+    assertEquals(
+        getTimestamp("2024-04-30 00:00:00.000"),
+        dateBin(getTimestamp("2024-04-30 00:00:00.000"), origin, 1, 0, zoneId));
+    // sources before the origin
+    assertEquals(
+        getTimestamp("2023-12-31 00:00:00.000"),
+        dateBin(getTimestamp("2024-01-30 00:00:00.000"), origin, 1, 0, zoneId));
+    assertEquals(
+        getTimestamp("2023-11-30 00:00:00.000"),
+        dateBin(getTimestamp("2023-12-15 00:00:00.000"), origin, 1, 0, zoneId));
+    // three-month bins: Jan 31, Apr 30, Jul 31
+    assertEquals(
+        getTimestamp("2024-04-30 00:00:00.000"),
+        dateBin(getTimestamp("2024-07-30 00:00:00.000"), origin, 3, 0, zoneId));
+    assertEquals(
+        getTimestamp("2024-07-31 00:00:00.000"),
+        dateBin(getTimestamp("2024-07-31 00:00:00.000"), origin, 3, 0, zoneId));
+  }
+
+  @Test
+  public void testYearIntervalWithLeapDayOrigin() throws ParseException {
+    long origin = getTimestamp("2024-02-29 00:00:00.000");
+    assertEquals(
+        getTimestamp("2024-02-29 00:00:00.000"),
+        dateBin(getTimestamp("2025-02-27 00:00:00.000"), origin, 12, 0, zoneId));
+    assertEquals(
+        getTimestamp("2025-02-28 00:00:00.000"),
+        dateBin(getTimestamp("2025-02-28 12:00:00.000"), origin, 12, 0, zoneId));
+    assertEquals(
+        getTimestamp("2028-02-29 00:00:00.000"),
+        dateBin(getTimestamp("2028-02-29 00:00:00.000"), origin, 12, 0, zoneId));
+  }
+
+  @Test
+  public void testMonthIntervalStartEndWithMonthEndOrigin() throws ParseException {
+    long origin = getTimestamp("2024-01-31 00:00:00.000");
+    DateBinFunctionColumnTransformer transformer =
+        new DateBinFunctionColumnTransformer(TimestampType.TIMESTAMP, 1, 0, null, origin, zoneId);
+    long[] expected =
+        new long[] {
+          getTimestamp("2024-02-29 00:00:00.000"), getTimestamp("2024-03-31 00:00:00.000")
+        };
+    // every source in the bin gets the same window, and the window contains the source
+    assertArrayEquals(
+        expected, transformer.dateBinStartEnd(getTimestamp("2024-02-29 00:00:00.000")));
+    assertArrayEquals(
+        expected, transformer.dateBinStartEnd(getTimestamp("2024-02-29 12:00:00.000")));
+    assertArrayEquals(
+        expected, transformer.dateBinStartEnd(getTimestamp("2024-03-30 23:59:59.999")));
+    assertArrayEquals(
+        new long[] {
+          getTimestamp("2024-04-30 00:00:00.000"), getTimestamp("2024-05-30 23:59:59.999")
+        },
+        transformer.dateBinStartEndClosed(getTimestamp("2024-05-01 00:00:00.000")));
+  }
+
+  @Test
+  public void testNextDateBinWithMonthEndOrigin() throws ParseException {
+    long origin = getTimestamp("2024-01-31 00:00:00.000");
+    String[] expected = {
+      "2024-02-29 00:00:00.000",
+      "2024-03-31 00:00:00.000",
+      "2024-04-30 00:00:00.000",
+      "2024-05-31 00:00:00.000"
+    };
+    long current = origin;
+    for (String next : expected) {
+      current = nextDateBin(1, origin, zoneId, current);
+      assertEquals(getTimestamp(next), current);
+      // the gap fill steps must be the same bins that date_bin returns
+      assertEquals(current, dateBin(current, origin, 1, 0, zoneId));
+    }
   }
 
   @Test
@@ -171,7 +261,7 @@ public class DateBinFunctionTest {
     long[] startEnd = transformer.dateBinStartEnd(Long.MAX_VALUE - 1000);
     assertEquals(9223372035446400500L, startEnd[0]);
     assertEquals(Long.MAX_VALUE, startEnd[1]);
-    assertEquals(Long.MAX_VALUE, nextDateBin(1, zoneId, startEnd[0]));
+    assertEquals(Long.MAX_VALUE, nextDateBin(1, 500, zoneId, startEnd[0]));
   }
 
   @Test

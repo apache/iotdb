@@ -54,6 +54,13 @@ public class IoTDBGapFillTableIT {
         "INSERT INTO table1(time,city,device_id,s1) values(2024-09-24T11:17:15.297+00:00, 'beijing', 'd2', 28.2)",
         "INSERT INTO table1(time,city,device_id,s1) values(2024-09-24T08:15:21.907+00:00, 'shanghai', 'd3', 22.3)",
         "INSERT INTO table1(time,city,device_id,s1) values(2024-09-24T08:15:28.821+00:00, 'shanghai', 'd3', 29.3)",
+        "CREATE TABLE month_end(device_id STRING TAG, s1 DOUBLE FIELD)",
+        "INSERT INTO month_end(time,device_id,s1) values(2024-01-31T00:00:00.000+00:00, 'd1', 1.0)",
+        "INSERT INTO month_end(time,device_id,s1) values(2024-02-29T12:00:00.000+00:00, 'd1', 2.0)",
+        "INSERT INTO month_end(time,device_id,s1) values(2024-03-30T00:00:00.000+00:00, 'd1', 3.0)",
+        "INSERT INTO month_end(time,device_id,s1) values(2024-04-30T00:00:00.000+00:00, 'd1', 4.0)",
+        "INSERT INTO month_end(time,device_id,s1) values(2024-05-31T00:00:00.000+00:00, 'd1', 5.0)",
+        "FLUSH",
       };
 
   private static final String MULTI_GAFILL_ERROR_MSG =
@@ -528,6 +535,59 @@ public class IoTDBGapFillTableIT {
     retArray = new String[] {};
     tableResultSetEqualTest(
         "select date_bin_gapfill(1h, time) as hour_time, avg(s1) as avg_s1 from table1 where (time >= 2024-09-24T00:00:00.000+00:00 AND time < 2024-09-24T06:00:00.00+00:00) AND device_id = 'd1' GROUP BY 1 FILL METHOD PREVIOUS",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void monthIntervalWithMonthEndOriginTest() {
+    // with origin Jan 31, the monthly bins start on Jan 31, Feb 29, Mar 31, Apr 30 and May 31
+    String[] expectedHeader = new String[] {"time", "bin"};
+    String[] retArray =
+        new String[] {
+          "2024-01-31T00:00:00.000Z,2024-01-31T00:00:00.000Z,",
+          "2024-02-29T12:00:00.000Z,2024-02-29T00:00:00.000Z,",
+          "2024-03-30T00:00:00.000Z,2024-02-29T00:00:00.000Z,",
+          "2024-04-30T00:00:00.000Z,2024-04-30T00:00:00.000Z,",
+          "2024-05-31T00:00:00.000Z,2024-05-31T00:00:00.000Z,",
+        };
+    tableResultSetEqualTest(
+        "select time, date_bin(1mo, time, 2024-01-31T00:00:00.000+00:00) as bin from month_end order by time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"bin", "cnt"};
+    retArray =
+        new String[] {
+          "2024-01-31T00:00:00.000Z,1,",
+          "2024-02-29T00:00:00.000Z,2,",
+          "2024-04-30T00:00:00.000Z,1,",
+          "2024-05-31T00:00:00.000Z,1,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin(1mo, time, 2024-01-31T00:00:00.000+00:00) as bin, count(*) as cnt from month_end group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"bin", "avg_s1"};
+    retArray =
+        new String[] {
+          "2024-01-31T00:00:00.000Z,1.0,",
+          "2024-02-29T00:00:00.000Z,2.5,",
+          "2024-03-31T00:00:00.000Z,null,",
+          "2024-04-30T00:00:00.000Z,4.0,",
+          "2024-05-31T00:00:00.000Z,5.0,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1mo, time, 2024-01-31T00:00:00.000+00:00) as bin, avg(s1) as avg_s1 from month_end where time >= 2024-01-31T00:00:00.000+00:00 and time < 2024-07-31T00:00:00.000+00:00 group by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select date_bin_gapfill(1mo, time, 2024-01-31T00:00:00.000+00:00) as bin, avg(s1) as avg_s1 from month_end where time >= 2024-01-31T00:00:00.000+00:00 and time < 2024-07-31T00:00:00.000+00:00 and device_id = 'd1' group by 1, device_id",
         expectedHeader,
         retArray,
         DATABASE_NAME);
