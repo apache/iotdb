@@ -723,7 +723,7 @@ public abstract class SubscriptionPrefetchingQueue {
         }
       }
 
-      // TODO:
+      // Note:
       //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
       //  - UserDefinedEnrichedEvent: ignored?
       //  - Others: events related to meta sync, safe to ignore
