@@ -54,6 +54,14 @@ public interface AggregatedResultOperator {
   /** Get the needed intermediate value names of this aggregate result. */
   Set<String> getDeclaredIntermediateValueNames();
 
+  default boolean supportsLegacyIntermediateResults() {
+    return false;
+  }
+
+  default Set<String> getLegacyIntermediateValueNames() {
+    return getDeclaredIntermediateValueNames();
+  }
+
   /**
    * terminateWindow receives a Map to get intermediate results by its names, and produce a
    * characteristic value of this window.
