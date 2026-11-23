@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.ResidentSeriesCounter;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -48,6 +50,13 @@ public class DataRegionMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
+    metricService.createAutoGauge(
+        Metric.RESIDENT_MEMTABLE_SERIES_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        dataRegion.getResidentSeriesCounter(),
+        ResidentSeriesCounter::getSeriesCount,
+        Tag.REGION.toString(),
+        new DataRegionId(dataRegion.getDataRegionId()).toString());
     synchronized (DATABASE_TO_DATA_REGIONS) {
       Set<DataRegion> dataRegions =
           DATABASE_TO_DATA_REGIONS.computeIfAbsent(
@@ -65,6 +74,11 @@ public class DataRegionMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.RESIDENT_MEMTABLE_SERIES_COUNT.toString(),
+        Tag.REGION.toString(),
+        new DataRegionId(dataRegion.getDataRegionId()).toString());
     synchronized (DATABASE_TO_DATA_REGIONS) {
       Set<DataRegion> dataRegions = DATABASE_TO_DATA_REGIONS.get(databaseName);
       if (Objects.nonNull(dataRegions)) {

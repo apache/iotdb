@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.ResidentSeriesCounter;
 
 public class MemTableManager {
   private int currentMemtableNumber = 0;
@@ -31,9 +32,14 @@ public class MemTableManager {
     return InstanceHolder.INSTANCE;
   }
 
-  public synchronized IMemTable getAvailableMemTable(String storageGroup, String dataRegionId) {
+  public IMemTable getAvailableMemTable(String storageGroup, String dataRegionId) {
+    return getAvailableMemTable(storageGroup, dataRegionId, null);
+  }
+
+  public synchronized IMemTable getAvailableMemTable(
+      String storageGroup, String dataRegionId, ResidentSeriesCounter counter) {
     currentMemtableNumber++;
-    return new PrimitiveMemTable(storageGroup, dataRegionId);
+    return new PrimitiveMemTable(counter, storageGroup, dataRegionId);
   }
 
   public int getCurrentMemtableNumber() {

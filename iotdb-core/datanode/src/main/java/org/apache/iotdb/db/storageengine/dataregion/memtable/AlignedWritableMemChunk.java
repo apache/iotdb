@@ -68,6 +68,7 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   private Map<String, Integer> measurementIndexMap;
+  private ResidentSeriesCounter.Device residentDevice;
   private List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
   // Note: Use AbstractWritableMemChunk.workingListForFlush instead of list in FlushTask
@@ -88,6 +89,14 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   public AlignedWritableMemChunk(
       List<IMeasurementSchema> schemaList, EncryptParameter encryptParameter) {
+    this(schemaList, encryptParameter, null);
+  }
+
+  AlignedWritableMemChunk(
+      List<IMeasurementSchema> schemaList,
+      EncryptParameter encryptParameter,
+      ResidentSeriesCounter.Device residentDevice) {
+    this.residentDevice = residentDevice;
     this.measurementIndexMap = new LinkedHashMap<>();
     this.dataTypes = new ArrayList<>();
     this.schemaList = schemaList;
@@ -98,6 +107,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     this.list = AlignedTVList.newAlignedList(dataTypes);
     this.sortedList = new ArrayList<>();
     this.encryptParameter = encryptParameter;
+    if (residentDevice != null) {
+      measurementIndexMap.keySet().forEach(residentDevice::retain);
+    }
   }
 
   private AlignedWritableMemChunk(List<IMeasurementSchema> schemaList, AlignedTVList list) {
@@ -294,6 +306,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       if (measurementSchema != null
           && !measurementIndexMap.containsKey(measurementSchema.getMeasurementName())) {
         measurementIndexMap.put(measurementSchema.getMeasurementName(), schemaList.size());
+        if (residentDevice != null) {
+          residentDevice.retain(measurementSchema.getMeasurementName());
+        }
         schemaList.add(measurementSchema);
         newDataTypes.add(measurementSchema.getType());
       }
@@ -546,6 +561,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     }
     IMeasurementSchema schemaToBeRemoved = schemaList.get(columnIndex);
     measurementIndexMap.remove(schemaToBeRemoved.getMeasurementName());
+    if (residentDevice != null) {
+      residentDevice.release(measurementId);
+    }
   }
 
   @Override

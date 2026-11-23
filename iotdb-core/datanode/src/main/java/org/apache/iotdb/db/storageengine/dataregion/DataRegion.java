@@ -125,6 +125,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.ResidentSeriesCounter;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DropTableModProgress;
@@ -405,6 +406,8 @@ public class DataRegion implements IDataRegionForQuery {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
   private final ExecutorService upgradeModFileThreadPool;
+
+  private final ResidentSeriesCounter residentSeriesCounter = new ResidentSeriesCounter();
 
   private final DataRegionMetrics metrics;
 
@@ -5702,6 +5705,10 @@ public class DataRegion implements IDataRegionForQuery {
   /* Be careful, the thread that calls this method may not hold the write lock!!*/
   public void degradeFlushTimeMap(long timePartitionId) {
     lastFlushTimeMap.degradeLastFlushTime(timePartitionId);
+  }
+
+  public ResidentSeriesCounter getResidentSeriesCounter() {
+    return residentSeriesCounter;
   }
 
   public long getMemCost() {

@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.ResidentSeriesCounter;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfoMetrics;
 import org.apache.iotdb.metrics.config.MetricConfig;
@@ -76,9 +78,37 @@ public class DatabaseMemMetricsTest {
 
   @Test
   public void testDatabaseMemSumsUpTheDataRegions() {
-    final IMetricSet first = new DataRegionMetrics(mockDataRegion(100));
-    final IMetricSet second = new DataRegionMetrics(mockDataRegion(200));
+    final IMetricSet first = new DataRegionMetrics(mockDataRegion(1, 100));
+    final IMetricSet second = new DataRegionMetrics(mockDataRegion(2, 200));
     checkSumOfTwoOwners(first, second, "database_" + DATABASE, 300, 100);
+  }
+
+  @Test
+  public void testResidentSeriesGaugeFollowsRegionLifecycle() {
+    IMetricSet first = new DataRegionMetrics(mockDataRegion(1, 0));
+    IMetricSet second = new DataRegionMetrics(mockDataRegion(2, 0));
+    service.addMetricSet(first);
+    service.addMetricSet(second);
+    try {
+      service.restartService();
+      assertEquals(0, residentSeriesGauge(1).getValue(), 0);
+      assertEquals(0, residentSeriesGauge(2).getValue(), 0);
+      service.removeMetricSet(first);
+      assertNull(residentSeriesGauge(1));
+      assertEquals(0, residentSeriesGauge(2).getValue(), 0);
+    } finally {
+      service.removeMetricSet(first);
+      service.removeMetricSet(second);
+    }
+    assertNull(residentSeriesGauge(2));
+  }
+
+  private AutoGauge residentSeriesGauge(int regionId) {
+    return (AutoGauge)
+        findMetric(
+            Metric.RESIDENT_MEMTABLE_SERIES_COUNT,
+            Tag.REGION,
+            new DataRegionId(regionId).toString());
   }
 
   @Test
@@ -111,8 +141,10 @@ public class DatabaseMemMetricsTest {
     assertNull(findMem(name));
   }
 
-  private static DataRegion mockDataRegion(final long memCost) {
+  private static DataRegion mockDataRegion(final int regionId, final long memCost) {
     final DataRegion dataRegion = mock(DataRegion.class);
+    when(dataRegion.getDataRegionId()).thenReturn(regionId);
+    when(dataRegion.getResidentSeriesCounter()).thenReturn(new ResidentSeriesCounter());
     when(dataRegion.getDatabaseName()).thenReturn(DATABASE);
     when(dataRegion.getMemCost()).thenReturn(memCost);
     return dataRegion;
@@ -133,9 +165,13 @@ public class DatabaseMemMetricsTest {
   }
 
   private IMetric findMem(final String name) {
+    return findMetric(Metric.MEM, Tag.NAME, name);
+  }
+
+  private IMetric findMetric(Metric metric, Tag tag, String name) {
     for (final Map.Entry<MetricInfo, IMetric> entry : service.getAllMetrics().entrySet()) {
-      if (Metric.MEM.toString().equals(entry.getKey().getName())
-          && name.equals(entry.getKey().getTags().get(Tag.NAME.toString()))) {
+      if (metric.toString().equals(entry.getKey().getName())
+          && name.equals(entry.getKey().getTags().get(tag.toString()))) {
         return entry.getValue();
       }
     }

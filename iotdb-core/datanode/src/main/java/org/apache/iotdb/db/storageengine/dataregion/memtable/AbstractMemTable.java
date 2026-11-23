@@ -113,6 +113,8 @@ public abstract class AbstractMemTable implements IMemTable {
       new WriteMemoryBlock(
           "MemTable[" + memTableId + "].Recovered", WriteMemoryBlock.Category.MEMTABLE_RECOVERED);
 
+  private ResidentSeriesCounter residentSeriesCounter;
+
   private int seriesNumber = 0;
 
   private long totalPointsNum = 0;
@@ -150,6 +152,11 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   protected AbstractMemTable(String database, String dataRegionId) {
+    this(null, database, dataRegionId);
+  }
+
+  protected AbstractMemTable(ResidentSeriesCounter counter, String database, String dataRegionId) {
+    this.residentSeriesCounter = counter;
     this.database = database;
     this.dataRegionId = dataRegionId;
     this.memTableMap = new HashMap<>();
@@ -162,6 +169,16 @@ public abstract class AbstractMemTable implements IMemTable {
     this.dataRegionId = dataRegionId;
     this.memTableMap = memTableMap;
     this.encryptParameter = EncryptDBUtils.getSecondEncryptParamFromDatabase(database);
+  }
+
+  private ResidentSeriesCounter.Device residentDevice(IDeviceID device) {
+    return residentSeriesCounter == null ? null : residentSeriesCounter.new Device(device);
+  }
+
+  private void releaseSeries(IDeviceID device, IWritableMemChunkGroup group) {
+    if (residentSeriesCounter != null) {
+      group.getMeasurements().forEach(residentSeriesCounter.new Device(device)::release);
+    }
   }
 
   @Override
@@ -179,7 +196,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private IWritableMemChunkGroup createMemChunkGroupIfNotExistAndGet(
       IDeviceID deviceId, List<IMeasurementSchema> schemaList) {
     IWritableMemChunkGroup memChunkGroup =
-        memTableMap.computeIfAbsent(deviceId, k -> new WritableMemChunkGroup(encryptParameter));
+        memTableMap.computeIfAbsent(
+            deviceId, k -> new WritableMemChunkGroup(encryptParameter, residentDevice(k)));
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementName())) {
         seriesNumber++;
@@ -197,7 +215,8 @@ public abstract class AbstractMemTable implements IMemTable {
             deviceId,
             k -> {
               seriesNumber += filteredSchemaList.size();
-              return new AlignedWritableMemChunkGroup(filteredSchemaList, encryptParameter);
+              return new AlignedWritableMemChunkGroup(
+                  filteredSchemaList, encryptParameter, residentDevice(k));
             });
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementName())) {
@@ -587,6 +606,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void clear() {
+    memTableMap.forEach(this::releaseSeries);
     memTableMap.clear();
     memSize = 0;
     seriesNumber = 0;
@@ -963,6 +983,7 @@ public abstract class AbstractMemTable implements IMemTable {
         pointDeleted += pair.right.delete(modEntry, ignoreAllNullRows);
       }
       if (pair.right.isEmpty(ignoreAllNullRows)) {
+        releaseSeries(pair.left, pair.right);
         memTableMap.remove(pair.left).release();
       }
     }
@@ -1037,6 +1058,10 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
       entry.getValue().release();
+    }
+    if (residentSeriesCounter != null) {
+      memTableMap.forEach(this::releaseSeries);
+      residentSeriesCounter = null;
     }
     // Preserve the existing write-accounting release point. Query-held TVLists and the array
     // pool retain their existing resource ownership; this is not a measurement of heap liveness.

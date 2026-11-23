@@ -40,11 +40,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private Map<String, IWritableMemChunk> memChunkMap;
   private EncryptParameter encryptParameter;
+  private ResidentSeriesCounter.Device residentDevice;
 
   public WritableMemChunkGroup() {
     memChunkMap = new HashMap<>();
@@ -52,6 +54,12 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   public WritableMemChunkGroup(EncryptParameter encryptParameter) {
+    this(encryptParameter, null);
+  }
+
+  WritableMemChunkGroup(
+      EncryptParameter encryptParameter, ResidentSeriesCounter.Device residentDevice) {
+    this.residentDevice = residentDevice;
     memChunkMap = new HashMap<>();
     this.encryptParameter = encryptParameter;
   }
@@ -82,7 +90,14 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private IWritableMemChunk createMemChunkIfNotExistAndGet(IMeasurementSchema schema) {
     return memChunkMap.computeIfAbsent(
-        schema.getMeasurementName(), k -> new WritableMemChunk(schema, encryptParameter));
+        schema.getMeasurementName(),
+        k -> {
+          WritableMemChunk chunk = new WritableMemChunk(schema, encryptParameter);
+          if (residentDevice != null) {
+            residentDevice.retain(k);
+          }
+          return chunk;
+        });
   }
 
   @Override
@@ -99,6 +114,11 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       count += memChunk.count(ignoreAllNullRows);
     }
     return count;
+  }
+
+  @Override
+  public Set<String> getMeasurements() {
+    return memChunkMap.keySet();
   }
 
   @Override
@@ -142,12 +162,18 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       IWritableMemChunk chunk = entry.getValue();
       if (modEntry.getStartTime() == Long.MIN_VALUE && modEntry.getEndTime() == Long.MAX_VALUE) {
         iter.remove();
+        if (residentDevice != null) {
+          residentDevice.release(entry.getKey());
+        }
         deletedPointsNumber += chunk.count(ignoreAllNullRows);
         chunk.release();
       } else {
         deletedPointsNumber += chunk.delete(modEntry.getStartTime(), modEntry.getEndTime());
         if (chunk.count(ignoreAllNullRows) == 0) {
           iter.remove();
+          if (residentDevice != null) {
+            residentDevice.release(entry.getKey());
+          }
         }
       }
     }
