@@ -277,7 +277,10 @@ public class ShuffleSinkHandle implements ISinkHandle {
       boolean selfClosed = true;
       for (ISink channel : downStreamChannelList) {
         try {
-          selfClosed = channel.close();
+          // close() returns false for a channel that is already closed, for example when its
+          // consumer closed it and the channel's listener re-entered this method. Such a channel
+          // ended normally, so count it as closed; an aborted channel still does not count.
+          selfClosed = channel.close() || (channel.isClosed() && !channel.isAborted());
         } catch (Exception e) {
           if (!meetError) {
             firstException = e;
