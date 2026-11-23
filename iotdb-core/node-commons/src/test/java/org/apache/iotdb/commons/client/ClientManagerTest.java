@@ -42,11 +42,15 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -397,6 +401,22 @@ public class ClientManagerTest {
       Assert.assertTrue(end - start >= waitClientTimeoutMS * 1_000_000);
       Assert.assertTrue(e.getCause() instanceof NoSuchElementException);
       Assert.assertTrue(e.getMessage().contains("Timeout waiting for idle object"));
+    }
+
+    // A negative caller budget must return immediately even with unbounded pool waits configured.
+    syncClusterManager.getPool().setMaxWait(Duration.ofMillis(-1));
+    ExecutorService borrower = Executors.newSingleThreadExecutor();
+    try {
+      Future<ClientManagerException> failed =
+          borrower.submit(
+              () ->
+                  Assert.assertThrows(
+                      ClientManagerException.class,
+                      () -> syncClusterManager.borrowClientWithTimeout(endPoint, -1)));
+      Assert.assertTrue(
+          failed.get(5, TimeUnit.SECONDS).getCause() instanceof NoSuchElementException);
+    } finally {
+      borrower.shutdownNow();
     }
 
     // return one sync client

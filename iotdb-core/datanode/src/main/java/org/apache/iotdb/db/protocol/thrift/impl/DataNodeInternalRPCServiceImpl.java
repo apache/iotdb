@@ -521,6 +521,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(final TSendFragmentInstanceReq req) {
+    long receivedAtMs = System.currentTimeMillis();
     LOGGER.debug(DataNodeMiscMessages.RECEIVE_FRAGMENT_INSTANCE, req.getConsensusGroupId());
 
     // Deserialize ConsensusGroupId
@@ -565,6 +566,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       FragmentInstance.deserializeFrom(
                           fragmentInstanceId, req.fragmentInstance.body));
       fragmentInstance.attachUDFQueryScope(queryScope);
+      if (req.isSetRemainingQueryTimeMs()) {
+        fragmentInstance.setQueryDeadlineFromTimeout(receivedAtMs, req.getRemainingQueryTimeMs());
+      }
       if (req.isSetQueryAttemptId() && req.isSetAdmissionToken()) {
         fragmentInstance.setQueryAttempt(req.getQueryAttemptId(), req.getAdmissionToken());
       }

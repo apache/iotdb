@@ -119,6 +119,8 @@ public class FragmentInstanceDispatcherLifecycleTest {
   public void transportRetryReusesTokenAndStopFreezesIssuedTokens() throws Exception {
     FragmentInstanceDispatcherImpl dispatcher = dispatcher();
     context.prepareForRetry();
+    context.setTimeOut(30_000);
+    context.setStartTime(System.currentTimeMillis() - 3_200);
     List<TSendFragmentInstanceReq> requests = new ArrayList<>();
     when(client.sendFragmentInstance(any()))
         .thenAnswer(
@@ -126,6 +128,11 @@ public class FragmentInstanceDispatcherLifecycleTest {
               TSendFragmentInstanceReq request = invocation.getArgument(0);
               requests.add(request.deepCopy());
               if (requests.size() == 1) {
+                // Wait for the coordinator clock to advance before the retry.
+                long firstSend = System.currentTimeMillis();
+                while (System.currentTimeMillis() <= firstSend) {
+                  Thread.sleep(1);
+                }
                 throw new TException("response lost");
               }
               return new TSendFragmentInstanceResp(true);
@@ -133,6 +140,17 @@ public class FragmentInstanceDispatcherLifecycleTest {
     FragmentInstance instance = instance(0);
     assertTrue(dispatcher.dispatch(null, Collections.singletonList(instance)).get().isSuccessful());
     assertEquals(2, requests.size());
+    long firstBudget = requests.get(0).getRemainingQueryTimeMs();
+    long retryBudget = requests.get(1).getRemainingQueryTimeMs();
+    assertTrue(firstBudget <= 30_000 - 3_200);
+    assertTrue(retryBudget > 0 && retryBudget < firstBudget);
+    // Both receivers have the same remaining budget even if their clocks differ by a minute.
+    FragmentInstance receiver = instance(1);
+    for (long receiverNow :
+        new long[] {context.getStartTime() - 60_000, context.getStartTime() + 60_000}) {
+      receiver.setQueryDeadlineFromTimeout(receiverNow, retryBudget);
+      assertEquals(receiverNow + retryBudget, receiver.getQueryDeadlineMs());
+    }
     assertEquals(0, requests.get(0).getQueryAttemptId());
     assertEquals(token, requests.get(0).getAdmissionToken());
     assertEquals(requests.get(0).getAdmissionToken(), requests.get(1).getAdmissionToken());
@@ -143,6 +161,59 @@ public class FragmentInstanceDispatcherLifecycleTest {
         dispatcher.dispatch(null, Collections.singletonList(instance)).get().isSuccessful());
     assertEquals(2, requests.size());
     assertEquals(issued, dispatcher.getIssuedAdmissionTokens());
+  }
+
+  @Test
+  public void expiredBudgetSkipsAdmissionAndDispatch() throws Exception {
+    FragmentInstanceDispatcherImpl dispatcher = dispatcher();
+    context.setStartTime(System.currentTimeMillis() - 10_000);
+    context.setTimeOut(4_000);
+    FragInstanceDispatchResult result =
+        dispatcher.dispatch(null, Collections.singletonList(instance(0))).get();
+    assertEquals(TSStatusCode.QUERY_TIMEOUT.getStatusCode(), result.getFailureStatus().getCode());
+    verify(client, never()).fetchQueryAdmissionToken(anyLong());
+    verify(client, never()).sendFragmentInstance(any());
+  }
+
+  @Test
+  public void rechecksBudgetAfterAdmission() throws Exception {
+    FragmentInstanceDispatcherImpl dispatcher = dispatcher();
+    context.setTimeOut(10_000);
+    FragmentInstance fi = instance(0);
+    when(client.fetchQueryAdmissionToken(anyLong()))
+        .thenAnswer(
+            invocation -> {
+              // Model a query that expired while the token RPC was in flight.
+              fi.setQueryDeadlineFromTimeout(System.currentTimeMillis(), 0);
+              return token;
+            });
+    FragInstanceDispatchResult result =
+        dispatcher.dispatch(null, Collections.singletonList(fi)).get();
+    assertEquals(TSStatusCode.QUERY_TIMEOUT.getStatusCode(), result.getFailureStatus().getCode());
+    verify(client, never()).sendFragmentInstance(any());
+  }
+
+  @Test
+  public void unspecifiedCoordinatorTimeoutRetainsTheFragmentLimitOnReconnect() throws Exception {
+    FragmentInstanceDispatcherImpl dispatcher = dispatcher();
+    context.setTimeOut(0);
+    List<TSendFragmentInstanceReq> requests = new ArrayList<>();
+    when(client.sendFragmentInstance(any()))
+        .thenAnswer(
+            invocation -> {
+              TSendFragmentInstanceReq request = invocation.getArgument(0);
+              requests.add(request.deepCopy());
+              if (requests.size() == 1) {
+                throw new TException("connection closed");
+              }
+              return new TSendFragmentInstanceResp(true);
+            });
+    assertTrue(
+        dispatcher.dispatch(null, Collections.singletonList(instance(0))).get().isSuccessful());
+    assertEquals(2, requests.size());
+    for (TSendFragmentInstanceReq request : requests) {
+      assertFalse(request.isSetRemainingQueryTimeMs());
+    }
   }
 
   @Test
