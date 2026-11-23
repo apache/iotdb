@@ -54,7 +54,7 @@ public class FloatGroupedApproxMostFrequentAccumulator
     SpaceSavingBigArray<Float> spaceSavingBigArray = getOrCreateSpaceSaving(state);
     Column column = arguments[0];
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {

@@ -141,7 +141,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   }
 
   public void addBooleanInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
@@ -162,7 +162,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   }
 
   public void addIntInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
@@ -183,7 +183,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   }
 
   public void addLongInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
@@ -204,7 +204,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   }
 
   public void addFloatInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
@@ -225,7 +225,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   }
 
   public void addDoubleInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
@@ -246,7 +246,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
   }
 
   public void addBinaryInput(Column valueColumn, AggregationMask mask, HyperLogLog hll) {
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {

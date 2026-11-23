@@ -66,7 +66,7 @@ public class BinaryApproxMostFrequentAccumulator
     }
     SpaceSaving<Binary> spaceSaving = getOrCreateSpaceSaving(state, maxBuckets, capacity);
 
-    int positionCount = mask.getPositionCount();
+    int positionCount = mask.getSelectedPositionCount();
 
     Column valueColumn = arguments[0];
 
