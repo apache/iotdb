@@ -163,8 +163,16 @@ public final class QueryMessages {
       "height must be a non-negative number, but got: %s";
   public static final String INVALID_PATTERN_MISSING_REPEAT_SIGN =
       "Invalid pattern: %s, missing repeat sign after '}'";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_REPETITION_SIGNS_AND_MUST_IMMEDIATELY_FOLLOW_30FC3998 =
+      "Invalid pattern: '%s'. Repetition signs '+' and '*' must immediately follow '}'.";
   public static final String INVALID_PATTERN_MUST_CONTAIN_DATA_POINTS =
       "Invalid pattern: '%s'. Pattern must contain at least two numeric data points separated by commas, e.g., '1,2,3'";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_REPETITION_GROUPS_MUST_CONTAIN_AT_LEAST_ONE_NUMERIC_DATA_POINT_E1880CCB =
+      "Invalid pattern: '%s'. Repetition groups must contain at least one numeric data point.";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_UNMATCHED_OR_9B5E4AE4 =
+      "Invalid pattern: '%s'. Unmatched '{' or '}'.";
+  public static final String EXCEPTION_INVALID_PATTERN_ARG_INVALID_NUMERIC_DATA_POINT_ARG_12165323 =
+      "Invalid pattern: '%s'. Invalid numeric data point: '%s'.";
 
   // ======================== Forecast / Classify TVF ========================
 
@@ -194,6 +202,15 @@ public final class QueryMessages {
       "Failed to reflect UDF instance, because UDF %s has not been registered.";
   public static final String UDF_REFLECT_INSTANCE_FAILED =
       "Failed to reflect UDF %s(%s) instance, because %s";
+  public static final String EXCEPTION_UDF_CLASSLOADER_REQUIRES_QUERY_SCOPE_ARG_A39FB39E =
+      "Cannot pin UDF ClassLoader for class %s because no UDF query scope is active.";
+  public static final String
+      EXCEPTION_FAILED_TO_PIN_UDF_CLASSLOADER_QUERY_SCOPE_ARG_CLASS_ARG_275E1E20 =
+          "Failed to pin UDFClassLoader for query scope %s and class %s because the classloader is deprecated or closed.";
+  public static final String EXCEPTION_UDF_QUERY_SCOPE_IS_CLOSED_ARG_7381D949 =
+      "Cannot execute action in query scope %s because the scope has been closed.";
+  public static final String EXCEPTION_UDF_CLASSLOADER_MANAGER_NOT_INITIALIZED_ARG_DF66329C =
+      "Cannot pin UDF ClassLoader for class %s because UDFClassLoaderManager is not initialized.";
   public static final String AI_NODE_SERVICE_NOT_AVAILABLE =
       "Table function AINode service is not available in current node";
   // ======================== UDTF Forecast ========================
@@ -554,7 +571,6 @@ public final class QueryMessages {
   public static final String EXCEPTION_INVALID_ARGUMENT_ARG_EXPECTED_SCALAR_ARGUMENT_4AD4E32F = "Invalid argument %s. Expected scalar argument";
   public static final String EXCEPTION_THE_SLIDE_ARGUMENT_MUST_HAVE_THE_SAME_WINDOW_MODE_AS_THE_SIZE_ARGUMENT_419C9844 = "The SLIDE argument must have the same window mode as the SIZE argument.";
   public static final String EXCEPTION_THE_ORIGIN_ARGUMENT_IS_ONLY_SUPPORTED_IN_TIME_WINDOW_MODE_B3F358B9 = "The ORIGIN argument is only supported in time window mode.";
-  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_SORT_THE_TIME_COLUMN_IN_ASCENDING_ORDER_C3FD0F6A = "The ORDER BY clause of the DATA argument must sort the time column in ascending order.";
   public static final String EXCEPTION_ARGUMENTS_SHOULD_NEVER_BE_EMPTY_WHEN_RESOLVING_M4_MODE_F982EA1C = "Arguments should never be empty when resolving M4 mode";
   public static final String EXCEPTION_MISSING_REQUIRED_ARGUMENT_ARG_1308D0DC = "Missing required argument: %s";
   public static final String EXCEPTION_UNKNOWN_ARGUMENT_ARG_F40E9394 = "Unknown argument: %s";
@@ -590,12 +606,11 @@ public final class QueryMessages {
       "The SAMPLE_INTERVAL argument of FFT must be a duration literal.";
   public static final String FFT_N_MUST_BE_POSITIVE_INTEGER =
       "The N argument of FFT must be a positive integer.";
-  public static final String FFT_ORDER_BY_MUST_SORT_ASCENDING =
-      "The ORDER BY clause of the DATA argument must sort the time column in ascending order.";
   public static final String EXCEPTION_FFT_LENGTH_MUST_BE_A_POSITIVE_INT_SIZED_VALUE_A000D3BB =
       "FFT length must be a positive int-sized value.";
   public static final String
       EXCEPTION_INPUT_ARRAY_LENGTH_MUST_BE_AT_LEAST_2_FFT_LENGTH_31DF6A25 =
           "Input array length must be at least 2 * FFT length.";
 
+  public static final String EXCEPTION_LINE_ARG_ARG_ARG_B222E08B = "line %s:%s: %s";
 }

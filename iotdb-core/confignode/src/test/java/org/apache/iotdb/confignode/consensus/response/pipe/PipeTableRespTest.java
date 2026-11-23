@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.consensus.response.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
@@ -197,6 +198,25 @@ public class PipeTableRespTest {
         pipeTableResp.convertToTShowPipeResp().getPipeInfoList();
 
     Assert.assertEquals(PipeStatus.PRE_DELETE.name(), showPipeResult.get(0).getState());
+  }
+
+  @Test
+  public void testConvertToTShowPipeRespIncludesStoppedStateAndExceptionMessage() {
+    final PipeTableResp pipeTableResp = constructPipeTableResp();
+    final PipeMeta pipeMeta = pipeTableResp.getAllPipeMeta().get(0);
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+    pipeMeta
+        .getRuntimeMeta()
+        .getNodeId2PipeRuntimeExceptionMap()
+        .put(
+            1, new PipeRuntimeCriticalException("construction failed", System.currentTimeMillis()));
+
+    final TShowPipeInfo showPipeInfo =
+        pipeTableResp.convertToTShowPipeResp().getPipeInfoList().get(0);
+
+    Assert.assertEquals(PipeStatus.STOPPED.name(), showPipeInfo.getState());
+    Assert.assertTrue(showPipeInfo.getExceptionMessage().contains("construction failed"));
+    Assert.assertTrue(showPipeInfo.getExceptionMessage().contains("nodeIds: [1]"));
   }
 
   @Test

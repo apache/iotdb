@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
@@ -38,6 +40,8 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
@@ -122,7 +126,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       new TPipeSubscribeResp(
           RpcUtils.getStatus(
               TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER,
-              "Missing consumer config, please handshake first."),
+              DataNodePipeMessages.MESSAGE_MISSING_CONSUMER_CONFIG_PLEASE_HANDSHAKE_FIRST_CE588329),
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
@@ -135,17 +139,22 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
+  private static final TPipeSubscribeResp SUBSCRIPTION_CONNECTION_REPLACED_RESP =
+      new TPipeSubscribeResp(
+          RpcUtils.getStatus(
+              TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED,
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_CONNECTION_WAS_REPLACED_BY_A_RECONNECTION_FROM_THE_SAME_CONSUMER_INSTANCE_RETRY_ON_THE_CURRENT_CONNECTION_687C78B4),
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+
   private static final TPipeSubscribeResp SUBSCRIPTION_SLICE_ACK_RESP =
       new TPipeSubscribeResp(
           new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
 
-  private static final TPipeSubscribeResp SUBSCRIPTION_SLICE_ERROR_RESP =
-      new TPipeSubscribeResp(
-          new TSStatus(TSStatusCode.SUBSCRIPTION_TYPE_ERROR.getStatusCode()),
-          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
-          PipeSubscribeResponseType.ACK.getType());
+  private static final AtomicLong NODE_RETIREMENT_VERSION = new AtomicLong();
 
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
@@ -153,11 +162,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private volatile ConsumerConfig sharedConsumerConfig;
   private volatile boolean consumerInvalidated;
   private volatile boolean consumerFenced;
+  private volatile boolean connectionReplaced;
   private volatile long lastActivityTimeMs = System.currentTimeMillis();
   private final AtomicLong inFlightRequestCount = new AtomicLong(0);
+  private final int maxReassembledRequestBodySize = getMaxReassembledRequestBodySize();
   private final PipeSubscribeSliceReqHandler sliceReqHandler =
-      new PipeSubscribeSliceReqHandler(getMaxReassembledRequestBodySize());
+      new PipeSubscribeSliceReqHandler(maxReassembledRequestBodySize);
   private long consumerStateVersion;
+  private boolean connectionExited;
+  private boolean timeoutCleanupSuspended;
+  private long observedNodeRetirementVersion = NODE_RETIREMENT_VERSION.get();
 
   private static final String SQL_DIALECT_TABLE_VALUE = "table";
 
@@ -167,10 +181,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (PipeSubscribeRequestType.SLICE.getType() != reqType) {
       sliceReqHandler.clear();
     }
-    final boolean isFencedRequest = beforeHandle(reqType);
+    final boolean isObsoleteRequest = beforeHandle(reqType);
     try {
-      if (isFencedRequest) {
-        return SUBSCRIPTION_CONSUMER_FENCED_RESP;
+      if (isObsoleteRequest) {
+        return consumerFenced
+            ? SUBSCRIPTION_CONSUMER_FENCED_RESP
+            : SUBSCRIPTION_CONNECTION_REPLACED_RESP;
       }
       if (PipeSubscribeRequestType.isValidatedRequestType(reqType)) {
         switch (PipeSubscribeRequestType.valueOf(reqType)) {
@@ -203,7 +219,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.SUBSCRIPTION_TYPE_ERROR,
-              String.format("Unknown PipeSubscribeRequestType %s.", reqType));
+              String.format(
+                  DataNodePipeMessages.MESSAGE_UNKNOWN_PIPESUBSCRIBEREQUESTTYPE_ARG_7EBB93F8,
+                  reqType));
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_UNKNOWN_REQUEST_TYPE, status);
       return new TPipeSubscribeResp(
           status,
@@ -257,6 +275,15 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   @Override
+  public void invalidateConnection() {
+    synchronized (this) {
+      connectionReplaced = true;
+      sliceReqHandler.clear();
+      clearSharedConsumerState();
+    }
+  }
+
+  @Override
   public void releaseInFlightEvents() {
     synchronized (this) {
       final ConsumerConfig consumerConfig = sharedConsumerConfig;
@@ -288,6 +315,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           }
         }
       } finally {
+        connectionExited = true;
+        if (timeoutCleanupSuspended || hasNodeRetired()) {
+          // Retiring this transport transfers timeout responsibility to the other DataNodes.
+          // Discard only the local receiver state, including when removal has already rolled back.
+          clearSharedConsumerState();
+        }
         sliceReqHandler.clear();
         consumerConfigThreadLocal.remove();
         pollTimerThreadLocal.remove();
@@ -302,15 +335,39 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       sliceReq = PipeSubscribeSliceReq.fromTPipeSubscribeReq(thriftReq);
     } catch (final RuntimeException e) {
       sliceReqHandler.clear();
-      return SUBSCRIPTION_SLICE_ERROR_RESP;
+      return createSliceErrorResp(
+          DataNodePipeMessages
+              .MESSAGE_SUBSCRIPTION_MALFORMED_REQUEST_SLICE_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_D91FD262);
     }
     if (!sliceReqHandler.receiveSlice(sliceReq)) {
-      return SUBSCRIPTION_SLICE_ERROR_RESP;
+      if (sliceReq.getOriginBodySize() > maxReassembledRequestBodySize) {
+        return createSliceErrorResp(
+            String.format(
+                DataNodePipeMessages
+                    .MESSAGE_SUBSCRIPTION_REQUEST_BODY_SIZE_ARG_BYTES_EXCEEDS_THE_RECEIVER_LIMIT_OF_ARG_BYTES_SPLIT_THE_OPERATION_INTO_SMALLER_REQUESTS_C9513027,
+                sliceReq.getOriginBodySize(),
+                maxReassembledRequestBodySize));
+      }
+      return createSliceErrorResp(
+          String.format(
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_INVALID_OR_OUT_OF_ORDER_REQUEST_SLICE_ORDERID_ARG_SLICEINDEX_ARG_SLICECOUNT_ARG_ORIGINBODYSIZE_ARG_BYTES_RESEND_THE_COMPLETE_REQUEST_STARTING_FROM_SLICE_INDEX_0_A08D6D8E,
+              sliceReq.getOrderId(),
+              sliceReq.getSliceIndex(),
+              sliceReq.getSliceCount(),
+              sliceReq.getOriginBodySize()));
     }
     return sliceReqHandler
         .makeReqIfComplete()
         .map(this::handle)
         .orElse(SUBSCRIPTION_SLICE_ACK_RESP);
+  }
+
+  private static TPipeSubscribeResp createSliceErrorResp(final String message) {
+    return new TPipeSubscribeResp(
+        RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_TYPE_ERROR, message),
+        PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+        PipeSubscribeResponseType.ACK.getType());
   }
 
   private static int getMaxReassembledRequestBodySize() {
@@ -326,6 +383,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   @Override
   public void handleTimeout() {
     synchronized (this) {
+      timeoutCleanupSuspended |= hasNodeRetired();
+      if (timeoutCleanupSuspended) {
+        // The SDK retires this node's connection while the consumer remains active elsewhere.
+        // Rollback alone does not restore that connection: wait for a new request before allowing
+        // this receiver to close the cluster consumer again.
+        if (connectionExited) {
+          clearSharedConsumerState();
+        }
+        return;
+      }
       final ConsumerConfig consumerConfig = sharedConsumerConfig;
       if (Objects.isNull(consumerConfig) || inFlightRequestCount.get() > 0) {
         return;
@@ -361,6 +428,20 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
   }
 
+  private static boolean isNodeRetiring() {
+    final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+    return commonConfig.getNodeStatus() == NodeStatus.Removing || commonConfig.isStopping();
+  }
+
+  public static void handleNodeRetirement() {
+    // A removal and rollback can both occur between timeout checks, requests, and exit callbacks.
+    NODE_RETIREMENT_VERSION.incrementAndGet();
+  }
+
+  private boolean hasNodeRetired() {
+    return observedNodeRetirementVersion != NODE_RETIREMENT_VERSION.get() || isNodeRetiring();
+  }
+
   @Override
   public long remainingMs() {
     final PollTimer pollTimer = pollTimerThreadLocal.get();
@@ -379,8 +460,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_HANDSHAKING, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when handshaking with request %s: %s",
-              req, e);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_HANDSHAKING_WITH_REQUEST_ARG_ARG_C1BC903B,
+              req,
+              e);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, exceptionMessage),
           -1,
@@ -394,6 +477,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // set consumer config thread local
     final ConsumerConfig existedConsumerConfig = consumerConfigThreadLocal.get();
     final ConsumerConfig consumerConfig = req.getConsumerConfig();
+    final IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+    if (currentSession != null && currentSession.isInternalRpcSession()) {
+      if (currentSession.getUsername() != null) {
+        consumerConfig
+            .getAttribute()
+            .put(ConsumerConstant.USERNAME_KEY, currentSession.getUsername());
+      }
+      consumerConfig.getAttribute().remove(ConsumerConstant.PASSWORD_KEY);
+      consumerConfig.getAttribute().remove(ConsumerConstant.ENCRYPTED_PASSWORD_KEY);
+    }
 
     String consumerId = consumerConfig.getConsumerId();
     if (Objects.isNull(consumerId)) {
@@ -431,6 +524,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           consumerConfig);
     }
 
+    // A previous inactivity cleanup or metadata race may have removed the local broker while the
+    // coordinator still has a non-empty consumer-group metadata record. Reconcile that state before
+    // exposing the consumer to subsequent requests. The operation is idempotent and serialized with
+    // metadata pushes by SubscriptionConsumerAgent.
+    SubscriptionAgent.consumer().ensureConsumerGroupBroker(consumerGroupId);
+
     activateConsumer(consumerConfig);
 
     final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
@@ -450,8 +549,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_HEARTBEAT, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when heartbeat with request %s: %s",
-              req, e);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_HEARTBEAT_WITH_REQUEST_ARG_ARG_790B328F,
+              req,
+              e);
       return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HEARTBEAT_ERROR, exceptionMessage));
     }
@@ -512,6 +613,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final Map<Integer, TEndPoint> endPoints = new HashMap<>();
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final IClientSession currentSession = SessionManager.getInstance().getCurrSession();
+      final boolean internalRpcSession =
+          Objects.nonNull(currentSession) && currentSession.isInternalRpcSession();
       final TShowDataNodesResp resp = configNodeClient.showDataNodes();
       // refer to org.apache.iotdb.session.NodesSupplier.updateDataNodeList
 
@@ -520,10 +624,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         if (Objects.equals(NodeStatus.Removing.getStatus(), dataNodeInfo.getStatus())) {
           continue;
         }
-        final String ip = dataNodeInfo.getRpcAddresss();
-        final int port = dataNodeInfo.getRpcPort();
-        if (ip != null && port != 0) {
-          endPoints.put(dataNodeInfo.getDataNodeId(), new TEndPoint(ip, port));
+        if (internalRpcSession) {
+          final TEndPoint internalRpcEndPoint = dataNodeInfo.getInternalRpcEndPoint();
+          if (Objects.isNull(internalRpcEndPoint)
+              || Objects.isNull(internalRpcEndPoint.getIp())
+              || internalRpcEndPoint.getIp().isEmpty()
+              || internalRpcEndPoint.getPort() <= 0) {
+            throw new SubscriptionException(
+                String.format(
+                    DataNodePipeMessages
+                        .EXCEPTION_INTERNAL_SUBSCRIPTION_ENDPOINT_DISCOVERY_FAILED_BECAUSE_DATANODE_ARG_DID_NOT_REPORT_AN_INTERNAL_RPC_ENDPOINT_45E4D232,
+                    dataNodeInfo.getDataNodeId()));
+          }
+          endPoints.put(dataNodeInfo.getDataNodeId(), internalRpcEndPoint);
+        } else {
+          final String ip = dataNodeInfo.getRpcAddresss();
+          final int port = dataNodeInfo.getRpcPort();
+          if (ip != null && port != 0) {
+            endPoints.put(dataNodeInfo.getDataNodeId(), new TEndPoint(ip, port));
+          }
         }
       }
     } catch (final ClientManagerException | TException e) {
@@ -534,8 +653,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           e);
       final String exceptionMessage =
           String.format(
-              "Subscription: Failed to fetch endpoints for consumer %s in config node, exception is %s.",
-              consumerConfig, e);
+              DataNodePipeMessages
+                  .EXCEPTION_SUBSCRIPTION_FAILED_TO_FETCH_ENDPOINTS_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_267904CB,
+              consumerConfig,
+              e);
       throw new SubscriptionException(exceptionMessage);
     }
 
@@ -570,8 +691,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_SUBSCRIBING, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when subscribing with request %s: %s",
-              req, e);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SUBSCRIBING_WITH_REQUEST_ARG_ARG_084648A4,
+              req,
+              e);
       return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR, exceptionMessage));
     }
@@ -626,8 +749,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_UNSUBSCRIBING, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when unsubscribing with request %s: %s",
-              req, e);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_UNSUBSCRIBING_WITH_REQUEST_ARG_ARG_1C15D8EC,
+              req,
+              e);
       return PipeSubscribeUnsubscribeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR, exceptionMessage));
     }
@@ -670,8 +795,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_POLLING, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when polling with request %s: %s",
-              req, e);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_POLLING_WITH_REQUEST_ARG_ARG_DE2CF98B,
+              req,
+              e);
       return PipeSubscribePollResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, exceptionMessage),
           Collections.emptyList());
@@ -825,10 +952,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                   }
 
                   try {
-                    final ByteBuffer byteBuffer = event.getCurrentResponseByteBuffer();
+                    final ByteBuffer byteBuffer = event.getResponseByteBuffer(response);
 
                     // payload size control
-                    final long size = event.getCurrentResponseSize();
+                    final long size = byteBuffer.remaining();
                     if (totalSize.get() + size > maxBytes) {
                       throw new SubscriptionPayloadExceedException(
                           String.format(
@@ -868,6 +995,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                           response,
                           req.getRequest());
                     }
+                    // The buffer now owns the serialized bytes. Notify outside the event monitor
+                    // so queue lifecycle locks always precede the event's payload lock.
+                    event.markResponseDelivered(response);
                     return byteBuffer;
                   } catch (final Exception e) {
                     final boolean isOutdated =
@@ -953,8 +1083,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_COMMITTING, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when committing with request %s: %s",
-              req, e);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_COMMITTING_WITH_REQUEST_ARG_ARG_9AA9866F,
+              req,
+              e);
       return PipeSubscribeCommitResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_COMMIT_ERROR, exceptionMessage));
     }
@@ -1134,8 +1266,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_CLOSING, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when closing with request %s: %s",
-              req, e);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_CLOSING_WITH_REQUEST_ARG_ARG_1E3215D2,
+              req,
+              e);
       return PipeSubscribeCloseResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_CLOSE_ERROR, exceptionMessage));
     }
@@ -1169,8 +1303,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           e);
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when seeking with request %s: %s",
-              req, e);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SEEKING_WITH_REQUEST_ARG_ARG_97D0AD1C,
+              req,
+              e);
       return PipeSubscribeSeekResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SEEK_ERROR, exceptionMessage));
     }
@@ -1228,10 +1364,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     } else {
       final String errorMessage =
           String.format(
-              "Subscription: unsupported seekType %s for topic %s. "
-                  + "Consensus subscription only supports seekToBeginning, seekToEnd, "
-                  + "seek(topicProgress), and seekAfter(topicProgress).",
-              seekType, topicName);
+              DataNodePipeMessages
+                  .MESSAGE_SUBSCRIPTION_UNSUPPORTED_SEEKTYPE_ARG_FOR_TOPIC_ARG_CONSENSUS_SUBSCRIPTION_ONLY_SUPPORTS_SEEKTOBEGINNING_SEEKTOEND_SEEK_TOPICPROGRESS_AND_SEEKAFTER_TOPICPROGRESS_5A3436C3,
+              seekType,
+              topicName);
       LOGGER.warn(errorMessage);
       return PipeSubscribeSeekResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SEEK_ERROR, errorMessage));
@@ -1324,16 +1460,20 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             consumerConfig);
         final String exceptionMessage =
             String.format(
-                "Subscription: Failed to create consumer %s in config node, status is %s.",
-                consumerConfig, tsStatus);
+                DataNodePipeMessages
+                    .EXCEPTION_SUBSCRIPTION_FAILED_TO_CREATE_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_051923FB,
+                consumerConfig,
+                tsStatus);
         throw new SubscriptionException(exceptionMessage);
       }
     } catch (final ClientManagerException | TException e) {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_CREATING_CONSUMER, consumerConfig, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: Failed to create consumer %s in config node, exception is %s.",
-              consumerConfig, e);
+              DataNodePipeMessages
+                  .EXCEPTION_SUBSCRIPTION_FAILED_TO_CREATE_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_6152986E,
+              consumerConfig,
+              e);
       throw new SubscriptionException(exceptionMessage);
     }
   }
@@ -1354,16 +1494,20 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             consumerConfig);
         final String exceptionMessage =
             String.format(
-                "Subscription: Failed to close consumer %s in config node, status is %s.",
-                consumerConfig, tsStatus);
+                DataNodePipeMessages
+                    .EXCEPTION_SUBSCRIPTION_FAILED_TO_CLOSE_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_F31E2A0F,
+                consumerConfig,
+                tsStatus);
         throw new SubscriptionException(exceptionMessage);
       }
     } catch (final ClientManagerException | TException e) {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_CLOSING_CONSUMER, consumerConfig, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: Failed to close consumer %s in config node, exception is %s.",
-              consumerConfig, e);
+              DataNodePipeMessages
+                  .EXCEPTION_SUBSCRIPTION_FAILED_TO_CLOSE_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_11845DE5,
+              consumerConfig,
+              e);
       throw new SubscriptionException(exceptionMessage);
     }
 
@@ -1391,8 +1535,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             consumerConfig);
         final String exceptionMessage =
             String.format(
-                "Subscription: Failed to subscribe topics %s for consumer %s in config node, status is %s.",
-                topicNames, consumerConfig, tsStatus);
+                DataNodePipeMessages
+                    .EXCEPTION_SUBSCRIPTION_FAILED_TO_SUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_9F933EBA,
+                topicNames,
+                consumerConfig,
+                tsStatus);
         if (TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode() == tsStatus.getCode()) {
           throw new SubscriptionPipeTimeoutException(exceptionMessage);
         } else {
@@ -1408,8 +1555,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           e);
       final String exceptionMessage =
           String.format(
-              "Subscription: Failed to subscribe topics %s for consumer %s in config node, exception is %s.",
-              topicNames, consumerConfig, e);
+              DataNodePipeMessages
+                  .EXCEPTION_SUBSCRIPTION_FAILED_TO_SUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_0B6D1355,
+              topicNames,
+              consumerConfig,
+              e);
       throw new SubscriptionException(exceptionMessage);
     }
   }
@@ -1435,8 +1585,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             consumerConfig);
         final String exceptionMessage =
             String.format(
-                "Subscription: Failed to unsubscribe topics %s for consumer %s in config node, status is %s.",
-                topicNames, consumerConfig, tsStatus);
+                DataNodePipeMessages
+                    .EXCEPTION_SUBSCRIPTION_FAILED_TO_UNSUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_STATUS_IS_ARG_74DF0145,
+                topicNames,
+                consumerConfig,
+                tsStatus);
         if (TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode() == tsStatus.getCode()) {
           throw new SubscriptionPipeTimeoutException(exceptionMessage);
         } else {
@@ -1452,29 +1605,35 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           e);
       final String exceptionMessage =
           String.format(
-              "Subscription: Failed to unsubscribe topics %s for consumer %s in config node, exception is %s.",
-              topicNames, consumerConfig, e);
+              DataNodePipeMessages
+                  .EXCEPTION_SUBSCRIPTION_FAILED_TO_UNSUBSCRIBE_TOPICS_ARG_FOR_CONSUMER_ARG_IN_CONFIG_NODE_EXCEPTION_IS_ARG_A92043B5,
+              topicNames,
+              consumerConfig,
+              e);
       throw new SubscriptionException(exceptionMessage);
     }
   }
 
   private boolean beforeHandle(final short reqType) {
     synchronized (this) {
+      // A request on a restored node starts a fresh local inactivity deadline.
+      observedNodeRetirementVersion = NODE_RETIREMENT_VERSION.get();
+      timeoutCleanupSuspended = isNodeRetiring();
+      connectionExited = false;
       final boolean isHandshake = PipeSubscribeRequestType.HANDSHAKE.getType() == reqType;
-      // A receiver fenced by a newer connection is terminal. In particular, do not allow the old
-      // connection to handshake again and reclaim the consumer identity. A normal disconnected
-      // receiver remains recoverable through the existing consumerInvalidated handshake path.
-      final boolean isFencedRequest = consumerFenced;
+      // Replaced connections are terminal, even when the consumer instance itself is still valid.
+      // An old connection must not handshake again and replace the current connection in turn.
+      final boolean isObsoleteRequest = consumerFenced || connectionReplaced;
       if (consumerInvalidated) {
         consumerConfigThreadLocal.remove();
         pollTimerThreadLocal.remove();
-        if (isHandshake && !consumerFenced) {
+        if (isHandshake && !isObsoleteRequest) {
           consumerInvalidated = false;
         }
       }
       inFlightRequestCount.incrementAndGet();
       lastActivityTimeMs = System.currentTimeMillis();
-      return isFencedRequest;
+      return isObsoleteRequest;
     }
   }
 

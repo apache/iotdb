@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -76,13 +77,7 @@ public class SubscriptionConsumerAgent {
     try {
       executeWithConsumerGroupLock(
           consumerGroupId,
-          () -> {
-            if (consumerGroupMetaFromCoordinator.isEmpty()) {
-              handleDropConsumerGroupInternal(consumerGroupId);
-            } else {
-              handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
-            }
-          });
+          () -> handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator));
       return null;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -92,8 +87,10 @@ public class SubscriptionConsumerAgent {
           e);
       final String exceptionMessage =
           String.format(
-              "Subscription: Failed to handle single consumer group meta changes for consumer group %s, because %s",
-              consumerGroupId, e);
+              DataNodePipeMessages
+                  .EXCEPTION_SUBSCRIPTION_FAILED_TO_HANDLE_SINGLE_CONSUMER_GROUP_META_CHANGES_FOR_CONSUMER_GROUP_ARG_BECAUSE_ARG_9DBB2FC4,
+              consumerGroupId,
+              e);
       return new TPushConsumerGroupMetaRespExceptionMessage(
           consumerGroupId, exceptionMessage, System.currentTimeMillis());
     }
@@ -104,13 +101,32 @@ public class SubscriptionConsumerAgent {
     final String consumerGroupId = metaFromCoordinator.getConsumerGroupId();
     final ConsumerGroupMeta metaInAgent = getConsumerGroupMeta(consumerGroupId);
 
+    if (metaFromCoordinator.isEmpty()) {
+      if (Objects.nonNull(metaInAgent)) {
+        cleanupConsumerGroupSubscriptions(
+            consumerGroupId, metaInAgent, true, metaFromCoordinator.getRetainedTopicNames());
+      }
+      final boolean retainProgress =
+          ConsensusSubscriptionSetupHandler.retainConfiguredProgressForConsumerGroup(
+              consumerGroupId, metaFromCoordinator.visibleUnder(true));
+      final boolean retainTopicProgress = !metaFromCoordinator.getRetainedTopicNames().isEmpty();
+      if (retainTopicProgress) {
+        SubscriptionAgent.broker().createPipeBrokerIfNotExist(consumerGroupId);
+      } else {
+        dropConsumerGroupBroker(consumerGroupId);
+      }
+      if (retainProgress || retainTopicProgress) {
+        replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+        requeueRetainedEvents(consumerGroupId, metaInAgent, metaFromCoordinator);
+      } else {
+        removeConsumerGroupMeta(consumerGroupId);
+      }
+      return;
+    }
+
     // if consumer group meta does not exist on local agent
     if (Objects.isNull(metaInAgent)) {
-      SubscriptionAgent.broker().createPipeBrokerIfNotExist(consumerGroupId);
-      ConsensusSubscriptionSetupHandler.setupConsensusSubscriptions(
-          consumerGroupId,
-          metaFromCoordinator.getSubscribedTopicNames(),
-          metaFromCoordinator.visibleUnder(true));
+      ensureConsumerGroupBrokerInternal(metaFromCoordinator);
       replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
       return;
     }
@@ -129,30 +145,36 @@ public class SubscriptionConsumerAgent {
         if (!SubscriptionAgent.broker().dropBroker(consumerGroupId)) {
           final String exceptionMessage =
               String.format(
-                  "Failed to drop stale broker bound to consumer group [%s]", consumerGroupId);
+                  DataNodePipeMessages
+                      .EXCEPTION_FAILED_TO_DROP_STALE_BROKER_BOUND_TO_CONSUMER_GROUP_ARG_138C2DF9,
+                  consumerGroupId);
           LOGGER.warn(exceptionMessage);
           throw new SubscriptionException(exceptionMessage);
         }
       }
 
-      ConsensusSubscriptionSetupHandler.setupConsensusSubscriptions(
-          consumerGroupId,
-          metaFromCoordinator.getSubscribedTopicNames(),
-          metaFromCoordinator.visibleUnder(true));
+      ensureConsumerGroupBrokerInternal(metaFromCoordinator);
       replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
-      // no need to create broker manually
       return;
     }
 
     // remove prefetching queues for topics unsubscribed by the consumer group
     final Set<String> topicsUnsubByGroup =
         ConsumerGroupMeta.getTopicsUnsubByGroup(metaInAgent, metaFromCoordinator);
+    final Set<String> removedRetainedTopics =
+        new LinkedHashSet<>(metaInAgent.getRetainedTopicNames());
+    removedRetainedTopics.removeAll(metaFromCoordinator.getRetainedTopicNames());
+    removedRetainedTopics.removeAll(metaFromCoordinator.getSubscribedTopicNames());
+    topicsUnsubByGroup.addAll(removedRetainedTopics);
     final Set<String> pipeTopicsUnsubByGroup = new LinkedHashSet<>();
     final Set<String> consensusTopicsUnsubByGroup = new LinkedHashSet<>();
     for (final String topicName : topicsUnsubByGroup) {
       if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
           topicName, metaFromCoordinator.visibleUnder(true))) {
         consensusTopicsUnsubByGroup.add(topicName);
+        continue;
+      }
+      if (metaFromCoordinator.getRetainedTopicNames().contains(topicName)) {
         continue;
       }
       pipeTopicsUnsubByGroup.add(topicName);
@@ -169,12 +191,7 @@ public class SubscriptionConsumerAgent {
         newlySubscribedTopics);
 
     applyTopicDiff(
-        () -> {
-          if (!newlySubscribedTopics.isEmpty()) {
-            ConsensusSubscriptionSetupHandler.handleNewSubscriptions(
-                consumerGroupId, newlySubscribedTopics);
-          }
-        },
+        () -> ensureConsumerGroupBrokerInternal(metaFromCoordinator),
         () -> {
           for (final String topicName : pipeTopicsUnsubByGroup) {
             SubscriptionAgent.broker().removePrefetchingQueue(consumerGroupId, topicName);
@@ -188,6 +205,7 @@ public class SubscriptionConsumerAgent {
           // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully
           // checking the changes in its fields.
           replaceConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+          requeueRetainedEvents(consumerGroupId, metaInAgent, metaFromCoordinator);
         });
   }
 
@@ -198,6 +216,20 @@ public class SubscriptionConsumerAgent {
     setupNewTopics.run();
     teardownRemovedTopics.run();
     publishMeta.run();
+  }
+
+  private void requeueRetainedEvents(
+      final String consumerGroupId,
+      final ConsumerGroupMeta existingMeta,
+      final ConsumerGroupMeta updatedMeta) {
+    if (Objects.isNull(existingMeta)) {
+      return;
+    }
+    for (final String topicName : updatedMeta.getRetainedTopicNames()) {
+      // No consumers remain subscribed to this topic. Include deliveries owned by consumers that
+      // left earlier, and rewind multipart responses so the next subscriber can read them in full.
+      SubscriptionAgent.broker().resetAndRequeuePipeInFlightEvents(consumerGroupId, topicName);
+    }
   }
 
   public TPushConsumerGroupMetaRespExceptionMessage handleConsumerGroupMetaChanges(
@@ -217,8 +249,10 @@ public class SubscriptionConsumerAgent {
             e);
         final String exceptionMessage =
             String.format(
-                "Subscription: Failed to handle single consumer group meta changes for consumer group %s, because %s",
-                consumerGroupId, e);
+                DataNodePipeMessages
+                    .EXCEPTION_SUBSCRIPTION_FAILED_TO_HANDLE_SINGLE_CONSUMER_GROUP_META_CHANGES_FOR_CONSUMER_GROUP_ARG_BECAUSE_ARG_9DBB2FC4,
+                consumerGroupId,
+                e);
         return new TPushConsumerGroupMetaRespExceptionMessage(
             consumerGroupId, exceptionMessage, System.currentTimeMillis());
       }
@@ -236,7 +270,10 @@ public class SubscriptionConsumerAgent {
       LOGGER.warn(DataNodeMiscMessages.EXCEPTION_DROPPING_CONSUMER_GROUP, consumerGroupId, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: Failed to drop consumer group %s, because %s", consumerGroupId, e);
+              DataNodePipeMessages
+                  .EXCEPTION_SUBSCRIPTION_FAILED_TO_DROP_CONSUMER_GROUP_ARG_BECAUSE_ARG_69EE1696,
+              consumerGroupId,
+              e);
       return new TPushConsumerGroupMetaRespExceptionMessage(
           consumerGroupId, exceptionMessage, System.currentTimeMillis());
     }
@@ -249,10 +286,18 @@ public class SubscriptionConsumerAgent {
       cleanupConsumerGroupSubscriptions(consumerGroupId, consumerGroupMeta);
     }
 
+    dropConsumerGroupBroker(consumerGroupId);
+    removeConsumerGroupMeta(consumerGroupId);
+  }
+
+  private void dropConsumerGroupBroker(final String consumerGroupId) {
     if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
       if (!SubscriptionAgent.broker().dropBroker(consumerGroupId)) {
         final String exceptionMessage =
-            String.format("Failed to drop broker bound to consumer group [%s]", consumerGroupId);
+            String.format(
+                DataNodePipeMessages
+                    .EXCEPTION_FAILED_TO_DROP_BROKER_BOUND_TO_CONSUMER_GROUP_ARG_ED5860D0,
+                consumerGroupId);
         LOGGER.warn(exceptionMessage);
         throw new SubscriptionException(exceptionMessage);
       }
@@ -262,8 +307,48 @@ public class SubscriptionConsumerAgent {
               .PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_EXISTED_9F09E4DE,
           consumerGroupId);
     }
+  }
 
-    removeConsumerGroupMeta(consumerGroupId);
+  /**
+   * Ensures that a non-empty consumer group has the local broker and its consensus subscriptions.
+   *
+   * <p>The coordinator metadata is authoritative here. In particular, an empty metadata must not
+   * recreate a broker or restore topics that were explicitly removed from the group.
+   */
+  public void ensureConsumerGroupBroker(final String consumerGroupId) {
+    executeWithConsumerGroupLock(
+        consumerGroupId,
+        () -> {
+          final ConsumerGroupMeta consumerGroupMeta = getConsumerGroupMeta(consumerGroupId);
+          if (Objects.nonNull(consumerGroupMeta)) {
+            ensureConsumerGroupBrokerInternal(consumerGroupMeta);
+          }
+        });
+  }
+
+  private void ensureConsumerGroupBrokerInternal(final ConsumerGroupMeta consumerGroupMeta) {
+    if (consumerGroupMeta.isEmpty()) {
+      return;
+    }
+
+    final String consumerGroupId = consumerGroupMeta.getConsumerGroupId();
+    final boolean brokerExisted = SubscriptionAgent.broker().isBrokerExist(consumerGroupId);
+    SubscriptionAgent.broker().createPipeBrokerIfNotExist(consumerGroupId);
+    try {
+      // setupConsensusSubscriptions is idempotent and also repairs a missing consensus broker or
+      // queue when a pipe broker still exists.
+      ConsensusSubscriptionSetupHandler.setupConsensusSubscriptions(
+          consumerGroupId,
+          consumerGroupMeta.getSubscribedTopicNames(),
+          consumerGroupMeta.visibleUnder(true));
+    } catch (final RuntimeException e) {
+      // Allow a later metadata push or handshake to retry after a partial setup failure. Preserve
+      // an existing broker because it may still contain usable queues for the current metadata.
+      if (!brokerExisted) {
+        SubscriptionAgent.broker().dropBroker(consumerGroupId);
+      }
+      throw e;
+    }
   }
 
   private ConsumerGroupMeta getConsumerGroupMeta(final String consumerGroupId) {
@@ -294,7 +379,7 @@ public class SubscriptionConsumerAgent {
     }
   }
 
-  void executeWithConsumerGroupLock(final String consumerGroupId, final Runnable operation) {
+  public void executeWithConsumerGroupLock(final String consumerGroupId, final Runnable operation) {
     final ConsumerGroupOperationLock operationLock =
         consumerGroupOperationLocks.compute(
             consumerGroupId,
@@ -329,8 +414,29 @@ public class SubscriptionConsumerAgent {
 
   private void cleanupConsumerGroupSubscriptions(
       final String consumerGroupId, final ConsumerGroupMeta consumerGroupMeta) {
+    cleanupConsumerGroupSubscriptions(consumerGroupId, consumerGroupMeta, false);
+  }
+
+  private void cleanupConsumerGroupSubscriptions(
+      final String consumerGroupId,
+      final ConsumerGroupMeta consumerGroupMeta,
+      final boolean retainConfiguredProgress) {
+    cleanupConsumerGroupSubscriptions(
+        consumerGroupId, consumerGroupMeta, retainConfiguredProgress, Collections.emptySet());
+  }
+
+  private void cleanupConsumerGroupSubscriptions(
+      final String consumerGroupId,
+      final ConsumerGroupMeta consumerGroupMeta,
+      final boolean retainConfiguredProgress,
+      final Set<String> retainedTopicNames) {
     final Set<String> consensusTopics = new LinkedHashSet<>();
-    for (final String topicName : consumerGroupMeta.getSubscribedTopicNames()) {
+    final Set<String> topicNames = new LinkedHashSet<>(consumerGroupMeta.getSubscribedTopicNames());
+    topicNames.addAll(consumerGroupMeta.getRetainedTopicNames());
+    for (final String topicName : topicNames) {
+      if (retainedTopicNames.contains(topicName)) {
+        continue;
+      }
       if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
           topicName, consumerGroupMeta.visibleUnder(true))) {
         consensusTopics.add(topicName);
@@ -339,8 +445,10 @@ public class SubscriptionConsumerAgent {
       }
     }
     ConsensusSubscriptionSetupHandler.teardownConsensusSubscriptions(
-        consumerGroupId, consensusTopics, false);
-    ConsensusSubscriptionSetupHandler.cleanupRetainedProgressForConsumerGroup(consumerGroupId);
+        consumerGroupId, consensusTopics, retainConfiguredProgress);
+    if (!retainConfiguredProgress) {
+      ConsensusSubscriptionSetupHandler.cleanupRetainedProgressForConsumerGroup(consumerGroupId);
+    }
   }
 
   public boolean isConsumerExisted(final String consumerGroupId, final String consumerId) {
@@ -389,6 +497,19 @@ public class SubscriptionConsumerAgent {
     acquireReadLock();
     try {
       return consumerGroupMetaKeeper.isTopicSubscribedByConsumerGroup(topicName, consumerGroupId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public Set<String> getTopicNamesSubscribedByConsumerGroup(final String consumerGroupId) {
+    acquireReadLock();
+    try {
+      final ConsumerGroupMeta consumerGroupMeta =
+          consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupId);
+      return Objects.isNull(consumerGroupMeta)
+          ? Collections.emptySet()
+          : new LinkedHashSet<>(consumerGroupMeta.getSubscribedTopicNames());
     } finally {
       releaseReadLock();
     }

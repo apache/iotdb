@@ -968,8 +968,8 @@ copyToStatementOption
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
-    | EXPLAIN ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explain
-    | EXPLAIN ANALYZE VERBOSE? ('(' FORMAT identifier ')')? (query | executeStatement | executeImmediateStatement) #explainAnalyze
+    | EXPLAIN ('(' FORMAT identifier ')')? (query | copyToStatement | executeStatement | executeImmediateStatement) #explain
+    | EXPLAIN ANALYZE VERBOSE? ('(' FORMAT identifier ')')? (query | copyToStatement | executeStatement | executeImmediateStatement) #explainAnalyze
     ;
 
 query
@@ -1302,6 +1302,7 @@ primaryExpression
     | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
     | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
+    | INTEGRAL '(' setQuantifier? expression ',' timeDuration (',' expression)? ')' over? #integralCall
     | '(' expression ')'                                                                  #parenthesizedExpression
     ;
 
@@ -1527,7 +1528,7 @@ nonReserved
     | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORCEDLY | FORMAT | FUNCTION | FUNCTIONS
     | GRACE | GRANT | GRANTED | GRANTS | GRAPHVIZ | GROUPS
     | HOUR | HYPERPARAMETERS
-    | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
+    | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTEGRAL | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
@@ -1705,6 +1706,7 @@ INNER: 'INNER';
 INPUT: 'INPUT';
 INSERT: 'INSERT';
 INTERSECT: 'INTERSECT';
+INTEGRAL: 'INTEGRAL';
 INTERVAL: 'INTERVAL';
 INTO: 'INTO';
 INVOKER: 'INVOKER';

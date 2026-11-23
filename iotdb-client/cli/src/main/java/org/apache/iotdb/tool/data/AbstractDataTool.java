@@ -49,7 +49,6 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.csv.QuoteMode;
 import org.apache.thrift.annotation.Nullable;
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.ObjectUtils;
@@ -169,6 +168,8 @@ public abstract class AbstractDataTool {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractDataTool.class);
+  private static final Pattern INTEGER_PATTERN = Pattern.compile("[+-]?\\d+");
+  private static final long FLOAT_EXACT_INTEGER_BOUND = 1L << 24;
 
   protected AbstractDataTool() {}
 
@@ -224,7 +225,9 @@ public abstract class AbstractDataTool {
       if (StringUtils.isNotBlank(defaultValue)) {
         return defaultValue;
       }
-      String msg = String.format("Required values for option '%s' not provided", name);
+      String msg =
+          String.format(
+              CliMessages.MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2, name);
       LOGGER.info(msg);
       LOGGER.info(CliMessages.USE_HELP_FOR_MORE);
       throw new ArgsErrorException(msg);
@@ -257,20 +260,32 @@ public abstract class AbstractDataTool {
       if (givenTS != null) {
         trustStore = givenTS;
       } else {
-        trustStore = cliCtx.getLineReader().readLine("please input your trust_store:", '\0');
+        trustStore =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_TRUST_STORE_387CF139, '\0');
       }
       String givenTPW = commandLine.getOptionValue(Constants.TRUST_STORE_PWD_ARGS);
       if (givenTPW != null) {
         trustStorePwd = givenTPW;
       } else {
-        trustStorePwd = cliCtx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+        trustStorePwd =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_TRUST_STORE_PWD_F402D8D9, '\0');
       }
       keyStore = commandLine.getOptionValue(Constants.KEY_STORE_ARGS);
       keyStorePwd = commandLine.getOptionValue(Constants.KEY_STORE_PWD_ARGS);
       if (keyStore != null && keyStorePwd == null) {
-        keyStorePwd = cliCtx.getLineReader().readLine("please input your key_store_pwd:", '\0');
+        keyStorePwd =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_KEY_STORE_PWD_D18797A4, '\0');
       } else if (keyStore == null && keyStorePwd != null) {
-        keyStore = cliCtx.getLineReader().readLine("please input your key_store:", '\0');
+        keyStore =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_KEY_STORE_F2FBBF40, '\0');
       }
     }
     boolean hasPw = commandLine.hasOption(Constants.PW_ARGS);
@@ -279,7 +294,10 @@ public abstract class AbstractDataTool {
       if (inputPassword != null) {
         password = inputPassword;
       } else {
-        password = cliCtx.getLineReader().readLine("please input your password:", '\0');
+        password =
+            cliCtx
+                .getLineReader()
+                .readLine(CliMessages.MESSAGE_PLEASE_INPUT_YOUR_PASSWORD_72B23434, '\0');
       }
     } else {
       password = Constants.PW_DEFAULT_VALUE;
@@ -434,14 +452,15 @@ public abstract class AbstractDataTool {
     } else if (isTimeStamp(strValue)) {
       return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_TIMESTAMP);
     } else if (isNumber(strValue)) {
-      if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
-        if (isConvertFloatPrecisionLack(StringUtils.trim(strValue))) {
-          return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_LONG);
-        }
-        return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_INT);
-      } else {
-        return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_FLOAT);
+      String number = StringUtils.trim(strValue);
+      if (INTEGER_PATTERN.matcher(number).matches()) {
+        return Constants.TYPE_INFER_KEY_DICT.get(
+            fitsIntKeyType(number) ? Constants.DATATYPE_INT : Constants.DATATYPE_LONG);
       }
+      TSDataType floatKeyType = Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_FLOAT);
+      return floatKeyType == TSDataType.FLOAT && isOutOfFloatRange(Double.parseDouble(number))
+          ? Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_DOUBLE)
+          : floatKeyType;
     } else if (Constants.DATATYPE_NULL.equals(strValue)
         || Constants.DATATYPE_NULL.toUpperCase().equals(strValue)) {
       return null;
@@ -488,8 +507,33 @@ public abstract class AbstractDataTool {
         || s.equalsIgnoreCase(SqlConstant.BOOLEAN_FALSE);
   }
 
-  private static boolean isConvertFloatPrecisionLack(String s) {
-    return Long.parseLong(s) > (2 << 24);
+  /**
+   * Whether an integer gets the type the "int" key maps to. The inferred type applies to the whole
+   * column, so with FLOAT the bound is |value| <= 2^24, where FLOAT holds every integer exactly.
+   */
+  private static boolean fitsIntKeyType(String s) {
+    long value;
+    try {
+      value = Long.parseLong(s);
+    } catch (NumberFormatException e) {
+      // Integer literal outside the long range
+      return false;
+    }
+    TSDataType intKeyType = Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_INT);
+    if (intKeyType == TSDataType.FLOAT) {
+      return value >= -FLOAT_EXACT_INTEGER_BOUND && value <= FLOAT_EXACT_INTEGER_BOUND;
+    }
+    if (intKeyType == TSDataType.INT32) {
+      return value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE;
+    }
+    return true;
+  }
+
+  /** A finite value that FLOAT would turn into infinity or lose to underflow. */
+  private static boolean isOutOfFloatRange(double value) {
+    double magnitude = Math.abs(value);
+    return Double.isFinite(value)
+        && (magnitude > Float.MAX_VALUE || (magnitude != 0 && magnitude < Float.MIN_NORMAL));
   }
 
   /**
@@ -639,8 +683,10 @@ public abstract class AbstractDataTool {
                   headerTypeMap.put(headerNameWithoutType, type);
                 } else {
                   ioTPrinter.printf(
-                      "Line '%s', column '%s': '%s' unknown type%n",
-                      recordObj.getRecordNumber(), headerNameWithoutType, value);
+                      CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_TYPE_ARG_93D3B31D,
+                      recordObj.getRecordNumber(),
+                      headerNameWithoutType,
+                      value);
                   isFail.set(true);
                 }
               }
@@ -650,8 +696,11 @@ public abstract class AbstractDataTool {
                 if (valueTrans == null) {
                   isFail.set(true);
                   ioTPrinter.printf(
-                      "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      recordObj.getRecordNumber(), headerNameWithoutType, value, type);
+                      CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_CAN_T_CONVERT_TO_ARG_ARG_F85541A2,
+                      recordObj.getRecordNumber(),
+                      headerNameWithoutType,
+                      value,
+                      type);
                 } else {
                   values.add(valueTrans);
                   measurements.add(headerNameWithoutType);
@@ -679,7 +728,7 @@ public abstract class AbstractDataTool {
     if (!failedRecords.isEmpty()) {
       writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
     }
-    ioTPrinter.println("Import completely!");
+    ioTPrinter.println(CliMessages.LOG_IMPORT_COMPLETELY_B7451B2C);
   }
 
   /**
@@ -743,8 +792,10 @@ public abstract class AbstractDataTool {
                     headerTypeMap.put(header, type);
                   } else {
                     ioTPrinter.printf(
-                        "Line '%s', column '%s': '%s' unknown type%n",
-                        recordObj.getRecordNumber(), header, value);
+                        CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_UNKNOWN_TYPE_ARG_93D3B31D,
+                        recordObj.getRecordNumber(),
+                        header,
+                        value);
                     isFail = true;
                   }
                 }
@@ -754,8 +805,11 @@ public abstract class AbstractDataTool {
                   if (valueTrans == null) {
                     isFail = true;
                     ioTPrinter.printf(
-                        "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                        recordObj.getRecordNumber(), header, value, type);
+                        CliMessages.LOG_LINE_ARG_COLUMN_ARG_ARG_CAN_T_CONVERT_TO_ARG_ARG_F85541A2,
+                        recordObj.getRecordNumber(),
+                        header,
+                        value,
+                        type);
                   } else {
                     measurements.add(header.replace(deviceId + '.', ""));
                     types.add(type);
@@ -786,9 +840,9 @@ public abstract class AbstractDataTool {
       writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
     }
     if (Boolean.TRUE.equals(hasStarted.get())) {
-      ioTPrinter.println("Import completely!");
+      ioTPrinter.println(CliMessages.LOG_IMPORT_COMPLETELY_B7451B2C);
     } else {
-      ioTPrinter.println("No records!");
+      ioTPrinter.println(CliMessages.LOG_NO_RECORDS_05AB97C4);
     }
   }
 
@@ -869,7 +923,9 @@ public abstract class AbstractDataTool {
         }
       } catch (StatementExecutionException | IllegalPathException | IoTDBConnectionException e) {
         ioTPrinter.println(
-            "Meet error when query the type of timeseries because " + e.getMessage());
+            String.format(
+                CliMessages.LOG_MEET_ERROR_WHEN_QUERY_THE_TYPE_OF_TIMESERIES_BECAUSE_ARG_21949119,
+                Objects.toString(e.getMessage())));
         try {
           session.close();
         } catch (IoTDBConnectionException ex) {

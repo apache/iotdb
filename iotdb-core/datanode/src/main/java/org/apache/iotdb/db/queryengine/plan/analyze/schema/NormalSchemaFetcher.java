@@ -37,6 +37,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator.isAutoCreateSchemaAllowed;
+
 class NormalSchemaFetcher {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -170,13 +172,14 @@ class NormalSchemaFetcher {
     }
 
     // [Step 5] Auto Create and process the missing schema
-    if (config.isAutoCreateSchemaEnabled()
-        || schemaComputationWithAutoCreation
-            .getDevicePath()
-            .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)
-        || schemaComputationWithAutoCreation
-            .getDevicePath()
-            .startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY)) {
+    if (isAutoCreateSchemaAllowed(context)
+        && (config.isAutoCreateSchemaEnabled()
+            || schemaComputationWithAutoCreation
+                .getDevicePath()
+                .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)
+            || schemaComputationWithAutoCreation
+                .getDevicePath()
+                .startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY))) {
       // Check the isAligned value. If the input value is different from the actual value of the
       // existing device, throw exception.
       PartialPath devicePath = schemaComputationWithAutoCreation.getDevicePath();
@@ -320,6 +323,17 @@ class NormalSchemaFetcher {
 
     // all schema has been taken and processed
     if (indexOfDevicesNeedAutoCreateSchema.isEmpty()) {
+      return;
+    }
+
+    if (!isAutoCreateSchemaAllowed(context)) {
+      for (int i = 0; i < indexOfDevicesNeedAutoCreateSchema.size(); i++) {
+        final ISchemaComputationWithAutoCreation computation =
+            schemaComputationWithAutoCreationList.get(indexOfDevicesNeedAutoCreateSchema.get(i));
+        for (final int index : indexOfMeasurementsNeedAutoCreate.get(i)) {
+          computation.computeMeasurement(index, null);
+        }
+      }
       return;
     }
 

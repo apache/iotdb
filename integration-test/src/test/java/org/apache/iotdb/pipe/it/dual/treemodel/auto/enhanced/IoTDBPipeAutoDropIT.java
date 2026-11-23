@@ -22,28 +22,31 @@ package org.apache.iotdb.pipe.it.dual.treemodel.auto.enhanced;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
-import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
+import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeTreeModelSharedClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -52,25 +55,77 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 import static org.awaitility.Awaitility.await;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
-public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
-
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
+public class IoTDBPipeAutoDropIT extends AbstractPipeTreeModelSharedClusterIT {
 
   @Override
   protected void setupConfig() {
     super.setupConfig();
+    // Auto-drop waits for completion reports, so collect them frequently in this IT.
+    senderEnv.getConfig().getCommonConfig().setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(1);
     senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
   }
 
+  @Override
+  protected void cleanEnvironment() {
+    try {
+      // The unmatched-region scenario creates a table-model pipe while running on the shared
+      // tree clusters. Drop it before the shared tree cleanup so it cannot recreate the table data.
+      dropTablePipes(senderEnv);
+      dropTablePipes(receiverEnv);
+      super.cleanEnvironment();
+      deleteTableDatabases(senderEnv);
+      deleteTableDatabases(receiverEnv);
+    } catch (Exception e) {
+      throw new AssertionError("Failed to reset table state in shared auto-drop clusters", e);
+    }
+  }
+
+  private static void dropTablePipes(final BaseEnv env) throws Exception {
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
+      final TShowPipeResp response =
+          client.showPipe(
+              new TShowPipeReq().setIsTableModel(true).setUserName(SessionConfig.DEFAULT_USER));
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+      for (final TShowPipeInfo pipe : response.getPipeInfoList()) {
+        if (!pipe.getId().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+          final int statusCode =
+              client
+                  .dropPipeExtended(new TDropPipeReq(pipe.getId()).setIsTableModel(true))
+                  .getCode();
+          // Automatic drop can remove a pipe after the SHOW PIPE snapshot.
+          if (statusCode != TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()) {
+            Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), statusCode);
+          }
+        }
+      }
+    }
+  }
+
+  private static void deleteTableDatabases(final BaseEnv env) throws SQLException {
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      final List<String> databases = new ArrayList<>();
+      try (final ResultSet result = statement.executeQuery("show databases")) {
+        while (result.next()) {
+          final String database = result.getString(1);
+          if (!"information_schema".equals(database)) {
+            databases.add(database);
+          }
+        }
+      }
+      for (final String database : databases) {
+        TestUtils.dropDatabaseWithRetry(statement, "\"" + database.replace("\"", "\"\"") + "\"");
+      }
+    }
+  }
+
+  // A query-mode pipe must transfer the historical row and remove itself after completion.
   @Test
   public void testAutoDropInHistoricalTransfer() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -92,7 +147,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("source.mode", "query");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.batch.enable", "false");
@@ -106,8 +161,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      // Creation already starts finite pipes; another start can race with their auto-drop.
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -115,34 +170,28 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
-      try (final Connection connection = makeItCloseQuietly(senderEnv.getConnection());
-          final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
-        ResultSet result = statement.executeQuery("show pipes");
-        await()
-            .pollInSameThread()
-            .pollDelay(1L, TimeUnit.SECONDS)
-            .pollInterval(1L, TimeUnit.SECONDS)
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () -> {
-                  try {
-                    int pipeNum = 0;
-                    while (result.next()) {
-                      if (!result
-                          .getString(ColumnHeaderConstant.ID)
-                          .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-                        pipeNum++;
-                      }
-                    }
-                    Assert.assertEquals(0, pipeNum);
-                  } catch (Exception e) {
-                    Assert.fail();
-                  }
-                });
-      }
+      // Fetch a fresh ConfigNode snapshot on every poll while pipes are being removed.
+      await()
+          .pollInSameThread()
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
+                showPipeResult.removeIf(
+                    i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
+                Assert.assertTrue(showPipeResult.isEmpty());
+              });
     }
   }
 
+  // With a fresh sender that has no DataRegions, query/history pipes must disappear while a
+  // realtime-only pipe stays alive. Reusing a cluster could leave regions from another scenario.
   @Test
   public void testAutoDropFinitePipesWithoutDataRegion() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -187,25 +236,20 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
                       .setExtractorAttributes(realtimeSourceAttributes))
               .getCode());
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.startPipe("query_pipe_without_data_region").getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.startPipe("history_pipe_without_data_region").getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          client.startPipe("realtime_pipe_without_data_region").getCode());
-
+      // Pipes start automatically after creation. Explicitly starting finite pipes can race with
+      // their auto-drop when they have no DataRegions to process.
       await()
           .pollInSameThread()
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                final List<TShowPipeInfo> pipeInfoList =
-                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER))
-                        .pipeInfoList;
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> pipeInfoList = response.getPipeInfoList();
                 Assert.assertFalse(
                     pipeInfoList.stream()
                         .anyMatch(info -> info.getId().equals("query_pipe_without_data_region")));
@@ -224,6 +268,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
+  // Tree and table query pipes must transfer their matching row and auto-drop despite the sender's
+  // other, unmatched DataRegions in both models.
   @Test
   public void testAutoDropIgnoredUnmatchedDataRegions() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -262,7 +308,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
       treeSourceAttributes.put("source.path", "root.db.**");
       treeSourceAttributes.put("source.capture.tree", "true");
       treeSourceAttributes.put("source.capture.table", "false");
-      treeSourceAttributes.put("user", "root");
+      treeSourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       TSStatus status =
           client.createPipe(
@@ -271,8 +317,6 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p_tree").getCode());
 
       // Table-model pipe: only listens to table_db, which must not be blocked by the tree
       // DataRegions either.
@@ -283,7 +327,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
       tableSourceAttributes.put("source.capture.tree", "false");
       tableSourceAttributes.put("source.capture.table", "true");
       tableSourceAttributes.put("__system.sql-dialect", "table");
-      tableSourceAttributes.put("user", "root");
+      tableSourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       status =
           client.createPipe(
@@ -292,8 +336,6 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p_table").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -304,14 +346,16 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
 
       await()
           .pollInSameThread()
-          .pollDelay(1L, TimeUnit.SECONDS)
-          .pollInterval(1L, TimeUnit.SECONDS)
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
           .atMost(600, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                final List<TShowPipeInfo> showPipeResult =
-                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER))
-                        .pipeInfoList;
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
                 showPipeResult.removeIf(
                     i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
                 Assert.assertTrue(
@@ -324,6 +368,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
+  // Of five historical rows, the query pipe must transfer only the three in [2000, 4000] and then
+  // remove itself, preserving the inclusive start/end-time boundaries.
   @Test
   public void testAutoDropInHistoricalTransferWithTimeRange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -348,7 +394,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
       sourceAttributes.put("source.mode", "query");
       sourceAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
       sourceAttributes.put("source.end-time", "1970-01-01T08:00:04+08:00");
-      sourceAttributes.put("user", "root");
+      sourceAttributes.put("user", SessionConfig.DEFAULT_USER);
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.batch.enable", "false");
@@ -362,8 +408,6 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -371,31 +415,22 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("3,"));
 
-      try (final Connection connection = makeItCloseQuietly(senderEnv.getConnection());
-          final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
-        ResultSet result = statement.executeQuery("show pipes");
-        await()
-            .pollInSameThread()
-            .pollDelay(1L, TimeUnit.SECONDS)
-            .pollInterval(1L, TimeUnit.SECONDS)
-            .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
-                () -> {
-                  try {
-                    int pipeNum = 0;
-                    while (result.next()) {
-                      if (!result
-                          .getString(ColumnHeaderConstant.ID)
-                          .contains(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-                        pipeNum++;
-                      }
-                    }
-                    Assert.assertEquals(0, pipeNum);
-                  } catch (Exception e) {
-                    Assert.fail();
-                  }
-                });
-      }
+      await()
+          .pollInSameThread()
+          .pollDelay(0L, TimeUnit.MILLISECONDS)
+          .pollInterval(100L, TimeUnit.MILLISECONDS)
+          .atMost(600, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                final TShowPipeResp response =
+                    client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER));
+                Assert.assertEquals(
+                    TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
+                final List<TShowPipeInfo> showPipeResult = response.getPipeInfoList();
+                showPipeResult.removeIf(
+                    i -> i.getId().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX));
+                Assert.assertTrue(showPipeResult.isEmpty());
+              });
     }
   }
 }

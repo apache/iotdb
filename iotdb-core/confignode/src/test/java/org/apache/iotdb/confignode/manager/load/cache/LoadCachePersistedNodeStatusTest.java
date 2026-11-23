@@ -388,6 +388,80 @@ public class LoadCachePersistedNodeStatusTest {
   }
 
   @Test
+  public void testStoppingHeartbeatCannotOverwritePersistedShutdown() throws Exception {
+    loadCache.initHeartbeatCache(configManager);
+    Assert.assertEquals(
+        success().getCode(),
+        loadCache.trySetNodeStatus(DATA_NODE_ID, NodeStatus.Stopped, null, false).getCode());
+
+    for (int initialization = 0; initialization < 2; initialization++) {
+      // Also protect a Stopped record restored by a new leader, without a local shutdown sample.
+      if (initialization > 0) {
+        loadCache.initHeartbeatCache(configManager);
+      }
+      loadCache.cacheDataNodeHeartbeatSample(
+          DATA_NODE_ID, readOnlySample(System.nanoTime(), NodeStatus.STOPPING));
+      for (int refresh = 0; refresh < 2; refresh++) {
+        Assert.assertTrue(loadCache.updateNodeStatistics());
+        Assert.assertEquals(NodeStatus.Stopped, loadCache.getNodeStatus(DATA_NODE_ID));
+        Assert.assertNull(loadCache.getNodeStatusReason(DATA_NODE_ID));
+        Assert.assertEquals(
+            new Pair<>(NodeStatus.Stopped, null), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+      }
+    }
+    verify(consensusManager, never())
+        .write(new UpdateNodeStatusPlan(DATA_NODE_ID, NodeStatus.ReadOnly, NodeStatus.STOPPING));
+  }
+
+  @Test
+  public void testOtherReadOnlyReasonsCanReviveStoppedNode() throws Exception {
+    loadCache.initHeartbeatCache(configManager);
+    for (String reason :
+        Arrays.asList(
+            null,
+            NodeStatus.MANUAL,
+            NodeStatus.DISK_FULL,
+            NodeStatus.UNRECOVERABLE_ERROR + ": storage failure",
+            "CustomReason")) {
+      Assert.assertEquals(
+          success().getCode(),
+          loadCache.trySetNodeStatus(DATA_NODE_ID, NodeStatus.Stopped, null, false).getCode());
+      loadCache.cacheDataNodeHeartbeatSample(
+          DATA_NODE_ID, readOnlySample(System.nanoTime(), reason));
+      Assert.assertTrue(loadCache.updateNodeStatistics());
+      Assert.assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(DATA_NODE_ID));
+      Assert.assertEquals(reason, loadCache.getNodeStatusReason(DATA_NODE_ID));
+      Assert.assertEquals(
+          new Pair<>(NodeStatus.ReadOnly, reason), nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+    }
+  }
+
+  @Test
+  public void testForcedStoppingUpdateCanReplaceStoppedNode() throws Exception {
+    loadCache.initHeartbeatCache(configManager);
+    Assert.assertEquals(
+        success().getCode(),
+        loadCache.trySetNodeStatus(DATA_NODE_ID, NodeStatus.Stopped, null, false).getCode());
+    Assert.assertEquals(
+        success().getCode(),
+        loadCache
+            .trySetNodeStatus(DATA_NODE_ID, NodeStatus.ReadOnly, NodeStatus.STOPPING, true)
+            .getCode());
+    Assert.assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(DATA_NODE_ID));
+    Assert.assertEquals(NodeStatus.STOPPING, loadCache.getNodeStatusReason(DATA_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.ReadOnly, NodeStatus.STOPPING),
+        nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+
+    Assert.assertTrue(loadCache.updateNodeStatistics());
+    Assert.assertEquals(NodeStatus.ReadOnly, loadCache.getNodeStatus(DATA_NODE_ID));
+    Assert.assertEquals(NodeStatus.STOPPING, loadCache.getNodeStatusReason(DATA_NODE_ID));
+    Assert.assertEquals(
+        new Pair<>(NodeStatus.ReadOnly, NodeStatus.STOPPING),
+        nodeInfo.getPersistedNodeStatus(DATA_NODE_ID));
+  }
+
+  @Test
   public void testStoppedStatisticsUpdateAfterFailedPersistenceReturns() throws Exception {
     loadCache.initHeartbeatCache(configManager);
     loadCache.trySetNodeStatus(DATA_NODE_ID, NodeStatus.Running, null, false);

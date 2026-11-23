@@ -22,10 +22,16 @@ package org.apache.iotdb.confignode.procedure;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
+import org.apache.iotdb.confignode.procedure.scheduler.DeleteTimeSeriesProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
@@ -40,9 +46,12 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -74,6 +83,7 @@ public class ProcedureExecutor<Env> {
   // leader transition.
   private volatile CopyOnWriteArrayList<WorkerThread> workerThreads;
   private volatile CopyOnWriteArrayList<WorkerThread> dropTableWorkerThreads;
+  private volatile CopyOnWriteArrayList<WorkerThread> deleteTimeSeriesWorkerThreads;
 
   private TimeoutExecutorThread<Env> timeoutExecutor;
 
@@ -95,6 +105,7 @@ public class ProcedureExecutor<Env> {
   // Drop table can spend a long time deleting data on DataNodes. Keep its worker separate so
   // unrelated procedures can still make progress.
   private final ProcedureScheduler dropTableScheduler = new SimpleProcedureScheduler();
+  private DeleteTimeSeriesProcedureScheduler deleteTimeSeriesScheduler;
 
   private final AtomicLong workId = new AtomicLong(0);
   private final AtomicInteger activeExecutorCount = new AtomicInteger(0);
@@ -143,12 +154,26 @@ public class ProcedureExecutor<Env> {
       workerThreads.add(new WorkerThread(threadGroup, scheduler));
     }
     dropTableWorkerThreads = new CopyOnWriteArrayList<>();
+    deleteTimeSeriesWorkerThreads = new CopyOnWriteArrayList<>();
+    deleteTimeSeriesScheduler =
+        new DeleteTimeSeriesProcedureScheduler(
+            ConfigNodeDescriptor.getInstance().getConf().getTimeseriesDeletionMaxConcurrentTasks(),
+            ConfigNodeDescriptor.getInstance()
+                .getConf()
+                .getTimeseriesDeletionExecutionIntervalMs());
     // Add worker monitor
     workerMonitorExecutor.add(new WorkerMonitor());
 
+    // This executor is reused after leader changes. An interrupted deletion can still be active
+    // here even when another leader has since persisted its completion. Recover only store state.
+    procedures.clear();
+    completed.clear();
+    rollbackStack.clear();
+    scheduler.clear();
     dropTableScheduler.clear();
     scheduler.start();
     dropTableScheduler.start();
+    deleteTimeSeriesScheduler.start();
     recover();
   }
 
@@ -238,6 +263,7 @@ public class ProcedureExecutor<Env> {
     runnableList.forEach(procedure -> getScheduler(procedure).addBack(procedure));
     scheduler.signalAll();
     dropTableScheduler.signalAll();
+    deleteTimeSeriesScheduler.signalAll();
   }
 
   private List<Procedure<Env>> getProcedureListFromDifferentVersion() {
@@ -267,7 +293,8 @@ public class ProcedureExecutor<Env> {
   private void releaseLock(Procedure<Env> procedure, boolean force) {
     if (force || !procedure.holdLock(this.environment) || procedure.isFinished()) {
       RetryUtils.executeWithEndlessBackoffRetry(
-          () -> procedure.doReleaseLock(this.environment, store), "procedure release lock");
+          () -> procedure.doReleaseLock(this.environment, store),
+          ProcedureMessages.EXCEPTION_PROCEDURE_RELEASE_LOCK_AD22A19B);
     }
   }
 
@@ -316,6 +343,9 @@ public class ProcedureExecutor<Env> {
       workerThread.start();
     }
     for (WorkerThread workerThread : dropTableWorkerThreads) {
+      workerThread.start();
+    }
+    for (WorkerThread workerThread : deleteTimeSeriesWorkerThreads) {
       workerThread.start();
     }
     LOG.info(ProcedureMessages.PROCEDURE_WORKERS_ARE_STARTED, workerThreads.size());
@@ -370,7 +400,7 @@ public class ProcedureExecutor<Env> {
    *
    * @param proc procedure
    */
-  private void executeProcedure(Procedure<Env> proc) {
+  private void executeProcedure(Procedure<Env> proc) throws InterruptedException {
     if (proc.isFinished()) {
       LOG.debug(ProcedureMessages.IS_ALREADY_FINISHED, proc);
       return;
@@ -480,7 +510,8 @@ public class ProcedureExecutor<Env> {
    * @param rootProcStack procedure's root proc stack
    * @param proc procedure
    */
-  private void executeProcedure(RootProcedureStack rootProcStack, Procedure<Env> proc) {
+  private void executeProcedure(RootProcedureStack rootProcStack, Procedure<Env> proc)
+      throws InterruptedException {
     if (proc.getState() != ProcedureState.RUNNABLE) {
       LOG.error(
           ProcedureMessages
@@ -571,7 +602,8 @@ public class ProcedureExecutor<Env> {
       // Must endless retry here, since this step is not idempotent and can not be re-execute
       // correctly in new CN leader.
       RetryUtils.executeWithEndlessBackoffRetry(
-          () -> store.update(parent), "count down children procedure");
+          () -> store.update(parent),
+          ProcedureMessages.EXCEPTION_COUNT_DOWN_CHILDREN_PROCEDURE_C7306F56);
       // do not add this procedure when exception occurred
       getScheduler(parent).addFront(parent);
       LOG.info(
@@ -596,7 +628,14 @@ public class ProcedureExecutor<Env> {
   }
 
   private void updateStoreOnExecution(
-      RootProcedureStack rootProcStack, Procedure<Env> proc, Procedure<Env>[] subprocs) {
+      RootProcedureStack rootProcStack, Procedure<Env> proc, Procedure<Env>[] subprocs)
+      throws InterruptedException {
+    if (requiresDurableDeletionState(proc)) {
+      // In particular, persist RECREATE_DATABASES before recreating a database, and persist the
+      // terminal state before admitting a conflicting task or exposing successful completion.
+      persistDeletionState(proc);
+      return;
+    }
     if (subprocs != null && !proc.isFailed()) {
       if (LOG.isDebugEnabled()) {
         LOG.debug(ProcedureMessages.STORED_CHILDREN, proc, Arrays.toString(subprocs));
@@ -649,7 +688,10 @@ public class ProcedureExecutor<Env> {
     for (int i = 0; i < subprocs.length; i++) {
       Procedure<Env> subproc = subprocs[i];
       if (subproc == null) {
-        String errMsg = "subproc[" + i + "] is null, aborting procedure";
+        String errMsg =
+            String.format(
+                ProcedureMessages.EXCEPTION_SUBPROC_ARG_IS_NULL_ABORTING_PROCEDURE_CDFB42EC,
+                Objects.toString(i));
         proc.setFailure(new ProcedureException((errMsg), new IllegalArgumentException(errMsg)));
         return null;
       }
@@ -689,7 +731,7 @@ public class ProcedureExecutor<Env> {
    * @return lock state
    */
   private LockStateResult<Env> executeRootStackRollback(
-      Long rootProcId, RootProcedureStack<Env> procedureStack) {
+      Long rootProcId, RootProcedureStack<Env> procedureStack) throws InterruptedException {
     Procedure<Env> rootProcedure = procedures.get(rootProcId);
     ProcedureException exception = rootProcedure.getException();
     if (exception == null) {
@@ -697,15 +739,35 @@ public class ProcedureExecutor<Env> {
       rootProcedure.setFailure(exception);
       // Endless retry since this step is not idempotent.
       RetryUtils.executeWithEndlessBackoffRetry(
-          () -> store.update(rootProcedure), "root procedure rollback");
+          () -> store.update(rootProcedure),
+          ProcedureMessages.EXCEPTION_ROOT_PROCEDURE_ROLLBACK_068C01D9);
     }
     List<Procedure<Env>> subprocStack = procedureStack.getSubproceduresStack();
+    // Decide which procedures must keep the states they have executed before anything is rolled
+    // back: the decision reads the state history, which the rollback itself shrinks. Identity is
+    // used because procedures override equals with the data of the operation they run.
+    final Set<Procedure<Env>> proceduresKeepingTheirStates =
+        Collections.newSetFromMap(new IdentityHashMap<>());
+    for (Procedure<Env> procedure : subprocStack) {
+      // A null slot is a procedure whose record was deleted before the snapshot this stack was
+      // rebuilt from, so there is nothing left to roll back for it.
+      if (procedure != null && !procedure.isSuccess() && !procedure.isRollbackSupported()) {
+        proceduresKeepingTheirStates.add(procedure);
+      }
+    }
     int stackTail = subprocStack.size();
     while (stackTail-- > 0) {
       Procedure<Env> procedure = subprocStack.get(stackTail);
+      if (procedure == null) {
+        continue;
+      }
       if (procedure.isSuccess()) {
         subprocStack.remove(stackTail);
         cleanupAfterRollback(procedure);
+        continue;
+      }
+      if (proceduresKeepingTheirStates.contains(procedure)) {
+        // Finished below, once the rest of the stack has been rolled back.
         continue;
       }
       ProcedureLockState lockState = acquireLock(procedure);
@@ -730,10 +792,111 @@ public class ProcedureExecutor<Env> {
       }
     }
 
+    if (!proceduresKeepingTheirStates.isEmpty()) {
+      // The children go first: releasing a child's lock writes its record back, which has to be
+      // covered by the root's cleanup. The root is finished last so that no write of a child
+      // follows the write which persists the root as finished.
+      for (Procedure<Env> procedure : proceduresKeepingTheirStates) {
+        if (procedure.hasParent()) {
+          finishWithoutRollback(procedure);
+        }
+      }
+      for (Procedure<Env> procedure : proceduresKeepingTheirStates) {
+        if (!procedure.hasParent()) {
+          finishWithoutRollback(procedure);
+        }
+      }
+      subprocStack.removeIf(proceduresKeepingTheirStates::contains);
+    }
+
     LOG.info(
         ProcedureMessages.ROLLED_BACK_TIME_DURATION_IS, rootProcedure, rootProcedure.elapsedTime());
     rootProcedureCleanup(rootProcedure);
     return new LockStateResult<>(ProcedureLockState.LOCK_ACQUIRED, rootProcedure);
+  }
+
+  /**
+   * Finishes a procedure without undoing any of the states it has executed. The failure is still
+   * reported, as the operation the procedure was part of did not complete; what is dropped is only
+   * the bookkeeping of the rollback, so that neither this rollback nor the one a new leader
+   * recovers touches this procedure again.
+   */
+  private void finishWithoutRollback(final Procedure<Env> procedure) throws InterruptedException {
+    // The unlock persists the procedure through doReleaseLock(). It is done first, while the
+    // procedure is neither marked finished nor stripped of its state history, so that a snapshot
+    // taken right after this write is still a state recovery resumes. Forcing the release matters
+    // because the procedure is not finished yet, so releaseLock() would otherwise keep the lock of
+    // procedures which hold it across steps.
+    releaseLockIfHeld(procedure);
+    if (procedure.hasParent()) {
+      // Mark the procedure finished before dropping its state history, so that a worker which
+      // picks it up concurrently returns at the isFinished() check instead of rolling it back.
+      if (!procedure.isSuccess()) {
+        procedure.setState(ProcedureState.ROLLEDBACK);
+      }
+      procedure.abandonRollback();
+      try {
+        store.delete(procedure.getProcId());
+        // do not remove this procedure when exception occurred
+        procedures.remove(procedure.getProcId());
+      } catch (final Exception e) {
+        LOG.warn(ProcedureMessages.FAILED_TO_DELETE_PROCEDURE_ON_ROLLBACK, e);
+      }
+    } else {
+      // A child which never executed has no rollback step and is not visited above, so its record
+      // goes with the ones of the children which were.
+      // Every child record has to be gone before the root may be persisted as finished: a snapshot
+      // holding a finished root beside a child record makes recover() fail on that child. Deleting
+      // is idempotent, so it is retried until durable.
+      final long[] childProcIds = rollbackStack.get(procedure.getProcId()).getSubprocedureIds();
+      for (final long childProcId : childProcIds) {
+        RetryUtils.executeWithEndlessBackoffRetry(
+            () -> store.delete(childProcId),
+            ProcedureMessages.LOG_DELETE_CHILD_PROCEDURES_WITHOUT_ROLLBACK_6E62D1C1);
+        // The retry helper also returns on interruption. Abort the entire rollback before
+        // marking the root finished or letting the caller clean it up.
+        if (Thread.currentThread().isInterrupted()) {
+          throw new InterruptedException();
+        }
+      }
+      if (!procedure.isSuccess()) {
+        procedure.setState(ProcedureState.ROLLEDBACK);
+      }
+      procedure.abandonRollback();
+      // The stack indexes and the states just dropped are persisted here, so that the rollback
+      // recovered by a new leader leaves this procedure out. Endless retry since this step is not
+      // idempotent.
+      if (requiresDurableDeletionState(procedure)) {
+        persistDeletionState(procedure);
+      } else {
+        RetryUtils.executeWithEndlessBackoffRetry(
+            () -> store.update(procedure),
+            ProcedureMessages.LOG_FINISH_PROCEDURE_WITHOUT_ROLLBACK_41F7A354);
+      }
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException();
+      }
+    }
+    procedure.updateMetricsOnFinish(getEnvironment(), procedure.elapsedTime(), false);
+    LOG.info(
+        ProcedureMessages
+            .LOG_PROCEDURE_ARG_IS_PAST_ITS_COMMIT_POINT_KEEPING_EVERY_STATE_IT_EXECUTED_CA21D7E9,
+        procedure);
+  }
+
+  /**
+   * The rollback loop skipped acquireLock() for procedures finished without rollback, so a lock
+   * restored by restoreLock() on load is still recorded in lockedWhenLoading instead of locked.
+   * Finish that bookkeeping and release the lock here: rootProcedureCleanup() releases only the
+   * locks that hasLock() reports, and a procedure finished without rollback must not keep holding
+   * its lock.
+   */
+  private void releaseLockIfHeld(final Procedure<Env> procedure) {
+    if (procedure.hasLock() || procedure.isLockedWhenLoading()) {
+      if (acquireLock(procedure) == ProcedureLockState.LOCK_ACQUIRED) {
+        releaseLock(procedure, true);
+      }
+    }
   }
 
   private ProcedureLockState acquireLock(Procedure<Env> proc) {
@@ -750,7 +913,7 @@ public class ProcedureExecutor<Env> {
    * @param procedure procedure
    * @return procedure lock state
    */
-  private ProcedureLockState executeRollback(Procedure<Env> procedure) {
+  private ProcedureLockState executeRollback(Procedure<Env> procedure) throws InterruptedException {
     boolean rollbackFailed = false;
     try {
       procedure.doRollback(this.environment);
@@ -779,7 +942,15 @@ public class ProcedureExecutor<Env> {
     return ProcedureLockState.LOCK_ACQUIRED;
   }
 
-  private void cleanupAfterRollback(Procedure<Env> procedure) {
+  private void cleanupAfterRollback(Procedure<Env> procedure) throws InterruptedException {
+    if (requiresDurableDeletionState(procedure)) {
+      if (procedure.removeStackIndex()) {
+        procedure.setState(ProcedureState.ROLLEDBACK);
+        procedure.updateMetricsOnFinish(getEnvironment(), procedure.elapsedTime(), false);
+      }
+      persistDeletionState(procedure);
+      return;
+    }
     if (procedure.removeStackIndex()) {
       if (!procedure.isSuccess()) {
         procedure.setState(ProcedureState.ROLLEDBACK);
@@ -829,12 +1000,41 @@ public class ProcedureExecutor<Env> {
     }
   }
 
+  private boolean requiresDurableDeletionState(Procedure<Env> procedure) {
+    return !procedure.hasParent()
+        && (procedure instanceof DeleteTimeSeriesProcedure
+            || procedure instanceof DeleteDatabaseProcedure
+            || (procedure instanceof DropTableColumnProcedure
+                && !(procedure instanceof DropViewColumnProcedure)));
+  }
+
+  private void persistDeletionState(Procedure<Env> procedure) throws InterruptedException {
+    long backoffMs = 100;
+    while (isRunning() && store.isRunning()) {
+      try {
+        store.update(procedure);
+        return;
+      } catch (InterruptedException e) {
+        throw e;
+      } catch (Exception e) {
+        LOG.warn(ProcedureMessages.FAILED_TO_UPDATE_PROCEDURE_ON_EXECUTION, e);
+        Thread.sleep(backoffMs);
+        backoffMs = Math.min(backoffMs * 2, 1000);
+      }
+    }
+    // Leave the last durable state for the next leader; do not clean up this root or its slot.
+    throw new InterruptedException();
+  }
+
   private void rootProcedureCleanup(Procedure<Env> proc) {
     executeCompletionCleanup(proc);
     CompletedProcedureContainer<Env> retainer = new CompletedProcedureContainer<>(proc);
     completed.put(proc.getProcId(), retainer);
     rollbackStack.remove(proc.getProcId());
     procedures.remove(proc.getProcId());
+    if (proc instanceof DeleteTimeSeriesProcedure) {
+      deleteTimeSeriesScheduler.completionCleanup(proc);
+    }
   }
 
   /**
@@ -903,7 +1103,11 @@ public class ProcedureExecutor<Env> {
         while (isRunning() && keepAlive(lastUpdated)) {
           Procedure<Env> procedure = workerScheduler.poll(keepAliveTime, TimeUnit.MILLISECONDS);
           if (procedure == null) {
-            Thread.sleep(1000);
+            // a stopped scheduler returns null at once; leave right away instead of
+            // sleeping another second first
+            if (isRunning()) {
+              Thread.sleep(1000);
+            }
             continue;
           }
           boolean executionAcquired = false;
@@ -960,6 +1164,8 @@ public class ProcedureExecutor<Env> {
       }
       if (workerScheduler == dropTableScheduler) {
         dropTableWorkerThreads.remove(this);
+      } else if (workerScheduler == deleteTimeSeriesScheduler) {
+        deleteTimeSeriesWorkerThreads.remove(this);
       } else {
         workerThreads.remove(this);
       }
@@ -1091,6 +1297,7 @@ public class ProcedureExecutor<Env> {
     LOG.info(ProcedureMessages.STOPPING);
     scheduler.stop();
     dropTableScheduler.stop();
+    deleteTimeSeriesScheduler.stop();
     timeoutExecutor.sendStopSignal();
   }
 
@@ -1101,6 +1308,9 @@ public class ProcedureExecutor<Env> {
       workerThread.awaitTermination();
     }
     for (WorkerThread workerThread : dropTableWorkerThreads) {
+      workerThread.awaitTermination();
+    }
+    for (WorkerThread workerThread : deleteTimeSeriesWorkerThreads) {
       workerThread.awaitTermination();
     }
   }
@@ -1115,6 +1325,10 @@ public class ProcedureExecutor<Env> {
 
   public boolean isFinished(final long procId) {
     return !procedures.containsKey(procId);
+  }
+
+  public boolean isCompleted(final long procId) {
+    return completed.containsKey(procId);
   }
 
   public ConcurrentHashMap<Long, Procedure<Env>> getProcedures() {
@@ -1169,9 +1383,40 @@ public class ProcedureExecutor<Env> {
   }
 
   public ProcedureScheduler getScheduler(final Procedure<?> procedure) {
-    return procedure instanceof DropTableProcedure && !(procedure instanceof DropViewProcedure)
+    if (procedure instanceof DeleteTimeSeriesProcedure) {
+      return getDeleteTimeSeriesScheduler();
+    }
+    return (procedure instanceof DropTableProcedure && !(procedure instanceof DropViewProcedure))
+            || (procedure instanceof DropTableColumnProcedure
+                && !(procedure instanceof DropViewColumnProcedure))
         ? getDropTableScheduler()
         : scheduler;
+  }
+
+  public synchronized DeleteTimeSeriesProcedureScheduler getDeleteTimeSeriesScheduler() {
+    if (deleteTimeSeriesWorkerThreads.isEmpty()) {
+      for (int i = 0;
+          i
+              < ConfigNodeDescriptor.getInstance()
+                  .getConf()
+                  .getTimeseriesDeletionMaxConcurrentTasks();
+          i++) {
+        final WorkerThread worker =
+            new WorkerThread(
+                threadGroup, deleteTimeSeriesScheduler, "DeleteTimeSeriesProcedureWorker-");
+        deleteTimeSeriesWorkerThreads.add(worker);
+        if (isRunning()) {
+          worker.start();
+        }
+      }
+    }
+    return deleteTimeSeriesScheduler;
+  }
+
+  public synchronized void updateTimeseriesDeletionExecutionIntervalMs(long intervalMs) {
+    if (deleteTimeSeriesScheduler != null) {
+      deleteTimeSeriesScheduler.setExecutionIntervalMs(intervalMs);
+    }
   }
 
   private synchronized ProcedureScheduler getDropTableScheduler() {

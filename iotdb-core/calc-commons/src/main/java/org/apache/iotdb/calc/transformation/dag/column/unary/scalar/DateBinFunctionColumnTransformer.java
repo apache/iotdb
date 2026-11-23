@@ -90,19 +90,23 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
   }
 
   private static long convertToTimestamp(LocalDateTime dateTime, ZoneId zoneId) {
-    // Converting LocalDateTime to Seconds since epoch
-    long epochMilliSecond = dateTime.atZone(zoneId).toInstant().toEpochMilli();
-    // Get the nanoseconds section
-    long nanoAdjustment = dateTime.getNano();
+    // getEpochSecond() gives the whole seconds and getNano() the nanos inside the second, so the
+    // milliseconds inside the second are counted exactly once. TimeUnit saturates at the long
+    // bounds; the sub-second part must use the same saturating add, or a bin past the long range
+    // wraps to the opposite end.
+    Instant instant = dateTime.atZone(zoneId).toInstant();
+    long epochSecond = instant.getEpochSecond();
+    long nanoAdjustment = instant.getNano();
 
     switch (CommonDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ms":
-        return epochMilliSecond + nanoAdjustment / NANOSECONDS_IN_MILLISECOND;
+        return saturatedAdd(
+            TimeUnit.SECONDS.toMillis(epochSecond), nanoAdjustment / NANOSECONDS_IN_MILLISECOND);
       case "us":
-        return TimeUnit.MILLISECONDS.toMicros(epochMilliSecond)
-            + nanoAdjustment / NANOSECONDS_IN_MICROSECOND;
+        return saturatedAdd(
+            TimeUnit.SECONDS.toMicros(epochSecond), nanoAdjustment / NANOSECONDS_IN_MICROSECOND);
       case "ns":
-        return TimeUnit.MILLISECONDS.toNanos(epochMilliSecond) + nanoAdjustment;
+        return saturatedAdd(TimeUnit.SECONDS.toNanos(epochSecond), nanoAdjustment);
       default:
         throw new IllegalArgumentException(
             CalcMessages.EXCEPTION_UNKNOWN_PRECISION_0119BEB0

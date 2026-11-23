@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConsumerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
@@ -42,6 +43,17 @@ public class SubscriptionProviderStatusTest {
 
     Assert.assertTrue(exception instanceof SubscriptionConsumerFencedException);
     Assert.assertEquals("consumer fenced", exception.getMessage());
+  }
+
+  @Test
+  public void testReplacedConnectionStatusIsRetryable() throws Exception {
+    final SubscriptionException exception =
+        invokeVerifyPipeSubscribeSuccess(
+            new TSStatus(TSStatusCode.SUBSCRIPTION_CONNECTION_REPLACED.getStatusCode())
+                .setMessage("connection replaced"));
+
+    Assert.assertEquals(SubscriptionConnectionException.class, exception.getClass());
+    Assert.assertEquals("connection replaced", exception.getMessage());
   }
 
   @Test

@@ -37,14 +37,18 @@ public final class TimeValueBuffer {
   private long[] times = new long[INITIAL_CAPACITY];
   private double[] values = new double[INITIAL_CAPACITY];
   private int size;
-  private boolean sortedAndValidated;
+  private boolean sorted;
+  // Kept apart from sorted: sort() is also used where duplicates are allowed, and a window
+  // evaluates the final result once per output row on an unchanged frame.
+  private boolean validated;
 
   public void add(long time, double value) {
     ensureCapacity(Math.addExact(size, 1));
     times[size] = time;
     values[size] = value;
     size++;
-    sortedAndValidated = false;
+    sorted = false;
+    validated = false;
   }
 
   public void merge(TimeValueBuffer other) {
@@ -56,7 +60,8 @@ public final class TimeValueBuffer {
     System.arraycopy(other.times, 0, times, size, other.size);
     System.arraycopy(other.values, 0, values, size, other.size);
     size = newSize;
-    sortedAndValidated = false;
+    sorted = false;
+    validated = false;
   }
 
   public int size() {
@@ -79,7 +84,7 @@ public final class TimeValueBuffer {
     return estimatedSizeForCapacity(times.length);
   }
 
-  static long estimatedSizeForSampleCount(int sampleCount) {
+  public static long estimatedSizeForSampleCount(int sampleCount) {
     int capacity = INITIAL_CAPACITY;
     while (capacity < sampleCount) {
       capacity = Math.multiplyExact(capacity, 2);
@@ -89,7 +94,8 @@ public final class TimeValueBuffer {
 
   public void reset() {
     size = 0;
-    sortedAndValidated = false;
+    sorted = false;
+    validated = false;
   }
 
   public void writePayload(ByteBuffer target) {
@@ -99,24 +105,32 @@ public final class TimeValueBuffer {
     }
   }
 
-  public void sortAndValidate(String functionName) {
-    if (sortedAndValidated) {
+  public void sort() {
+    if (sorted) {
       return;
     }
     if (size > 1) {
       introSort(0, size, 2 * floorLog2(size));
-      for (int index = 1; index < size; index++) {
-        if (times[index - 1] == times[index]) {
-          throw new SemanticException(
-              String.format(
-                  CalcMessages
-                      .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_DUPLICATE_TIME_COL_VALUES_IN_THE_SAME_AGGREGATION_GROUP_ARG_087A91BC,
-                  functionName,
-                  times[index]));
-        }
+    }
+    sorted = true;
+  }
+
+  public void sortAndValidate(String functionName) {
+    sort();
+    if (validated) {
+      return;
+    }
+    for (int index = 1; index < size; index++) {
+      if (times[index - 1] == times[index]) {
+        throw new SemanticException(
+            String.format(
+                CalcMessages
+                    .EXCEPTION_AGGREGATE_FUNCTION_ARG_DOES_NOT_SUPPORT_DUPLICATE_TIME_COL_VALUES_IN_THE_SAME_AGGREGATION_GROUP_ARG_087A91BC,
+                functionName,
+                times[index]));
       }
     }
-    sortedAndValidated = true;
+    validated = true;
   }
 
   private void ensureCapacity(int requiredCapacity) {

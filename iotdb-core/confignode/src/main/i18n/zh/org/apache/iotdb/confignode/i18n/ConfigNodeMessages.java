@@ -20,6 +20,31 @@
 package org.apache.iotdb.confignode.i18n;
 
 public final class ConfigNodeMessages {
+  public static final String EXCEPTION_CONFIGNODE_SIMPLECONSENSUS_WRITES_ARE_DISABLED_AFTER_A_WAL_CLEANUP_FAILURE_RESTART_IS_REQUIRED_D52F0107 =
+      "ConfigNode SimpleConsensus 因 WAL 清理失败已禁用写入，需要重启。";
+  public static final String EXCEPTION_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_WRITER_BC0F417C =
+      "关闭 ConfigNode SimpleConsensus 日志写入器失败。";
+  public static final String EXCEPTION_FAILED_TO_APPLY_CONFIGNODE_ARG_THROUGH_CONSENSUS_LAYER_ARG_B4A985D7 =
+      "通过共识层应用 ConfigNode %s 失败：%s";
+  public static final String EXCEPTION_FAILED_TO_PERSIST_VERSION_INFO_FOR_CONFIGNODE_ARG_ARG_REGISTRATION_REMAINS_PENDING_AND_MUST_BE_RETRIED_F662C350 =
+      "持久化 ConfigNode %d 的版本信息失败：%s。注册尚未完成，需要重试。";
+  public static final String MESSAGE_UNKNOWN_ERROR_E9EEAFF8 =
+      "未知错误";
+  public static final String MESSAGE_STATUS_CODE_ARG_4B3BCD8B =
+      "状态码 %d";
+  public static final String MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_DATANODE_ARG_ARG_THE_REGISTRATION_HAS_BEEN_ROLLED_BACK_PLEASE_RETRY_THE_REGISTRATION_5DDB311F =
+      "持久化 DataNode %d 的版本信息失败：%s。注册已回滚，请重试注册。";
+  public static final String MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_DATANODE_ARG_ARG_THE_REGISTRATION_ROLLBACK_ALSO_FAILED_ARG_MANUAL_CLEANUP_MAY_BE_REQUIRED_BEFORE_RETRYING_THE_REGISTRATION_5463B5FF =
+      "持久化 DataNode %d 的版本信息失败：%s。注册回滚也失败：%s。重试注册前可能需要手动清理。";
+  public static final String LOG_FAILED_TO_ROLL_BACK_DATANODE_REGISTRATION_ARG_AFTER_VERSION_INFO_PERSISTENCE_FAILURE_VERSIONUPDATESTATUS_ARG_ROLLBACKSTATUS_ARG_437E6F09 =
+      "版本信息持久化失败后，回滚 DataNode {} 的注册失败。versionUpdateStatus: {}，rollbackStatus: {}";
+  public static final String MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_AINODE_ARG_ARG_THE_REGISTRATION_HAS_BEEN_ROLLED_BACK_PLEASE_RETRY_THE_REGISTRATION_7571C626 =
+      "持久化 AINode %d 的版本信息失败：%s。注册已回滚，请重试注册。";
+  public static final String MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_AINODE_ARG_ARG_THE_REGISTRATION_ROLLBACK_ALSO_FAILED_ARG_MANUAL_CLEANUP_MAY_BE_REQUIRED_BEFORE_RETRYING_THE_REGISTRATION_B9B1DCCD =
+      "持久化 AINode %d 的版本信息失败：%s。注册回滚也失败：%s。重试注册前可能需要手动清理。";
+  public static final String LOG_FAILED_TO_ROLL_BACK_AINODE_REGISTRATION_ARG_AFTER_VERSION_INFO_PERSISTENCE_FAILURE_VERSIONUPDATESTATUS_ARG_ROLLBACKSTATUS_ARG_BFF24BD4 =
+      "版本信息持久化失败后，回滚 AINode {} 的注册失败。versionUpdateStatus: {}，rollbackStatus: {}";
+
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_IN_MILLISECONDS_F79736B2 =
           "创建或修改 topic 失败，%s=%s 无效，需指定以毫秒为单位的 long 值";
@@ -57,10 +82,22 @@ public final class ConfigNodeMessages {
       "[ConfigRegion Update] 无法为 ConfigNode flushWALForSimpleConsensus 强制写入 logWriter";
   public static final String CAN_T_FORCE_LOGWRITER_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
       "[ConfigRegion Update] 无法为 ConfigNode SimpleConsensus 模式强制写入 logWriter";
-  public static final String
-      CAN_T_SERIALIZE_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
-          "[ConfigRegion Update] 无法为 ConfigNode SimpleConsensus 模式序列化当前 ConfigPhysicalPlan";
-  public static final String CAN_T_START_CONFIGNODE_CONSENSUS_GROUP = "无法启动 ConfigNode 共识组！";
+  public static final String CAN_T_SERIALIZE_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
+      "[ConfigRegion Update] 无法为 ConfigNode SimpleConsensus 模式序列化当前 ConfigPhysicalPlan";
+  public static final String PERSIST_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED =
+      "持久化 ConfigNode SimpleConsensus 日志失败：%s";
+  public static final String PERSIST_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED =
+      "为 ConfigNode SimpleConsensus 模式持久化当前 ConfigPhysicalPlan 失败";
+  public static final String FAILED_TO_ROLLBACK_PERSISTED_CONFIGNODE_SIMPLECONSENSUS_LOG =
+      "回滚已持久化的 ConfigNode SimpleConsensus 日志失败。该 plan 可能会在重启后被重放。重启前将禁止后续 SimpleConsensus 写入。";
+  public static final String ROLLBACK_FAILED_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED =
+      "回滚 ConfigNode SimpleConsensus 模式下失败的 ConfigPhysicalPlan 失败，planType: {}, logFile: {}, truncateOffset: {}, endIndexBeforeWrite: {}。重启前将禁止后续 SimpleConsensus 写入。";
+  public static final String SEAL_RECOVERED_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED =
+      "封存恢复出的 ConfigNode SimpleConsensus 日志失败：{}";
+  public static final String SIMPLECONSENSUS_LOG_WRITER_IS_NOT_INITIALIZED =
+      "SimpleConsensus log writer 未初始化。";
+  public static final String CAN_T_START_CONFIGNODE_CONSENSUS_GROUP =
+      "无法启动 ConfigNode 共识组！";
   public static final String CHANGE_REGIONS_LEADER_ERROR_ON_DATE_NODE =
       "在 DataNode: {} 上切换 region leader 失败";
   public static final String CHECK_BEFORE_DROPPING_TOPIC_TOPIC_EXISTS =
@@ -253,6 +290,7 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_ON_DATANODE = "在 DataNode {} 上执行 {} 失败，{}";
   public static final String FAILED_TO_ON_DATANODE_EXCEPTION = "在 DataNode: {} 上执行 {} 失败，异常：{}";
   public static final String FAILED_TO_ON_DATANODE_RESPONSE = "在 DataNode: {} 上执行 {} 失败，响应：{}";
+  public static final String FAILED_TO_ON_DATANODE_WITH_STATUS = "执行 {} 失败（DataNode: {}），状态码：{}，信息：{}";
   public static final String FAILED_TO_OPERATE_PIPE = "操作 pipe 失败";
   public static final String FAILED_TO_SET_PIPE_STATUS = "设置 pipe 状态失败";
   public static final String FAILED_TO_SET_PIPE_STATUS_WITH_STOPPED_BY_RUNTIME_EXCEPTION =
@@ -377,6 +415,9 @@ public final class ConfigNodeMessages {
   public static final String SUCCESSFULLY_ON_DATANODE = "在 DataNode: {} 上成功执行 {}";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE_CURRENT_CONFIGNODEGROUP =
       "成功移除 ConfigNode: {}。当前 ConfigNodeGroup: {}";
+  public static final String
+      LOG_NORMALIZE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_FROM_ARG_TO_ARG_FOR_COMPATIBILITY_6E662489 =
+          "为兼容性将 data_region_consensus_protocol_class 从 {} 规范化为 {}。";
   public static final String SUCCESSFULLY_SETUP_INTERNAL_SERVICES = "成功初始化内部服务。";
   public static final String SUCCESSFULLY_UPDATE_NODE_S_VERSION = "成功更新 Node {} 的版本。";
   public static final String SYSTEMPROPERTIES_NORMALIZE_FROM_TO_FOR_COMPATIBILITY =
@@ -529,6 +570,12 @@ public final class ConfigNodeMessages {
 
   public static final String AUTHENTICATION_FAILED = "认证失败。";
 
+  public static final String
+      EXCEPTION_COUNT_PATHS_USING_TEMPLATE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_E05E0F5B =
+          "在 DataNode 上统计使用模板的路径数量时出错：{id=%s, internalEndPoint=%s}%s";
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D =
+      "执行 %s 失败，DataNode：%s，异常：%s";
+
   private ConfigNodeMessages() {}
 
   // ---------------------------------------------------------------------------
@@ -561,6 +608,10 @@ public final class ConfigNodeMessages {
   public static final String EXCEPTION_AVAILABLE_ONLY_DATA_REPLICATION_FACTOR_SET_1_71748D3D =
       "仅在 data_replication_factor 设置为 1 时可用";
   public static final String EXCEPTION_ARG_ARG_6E068B23 = "%s 或 %s";
+  public static final String EXCEPTION_ARG_ARG_ARG_OR_ARG_E950ED19 = "%s、%s、%s 或 %s";
+  public static final String
+      EXCEPTION_UNRECOGNIZED_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_IS_SET_DAB37EAF =
+          "设置了无法识别的 data_region_consensus_protocol_class";
   public static final String
       EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUS_84350FD1 =
           "SchemaRegion 不支持 org.apache.iotdb.consensus.iot.IoTConsensus";
@@ -724,6 +775,15 @@ public final class ConfigNodeMessages {
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "创建或修改 topic 失败，%s 和 %s 仅支持 incremental 模式的 topic";
   public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
+          "创建或修改 Topic 失败，不允许重复的 %s 属性";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
+          "创建或修改 Topic 失败，%s 仅支持表模型 Topic";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_SHOULD_NOT_BE_EMPTY_767B1148 =
+          "创建或修改 Topic 失败，%s 不应为空";
+  public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ATTRIBUTES_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_55CB0BF2 =
           "创建或修改 topic 失败，属性 %s 仅支持 incremental 模式的 topic";
   public static final String
@@ -741,4 +801,74 @@ public final class ConfigNodeMessages {
   public static final String
       LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADERSHIP_BEFORE_SHUTDOWN_CONTINUING_SHUTDOWN_2B9364D5 =
           "关闭前转移 ConfigNode leader 失败，继续关闭。";
+
+  public static final String EXCEPTION_OPERATION_ARG_IS_NOT_SUPPORTED_E069D2B9 = "不支持操作 %s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_ADD_UDF_ARG_IN_UDF_TABLE_ON_CONFIG_NODES_BECAUSE_OF_ARG_2CA26D13 =
+          "在 ConfigNode 的 UDF_Table 中添加 UDF [%s] 失败，原因：%s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_ADD_TRIGGER_ARG_IN_TRIGGERTABLE_ON_CONFIG_NODES_BECAUSE_OF_ARG_DFBA6E1C =
+          "在 ConfigNode 的 TriggerTable 中添加触发器 [%s] 失败，原因：%s";
+
+  public static final String EXCEPTION_CQ_ARG_HAS_ALREADY_BEEN_CREATED_8031B847 = "CQ %s 已创建。";
+
+  public static final String EXCEPTION_CQ_ARG_HAS_ALREADY_BEEN_ACTIVE_46FB805D = "CQ %s 已激活";
+
+  public static final String
+      EXCEPTION_UPDATE_LAST_EXECUTION_TIME_OF_CQ_ARG_FAILED_BECAUSE_ITS_ORIGINAL_LAST_EXECUTION_TIME_ARG_IS_LARGER_THAN_THE_UPDATED_ONE_ARG_AB654FAF =
+          "更新 CQ %s 的上次执行时间失败，因为原上次执行时间（%d）大于更新后的时间（%d）。";
+
+  public static final String EXCEPTION_DATABASE_ARG_DOES_NOT_EXIST_0112959D = "数据库 %s 不存在";
+
+  public static final String EXCEPTION_IOTDB_CONFIGURATION_ARG_9C2F6017 = "IoTDB 配置：{}";
+
+  public static final String EXCEPTION_RESTART_CONFIGNODE_FAILED_EAE90C05 = "重启 ConfigNode 失败！";
+
+  public static final String EXCEPTION_WAITING_LEADER_S_SCHEDULING_IS_INTERRUPTED_963B6D90 =
+      "等待 Leader 调度时被中断。";
+
+  public static final String EXCEPTION_REGISTER_CONFIGNODE_FAILED_388E8520 = "注册 ConfigNode 失败！";
+
+  public static final String
+      EXCEPTION_SYSTEMPROPERTIES_THE_PARAMETER_ARG_CAN_T_BE_MODIFIED_AFTER_FIRST_STARTUP_YOUR_CONFIGURATION_ARG_WILL_BE_FORCED_UPDATE_TO_ARG_42B1AD5E =
+          "[SystemProperties] 参数 \"{}\" 在首次启动后不能修改。配置 {} 将被强制更新为：{}";
+
+  public static final String
+      EXCEPTION_EXECUTED_FAILED_CHECK_USAGE_NODE_ID_INTERNAL_ADDRESS_INTERNAL_PORT_0852F64E =
+          "执行失败，请检查用法：<Node-id>/<internal_address>:<internal_port>";
+
+  public static final String EXCEPTION_UNKNOWN_REQUEST_TYPE_ARG_78571982 = "未知的请求类型：%s";
+
+  public static final String EXCEPTION_ALL_RETRY_FAILED_DUE_TO_ARG_AEA920B0 = "所有重试均失败，原因：%s";
+
+  public static final String
+      EXCEPTION_ARG_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_14CDDEFD =
+          "在 DataNode 上执行 %s 时发生错误：{id=%s, internalEndPoint=%s}%s";
+
+  public static final String
+      EXCEPTION_FETCH_SCHEMAENGINE_BLACK_LIST_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_3D21FC43 =
+          "在 DataNode 上获取元数据黑名单时发生错误：{id=%s, internalEndPoint=%s}%s";
+
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_CONFIGNODE_ARG_EXCEPTION_ARG_CD279F8B =
+      "执行 %s 失败，ConfigNode：%s，异常：%s";
+
+  public static final String
+      EXCEPTION_CHECK_TIMESERIES_EXISTENCE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_D2A3135E =
+          "在 DataNode 上检查时间序列是否存在时发生错误：{id=%s, internalEndPoint=%s}%s";
+
+  public static final String EXCEPTION_TOKEN_OF_CQ_ARG_DOESN_T_MATCH_EE2E6387 = "CQ %s 的 Token 不匹配";
+
+  public static final String EXCEPTION_LOGIN_SUCCESSFULLY_1C2EF670 = "登录成功";
+
+  public static final String EXCEPTION_NO_SUCH_ROLE_ARG_42B804EB = "角色不存在：%s";
+
+  public static final String EXCEPTION_GET_ERROR_WHEN_SERIALIZE_PATTERN_TREE_9545A29E =
+      "序列化模式树时发生错误。";
+
+  public static final String EXCEPTION_NO_SUCH_USER_9F8AB2B7 = "用户不存在：";
+  public static final String
+      EXCEPTION_REGIONGROUP_POLICY_HOT_RELOAD_REQUIRES_IDENTICAL_CONFIGNODE_VERSIONS_AND_BUILDS_FA3BBFEA =
+          "RegionGroup 策略热更新要求所有 ConfigNode 的版本及构建信息一致。";
 }

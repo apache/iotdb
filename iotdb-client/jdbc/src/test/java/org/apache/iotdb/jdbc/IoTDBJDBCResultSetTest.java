@@ -21,7 +21,9 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
+import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -30,9 +32,12 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,6 +45,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -47,11 +53,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
@@ -107,6 +116,18 @@ import static org.mockito.Mockito.when;
 
 public class IoTDBJDBCResultSetTest {
 
+  private static final List<TSDataType> ALL_TYPES =
+      Arrays.asList(
+          TSDataType.BOOLEAN,
+          TSDataType.INT32,
+          TSDataType.INT64,
+          TSDataType.FLOAT,
+          TSDataType.DOUBLE,
+          TSDataType.STRING,
+          TSDataType.BLOB,
+          TSDataType.TIMESTAMP,
+          TSDataType.DATE);
+
   @Mock TSExecuteStatementResp execResp;
   private long queryId;
   private long sessionId;
@@ -154,6 +175,427 @@ public class IoTDBJDBCResultSetTest {
     /*
      * step 1: execute statement
      */
+    mockVehicleQueryResponse();
+
+    boolean hasResultSet = statement.execute(testSql);
+    Assert.assertTrue(hasResultSet);
+
+    verify(fetchMetadataResp, times(0)).getDataType();
+
+    /*
+     * step 2: fetch result
+     */
+    fetchResultsResp.hasResultSet = true; // at the first time to fetch
+
+    try (ResultSet resultSet = statement.getResultSet()) {
+      Assert.assertTrue(resultSet.isWrapperFor(IoTDBJDBCResultSet.class));
+      Assert.assertTrue(resultSet.isWrapperFor(ResultSet.class));
+      Assert.assertFalse(resultSet.isWrapperFor(String.class));
+      Assert.assertFalse(resultSet.isWrapperFor(null));
+      Assert.assertSame(resultSet, resultSet.unwrap(IoTDBJDBCResultSet.class));
+      Assert.assertSame(resultSet, resultSet.unwrap(ResultSet.class));
+      Assert.assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, resultSet.getHoldability());
+      Assert.assertEquals(ResultSet.FETCH_FORWARD, resultSet.getFetchDirection());
+      resultSet.setFetchDirection(ResultSet.FETCH_FORWARD);
+      Assert.assertThrows(
+          SQLException.class, () -> resultSet.setFetchDirection(ResultSet.FETCH_REVERSE));
+      Assert.assertEquals(Config.DEFAULT_FETCH_SIZE, resultSet.getFetchSize());
+      resultSet.setFetchSize(123);
+      Assert.assertEquals(123, resultSet.getFetchSize());
+      resultSet.setFetchSize(0);
+      Assert.assertEquals(Config.DEFAULT_FETCH_SIZE, resultSet.getFetchSize());
+      Assert.assertThrows(SQLException.class, () -> resultSet.setFetchSize(-1));
+      Assert.assertNull(resultSet.getWarnings());
+      resultSet.clearWarnings();
+
+      // check columnInfoMap
+      Assert.assertEquals(1, resultSet.findColumn("Time"));
+      Assert.assertEquals(2, resultSet.findColumn("root.vehicle.d0.s2"));
+      Assert.assertEquals(3, resultSet.findColumn("root.vehicle.d0.s1"));
+      Assert.assertEquals(4, resultSet.findColumn("root.vehicle.d0.s0"));
+      Assert.assertThrows(SQLException.class, () -> resultSet.findColumn("missing"));
+      Assert.assertThrows(SQLException.class, () -> resultSet.getString(0));
+      Assert.assertThrows(SQLException.class, () -> resultSet.getObject("missing"));
+      Assert.assertThrows(SQLException.class, () -> resultSet.getTimestamp("missing"));
+      Assert.assertThrows(
+          SQLException.class, () -> ((IoTDBJDBCResultSet) resultSet).getColumnTypeByIndex(0));
+
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      // check columnInfoList
+      Assert.assertEquals("Time", resultSetMetaData.getColumnName(1));
+      Assert.assertEquals("root.vehicle.d0.s2", resultSetMetaData.getColumnName(2));
+      Assert.assertEquals("root.vehicle.d0.s1", resultSetMetaData.getColumnName(3));
+      Assert.assertEquals("root.vehicle.d0.s0", resultSetMetaData.getColumnName(4));
+      Assert.assertEquals("root.vehicle.d0.s2", resultSetMetaData.getColumnName(5));
+      // check columnTypeList
+      Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+      Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(2));
+      Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
+      Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
+      Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
+      // check fetched result
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      List<Object> resultObjectList = new ArrayList<>();
+      for (int i = 1; i < colCount + 1; i++) { // meta title
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      resultStr.append("\n");
+      boolean firstRow = true;
+      while (resultSet.next()) { // data
+        if (firstRow) {
+          Assert.assertNull(resultSet.getDate(4));
+          Assert.assertTrue(resultSet.wasNull());
+          Assert.assertNull(resultSet.getTime(4));
+          Assert.assertTrue(resultSet.wasNull());
+          Assert.assertNull(resultSet.getTimestamp(4));
+          Assert.assertTrue(resultSet.wasNull());
+          Assert.assertNull(resultSet.getBigDecimal(4, 2));
+          Assert.assertTrue(resultSet.wasNull());
+          Assert.assertNull(resultSet.getBigDecimal("root.vehicle.d0.s0", 2));
+          Assert.assertTrue(resultSet.wasNull());
+          Assert.assertThrows(SQLException.class, () -> resultSet.getBigDecimal(4, -1));
+          firstRow = false;
+        }
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+          resultObjectList.add(resultSet.getObject(i));
+        }
+        resultStr.append("\n");
+        fetchResultsResp.hasResultSet = false; // at the second time to fetch
+      }
+      Assert.assertFalse(resultSet.next());
+      String standard =
+          "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
+              + "2,2.22,40000,null,2.22,\n"
+              + "3,3.33,null,null,3.33,\n"
+              + "4,4.44,null,null,4.44,\n"
+              + "50,null,50000,null,null,\n"
+              + "100,null,199,null,null,\n"
+              + "101,null,199,null,null,\n"
+              + "103,null,199,null,null,\n"
+              + "105,11.11,199,33333,11.11,\n"
+              + "1000,1000.11,55555,22222,1000.11,\n"; // Note the LIMIT&OFFSET clause takes effect
+      Assert.assertEquals(standard, resultStr.toString());
+      List<Object> standardObject = new ArrayList<>();
+      constructObjectList(standardObject);
+      Assert.assertEquals(standardObject.size(), resultObjectList.size());
+      for (int i = 0; i < standardObject.size(); i++) {
+        Assert.assertEquals(standardObject.get(i), resultObjectList.get(i));
+      }
+    }
+
+    // The client get TSQueryDataSet at the first request
+    verify(fetchResultsResp, times(0)).getStatus();
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testBigDecimalScaleUsesFractionalDigits() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    try (ResultSet resultSet = statement.getResultSet()) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(2L, resultSet.getLong(1));
+      Assert.assertEquals(new BigDecimal("2.2"), resultSet.getBigDecimal(2, 1));
+      Assert.assertEquals(new BigDecimal("2"), resultSet.getBigDecimal(2, 0));
+      Assert.assertEquals(new BigDecimal("2.2"), resultSet.getBigDecimal("root.vehicle.d0.s2", 1));
+      Assert.assertThrows(SQLException.class, () -> resultSet.getBigDecimal(2, -1));
+
+      boolean foundLargeValue = false;
+      while (resultSet.next()) {
+        if (resultSet.getLong(1) == 1000) {
+          Assert.assertEquals(new BigDecimal("1000.11"), resultSet.getBigDecimal(2, 2));
+          Assert.assertEquals(
+              new BigDecimal("1000.11"), resultSet.getBigDecimal("root.vehicle.d0.s2", 2));
+          foundLargeValue = true;
+          break;
+        }
+      }
+      Assert.assertTrue(foundLargeValue);
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTimestampByNameUsesConnectionTimePrecision() throws Exception {
+    when(connection.getTimeFactor()).thenReturn(1_000_000);
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    try (ResultSet resultSet = statement.getResultSet()) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(resultSet.getTimestamp(1), resultSet.getTimestamp("Time"));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testClosedResultSetRejectsCachedReads() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertTrue(resultSet.next());
+
+    resultSet.close();
+
+    Assert.assertTrue(resultSet.isClosed());
+    Assert.assertThrows(SQLException.class, () -> resultSet.isWrapperFor(ResultSet.class));
+    Assert.assertThrows(SQLException.class, () -> resultSet.unwrap(ResultSet.class));
+    Assert.assertThrows(SQLException.class, () -> resultSet.clearWarnings());
+    Assert.assertThrows(SQLException.class, () -> resultSet.next());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getBigDecimal(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getBlob(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getBytes(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getConcurrency());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getFetchDirection());
+    Assert.assertThrows(
+        SQLException.class, () -> resultSet.setFetchDirection(ResultSet.FETCH_FORWARD));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getFetchSize());
+    Assert.assertThrows(SQLException.class, () -> resultSet.setFetchSize(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getHoldability());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getStatement());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getString(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.findColumn("Time"));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getMetaData());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getType());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getWarnings());
+    Assert.assertThrows(SQLException.class, () -> resultSet.wasNull());
+    Assert.assertThrows(
+        SQLException.class, () -> ((IoTDBJDBCResultSet) resultSet).isSetTracingInfo());
+    Assert.assertThrows(
+        SQLException.class, () -> ((IoTDBJDBCResultSet) resultSet).isIgnoreTimeStamp());
+    Assert.assertThrows(
+        SQLException.class, () -> ((IoTDBJDBCResultSet) resultSet).getColumnTypeByIndex(1));
+    Assert.assertThrows(
+        SQLException.class, () -> ((IoTDBJDBCResultSet) resultSet).getOperationType());
+
+    SQLException unsupportedException =
+        Assert.assertThrows(SQLException.class, () -> resultSet.absolute(1));
+    Assert.assertEquals("ResultSet has been closed", unsupportedException.getMessage());
+    unsupportedException =
+        Assert.assertThrows(SQLException.class, () -> resultSet.updateString(1, "x"));
+    Assert.assertEquals("ResultSet has been closed", unsupportedException.getMessage());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testLocalResultSetCloseDoesNotCloseServerOperation() throws Exception {
+    ResultSet resultSet =
+        new IoTDBJDBCResultSet(
+            statement,
+            Collections.singletonList("s1"),
+            Collections.singletonList("INT32"),
+            Collections.singletonMap("s1", 0),
+            true,
+            client,
+            null,
+            -1,
+            sessionId,
+            Collections.<ByteBuffer>emptyList(),
+            null,
+            (long) 60 * 1000,
+            false,
+            zoneID);
+
+    resultSet.close();
+
+    Assert.assertTrue(resultSet.isClosed());
+    verify(client, times(0)).closeOperation(any(TSCloseOperationReq.class));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testResultSetCloseClearsStatementQueryId() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    resultSet.close();
+    statement.cancel();
+
+    Assert.assertTrue(resultSet.isClosed());
+    verify(client, times(0)).cancelOperation(any(TSCancelOperationReq.class));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testStatementCloseClosesCurrentResultSet() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertFalse(resultSet.isClosed());
+
+    statement.close();
+
+    Assert.assertTrue(statement.isClosed());
+    Assert.assertTrue(resultSet.isClosed());
+    Assert.assertThrows(SQLException.class, () -> resultSet.next());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testFailedCloseStillMarksResultSetClosed() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    TSStatus closeFailure = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    closeFailure.setMessage("close failed");
+    when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeFailure);
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertThrows(SQLException.class, resultSet::close);
+
+    Assert.assertTrue(resultSet.isClosed());
+    Assert.assertThrows(SQLException.class, resultSet::next);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testExecuteRetriesFailedResultSetClose() throws Exception {
+    mockVehicleQueryResponse();
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+    ResultSet previousResultSet = statement.getResultSet();
+    TSStatus closeFailure = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    closeFailure.setMessage("close failed");
+    when(client.closeOperation(any(TSCloseOperationReq.class)))
+        .thenReturn(closeFailure, successStatus);
+
+    Assert.assertThrows(
+        SQLException.class, () -> statement.execute("select * from root.vehicle.d0"));
+    Assert.assertTrue(previousResultSet.isClosed());
+    Assert.assertSame(previousResultSet, statement.getResultSet());
+    verify(client, times(1)).executeStatementV2(any(TSExecuteStatementReq.class));
+
+    mockVehicleQueryResponse();
+    execResp.queryResult = FakedFirstFetchTsBlockResult();
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+    verify(client, times(2)).closeOperation(any(TSCloseOperationReq.class));
+    Assert.assertNotSame(previousResultSet, statement.getResultSet());
+    statement.getResultSet().close();
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testExplicitCloseRetriesFailedServerCleanup() throws Exception {
+    mockVehicleQueryResponse();
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+    ResultSet resultSet = statement.getResultSet();
+    TSStatus closeFailure = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    closeFailure.setMessage("close failed");
+    when(client.closeOperation(any(TSCloseOperationReq.class)))
+        .thenReturn(closeFailure, successStatus);
+
+    Assert.assertThrows(SQLException.class, resultSet::close);
+    Assert.assertTrue(resultSet.isClosed());
+    resultSet.close();
+    resultSet.close();
+
+    verify(client, times(2)).closeOperation(any(TSCloseOperationReq.class));
+    statement.cancel();
+    verify(client, times(0)).cancelOperation(any(TSCancelOperationReq.class));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testStatementExecutionClosesPreviousResultSet() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet previousResultSet = statement.getResultSet();
+    Assert.assertFalse(previousResultSet.isClosed());
+
+    mockVehicleQueryResponse();
+    execResp.queryResult = FakedFirstFetchTsBlockResult();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    Assert.assertTrue(previousResultSet.isClosed());
+    Assert.assertThrows(SQLException.class, () -> previousResultSet.next());
+
+    ResultSet currentResultSet = statement.getResultSet();
+    Assert.assertNotSame(previousResultSet, currentResultSet);
+    Assert.assertFalse(currentResultSet.isClosed());
+
+    currentResultSet.close();
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testExecuteUpdateClosesCurrentResultSet() throws Exception {
+    mockVehicleQueryResponse();
+    when(client.executeUpdateStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertFalse(resultSet.isClosed());
+
+    Assert.assertEquals(0, statement.executeUpdate("insert into root.sg.d(time,s) values(1,1)"));
+
+    Assert.assertTrue(resultSet.isClosed());
+    Assert.assertNull(statement.getResultSet());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetMoreResultsClosesCurrentResultSet() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertFalse(resultSet.isClosed());
+
+    Assert.assertFalse(statement.getMoreResults());
+
+    Assert.assertTrue(resultSet.isClosed());
+    Assert.assertNull(statement.getResultSet());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testExhaustedResultSetIsNotReportedClosed() throws Exception {
+    mockTextQueryResponse();
+
+    Assert.assertTrue(statement.execute("select s3 from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertTrue(resultSet.next());
+    Assert.assertFalse(resultSet.next());
+    Assert.assertFalse(resultSet.isClosed());
+    Assert.assertEquals(ResultSet.TYPE_FORWARD_ONLY, resultSet.getType());
+
+    resultSet.close();
+
+    Assert.assertTrue(resultSet.isClosed());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testInvalidBigDecimalConversionThrowsSQLException() throws Exception {
+    mockTextQueryResponse();
+
+    Assert.assertTrue(statement.execute("select s3 from root.vehicle.d0"));
+
+    try (ResultSet resultSet = statement.getResultSet()) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertThrows(SQLException.class, () -> resultSet.getBigDecimal(2));
+      Assert.assertThrows(SQLException.class, () -> resultSet.getBigDecimal("root.vehicle.d0.s3"));
+    }
+  }
+
+  private void mockVehicleQueryResponse() {
     List<String> columns = new ArrayList<>();
     columns.add("root.vehicle.d0.s2");
     columns.add("root.vehicle.d0.s1");
@@ -190,75 +632,6 @@ public class IoTDBJDBCResultSetTest {
         .doReturn("FLOAT")
         .when(fetchMetadataResp)
         .getDataType();
-
-    boolean hasResultSet = statement.execute(testSql);
-    Assert.assertTrue(hasResultSet);
-
-    verify(fetchMetadataResp, times(0)).getDataType();
-
-    /*
-     * step 2: fetch result
-     */
-    fetchResultsResp.hasResultSet = true; // at the first time to fetch
-
-    try (ResultSet resultSet = statement.getResultSet()) {
-      // check columnInfoMap
-      Assert.assertEquals(1, resultSet.findColumn("Time"));
-      Assert.assertEquals(2, resultSet.findColumn("root.vehicle.d0.s2"));
-      Assert.assertEquals(3, resultSet.findColumn("root.vehicle.d0.s1"));
-      Assert.assertEquals(4, resultSet.findColumn("root.vehicle.d0.s0"));
-
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      // check columnInfoList
-      Assert.assertEquals("Time", resultSetMetaData.getColumnName(1));
-      Assert.assertEquals("root.vehicle.d0.s2", resultSetMetaData.getColumnName(2));
-      Assert.assertEquals("root.vehicle.d0.s1", resultSetMetaData.getColumnName(3));
-      Assert.assertEquals("root.vehicle.d0.s0", resultSetMetaData.getColumnName(4));
-      Assert.assertEquals("root.vehicle.d0.s2", resultSetMetaData.getColumnName(5));
-      // check columnTypeList
-      Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-      Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(2));
-      Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
-      Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
-      Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
-      // check fetched result
-      int colCount = resultSetMetaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      List<Object> resultObjectList = new ArrayList<>();
-      for (int i = 1; i < colCount + 1; i++) { // meta title
-        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-      }
-      resultStr.append("\n");
-      while (resultSet.next()) { // data
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
-          resultObjectList.add(resultSet.getObject(i));
-        }
-        resultStr.append("\n");
-        fetchResultsResp.hasResultSet = false; // at the second time to fetch
-      }
-      String standard =
-          "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
-              + "2,2.22,40000,null,2.22,\n"
-              + "3,3.33,null,null,3.33,\n"
-              + "4,4.44,null,null,4.44,\n"
-              + "50,null,50000,null,null,\n"
-              + "100,null,199,null,null,\n"
-              + "101,null,199,null,null,\n"
-              + "103,null,199,null,null,\n"
-              + "105,11.11,199,33333,11.11,\n"
-              + "1000,1000.11,55555,22222,1000.11,\n"; // Note the LIMIT&OFFSET clause takes effect
-      Assert.assertEquals(standard, resultStr.toString());
-      List<Object> standardObject = new ArrayList<>();
-      constructObjectList(standardObject);
-      Assert.assertEquals(standardObject.size(), resultObjectList.size());
-      for (int i = 0; i < standardObject.size(); i++) {
-        Assert.assertEquals(standardObject.get(i), resultObjectList.get(i));
-      }
-    }
-
-    // The client get TSQueryDataSet at the first request
-    verify(fetchResultsResp, times(0)).getStatus();
   }
 
   /**
@@ -279,6 +652,7 @@ public class IoTDBJDBCResultSetTest {
       Assert.assertEquals("2", resultSet.getString(1));
       Assert.assertEquals(new Timestamp(2), resultSet.getObject(1));
       Assert.assertEquals(new Timestamp(2), resultSet.getTimestamp(1));
+      Assert.assertEquals(new Timestamp(2), resultSet.getTimestamp("Time"));
 
       // The strictly-typed ones must report a SQLException, not an unchecked exception.
       assertTimeColumnRejected(() -> resultSet.getBoolean(1));
@@ -290,6 +664,196 @@ public class IoTDBJDBCResultSetTest {
       // Reading by name goes through the same path.
       assertTimeColumnRejected(() -> resultSet.getInt("Time"));
     }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetObjectConvertsToRequestedClass() throws Exception {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000_000, allTypesRow())) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(Boolean.TRUE, resultSet.getObject(1, Boolean.class));
+      Assert.assertEquals(Integer.valueOf(42), resultSet.getObject(2, Integer.class));
+      Assert.assertEquals(Long.valueOf(42L), resultSet.getObject(2, Long.class));
+      Assert.assertEquals(Long.valueOf(7L), resultSet.getObject(3, Long.class));
+      Assert.assertEquals(Float.valueOf(1.5F), resultSet.getObject(4, Float.class));
+      Assert.assertEquals(Double.valueOf(1.5D), resultSet.getObject(4, Double.class));
+      Assert.assertEquals(Double.valueOf(2.25D), resultSet.getObject(5, Double.class));
+      Assert.assertEquals("hello", resultSet.getObject(6, String.class));
+      Assert.assertArrayEquals(new byte[] {1, 2, 3}, resultSet.getObject(7, byte[].class));
+      Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
+      expectedTimestamp.setNanos(123_456_000);
+      Assert.assertEquals(expectedTimestamp, resultSet.getObject(8, Timestamp.class));
+      Assert.assertEquals(Long.valueOf(1_700_000_000_123_456L), resultSet.getObject(8, Long.class));
+      Assert.assertEquals(LocalDate.of(2024, 1, 15), resultSet.getObject(9, LocalDate.class));
+      Assert.assertEquals("42", resultSet.getObject(2, String.class));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetObjectReturnsNullForSqlNull() throws Exception {
+    try (ResultSet resultSet =
+        executeTableModelQueryWithAllTypes(1_000, new Object[ALL_TYPES.size()])) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertNull(resultSet.getObject(1, Boolean.class));
+      Assert.assertNull(resultSet.getObject(2, Integer.class));
+      Assert.assertNull(resultSet.getObject(3, Long.class));
+      Assert.assertNull(resultSet.getObject(4, Float.class));
+      Assert.assertNull(resultSet.getObject(5, Double.class));
+      Assert.assertNull(resultSet.getObject(6, String.class));
+      Assert.assertNull(resultSet.getObject(7, byte[].class));
+      Assert.assertNull(resultSet.getObject(8, Timestamp.class));
+      Assert.assertNull(resultSet.getObject(9, LocalDate.class));
+      Assert.assertTrue(resultSet.wasNull());
+      Assert.assertNull(resultSet.getObject("i", Integer.class));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetObjectRejectsUnsupportedConversion() throws Exception {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000, allTypesRow())) {
+      Assert.assertTrue(resultSet.next());
+      assertRejectedWithSqlException(() -> resultSet.getObject(6, Integer.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(1, Long.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(9, Timestamp.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(2, StringBuilder.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject(2, (Class<?>) null));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetObjectByLabelConvertsToRequestedClass() throws Exception {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000_000, allTypesRow())) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(Integer.valueOf(42), resultSet.getObject("i", Integer.class));
+      Assert.assertEquals(Long.valueOf(7L), resultSet.getObject("l", Long.class));
+      Assert.assertEquals("hello", resultSet.getObject("s", String.class));
+      Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
+      expectedTimestamp.setNanos(123_456_000);
+      Assert.assertEquals(expectedTimestamp, resultSet.getObject("ts", Timestamp.class));
+      Assert.assertEquals(LocalDate.of(2024, 1, 15), resultSet.getObject("dt", LocalDate.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject("s", Integer.class));
+      assertRejectedWithSqlException(() -> resultSet.getObject("no_such_column", Integer.class));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetTimestampHonorsTimePrecisionByIndexAndLabel() throws Exception {
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000_000, allTypesRow())) {
+      Assert.assertTrue(resultSet.next());
+      Timestamp expectedTimestamp = new Timestamp(1_700_000_000_123L);
+      expectedTimestamp.setNanos(123_456_000);
+      Assert.assertEquals(expectedTimestamp, resultSet.getTimestamp(8));
+      Assert.assertEquals(expectedTimestamp, resultSet.getTimestamp("ts"));
+      assertRejectedWithSqlException(() -> resultSet.getTimestamp("no_such_column"));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetTimestampKeepsPreEpochValues() throws Exception {
+    Object[] row = allTypesRow();
+    // 1.5 seconds before the epoch, in milliseconds
+    row[7] = -1_500L;
+    try (ResultSet resultSet = executeTableModelQueryWithAllTypes(1_000, row)) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(new Timestamp(-1_500L), resultSet.getTimestamp("ts"));
+      Assert.assertEquals(new Timestamp(-1_500L), resultSet.getTimestamp(8));
+      Assert.assertEquals(new Timestamp(-1_500L), resultSet.getObject(8, Timestamp.class));
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetTimestampReturnsNullForSqlNull() throws Exception {
+    try (ResultSet resultSet =
+        executeTableModelQueryWithAllTypes(1_000, new Object[ALL_TYPES.size()])) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertNull(resultSet.getTimestamp(8));
+      Assert.assertTrue(resultSet.wasNull());
+      Assert.assertNull(resultSet.getTimestamp("ts"));
+      Assert.assertTrue(resultSet.wasNull());
+    }
+  }
+
+  private void assertRejectedWithSqlException(ResultSetRead read) {
+    try {
+      read.run();
+      Assert.fail("the read should have been rejected");
+    } catch (SQLException e) {
+      // expected
+    } catch (RuntimeException e) {
+      Assert.fail(
+          "expected a SQLException but got " + e.getClass().getName() + ": " + e.getMessage());
+    }
+  }
+
+  /** One value of each type in ALL_TYPES; the TIMESTAMP is in microseconds. */
+  private static Object[] allTypesRow() {
+    return new Object[] {
+      true, 42, 7L, 1.5F, 2.25D, "hello", new byte[] {1, 2, 3}, 1_700_000_000_123_456L, 20240115
+    };
+  }
+
+  /** Runs a table-model query whose single row holds one column of each type in ALL_TYPES. */
+  private ResultSet executeTableModelQueryWithAllTypes(int timeFactor, Object[] row)
+      throws Exception {
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(ALL_TYPES);
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0);
+    for (int i = 0; i < ALL_TYPES.size(); i++) {
+      ColumnBuilder columnBuilder = tsBlockBuilder.getColumnBuilder(i);
+      Object value = row[i];
+      if (value == null) {
+        columnBuilder.appendNull();
+        continue;
+      }
+      switch (ALL_TYPES.get(i)) {
+        case BOOLEAN:
+          columnBuilder.writeBoolean((Boolean) value);
+          break;
+        case INT32:
+        case DATE:
+          columnBuilder.writeInt((Integer) value);
+          break;
+        case INT64:
+        case TIMESTAMP:
+          columnBuilder.writeLong((Long) value);
+          break;
+        case FLOAT:
+          columnBuilder.writeFloat((Float) value);
+          break;
+        case DOUBLE:
+          columnBuilder.writeDouble((Double) value);
+          break;
+        case STRING:
+          columnBuilder.writeBinary(new Binary((String) value, TSFileConfig.STRING_CHARSET));
+          break;
+        default:
+          columnBuilder.writeBinary(new Binary((byte[]) value));
+          break;
+      }
+    }
+    tsBlockBuilder.declarePosition();
+
+    List<String> columns = Arrays.asList("b", "i", "l", "f", "d", "s", "blob", "ts", "dt");
+    TSExecuteStatementResp resp = new TSExecuteStatementResp(successStatus);
+    resp.setQueryId(queryId);
+    resp.setColumns(columns);
+    resp.setDataTypeList(ALL_TYPES.stream().map(TSDataType::name).collect(Collectors.toList()));
+    resp.setIgnoreTimeStamp(true);
+    resp.setTableModel(true);
+    resp.setMoreData(false);
+    resp.setColumnIndex2TsBlockColumnIndexList(
+        IntStream.range(0, columns.size()).boxed().collect(Collectors.toList()));
+    resp.setQueryResult(
+        Collections.singletonList(new TsBlockSerde().serialize(tsBlockBuilder.build())));
+
+    when(connection.getTimeFactor()).thenReturn(timeFactor);
+    when(client.executeQueryStatementV2(any(TSExecuteStatementReq.class))).thenReturn(resp);
+    return statement.executeQuery("select * from all_types");
   }
 
   @FunctionalInterface
@@ -348,6 +912,25 @@ public class IoTDBJDBCResultSetTest {
     Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
     fetchResultsResp.hasResultSet = true;
     return statement.getResultSet();
+  }
+
+  private void mockTextQueryResponse() {
+    List<String> columns = new ArrayList<>(Collections.singletonList("root.vehicle.d0.s3"));
+    List<String> dataTypeList = new ArrayList<>(Collections.singletonList("TEXT"));
+
+    when(execResp.isSetColumns()).thenReturn(true);
+    when(execResp.getColumns()).thenReturn(columns);
+    when(execResp.isSetDataTypeList()).thenReturn(true);
+    when(execResp.getDataTypeList()).thenReturn(dataTypeList);
+    when(execResp.isSetOperationType()).thenReturn(true);
+    when(execResp.getOperationType()).thenReturn("QUERY");
+    when(execResp.isSetQueryId()).thenReturn(true);
+    when(execResp.getQueryId()).thenReturn(queryId);
+    when(execResp.isSetTableModel()).thenReturn(false);
+    when(execResp.isIgnoreTimeStamp()).thenReturn(false);
+    when(execResp.getColumnIndex2TsBlockColumnIndexList())
+        .thenReturn(new ArrayList<>(Collections.singletonList(0)));
+    execResp.queryResult = fakedTextFetchTsBlockResult();
   }
 
   private void constructObjectList(List<Object> standardObject) {
@@ -443,6 +1026,24 @@ public class IoTDBJDBCResultSetTest {
 
       tsBlockBuilder.declarePosition();
     }
+
+    ByteBuffer tsBlock = null;
+    try {
+      tsBlock = new TsBlockSerde().serialize(tsBlockBuilder.build());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    return Collections.singletonList(tsBlock);
+  }
+
+  private List<ByteBuffer> fakedTextFetchTsBlockResult() {
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(1L);
+    tsBlockBuilder
+        .getColumnBuilder(0)
+        .writeBinary(new Binary("not-a-number", TSFileConfig.STRING_CHARSET));
+    tsBlockBuilder.declarePosition();
 
     ByteBuffer tsBlock = null;
     try {

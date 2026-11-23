@@ -76,7 +76,8 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
           };
 
   private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
-  protected static final String CONVERT_ERROR_MSG = "Convert tsBlock error: {}";
+  protected static final String CONVERT_ERROR_MSG =
+      JdbcMessages.EXCEPTION_CONVERT_TSBLOCK_ERROR_ARG_D9D4A78D;
 
   protected IoTDBConnection connection;
   protected IClientRPCService.Iface client;
@@ -92,6 +93,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   protected static final String BLOB = "BLOB";
   protected static final String TIMESTAMP = "TIMESTAMP";
   protected static final String DATE = "DATE";
+  protected static final String OBJECT = "OBJECT";
 
   protected static String sqlKeywordsThatArentSQL92;
 
@@ -415,10 +417,15 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     for (List<Object> valuesInRow : valuesList) {
       tsBlockBuilder.getTimeColumnBuilder().writeLong(0);
       for (int j = 0; j < tsDataTypeList.size(); j++) {
+        Object value = valuesInRow.get(j);
+        if (value == null) {
+          tsBlockBuilder.getColumnBuilder(j).appendNull();
+          continue;
+        }
         TSDataType columnType = tsDataTypeList.get(j);
         COLUMN_VALUE_WRITER_SERVICE
             .call(Type.fromTsDataType(columnType))
-            .write(tsBlockBuilder.getColumnBuilder(j), valuesInRow.get(j));
+            .write(tsBlockBuilder.getColumnBuilder(j), value);
       }
       tsBlockBuilder.declarePosition();
     }
@@ -474,6 +481,9 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         return Types.TIMESTAMP;
       case DATE:
         return Types.DATE;
+      case OBJECT:
+        // Database-specific: getObject() describes the value instead of returning it
+        return Types.OTHER;
       default:
         break;
     }
@@ -495,6 +505,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
       case "TEXT":
       case BLOB:
       case STRING:
+      case OBJECT:
         return Integer.MAX_VALUE;
       case TIMESTAMP:
         return 3;
@@ -539,17 +550,20 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public String getURL() throws SQLException {
+    checkConnectionOpen();
     // TODO: Return the URL for this DBMS or null if it cannot be generated
     return this.connection.getUrl();
   }
 
   @Override
   public String getUserName() throws SQLException {
+    checkConnectionOpen();
     return connection.getUserName();
   }
 
   @Override
   public boolean isReadOnly() throws SQLException {
+    checkConnectionOpen();
     try {
       return client.getProperties().isReadOnly;
     } catch (TException e) {
@@ -585,6 +599,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public String getDatabaseProductVersion() throws SQLException {
+    checkConnectionOpen();
     String serverVersion = "";
     String sql = "SHOW VERSION";
     try (Statement stmt = this.connection.createStatement();
@@ -681,6 +696,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public String getSystemFunctions() throws SQLException {
+    checkConnectionOpen();
     String result = "";
     Statement statement = null;
     ResultSet resultSet = null;
@@ -1037,6 +1053,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public int getMaxConnections() throws SQLException {
+    checkConnectionOpen();
     int maxcount = 0;
     try {
       maxcount = client.getProperties().getMaxConcurrentClientNum();
@@ -1083,6 +1100,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public int getMaxStatementLength() throws SQLException {
+    checkConnectionOpen();
     try {
       return client.getProperties().getThriftMaxFrameSize();
     } catch (TException e) {
@@ -2284,6 +2302,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public Connection getConnection() throws SQLException {
+    checkConnectionOpen();
     return connection;
   }
 
@@ -2462,6 +2481,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public int getDatabaseMajorVersion() throws SQLException {
+    checkConnectionOpen();
     int majorVersion = 0;
     try {
       String version = client.getProperties().getVersion();
@@ -2477,6 +2497,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public int getDatabaseMinorVersion() throws SQLException {
+    checkConnectionOpen();
     int minorVersion = 0;
     try {
       String version = client.getProperties().getVersion();
@@ -2858,11 +2879,20 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    checkConnectionOpen();
+    return JdbcWrapperUtils.unwrap(this, arg0);
   }
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    checkConnectionOpen();
+    return JdbcWrapperUtils.isWrapperFor(this, arg0);
+  }
+
+  protected final void checkConnectionOpen() throws SQLException {
+    if (connection == null || connection.isClosed()) {
+      throw new SQLException(
+          String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, "get metadata"));
+    }
   }
 }

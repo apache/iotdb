@@ -20,6 +20,7 @@
 package org.apache.iotdb.library.dprofile;
 
 import org.apache.iotdb.library.dprofile.util.LTThreeBuckets;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.TypeServices;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -68,14 +69,14 @@ public class UDTFSample implements UDTF {
         .validateInputSeriesNumber(1)
         .validate(
             k -> (int) k > 0,
-            "k should be a positive integer.",
+            LibraryUdfMessages.EXCEPTION_K_SHOULD_BE_A_POSITIVE_INTEGER_8B9C3E96,
             validator.getParameters().getIntOrDefault("k", 1))
         .validate(
             method ->
                 "isometric".equalsIgnoreCase((String) method)
                     || METHOD_RESERVOIR.equalsIgnoreCase((String) method)
                     || "triangle".equalsIgnoreCase((String) method),
-            "Illegal sampling method.",
+            LibraryUdfMessages.EXCEPTION_ILLEGAL_SAMPLING_METHOD_4E8BB494,
             validator.getParameters().getStringOrDefault("method", METHOD_RESERVOIR));
   }
 

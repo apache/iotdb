@@ -159,7 +159,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         TreeViewSchema.TREE_PATH_PATTERN,
         NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".**");
     DataNodeTableCache.getInstance().preUpdateTable(tableDbName, tsTable, null);
-    DataNodeTableCache.getInstance().commitUpdateTable(tableDbName, tableViewName, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(tableDbName, tableViewName, null, null);
   }
 
   @After
@@ -660,7 +660,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
 
     LocalExecutionPlanContext localExecutionPlanContext =
         new LocalExecutionPlanContext(
-            typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
+            typeProvider, fragmentInstanceContext, new DataNodeQueryContext());
     Operator operator =
         tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
     ((DataDriverContext) localExecutionPlanContext.getDriverContext())

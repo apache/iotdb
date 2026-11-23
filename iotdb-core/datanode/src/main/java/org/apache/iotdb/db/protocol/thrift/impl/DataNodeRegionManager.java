@@ -38,6 +38,7 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -220,7 +221,12 @@ public class DataNodeRegionManager {
       if (!schemaEngine.deleteSchemaRegion(schemaRegionId)) {
         return RpcUtils.getStatus(TSStatusCode.REGION_NOT_EXIST);
       }
-      PipeDataNodeAgent.runtime().schemaListener(schemaRegionId).close();
+      final SchemaRegionListeningQueue listener =
+          PipeDataNodeAgent.runtime().schemaListenerIfPresent(schemaRegionId);
+      if (listener != null) {
+        listener.close();
+      }
+      PipeDataNodeAgent.runtime().clearSchemaRegionState(schemaRegionId);
       schemaRegionLockMap.remove(schemaRegionId);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {

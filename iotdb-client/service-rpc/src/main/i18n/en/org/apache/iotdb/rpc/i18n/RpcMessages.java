@@ -119,4 +119,45 @@ public final class RpcMessages {
   public static final String EXCEPTION_KEYSTORE_OR_TRUSTSTORE_FILE_NOT_FOUND_5A6845B2 =
       "keystore or truststore file not found: ";
 
+  public static final String EXCEPTION_MULTIPLE_ERROR_OCCUR_MESSAGES_75A34A00 =
+      "Multiple error occur, messages: ";
+
+  public static final String EXCEPTION_THE_VALUE_GOT_BY_ARG_COLUMN_NAME_IS_NULL_65408BDE =
+      "The value got by %s (column name) is NULL.";
+
+  public static final String EXCEPTION_DATA_TYPE_ARG_IS_NOT_SUPPORTED_31213160 =
+      "Data type %s is not supported.";
+
+  public static final String EXCEPTION_EMPTY_FRAGMENT_RECEIVED_WHEN_ASSEMBLING_A_CHUNKED_QUERY_RESULT_03A0EF39 =
+      "Empty fragment received when assembling a chunked query result";
+  public static final String
+      EXCEPTION_FRAGMENT_OFFSET_ARG_DOES_NOT_MATCH_THE_ACCUMULATED_LENGTH_ARG_1EB45347 =
+          "Fragment offset %d does not match the accumulated length %d";
+  public static final String EXCEPTION_MISSING_TOTALLENGTH_FOR_THE_FIRST_FRAGMENT_OF_A_CHUNKED_TSBLOCK_1D11374F =
+      "Missing totalLength for the first fragment of a chunked TsBlock";
+  public static final String
+      EXCEPTION_ASSEMBLED_FRAGMENT_LENGTH_ARG_DOES_NOT_MATCH_THE_TOTAL_LENGTH_ARG_925DCB15 =
+          "Assembled fragment length %d does not match the total length %d";
+
+  public static final String EXCEPTION_INVALID_BUFFER_SIZE_ARG_5131C6CA =
+      "Invalid buffer size: %d";
+
+  public static final String EXCEPTION_WRITE_BUFFER_SIZE_ARG_LARGER_THAN_MAXIMUM_BUFFER_SIZE_ARG_C0A47F3D =
+      "Write buffer size (%d) larger than maximum buffer size (%d)!";
+
+  public static final String EXCEPTION_INVALID_COMPRESSION_BUFFER_SIZE_ARG_D677543D =
+      "Invalid compression buffer size: %d";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_E21E05CA =
+      "Serialized frame size is at least %d bytes, exceeding the maximum Java array size of %d bytes.";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_1CDD4BB9 =
+      "Serialized frame size is at least %d bytes, exceeding the configured Thrift max frame size of %d bytes.";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_MAXIMUM_JAVA_ARRAY_SIZE_OF_ARG_BYTES_TO_ARG_6F166F0C =
+      "Serialized frame size is at least %d bytes, exceeding the maximum Java array size of %d bytes to %s.";
+
+  public static final String EXCEPTION_SERIALIZED_FRAME_SIZE_IS_AT_LEAST_ARG_BYTES_EXCEEDING_THE_CONFIGURED_THRIFT_MAX_FRAME_SIZE_OF_ARG_BYTES_TO_ARG_7EF64898 =
+      "Serialized frame size is at least %d bytes, exceeding the configured Thrift max frame size of %d bytes to %s.";
+
 }

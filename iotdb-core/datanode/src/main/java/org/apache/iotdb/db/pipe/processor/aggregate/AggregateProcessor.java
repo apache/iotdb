@@ -77,11 +77,13 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -146,34 +148,87 @@ public class AggregateProcessor implements PipeProcessor {
     validator
         .validate(
             arg -> !((String) arg).isEmpty(),
-            String.format("The parameter %s must not be empty.", PROCESSOR_OPERATORS_KEY),
+            String.format(
+                DataNodePipeMessages.EXCEPTION_THE_PARAMETER_ARG_MUST_NOT_BE_EMPTY_CDF15003,
+                PROCESSOR_OPERATORS_KEY),
+            parameters.getStringOrDefault(
+                PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE))
+        .validate(
+            arg -> areUniqueOperatorNames((String) arg),
+            String.format(
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_THE_AGGREGATOR_AND_OUTPUT_NAME_S_IS_INVALID_BC22CF92,
+                parameters.getStringOrDefault(
+                    PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE)),
             parameters.getStringOrDefault(
                 PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE))
         .validate(
             arg -> !((String) arg).isEmpty(),
-            String.format("The parameter %s must not be empty.", PROCESSOR_WINDOWING_STRATEGY_KEY),
+            String.format(
+                DataNodePipeMessages.EXCEPTION_THE_PARAMETER_ARG_MUST_NOT_BE_EMPTY_CDF15003,
+                PROCESSOR_WINDOWING_STRATEGY_KEY),
             parameters.getStringOrDefault(
                 PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE))
         .validate(
             arg -> ((String) arg).isEmpty() || ((String) arg).startsWith("root."),
             String.format(
-                "The output database %s shall start with root.",
+                DataNodePipeMessages.MESSAGE_THE_OUTPUT_DATABASE_ARG_SHALL_START_WITH_ROOT_54921196,
                 parameters.getStringOrDefault(
                     PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE)),
             parameters.getStringOrDefault(
                 PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE))
         .validate(
             arg ->
-                ((String) arg).isEmpty()
-                    || Arrays.stream(((String) arg).replace(" ", "").split(","))
-                        .allMatch(this::isLegalMeasurement),
+                areLegalOutputMeasurements(
+                    (String) arg,
+                    parameters.getStringOrDefault(
+                        PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE)),
             String.format(
-                "The output measurements %s contains illegal measurements, the measurements must be the last level of a legal path",
+                DataNodePipeMessages
+                    .MESSAGE_THE_OUTPUT_MEASUREMENTS_ARG_CONTAINS_ILLEGAL_MEASUREMENTS_THE_MEASUREMENTS_MUST_BE_THE_LAST_LEVEL_OF_A_LEGAL_PATH_793FA8AE,
                 parameters.getStringOrDefault(
                     PROCESSOR_OUTPUT_MEASUREMENTS_KEY,
                     PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE)),
             parameters.getStringOrDefault(
                 PROCESSOR_OUTPUT_MEASUREMENTS_KEY, PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE));
+  }
+
+  private boolean areUniqueOperatorNames(final String operatorString) {
+    final String[] operatorNames = operatorString.replace(" ", "").split(",", -1);
+    final Set<String> uniqueOperatorNames = new HashSet<>();
+    return Arrays.stream(operatorNames)
+        .allMatch(
+            operatorName ->
+                !operatorName.isEmpty()
+                    && uniqueOperatorNames.add(operatorName.toLowerCase(Locale.ROOT)));
+  }
+
+  private boolean areLegalOutputMeasurements(
+      final String outputMeasurementString, final String operatorString) {
+    if (outputMeasurementString.isEmpty()) {
+      return true;
+    }
+
+    final String[] outputMeasurementNames =
+        Arrays.stream(outputMeasurementString.replace(" ", "").split(",", -1))
+            .toArray(String[]::new);
+    final String[] operatorNames = operatorString.replace(" ", "").split(",", -1);
+    if (outputMeasurementNames.length > operatorNames.length) {
+      return false;
+    }
+
+    final Set<String> uniqueOutputMeasurementNames = new HashSet<>();
+    for (int index = 0; index < operatorNames.length; ++index) {
+      final String outputMeasurementName =
+          index < outputMeasurementNames.length
+              ? outputMeasurementNames[index]
+              : operatorNames[index];
+      if ((index < outputMeasurementNames.length && !isLegalMeasurement(outputMeasurementName))
+          || !uniqueOutputMeasurementNames.add(outputMeasurementName)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private boolean isLegalMeasurement(final String measurement) {
@@ -221,12 +276,14 @@ public class AggregateProcessor implements PipeProcessor {
     // The output max delay milliseconds must be set to at least 1
     // to guarantee the correctness of the CAS in last receive time
     outputMaxDelayMilliseconds =
-        outputMaxDelaySeconds < 0 ? Long.MAX_VALUE : Math.max(outputMaxDelaySeconds * 1000, 1);
+        outputMaxDelaySeconds < 0
+            ? Long.MAX_VALUE
+            : Math.max(secondsToMilliseconds(outputMaxDelaySeconds), 1);
     outputMinReportIntervalMilliseconds =
-        parameters.getLongOrDefault(
+        secondsToMilliseconds(
+            parameters.getLongOrDefault(
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY,
-                PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE)
-            * 1000;
+                PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE));
     outputDatabase =
         parameters.getStringOrDefault(
             PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
@@ -255,10 +312,10 @@ public class AggregateProcessor implements PipeProcessor {
     for (int i = 0; i < operatorNameList.size(); ++i) {
       if (i < outputMeasurementNameList.size()) {
         aggregatorName2OutputNameMap.put(
-            operatorNameList.get(i).toLowerCase(), outputMeasurementNameList.get(i));
+            operatorNameList.get(i).toLowerCase(Locale.ROOT), outputMeasurementNameList.get(i));
       } else {
         aggregatorName2OutputNameMap.put(
-            operatorNameList.get(i).toLowerCase(), operatorNameList.get(i));
+            operatorNameList.get(i).toLowerCase(Locale.ROOT), operatorNameList.get(i));
       }
     }
 
@@ -276,11 +333,13 @@ public class AggregateProcessor implements PipeProcessor {
       operatorProcessor.getAggregatorOperatorSet().stream()
           .filter(
               operator ->
-                  aggregatorName2OutputNameMap.containsKey(operator.getName().toLowerCase()))
+                  aggregatorName2OutputNameMap.containsKey(
+                      operator.getName().toLowerCase(Locale.ROOT)))
           .forEach(
               operator -> {
                 outputName2OperatorMap.put(
-                    aggregatorName2OutputNameMap.get(operator.getName().toLowerCase()), operator);
+                    aggregatorName2OutputNameMap.get(operator.getName().toLowerCase(Locale.ROOT)),
+                    operator);
                 declaredIntermediateResultSet.addAll(operator.getDeclaredIntermediateValueNames());
               });
 
@@ -448,7 +507,7 @@ public class AggregateProcessor implements PipeProcessor {
       final String timeSeries =
           (outputDatabaseWithPathSeparator.isEmpty()
                   ? row.getDeviceId()
-                  : row.getDeviceId().replaceFirst(databaseWithPathSeparator, ""))
+                  : stripDatabasePrefix(row.getDeviceId(), databaseWithPathSeparator))
               + TsFileConstant.PATH_SEPARATOR
               + row.getColumnName(index);
 
@@ -580,6 +639,16 @@ public class AggregateProcessor implements PipeProcessor {
     }
   }
 
+  static String stripDatabasePrefix(final String deviceId, final String databaseWithPathSeparator) {
+    return deviceId.startsWith(databaseWithPathSeparator)
+        ? deviceId.substring(databaseWithPathSeparator.length())
+        : deviceId;
+  }
+
+  static long secondsToMilliseconds(final long seconds) {
+    return TimeUnit.SECONDS.toMillis(seconds);
+  }
+
   /**
    * Collect {@link WindowOutput}s of a single timeSeries in one turn. The {@link TSDataType}s shall
    * be the same because the {@link AggregatedResultOperator}s shall return the same value for the
@@ -595,19 +664,7 @@ public class AggregateProcessor implements PipeProcessor {
     if (Objects.isNull(outputs) || outputs.isEmpty()) {
       return;
     }
-    // Sort and same timestamps removal
-    outputs.sort(Comparator.comparingLong(WindowOutput::getTimestamp));
-
-    final AtomicLong lastValue = new AtomicLong(Long.MIN_VALUE);
-    final List<WindowOutput> distinctOutputs = new ArrayList<>();
-    outputs.forEach(
-        output -> {
-          final long timeStamp = output.getTimestamp();
-          if (timeStamp != lastValue.get()) {
-            lastValue.set(timeStamp);
-            distinctOutputs.add(output);
-          }
-        });
+    final List<WindowOutput> distinctOutputs = sortAndDeduplicateOutputs(outputs);
 
     final MeasurementSchema[] measurementSchemaList =
         new MeasurementSchema[columnNameStringList.length];
@@ -751,14 +808,38 @@ public class AggregateProcessor implements PipeProcessor {
     }
   }
 
+  static List<WindowOutput> sortAndDeduplicateOutputs(final List<WindowOutput> outputs) {
+    outputs.sort(Comparator.comparingLong(WindowOutput::getTimestamp));
+
+    final List<WindowOutput> distinctOutputs = new ArrayList<>(outputs.size());
+    long lastTimestamp = 0;
+    boolean hasLastTimestamp = false;
+    for (final WindowOutput output : outputs) {
+      if (!hasLastTimestamp || output.getTimestamp() != lastTimestamp) {
+        distinctOutputs.add(output);
+        lastTimestamp = output.getTimestamp();
+        hasLastTimestamp = true;
+      }
+    }
+    return distinctOutputs;
+  }
+
   @Override
   public void close() throws Exception {
-    if (Objects.nonNull(pipeName)
-        && pipeName2referenceCountMap.compute(
-                pipeName, (name, count) -> Objects.nonNull(count) ? count - 1 : 0)
-            == 0) {
-      pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).clear();
-      pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
+    boolean isLastReference = false;
+    if (Objects.nonNull(pipeName)) {
+      isLastReference =
+          pipeName2referenceCountMap.computeIfPresent(
+                  pipeName, (name, count) -> count > 1 ? count - 1 : null)
+              == null;
+    }
+    if (isLastReference) {
+      final ConcurrentMap<String, AtomicReference<TimeSeriesRuntimeState>>
+          timeSeries2RuntimeStateMap =
+              pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
+      if (timeSeries2RuntimeStateMap != null) {
+        timeSeries2RuntimeStateMap.clear();
+      }
       pipeName2LastValueReceiveTimeMap.remove(pipeName);
     }
     if (Objects.nonNull(windowingProcessor)) {

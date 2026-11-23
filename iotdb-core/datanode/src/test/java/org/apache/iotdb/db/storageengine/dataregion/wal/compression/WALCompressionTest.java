@@ -53,10 +53,13 @@ import org.junit.Test;
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -111,6 +114,76 @@ public class WALCompressionTest {
     WALTestUtils.setMinCompressionSize(0L);
     IoTDBDescriptor.getInstance().getConfig().setWALCompressionAlgorithm(CompressionType.LZ4);
     testSkipToGivenPosition();
+  }
+
+  @Test
+  public void testReleaseReadBuffersPreservesPositionAcrossSegmentsAndSeeks() throws Exception {
+    byte[] expected = new byte[24];
+    for (int i = 0; i < expected.length; i++) {
+      expected[i] = (byte) i;
+    }
+    for (CompressionType compression :
+        new CompressionType[] {CompressionType.UNCOMPRESSED, CompressionType.LZ4}) {
+      IoTDBDescriptor.getInstance().getConfig().setWALCompressionAlgorithm(compression);
+      try (WALWriter writer = new WALWriter(walFile, WALFileVersion.V3)) {
+        writer.setCompressedByteBuffer(ByteBuffer.allocate(128));
+        for (int start = 0; start < expected.length; start += 8) {
+          ByteBuffer segment = ByteBuffer.allocate(8);
+          segment.put(expected, start, 8);
+          writer.write(segment);
+        }
+      }
+      try (WALInputStream stream = new WALInputStream(walFile)) {
+        Assert.assertEquals(0, stream.read());
+        int available = stream.available();
+        stream.releaseReadBuffers();
+        stream.releaseReadBuffers();
+        Assert.assertEquals(available, stream.available());
+        Assert.assertEquals(1, stream.getLogicalReadOffset());
+        byte[] crossSegment = new byte[10];
+        stream.read(crossSegment);
+        Assert.assertArrayEquals(java.util.Arrays.copyOfRange(expected, 1, 11), crossSegment);
+        stream.releaseReadBuffers();
+        stream.skipToGivenLogicalPosition(4);
+        stream.releaseReadBuffers();
+        ByteBuffer restOfSegment = ByteBuffer.allocate(4);
+        stream.read(restOfSegment);
+        Assert.assertArrayEquals(
+            java.util.Arrays.copyOfRange(expected, 4, 8), restOfSegment.array());
+        // A pause exactly at the segment boundary must load the next segment without replaying it.
+        stream.releaseReadBuffers();
+        Assert.assertEquals(8, stream.read());
+        stream.releaseReadBuffers();
+        ByteBuffer tail = ByteBuffer.allocate(15);
+        stream.read(tail);
+        Assert.assertArrayEquals(java.util.Arrays.copyOfRange(expected, 9, 24), tail.array());
+      }
+      Files.delete(walFile.toPath());
+    }
+  }
+
+  @Test
+  public void testReleasedReadBufferDetectsShortenedSegment() throws Exception {
+    try (WALWriter writer = new WALWriter(walFile, WALFileVersion.V3)) {
+      ByteBuffer segment = ByteBuffer.allocate(8);
+      segment.putLong(42L);
+      writer.write(segment);
+    }
+    try (WALInputStream stream = new WALInputStream(walFile)) {
+      for (int i = 0; i < 3; i++) {
+        stream.read();
+      }
+      stream.releaseReadBuffers();
+      try (FileChannel channel = FileChannel.open(walFile.toPath(), StandardOpenOption.WRITE)) {
+        channel.position(WALFileVersion.V3.getVersionBytes().length);
+        ByteBuffer header = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+        header.put(CompressionType.UNCOMPRESSED.serialize()).putInt(2).flip();
+        while (header.hasRemaining()) {
+          channel.write(header);
+        }
+      }
+      Assert.assertThrows(EOFException.class, stream::read);
+    }
   }
 
   @Test

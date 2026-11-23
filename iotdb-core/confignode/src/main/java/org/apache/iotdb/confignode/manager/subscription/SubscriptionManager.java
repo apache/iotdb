@@ -29,6 +29,8 @@ public class SubscriptionManager {
   private final SubscriptionCoordinator subscriptionCoordinator;
   private final SubscriptionRuntimeCoordinator subscriptionRuntimeCoordinator;
   private final SubscriptionLeaderChangeHandler subscriptionLeaderChangeHandler;
+  private final SubscriptionReadyDataNodeTracker subscriptionReadyDataNodeTracker =
+      new SubscriptionReadyDataNodeTracker();
 
   public SubscriptionManager(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
     this.subscriptionCoordinator = new SubscriptionCoordinator(configManager, subscriptionInfo);
@@ -47,5 +49,9 @@ public class SubscriptionManager {
 
   public SubscriptionLeaderChangeHandler getSubscriptionLeaderChangeHandler() {
     return subscriptionLeaderChangeHandler;
+  }
+
+  public SubscriptionReadyDataNodeTracker getSubscriptionReadyDataNodeTracker() {
+    return subscriptionReadyDataNodeTracker;
   }
 }

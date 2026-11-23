@@ -95,44 +95,57 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
                   timeChunkMetadata.getStatistics(),
                   context);
       List<Chunk> valueChunkList = new ArrayList<>();
-      for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-        Chunk chunk =
-            valueChunkMetadata == null
-                ? null
-                : ChunkCache.getInstance()
-                    .get(
-                        new ChunkCache.ChunkCacheKey(
-                            resource.getTsFilePath(),
-                            resource.getTsFileID(),
-                            valueChunkMetadata.getOffsetOfChunkHeader(),
-                            resource.isClosed()),
-                        valueChunkMetadata.getDeleteIntervalList(),
-                        valueChunkMetadata.getStatistics(),
-                        context);
-        final TsFileID tsFileID = getTsFileID();
-        if (chunk != null
-            && tsFileID.regionId > 0
-            && chunkMetaData.getDataType() == TSDataType.OBJECT) {
-          chunk
-              .getHeader()
-              .setReplaceDecoder(
-                  decoder -> ObjectTypeUtils.getReplaceDecoder(decoder, tsFileID.regionId));
+      try {
+        for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+          Chunk chunk =
+              valueChunkMetadata == null
+                  ? null
+                  : ChunkCache.getInstance()
+                      .get(
+                          new ChunkCache.ChunkCacheKey(
+                              resource.getTsFilePath(),
+                              resource.getTsFileID(),
+                              valueChunkMetadata.getOffsetOfChunkHeader(),
+                              resource.isClosed()),
+                          valueChunkMetadata.getDeleteIntervalList(),
+                          valueChunkMetadata.getStatistics(),
+                          context);
+          final TsFileID tsFileID = getTsFileID();
+          if (chunk != null
+              && tsFileID.regionId > 0
+              && chunkMetaData.getDataType() == TSDataType.OBJECT) {
+            chunk
+                .getHeader()
+                .setReplaceDecoder(
+                    decoder -> ObjectTypeUtils.getReplaceDecoder(decoder, tsFileID.regionId));
+          }
+          valueChunkList.add(chunk);
         }
-        valueChunkList.add(chunk);
-      }
-      LongConsumer filterRowsRecorder =
-          this.context.getQueryStatistics()::addFilteredRowsOfPageLevel;
-      long t2 = System.nanoTime();
-      IChunkReader chunkReader =
-          ignoreAllNullRows
-              ? new AlignedChunkReader(
-                  timeChunk, valueChunkList, globalTimeFilter, filterRowsRecorder)
-              : new TableChunkReader(
-                  timeChunk, valueChunkList, globalTimeFilter, filterRowsRecorder);
-      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-          INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
+        LongConsumer filterRowsRecorder =
+            this.context.getQueryStatistics()::addFilteredRowsOfPageLevel;
+        long t2 = System.nanoTime();
+        IChunkReader chunkReader =
+            ignoreAllNullRows
+                ? new AlignedChunkReader(
+                    timeChunk, valueChunkList, globalTimeFilter, filterRowsRecorder)
+                : new TableChunkReader(
+                    timeChunk, valueChunkList, globalTimeFilter, filterRowsRecorder);
+        if (timeChunk.getEncryptParam() != null && timeChunk.getEncryptParam().isTdePageAead()) {
+          context.getQueryChunkReaders().retain(chunkReader, chunkReader.loadPageReaderList());
+        }
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+            INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
 
-      return chunkReader;
+        return chunkReader;
+      } catch (IOException | RuntimeException | Error failure) {
+        timeChunk.close();
+        for (Chunk valueChunk : valueChunkList) {
+          if (valueChunk != null) {
+            valueChunk.close();
+          }
+        }
+        throw failure;
+      }
     } finally {
       long time = System.nanoTime() - t1;
       context.getQueryStatistics().getConstructAlignedChunkReadersDiskCount().getAndAdd(1);

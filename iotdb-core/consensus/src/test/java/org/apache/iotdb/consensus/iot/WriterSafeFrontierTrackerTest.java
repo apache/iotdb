@@ -21,9 +21,29 @@ package org.apache.iotdb.consensus.iot;
 
 import org.junit.Test;
 
+import java.util.Map;
+
 import static org.junit.Assert.assertEquals;
 
 public class WriterSafeFrontierTrackerTest {
+
+  @Test
+  public void testSafeFrontierSnapshotCarriesAppliedSequenceAndIsDetached() {
+    final WriterSafeFrontierTracker tracker = new WriterSafeFrontierTracker();
+    tracker.recordAppliedProgress(100L, 7, 10L);
+    tracker.observePendingWriterSafeTimeBarrier(130L, 7, 20L);
+    final Map<Integer, WriterSafeFrontierTracker.SafeFrontier> before =
+        tracker.snapshotSafeFrontiers();
+    assertEquals(100L, before.get(7).getPhysicalTime());
+    assertEquals(10L, before.get(7).getLocalSeq());
+
+    tracker.recordAppliedProgress(125L, 7, 20L);
+    final WriterSafeFrontierTracker.SafeFrontier after = tracker.snapshotSafeFrontiers().get(7);
+    assertEquals(130L, after.getPhysicalTime());
+    assertEquals(20L, after.getLocalSeq());
+    assertEquals(100L, before.get(7).getPhysicalTime());
+    assertEquals(10L, before.get(7).getLocalSeq());
+  }
 
   @Test
   public void testPendingWriterSafeTimeBarrierPromotesWhenBarrierIsApplied() {
@@ -52,5 +72,26 @@ public class WriterSafeFrontierTrackerTest {
 
     tracker.recordAppliedProgress(0L, 9, 35L);
     assertEquals(220L, tracker.getEffectiveSafePt(9));
+  }
+
+  @Test
+  public void testEffectiveSafePtSnapshotIncludesAtomicVersion() {
+    final WriterSafeFrontierTracker tracker = new WriterSafeFrontierTracker();
+
+    tracker.observePendingWriterSafeTimeBarrier(200L, 9, 30L);
+    assertEquals(0L, tracker.getEffectiveSafePtVersion());
+
+    tracker.recordAppliedProgress(150L, 9, 30L);
+    assertEquals(200L, tracker.getEffectiveSafePt(9));
+    assertEquals(1L, tracker.getEffectiveSafePtVersion());
+
+    tracker.recordAppliedProgress(160L, 9, 31L);
+    assertEquals(1L, tracker.getEffectiveSafePtVersion());
+
+    tracker.recordAppliedProgress(250L, 9, 32L);
+    final WriterSafeFrontierTracker.Snapshot snapshot =
+        tracker.snapshotEffectiveSafePtsWithVersion();
+    assertEquals(2L, snapshot.getVersion());
+    assertEquals(Long.valueOf(250L), snapshot.getEffectiveSafePts().get(9));
   }
 }

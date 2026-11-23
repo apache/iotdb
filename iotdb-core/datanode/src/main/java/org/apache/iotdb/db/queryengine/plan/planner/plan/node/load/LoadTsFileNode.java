@@ -130,7 +130,8 @@ public class LoadTsFileNode extends WritePlanNode {
               database,
               statement.isDeleteAfterLoad(),
               statement.getWritePointCount(i),
-              needDecode4TimeColumn));
+              needDecode4TimeColumn,
+              statement.isAutoCreateSchema()));
     }
     return res;
   }
@@ -153,7 +154,8 @@ public class LoadTsFileNode extends WritePlanNode {
                 database,
                 statement.isDeleteAfterLoad(),
                 statement.getWritePointCount(i),
-                needDecode4TimeColumn));
+                needDecode4TimeColumn,
+                statement.isAutoCreateSchema()));
       } else {
         throw new IllegalStateException(
             DataNodeQueryMessages.LOADTSFILE_STATEMENT_IS_NULL_DURING_TABLE_MODEL_SPLIT);

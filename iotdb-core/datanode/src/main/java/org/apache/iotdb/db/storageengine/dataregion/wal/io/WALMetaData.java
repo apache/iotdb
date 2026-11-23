@@ -39,6 +39,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -82,12 +83,17 @@ public class WALMetaData implements SerializedSize {
   }
 
   public WALMetaData(long firstSearchIndex, List<Integer> buffersSize, Set<Long> memTablesId) {
+    this(firstSearchIndex, buffersSize, memTablesId, 0);
+  }
+
+  private WALMetaData(
+      long firstSearchIndex, List<Integer> buffersSize, Set<Long> memTablesId, int entriesNum) {
     this.firstSearchIndex = firstSearchIndex;
     this.buffersSize = buffersSize;
     this.memTablesId = memTablesId;
-    this.physicalTimes = new ArrayList<>();
-    this.nodeIds = new ArrayList<>();
-    this.localSeqs = new ArrayList<>();
+    this.physicalTimes = new ArrayList<>(entriesNum);
+    this.nodeIds = new ArrayList<>(entriesNum);
+    this.localSeqs = new ArrayList<>(entriesNum);
   }
 
   /** Adds an entry without explicit writer progress metadata. */
@@ -248,7 +254,12 @@ public class WALMetaData implements SerializedSize {
         memTablesId.add(buffer.getLong());
       }
     }
-    WALMetaData result = new WALMetaData(firstSearchIndex, buffersSize, memTablesId);
+    WALMetaData result =
+        new WALMetaData(
+            firstSearchIndex,
+            buffersSize,
+            memTablesId,
+            version == WALFileVersion.V3 ? entriesNum : 0);
     // V3 extension: file-level timestamp range + per-entry writer progress metadata
     if (version == WALFileVersion.V3 && buffer.hasRemaining()) {
       result.minDataTs = buffer.getLong();
@@ -310,6 +321,41 @@ public class WALMetaData implements SerializedSize {
 
   public List<Long> getLocalSeqs() {
     return localSeqs;
+  }
+
+  /** Diagnostic summary for an abnormal footer recovery, never for the normal write path. */
+  public Map<String, Object> getWriterProgressDiagnostics() {
+    final Map<String, Object> result = new LinkedHashMap<>();
+    final int entries = buffersSize.size();
+    final int progressEntries =
+        Math.min(
+            entries, Math.min(physicalTimes.size(), Math.min(nodeIds.size(), localSeqs.size())));
+    int attributedEntries = 0;
+    int defaultLocalProgressEntries = 0;
+    final List<String> unattributedSamples = new ArrayList<>();
+    for (int i = 0; i < progressEntries; i++) {
+      final long physicalTime = physicalTimes.get(i);
+      final int nodeId = nodeIds.get(i);
+      final long localSeq = localSeqs.get(i);
+      if (nodeId >= 0 && physicalTime >= 0 && localSeq >= 0) {
+        attributedEntries++;
+      } else {
+        if (unattributedSamples.size() < 4) {
+          unattributedSamples.add(i + ":(" + physicalTime + "," + nodeId + "," + localSeq + ")");
+        }
+        if (nodeId < 0 && physicalTime == 0 && localSeq >= 0) {
+          defaultLocalProgressEntries++;
+        }
+      }
+    }
+    result.put("entryCount", entries);
+    result.put("firstSearchIndex", firstSearchIndex);
+    result.put("attributedProgressEntries", attributedEntries);
+    result.put("unattributedProgressEntries", progressEntries - attributedEntries);
+    result.put("missingProgressEntries", entries - progressEntries);
+    result.put("defaultLocalProgressEntries", defaultLocalProgressEntries);
+    result.put("unattributedSamples", unattributedSamples);
+    return result;
   }
 
   private int getNodeIdOverrideCount() {
@@ -376,6 +422,9 @@ public class WALMetaData implements SerializedSize {
     try {
       return readFromWALFileWithoutRecovery(logFile, channel);
     } catch (IOException metadataFailure) {
+      if (WALFormatException.isFatal(metadataFailure)) {
+        throw metadataFailure;
+      }
       logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_LOGS_SKIP, logFile, metadataFailure);
       // Keep the original file when some entries are readable. The reconstructed metadata is an
       // in-memory view of that prefix; rewriting compressed segments while readers hold the file
@@ -421,6 +470,9 @@ public class WALMetaData implements SerializedSize {
       return new WALMetaData();
     }
     WALFileVersion version = WALFileVersion.getVersion(channel);
+    if (version == WALFileVersion.EXTENDED) {
+      return WALFormats.readMetadata(logFile, channel);
+    }
     if (channel.size() < version.getVersionBytes().length + Integer.BYTES
         || !isValidMagicString(channel, version)) {
       throw new BrokenWALFileException(logFile);

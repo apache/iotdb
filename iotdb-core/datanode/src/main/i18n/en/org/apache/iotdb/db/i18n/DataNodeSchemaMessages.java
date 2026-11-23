@@ -171,7 +171,7 @@ public final class DataNodeSchemaMessages {
   public static final String ERROR_DURING_INIT_SCHEMA_REGION =
       "Error occurred during initializing schemaRegion {}";
   public static final String FAILED_TO_RECOVER_TAG_INDEX =
-      "Failed to recover tagIndex for {} in schemaRegion {}.";
+      "Failed to recover tag index for measurement [{}] in database [{}], SchemaRegion [{}], tag offset [{}].";
   public static final String FAILED_TO_READ_TAG_ATTRIBUTE =
       "Failed to read tag and attribute info because {}";
 
@@ -213,19 +213,19 @@ public final class DataNodeSchemaMessages {
   public static final String DATABASE_NAME_ILLEGAL_CHARS =
       "The database name can only contain english or chinese characters, numbers, backticks and underscores. %s";
   public static final String SDT_COMPRESSION_DEVIATION_REQUIRED =
-      "SDT compression deviation is required";
+      "SDT compression requires the compdev property";
   public static final String SDT_COMPRESSION_DEVIATION_NEGATIVE =
-      "SDT compression deviation cannot be negative";
+      "SDT property compdev must be non-negative, but was [%s]";
   public static final String SDT_COMPRESSION_DEVIATION_FORMAT_ERROR =
-      "SDT compression deviation formatting error";
+      "SDT property compdev must be a number, but was [%s]";
   public static final String SDT_COMPRESSION_MAX_GREATER_THAN_MIN =
-      "SDT compression maximum time needs to be greater than compression minimum time";
+      "SDT property compmaxtime [%s] must be greater than compmintime [%s]";
   public static final String SDT_COMPRESSION_TIME_NEGATIVE =
-      "SDT compression %s time cannot be negative";
+      "SDT property %s must be non-negative, but was [%s]";
   public static final String SDT_COMPRESSION_TIME_FORMAT_ERROR =
-      "SDT compression %s time formatting error";
+      "SDT property %s must be a 64-bit integer, but was [%s]";
   public static final String SDT_ENABLED_NO_COMPRESSION_TIME =
-      "{} enabled SDT but did not set compression {} time";
+      "Timeseries [{}] uses SDT without property [{}]; using default [{}].";
 
   // ======================== Tag/Attribute ========================
 
@@ -489,9 +489,12 @@ public final class DataNodeSchemaMessages {
   public static final String FAILED_TO_CREATE_TEMPLATE =
       "Failed to execute create device template {} in config node, status is {}.";
   public static final String CREATE_TEMPLATE_ERROR_PREFIX = "create template error -";
-  public static final String CREATE_TEMPLATE_ERROR = "create template error.";
-  public static final String GET_ALL_TEMPLATE_ERROR = "get all template error.";
-  public static final String GET_TEMPLATE_INFO_ERROR = "get template info error.";
+  public static final String CREATE_TEMPLATE_ERROR =
+      "Failed to create schema template [%s] on ConfigNode: %s";
+  public static final String GET_ALL_TEMPLATE_ERROR =
+      "Failed to get schema templates from ConfigNode: %s";
+  public static final String GET_TEMPLATE_INFO_ERROR =
+      "Failed to get schema template [%s] from ConfigNode: %s";
   public static final String FAILED_TO_SET_TEMPLATE =
       "Failed to execute set device template {} on path {} in config node, status is {}.";
 
@@ -564,6 +567,7 @@ public final class DataNodeSchemaMessages {
   // ======================== DataNodeTableCache ========================
 
   public static final String INIT_TABLE_CACHE_SUCCESS = "Init DataNodeTableCache successfully";
+  public static final String LOG_FAILED_TO_REGISTER_THE_TREE_TO_TABLE_VIEW_ARG_ARG_DURING_INIT_ILLEGAL_PATH_359A451E = "Failed to register the tree to table view {}.{} during init: illegal path";
   public static final String PRE_UPDATE_TABLE_SUCCESS = "Pre-update table {}.{} successfully";
   public static final String PRE_RENAME_OLD_TABLE_SUCCESS =
       "Pre-rename old table {}.{} successfully";
@@ -616,6 +620,33 @@ public final class DataNodeSchemaMessages {
   // ======================== ClusterTemplateManager ========================
 
   public static final String ILLEGAL_PATH_LOG = "illegal path {}";
+
+  public static final String LOG_ARG_TIMESERIES_ARG_IS_REMOVED_FROM_TAG_INVERTED_INDEX_01BC0CE1 =
+      "%s : TimeSeries %s is removed from tag inverted index, ";
+  public static final String
+      LOG_ARG_TIMESERIES_ARG_S_TAG_INFO_HAS_BEEN_REMOVED_FROM_TAG_INVERTED_INDEX_C6DAD2DF =
+          "%s: TimeSeries %s's tag info has been removed from tag inverted index ";
+  public static final String
+      LOG_BEFORE_DELETING_IT_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_CONTAINS_KEY_B_BE8C6CBC =
+          "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
+  public static final String LOG_TAG_KEY_IS_ARG_TAG_VALUE_IS_ARG_TLOG_OFFSET_IS_ARG_C1DB5214 =
+      "tag key is %s, tag value is %s, tlog offset is %d";
+  public static final String MESSAGE_COULD_SPECIFY_THE_OUTPUT_FILE_AFTER_PARSE_OPTIONAL_9907C287 =
+      "Could specify the output file after parse (optional)";
+  public static final String MESSAGE_DISPLAY_HELP_INFORMATION_3BBD4899 = "Display help information";
+  public static final String MESSAGE_MLOG_FILE_47096EDD = "mlog file";
+  public static final String MESSAGE_NEED_TO_SPECIFY_A_BINARY_MLOG_FILE_TO_PARSE_REQUIRED_2F43690B =
+      "Need to specify a binary mlog file to parse (required)";
+  public static final String MESSAGE_NEED_TO_SPECIFY_A_PBTREE_FILE_TO_SKETCH_REQUIRED_D40FA676 =
+      "Need to specify a pbtree file to sketch (required)";
+  public static final String MESSAGE_OUTPUT_TXT_FILE_261FEB25 = "output txt file";
+  public static final String MESSAGE_PBTREE_FILE_493CA5AD = "pbtree file";
+  public static final String MESSAGE_REQUIRED_VALUES_FOR_OPTION_ARG_NOT_PROVIDED_86467CA2 =
+      "Required values for option '%s' not provided";
+  public static final String
+      MESSAGE_TAG_ATTRIBUTE_EXCEEDS_THE_MAX_LENGTH_LIMIT_PLEASE_ENLARGE_TAG_ATTRIBUTE_TOTAL_SIZE_IN_IOTDB_SYSTEM_PROPERTIES_996EA890 =
+          "Tag/Attribute exceeds the max length limit. Please enlarge tag_attribute_total_size in"
+              + " iotdb-system.properties";
 
   private DataNodeSchemaMessages() {}
   // ---------------------------------------------------------------------------
@@ -740,5 +771,54 @@ public final class DataNodeSchemaMessages {
   public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
   public static final String MESSAGE_SKIP_ROLLBACK_RENAMING_OLD_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_664F2456 = "Skip rollback renaming old table {}.{} because it has been handled.";
   public static final String MESSAGE_SKIP_COMMIT_UPDATE_TABLE_ARG_ARG_BECAUSE_IT_HAS_BEEN_HANDLED_31362A1C = "Skip commit-update table {}.{} because it has been handled.";
+  public static final String LOG_ADD_VIEW_COLUMN_FAILED_FOR_VIEW_B3EB8144 = "Failed to add a column to the view {}.{} for operation {}, ConfigNode returned {}.";
+  public static final String LOG_ADD_VIEW_COLUMN_ALREADY_EXISTS_FOR_VIEW_EDFF86E8 = "The columns to be added to the view {}.{} for operation {} already exist and are skipped, ConfigNode returned {}.";
+  public static final String LOG_ADD_VIEW_COLUMN_EMPTY_RESPONSE_B9502E26 = "Failed to add columns to the tree to table views for operation {}, ConfigNode returned an empty response.";
+  public static final String LOG_ADD_VIEW_COLUMN_CN_UNREACHABLE_E9BC7652 = "Failed to add columns to the tree to table views for operation {}, because ConfigNode is not reachable.";
+  public static final String LOG_TRIGGER_ADD_VIEW_COLUMN_FAILED_B909817F = "Failed to trigger the view column addition of the tree to table views for plan node {}, the schema write is not affected.";
+  public static final String LOG_TREE_TO_TABLE_VIEW_ARG_ARG_IS_NOT_REGISTERED_BBD78902 = "Tree to table view {}.{} is not registered";
+  public static final String LOG_FAILED_TO_UPDATE_THE_TREE_TO_TABLE_VIEW_INDEX_OF_VIEW_ARG_ARG_E86EAEDE = "Failed to update the tree-to-table view index of view {}.{}";
+  public static final String
+      LOG_REGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_AT_ARG_WITH_RESTRICT_ARG_AND_NUM_OF_TAGS_ARG_7538BCB2 =
+          "Registered the tree to table view {}.{} at {} with restrict {} and num of tags {}";
+  public static final String LOG_UNREGISTERED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_C90B661A =
+      "Unregistered the tree to table view {}.{}";
+  public static final String LOG_RENAMED_THE_TREE_TO_TABLE_VIEW_ARG_ARG_FROM_ARG_B5D52D41 =
+      "Renamed the tree to table view {}.{} from {}";
+  public static final String
+      LOG_UPDATED_THE_PROPERTIES_OF_THE_TREE_TO_TABLE_VIEW_ARG_ARG_TO_ARG_1C3DE984 =
+          "Updated the properties of the tree to table view {}.{} to {}";
+  public static final String
+      LOG_THE_METADATA_LEASE_IS_FENCED_WHILE_ADDING_VIEW_COLUMNS_GIVING_UP_THIS_ROUND_THE_MEASUREMENTS_ARE_ARG_5D1B2D44 =
+          "The metadata lease is fenced while adding view columns, giving up this round; the measurements are {}";
 
+  public static final String
+      EXCEPTION_PBTREE_FILE_SKETCH_TOOL_NOTICE_INTERNAL_ENTITY_PRESENTS_AS_NAME_IS_ALIGNED_CHILD_SEGMENT_ADDRESS_MEASUREMENT_PRESENTS_AS_NAME_DATA_TYPE_ENCODING_COMPRESSOR_ALIAS_IF_EXIST_BELONG_TO_STORAGEGROUP_ARG_SEGMENT_OF_SG_ARG_TOTAL_PAGES_ARG_006AFD00 =
+          "=============================\n"
+              + "== PBTree File Sketch Tool ==\n"
+              + "=============================\n"
+              + "== Notice: \n"
+              + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
+              + "==  Measurement presents as (name, data_type, encoding, compressor,"
+              + " alias_if_exist)\n"
+              + "=============================\n"
+              + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n";
+
+  public static final String EXCEPTION_ALIAS_ARG_EA404C75 = "alias: %s, ";
+
+  public static final String EXCEPTION_TYPE_ARG_EBFECBD8 = "type: %s, ";
+
+  public static final String EXCEPTION_ENCODING_ARG_C3BBB084 = "encoding: %s, ";
+
+  public static final String EXCEPTION_COMPRESSOR_ARG_313D1482 = "compressor: %s]";
+
+  public static final String EXCEPTION_NOT_SPECIFIED_022755C1 = "NOT SPECIFIED";
+
+  public static final String EXCEPTION_ALIGNED_IS_NULL_1EFBFBEC = "aligned is null, ";
+
+  public static final String EXCEPTION_NOT_ALIGNED_EED2E48F = "not aligned, ";
+
+  public static final String EXCEPTION_USING_TEMPLATE_07534BF6 = "using template.]";
+
+  public static final String EXCEPTION_NOT_USING_TEMPLATE_9E135BEE = "not using template.]";
 }

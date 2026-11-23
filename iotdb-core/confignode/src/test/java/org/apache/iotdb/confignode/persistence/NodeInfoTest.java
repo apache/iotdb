@@ -284,6 +284,49 @@ public class NodeInfoTest {
         new TAINodeLocation(10006, new TEndPoint("127.0.0.1", 10810)), new TNodeResource(8, 1024L));
   }
 
+  @Test
+  public void testRegistrationPlansAreIdempotentForWalReplay() {
+    NodeInfo replayNodeInfo = new NodeInfo();
+
+    TDataNodeConfiguration dataNodeConfiguration = generateTDataNodeConfiguration(100);
+    RegisterDataNodePlan registerDataNodePlan = new RegisterDataNodePlan(dataNodeConfiguration);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.registerDataNode(registerDataNodePlan).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.registerDataNode(registerDataNodePlan).getCode());
+    Assert.assertEquals(1, replayNodeInfo.getRegisteredDataNodeCount());
+    Assert.assertEquals(
+        dataNodeConfiguration,
+        replayNodeInfo.getRegisteredDataNode(dataNodeConfiguration.getLocation().getDataNodeId()));
+
+    TConfigNodeLocation configNodeLocation =
+        new TConfigNodeLocation(
+            20000, new TEndPoint("127.0.0.1", 22200), new TEndPoint("127.0.0.1", 22300));
+    ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.applyConfigNode(applyConfigNodePlan).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.applyConfigNode(applyConfigNodePlan).getCode());
+    Assert.assertEquals(1, replayNodeInfo.getRegisteredConfigNodes().size());
+    Assert.assertEquals(configNodeLocation, replayNodeInfo.getRegisteredConfigNodes().get(0));
+
+    TNodeVersionInfo versionInfo = new TNodeVersionInfo("version", "build");
+    UpdateVersionInfoPlan updateVersionInfoPlan =
+        new UpdateVersionInfoPlan(versionInfo, configNodeLocation.getConfigNodeId());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.updateVersionInfo(updateVersionInfoPlan).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.updateVersionInfo(updateVersionInfoPlan).getCode());
+    Assert.assertEquals(
+        versionInfo, replayNodeInfo.getVersionInfo(configNodeLocation.getConfigNodeId()));
+  }
+
   private void registerConfigNodes() {
     for (int i = 0; i < 3; i++) {
       ApplyConfigNodePlan applyConfigNodePlan =

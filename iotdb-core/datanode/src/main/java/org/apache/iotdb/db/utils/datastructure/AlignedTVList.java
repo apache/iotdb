@@ -1416,10 +1416,18 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public synchronized long getRamSize() {
+    return getArrayRamSize() + getStructureRamSize();
+  }
+
+  /** Arrays and bitmaps, excluding the containers that own them. */
+  public synchronized long getArrayRamSize() {
     return (long) timestamps.size() * alignedTvListArrayMemCostWithoutPrimitiveArrays()
         + materializedValueArrayMemCost
-        + materializedBitmapMemoryCost
-        + calculateContainerRamCost(null);
+        + materializedBitmapMemoryCost;
+  }
+
+  public synchronized long getStructureRamSize() {
+    return calculateContainerRamCost(null);
   }
 
   public synchronized long getRamSize(Set<Integer> columnsToClone) {

@@ -21,14 +21,19 @@ package org.apache.iotdb.confignode.manager.lease;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeTSStatusRPCHandler;
 import org.apache.iotdb.confignode.manager.lease.MetadataBroadcastVerdict.Verdict;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TApplicationException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntToLongFunction;
@@ -172,6 +177,43 @@ public class ClusterCachePropagatorTest {
     // DN2 keeps failing to ack; the fake clock advances on each sleep until the wait budget runs
     // out, at which point the loop must give up with FAIL.
     Assert.assertFalse(p.propagate(targets -> ackOnly(1)));
+  }
+
+  @Test
+  public void rpcTimeoutResponseFollowsFenceVerdict() {
+    final AtomicLong heartbeatAgeMs = new AtomicLong(10_000L);
+    final ClusterCachePropagator p = propagator(id -> heartbeatAgeMs.get());
+    final Map<Integer, TSStatus> responses = responseFromError(new TimeoutException());
+    Assert.assertEquals(
+        TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode(), responses.get(2).getCode());
+    Assert.assertEquals(Verdict.WAIT, p.propagateOnce(targets -> responses, false));
+    Assert.assertEquals(Verdict.FAIL, p.propagateOnce(targets -> responses, true));
+
+    heartbeatAgeMs.set(FENCE_TIMEOUT_MS);
+    Assert.assertEquals(Verdict.PROCEED, p.propagateOnce(targets -> responses, false));
+    Assert.assertEquals(Verdict.PROCEED, p.propagateOnce(targets -> responses, true));
+  }
+
+  @Test
+  public void rpcApplicationErrorStillFailsAfterFenceTimeout() {
+    final Map<Integer, TSStatus> responses = responseFromError(new TApplicationException());
+    Assert.assertEquals(
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), responses.get(2).getCode());
+    Assert.assertEquals(
+        Verdict.FAIL,
+        propagator(id -> FENCE_TIMEOUT_MS + 1).propagateOnce(targets -> responses, false));
+  }
+
+  private Map<Integer, TSStatus> responseFromError(final Exception exception) {
+    final Map<Integer, TDataNodeLocation> targets = twoDataNodes();
+    final Map<Integer, TSStatus> responses = ackOnly(1);
+    final CountDownLatch latch = new CountDownLatch(1);
+    new DataNodeTSStatusRPCHandler(
+            CnToDnAsyncRequestType.UPDATE_TABLE, 2, targets.get(2), targets, responses, latch)
+        .onError(exception);
+    Assert.assertEquals(0L, latch.getCount());
+    Assert.assertTrue(targets.containsKey(2));
+    return responses;
   }
 
   private Map<Integer, TSStatus> ackOnly(final int nodeId) {

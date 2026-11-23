@@ -92,8 +92,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
             }
             final String errorMessage =
                 String.format(
-                    "SubscriptionPrefetchingTabletQueue %s is currently not transferring any tablet to consumer %s, commit context: %s, offset: %s",
-                    this, consumerId, commitContext, offset);
+                    DataNodePipeMessages
+                        .MESSAGE_SUBSCRIPTIONPREFETCHINGTABLETQUEUE_ARG_IS_CURRENTLY_NOT_TRANSFERRING_ANY_TABLET_TO_CONSUMER_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_ED3B95E8,
+                    this,
+                    consumerId,
+                    commitContext,
+                    offset);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return null;
@@ -103,8 +107,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
             ev.cleanUp(false);
             final String errorMessage =
                 String.format(
-                    "outdated poll request after commit, consumer id: %s, commit context: %s, offset: %s, prefetching queue: %s",
-                    consumerId, commitContext, offset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_OUTDATED_POLL_REQUEST_AFTER_COMMIT_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_AF34C3B9,
+                    consumerId,
+                    commitContext,
+                    offset,
+                    this);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return null; // remove this entry
@@ -114,8 +122,13 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           if (!Objects.equals(ev.getLastPolledConsumerId(), consumerId)) {
             final String errorMessage =
                 String.format(
-                    "inconsistent polled consumer id, current: %s, incoming: %s, commit context: %s, offset: %s, prefetching queue: %s",
-                    ev.getLastPolledConsumerId(), consumerId, commitContext, offset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_INCONSISTENT_POLLED_CONSUMER_ID_CURRENT_ARG_INCOMING_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_2A5392D5,
+                    ev.getLastPolledConsumerId(),
+                    consumerId,
+                    commitContext,
+                    offset,
+                    this);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return ev;
@@ -125,8 +138,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           if (Objects.isNull(response)) {
             final String errorMessage =
                 String.format(
-                    "current response is null when fetching next response, consumer id: %s commit context: %s, offset: %s, prefetching queue: %s",
-                    consumerId, commitContext, offset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_CURRENT_RESPONSE_IS_NULL_WHEN_FETCHING_NEXT_RESPONSE_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_4BF8D18D,
+                    consumerId,
+                    commitContext,
+                    offset,
+                    this);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return ev;
@@ -150,8 +167,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
               if (!Objects.equals(offset, ((TabletsPayload) payload).getNextOffset())) {
                 final String errorMessage =
                     String.format(
-                        "inconsistent offset, current: %s, incoming: %s, consumer: %s, prefetching queue: %s",
-                        ((TabletsPayload) payload).getNextOffset(), offset, consumerId, this);
+                        DataNodePipeMessages
+                            .MESSAGE_INCONSISTENT_OFFSET_CURRENT_ARG_INCOMING_ARG_CONSUMER_ARG_PREFETCHING_QUEUE_ARG_3BB4E919,
+                        ((TabletsPayload) payload).getNextOffset(),
+                        offset,
+                        consumerId,
+                        this);
                 LOGGER.warn(errorMessage);
                 eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
                 return ev;
@@ -180,8 +201,13 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           } catch (final Exception e) {
             final String errorMessage =
                 String.format(
-                    "exception occurred when fetching next response: %s, consumer id: %s, commit context: %s, offset: %s, prefetching queue: %s",
-                    e, consumerId, commitContext, offset, this);
+                    DataNodePipeMessages
+                        .MESSAGE_EXCEPTION_OCCURRED_WHEN_FETCHING_NEXT_RESPONSE_ARG_CONSUMER_ID_ARG_COMMIT_CONTEXT_ARG_OFFSET_ARG_PREFETCHING_QUEUE_ARG_8C49BE57,
+                    e,
+                    consumerId,
+                    commitContext,
+                    offset,
+                    this);
             LOGGER.warn(errorMessage, e);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
           }

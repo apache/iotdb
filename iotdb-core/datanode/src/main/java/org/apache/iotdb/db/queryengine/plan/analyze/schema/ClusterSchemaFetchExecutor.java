@@ -89,7 +89,12 @@ class ClusterSchemaFetchExecutor {
         context == null
             ? config.getQueryTimeoutThreshold()
             : context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime());
-    String sql = context == null ? "" : "Fetch Schema for " + context.getQueryType();
+    String sql =
+        context == null
+            ? ""
+            : String.format(
+                DataNodeQueryMessages.MESSAGE_FETCH_SCHEMA_FOR_ARG_76B28DC3,
+                String.valueOf(context.getQueryType()));
     if (context != null && context.isQuery()) {
       sql += ", " + context.getQueryId() + " : " + context.getSql();
     }

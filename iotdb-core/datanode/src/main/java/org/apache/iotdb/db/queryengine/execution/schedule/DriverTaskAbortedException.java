@@ -34,6 +34,8 @@ public class DriverTaskAbortedException extends Exception {
       DataNodeQueryMessages.DRIVER_TASK_ABORTED_BY_ALREADY_BEING_CANCELLED;
   public static final String BY_INTERNAL_ERROR_SCHEDULED =
       DataNodeQueryMessages.DRIVER_TASK_ABORTED_BY_INTERNAL_ERROR_SCHEDULED;
+  public static final String BY_SCHEDULER_SHUTDOWN =
+      DataNodeQueryMessages.EXCEPTION_SCHEDULER_SHUTDOWN_323938F5;
 
   public static final String BY_MEMORY_NOT_ENOUGH =
       DataNodeQueryMessages.DRIVER_TASK_ABORTED_BY_MEMORY_NOT_ENOUGH;

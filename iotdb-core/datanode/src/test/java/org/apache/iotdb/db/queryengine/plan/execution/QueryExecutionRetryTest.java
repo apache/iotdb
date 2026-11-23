@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -37,7 +38,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
+import java.nio.file.NoSuchFileException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +52,8 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -57,7 +62,8 @@ public class QueryExecutionRetryTest {
   private ExecutorService stateMachineExecutor;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
+    UDFClassLoaderManager.setupAndGetInstance();
     stateMachineExecutor = Executors.newSingleThreadExecutor();
   }
 
@@ -67,7 +73,7 @@ public class QueryExecutionRetryTest {
   }
 
   @Test
-  public void testAnalysisAttemptIsRolledBackOnlyWhenRetryStarts() {
+  public void testAnalysisAttemptIsRolledBackOnlyWhenRetryStarts() throws Exception {
     RecordingPlanner planner = new RecordingPlanner(false);
     QueryExecution execution =
         new QueryExecution(planner, createQueryContext("retry_succeeds"), stateMachineExecutor);
@@ -85,9 +91,36 @@ public class QueryExecutionRetryTest {
 
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
     assertEquals(2, planner.getScheduleAttempts());
+    assertEquals(1, execution.getContext().getQueryAttemptId());
     assertEquals(
         Arrays.asList("begin", "analyze", "rollback", "begin", "analyze", "commit"),
         planner.getAnalysisEvents());
+    assertUDFQueryScopeClosed(execution);
+  }
+
+  @Test
+  public void testNonQueryScopeIsClosedAfterPlanningBeforeAsyncCompletion() throws Exception {
+    RecordingPlanner planner = new RecordingPlanner(false, false);
+    QueryExecution execution =
+        new QueryExecution(planner, createQueryContext("non_query_running"), stateMachineExecutor);
+
+    execution.start();
+
+    assertEquals(1, planner.getScheduleAttempts());
+    assertUDFQueryScopeClosed(execution);
+  }
+
+  @Test
+  public void testReadQueryScopeIsClosedByStopAndCleanup() throws Exception {
+    MPPQueryContext context = createQueryContext("read_stop_cleanup");
+    context.setQueryType(QueryType.READ);
+    QueryExecution execution =
+        new QueryExecution(new RecordingPlanner(false), context, stateMachineExecutor);
+
+    assertUDFQueryScopeOpen(execution);
+    execution.stopAndCleanup(null);
+
+    assertUDFQueryScopeClosed(execution);
   }
 
   @Test
@@ -105,6 +138,53 @@ public class QueryExecutionRetryTest {
     assertEquals(TSStatusCode.DISPATCH_ERROR.getStatusCode(), result.status.code);
     assertEquals(Arrays.asList("begin", "analyze", "rollback"), planner.getAnalysisEvents());
     assertFalse(planner.getAnalysisEvents().contains("commit"));
+    assertUDFQueryScopeClosed(execution);
+  }
+
+  @Test
+  public void testPlanningFailureIsNotSwallowedWhileNotDone() throws Exception {
+    RecordingPlanner planner =
+        new RecordingPlanner(false) {
+          @Override
+          public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
+            throw new IllegalStateException("planning failed");
+          }
+        };
+    QueryExecution execution =
+        new QueryExecution(planner, createQueryContext("plan_fails"), stateMachineExecutor);
+
+    IllegalStateException thrown = assertThrows(IllegalStateException.class, execution::start);
+    assertEquals("planning failed", thrown.getMessage());
+    assertUDFQueryScopeClosed(execution);
+  }
+
+  @Test
+  public void testCleanupFailureAfterQueryCanceledIsIgnoredDuringStart() throws Exception {
+    QueryExecution[] self = new QueryExecution[1];
+    RecordingPlanner planner =
+        new RecordingPlanner(false) {
+          @Override
+          public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
+            // Simulate KILL QUERY arriving while the planner is still fetching device schema. The
+            // cancel releases the spill directory, so the next segment write fails with
+            // NoSuchFileException, which must not override the recorded QUERY_WAS_KILLED status.
+            self[0].cancel();
+            throw new UncheckedIOException(
+                new NoSuchFileException(
+                    "/tmp/device-entry/cancel_during_start/1/raw/segment-000002.tmp"));
+          }
+        };
+    QueryExecution execution =
+        new QueryExecution(
+            planner, createQueryContext("cancel_during_start"), stateMachineExecutor);
+    self[0] = execution;
+
+    execution.start();
+
+    assertEquals(Arrays.asList("begin", "analyze", "rollback"), planner.getAnalysisEvents());
+    ExecutionResult result = execution.getStatus();
+    assertEquals(TSStatusCode.QUERY_WAS_KILLED.getStatusCode(), result.status.code);
+    assertUDFQueryScopeClosed(execution);
   }
 
   private static MPPQueryContext createQueryContext(String queryId) {
@@ -127,6 +207,26 @@ public class QueryExecutionRetryTest {
     retryCountField.setInt(execution, retryCount);
   }
 
+  private static void assertUDFQueryScopeClosed(QueryExecution execution) throws Exception {
+    Field queryScopeField = QueryExecution.class.getDeclaredField("udfQueryScope");
+    queryScopeField.setAccessible(true);
+    UDFClassLoaderManager.QueryScope queryScope =
+        (UDFClassLoaderManager.QueryScope) queryScopeField.get(execution);
+    assertNotNull(queryScope);
+    assertThrows(
+        IllegalStateException.class,
+        () -> UDFClassLoaderManager.getInstance().withQueryScope(queryScope, () -> null));
+  }
+
+  private static void assertUDFQueryScopeOpen(QueryExecution execution) throws Exception {
+    Field queryScopeField = QueryExecution.class.getDeclaredField("udfQueryScope");
+    queryScopeField.setAccessible(true);
+    UDFClassLoaderManager.QueryScope queryScope =
+        (UDFClassLoaderManager.QueryScope) queryScopeField.get(execution);
+    assertNotNull(queryScope);
+    UDFClassLoaderManager.getInstance().withQueryScope(queryScope, () -> null);
+  }
+
   private static class RecordingPlanner implements IPlanner {
 
     private final IAnalysis analysis = mock(IAnalysis.class);
@@ -135,11 +235,17 @@ public class QueryExecutionRetryTest {
     private final DistributedQueryPlan distributedPlan = mock(DistributedQueryPlan.class);
     private final List<String> analysisEvents = new ArrayList<>();
     private final boolean alwaysFailDispatch;
+    private final boolean retryOnFirstDispatch;
 
     private int scheduleAttempts;
 
     private RecordingPlanner(boolean alwaysFailDispatch) {
+      this(alwaysFailDispatch, true);
+    }
+
+    private RecordingPlanner(boolean alwaysFailDispatch, boolean retryOnFirstDispatch) {
       this.alwaysFailDispatch = alwaysFailDispatch;
+      this.retryOnFirstDispatch = retryOnFirstDispatch;
       when(distributedPlan.getInstances()).thenReturn(Collections.emptyList());
     }
 
@@ -176,19 +282,25 @@ public class QueryExecutionRetryTest {
     }
 
     @Override
-    public IScheduler doSchedule(
+    public IScheduler createScheduler(
         IAnalysis analysis,
         DistributedQueryPlan distributedPlan,
         MPPQueryContext context,
         QueryStateMachine stateMachine) {
-      scheduleAttempts++;
-      stateMachine.transitionToDispatching();
-      if (alwaysFailDispatch || scheduleAttempts == 1) {
-        TSStatus dispatchFailure = RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR);
-        stateMachine.transitionToPendingRetry(dispatchFailure);
-      } else {
-        stateMachine.transitionToRunning();
-      }
+      org.mockito.Mockito.doAnswer(
+              invocation -> {
+                scheduleAttempts++;
+                stateMachine.transitionToDispatching();
+                if (alwaysFailDispatch || (retryOnFirstDispatch && scheduleAttempts == 1)) {
+                  TSStatus dispatchFailure = RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR);
+                  stateMachine.transitionToPendingRetry(dispatchFailure);
+                } else {
+                  stateMachine.transitionToRunning();
+                }
+                return null;
+              })
+          .when(scheduler)
+          .start();
       return scheduler;
     }
 

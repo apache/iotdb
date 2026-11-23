@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.series;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.series.util.ConsecutiveUtil;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
@@ -43,13 +44,15 @@ public class UDTFConsecutiveWindows implements UDTF {
     validator
         .validate(
             x -> (long) x > 0,
-            "gap should be a time period whose unit is ms, s, m, h.",
+            LibraryUdfMessages
+                .EXCEPTION_GAP_SHOULD_BE_A_TIME_PERIOD_WHOSE_UNIT_IS_MS_S_M_H_EDAA139C,
             Util.parseTime(
                 validator.getParameters().getStringOrDefault("gap", "1ms"),
                 validator.getParameters()))
         .validate(
             x -> (long) x > 0,
-            "length should be a time period whose unit is ms, s, m, h.",
+            LibraryUdfMessages
+                .EXCEPTION_LENGTH_SHOULD_BE_A_TIME_PERIOD_WHOSE_UNIT_IS_MS_S_M_H_BE421588,
             Util.parseTime(
                 validator.getParameters().getString("length"), validator.getParameters()));
   }

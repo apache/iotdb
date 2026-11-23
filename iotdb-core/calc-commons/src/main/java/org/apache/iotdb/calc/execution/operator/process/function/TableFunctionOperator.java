@@ -26,6 +26,7 @@ import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionCache;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.udf.api.IoTDBLocal;
@@ -92,7 +93,9 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
       List<Integer> partitionChannels,
       boolean requireRecordSnapshot,
       IoTDBLocal ioTDBLocal) {
-    checkArgument(ioTDBLocal != null, "IoTDBLocal must not be null for table function");
+    checkArgument(
+        ioTDBLocal != null,
+        CalcMessages.EXCEPTION_IOTDBLOCAL_MUST_NOT_BE_NULL_FOR_TABLE_FUNCTION_5580D0A5);
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.properChannelCount = properChannelCount;
@@ -178,7 +181,12 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
           processor.beforeStart(ioTDBLocal);
         }
       }
-      partitionCache.addSlice(slice);
+      // the cached slices are only needed when the output has
+      // columns declared as pass-through. Without them every output column is written by the
+      // processor, so the input block should not be retained in the partitionCache
+      if (needPassThrough) {
+        partitionCache.addSlice(slice);
+      }
       Iterator<Record> recordIterator = slice.getRequiredRecordIterator(requireRecordSnapshot);
       while (recordIterator.hasNext()) {
         processor.process(

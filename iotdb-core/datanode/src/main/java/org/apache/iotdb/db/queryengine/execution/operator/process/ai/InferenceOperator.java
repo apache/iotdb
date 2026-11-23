@@ -196,7 +196,8 @@ public class InferenceOperator implements ProcessOperator {
         if (inferenceResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           String message =
               String.format(
-                  "Error occurred while executing inference:[%s]",
+                  DataNodeQueryMessages
+                      .EXCEPTION_ERROR_OCCURRED_WHILE_EXECUTING_INFERENCE_ARG_14FC21CE,
                   inferenceResp.getStatus().getMessage());
           throw new ModelInferenceProcessException(message);
         }

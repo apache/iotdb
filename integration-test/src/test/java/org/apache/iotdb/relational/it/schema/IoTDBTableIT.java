@@ -21,13 +21,16 @@ package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -52,6 +55,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
@@ -77,6 +81,128 @@ public class IoTDBTableIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testSetInfiniteTtlAfterMaximumNumericTtl() throws Exception {
+    final String database = "ttl_infinite_reset";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("CREATE DATABASE " + database);
+        statement.execute("USE " + database);
+        statement.execute(
+            "CREATE TABLE table_1(device_id STRING TAG, text TEXT FIELD, float FLOAT FIELD)");
+        statement.execute("ALTER TABLE IF EXISTS table_1 SET PROPERTIES ttl=3600000");
+        TestUtils.tableResultSetEqualTestUnordered(
+            "SHOW TABLES",
+            new String[] {"TableName", "TTL(ms)"},
+            new String[] {"table_1,3600000,"},
+            database);
+        for (final String ttl : new String[] {"'INF'", "DEFAULT"}) {
+          statement.execute("ALTER TABLE table_1 SET PROPERTIES ttl=" + Long.MAX_VALUE);
+          TestUtils.tableResultSetEqualTestUnordered(
+              "SHOW TABLES",
+              new String[] {"TableName", "TTL(ms)"},
+              new String[] {"table_1," + Long.MAX_VALUE + ","},
+              database);
+          statement.execute("ALTER TABLE table_1 SET PROPERTIES ttl=" + ttl);
+          TestUtils.tableResultSetEqualTestUnordered(
+              "SHOW TABLES",
+              new String[] {"TableName", "TTL(ms)"},
+              new String[] {"table_1,INF,"},
+              database);
+        }
+      } finally {
+        statement.execute("DROP DATABASE IF EXISTS " + database);
+      }
+    }
+  }
+
+  @Test
+  public void testResetTableTtlUsesDatabaseDefault() throws Exception {
+    final String database = "ttl_default_reset";
+    final long day = TimeUnit.DAYS.toMillis(1);
+    final long old = System.currentTimeMillis() - 2 * day;
+    final long recent = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1);
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("CREATE DATABASE " + database + " WITH (ttl=" + 7 * day + ")");
+        statement.execute("USE " + database);
+        statement.execute("CREATE TABLE inherited(dev STRING TAG,v INT32 FIELD)");
+        statement.execute(
+            "CREATE TABLE overridden(dev STRING TAG,v INT32 FIELD) WITH (ttl=" + 30 * day + ")");
+        for (final String table : new String[] {"inherited", "overridden"}) {
+          statement.execute(
+              "INSERT INTO "
+                  + table
+                  + "(time,dev,v) VALUES("
+                  + old
+                  + ",'d',1),("
+                  + recent
+                  + ",'d',2)");
+          TestUtils.assertDataEventuallyOnEnv(
+              EnvFactory.getEnv(),
+              "SELECT v FROM " + table + " ORDER BY time",
+              "v,",
+              new HashSet<>(Arrays.asList("1,", "2,")),
+              30,
+              database,
+              null);
+        }
+
+        statement.execute("ALTER DATABASE " + database + " SET PROPERTIES ttl=" + day);
+        statement.execute("ALTER TABLE inherited SET PROPERTIES ttl=DEFAULT");
+        TestUtils.tableResultSetEqualTestUnordered(
+            "SHOW TABLES",
+            new String[] {"TableName", "TTL(ms)"},
+            new String[] {"inherited," + day + ",", "overridden," + 30 * day + ","},
+            database);
+        TestUtils.tableResultSetEqualTestUnordered(
+            "SELECT v FROM inherited", new String[] {"v"}, new String[] {"2,"}, database);
+        TestUtils.tableResultSetEqualTestUnordered(
+            "SELECT v FROM overridden", new String[] {"v"}, new String[] {"1,", "2,"}, database);
+        for (final DataNodeWrapper node : EnvFactory.getEnv().getDataNodeWrapperList()) {
+          try (final Connection writer =
+                  EnvFactory.getEnv()
+                      .getConnection(
+                          node,
+                          SessionConfig.DEFAULT_USER,
+                          SessionConfig.DEFAULT_PASSWORD,
+                          BaseEnv.TABLE_SQL_DIALECT);
+              final Statement write = writer.createStatement()) {
+            final SQLException exception =
+                Assert.assertThrows(
+                    SQLException.class,
+                    () ->
+                        write.execute(
+                            "INSERT INTO "
+                                + database
+                                + ".inherited(time,dev,v) VALUES("
+                                + (old + 1)
+                                + ",'d',3)"));
+            assertEquals(TSStatusCode.OUT_OF_TTL.getStatusCode(), exception.getErrorCode());
+          }
+        }
+
+        statement.execute("ALTER DATABASE " + database + " SET PROPERTIES ttl='INF'");
+        statement.execute("ALTER TABLE inherited SET PROPERTIES ttl=DEFAULT");
+        statement.execute("INSERT INTO inherited(time,dev,v) VALUES(" + (old + 1) + ",'d',3)");
+        TestUtils.assertDataEventuallyOnEnv(
+            EnvFactory.getEnv(),
+            "SELECT v FROM inherited WHERE v=3",
+            "v,",
+            Collections.singleton("3,"),
+            30,
+            database,
+            null);
+      } finally {
+        statement.execute("DROP DATABASE IF EXISTS " + database);
+      }
+    }
   }
 
   @Test
@@ -325,7 +451,9 @@ public class IoTDBTableIT {
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
       } catch (final SQLException e) {
-        assertEquals("552: Column 'speed' already exist", e.getMessage());
+        assertEquals(
+            "552: Column 'speed' already exists or its source measurement is already mapped",
+            e.getMessage());
       }
 
       statement.execute("alter table table2 add column if not exists speed DOUBLE FIELD");
@@ -453,7 +581,7 @@ public class IoTDBTableIT {
           "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
 
       // Test drop column
-      statement.execute("alter table table2 drop column color");
+      TestUtils.dropColumn(statement, "alter table table2 drop column color");
 
       // Test comment
       // Before
@@ -510,7 +638,7 @@ public class IoTDBTableIT {
         assertEquals(columnNames.length, cnt);
       }
 
-      statement.execute("alter table table2 drop column speed");
+      TestUtils.dropColumn(statement, "alter table table2 drop column speed");
 
       try {
         statement.executeQuery("select color from table2");
@@ -527,13 +655,13 @@ public class IoTDBTableIT {
       }
 
       try {
-        statement.execute("alter table table2 drop column speed");
+        TestUtils.dropColumn(statement, "alter table table2 drop column speed");
       } catch (final SQLException e) {
         assertEquals("616: Column speed in table 'test2.table2' does not exist.", e.getMessage());
       }
 
       try {
-        statement.execute("alter table table2 drop column t1");
+        TestUtils.dropColumn(statement, "alter table table2 drop column t1");
       } catch (final SQLException e) {
         assertEquals("701: Dropping tag or time column is not supported.", e.getMessage());
       }
@@ -545,8 +673,7 @@ public class IoTDBTableIT {
           "speed,",
           Collections.singleton("null,"));
 
-      statement.execute("drop table table2");
-      awaitDropProcedure(statement, "test2", "table2");
+      TestUtils.dropTable(connection, "test2", "table2");
       try {
         statement.executeQuery("describe table2");
         fail();
@@ -597,7 +724,7 @@ public class IoTDBTableIT {
       }
 
       try {
-        statement.execute("alter table test1.test drop column a");
+        TestUtils.dropColumn(statement, "alter table test1.test drop column a");
         fail();
       } catch (final SQLException e) {
         assertEquals("500: Unknown database test1", e.getMessage());
@@ -871,7 +998,8 @@ public class IoTDBTableIT {
               () -> {
                 for (int i = 0; i < 100; ++i) {
                   try {
-                    adminStmt.execute(String.format("alter table db1.table8 drop column m%s", i));
+                    TestUtils.dropColumn(
+                        adminStmt, String.format("alter table db1.table8 drop column m%s", i));
                   } catch (final SQLException e) {
                     throw new RuntimeException(e);
                   }
@@ -909,6 +1037,58 @@ public class IoTDBTableIT {
         assertTrue(resultSet.next());
         assertEquals(10, resultSet.getInt("value"));
         assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testShowCreateViewPreservesQuotedTreePath() throws Exception {
+    final String[][] pathNodes = {
+      {"`a``b`", "\"`a``b`\""},
+      {"`a b`", "\"`a b`\""},
+      {"`a\"b`", "\"`a\"\"b`\""}
+    };
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.show_create_view_source");
+      for (int i = 0; i < pathNodes.length; i++) {
+        final String device = "root.show_create_view_source." + pathNodes[i][0] + ".d1";
+        statement.execute("CREATE TIMESERIES " + device + ".s1 INT32");
+        statement.execute("INSERT INTO " + device + "(time,s1) VALUES (1," + (10 + i) + ")");
+      }
+      statement.execute("CREATE TIMESERIES root.show_create_view_source.ab.d1.s1 INT32");
+      statement.execute("INSERT INTO root.show_create_view_source.ab.d1(time,s1) VALUES (1,999)");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE show_create_view_db");
+      statement.execute("USE show_create_view_db");
+      for (int i = 0; i < pathNodes.length; i++) {
+        final String viewName = "v" + i;
+        final String prefixPath = "root.\"show_create_view_source\"." + pathNodes[i][1] + ".**";
+        statement.execute(
+            "CREATE VIEW "
+                + viewName
+                + " (device STRING TAG, value INT32 FIELD FROM s1) AS "
+                + prefixPath);
+        for (final String command : new String[] {"SHOW CREATE VIEW ", "SHOW CREATE TABLE "}) {
+          final String createSql;
+          try (final ResultSet resultSet = statement.executeQuery(command + viewName)) {
+            assertTrue(resultSet.next());
+            assertEquals(viewName, resultSet.getString(1));
+            createSql = resultSet.getString(2);
+            assertTrue(createSql.endsWith(" AS " + prefixPath));
+            assertFalse(resultSet.next());
+          }
+          statement.execute("DROP VIEW " + viewName);
+          statement.execute(createSql);
+          TestUtils.assertResultSetEqual(
+              statement.executeQuery("SELECT value FROM " + viewName + " ORDER BY time"),
+              "value,",
+              Collections.singleton((10 + i) + ","));
+        }
       }
     }
   }
@@ -971,7 +1151,7 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("drop timeSeries root.`重庆`.`1`.b.`1`.s1");
+      TestUtils.deleteTimeSeries(statement, "drop timeSeries root.`重庆`.`1`.b.`1`.s1");
       statement.execute("create device template t1 (S1 boolean, s9 int32)");
       statement.execute("set schema template t1 to root.`重庆`.`1`.b.`1`");
       statement.execute("create timeSeries root.`重庆`.`1`.b.`2`.f.g.h.S1 int32");
@@ -987,24 +1167,13 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("use tree_view_db");
 
-      try {
-        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".\"1\".**");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals(
-            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
-            e.getMessage());
-      }
-
-      try {
-        statement.execute(
-            "create view tree_table (tag1 tag, tag2 tag, S1 field) as root.\"重庆\".\"1\".**");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals(
-            "614: Multiple types encountered when auto detecting type of measurement 'S1', please check",
-            e.getMessage());
-      }
+      // Template t1 is set but not activated, so its S1 BOOLEAN is not a created series and does
+      // not take part in the detection
+      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".\"1\".**");
+      statement.execute("drop view tree_table");
+      statement.execute(
+          "create view tree_table (tag1 tag, tag2 tag, S1 field) as root.\"重庆\".\"1\".**");
+      statement.execute("drop view tree_table");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
@@ -1220,14 +1389,14 @@ public class IoTDBTableIT {
           statement.executeQuery("show create view view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"`1`\".**,"));
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"`1`\".**,"));
 
       statement.execute("create table a ()");
       try {
@@ -1259,24 +1428,57 @@ public class IoTDBTableIT {
   }
 
   @Test
+  public void testAsyncDropColumn() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE async_drop_column_db");
+      try {
+        statement.execute("USE async_drop_column_db");
+        statement.execute(
+            "CREATE TABLE t (device STRING TAG, attr STRING ATTRIBUTE, removed INT32, kept INT32, "
+                + "\"removed\"\"column\" INT32)");
+        statement.execute("INSERT INTO t(time,device,attr,removed,kept) VALUES(1,'d','a',11,21)");
+        statement.execute("FLUSH");
+        statement.execute("INSERT INTO t(time,device,attr,removed,kept) VALUES(2,'d','a',12,22)");
+        TestUtils.dropColumn(statement, "ALTER TABLE t DROP COLUMN removed");
+        statement.execute("ALTER TABLE t ADD COLUMN removed STRING");
+        try (ResultSet result =
+            statement.executeQuery("SELECT removed,kept,attr FROM t ORDER BY time")) {
+          TestUtils.assertResultSetEqual(
+              result, "removed,kept,attr,", new String[] {"null,21,a,", "null,22,a,"});
+        }
+        // Attribute deletion has a different region/cache path from field deletion.
+        TestUtils.dropColumn(statement, "ALTER TABLE t DROP COLUMN attr");
+        statement.execute("ALTER TABLE t ADD COLUMN attr STRING ATTRIBUTE");
+        try (ResultSet result = statement.executeQuery("SELECT attr,kept FROM t ORDER BY time")) {
+          TestUtils.assertResultSetEqual(
+              result, "attr,kept,", new String[] {"null,21,", "null,22,"});
+        }
+        TestUtils.dropColumn(statement, "ALTER TABLE t DROP COLUMN \"removed\"\"column\"");
+      } finally {
+        statement.execute("DROP DATABASE async_drop_column_db");
+      }
+    }
+  }
+
+  @Test
   public void testAsyncDropTableProgress() throws Exception {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement();
+        final Statement procedureStatement = TestUtils.createSingleNodeStatement(connection)) {
       statement.execute("create database async_drop_db");
       statement.execute("use async_drop_db");
       statement.execute("create table drop_target (device string tag, reading int32)");
-      statement.execute("drop table drop_target");
-
       // The drop may finish before the first query. Its completed result remains visible until
       // the procedure cleaner evicts it, so verify that result after waiting for completion.
-      awaitDropProcedure(statement, "async_drop_db", "drop_target");
+      TestUtils.dropTable(connection, "async_drop_db", "drop_target");
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables from async_drop_db"),
           "TableName,TTL(ms),",
           Collections.emptySet());
       try (final ResultSet resultSet =
-          statement.executeQuery(
+          procedureStatement.executeQuery(
               "select procedure_id, state, progress, error_message, "
                   + "written_mod_file_count, remaining_mod_file_count "
                   + "from information_schema.drop_table_procedures "
@@ -1293,38 +1495,5 @@ public class IoTDBTableIT {
         assertFalse(resultSet.next());
       }
     }
-  }
-
-  private static void awaitDropProcedure(
-      final Statement statement, final String database, final String tableName)
-      throws SQLException {
-    final long deadline = System.currentTimeMillis() + 60_000;
-    while (System.currentTimeMillis() < deadline) {
-      try (final ResultSet resultSet =
-          statement.executeQuery(
-              "select state, error_message from information_schema.drop_table_procedures "
-                  + "where database = '"
-                  + database
-                  + "' and table_name = '"
-                  + tableName
-                  + "'")) {
-        if (resultSet.next()) {
-          final String state = resultSet.getString(1);
-          if ("SUCCESS".equals(state)) {
-            return;
-          }
-          if ("ROLLEDBACK".equals(state)) {
-            throw new SQLException(resultSet.getString(2));
-          }
-        }
-      }
-      try {
-        Thread.sleep(20);
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new SQLException(e);
-      }
-    }
-    throw new SQLException("Timed out waiting for drop table procedure");
   }
 }

@@ -48,6 +48,7 @@ public enum WALEntryType {
   MEMORY_TABLE_SNAPSHOT((byte) 10),
   RELATIONAL_DELETE_DATA_NODE((byte) 11),
   OBJECT_FILE_NODE((byte) 12),
+  LOAD_TSFILE_CONSENSUS_NODE((byte) 13),
   // endregion
   // region signal entry type
   // signal wal buffer has been closed
@@ -75,7 +76,8 @@ public enum WALEntryType {
         || this == INSERT_ROWS_NODE
         || this == DELETE_DATA_NODE
         || this == RELATIONAL_DELETE_DATA_NODE
-        || this == OBJECT_FILE_NODE;
+        || this == OBJECT_FILE_NODE
+        || this == LOAD_TSFILE_CONSENSUS_NODE;
   }
 
   public static WALEntryType valueOf(byte code) {

@@ -250,6 +250,15 @@ public class ConfigNodeConfig {
   private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
+  /** Maximum number of tree-model timeseries deletion tasks waiting to execute. */
+  private int timeseriesDeletionQueueCapacity = 1024;
+
+  /** Minimum interval between starting tree-model timeseries deletion tasks, in milliseconds. */
+  private long timeseriesDeletionExecutionIntervalMs = 1000;
+
+  /** Maximum number of tree-model timeseries deletion tasks executing concurrently. */
+  private int timeseriesDeletionMaxConcurrentTasks = 1;
+
   /** Thread pool size for publishing cluster load statistics changes. */
   private int loadStatisticsPublisherThreadCount = 5;
 
@@ -642,7 +651,14 @@ public class ConfigNodeConfig {
   }
 
   public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
-    this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
+    // DataNode normalizes the legacy PipeConsensus / implementation class names before it
+    // dispatches the consensus implementation, but ConfigNode used to keep and compare the raw
+    // value. Keeping the in-memory value canonical makes every ConfigNode decision (consensus
+    // pipe creation and repair, leader balance, ...) agree with DataNode, no matter whether the
+    // value came from iotdb-system.properties, confignode-system.properties or programmatic
+    // configuration.
+    this.dataRegionConsensusProtocolClass =
+        ConsensusFactory.normalizeConsensusProtocolClass(dataRegionConsensusProtocolClass);
   }
 
   public String getIotConsensusV2Mode() {
@@ -791,6 +807,36 @@ public class ConfigNodeConfig {
 
   public int getLoadStatisticsPublisherThreadCount() {
     return loadStatisticsPublisherThreadCount;
+  }
+
+  public int getTimeseriesDeletionQueueCapacity() {
+    return timeseriesDeletionQueueCapacity;
+  }
+
+  public void setTimeseriesDeletionQueueCapacity(int capacity) {
+    if (capacity <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    timeseriesDeletionQueueCapacity = capacity;
+  }
+
+  public long getTimeseriesDeletionExecutionIntervalMs() {
+    return timeseriesDeletionExecutionIntervalMs;
+  }
+
+  public void setTimeseriesDeletionExecutionIntervalMs(long intervalMs) {
+    timeseriesDeletionExecutionIntervalMs = Math.max(0L, intervalMs);
+  }
+
+  public int getTimeseriesDeletionMaxConcurrentTasks() {
+    return timeseriesDeletionMaxConcurrentTasks;
+  }
+
+  public void setTimeseriesDeletionMaxConcurrentTasks(int maxConcurrentTasks) {
+    if (maxConcurrentTasks <= 0) {
+      throw new IllegalArgumentException(CommonMessages.SIZE_MUST_BE_POSITIVE);
+    }
+    timeseriesDeletionMaxConcurrentTasks = maxConcurrentTasks;
   }
 
   public void setLoadStatisticsPublisherThreadCount(int loadStatisticsPublisherThreadCount) {

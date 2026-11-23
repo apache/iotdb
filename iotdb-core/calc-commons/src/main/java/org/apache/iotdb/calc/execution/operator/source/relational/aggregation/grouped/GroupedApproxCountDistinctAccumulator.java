@@ -101,14 +101,18 @@ public class GroupedApproxCountDistinctAccumulator implements GroupedAccumulator
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
-    HyperLogLogBigArray hlls = state.getHyperLogLogs();
-    columnBuilder.writeBinary(new Binary(hlls.get(groupId).serialize()));
+    HyperLogLog hll = state.getHyperLogLogs().get(groupId);
+    if (hll == null) {
+      columnBuilder.appendNull();
+      return;
+    }
+    columnBuilder.writeBinary(new Binary(hll.serialize()));
   }
 
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
-    HyperLogLogBigArray hlls = state.getHyperLogLogs();
-    columnBuilder.writeLong(hlls.get(groupId).cardinality());
+    HyperLogLog hll = state.getHyperLogLogs().get(groupId);
+    columnBuilder.writeLong(hll == null ? 0 : hll.cardinality());
   }
 
   @Override

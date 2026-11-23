@@ -47,6 +47,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class TsFileStatisticScan extends TsFileSequenceScan {
@@ -85,22 +86,35 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
     for (TSDataType type : seriesDataTypeMap.values()) {
       seriesTypeCountMap.compute(type, (t, v) -> v == null ? 1 : v + 1);
     }
-    System.out.println("Series data type count: " + seriesTypeCountMap);
     System.out.println(
-        "Int64 series statistics: overPrecised "
-            + overPrecisedInt64ChunkNum
-            + ", justPrecised "
-            + justPrecisedInt64ChunkNum
-            + ", smallRange "
-            + smallRangeInt64ChunkNum
-            + ", largeRange "
-            + largeRangeInt64ChunkNum);
-    System.out.println("data type -> size: " + dataTypeSizeMap);
-    System.out.println("data type -> point count: " + dataTypePointMap);
-    System.out.println("data type -> chunk count: " + dataTypeChunkMap);
+        String.format(
+            DataNodeMiscMessages.LOG_SERIES_DATA_TYPE_COUNT_ARG_4D78B18F,
+            Objects.toString(seriesTypeCountMap)));
     System.out.println(
-        "average distinct binary value num: "
-            + distinctBinaryValueNumInChunks.stream().mapToInt(i -> i).average().orElse(0.0));
+        String.format(
+            DataNodeMiscMessages
+                .LOG_INT64_SERIES_STATISTICS_OVERPRECISED_ARG_JUSTPRECISED_ARG_SMALLRANGE_ARG_LARGERANGE_ARG_29005700,
+            Objects.toString(overPrecisedInt64ChunkNum),
+            Objects.toString(justPrecisedInt64ChunkNum),
+            Objects.toString(smallRangeInt64ChunkNum),
+            Objects.toString(largeRangeInt64ChunkNum)));
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_DATA_TYPE_SIZE_ARG_3003BCA0,
+            Objects.toString(dataTypeSizeMap)));
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_DATA_TYPE_POINT_COUNT_ARG_37821A36,
+            Objects.toString(dataTypePointMap)));
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_DATA_TYPE_CHUNK_COUNT_ARG_15B8F1E4,
+            Objects.toString(dataTypeChunkMap)));
+    System.out.println(
+        String.format(
+            DataNodeMiscMessages.LOG_AVERAGE_DISTINCT_BINARY_VALUE_NUM_ARG_E12BEF2A,
+            Objects.toString(
+                distinctBinaryValueNumInChunks.stream().mapToInt(i -> i).average().orElse(0.0))));
   }
 
   @Override

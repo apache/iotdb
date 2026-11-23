@@ -321,7 +321,7 @@ public class IoTDBRegionOperationReliabilityITFramework {
       final int originalDataNode = selectOriginalDataNode(regionMap, selectedRegion);
       final int destDataNode =
           selectDataNodeNotContainsRegion(allDataNodeId, regionMap, selectedRegion);
-      checkRegionFileExist(originalDataNode);
+      checkRegionFileExist(originalDataNode, selectedRegion);
 
       // set kill points
       if (killNode == KillNode.ORIGINAL_DATANODE) {
@@ -415,13 +415,13 @@ public class IoTDBRegionOperationReliabilityITFramework {
 
       // check the remaining file
       if (success) {
-        checkRegionFileClearIfNodeAlive(originalDataNode);
-        checkRegionFileExistIfNodeAlive(destDataNode);
+        checkRegionFileClearIfNodeAlive(originalDataNode, selectedRegion);
+        checkRegionFileExistIfNodeAlive(destDataNode, selectedRegion);
         // TODO: @YongzaoDan enable this check after the __system database is refactored!!!
         //        checkClusterStillWritable();
       } else {
-        checkRegionFileClearIfNodeAlive(destDataNode);
-        checkRegionFileExistIfNodeAlive(originalDataNode);
+        checkRegionFileClearIfNodeAlive(destDataNode, selectedRegion);
+        checkRegionFileExistIfNodeAlive(originalDataNode, selectedRegion);
       }
 
       LOGGER.info("test pass");
@@ -788,41 +788,27 @@ public class IoTDBRegionOperationReliabilityITFramework {
     LOGGER.info("DataNode set has been successfully changed to {}", lastTimeDataNodes.get());
   }
 
-  private static void checkRegionFileExistIfNodeAlive(int dataNode) {
+  private void checkRegionFileExistIfNodeAlive(int dataNode, int regionId) {
     if (EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().isAlive()) {
-      checkRegionFileExist(dataNode);
+      checkRegionFileExist(dataNode, regionId);
     }
   }
 
-  private static void checkRegionFileExist(int dataNode) {
-    File originalRegionDir = new File(buildRegionDirPath(dataNode));
-    Assert.assertTrue(originalRegionDir.isDirectory());
-    Assert.assertNotEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+  protected void checkRegionFileExist(int dataNode, int regionId) {
+    File regionDir = new File(buildRegionDirPath(dataNode, regionId));
+    Assert.assertTrue(regionDir.getAbsolutePath(), regionDir.isDirectory());
   }
 
-  private static void checkRegionFileClearIfNodeAlive(int dataNode) {
+  private void checkRegionFileClearIfNodeAlive(int dataNode, int regionId) {
     if (EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().isAlive()) {
-      checkRegionFileClear(dataNode);
+      checkRegionFileClear(dataNode, regionId);
     }
   }
 
-  /** Check whether the original DataNode's region file has been deleted. */
-  private static void checkRegionFileClear(int dataNode) {
-    File originalRegionDir = new File(buildRegionDirPath(dataNode));
-    Assert.assertTrue(originalRegionDir.isDirectory());
-    File[] files = originalRegionDir.listFiles();
-    try {
-      int length = Objects.requireNonNull(files).length;
-      // the node may still have a region of the system database
-      Assert.assertTrue(length == 0 || length == 1 && files[0].getName().equals("1_1"));
-    } catch (AssertionError e) {
-      LOGGER.error(
-          "Original DataNode {} region file not clear, these files is still remain: {}",
-          dataNode,
-          Arrays.toString(files));
-      throw e;
-    }
-    LOGGER.info("Original DataNode {} region file clear", dataNode);
+  /** Other RegionGroups, including internal databases, may still have replicas on this DataNode. */
+  protected void checkRegionFileClear(int dataNode, int regionId) {
+    File regionDir = new File(buildRegionDirPath(dataNode, regionId));
+    Assert.assertFalse(regionDir.getAbsolutePath(), regionDir.exists());
   }
 
   private void checkClusterStillWritable() {
@@ -847,7 +833,7 @@ public class IoTDBRegionOperationReliabilityITFramework {
     }
   }
 
-  private static String buildRegionDirPath(int dataNode) {
+  private String buildRegionDirPath(int dataNode, int regionId) {
     String nodePath = EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().getNodePath();
     return nodePath
         + File.separator
@@ -857,7 +843,13 @@ public class IoTDBRegionOperationReliabilityITFramework {
         + File.separator
         + IoTDBConstant.CONSENSUS_FOLDER_NAME
         + File.separator
-        + IoTDBConstant.DATA_REGION_FOLDER_NAME;
+        + IoTDBConstant.DATA_REGION_FOLDER_NAME
+        + File.separator
+        + getRegionDirName(regionId);
+  }
+
+  protected String getRegionDirName(int regionId) {
+    return TConsensusGroupType.DataRegion.getValue() + "_" + regionId;
   }
 
   private static String buildDataPath(int dataNode, boolean isSequence) {

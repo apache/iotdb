@@ -169,9 +169,22 @@ public class RemoteServerEnv implements BaseEnv {
   public Connection getConnection(
       Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException {
+    return getConnection(version, username, password, sqlDialect, 0);
+  }
+
+  @Override
+  public Connection getConnection(
+      Constant.Version version,
+      String username,
+      String password,
+      String sqlDialect,
+      int networkTimeoutMs)
+      throws SQLException {
     Connection connection;
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
+      String timeoutParam =
+          networkTimeoutMs > 0 ? "&" + Config.NETWORK_TIMEOUT + "=" + networkTimeoutMs : "";
       connection =
           DriverManager.getConnection(
               Config.IOTDB_URL_PREFIX
@@ -179,7 +192,8 @@ public class RemoteServerEnv implements BaseEnv {
                   + "?"
                   + VERSION
                   + "="
-                  + version.toString(),
+                  + version.toString()
+                  + timeoutParam,
               BaseEnv.constructProperties(this.user, this.password, sqlDialect));
     } catch (ClassNotFoundException e) {
       e.printStackTrace();

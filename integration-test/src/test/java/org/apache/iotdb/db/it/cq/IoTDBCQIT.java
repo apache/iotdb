@@ -30,17 +30,29 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCQIT {
+
+  private static final String UDF_LIB_PREFIX =
+      System.getProperty("user.dir")
+          + File.separator
+          + "target"
+          + File.separator
+          + "test-classes"
+          + File.separator;
+
+  private static final String UDF_JAR_PREFIX = new File(UDF_LIB_PREFIX).toURI().toString();
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -404,6 +416,47 @@ public class IoTDBCQIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateCQWithExternalUDF() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.cq_udf");
+      statement.execute("CREATE DATABASE root.cq_udf_out");
+      try {
+        statement.execute("CREATE TIMESERIES root.cq_udf.d.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
+        statement.execute(
+            String.format(
+                "CREATE FUNCTION tree_f AS 'org.apache.iotdb.udf.UDTFExample' USING URI '%s'",
+                UDF_JAR_PREFIX + "udf-example.jar"));
+        statement.execute(
+            "CREATE CQ cq_udf\n"
+                + "RESAMPLE EVERY 30m\n"
+                + "BEGIN\n"
+                + "  SELECT tree_f(s1)\n"
+                + "  INTO root.cq_udf_out.d(tf)\n"
+                + "  FROM root.cq_udf.d\n"
+                + "END");
+
+        boolean found = false;
+        try (ResultSet resultSet = statement.executeQuery("SHOW CQS")) {
+          while (resultSet.next()) {
+            if ("cq_udf".equals(resultSet.getString(1))) {
+              assertEquals("ACTIVE", resultSet.getString(3));
+              found = true;
+              break;
+            }
+          }
+        }
+        assertTrue("CQ using an external UDF was not created", found);
+      } finally {
+        statement.execute("DROP CQ cq_udf");
+        statement.execute("DROP FUNCTION tree_f");
+        statement.execute("DROP DATABASE root.cq_udf");
+        statement.execute("DROP DATABASE root.cq_udf_out");
+      }
     }
   }
 

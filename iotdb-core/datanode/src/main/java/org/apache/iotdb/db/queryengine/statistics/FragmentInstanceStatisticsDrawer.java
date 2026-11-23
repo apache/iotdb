@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.statistics;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -42,56 +43,68 @@ public class FragmentInstanceStatisticsDrawer {
     addLine(
         planHeader,
         0,
-        String.format("Analyze Cost: %.3f ms", context.getAnalyzeCost() * NS_TO_MS_FACTOR));
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_ANALYZE_COST_ARG_MS_222A306D,
+            context.getAnalyzeCost() * NS_TO_MS_FACTOR));
     addLine(
         planHeader,
         0,
         String.format(
-            "Fetch Partition Cost: %.3f ms", context.getFetchPartitionCost() * NS_TO_MS_FACTOR));
+            DataNodeQueryMessages.EXCEPTION_FETCH_PARTITION_COST_ARG_MS_67861DDF,
+            context.getFetchPartitionCost() * NS_TO_MS_FACTOR));
     addLine(
         planHeader,
         0,
         String.format(
-            "Fetch Schema Cost: %.3f ms", context.getFetchSchemaCost() * NS_TO_MS_FACTOR));
+            DataNodeQueryMessages.EXCEPTION_FETCH_SCHEMA_COST_ARG_MS_67816EA5,
+            context.getFetchSchemaCost() * NS_TO_MS_FACTOR));
     addLine(
         planHeader,
         1,
         String.format(
-            "Disk IO Size: %d bytes", context.getDiskIOSizeForDeviceEntryDuringFetchSchema()));
+            DataNodeQueryMessages.EXCEPTION_DISK_IO_SIZE_ARG_BYTES_CD6872DC,
+            context.getDiskIOSizeForDeviceEntryDuringFetchSchema()));
     addLine(
         planHeader,
         1,
         String.format(
-            "Disk IO Time Cost: %.3f ms",
+            DataNodeQueryMessages.EXCEPTION_DISK_IO_TIME_COST_ARG_MS_36FC3B10,
             context.getDiskIOTimeCostForDeviceEntryDuringFetchSchema() * NS_TO_MS_FACTOR));
-    addLine(planHeader, 1, String.format("DeviceEntry Count: %d", context.getDeviceEntryCount()));
+    addLine(
+        planHeader,
+        1,
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_DEVICEENTRY_COUNT_ARG_3CF4F4B6,
+            context.getDeviceEntryCount()));
     addLine(
         planHeader,
         0,
         String.format(
-            "Logical Plan Cost: %.3f ms", context.getLogicalPlanCost() * NS_TO_MS_FACTOR));
+            DataNodeQueryMessages.EXCEPTION_LOGICAL_PLAN_COST_ARG_MS_1A40B609,
+            context.getLogicalPlanCost() * NS_TO_MS_FACTOR));
     addLine(
         planHeader,
         0,
         String.format(
-            "Logical Optimization Cost: %.3f ms",
+            DataNodeQueryMessages.EXCEPTION_LOGICAL_OPTIMIZATION_COST_ARG_MS_1D48CF38,
             context.getLogicalOptimizationCost() * NS_TO_MS_FACTOR));
     addLine(
         planHeader,
         0,
         String.format(
-            "Distribution Plan Cost: %.3f ms",
+            DataNodeQueryMessages.EXCEPTION_DISTRIBUTION_PLAN_COST_ARG_MS_EE261BB5,
             context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
     addLine(
         planHeader,
         1,
         String.format(
-            "Disk IO Size: %d bytes", context.getDiskIOSizeForDeviceEntryDuringDistributionPlan()));
+            DataNodeQueryMessages.EXCEPTION_DISK_IO_SIZE_ARG_BYTES_CD6872DC,
+            context.getDiskIOSizeForDeviceEntryDuringDistributionPlan()));
     addLine(
         planHeader,
         1,
         String.format(
-            "Disk IO Time Cost: %.3f ms",
+            DataNodeQueryMessages.EXCEPTION_DISK_IO_TIME_COST_ARG_MS_36FC3B10,
             context.getDiskIOTimeCostForDeviceEntryDuringDistributionPlan() * NS_TO_MS_FACTOR));
   }
 
@@ -99,7 +112,9 @@ public class FragmentInstanceStatisticsDrawer {
     addLine(
         planHeader,
         0,
-        String.format("Dispatch Cost: %.3f ms", context.getDispatchCost() * NS_TO_MS_FACTOR));
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_DISPATCH_COST_ARG_MS_E2A08F90,
+            context.getDispatchCost() * NS_TO_MS_FACTOR));
   }
 
   public List<StatisticLine> renderFragmentInstances(
@@ -117,7 +132,12 @@ public class FragmentInstanceStatisticsDrawer {
                 })
             .collect(Collectors.toList());
 
-    addLine(table, 0, String.format("Fragment Instances Count: %s", validInstances.size()));
+    addLine(
+        table,
+        0,
+        String.format(
+            DataNodeQueryMessages.EXCEPTION_FRAGMENT_INSTANCES_COUNT_ARG_2B7FA76E,
+            validInstances.size()));
     for (FragmentInstance instance : validInstances) {
       List<StatisticLine> singleFragmentInstanceArea = new ArrayList<>();
       TFetchFragmentInstanceStatisticsResp statistics = allStatistics.get(instance.getId());
@@ -127,7 +147,8 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           0,
           String.format(
-              "FRAGMENT-INSTANCE[Id: %s][IP: %s][DataRegion: %s][State: %s]",
+              DataNodeQueryMessages
+                  .EXCEPTION_FRAGMENT_INSTANCE_ID_ARG_IP_ARG_DATAREGION_ARG_STATE_ARG_32F467DE,
               instance.getId().toString(),
               statistics.getIp(),
               statistics.getDataRegion(),
@@ -136,13 +157,13 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           1,
           String.format(
-              "Total Wall Time: %s ms",
+              DataNodeQueryMessages.EXCEPTION_TOTAL_WALL_TIME_ARG_MS_F65FF0B0,
               (statistics.getEndTimeInMS() - statistics.getStartTimeInMS())));
       addLine(
           singleFragmentInstanceArea,
           1,
           String.format(
-              "Cost of initDataQuerySource: %.3f ms",
+              DataNodeQueryMessages.EXCEPTION_COST_OF_INITDATAQUERYSOURCE_ARG_MS_55A2E155,
               statistics.getInitDataQuerySourceCost() * NS_TO_MS_FACTOR));
 
       if (statistics.isSetInitDataQuerySourceRetryCount()
@@ -151,7 +172,7 @@ public class FragmentInstanceStatisticsDrawer {
             singleFragmentInstanceArea,
             1,
             String.format(
-                "Retry count of initDataQuerySource: %d",
+                DataNodeQueryMessages.EXCEPTION_RETRY_COUNT_OF_INITDATAQUERYSOURCE_ARG_70E5C772,
                 statistics.getInitDataQuerySourceRetryCount()));
       }
 
@@ -159,19 +180,23 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           1,
           String.format(
-              "Seq File(unclosed): %s, Seq File(closed): %s",
-              statistics.getSeqUnclosedNum(), statistics.getSeqClosednNum()));
+              DataNodeQueryMessages.EXCEPTION_SEQ_FILE_UNCLOSED_ARG_SEQ_FILE_CLOSED_ARG_CBB3422D,
+              statistics.getSeqUnclosedNum(),
+              statistics.getSeqClosednNum()));
       addLine(
           singleFragmentInstanceArea,
           1,
           String.format(
-              "UnSeq File(unclosed): %s, UnSeq File(closed): %s",
-              statistics.getUnseqUnclosedNum(), statistics.getUnseqClosedNum()));
+              DataNodeQueryMessages
+                  .EXCEPTION_UNSEQ_FILE_UNCLOSED_ARG_UNSEQ_FILE_CLOSED_ARG_61850A9D,
+              statistics.getUnseqUnclosedNum(),
+              statistics.getUnseqClosedNum()));
       addLine(
           singleFragmentInstanceArea,
           1,
           String.format(
-              "ready queued time: %.3f ms, blocked queued time: %.3f ms",
+              DataNodeQueryMessages
+                  .EXCEPTION_READY_QUEUED_TIME_ARG_MS_BLOCKED_QUEUED_TIME_ARG_MS_24FB1E4C,
               statistics.getReadyQueuedTime() * NS_TO_MS_FACTOR,
               statistics.getBlockQueuedTime() * NS_TO_MS_FACTOR));
       renderQueryStatistics(statistics.getQueryStatistics(), singleFragmentInstanceArea, verbose);
@@ -218,7 +243,8 @@ public class FragmentInstanceStatisticsDrawer {
       TQueryStatistics queryStatistics,
       List<StatisticLine> singleFragmentInstanceArea,
       boolean verbose) {
-    addLine(singleFragmentInstanceArea, 1, "Query Statistics:");
+    addLine(
+        singleFragmentInstanceArea, 1, DataNodeQueryMessages.EXCEPTION_QUERY_STATISTICS_0F0FEAC4);
 
     if (verbose) {
       addLineWithoutValueCheck(
@@ -533,24 +559,30 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           indentNum + 2,
           String.format(
-              "CPU Time: %.3f ms",
+              DataNodeQueryMessages.EXCEPTION_CPU_TIME_ARG_MS_42555E8C,
               operatorStatistic.getTotalExecutionTimeInNanos() * NS_TO_MS_FACTOR));
       addLine(
           singleFragmentInstanceArea,
           indentNum + 2,
-          String.format("output: %s rows", operatorStatistic.getOutputRows()));
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_OUTPUT_ARG_ROWS_5EE0EF28,
+              operatorStatistic.getOutputRows()));
       addLine(
           singleFragmentInstanceArea,
           indentNum + 2,
-          String.format("HasNext() Called Count: %s", operatorStatistic.hasNextCalledCount));
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_HASNEXT_CALLED_COUNT_ARG_32D7AEBA,
+              operatorStatistic.hasNextCalledCount));
       addLine(
           singleFragmentInstanceArea,
           indentNum + 2,
-          String.format("Next() Called Count: %s", operatorStatistic.nextCalledCount));
+          String.format(
+              DataNodeQueryMessages.EXCEPTION_NEXT_CALLED_COUNT_ARG_1AD71747,
+              operatorStatistic.nextCalledCount));
       addLineWithValueCheck(
           singleFragmentInstanceArea,
           indentNum + 2,
-          "Estimated Memory Size",
+          DataNodeQueryMessages.EXCEPTION_ESTIMATED_MEMORY_SIZE_27D7E3B5,
           operatorStatistic.getMemoryUsage());
 
       if (operatorStatistic.getSpecifiedInfoSize() != 0) {

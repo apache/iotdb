@@ -20,6 +20,31 @@
 package org.apache.iotdb.confignode.i18n;
 
 public final class ConfigNodeMessages {
+  public static final String EXCEPTION_CONFIGNODE_SIMPLECONSENSUS_WRITES_ARE_DISABLED_AFTER_A_WAL_CLEANUP_FAILURE_RESTART_IS_REQUIRED_D52F0107 =
+      "ConfigNode SimpleConsensus writes are disabled after a WAL cleanup failure; restart is required.";
+  public static final String EXCEPTION_FAILED_TO_CLOSE_THE_CONFIGNODE_SIMPLECONSENSUS_LOG_WRITER_BC0F417C =
+      "Failed to close the ConfigNode SimpleConsensus log writer.";
+  public static final String EXCEPTION_FAILED_TO_APPLY_CONFIGNODE_ARG_THROUGH_CONSENSUS_LAYER_ARG_B4A985D7 =
+      "Failed to apply ConfigNode %s through consensus layer: %s";
+  public static final String EXCEPTION_FAILED_TO_PERSIST_VERSION_INFO_FOR_CONFIGNODE_ARG_ARG_REGISTRATION_REMAINS_PENDING_AND_MUST_BE_RETRIED_F662C350 =
+      "Failed to persist version info for ConfigNode %d: %s. Registration remains pending and must be retried.";
+  public static final String MESSAGE_UNKNOWN_ERROR_E9EEAFF8 =
+      "unknown error";
+  public static final String MESSAGE_STATUS_CODE_ARG_4B3BCD8B =
+      "status code %d";
+  public static final String MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_DATANODE_ARG_ARG_THE_REGISTRATION_HAS_BEEN_ROLLED_BACK_PLEASE_RETRY_THE_REGISTRATION_5DDB311F =
+      "Failed to persist version info for DataNode %d: %s. The registration has been rolled back. Please retry the registration.";
+  public static final String MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_DATANODE_ARG_ARG_THE_REGISTRATION_ROLLBACK_ALSO_FAILED_ARG_MANUAL_CLEANUP_MAY_BE_REQUIRED_BEFORE_RETRYING_THE_REGISTRATION_5463B5FF =
+      "Failed to persist version info for DataNode %d: %s. The registration rollback also failed: %s. Manual cleanup may be required before retrying the registration.";
+  public static final String LOG_FAILED_TO_ROLL_BACK_DATANODE_REGISTRATION_ARG_AFTER_VERSION_INFO_PERSISTENCE_FAILURE_VERSIONUPDATESTATUS_ARG_ROLLBACKSTATUS_ARG_437E6F09 =
+      "Failed to roll back DataNode registration {} after version info persistence failure. versionUpdateStatus: {}, rollbackStatus: {}";
+  public static final String MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_AINODE_ARG_ARG_THE_REGISTRATION_HAS_BEEN_ROLLED_BACK_PLEASE_RETRY_THE_REGISTRATION_7571C626 =
+      "Failed to persist version info for AINode %d: %s. The registration has been rolled back. Please retry the registration.";
+  public static final String MESSAGE_FAILED_TO_PERSIST_VERSION_INFO_FOR_AINODE_ARG_ARG_THE_REGISTRATION_ROLLBACK_ALSO_FAILED_ARG_MANUAL_CLEANUP_MAY_BE_REQUIRED_BEFORE_RETRYING_THE_REGISTRATION_B9B1DCCD =
+      "Failed to persist version info for AINode %d: %s. The registration rollback also failed: %s. Manual cleanup may be required before retrying the registration.";
+  public static final String LOG_FAILED_TO_ROLL_BACK_AINODE_REGISTRATION_ARG_AFTER_VERSION_INFO_PERSISTENCE_FAILURE_VERSIONUPDATESTATUS_ARG_ROLLBACKSTATUS_ARG_BFF24BD4 =
+      "Failed to roll back AINode registration {} after version info persistence failure. versionUpdateStatus: {}, rollbackStatus: {}";
+
   public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_A_LONG_VALUE_IN_MILLISECONDS_F79736B2 =
           "Failed to create or alter topic, illegal %s=%s, expected a long value in milliseconds";
@@ -61,6 +86,18 @@ public final class ConfigNodeMessages {
       "[ConfigRegion Update] Can't force logWriter for ConfigNode SimpleConsensus mode";
   public static final String CAN_T_SERIALIZE_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE =
       "[ConfigRegion Update] Can't serialize current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode";
+  public static final String PERSIST_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED =
+      "Persist ConfigNode SimpleConsensus log failed: %s";
+  public static final String PERSIST_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED =
+      "Persist current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode failed";
+  public static final String FAILED_TO_ROLLBACK_PERSISTED_CONFIGNODE_SIMPLECONSENSUS_LOG =
+      "Failed to rollback persisted ConfigNode SimpleConsensus log. The persisted plan may be replayed after restart. Further SimpleConsensus writes are disabled until restart.";
+  public static final String ROLLBACK_FAILED_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED =
+      "Rollback failed ConfigPhysicalPlan for ConfigNode SimpleConsensus mode failed, planType: {}, logFile: {}, truncateOffset: {}, endIndexBeforeWrite: {}. Further SimpleConsensus writes are disabled until restart.";
+  public static final String SEAL_RECOVERED_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED =
+      "Seal recovered ConfigNode SimpleConsensus log failed: {}";
+  public static final String SIMPLECONSENSUS_LOG_WRITER_IS_NOT_INITIALIZED =
+      "SimpleConsensus log writer is not initialized.";
   public static final String CAN_T_START_CONFIGNODE_CONSENSUS_GROUP =
       "Can't start ConfigNode consensus group!";
   public static final String CHANGE_REGIONS_LEADER_ERROR_ON_DATE_NODE =
@@ -275,6 +312,8 @@ public final class ConfigNodeMessages {
       "Failed to {} on DataNode: {}, exception: {}";
   public static final String FAILED_TO_ON_DATANODE_RESPONSE =
       "Failed to {} on DataNode: {}, response: {}";
+  public static final String FAILED_TO_ON_DATANODE_WITH_STATUS =
+      "Failed to {} on DataNode: {}, code: {}, message: {}";
   public static final String FAILED_TO_OPERATE_PIPE = "Failed to operate pipe";
   public static final String FAILED_TO_SET_PIPE_STATUS = "Failed to set pipe status";
   public static final String FAILED_TO_SET_PIPE_STATUS_WITH_STOPPED_BY_RUNTIME_EXCEPTION =
@@ -408,6 +447,9 @@ public final class ConfigNodeMessages {
   public static final String SUCCESSFULLY_ON_DATANODE = "Successfully {} on DataNode: {}";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE_CURRENT_CONFIGNODEGROUP =
       "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}";
+  public static final String
+      LOG_NORMALIZE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_FROM_ARG_TO_ARG_FOR_COMPATIBILITY_6E662489 =
+          "Normalize data_region_consensus_protocol_class from {} to {} for compatibility.";
   public static final String SUCCESSFULLY_SETUP_INTERNAL_SERVICES =
       "Successfully setup internal services.";
   public static final String SUCCESSFULLY_UPDATE_NODE_S_VERSION =
@@ -561,6 +603,12 @@ public final class ConfigNodeMessages {
   public static final String ALL_RETRY_FAILED_DUE_TO = "All retry failed due to: ";
 
   public static final String AUTHENTICATION_FAILED = "Authentication failed.";
+  public static final String
+      EXCEPTION_COUNT_PATHS_USING_TEMPLATE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_E05E0F5B =
+          "Count paths using template error on DataNode: {id=%s, internalEndPoint=%s}%s";
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_DATANODE_ARG_EXCEPTION_ARG_87B8946D =
+      "Failed to %s on DataNode: %s, exception: %s";
+
   private ConfigNodeMessages() {}
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
@@ -580,6 +628,10 @@ public final class ConfigNodeMessages {
   public static final String EXCEPTION_MESSAGE_E81C4E4F = "or";
   public static final String EXCEPTION_AVAILABLE_ONLY_DATA_REPLICATION_FACTOR_SET_1_71748D3D = "available only when data_replication_factor is set to 1";
   public static final String EXCEPTION_ARG_ARG_6E068B23 = "%s or %s";
+  public static final String EXCEPTION_ARG_ARG_ARG_OR_ARG_E950ED19 = "%s, %s, %s or %s";
+  public static final String
+      EXCEPTION_UNRECOGNIZED_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_IS_SET_DAB37EAF =
+          "an unrecognized data_region_consensus_protocol_class is set";
   public static final String EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUS_84350FD1 = "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensus";
   public static final String EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUSV2_BA353C6D = "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensusV2";
   public static final String EXCEPTION_GREEDY_MIN_COST_FLOW_HASH_C07DA2EE = "GREEDY or MIN_COST_FLOW or HASH";
@@ -682,6 +734,15 @@ public final class ConfigNodeMessages {
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_AND_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_D86CEA8E =
           "Failed to create or alter topic, %s and %s are only supported for incremental topics";
   public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_DUPLICATE_ARG_ATTRIBUTES_ARE_NOT_ALLOWED_27315578 =
+          "Failed to create or alter topic, duplicate %s attributes are not allowed";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607 =
+          "Failed to create or alter topic, %s is only supported for table topics";
+  public static final String
+      EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_SHOULD_NOT_BE_EMPTY_767B1148 =
+          "Failed to create or alter topic, %s should not be empty";
+  public static final String
       EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ATTRIBUTES_ARG_ARE_ONLY_SUPPORTED_FOR_INCREMENTAL_TOPICS_55CB0BF2 =
           "Failed to create or alter topic, attributes %s are only supported for incremental topics";
   public static final String
@@ -699,4 +760,86 @@ public final class ConfigNodeMessages {
   public static final String
       LOG_FAILED_TO_TRANSFER_CONFIGNODE_LEADERSHIP_BEFORE_SHUTDOWN_CONTINUING_SHUTDOWN_2B9364D5 =
           "Failed to transfer ConfigNode leadership before shutdown; continuing shutdown.";
+
+  public static final String EXCEPTION_OPERATION_ARG_IS_NOT_SUPPORTED_E069D2B9 =
+      "operation %s is not supported";
+
+  public static final String
+      EXCEPTION_FAILED_TO_ADD_UDF_ARG_IN_UDF_TABLE_ON_CONFIG_NODES_BECAUSE_OF_ARG_2CA26D13 =
+          "Failed to add UDF [%s] in UDF_Table on Config Nodes, because of %s";
+
+  public static final String
+      EXCEPTION_FAILED_TO_ADD_TRIGGER_ARG_IN_TRIGGERTABLE_ON_CONFIG_NODES_BECAUSE_OF_ARG_DFBA6E1C =
+          "Failed to add trigger [%s] in TriggerTable on Config Nodes, because of %s";
+
+  public static final String EXCEPTION_CQ_ARG_HAS_ALREADY_BEEN_CREATED_8031B847 =
+      "CQ %s has already been created.";
+
+  public static final String EXCEPTION_CQ_ARG_HAS_ALREADY_BEEN_ACTIVE_46FB805D =
+      "CQ %s has already been active";
+
+  public static final String
+      EXCEPTION_UPDATE_LAST_EXECUTION_TIME_OF_CQ_ARG_FAILED_BECAUSE_ITS_ORIGINAL_LAST_EXECUTION_TIME_ARG_IS_LARGER_THAN_THE_UPDATED_ONE_ARG_AB654FAF =
+          "Update last execution time of CQ %s failed because its original last execution time(%d)"
+              + " is larger than the updated one(%d).";
+
+  public static final String EXCEPTION_DATABASE_ARG_DOES_NOT_EXIST_0112959D =
+      "Database %s does not exist";
+
+  public static final String EXCEPTION_IOTDB_CONFIGURATION_ARG_9C2F6017 = "IoTDB configuration: {}";
+
+  public static final String EXCEPTION_RESTART_CONFIGNODE_FAILED_EAE90C05 =
+      "restart ConfigNode failed! ";
+
+  public static final String EXCEPTION_WAITING_LEADER_S_SCHEDULING_IS_INTERRUPTED_963B6D90 =
+      "Waiting leader's scheduling is interrupted.";
+
+  public static final String EXCEPTION_REGISTER_CONFIGNODE_FAILED_388E8520 =
+      "Register ConfigNode failed!";
+
+  public static final String
+      EXCEPTION_SYSTEMPROPERTIES_THE_PARAMETER_ARG_CAN_T_BE_MODIFIED_AFTER_FIRST_STARTUP_YOUR_CONFIGURATION_ARG_WILL_BE_FORCED_UPDATE_TO_ARG_42B1AD5E =
+          "[SystemProperties] The parameter \"{}\" can't be modified after first startup. Your"
+              + " configuration: {} will be forced update to: {}";
+
+  public static final String
+      EXCEPTION_EXECUTED_FAILED_CHECK_USAGE_NODE_ID_INTERNAL_ADDRESS_INTERNAL_PORT_0852F64E =
+          "Executed failed, check usage: <Node-id>/<internal_address>:<internal_port>";
+
+  public static final String EXCEPTION_UNKNOWN_REQUEST_TYPE_ARG_78571982 =
+      "Unknown request type: %s";
+
+  public static final String EXCEPTION_ALL_RETRY_FAILED_DUE_TO_ARG_AEA920B0 =
+      "All retry failed due to: %s";
+
+  public static final String
+      EXCEPTION_ARG_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_14CDDEFD =
+          "%s error on DataNode: {id=%s, internalEndPoint=%s}%s";
+
+  public static final String
+      EXCEPTION_FETCH_SCHEMAENGINE_BLACK_LIST_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_3D21FC43 =
+          "Fetch schemaengine black list error on DataNode: {id=%s, internalEndPoint=%s}%s";
+
+  public static final String EXCEPTION_FAILED_TO_ARG_ON_CONFIGNODE_ARG_EXCEPTION_ARG_CD279F8B =
+      "Failed to %s on ConfigNode: %s, exception: %s";
+
+  public static final String
+      EXCEPTION_CHECK_TIMESERIES_EXISTENCE_ERROR_ON_DATANODE_ID_ARG_INTERNALENDPOINT_ARG_ARG_D2A3135E =
+          "Check timeseries existence error on DataNode: {id=%s, internalEndPoint=%s}%s";
+
+  public static final String EXCEPTION_TOKEN_OF_CQ_ARG_DOESN_T_MATCH_EE2E6387 =
+      "Token of CQ %s doesn't match";
+
+  public static final String EXCEPTION_LOGIN_SUCCESSFULLY_1C2EF670 = "Login successfully";
+
+  public static final String EXCEPTION_NO_SUCH_ROLE_ARG_42B804EB = "No such role : %s";
+
+  public static final String EXCEPTION_GET_ERROR_WHEN_SERIALIZE_PATTERN_TREE_9545A29E =
+      "Get error when serialize pattern tree.";
+
+  public static final String EXCEPTION_NO_SUCH_USER_9F8AB2B7 = "No such user : ";
+
+  public static final String
+      EXCEPTION_REGIONGROUP_POLICY_HOT_RELOAD_REQUIRES_IDENTICAL_CONFIGNODE_VERSIONS_AND_BUILDS_FA3BBFEA =
+          "RegionGroup policy hot reload requires identical ConfigNode versions and builds.";
 }

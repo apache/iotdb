@@ -205,4 +205,5 @@ public enum StatementType {
 
   SHOW_DISK_USAGE,
   SHOW_RECEIVERS,
+  SHOW_DELETE_TIMESERIES_PROGRESS,
 }

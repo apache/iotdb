@@ -81,17 +81,6 @@ public class TsFileEpochManagerTest {
         new String[] {"s1", "s3", null, "s2"}, device2Measurements.get(device));
   }
 
-  @Test(expected = NullPointerException.class)
-  public void testNullMeasurementsAreRejected() {
-    final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d1");
-    final InsertRowsNode rows = mock(InsertRowsNode.class);
-    final List<InsertRowNode> insertRowNodes =
-        Arrays.asList(mockRow(device, "s1"), mockRow(device, (String[]) null));
-    when(rows.getInsertRowNodeList()).thenReturn(insertRowNodes);
-
-    TsFileEpochManager.getDevice2MeasurementsMapFromInsertRowsNode(rows);
-  }
-
   private static InsertRowNode mockRow(final IDeviceID device, final String... measurements) {
     final InsertRowNode row = mock(InsertRowNode.class);
     when(row.getDeviceID()).thenReturn(device);

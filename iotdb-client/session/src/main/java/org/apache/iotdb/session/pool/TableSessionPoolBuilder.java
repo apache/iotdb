@@ -39,6 +39,9 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   /**
    * Sets the list of node URLs for the IoTDB cluster.
    *
+   * <p>Use the same host/IP form as each DataNode's dn_rpc_address. Recovery deduplicates literal
+   * addresses, not DNS aliases.
+   *
    * @param nodeUrls a list of node URLs.
    * @return the current {@link TableSessionPoolBuilder} instance.
    * @defaultValue Collection.singletonList("localhost:6667")
@@ -165,6 +168,21 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
    */
   public TableSessionPoolBuilder thriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    return this;
+  }
+
+  /**
+   * Buffer requests larger than this threshold use temporary arrays and reset reusable buffers to
+   * {@code thriftDefaultBufferSize}. Applies to compressed and uncompressed transports for all
+   * sessions and background node discovery. Zero makes every nonempty buffer request use temporary
+   * storage.
+   *
+   * @param thriftMaxReusableBufferSize the buffer reuse threshold in bytes.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue Integer.MAX_VALUE (keeps the original reuse policy)
+   */
+  public TableSessionPoolBuilder thriftMaxReusableBufferSize(int thriftMaxReusableBufferSize) {
+    this.thriftMaxReusableBufferSize = thriftMaxReusableBufferSize;
     return this;
   }
 
@@ -318,6 +336,18 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   }
 
   /**
+   * Enables or disables schema auto-creation for this pool's write requests.
+   *
+   * @param enableAutoCreateSchema whether to allow auto creating tables and columns.
+   * @return the current {@link TableSessionPoolBuilder} instance.
+   * @defaultValue true
+   */
+  public TableSessionPoolBuilder enableAutoCreateSchema(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
+    return this;
+  }
+
+  /**
    * Builds and returns a configured {@link ITableSessionPool} instance.
    *
    * @return a fully configured {@link ITableSessionPool}.
@@ -328,7 +358,10 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
           Collections.singletonList(SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT);
     }
     this.sqlDialect = "table";
-    SessionPool sessionPool = new SessionPool(this);
-    return new TableSessionPool(sessionPool);
+    return createSessionPool();
+  }
+
+  protected ITableSessionPool createSessionPool() {
+    return new TableSessionPool(new SessionPool(this));
   }
 }

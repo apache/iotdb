@@ -147,7 +147,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
                 ((boolean) args[0] && (boolean) args[1])
                     || ((boolean) args[2] && (boolean) args[3]),
             String.format(
-                "Either %s:%s or %s:%s must be specified",
+                DataNodePipeMessages.MESSAGE_EITHER_ARG_ARG_OR_ARG_ARG_MUST_BE_SPECIFIED_7CD5185D,
                 CONNECTOR_IOTDB_IP_KEY,
                 CONNECTOR_IOTDB_PORT_KEY,
                 SINK_IOTDB_IP_KEY,
@@ -343,8 +343,11 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         final String errorMsg =
             String.format(
-                "The receiver %s:%s rejected the pipe task because %s",
-                ipAddress, port, status.message);
+                DataNodePipeMessages
+                    .MESSAGE_THE_RECEIVER_ARG_ARG_REJECTED_THE_PIPE_TASK_BECAUSE_ARG_DACFA354,
+                ipAddress,
+                port,
+                status.message);
         LOGGER.warn(errorMsg);
         throw new PipeRuntimeCriticalException(errorMsg);
       }

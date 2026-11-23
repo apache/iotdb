@@ -29,6 +29,8 @@ import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadPieceConsensusRequest;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileConsensusNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -89,6 +91,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 
 /**
@@ -117,7 +120,10 @@ public class WALNode implements IWALNode {
   // used to avoid write amplification caused by frequent snapshot
   private final Map<Long, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
   // insert nodes whose search index are before this value can be deleted safely
+  private final Object walRetentionLock = new Object();
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+  // notified whenever the value above advances, see setSafeDeletedSearchIndexListener
+  private volatile LongConsumer safeDeletedSearchIndexListener;
   // WAL files with versionId >= this value are retained for subscription consumers
   private volatile long subscriptionRetainedMinVersionId = Long.MAX_VALUE;
 
@@ -289,6 +295,11 @@ public class WALNode implements IWALNode {
     return log(walEntry);
   }
 
+  @Override
+  public WALFlushListener log(long memTableId, LoadTsFileConsensusNode node) {
+    return log(new WALInfoEntry(memTableId, node));
+  }
+
   private WALFlushListener log(WALEntry walEntry) {
 
     buffer.write(walEntry);
@@ -354,13 +365,14 @@ public class WALNode implements IWALNode {
     private File[] sortedWalFilesExcludingLast;
 
     private List<MemTableInfo> activeOrPinnedMemTables;
+    private long cachedSafelyDeletedSearchIndex;
+    private int fileIndexAfterFilterSafelyDeleteIndex;
 
     private static final int MAX_RECURSION_TIME = 5;
 
     // the effective information ratio
     private double effectiveInfoRatio = 1.0d;
 
-    private int fileIndexAfterFilterSafelyDeleteIndex = Integer.MAX_VALUE;
     private List<Long> successfullyDeleted;
     private long deleteFileSize;
 
@@ -385,7 +397,7 @@ public class WALNode implements IWALNode {
       this.sortedWalFilesExcludingLast =
           Arrays.copyOfRange(allWalFilesOfOneNode, 0, allWalFilesOfOneNode.length - 1);
       this.activeOrPinnedMemTables = checkpointManager.activeOrPinnedMemTables();
-      this.fileIndexAfterFilterSafelyDeleteIndex = initFileIndexAfterFilterSafelyDeleteIndex();
+      updateFileIndexAfterFilterSafelyDeleteIndex();
       this.successfullyDeleted = new ArrayList<>();
       this.deleteFileSize = 0;
       return true;
@@ -476,18 +488,22 @@ public class WALNode implements IWALNode {
         File currentWal = sortedWalFilesExcludingLast[fileArrIdx];
         WALFileStatus walFileStatus = WALFileUtils.parseStatusCode(currentWal.getName());
         long versionId = WALFileUtils.parseVersionId(currentWal.getName());
-        if (canDeleteFile(fileArrIdx, walFileStatus, versionId)) {
-          long fileSize = currentWal.length();
-          if (org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(currentWal)) {
-            deleteFileSize += fileSize;
-            buffer.removeMemTableIdsOfWal(versionId);
-            successfullyDeleted.add(versionId);
-          } else {
-            logger.info(
-                StorageEngineMessages
-                    .STORAGE_LOG_FAIL_TO_DELETE_OUTDATED_WAL_FILE_OF_WAL_NODE_1B1F2AF2,
-                currentWal,
-                identifier);
+        // A newly registered replica may lower the boundary while this cleanup is running.
+        // Check and delete under the same lock as boundary publication.
+        synchronized (walRetentionLock) {
+          if (canDeleteFile(fileArrIdx, walFileStatus, versionId)) {
+            long fileSize = currentWal.length();
+            if (org.apache.iotdb.commons.utils.FileUtils.deleteFileIfExist(currentWal)) {
+              deleteFileSize += fileSize;
+              buffer.removeMemTableIdsOfWal(versionId);
+              successfullyDeleted.add(versionId);
+            } else {
+              logger.info(
+                  StorageEngineMessages
+                      .STORAGE_LOG_FAIL_TO_DELETE_OUTDATED_WAL_FILE_OF_WAL_NODE_1B1F2AF2,
+                  currentWal,
+                  identifier);
+            }
           }
         }
       }
@@ -496,11 +512,13 @@ public class WALNode implements IWALNode {
       removeDeletedWalFilesFromCache(successfullyDeleted);
     }
 
-    private int initFileIndexAfterFilterSafelyDeleteIndex() {
-      return safelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
-          ? sortedWalFilesExcludingLast.length
-          : WALFileUtils.binarySearchFileBySearchIndex(
-              sortedWalFilesExcludingLast, safelyDeletedSearchIndex + 1);
+    private void updateFileIndexAfterFilterSafelyDeleteIndex() {
+      cachedSafelyDeletedSearchIndex = safelyDeletedSearchIndex;
+      fileIndexAfterFilterSafelyDeleteIndex =
+          cachedSafelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
+              ? sortedWalFilesExcludingLast.length
+              : WALFileUtils.binarySearchFileBySearchIndex(
+                  sortedWalFilesExcludingLast, cachedSafelyDeletedSearchIndex + 1);
     }
 
     /** Return true iff effective information ratio is too small or disk usage is too large. */
@@ -550,7 +568,11 @@ public class WALNode implements IWALNode {
       if (TsFileUtils.getTimePartition(new File(oldestMemTableInfo.getTsFilePath()))
               < dataRegion.getLatestTimePartition()
           || snapshotCount >= config.getMaxWalMemTableSnapshotNum()
-          || oldestMemTableTVListsRamCost > config.getWalMemTableSnapshotThreshold()) {
+          || oldestMemTableTVListsRamCost > config.getWalMemTableSnapshotThreshold()
+          // a snapshot larger than one WAL entry is refused by WALBuffer.write. With a small
+          // wal_buffer_size_in_byte (the entry limit's default), the limit is below the snapshot
+          // threshold, so flush right away instead of failing a snapshot first.
+          || oldestMemTableTVListsRamCost > config.getWalEntrySizeLimitInByte()) {
         flushMemTable(dataRegion, oldestTsFile, oldestMemTable);
         WRITING_METRICS.recordWalFlushMemTableCount(1);
         WRITING_METRICS.recordMemTableRamWhenCauseFlush(identifier, oldestMemTableTVListsRamCost);
@@ -669,6 +691,10 @@ public class WALNode implements IWALNode {
     }
 
     private boolean canDeleteFile(long fileArrIdx, WALFileStatus walFileStatus, long versionId) {
+      // Called under walRetentionLock: a cached result is reusable only for this boundary.
+      if (cachedSafelyDeletedSearchIndex != safelyDeletedSearchIndex) {
+        updateFileIndexAfterFilterSafelyDeleteIndex();
+      }
       return (fileArrIdx < fileIndexAfterFilterSafelyDeleteIndex
               || walFileStatus == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)
           && versionId < subscriptionRetainedMinVersionId
@@ -681,7 +707,27 @@ public class WALNode implements IWALNode {
   // region Search interfaces for consensus group
   @Override
   public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
-    this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+    final boolean advanced;
+    synchronized (walRetentionLock) {
+      advanced = safelyDeletedSearchIndex > this.safelyDeletedSearchIndex;
+      this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+    }
+    // Lowering retention for a new peer cannot make any additional LOAD directory reclaimable.
+    // In particular, do not run cleanup callbacks while its registration holds the write lock.
+    final LongConsumer listener = this.safeDeletedSearchIndexListener;
+    if (advanced && listener != null) {
+      listener.accept(safelyDeletedSearchIndex);
+    }
+  }
+
+  @Override
+  public long getSafelyDeletedSearchIndex() {
+    return safelyDeletedSearchIndex;
+  }
+
+  @Override
+  public void setSafeDeletedSearchIndexListener(final LongConsumer listener) {
+    this.safeDeletedSearchIndexListener = listener;
   }
 
   @Override
@@ -824,18 +870,24 @@ public class WALNode implements IWALNode {
                 currentEntryContainsUserData.set(
                     currentEntryContainsUserData.get() || containsUserData(type));
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
-                  WALEntry walEntry =
+                  final WALEntry walEntry =
                       WALEntry.deserialize(
                           new DataInputStream(new ByteArrayInputStream(buffer.array())));
-                  // only be called by leader read from wal
-                  // wal only has relativePath, offset, eof, length
-                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
-                  // content
-                  // need to add IoTConsensusRequest instead of ObjectNode
-                  tmpNodes
-                      .get()
-                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
-                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
+                  // The entry carries no content, only where it lives: serialize() reads it back.
+                  final ObjectNode objectNode = (ObjectNode) walEntry.getValue();
+                  tmpNodes.get().add(new IoTConsensusRequest(objectNode.serialize()));
+                  memorySize += objectNode.getMemorySize();
+                } else if (type == WALEntryType.LOAD_TSFILE_CONSENSUS_NODE) {
+                  final WALEntry walEntry =
+                      WALEntry.deserialize(
+                          new DataInputStream(new ByteArrayInputStream(buffer.array())));
+                  // A lagging IoT consensus V1 follower is fed with this. The entry holds only the
+                  // payload
+                  // references, so the request reads the payloads back when it is sent.
+                  final LoadPieceConsensusRequest loadRequest =
+                      new LoadPieceConsensusRequest((LoadTsFileConsensusNode) walEntry.getValue());
+                  tmpNodes.get().add(loadRequest);
+                  memorySize += loadRequest.getSerializedSize();
                 } else {
                   tmpNodes.get().add(new IoTConsensusRequest(buffer));
                   memorySize += buffer.remaining();
@@ -861,18 +913,24 @@ public class WALNode implements IWALNode {
                 currentEntryContainsUserData.set(
                     currentEntryContainsUserData.get() || containsUserData(type));
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
-                  WALEntry walEntry =
+                  final WALEntry walEntry =
                       WALEntry.deserialize(
                           new DataInputStream(new ByteArrayInputStream(buffer.array())));
-                  // only be called by leader read from wal
-                  // wal only has relativePath, offset, eof, length
-                  // need to add WALEntryType + memtableId + relativePath, offset, eof, length +
-                  // content
-                  // need to add IoTConsensusRequest instead of ObjectNode
-                  tmpNodes
-                      .get()
-                      .add(new IoTConsensusRequest(((ObjectNode) walEntry.getValue()).serialize()));
-                  memorySize += ((ObjectNode) walEntry.getValue()).getMemorySize();
+                  // The entry carries no content, only where it lives: serialize() reads it back.
+                  final ObjectNode objectNode = (ObjectNode) walEntry.getValue();
+                  tmpNodes.get().add(new IoTConsensusRequest(objectNode.serialize()));
+                  memorySize += objectNode.getMemorySize();
+                } else if (type == WALEntryType.LOAD_TSFILE_CONSENSUS_NODE) {
+                  final WALEntry walEntry =
+                      WALEntry.deserialize(
+                          new DataInputStream(new ByteArrayInputStream(buffer.array())));
+                  // A lagging IoT consensus V1 follower is fed with this. The entry holds only the
+                  // payload
+                  // references, so the request reads the payloads back when it is sent.
+                  final LoadPieceConsensusRequest loadRequest =
+                      new LoadPieceConsensusRequest((LoadTsFileConsensusNode) walEntry.getValue());
+                  tmpNodes.get().add(loadRequest);
+                  memorySize += loadRequest.getSerializedSize();
                 } else {
                   tmpNodes.get().add(new IoTConsensusRequest(buffer));
                   memorySize += buffer.remaining();
@@ -1045,6 +1103,11 @@ public class WALNode implements IWALNode {
     return buffer.getCurrentSearchIndex();
   }
 
+  /** Returns a version that changes after a batch containing replicated WAL entries is flushed. */
+  public long getReplicatedWalVersion() {
+    return buffer.getReplicatedWalVersion();
+  }
+
   @Override
   public long getCurrentWALFileVersion() {
     return buffer.getCurrentWALFileVersion();
@@ -1052,6 +1115,10 @@ public class WALNode implements IWALNode {
 
   public WALMetaData getCurrentWALMetaDataSnapshot() {
     return buffer.getCurrentWALMetaDataSnapshot();
+  }
+
+  public WALMetaData getWALMetaDataSnapshot(final long fileVersionId) {
+    return buffer.getWALMetaDataSnapshot(fileVersionId);
   }
 
   @Override

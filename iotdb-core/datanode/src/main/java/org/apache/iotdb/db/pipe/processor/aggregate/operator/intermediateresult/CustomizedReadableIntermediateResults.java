@@ -35,10 +35,17 @@ import static org.apache.iotdb.db.utils.TypeServices.Pipe.CUSTOMIZED_INTERMEDIAT
 
 public class CustomizedReadableIntermediateResults {
   private final Map<String, Pair<TSDataType, Object>> intermediateResults;
+  private final boolean legacyStatisticsFormula;
 
   public CustomizedReadableIntermediateResults(
-      final Map<String, Pair<TSDataType, Object>> intermediateResults) {
+      final Map<String, Pair<TSDataType, Object>> intermediateResults,
+      final boolean legacyStatisticsFormula) {
     this.intermediateResults = intermediateResults;
+    this.legacyStatisticsFormula = legacyStatisticsFormula;
+  }
+
+  public boolean isLegacyStatisticsFormula() {
+    return legacyStatisticsFormula;
   }
 
   public boolean getBoolean(final String key) {
@@ -99,7 +106,10 @@ public class CustomizedReadableIntermediateResults {
       return Type.fromTsDataType(dataType);
     } catch (final UnsupportedOperationException ignored) {
       throw new UnsupportedOperationException(
-          String.format("The type %s cannot be casted to %s.", dataType, targetType));
+          String.format(
+              DataNodePipeMessages.EXCEPTION_THE_TYPE_ARG_CANNOT_BE_CASTED_TO_ARG_40E9EE7A,
+              dataType,
+              targetType));
     }
   }
 

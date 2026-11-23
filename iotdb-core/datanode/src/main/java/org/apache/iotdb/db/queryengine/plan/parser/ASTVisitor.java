@@ -250,6 +250,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDeleteTimeSeriesProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
@@ -341,28 +342,33 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final String DELETE_RANGE_ERROR_MSG =
-      "For delete statement, where clause can only contain atomic expressions like : "
-          + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
+      DataNodeQueryMessages
+          .EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_CAN_ONLY_CONTAIN_ATOMIC_EXPRESSIONS_LIKE_TIME_XXX_TIME_XXX_OR_TWO_ATOMIC_EXPRESSIONS_CONNECTED_BY_AND_13848FC7;
   private static final String DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG =
-      "For delete statement, where clause can only contain time expressions, "
-          + "value filter is not currently supported.";
+      DataNodeQueryMessages
+          .EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_CAN_ONLY_CONTAIN_TIME_EXPRESSIONS_VALUE_FILTER_IS_NOT_CURRENTLY_SUPPORTED_CE1E768E;
 
   private static final String GROUP_BY_COMMON_ONLY_ONE_MSG =
-      "Only one of group by time or group by variation/series/session can be supported at a time";
+      DataNodeQueryMessages
+          .EXCEPTION_ONLY_ONE_OF_GROUP_BY_TIME_OR_GROUP_BY_VARIATION_SERIES_SESSION_CAN_BE_SUPPORTED_AT_A_TIME_8B5E5251;
 
   private static final String LIMIT_CONFIGURATION_ENABLED_ERROR_MSG =
-      "Limit configuration is not enabled, please enable it first.";
+      DataNodeQueryMessages
+          .EXCEPTION_LIMIT_CONFIGURATION_IS_NOT_ENABLED_PLEASE_ENABLE_IT_FIRST_C9926C20;
 
   public static final String DELETE_RANGE_COMPARISON_ERROR_MSG =
-      "For delete statement, where clause use a range comparison on the same field, the left value of the range cannot be greater than the right value of the range, it must be written like this : time > 5 and time < 10";
+      DataNodeQueryMessages
+          .EXCEPTION_FOR_DELETE_STATEMENT_WHERE_CLAUSE_USE_A_RANGE_COMPARISON_ON_THE_SAME_FIELD_THE_LEFT_VALUE_OF_THE_RANGE_CANNOT_BE_GREATER_THAN_THE_RIGHT_VALUE_OF_THE_RANGE_IT_MUST_BE_WRITTEN_LIKE_THIS_TIME_5_AND_TIME_10_66891DD6;
 
   private static final String NODE_NAME_IN_INTO_PATH_MATCHER = "([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)";
   private static final Pattern NODE_NAME_IN_INTO_PATH_PATTERN =
       Pattern.compile(NODE_NAME_IN_INTO_PATH_MATCHER);
 
   private static final String IGNORENULL = "IgnoreNull";
-  public static final String UNSUPPORTED_DATATYPE_MSG = "Unsupported datatype: %s";
-  public static final String INCORRECT_DATA_TYPE_MSG = "Incorrect Data type";
+  public static final String UNSUPPORTED_DATATYPE_MSG =
+      DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_DATATYPE_ARG_42D9A3BC;
+  public static final String INCORRECT_DATA_TYPE_MSG =
+      DataNodeQueryMessages.EXCEPTION_INCORRECT_DATA_TYPE_B7789C9F;
   private ZoneId zoneId;
 
   public boolean isUseWildcard() {
@@ -374,7 +380,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private boolean lastLevelUseWildcard = false;
 
   public static final String SERVICE_MANAGEMENT_NOT_SUPPORTED =
-      "Service management SQLs are not supported now!";
+      DataNodeQueryMessages.EXCEPTION_SERVICE_MANAGEMENT_SQLS_ARE_NOT_SUPPORTED_NOW_ADD4A6D4;
 
   public void setZoneId(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -3672,13 +3678,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateTimeFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       try {
-        long duration =
-            DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), precision, false);
-        time =
-            "+".equals(ctx.getChild(i).getText())
-                ? Math.addExact(time, duration)
-                : Math.subtractExact(time, duration);
+        // apply "- duration" backwards from time, so that natural months are counted correctly
+        long offset =
+            DataNodeDateTimeUtils.convertDateExpressionOffset(
+                time,
+                ctx.getChild(i + 1).getText(),
+                precision,
+                "-".equals(ctx.getChild(i).getText()));
+        time = Math.addExact(time, offset);
       } catch (ArithmeticException e) {
         throw new SemanticException(
             String.format(
@@ -3694,13 +3701,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       try {
-        long duration =
-            DataNodeDateTimeUtils.convertDurationStrToLong(
-                time, ctx.getChild(i + 1).getText(), false);
-        time =
-            "+".equals(ctx.getChild(i).getText())
-                ? Math.addExact(time, duration)
-                : Math.subtractExact(time, duration);
+        // apply "- duration" backwards from time, so that natural months are counted correctly
+        long offset =
+            DataNodeDateTimeUtils.convertDateExpressionOffset(
+                time, ctx.getChild(i + 1).getText(), "-".equals(ctx.getChild(i).getText()));
+        time = Math.addExact(time, offset);
       } catch (ArithmeticException e) {
         throw new SemanticException(
             String.format(
@@ -3869,6 +3874,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitRepairDataPartitionTable(
       IoTDBSqlParser.RepairDataPartitionTableContext ctx) {
     return new RepairDataPartitionTable();
+  }
+
+  @Override
+  public Statement visitShowDeleteTimeSeriesProgress(
+      IoTDBSqlParser.ShowDeleteTimeSeriesProgressContext ctx) {
+    return new ShowDeleteTimeSeriesProgressStatement();
   }
 
   @Override

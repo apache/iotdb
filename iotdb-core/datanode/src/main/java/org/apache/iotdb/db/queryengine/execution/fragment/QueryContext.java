@@ -48,6 +48,11 @@ import java.util.stream.Collectors;
 
 /** QueryContext contains the shared information with in a query. */
 public class QueryContext {
+  private final QueryChunkReaders queryChunkReaders = new QueryChunkReaders();
+
+  public QueryChunkReaders getQueryChunkReaders() {
+    return queryChunkReaders;
+  }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryContext.class);
   private QueryStatistics queryStatistics = new QueryStatistics();

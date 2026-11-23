@@ -86,6 +86,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isDecimalType;
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isSupportedMathNumericType;
 import static org.apache.iotdb.calc.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -1464,6 +1465,15 @@ public class TableMetadataImpl implements Metadata {
             DataNodeQueryMessages
                 .EXCEPTION_AGGREGATE_FUNCTION_ARG_REQUIRES_4_ARGUMENTS_VALUE_TIME_WINDOW_START_WINDOW_END_FBEC794B);
         break;
+      case SqlConstant.INTEGRAL:
+        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .AGGREGATE_FUNCTIONS_S_ONLY_SUPPORT_NUMERIC_DATA_TYPES_INT32_INT64_FLOAT_DOUBLE,
+                  functionName));
+        }
+        break;
       case SqlConstant.COUNT:
         break;
       default:
@@ -1509,6 +1519,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.INCREASE:
       case SqlConstant.IRATE:
       case SqlConstant.DELTA:
+      case SqlConstant.INTEGRAL:
         return DOUBLE;
       case SqlConstant.APPROX_MOST_FREQUENT:
         return STRING;
@@ -1705,7 +1716,7 @@ public class TableMetadataImpl implements Metadata {
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
-      final boolean allowCreateTable,
+      final boolean allowAutoCreateSchema,
       final boolean isStrictTagColumn,
       final AtomicBoolean needDecode4DifferentTimeColumn)
       throws LoadAnalyzeTableColumnDisorderException {
@@ -1714,7 +1725,7 @@ public class TableMetadataImpl implements Metadata {
             database,
             tableSchema,
             context,
-            allowCreateTable,
+            allowAutoCreateSchema,
             isStrictTagColumn,
             needDecode4DifferentTimeColumn);
   }

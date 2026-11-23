@@ -18,13 +18,41 @@
  */
 package org.apache.iotdb.confignode.manager.load.cache;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupCache;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
+
 public class ConsensusGroupCacheTest {
+
+  @Test
+  public void regionLeaderLookupTest() {
+    LoadCache loadCache = new LoadCache();
+    TConsensusGroupId dataRegion = new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
+    TConsensusGroupId schemaRegion = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1);
+    Assert.assertEquals(-1, loadCache.getRegionLeaderId(dataRegion));
+    Assert.assertEquals(-1, loadCache.getRegionLeaderId(schemaRegion));
+
+    loadCache.createRegionGroupHeartbeatCache("root.test", dataRegion, Collections.singleton(2));
+    loadCache.createRegionGroupHeartbeatCache("root.test", schemaRegion, Collections.singleton(3));
+    Assert.assertEquals(-1, loadCache.getRegionLeaderId(dataRegion));
+    Assert.assertEquals(-1, loadCache.getRegionLeaderId(schemaRegion));
+
+    loadCache.cacheConsensusSample(dataRegion, new ConsensusGroupHeartbeatSample(1L, 2));
+    loadCache.cacheConsensusSample(schemaRegion, new ConsensusGroupHeartbeatSample(1L, 3));
+    loadCache.updateConsensusGroupStatistics();
+    Assert.assertEquals(2, loadCache.getRegionLeaderId(dataRegion));
+    Assert.assertEquals(3, loadCache.getRegionLeaderId(schemaRegion));
+
+    loadCache.removeRegionGroupCache(dataRegion);
+    Assert.assertEquals(-1, loadCache.getRegionLeaderId(dataRegion));
+    Assert.assertEquals(3, loadCache.getRegionLeaderId(schemaRegion));
+  }
 
   @Test
   public void periodicUpdateTest() {

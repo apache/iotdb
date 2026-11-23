@@ -339,4 +339,25 @@ public final class IoTConsensusMessages {
       LOG_FAILED_TO_RECORD_A_USER_DATA_TRANSFER_AUDIT_EVENT_CONSENSUS_REPLICATION_WILL_CONTINUE_F215E222 =
           "记录用户数据传送审计事件失败；Consensus 复制将继续。";
 
+  public static final String
+      EXCEPTION_FAILED_TO_TAKE_SNAPSHOT_FOR_CONSENSUS_GROUP_ARG_IN_ARG_CHECK_STATE_MACHINE_LOGS_FOR_THE_UNDERLYING_CAUSE_74663D2D =
+          "为共识组 %s 在 %s 创建快照失败；请检查状态机日志以获取底层原因";
+
+  public static final String
+      EXCEPTION_THE_WRITE_IS_REJECTED_BECAUSE_THE_WAL_DIRECTORY_SIZE_HAS_REACHED_THE_THRESHOLD_ARG_BYTES_YOU_MAY_NEED_TO_ADJUST_THE_FLUSH_POLICY_OF_THE_STORAGE_STORAGEENGINE_OR_THE_IOTCONSENSUS_SYNCHRONIZATION_PARAMETER_49AB1306 =
+          "写入被拒绝，因为 WAL 目录大小已达到阈值 %d 字节。可能需要调整存储引擎的刷盘策略或 IoTConsensus 的同步参数";
+
+  public static final String
+      EXCEPTION_FAILED_TO_LOAD_SNAPSHOT_ARG_FOR_CONSENSUS_GROUP_ARG_F876AE5C = "加载快照 %s 失败，共识组：%s";
+
+  public static final String EXCEPTION_NO_REPLICATION_CHANNEL_TO_ARG_F99CF90B =
+      "不存在到 %s 的复制通道";
+  public static final String EXCEPTION_REPLICATION_CHANNEL_TO_ARG_FAILED_402B2EC5 =
+      "到 %s 的复制通道失败";
+  public static final String EXCEPTION_TIMED_OUT_WAITING_FOR_ARG_TO_APPLY_INDEX_ARG_ECAC0A5A =
+      "等待 %s 应用索引 %d 超时";
+  public static final String EXCEPTION_INTERRUPTED_WAITING_FOR_REPLICATION_TO_ARG_64450D09 =
+      "等待向 %s 复制时被中断";
+  public static final String EXCEPTION_MISSING_WAL_ENTRIES_FOR_ARG_EXPECTED_ARG_FOUND_ARG_A9D194A5 =
+      "向 %s 复制所需的 WAL 条目缺失：预期索引 %d，实际索引 %d";
 }

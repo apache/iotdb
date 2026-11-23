@@ -192,9 +192,6 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   public boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId)
       throws IOException, PageException {
     PageHeader timePageHeader = alignedPageElement.getTimePageHeader();
-    List<PageHeader> valuePageHeaders = alignedPageElement.getValuePageHeaders();
-    ByteBuffer compressedTimePageData = alignedPageElement.getTimePageData();
-    List<ByteBuffer> compressedValuePageDatas = alignedPageElement.getValuePageDataList();
 
     checkTimeAndMayFlushChunkToCurrentFile(timePageHeader.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
@@ -204,12 +201,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     }
 
     flushAlignedPageToChunkWriter(
-        (AlignedChunkWriterImpl) chunkWriters[subTaskId],
-        compressedTimePageData,
-        timePageHeader,
-        compressedValuePageDatas,
-        valuePageHeaders,
-        subTaskId);
+        (AlignedChunkWriterImpl) chunkWriters[subTaskId], alignedPageElement, subTaskId);
 
     // check chunk size and may open a new chunk
     checkChunkSizeAndMayOpenANewChunk(
@@ -229,9 +221,6 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       AbstractCompactionFlushController flushController)
       throws PageException, IOException {
     PageHeader timePageHeader = alignedPageElement.getTimePageHeader();
-    List<PageHeader> valuePageHeaders = alignedPageElement.getValuePageHeaders();
-    ByteBuffer compressedTimePageData = alignedPageElement.getTimePageData();
-    List<ByteBuffer> compressedValuePageDatas = alignedPageElement.getValuePageDataList();
 
     checkTimeAndMayFlushChunkToCurrentFile(timePageHeader.getStartTime(), subTaskId);
     int fileIndex = seqFileIndexArray[subTaskId];
@@ -244,12 +233,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     }
 
     flushAlignedPageToChunkWriter(
-        (AlignedChunkWriterImpl) chunkWriters[subTaskId],
-        compressedTimePageData,
-        timePageHeader,
-        compressedValuePageDatas,
-        valuePageHeaders,
-        subTaskId);
+        (AlignedChunkWriterImpl) chunkWriters[subTaskId], alignedPageElement, subTaskId);
 
     // check chunk size and may open a new chunk
     checkChunkSizeAndMayOpenANewChunk(

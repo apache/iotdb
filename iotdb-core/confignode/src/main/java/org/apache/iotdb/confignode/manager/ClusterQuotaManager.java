@@ -78,7 +78,8 @@ public class ClusterQuotaManager {
     if (!checkSpaceQuota(req)) {
       return RpcUtils.getStatus(
           TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
-          "The used quota exceeds the preset quota. Please set a larger value.");
+          ManagerMessages
+              .EXCEPTION_THE_USED_QUOTA_EXCEEDS_THE_PRESET_QUOTA_PLEASE_SET_A_LARGER_VALUE_2AAE5636);
     }
     // TODO: Datanode failed to receive rpc
     try {

@@ -113,6 +113,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.RepairDataParti
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowConfigurationTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowDeleteTimeSeriesProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowRepairDataPartitionTableProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StartRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StopRepairDataTask;
@@ -228,6 +229,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDeleteTimeSeriesProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -434,6 +436,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitRepairDataPartitionTable(
       RepairDataPartitionTable repairDataPartitionTable, MPPQueryContext context) {
     return new RepairDataPartitionTableTask();
+  }
+
+  @Override
+  public IConfigTask visitShowDeleteTimeSeriesProgress(
+      ShowDeleteTimeSeriesProgressStatement statement, MPPQueryContext context) {
+    return new ShowDeleteTimeSeriesProgressTask();
   }
 
   @Override
@@ -783,7 +791,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     createTopicStatement
         .getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    rejectColumnFilterForTreeTopic(createTopicStatement.getTopicAttributes());
+    rejectTableOnlyFiltersForTreeTopic(createTopicStatement.getTopicAttributes());
 
     return new CreateTopicTask(createTopicStatement);
   }
@@ -794,18 +802,21 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     alterTopicStatement
         .getTopicAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
-    rejectColumnFilterForTreeTopic(alterTopicStatement.getTopicAttributes());
+    rejectTableOnlyFiltersForTreeTopic(alterTopicStatement.getTopicAttributes());
 
     return new AlterTopicTask(alterTopicStatement);
   }
 
-  private static void rejectColumnFilterForTreeTopic(final Map<String, String> topicAttributes) {
+  private static void rejectTableOnlyFiltersForTreeTopic(
+      final Map<String, String> topicAttributes) {
     for (final String key : topicAttributes.keySet()) {
-      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(key)) {
+      if (TopicConstant.COLUMN_FILTER_KEY.equalsIgnoreCase(key)
+          || TopicConstant.TAG_FILTER_KEY.equalsIgnoreCase(key)) {
         throw new SemanticException(
             String.format(
-                "Failed to create or alter topic, %s is only supported for table topics",
-                TopicConstant.COLUMN_FILTER_KEY));
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_CREATE_OR_ALTER_TOPIC_ARG_IS_ONLY_SUPPORTED_FOR_TABLE_TOPICS_A5126607,
+                key));
       }
     }
   }

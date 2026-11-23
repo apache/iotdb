@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
 
@@ -33,7 +34,7 @@ public class WALPrintTool {
     if (file.exists()) {
       stack.push(file);
     } else {
-      System.out.println("The initial file does not exist");
+      System.out.println(StorageEngineMessages.MESSAGE_THE_INITIAL_FILE_DOES_NOT_EXIST_AD547B8D);
     }
 
     while (!stack.isEmpty()) {
@@ -65,7 +66,7 @@ public class WALPrintTool {
 
   public static void main(String[] args) throws IOException {
     if (args.length == 0) {
-      System.out.println("Usage: WALPrintTool <file>");
+      System.out.println(StorageEngineMessages.EXCEPTION_USAGE_WALPRINTTOOL_FILE_11D2FB79);
       return;
     }
 

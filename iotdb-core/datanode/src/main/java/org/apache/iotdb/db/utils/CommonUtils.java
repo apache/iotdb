@@ -40,16 +40,6 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
-import com.google.common.base.Throwables;
-import io.airlift.airline.Cli;
-import io.airlift.airline.Help;
-import io.airlift.airline.ParseArgumentsMissingException;
-import io.airlift.airline.ParseArgumentsUnexpectedException;
-import io.airlift.airline.ParseCommandMissingException;
-import io.airlift.airline.ParseCommandUnrecognizedException;
-import io.airlift.airline.ParseOptionConversionException;
-import io.airlift.airline.ParseOptionMissingException;
-import io.airlift.airline.ParseOptionMissingValueException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
@@ -59,12 +49,10 @@ import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.time.ZoneId;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.utils.TypeServices.ValueConversion.VALUE_PARSER_SERVICE;
 
-@SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
 
   private static final int MAX_SLOW_NATIVE_API_OUTPUT_NUM = 10;
@@ -142,9 +130,12 @@ public class CommonUtils {
         sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
       }
       return String.format(
-          "Request name: TSRawDataQueryReq, paths size: %s, starTime: %s, "
-              + "endTime: %s, some paths: %s",
-          req.getPathsSize(), req.getStartTime(), req.getEndTime(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSRAWDATAQUERYREQ_PATHS_SIZE_ARG_STARTIME_ARG_ENDTIME_ARG_SOME_PATHS_ARG_92B722A4,
+          req.getPathsSize(),
+          req.getStartTime(),
+          req.getEndTime(),
+          sb);
     } else if (request instanceof TSLastDataQueryReq) {
       TSLastDataQueryReq req = (TSLastDataQueryReq) request;
       StringBuilder sb = new StringBuilder();
@@ -152,8 +143,10 @@ public class CommonUtils {
         sb.append(i == 0 ? "" : ",").append(req.getPaths().get(i));
       }
       return String.format(
-          "Request name: TSLastDataQueryReq, paths size: %s, some paths: %s",
-          req.getPathsSize(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSLASTDATAQUERYREQ_PATHS_SIZE_ARG_SOME_PATHS_ARG_46D12DFF,
+          req.getPathsSize(),
+          sb);
     } else if (request instanceof TSAggregationQueryReq) {
       TSAggregationQueryReq req = (TSAggregationQueryReq) request;
       StringBuilder sb = new StringBuilder();
@@ -164,9 +157,12 @@ public class CommonUtils {
             .append(req.getPaths().get(i));
       }
       return String.format(
-          "Request name: TSAggregationQueryReq, startTime: %s, endTime: %s, "
-              + "paths size: %s, some paths: %s",
-          req.getStartTime(), req.getEndTime(), req.getPathsSize(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSAGGREGATIONQUERYREQ_STARTTIME_ARG_ENDTIME_ARG_PATHS_SIZE_ARG_SOME_PATHS_ARG_9E59CBB8,
+          req.getStartTime(),
+          req.getEndTime(),
+          req.getPathsSize(),
+          sb);
     } else if (request instanceof TSFastLastDataQueryForOneDeviceReq) {
       TSFastLastDataQueryForOneDeviceReq req = (TSFastLastDataQueryForOneDeviceReq) request;
       return getContentOfTSFastLastDataQueryForOneDeviceReq(req);
@@ -180,10 +176,12 @@ public class CommonUtils {
             .append(queryExecution.getDatasetHeader().getRespColumns().get(i));
       }
       return String.format(
-          "Request name: TSFetchResultsReq, "
-              + "queryId: %s, output value column count: %s, fetchSize: %s, "
-              + "some response headers: %s",
-          req.getQueryId(), queryExecution.getOutputValueColumnCount(), req.getFetchSize(), sb);
+          DataNodeMiscMessages
+              .EXCEPTION_REQUEST_NAME_TSFETCHRESULTSREQ_QUERYID_ARG_OUTPUT_VALUE_COLUMN_COUNT_ARG_FETCHSIZE_ARG_SOME_RESPONSE_HEADERS_ARG_15468822,
+          req.getQueryId(),
+          queryExecution.getOutputValueColumnCount(),
+          req.getFetchSize(),
+          sb);
     } else {
       return UNKNOWN_RESULT;
     }
@@ -192,42 +190,12 @@ public class CommonUtils {
   public static String getContentOfTSFastLastDataQueryForOneDeviceReq(
       TSFastLastDataQueryForOneDeviceReq req) {
     return String.format(
-        "Request name: TSFastLastDataQueryForOneDeviceReq, "
-            + "db: %s, deviceId: %s, sensorSize: %s, sensors: %s",
-        req.getDb(), req.getDeviceId(), req.getSensorsSize(), req.getSensors());
-  }
-
-  public static int runCli(
-      List<Class<? extends Runnable>> commands,
-      String[] args,
-      String cliName,
-      String cliDescription) {
-    Cli.CliBuilder<Runnable> builder = Cli.builder(cliName);
-
-    builder.withDescription(cliDescription).withDefaultCommand(Help.class).withCommands(commands);
-
-    Cli<Runnable> parser = builder.build();
-
-    int status = 0;
-    try {
-      Runnable parse = parser.parse(args);
-      parse.run();
-    } catch (IllegalArgumentException
-        | IllegalStateException
-        | ParseArgumentsMissingException
-        | ParseArgumentsUnexpectedException
-        | ParseOptionConversionException
-        | ParseOptionMissingException
-        | ParseOptionMissingValueException
-        | ParseCommandMissingException
-        | ParseCommandUnrecognizedException e) {
-      badUse(e);
-      status = 1;
-    } catch (Exception e) {
-      err(Throwables.getRootCause(e));
-      status = 2;
-    }
-    return status;
+        DataNodeMiscMessages
+            .EXCEPTION_REQUEST_NAME_TSFASTLASTDATAQUERYFORONEDEVICEREQ_DB_ARG_DEVICEID_ARG_SENSORSIZE_ARG_SENSORS_ARG_D1F9A498,
+        req.getDb(),
+        req.getDeviceId(),
+        req.getSensorsSize(),
+        req.getSensors());
   }
 
   /**
@@ -244,17 +212,6 @@ public class CommonUtils {
     } catch (SemanticException e) {
       throw new IllegalArgumentException(e.getMessage());
     }
-  }
-
-  private static void badUse(Exception e) {
-    System.out.println("node-tool: " + e.getMessage());
-    System.out.println("See 'node-tool help' or 'node-tool help <command>'.");
-  }
-
-  private static void err(Throwable e) {
-    System.err.println("error: " + e.getMessage());
-    System.err.println("-- StackTrace --");
-    System.err.println(Throwables.getStackTraceAsString(e));
   }
 
   public static String[] deviceIdToStringArray(IDeviceID deviceID) {

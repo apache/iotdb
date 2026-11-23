@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
@@ -118,6 +120,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
+import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -189,6 +192,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertValues;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
@@ -226,6 +230,7 @@ import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
 import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
+import org.apache.iotdb.udf.api.relational.table.specification.OrderByRequirement;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
@@ -504,7 +509,8 @@ public class StatementAnalyzer {
       if (matches.size() > 1) {
         throw new SemanticException(
             String.format(
-                "Column alias '%s' is ambiguous at positions %s",
+                DataNodeQueryMessages
+                    .EXCEPTION_COLUMN_ALIAS_ARG_IS_AMBIGUOUS_AT_POSITIONS_ARG_F6FF2E93,
                 identifier.getValue(),
                 matches.stream()
                     .map(alias -> Integer.toString(alias.getPosition()))
@@ -630,7 +636,8 @@ public class StatementAnalyzer {
       if (selectAlias.get().containsWindowFunction()) {
         throw new SemanticException(
             String.format(
-                "Lateral column alias '%s' containing window function is not supported",
+                DataNodeQueryMessages
+                    .EXCEPTION_LATERAL_COLUMN_ALIAS_ARG_CONTAINING_WINDOW_FUNCTION_IS_NOT_SUPPORTED_13F5E6AD,
                 node.getValue()));
       }
       Expression rewrittenExpression = selectAlias.get().getRewrittenExpression();
@@ -688,7 +695,9 @@ public class StatementAnalyzer {
       if (node.getWindow().isPresent() || node.getNullTreatment().isPresent()) {
         throw new SemanticException(
             String.format(
-                "Lateral column alias in window function arguments is not supported: %s", node));
+                DataNodeQueryMessages
+                    .EXCEPTION_LATERAL_COLUMN_ALIAS_IN_WINDOW_FUNCTION_ARGUMENTS_IS_NOT_SUPPORTED_ARG_10EB87DB,
+                node));
       }
       return new FunctionCall(
           node.getName(), node.isDistinct(), node.getProcessingMode(), arguments);
@@ -724,7 +733,10 @@ public class StatementAnalyzer {
               specification
                   .getLocation()
                   .orElseThrow(
-                      () -> new IllegalStateException("WindowSpecification location is missing")),
+                      () ->
+                          new IllegalStateException(
+                              DataNodeQueryMessages
+                                  .EXCEPTION_WINDOWSPECIFICATION_LOCATION_IS_MISSING_E9CE9D26)),
               specification.getExistingWindowName(),
               partitionBy,
               orderBy,
@@ -768,7 +780,11 @@ public class StatementAnalyzer {
       }
       return new WindowFrame(
           node.getLocation()
-              .orElseThrow(() -> new IllegalStateException("WindowFrame location is missing")),
+              .orElseThrow(
+                  () ->
+                      new IllegalStateException(
+                          DataNodeQueryMessages
+                              .EXCEPTION_WINDOWFRAME_LOCATION_IS_MISSING_F46D64A5)),
           node.getType(),
           start,
           end);
@@ -968,6 +984,7 @@ public class StatementAnalyzer {
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()),
           queryContext);
+      queryContext.setUdfForbidden(true);
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
@@ -1018,6 +1035,7 @@ public class StatementAnalyzer {
                     })
                 .collect(Collectors.toList()));
       } else {
+        validateNoUdfInPreAnalyzedUpdate(node);
         final Set<String> attributeNames = new HashSet<>();
         node.getAssignments()
             .forEach(
@@ -1041,6 +1059,39 @@ public class StatementAnalyzer {
         return null;
       }
       return null;
+    }
+
+    /**
+     * Validates an UPDATE whose expressions were analyzed by the sender and are reused directly by
+     * the receiver. This happens for pipe-transferred UPDATE statements, which have no source
+     * location and also store their predicate in {@link Update#getTagFuzzyPredicate()} instead of
+     * the regular WHERE expression.
+     */
+    private void validateNoUdfInPreAnalyzedUpdate(final Update node) {
+      final List<Expression> expressions =
+          node.getAssignments().stream()
+              .map(UpdateAssignment::getValue)
+              .collect(Collectors.toList());
+      node.getWhere().ifPresent(expressions::add);
+      if (Objects.nonNull(node.getTagFuzzyPredicate())) {
+        expressions.add(node.getTagFuzzyPredicate());
+      }
+      validateNoUdfInExpressions(expressions);
+    }
+
+    private void validateNoUdfInExpressions(final Iterable<? extends Expression> expressions) {
+      for (final FunctionCall functionCall :
+          ExpressionTreeUtils.extractExpressions(expressions, FunctionCall.class)) {
+        final String functionName = functionCall.getName().getSuffix();
+        if (UDFManagementService.getInstance().getUDFInformation(Model.TABLE, functionName)
+            != null) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages
+                      .EXCEPTION_EXTERNAL_USER_DEFINED_FUNCTION_ARG_IS_NOT_SUPPORTED_IN_THIS_WRITE_STATEMENT_8329DC8E,
+                  functionName));
+        }
+      }
     }
 
     private void validateUpdateAttributeColumn(
@@ -1153,6 +1204,9 @@ public class StatementAnalyzer {
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
+      // DELETE DEVICE currently rejects function expressions before expression analysis. Keep the
+      // guard so future changes cannot silently allow external UDFs into this schema-write path.
+      queryContext.setUdfForbidden(true);
       node.parseModEntries(table, node.getDatabase(), queryContext);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       node.parseWhere(
@@ -1335,6 +1389,11 @@ public class StatementAnalyzer {
     }
 
     private Scope visitInsert(WrappedInsertStatement insert, Optional<Scope> scope) {
+      if (insert instanceof InsertValues) {
+        ((InsertValues) insert)
+            .materialize(new PlannerContext(metadata, typeManager), sessionContext);
+      }
+
       final Scope ret = Scope.create();
 
       final MPPQueryContext context = insert.getContext();
@@ -1396,8 +1455,10 @@ public class StatementAnalyzer {
       } catch (final Exception e) {
         final String exceptionMessage =
             String.format(
-                "Failed to execute load tsfile statement %s. Detail: %s",
-                node, e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+                DataNodeQueryMessages
+                    .EXCEPTION_FAILED_TO_EXECUTE_LOAD_TSFILE_STATEMENT_ARG_DETAIL_ARG_6B99B6D4,
+                node,
+                e.getMessage() == null ? e.getClass().getName() : e.getMessage());
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
       }
@@ -1410,7 +1471,9 @@ public class StatementAnalyzer {
       queryContext.setExplainType(ExplainType.EXPLAIN);
       queryContext.setExplainOutputFormat(node.getOutputFormat());
       analysis.setFinishQueryAfterAnalyze();
-      return visitQuery((Query) node.getStatement(), context);
+      Scope scope = process(node.getStatement(), context);
+      analysis.setScope(node, scope);
+      return scope;
     }
 
     @Override
@@ -1437,7 +1500,9 @@ public class StatementAnalyzer {
       queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
       queryContext.setVerbose(node.isVerbose());
       queryContext.setExplainOutputFormat(node.getOutputFormat());
-      return visitQuery((Query) node.getStatement(), context);
+      Scope scope = process(node.getStatement(), context);
+      analysis.setScope(node, scope);
+      return scope;
     }
 
     @Override
@@ -1472,7 +1537,10 @@ public class StatementAnalyzer {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(node.getOrderBy().get());
           warningCollector.add(
-              new IoTDBWarning(REDUNDANT_ORDER_BY, "ORDER BY in subquery may have no effect"));
+              new IoTDBWarning(
+                  REDUNDANT_ORDER_BY,
+                  DataNodeQueryMessages
+                      .EXCEPTION_ORDER_BY_IN_SUBQUERY_MAY_HAVE_NO_EFFECT_8A480B62));
         }
       }
       analysis.setOrderByExpressions(node, orderByExpressions);
@@ -1801,7 +1869,10 @@ public class StatementAnalyzer {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(orderBy);
           warningCollector.add(
-              new IoTDBWarning(REDUNDANT_ORDER_BY, "ORDER BY in subquery may have no effect"));
+              new IoTDBWarning(
+                  REDUNDANT_ORDER_BY,
+                  DataNodeQueryMessages
+                      .EXCEPTION_ORDER_BY_IN_SUBQUERY_MAY_HAVE_NO_EFFECT_8A480B62));
         }
       }
       analysis.setOrderByExpressions(node, orderByExpressions);
@@ -2136,7 +2207,8 @@ public class StatementAnalyzer {
     }
 
     private void analyzeWhere(Node node, Scope scope, Expression predicate) {
-      verifyNoAggregateWindowOrGroupingFunctions(predicate, "WHERE clause");
+      verifyNoAggregateWindowOrGroupingFunctions(
+          predicate, DataNodeQueryMessages.EXCEPTION_WHERE_CLAUSE_6F66E904);
 
       // contains Columns, expand them and concat them
       if (containsColumns(predicate)) {
@@ -3384,10 +3456,12 @@ public class StatementAnalyzer {
                 }
 
                 column = outputExpressions.get(toIntExact(ordinal - 1));
-                verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
+                verifyNoAggregateWindowOrGroupingFunctions(
+                    column, DataNodeQueryMessages.EXCEPTION_GROUP_BY_CLAUSE_25F779A7);
               } else {
                 column = resolveGroupBySelectAlias(column, scope, outputExpressions, selectAliases);
-                verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
+                verifyNoAggregateWindowOrGroupingFunctions(
+                    column, DataNodeQueryMessages.EXCEPTION_GROUP_BY_CLAUSE_25F779A7);
                 analyzeExpression(column, scope);
               }
 
@@ -3417,7 +3491,8 @@ public class StatementAnalyzer {
             for (Expression column : groupingElement.getExpressions()) {
               Expression originalColumn = column;
               column = resolveGroupBySelectAlias(column, scope, outputExpressions, selectAliases);
-              verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
+              verifyNoAggregateWindowOrGroupingFunctions(
+                  column, DataNodeQueryMessages.EXCEPTION_GROUP_BY_CLAUSE_25F779A7);
               analyzeExpression(column, scope);
               if (!analysis.getColumnReferences().contains(NodeRef.of(column))) {
                 throw new SemanticException(
@@ -3439,7 +3514,8 @@ public class StatementAnalyzer {
                                     expression ->
                                         requireNonNull(
                                             resolvedGroupingColumns.get(NodeRef.of(expression)),
-                                            "resolved grouping expression is null"))
+                                            DataNodeQueryMessages
+                                                .EXCEPTION_RESOLVED_GROUPING_EXPRESSION_IS_NULL_19A41A60))
                                 .map(NodeRef::of)
                                 .map(analysis.getColumnReferenceFields()::get)
                                 .map(ResolvedField::getFieldId)
@@ -4544,7 +4620,8 @@ public class StatementAnalyzer {
 
         Expression expression = ((JoinOn) criteria).getExpression();
         if (expression != null) {
-          verifyNoAggregateWindowOrGroupingFunctions(expression, "JOIN clause");
+          verifyNoAggregateWindowOrGroupingFunctions(
+              expression, DataNodeQueryMessages.EXCEPTION_JOIN_CLAUSE_56FCD2FF);
 
           // Need to register coercions in case when join criteria requires coercion (e.g. join on
           // char(1) = char(2))
@@ -4583,7 +4660,8 @@ public class StatementAnalyzer {
           ComparisonExpression asofExpression =
               (ComparisonExpression) ((AsofJoinOn) criteria).getAsofExpression();
 
-          verifyNoAggregateWindowOrGroupingFunctions(asofExpression, "JOIN clause");
+          verifyNoAggregateWindowOrGroupingFunctions(
+              asofExpression, DataNodeQueryMessages.EXCEPTION_JOIN_CLAUSE_56FCD2FF);
 
           // ASOF Join does not support Correlation
           ExpressionAnalysis expressionAnalysis =
@@ -6039,7 +6117,9 @@ public class StatementAnalyzer {
           || TableBuiltinTableFunction.LOWPASS.getFunctionName().equalsIgnoreCase(functionName)
           || TableBuiltinTableFunction.HIGHPASS.getFunctionName().equalsIgnoreCase(functionName)
           || TableBuiltinTableFunction.XCORR.getFunctionName().equalsIgnoreCase(functionName)
-          || TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName);
+          || TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName)
+          || TableBuiltinTableFunction.SAMPLE.getFunctionName().equalsIgnoreCase(functionName)
+          || TableBuiltinTableFunction.DERIVATIVE.getFunctionName().equalsIgnoreCase(functionName);
     }
 
     private void tryAppendFFTInternalArguments(
@@ -6066,35 +6146,10 @@ public class StatementAnalyzer {
         throw new SemanticException(QueryMessages.FFT_N_MUST_BE_POSITIVE_INTEGER);
       }
 
-      validateFFTOrderBySortOrder(arguments, parameterSpecifications);
       passedArguments.put(
           FFTTableFunction.SAMPLE_INTERVAL_SPECIFIED_PARAMETER_NAME,
           new ScalarArgument(
               org.apache.iotdb.udf.api.type.Type.BOOLEAN, sampleIntervalArgument.isPresent()));
-    }
-
-    private void validateFFTOrderBySortOrder(
-        List<TableFunctionArgument> arguments,
-        List<ParameterSpecification> parameterSpecifications) {
-      Optional<TableFunctionArgument> dataArgument =
-          findOptionalTableFunctionArgument(
-              arguments, parameterSpecifications, FFTTableFunction.DATA_PARAMETER_NAME);
-      if (!dataArgument.isPresent()
-          || !(dataArgument.get().getValue() instanceof TableFunctionTableArgument)) {
-        return;
-      }
-
-      Optional<OrderBy> orderBy =
-          ((TableFunctionTableArgument) dataArgument.get().getValue()).getOrderBy();
-      if (!orderBy.isPresent()) {
-        return;
-      }
-
-      for (SortItem sortItem : orderBy.get().getSortItems()) {
-        if (sortItem.getOrdering() != SortItem.Ordering.ASCENDING) {
-          throw new SemanticException(QueryMessages.FFT_ORDER_BY_MUST_SORT_ASCENDING);
-        }
-      }
     }
 
     private void tryAppendM4ModeArgument(
@@ -6141,36 +6196,9 @@ public class StatementAnalyzer {
             QueryMessages
                 .EXCEPTION_THE_ORIGIN_ARGUMENT_IS_ONLY_SUPPORTED_IN_TIME_WINDOW_MODE_B3F358B9);
       }
-      validateM4OrderBySortOrder(arguments, parameterSpecifications);
       passedArguments.put(
           M4TableFunction.WINDOW_MODE_PARAMETER_NAME,
           new ScalarArgument(org.apache.iotdb.udf.api.type.Type.BOOLEAN, isTimeWindow));
-    }
-
-    private void validateM4OrderBySortOrder(
-        List<TableFunctionArgument> arguments,
-        List<ParameterSpecification> parameterSpecifications) {
-      Optional<TableFunctionArgument> dataArgument =
-          findOptionalTableFunctionArgument(
-              arguments, parameterSpecifications, M4TableFunction.DATA_PARAMETER_NAME);
-      if (!dataArgument.isPresent()
-          || !(dataArgument.get().getValue() instanceof TableFunctionTableArgument)) {
-        return;
-      }
-
-      Optional<OrderBy> orderBy =
-          ((TableFunctionTableArgument) dataArgument.get().getValue()).getOrderBy();
-      if (!orderBy.isPresent()) {
-        return;
-      }
-
-      for (SortItem sortItem : orderBy.get().getSortItems()) {
-        if (sortItem.getOrdering() != SortItem.Ordering.ASCENDING) {
-          throw new SemanticException(
-              QueryMessages
-                  .EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_DATA_ARGUMENT_MUST_SORT_THE_TIME_COLUMN_IN_ASCENDING_ORDER_C3FD0F6A);
-        }
-      }
     }
 
     private boolean containsTableFunctionArgument(
@@ -6437,6 +6465,14 @@ public class StatementAnalyzer {
                 .collect(toImmutableList());
       }
 
+      Optional<OrderByRequirement> orderByRequirement =
+          argumentSpecification.getOrderByRequirement();
+      if (orderByRequirement.isPresent() && tableArgument.getOrderBy().isEmpty()) {
+        throw new SemanticException(
+            CommonMessages
+                .EXCEPTION_TABLE_ARGUMENT_WITH_SET_SEMANTICS_REQUIRES_AN_ORDER_BY_CLAUSE_10C986D9);
+      }
+
       // analyze ORDER BY
       if (tableArgument.getOrderBy().isPresent()) {
         if (argumentSpecification.isRowSemantics()) {
@@ -6448,6 +6484,10 @@ public class StatementAnalyzer {
         }
         OrderBy orderByExpression = tableArgument.getOrderBy().get();
         analysisBuilder.withOrderBy(orderByExpression);
+        orderByRequirement.ifPresent(
+            order ->
+                validateOrderByDirection(
+                    order, orderByExpression, argumentSpecification.getName()));
         orderByExpression.getSortItems().stream()
             .map(SortItem::getSortKey)
             .forEach(
@@ -6493,6 +6533,30 @@ public class StatementAnalyzer {
           Optional.of(analysisBuilder.build()));
     }
 
+    private static void validateOrderByDirection(
+        OrderByRequirement orderByRequirement, OrderBy orderBy, String argumentName) {
+      if (orderByRequirement == OrderByRequirement.ORDERED) {
+        // any direction is accepted, only the presence of the clause matters
+        return;
+      }
+      final SortItem.Ordering requiredOrdering =
+          orderByRequirement == OrderByRequirement.ASCENDING
+              ? SortItem.Ordering.ASCENDING
+              : SortItem.Ordering.DESCENDING;
+      for (SortItem sortItem : orderBy.getSortItems()) {
+        if (sortItem.getOrdering() != requiredOrdering) {
+          throw new SemanticException(
+              String.format(
+                  requiredOrdering == SortItem.Ordering.ASCENDING
+                      ? DataNodeQueryMessages
+                          .EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_ASCENDING_ORDER_5E26E74A
+                      : DataNodeQueryMessages
+                          .EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_DESCENDING_ORDER_C2B688D7,
+                  argumentName));
+        }
+      }
+    }
+
     private ArgumentAnalysis analyzeScalarArgument(
         Expression expression, ScalarParameterSpecification argumentSpecification) {
       if (expression instanceof TimeDurationLiteral) {
@@ -6518,7 +6582,15 @@ public class StatementAnalyzer {
           constantValue = ((Binary) constantValue).getStringValue(TSFileConfig.STRING_CHARSET);
         } else if (argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.INT32)
             && constantValue instanceof Long) {
-          constantValue = ((Long) constantValue).intValue();
+          try {
+            constantValue = toIntExact((Long) constantValue);
+          } catch (ArithmeticException e) {
+            throw new SemanticException(
+                String.format(
+                    DataNodeQueryMessages
+                        .INVALID_SCALAR_ARGUMENT_S_VALUE_OUT_OF_RANGE_FOR_INT32_A865664C,
+                    argumentSpecification.getName()));
+          }
         } else {
           throw new SemanticException(
               String.format(

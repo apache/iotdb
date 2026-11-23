@@ -94,7 +94,8 @@ public class ColumnTransformerVisitor
     extends ExpressionVisitor<
         ColumnTransformer, ColumnTransformerVisitor.ColumnTransformerVisitorContext> {
 
-  private static final String UNSUPPORTED_EXPRESSION_TYPE = "Unsupported expression type: ";
+  private static final String UNSUPPORTED_EXPRESSION_TYPE =
+      DataNodeQueryMessages.UNSUPPORTED_EXPRESSION_TYPE;
 
   @Override
   public ColumnTransformer visitExpression(

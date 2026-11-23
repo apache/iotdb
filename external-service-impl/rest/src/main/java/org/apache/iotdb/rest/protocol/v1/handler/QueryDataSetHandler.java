@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAIDevic
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowLoadedModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.handler.QueryRowLimitUtils;
 import org.apache.iotdb.rest.protocol.v1.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -77,7 +78,8 @@ public class QueryDataSetHandler {
                 .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
                 .message(
                     String.format(
-                        "unsupported query data type: %s", statement.getType().toString())))
+                        RestMessages.EXCEPTION_UNSUPPORTED_QUERY_DATA_TYPE_ARG_05BDDFBA,
+                        statement.getType().toString())))
         .build();
   }
 

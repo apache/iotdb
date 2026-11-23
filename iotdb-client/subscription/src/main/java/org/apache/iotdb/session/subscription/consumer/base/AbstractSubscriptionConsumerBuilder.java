@@ -55,6 +55,13 @@ public class AbstractSubscriptionConsumerBuilder {
   protected int connectionTimeoutInMs = ConsumerConstant.CONNECTION_TIMEOUT_MS_DEFAULT_VALUE;
   protected int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE;
 
+  protected boolean useSSL = false;
+  protected String trustStore;
+  protected String trustStorePwd;
+  protected String keyStore;
+  protected String keyStorePwd;
+  protected String sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
+
   public AbstractSubscriptionConsumerBuilder host(final String host) {
     this.host = host;
     return this;
@@ -168,6 +175,36 @@ public class AbstractSubscriptionConsumerBuilder {
   public AbstractSubscriptionConsumerBuilder connectionTimeoutInMs(
       final int connectionTimeoutInMs) {
     this.connectionTimeoutInMs = Math.max(connectionTimeoutInMs, 0);
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder useSSL(final boolean useSSL) {
+    this.useSSL = useSSL;
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder trustStore(final String trustStore) {
+    this.trustStore = trustStore;
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder trustStorePwd(final String trustStorePwd) {
+    this.trustStorePwd = trustStorePwd;
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder keyStore(final String keyStore) {
+    this.keyStore = keyStore;
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder keyStorePwd(final String keyStorePwd) {
+    this.keyStorePwd = keyStorePwd;
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder sslProtocol(final String sslProtocol) {
+    this.sslProtocol = sslProtocol;
     return this;
   }
 

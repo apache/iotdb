@@ -120,7 +120,7 @@ public class UpdateClearContainer implements UpdateContainer {
       ++setEntryCount;
       outputStream.writeWithLength(tableBytes);
     }
-    outputStream.rewrite(tableNames.size(), setSizeOffset);
+    outputStream.rewrite(setEntryCount, setSizeOffset);
   }
 
   @Override

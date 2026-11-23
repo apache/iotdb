@@ -63,6 +63,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAutoSyncViewColumnsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -164,6 +166,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDeleteTimeSeriesProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDropTableProceduresResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -1276,9 +1279,22 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
   }
 
   @Override
+  public TShowDeleteTimeSeriesProceduresResp showDeleteTimeSeriesProcedures() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showDeleteTimeSeriesProcedures(),
+        resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TShowDropTableProceduresResp showDropTableProcedures() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showDropTableProcedures(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TShowDropTableProceduresResp showDropTableColumnProcedures() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showDropTableColumnProcedures(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -1313,6 +1329,13 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
   public TSStatus createTableView(TCreateTableViewReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createTableView(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TAutoSyncViewColumnsResp autoSyncViewColumns(TAutoSyncViewColumnsReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.autoSyncViewColumns(req), status -> !updateConfigNodeLeader(status.status));
   }
 
   @Override

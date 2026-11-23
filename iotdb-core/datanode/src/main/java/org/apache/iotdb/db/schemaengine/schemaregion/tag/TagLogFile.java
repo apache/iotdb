@@ -51,8 +51,8 @@ public class TagLogFile implements AutoCloseable {
   private File tagFile;
   private FileChannel fileChannel;
   private static final String LENGTH_EXCEED_MSG =
-      "Tag/Attribute exceeds the max length limit. "
-          + "Please enlarge tag_attribute_total_size in iotdb-system.properties";
+      DataNodeSchemaMessages
+          .MESSAGE_TAG_ATTRIBUTE_EXCEEDS_THE_MAX_LENGTH_LIMIT_PLEASE_ENLARGE_TAG_ATTRIBUTE_TOTAL_SIZE_IN_IOTDB_SYSTEM_PROPERTIES_996EA890;
 
   private static final int MAX_LENGTH =
       CommonDescriptor.getInstance().getConfig().getTagAttributeTotalSize();

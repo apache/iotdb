@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.view.viewExpression.multi;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
@@ -71,7 +72,8 @@ public class FunctionViewExpression extends ViewExpression {
       }
     } else {
       String errorMsg =
-          "Illegal parameters during FunctionExpression construction. Array length mismatch.";
+          SchemaMessages
+              .MESSAGE_ILLEGAL_PARAMETERS_DURING_FUNCTIONEXPRESSION_CONSTRUCTION_ARRAY_LENGTH_MISMATCH_1089726C;
       throw new RuntimeException(errorMsg);
     }
     this.expressions = expressions;

@@ -483,6 +483,12 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       File stdoutFile = new File(getLogPath());
       List<String> startCmd = new ArrayList<>();
       startCmd.add(JAVA_CMD);
+      if (jvmConfig.getDebugPort() > 0) {
+        startCmd.add(
+            "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:"
+                + jvmConfig.getDebugPort());
+      }
+      startCmd.addAll(jvmConfig.getJvmOptions());
       if (!SystemUtils.IS_JAVA_1_8) {
         startCmd.add("--add-opens=java.base/java.util.concurrent=ALL-UNNAMED");
         startCmd.add("--add-opens=java.base/java.lang=ALL-UNNAMED");
@@ -550,13 +556,17 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public void stop() {
+    stop(20, TimeUnit.SECONDS);
+  }
+
+  public void stop(final long timeout, final TimeUnit unit) {
     if (this.instance == null) {
       return;
     }
     this.instance.destroy();
     try {
-      if (!this.instance.waitFor(20, TimeUnit.SECONDS)) {
-        logger.warn("Node {} does not exit within 20s, killing it", getId());
+      if (!this.instance.waitFor(timeout, unit)) {
+        logger.warn("Node {} does not exit within {} {}, killing it", getId(), timeout, unit);
         if (!this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS)) {
           logger.error("Cannot forcibly stop node {}", getId());
         }
@@ -840,6 +850,10 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   public int[] getPortList() {
     return portList;
+  }
+
+  public int getJmxPort() {
+    return jmxPort;
   }
 
   public void clearLogContent() throws IOException {

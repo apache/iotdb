@@ -51,13 +51,6 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
   }
 
   @Override
-  protected TSStatus executeWrite(PlanNode planNode) {
-    final DataRegion targetRegion = region;
-    return targetRegion.executeIoTConsensusWrite(
-        () -> planNode.accept(new DataExecutionVisitor(), targetRegion));
-  }
-
-  @Override
   public TSStatus write(IConsensusRequest request) {
     try {
       if (request instanceof DeserializedBatchIndexedConsensusRequest) {

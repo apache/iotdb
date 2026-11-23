@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -33,7 +32,6 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -59,11 +57,11 @@ import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner.CompletionToken;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
-import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
@@ -80,9 +78,10 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFormatException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
-import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFilePieceNodeAssembler;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -174,7 +173,7 @@ public class StorageEngine implements IService {
   private final List<FlushListener> customFlushListeners = new ArrayList<>();
   private int recoverDataRegionNum = 0;
 
-  private final LoadTsFileManager loadTsFileManager = new LoadTsFileManager();
+  private final ActiveLoadAgent activeLoadAgent = new ActiveLoadAgent();
 
   public final AtomicLong objectFileId = new AtomicLong(0);
 
@@ -234,6 +233,13 @@ public class StorageEngine implements IService {
         WALRecoverManager.getInstance().recover();
       } catch (WALException e) {
         LOGGER.error(StorageEngineMessages.FAIL_TO_RECOVER_WAL, e);
+        if (WALFormatException.isFatal(e)) {
+          cachedThreadPool.shutdownNow();
+          StartupException failure =
+              new StartupException(StorageEngineMessages.FAIL_TO_RECOVER_WAL);
+          failure.initCause(e);
+          throw failure;
+        }
       }
     }
 
@@ -288,7 +294,11 @@ public class StorageEngine implements IService {
 
   void handleDataRegionRecoverFailure(
       String sgName, DataRegionId dataRegionId, DataRegionException e) throws DataRegionException {
-    LOGGER.error("Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
+    LOGGER.error(
+        StorageEngineMessages.STORAGE_LOG_FAILED_TO_RECOVER_DATA_REGION_804B162D,
+        sgName,
+        dataRegionId.getId(),
+        e);
     WALRecoverManager.getInstance()
         .getAllDataRegionScannedLatch()
         .countDownWithException(e.getMessage());
@@ -350,7 +360,18 @@ public class StorageEngine implements IService {
     }
 
     asyncRecoverTsFileResource();
-    loadTsFileManager.start();
+    for (final DataRegion dataRegion : dataRegionMap.values()) {
+      try {
+        dataRegion.getLoadTsFileManager();
+      } catch (final Throwable e) {
+        LOGGER.warn(
+            StorageEngineMessages.STORAGE_LOG_FAILED_TO_RECOVER_DATA_REGION_804B162D,
+            dataRegion.getDatabaseName(),
+            dataRegion.getDataRegionIdString(),
+            e);
+      }
+    }
+    activeLoadAgent.start();
   }
 
   private void startTimedService() {
@@ -422,7 +443,9 @@ public class StorageEngine implements IService {
     Thread recoverEndTrigger =
         new Thread(
             () -> {
-              checkResults(futures, "async recover tsfile resource meets error.");
+              checkResults(
+                  futures,
+                  StorageEngineMessages.MESSAGE_ASYNC_RECOVER_TSFILE_RESOURCE_MEETS_ERROR_EE1393F9);
               recoverRepairData();
               isReadyForNonReadWriteFunctions.set(true);
               LOGGER.info(
@@ -435,8 +458,9 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
+    activeLoadAgent.stop();
+    dataRegionMap.values().forEach(DataRegion::stopLoadTsFileManager);
     stopIoTConsensusWrites();
-    loadTsFileManager.stop();
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
         CompactionScheduleTaskManager.getInstance().unregisterDataRegion(dataRegion);
@@ -456,8 +480,9 @@ public class StorageEngine implements IService {
 
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
+    activeLoadAgent.stop();
+    dataRegionMap.values().forEach(DataRegion::stopLoadTsFileManager);
     stopIoTConsensusWrites();
-    loadTsFileManager.stop();
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
         if (dataRegion != null) {
@@ -518,12 +543,16 @@ public class StorageEngine implements IService {
     WRITING_METRICS.createActiveMemtableCounterMetrics(dataRegionId);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
+    // The previous region's cleanup has completed before a new storage lifecycle starts.
+    DeletionResourceManager.onRegionCreated(dataRegionId.getId());
+    PipeInsertionDataNodeListener.getInstance().onRegionCreated(dataRegionId.getId());
     return dataRegion;
   }
 
   /** This function is just for unit test. */
   @TestOnly
   public synchronized void reset() {
+    dataRegionMap.values().forEach(DataRegion::stopLoadTsFileManager);
     dataRegionMap.values().forEach(DataRegion::shutdownUpgradeModFileThreadPool);
     dataRegionMap.clear();
   }
@@ -553,7 +582,7 @@ public class StorageEngine implements IService {
                 }));
       }
     }
-    checkResults(tasks, "Failed to sync close processor.");
+    checkResults(tasks, StorageEngineMessages.MESSAGE_FAILED_TO_SYNC_CLOSE_PROCESSOR_3816A67C);
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
@@ -569,7 +598,7 @@ public class StorageEngine implements IService {
                 }));
       }
     }
-    checkResults(tasks, "Failed to force close processor.");
+    checkResults(tasks, StorageEngineMessages.MESSAGE_FAILED_TO_FORCE_CLOSE_PROCESSOR_E380BB3C);
   }
 
   public void syncCloseProcessorsInDatabase(String databaseName) {
@@ -584,7 +613,7 @@ public class StorageEngine implements IService {
                 }));
       }
     }
-    checkResults(tasks, "Failed to sync close processor.");
+    checkResults(tasks, StorageEngineMessages.MESSAGE_FAILED_TO_SYNC_CLOSE_PROCESSOR_3816A67C);
   }
 
   public void syncCloseProcessorsInRegion(List<String> dataRegionIds) {
@@ -599,7 +628,7 @@ public class StorageEngine implements IService {
                 }));
       }
     }
-    checkResults(tasks, "Failed to sync close processor.");
+    checkResults(tasks, StorageEngineMessages.MESSAGE_FAILED_TO_SYNC_CLOSE_PROCESSOR_3816A67C);
   }
 
   public boolean containsDatabase(final String database) {
@@ -619,7 +648,7 @@ public class StorageEngine implements IService {
                 }));
       }
     }
-    checkResults(tasks, "Failed to close database processor.");
+    checkResults(tasks, StorageEngineMessages.MESSAGE_FAILED_TO_CLOSE_DATABASE_PROCESSOR_BCBC9A66);
   }
 
   private <V> void checkResults(List<Future<V>> tasks, String errorMsg) {
@@ -741,7 +770,9 @@ public class StorageEngine implements IService {
           noExistDB.forEach(database -> sb.append(database).append(","));
           return RpcUtils.getStatus(
               TSStatusCode.DATABASE_NOT_EXIST,
-              "Database " + sb.subSequence(0, sb.length() - 1) + " does not exist on local");
+              String.format(
+                  StorageEngineMessages.MESSAGE_DATABASE_ARG_DOES_NOT_EXIST_ON_LOCAL_CC032648,
+                  String.valueOf(sb.subSequence(0, sb.length() - 1))));
         }
       }
       for (String databaseName : req.storageGroups) {
@@ -775,7 +806,8 @@ public class StorageEngine implements IService {
     if (configFileUrl == null || !(new File(configFileUrl.getFile()).exists())) {
       // configuration file not exist, update in mem
       String msg =
-          "Unable to find the configuration file. Some modifications are made only in memory.";
+          StorageEngineMessages
+              .MESSAGE_UNABLE_TO_FIND_THE_CONFIGURATION_FILE_SOME_MODIFICATIONS_ARE_MADE_ONLY_IN_MEMORY_70BB69F5;
       tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, msg);
       LOGGER.warn(msg);
       try {
@@ -864,11 +896,15 @@ public class StorageEngine implements IService {
       LOGGER.info(StorageEngineMessages.REMOVING_DATA_REGION, regionId);
       region.markDeleted();
       try {
+        // Install the creation barrier before draining tasks. Do not hold the DAL lock while
+        // waiting for receivers/assigners, whose in-flight work may access the manager.
+        DeletionResourceManager.markRegionDeleted(regionId.getId());
+        PipeDataNodeAgent.receiver().iotConsensusV2().releaseReceiverResource(regionId);
+        PipeInsertionDataNodeListener.getInstance().releaseDataRegion(regionId.getId());
         region.abortCompaction();
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
         region.deleteDALFolderAndClose();
-        PipeDataNodeAgent.receiver().iotConsensusV2().releaseReceiverResource(regionId);
         switch (CONFIG.getDataRegionConsensusProtocolClass()) {
           case ConsensusFactory.IOT_CONSENSUS:
           case ConsensusFactory.IOT_CONSENSUS_V2:
@@ -1071,7 +1107,7 @@ public class StorageEngine implements IService {
     }
 
     try {
-      loadTsFileManager.writeToDataRegion(dataRegion, pieceNode, uuid);
+      dataRegion.getLoadTsFileManager().writeToDataRegion(pieceNode, uuid);
     } catch (IOException | PageException e) {
       LOGGER.warn(
           StorageEngineMessages
@@ -1097,6 +1133,11 @@ public class StorageEngine implements IService {
     return RpcUtils.SUCCESS_STATUS;
   }
 
+  /**
+   * Receives one slice of an oversized {@link LoadTsFilePieceNode} and writes the piece once its
+   * last slice has arrived. The slices of one piece are dispatched in order, so a slice whose
+   * predecessors did not arrive is rejected instead of being buffered.
+   */
   public TSStatus writeLoadTsFileNodeSlice(
       final DataRegionId dataRegionId,
       final ByteBuffer body,
@@ -1104,9 +1145,20 @@ public class StorageEngine implements IService {
       final int sliceIndex,
       final int sliceCount,
       final int originBodySize) {
+    final DataRegion dataRegion = getDataRegion(dataRegionId);
+    if (dataRegion == null) {
+      LOGGER.warn(
+          StorageEngineMessages
+              .STORAGE_LOG_DATAREGION_NOT_FOUND_ON_THIS_DATANODE_WHEN_WRITING_PIECE_E5B5A888,
+          dataRegionId,
+          uuid);
+      return RpcUtils.SUCCESS_STATUS;
+    }
+
     final LoadTsFilePieceNodeAssembler.Result result =
-        loadTsFileManager.appendPieceNodeSlice(
-            dataRegionId, uuid, body, sliceIndex, sliceCount, originBodySize);
+        dataRegion
+            .getLoadTsFileManager()
+            .appendPieceNodeSlice(uuid, body, sliceIndex, sliceCount, originBodySize);
     if (!result.isValid()) {
       return RpcUtils.getStatus(
           TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR, result.getErrorMessage());
@@ -1124,54 +1176,6 @@ public class StorageEngine implements IService {
     } catch (final Exception e) {
       return new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode());
     }
-  }
-
-  public TSStatus executeLoadCommand(
-      LoadTsFileScheduler.LoadCommand loadCommand,
-      String uuid,
-      boolean isGeneratedByPipe,
-      Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap) {
-    TSStatus status = new TSStatus();
-
-    try {
-      switch (loadCommand) {
-        case EXECUTE:
-          if (loadTsFileManager.loadAll(uuid, isGeneratedByPipe, timePartitionProgressIndexMap)) {
-            status = RpcUtils.SUCCESS_STATUS;
-          } else {
-            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(
-                String.format(
-                    StorageEngineMessages
-                        .MESSAGE_NO_LOAD_TSFILE_UUID_ARG_RECORDED_EXECUTE_LOAD_COMMAND_ARG_66722D80,
-                    uuid,
-                    loadCommand));
-          }
-          break;
-        case ROLLBACK:
-          if (loadTsFileManager.deleteAll(uuid)) {
-            status = RpcUtils.SUCCESS_STATUS;
-          } else {
-            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(
-                String.format(
-                    StorageEngineMessages
-                        .MESSAGE_NO_LOAD_TSFILE_UUID_ARG_RECORDED_EXECUTE_LOAD_COMMAND_ARG_66722D80,
-                    uuid,
-                    loadCommand));
-          }
-          break;
-        default:
-          status.setCode(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
-          status.setMessage(String.format(StorageEngineMessages.WRONG_LOAD_COMMAND_S, loadCommand));
-      }
-    } catch (Exception e) {
-      LOGGER.error(StorageEngineMessages.EXECUTE_LOAD_COMMAND_ERROR, loadCommand, e);
-      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-    }
-
-    return status;
   }
 
   /** reboot timed flush sequence/unsequence memtable thread */

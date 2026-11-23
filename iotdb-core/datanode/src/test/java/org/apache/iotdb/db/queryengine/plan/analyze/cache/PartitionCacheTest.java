@@ -299,6 +299,18 @@ public class PartitionCacheTest {
     }
   }
 
+  /**
+   * Dropping the cached route of one region keeps the routes of the others, so re-resolving one
+   * region does not send every other lookup to the ConfigNode.
+   */
+  @Test
+  public void testInvalidatingOneRegionReplicaSetCacheKeepsTheOthers() {
+    final List<TConsensusGroupId> regions =
+        new ArrayList<>(consensusGroupIdToRegionReplicaSet.keySet());
+    partitionCache.invalidReplicaSetCache(regions.get(0));
+    checkRegionReplicaSet(regions.get(1));
+  }
+
   private void checkRegionReplicaSet(TConsensusGroupId consensusGroupId) {
     try {
       List<TRegionReplicaSet> regionReplicaSets =

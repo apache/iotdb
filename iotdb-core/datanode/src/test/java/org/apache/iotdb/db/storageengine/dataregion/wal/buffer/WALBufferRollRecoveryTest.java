@@ -52,13 +52,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
@@ -106,6 +109,69 @@ public class WALBufferRollRecoveryTest {
     }
   }
 
+  @Test
+  public void testReplicatedWalVersionIsPublishedAfterForce() throws Exception {
+    final CountDownLatch forceStarted = new CountDownLatch(1);
+    final CountDownLatch releaseForce = new CountDownLatch(1);
+    doAnswer(
+            invocation -> {
+              forceStarted.countDown();
+              assertTrue(releaseForce.await(5L, TimeUnit.SECONDS));
+              return invocation.callRealMethod();
+            })
+        .when(firstWriter)
+        .force();
+    final WALInfoEntry remoteEntry = replicatedEntry(10L);
+    try {
+      buffer.write(remoteEntry);
+      assertTrue(forceStarted.await(5L, TimeUnit.SECONDS));
+      assertEquals(0L, buffer.getReplicatedWalVersion());
+    } finally {
+      releaseForce.countDown();
+    }
+    Awaitility.await()
+        .atMost(5L, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> assertEquals(Status.SUCCESS, remoteEntry.getWalFlushListener().waitForResult()));
+    assertEquals(1L, buffer.getReplicatedWalVersion());
+    assertEquals(0L, buffer.getCurrentSearchIndex());
+
+    writeAndAwait(entry(1L, 1L, "local"), Status.SUCCESS);
+    writeAndAwait(entry(2L, -1L, "unindexed"), Status.SUCCESS);
+    roll(Status.SUCCESS);
+    assertEquals(1L, buffer.getReplicatedWalVersion());
+    writeAndAwait(replicatedEntry(20L), Status.SUCCESS);
+    assertEquals(2L, buffer.getReplicatedWalVersion());
+    assertEquals(1L, buffer.getCurrentSearchIndex());
+  }
+
+  @Test
+  public void testFailedReplicationForceDoesNotAdvanceVersion() throws Exception {
+    doThrow(new ClosedChannelException()).when(firstWriter).force();
+    writeAndAwait(replicatedEntry(10L), Status.FAILURE);
+    awaitReadOnly();
+    assertEquals(0L, buffer.getReplicatedWalVersion());
+  }
+
+  @Test
+  public void testFailedReplicationWriteDoesNotAdvanceVersion() throws Exception {
+    doThrow(new ClosedChannelException())
+        .when(firstWriter)
+        .write(any(ByteBuffer.class), any(WALMetaData.class));
+    writeAndAwait(replicatedEntry(10L), Status.FAILURE);
+    awaitReadOnly();
+    assertEquals(0L, buffer.getReplicatedWalVersion());
+  }
+
+  private WALInfoEntry replicatedEntry(final long localSeq) throws Exception {
+    final WALInfoEntry entry = entry(localSeq, -1L, "replicated");
+    final InsertRowNode node = (InsertRowNode) entry.getValue();
+    node.setSyncIndex(localSeq);
+    node.setPhysicalTime(1000L + localSeq);
+    node.setNodeId(8);
+    return entry;
+  }
+
   /**
    * Failed successor creation must not reseal the old WAL, inflate counters, or lose later writes.
    */
@@ -138,6 +204,28 @@ public class WALBufferRollRecoveryTest {
     assertEquals(Arrays.asList(1L), readTimes(firstWriter.getLogFile()));
     roll(Status.SUCCESS);
     assertEquals(Arrays.asList(2L), readTimes(successor));
+  }
+
+  @Test
+  public void testMetadataSnapshotIsBoundToWriterDuringVersionPublication() throws Exception {
+    writeAndAwait(entry(1, 1, "first"), Status.SUCCESS);
+    assertEquals(1, buffer.getWALMetaDataSnapshot(0L).getBuffersSize().size());
+    roll(Status.SUCCESS);
+    writeAndAwait(entry(2, 2, "second"), Status.SUCCESS);
+    assertNull(buffer.getWALMetaDataSnapshot(0L));
+    final WALMetaData successorMetadata = buffer.getWALMetaDataSnapshot(1L);
+    assertEquals(1, successorMetadata.getBuffersSize().size());
+
+    // Reproduce the interval in rollLogWriter between publishing the new writer and publishing
+    // its version. Checking the version field before and after snapshot capture is insufficient.
+    buffer.currentWALFileVersion = 0L;
+    try {
+      assertNull(buffer.getWALMetaDataSnapshot(0L));
+      assertEquals(
+          successorMetadata.getBuffersSize(), buffer.getWALMetaDataSnapshot(1L).getBuffersSize());
+    } finally {
+      buffer.currentWALFileVersion = 1L;
+    }
   }
 
   /** A retry containing only the roll signal should open exactly one successor. */

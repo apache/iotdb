@@ -246,7 +246,8 @@ import static org.apache.tsfile.read.common.type.StringType.STRING;
 public class ColumnTransformerBuilder
     implements CommonQueryAstVisitor<ColumnTransformer, ColumnTransformerBuilder.Context> {
 
-  private static final String UNSUPPORTED_EXPRESSION = "Unsupported expression: %s";
+  private static final String UNSUPPORTED_EXPRESSION =
+      CalcMessages.EXCEPTION_UNSUPPORTED_EXPRESSION_ARG_3E55A85A;
 
   @Override
   public ColumnTransformer visitExpression(Expression expression, Context context) {

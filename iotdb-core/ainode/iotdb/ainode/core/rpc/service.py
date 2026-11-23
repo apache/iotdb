@@ -30,7 +30,7 @@ from iotdb.thrift.ainode import IAINodeRPCService
 logger = Logger()
 
 
-class AINodeThreadPoolServer(TServer.TThreadPoolServer):
+class AINodeThreadPoolServer(TServer.TThreadedServer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._stop_event = threading.Event()
@@ -38,14 +38,8 @@ class AINodeThreadPoolServer(TServer.TThreadPoolServer):
     def serve(self) -> None:
         self._stop_event.clear()
         logger.info("The RPC service thread pool of IoTDB-AINode begins to serve...")
-        """Start a fixed number of worker threads and put client into a queue"""
-        for i in range(self.threads):
-            try:
-                t = threading.Thread(target=self.serveThread, daemon=self.daemon)
-                t.start()
-            except Exception as x:
-                logger.error(x)
-        # Pump the socket for clients
+        # Pump the socket for clients and spawn a dedicated thread per connection so
+        # persistent pooled clients from DataNode/ConfigNode cannot starve concurrent RPCs.
         self.serverTransport.listen()
         handle = getattr(self.serverTransport, "handle", None)
         if handle is not None and hasattr(handle, "settimeout"):
@@ -56,7 +50,17 @@ class AINodeThreadPoolServer(TServer.TThreadPoolServer):
                 client = self.serverTransport.accept()
                 if not client:
                     continue
-                self.clients.put(client)
+                if self._stop_event.is_set():
+                    client.close()
+                    break
+                t = threading.Thread(
+                    target=self.handle, args=(client,), daemon=self.daemon
+                )
+                try:
+                    t.start()
+                except Exception:
+                    client.close()
+                    raise
             except socket.timeout:
                 continue
             except Exception as x:

@@ -111,4 +111,5 @@ public final class ClientMessages {
   public static final String EXCEPTION_FAILED_TRANSFER_SLICE_ORIGIN_REQ_ARG_ARG_SLICE_INDEX_ARG_7219936C = "Failed to transfer slice. Origin req: %s-%s, slice index: %d, slice count: %d. Reason: %s";
   public static final String MESSAGE_FAILED_TO_HANDLE_ASYNC_REQUEST_ERROR_FOR_REQUEST_TYPE_ARG_ON_NODE_ARG_ARG_3AE293F7 = "Failed to handle async request error for request type {} on node {}: {}";
 
+  public static final String EXCEPTION_CLIENT_HAS_AN_ERROR_50E34F89 = "Client has an error!";
 }

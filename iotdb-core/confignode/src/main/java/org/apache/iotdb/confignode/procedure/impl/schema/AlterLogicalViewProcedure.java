@@ -144,7 +144,7 @@ public class AlterLogicalViewProcedure
     }
     final AlterLogicalViewRegionTaskExecutor<TAlterViewReq> regionTaskExecutor =
         new AlterLogicalViewRegionTaskExecutor<>(
-            "Alter view",
+            ProcedureMessages.MESSAGE_ALTER_VIEW_0A6CD249,
             env,
             targetSchemaRegionGroup,
             CnToDnAsyncRequestType.ALTER_VIEW,
