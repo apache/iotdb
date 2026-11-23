@@ -169,6 +169,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.DELTA;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.INCREASE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.INTEGRAL;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.IRATE;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.RATE;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
@@ -2440,6 +2441,9 @@ public class TableDistributedPlanGenerator
         || DELTA.equalsIgnoreCase(functionName)) {
       return 1;
     }
+    if (INTEGRAL.equalsIgnoreCase(functionName)) {
+      return 2;
+    }
     return -1;
   }
 
@@ -3396,17 +3400,24 @@ public class TableDistributedPlanGenerator
     return result;
   }
 
-  private boolean canSplitTableFunctionProcessor(TableFunctionProcessorNode node) {
+  static boolean canSplitTableFunctionProcessor(TableFunctionProcessorNode node) {
     if (node.isRowSemantic()) {
       return true;
     }
     if (!isPartitionedGroup(node.getChild())) {
       return false;
     }
-    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(node.getName());
+    // A partitioned GroupNode only guarantees that its children are partitioned, not that one
+    // logical partition lives in one child. SAMPLE has to draw N rows for the whole partition and
+    // DERIVATIVE needs the adjacent pairs crossing fragment boundaries, so neither may run once
+    // per child.
+    String functionName = node.getName();
+    return !TableBuiltinTableFunction.FFT.getFunctionName().equalsIgnoreCase(functionName)
+        && !TableBuiltinTableFunction.SAMPLE.getFunctionName().equalsIgnoreCase(functionName)
+        && !TableBuiltinTableFunction.DERIVATIVE.getFunctionName().equalsIgnoreCase(functionName);
   }
 
-  private boolean isPartitionedGroup(PlanNode node) {
+  private static boolean isPartitionedGroup(PlanNode node) {
     return node instanceof GroupNode && ((GroupNode) node).getPartitionKeyCount() > 0;
   }
 

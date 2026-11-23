@@ -181,7 +181,12 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
           processor.beforeStart(ioTDBLocal);
         }
       }
-      partitionCache.addSlice(slice);
+      // the cached slices are only needed when the output has
+      // columns declared as pass-through. Without them every output column is written by the
+      // processor, so the input block should not be retained in the partitionCache
+      if (needPassThrough) {
+        partitionCache.addSlice(slice);
+      }
       Iterator<Record> recordIterator = slice.getRequiredRecordIterator(requireRecordSnapshot);
       while (recordIterator.hasNext()) {
         processor.process(
