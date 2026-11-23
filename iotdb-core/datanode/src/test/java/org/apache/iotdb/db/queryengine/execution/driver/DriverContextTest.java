@@ -31,9 +31,11 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.db.queryengine.execution.schedule.DriverTaskAbortedException;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -152,7 +154,8 @@ public class DriverContextTest {
   }
 
   @Test
-  public void testFailedAfterFinishedStillRecordsCauseForLocalSinkAbort() throws Exception {
+  public void testFailedAfterFinishedOnActiveFragmentRecordsSingleCauseForLocalSinkAbort()
+      throws Exception {
     QueryId queryId = new QueryId("driver_context_failed_after_finished_test");
     FragmentInstanceId instanceId = new FragmentInstanceId(new PlanFragmentId(queryId, 1), "0");
     FragmentInstanceStateMachine stateMachine =
@@ -160,18 +163,24 @@ public class DriverContextTest {
     FragmentInstanceContext context =
         FragmentInstanceContext.createFragmentInstanceContext(instanceId, stateMachine);
 
-    DriverContext driverContext = new DriverContext(context, 0);
+    DriverContext finishedDriver = new DriverContext(context, 0);
+    DriverContext siblingDriver1 = new DriverContext(context, 1);
+    DriverContext siblingDriver2 = new DriverContext(context, 2);
     LocalExchangePair exchange = createLocalExchange(instanceId.toThrift(), context);
     ListenableFuture<?> blocked = exchange.sourceHandle.isBlocked();
 
-    driverContext.finished();
-    Assert.assertTrue(driverContext.isDone());
+    finishedDriver.finished();
+    Assert.assertTrue(finishedDriver.isDone());
+    Assert.assertEquals(FragmentInstanceState.RUNNING, stateMachine.getState());
 
     SemanticException cause =
         new SemanticException("The second and third argument must be greater than 0");
-    driverContext.failed(cause);
+    finishedDriver.failed(cause);
+    siblingDriver1.failed(cause);
+    siblingDriver2.failed(cause);
     exchange.sinkChannel.abort();
 
+    Assert.assertEquals(FragmentInstanceState.FAILED, stateMachine.getState());
     Assert.assertEquals(Optional.of(cause), context.getFailureCause());
     Assert.assertEquals(1, stateMachine.getFailureCauses().size());
     try {
@@ -180,6 +189,31 @@ public class DriverContextTest {
     } catch (ExecutionException e) {
       Assert.assertSame(cause, e.getCause());
     }
+  }
+
+  @Test
+  public void testFailureCausePrecedenceOverSyntheticAbort() {
+    QueryId queryId = new QueryId("driver_context_cause_precedence");
+    FragmentInstanceId instanceId = new FragmentInstanceId(new PlanFragmentId(queryId, 1), "0");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, directExecutor());
+    FragmentInstanceContext context =
+        FragmentInstanceContext.createFragmentInstanceContext(instanceId, stateMachine);
+
+    DriverTaskAbortedException synthetic =
+        new DriverTaskAbortedException(
+            instanceId.getFullId(), DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
+    ArithmeticException arithmeticFailure = new ArithmeticException("long overflow");
+    SemanticException semanticFailure = new SemanticException("invalid argument");
+
+    context.failed(synthetic);
+    Assert.assertEquals(Optional.of(synthetic), context.getFailureCause());
+
+    context.failed(arithmeticFailure);
+    Assert.assertEquals(Optional.of(arithmeticFailure), context.getFailureCause());
+
+    context.failed(semanticFailure);
+    Assert.assertEquals(Optional.of(semanticFailure), context.getFailureCause());
   }
 
   @Test
