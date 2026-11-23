@@ -174,4 +174,3 @@ COUNT/EXPLAIN query dispatch. Tests first reproduced the pointer/retrieval defec
 COUNT DATABASES failed against a real server before its dispatch fix and passed
 afterward. PR validation results identify the tested commit and workflow run,
 rather than treating this checklist as proof that every future commit passes.
-
