@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesProcedureInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTableProcedureInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -334,6 +335,60 @@ public class AsyncTimeSeriesDeletionTest {
     completed.add(running.remove(1L));
     assertEquals("SUCCESS", manager.getDeleteTimeSeriesProcedures().get(0).getState());
     assertEquals("SUCCESS", manager.getDeleteTimeSeriesProcedures().get(0).getProgress());
+  }
+
+  @Test
+  public void testSuccessfulDeletionReportsZeroRemainingWhenFinalProgressIsUnknown()
+      throws Exception {
+    final DeleteTimeSeriesProcedure procedure = mock(DeleteTimeSeriesProcedure.class);
+    when(procedure.getProcId()).thenReturn(1L);
+    when(procedure.getQueryId()).thenReturn("1");
+    when(procedure.getPatternTree()).thenReturn(new PathPatternTree());
+    when(procedure.isFinished()).thenReturn(true);
+    when(procedure.isSuccess()).thenReturn(true);
+    when(procedure.getState()).thenReturn(ProcedureState.SUCCESS);
+    when(procedure.getDeleteProgress()).thenReturn("SUCCESS");
+    when(executor.isCompleted(1L)).thenReturn(true);
+    completed.add(procedure);
+
+    final TDeleteTimeSeriesProcedureInfo info = manager.getDeleteTimeSeriesProcedures().get(0);
+
+    assertFalse(info.isSetWrittenModFileCount());
+    assertTrue(info.isSetRemainingModFileCount());
+    assertEquals(0, info.getRemainingModFileCount());
+  }
+
+  @Test
+  public void testSuccessfulTableAndColumnDropsReportZeroRemainingWhenProgressIsUnknown() {
+    final DropTableProcedure dropTable = mock(DropTableProcedure.class);
+    when(dropTable.getProcId()).thenReturn(1L);
+    when(dropTable.getDatabase()).thenReturn("test");
+    when(dropTable.getTableName()).thenReturn("t");
+    when(dropTable.isSuccess()).thenReturn(true);
+    when(dropTable.getState()).thenReturn(ProcedureState.SUCCESS);
+    when(dropTable.getDropProgress()).thenReturn("SUCCESS");
+    completed.add(dropTable);
+
+    final DropTableColumnProcedure dropColumn = mock(DropTableColumnProcedure.class);
+    when(dropColumn.getProcId()).thenReturn(2L);
+    when(dropColumn.getDatabase()).thenReturn("test");
+    when(dropColumn.getTableName()).thenReturn("t");
+    when(dropColumn.getColumnName()).thenReturn("reading");
+    when(dropColumn.isSuccess()).thenReturn(true);
+    when(dropColumn.getState()).thenReturn(ProcedureState.SUCCESS);
+    when(dropColumn.getDropProgress()).thenReturn("SUCCESS");
+    when(executor.isCompleted(2L)).thenReturn(true);
+    completed.add(dropColumn);
+
+    final TDropTableProcedureInfo tableInfo = manager.getDropTableProcedures().get(0);
+    final TDropTableProcedureInfo columnInfo = manager.getDropTableColumnProcedures().get(0);
+
+    assertFalse(tableInfo.isSetWrittenModFileCount());
+    assertTrue(tableInfo.isSetRemainingModFileCount());
+    assertEquals(0, tableInfo.getRemainingModFileCount());
+    assertFalse(columnInfo.isSetWrittenModFileCount());
+    assertTrue(columnInfo.isSetRemainingModFileCount());
+    assertEquals(0, columnInfo.getRemainingModFileCount());
   }
 
   @Test

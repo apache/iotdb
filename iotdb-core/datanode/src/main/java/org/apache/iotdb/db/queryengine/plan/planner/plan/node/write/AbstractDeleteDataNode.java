@@ -34,12 +34,22 @@ import java.util.List;
 public abstract class AbstractDeleteDataNode extends SearchNode implements WALEntryValue {
   protected TRegionReplicaSet regionReplicaSet;
   protected ProgressIndex progressIndex;
+  private boolean isGeneratedByRemoteConsensusLeader;
 
   protected AbstractDeleteDataNode(PlanNodeId id) {
     super(id);
   }
 
   public abstract ByteBuffer serializeToDAL();
+
+  @Override
+  public void markAsGeneratedByRemoteConsensusLeader() {
+    isGeneratedByRemoteConsensusLeader = true;
+  }
+
+  public boolean isGeneratedByRemoteConsensusLeader() {
+    return isGeneratedByRemoteConsensusLeader;
+  }
 
   public static AbstractDeleteDataNode deserializeFromDAL(
       ByteBuffer byteBuffer, boolean isRelational) {
