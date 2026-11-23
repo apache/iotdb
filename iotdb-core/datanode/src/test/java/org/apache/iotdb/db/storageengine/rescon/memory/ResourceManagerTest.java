@@ -49,7 +49,6 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -78,6 +77,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager.REGISTRATION_RAM_BYTES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -568,25 +569,28 @@ public class ResourceManagerTest {
   }
 
   @Test
-  public void testLoadLastValuesReleasedFromRegisteredBytes() throws IOException {
-    tsFileResourceManager.setTimeIndexMemoryThreshold(Long.MAX_VALUE);
-    TsFileResource resource = new TsFileResource(new File("target/0-3-0-0.tsfile"));
-    resource.setTimeIndex(new FileTimeIndex(1, 2));
+  public void testLoadLastValuesExcludedFromResourceBudget() throws IOException {
+    TsFileResource resource = spy(new TsFileResource(new File("target/0-3-0-0.tsfile")));
+    resource.setTimeIndex(new ArrayDeviceTimeIndex());
     resource.close();
-    tsFileResourceManager.registerSealedTsFileResource(resource);
-    assertEquals(1, tsFileResourceManager.getDegradedTimeIndexNum());
-    long baseline = tsFileResourceManager.getTotalTimeIndexMemCost();
-    TsPrimitiveType.TsBinary value = new TsPrimitiveType.TsBinary(new Binary(new byte[1024]));
+    long budget = registeredSize(resource);
+    tsFileResourceManager.setTimeIndexMemoryThreshold(budget);
+
     resource.setLastValues(
         Collections.singletonMap(
             IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d"),
-            Collections.singletonList(new Pair<>("s1", new TimeValuePair(1, value)))));
-    assertTrue(tsFileResourceManager.getTotalTimeIndexMemCost() >= baseline + 1024);
-    assertEquals(registeredSize(resource), tsFileResourceManager.getTotalTimeIndexMemCost());
-    resource.setLastValues(null);
-    assertEquals(baseline, tsFileResourceManager.getTotalTimeIndexMemCost());
-    tsFileResourceManager.removeTsFileResource(resource);
+            Collections.singletonList(
+                new Pair<>("s1", new TimeValuePair(1, new TsPrimitiveType.TsInt(42))))));
+    assertEquals(budget, registeredSize(resource));
+    tsFileResourceManager.registerSealedTsFileResource(resource);
+    assertEquals(budget, tsFileResourceManager.getTotalTimeIndexMemCost());
     assertEquals(0, tsFileResourceManager.getDegradedTimeIndexNum());
+
+    clearInvocations(resource);
+    resource.setLastValues(null);
+    verify(resource, never()).calculateMetadataRamSize();
+    assertEquals(budget, tsFileResourceManager.getTotalTimeIndexMemCost());
+    tsFileResourceManager.removeTsFileResource(resource);
     assertEquals(0, tsFileResourceManager.getTotalTimeIndexMemCost());
   }
 
@@ -698,16 +702,10 @@ public class ResourceManagerTest {
   }
 
   @Test
-  public void testNullIndexAndNullLastValueSeries() {
+  public void testNullTimeIndex() {
     TsFileResource empty = new TsFileResource();
     Assert.assertNull(empty.replaceDeviceTimeIndexWithFileTimeIndex());
     assertEquals(0, empty.degradeTimeIndex());
-    long base = empty.calculateRamSize();
-    empty.setLastValues(
-        Collections.singletonMap(IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d"), null));
-    assertTrue(empty.calculateRamSize() > base);
-    empty.setLastValues(null);
-    assertEquals(base, empty.calculateRamSize());
 
     TsFileResource registered = new TsFileResource(new File("target/0-41-0-0.tsfile"));
     registered.setTimeIndex(new FileTimeIndex());

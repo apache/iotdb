@@ -273,6 +273,7 @@ public class DataRegionTest {
         resource.setStatus(TsFileResourceStatus.NORMAL);
         resource.updateStartTime(device, 1);
         resource.updateEndTime(device, 3);
+        resource.setLastValues(Collections.emptyMap());
         resource.serialize();
         final File sourceMods =
             modsVersion == 1
@@ -404,7 +405,10 @@ public class DataRegionTest {
             resource.setFile(source);
           }
         }
+        // Failed publication leaves the LOAD input available for the retry.
+        Assert.assertNotNull(resource.getLastValues());
         dataRegion.loadNewTsFile(resource, deleteOrigin, false, true, Optional.empty());
+        Assert.assertNull(resource.getLastValues());
         final File installed = resource.getTsFile();
         Assert.assertArrayEquals(data, Files.readAllBytes(installed.toPath()));
         Assert.assertTrue(new File(installed + TsFileResource.RESOURCE_SUFFIX).isFile());

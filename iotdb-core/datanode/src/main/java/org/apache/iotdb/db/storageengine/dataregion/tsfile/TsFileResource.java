@@ -112,9 +112,6 @@ public class TsFileResource implements PersistentResource, Cloneable {
           + TsFileID.SHALLOW_SIZE;
   private static final long TIER_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AtomicInteger.class);
-  private static final long PAIR_SIZE = RamUsageEstimator.shallowSizeOfInstance(Pair.class);
-  private static final long TIME_VALUE_PAIR_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TimeValuePair.class);
   private static final AtomicReferenceFieldUpdater<TsFileResource, ITimeIndex> TIME_INDEX_UPDATER =
       AtomicReferenceFieldUpdater.newUpdater(TsFileResource.class, ITimeIndex.class, "timeIndex");
 
@@ -231,7 +228,11 @@ public class TsFileResource implements PersistentResource, Cloneable {
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
 
-  // LOAD builds the map before publishing the resource and drops the reference after consumption.
+  /**
+   * Temporary last values collected within LOAD's cache budget. LOAD keeps them locally for its
+   * last-cache update and clears this field before registering the sealed file. The resource's
+   * resident memory estimate therefore excludes the map.
+   */
   @SuppressWarnings("java:S3077")
   private volatile Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
 
@@ -1243,37 +1244,6 @@ public class TsFileResource implements PersistentResource, Cloneable {
         size += RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP;
       }
     }
-    return size + estimateLastValuesSize(lastValues);
-  }
-
-  private static long estimateLastValuesSize(
-      Map<IDeviceID, List<Pair<String, TimeValuePair>>> values) {
-    if (values == null) {
-      return 0;
-    }
-    long size = RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP;
-    for (Map.Entry<IDeviceID, List<Pair<String, TimeValuePair>>> entry : values.entrySet()) {
-      List<Pair<String, TimeValuePair>> series = entry.getValue();
-      size +=
-          RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY
-              + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-              + entry.getKey().ramBytesUsed();
-      if (series == null) {
-        continue;
-      }
-      size +=
-          RamUsageEstimator.ARRAY_LIST_INSTANCE_SIZE
-              + RamUsageEstimator.sizeOfObjectArray(series.size());
-      for (Pair<String, TimeValuePair> pair : series) {
-        if (pair == null) {
-          continue;
-        }
-        size += PAIR_SIZE + RamUsageEstimator.sizeOf(pair.left);
-        if (pair.right != null) {
-          size += TIME_VALUE_PAIR_SIZE + MemUtils.getTsPrimitiveTypeRamBytes(pair.right.getValue());
-        }
-      }
-    }
     return size;
   }
 
@@ -1791,7 +1761,6 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   public void setLastValues(Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues) {
     this.lastValues = lastValues;
-    updateMemoryCostIfRegistered();
   }
 
   public synchronized TsFileResource shallowClone() {

@@ -4590,12 +4590,14 @@ public class DataRegion implements IDataRegionForQuery {
               newTsFileResource.getTsFile().getName()));
     }
 
+    final Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues =
+        newTsFileResource.getLastValues();
     TsFileLastReader lastReader = null;
     LastCacheLoadStrategy lastCacheLoadStrategy = config.getLastCacheLoadStrategy();
     if (!isFromConsensus
         && (lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
             || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
-        && newTsFileResource.getLastValues() == null) {
+        && lastValues == null) {
       try {
         // init reader outside of lock to boost performance
         lastReader =
@@ -4679,7 +4681,7 @@ public class DataRegion implements IDataRegionForQuery {
                 false);
       }
 
-      onTsFileLoaded(newTsFileResource, isFromConsensus, lastReader);
+      onTsFileLoaded(newTsFileResource, isFromConsensus, lastValues, lastReader);
       if (isGeneratedByPipe) {
         logger.debug(StorageEngineMessages.TSFILE_LOADED_IN_UNSEQ_LIST, newFileName);
       } else {
@@ -4708,12 +4710,15 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void onTsFileLoaded(
-      TsFileResource newTsFileResource, boolean isFromConsensus, TsFileLastReader lastReader) {
+      TsFileResource newTsFileResource,
+      boolean isFromConsensus,
+      Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues,
+      TsFileLastReader lastReader) {
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable() && !isFromConsensus) {
       switch (config.getLastCacheLoadStrategy()) {
         case UPDATE:
         case UPDATE_NO_BLOB:
-          updateLastCache(newTsFileResource, lastReader);
+          updateLastCache(lastValues, lastReader);
           break;
         case CLEAN_ALL:
           // The inner cache is shared by TreeDeviceSchemaCacheManager and
@@ -4748,11 +4753,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   @SuppressWarnings("java:S112")
-  private void updateLastCache(TsFileResource newTsFileResource, TsFileLastReader lastReader) {
+  private void updateLastCache(
+      Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues, TsFileLastReader lastReader) {
     boolean isTableModel = isTableModelDatabase(databaseName);
 
-    Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues =
-        newTsFileResource.getLastValues();
     if (lastValues != null) {
       for (Entry<IDeviceID, List<Pair<String, TimeValuePair>>> entry : lastValues.entrySet()) {
         IDeviceID deviceID = entry.getKey();
@@ -4769,7 +4773,6 @@ public class DataRegion implements IDataRegionForQuery {
                   databaseName, deviceID, measurements, timeValuePairs, false, null);
         }
       }
-      newTsFileResource.setLastValues(null);
       return;
     }
 
@@ -4837,6 +4840,7 @@ public class DataRegion implements IDataRegionForQuery {
     tsFileResource.setFile(targetFile);
     if (tsFileManager.contains(tsFileResource, false)) {
       logger.warn(StorageEngineMessages.FILE_ALREADY_LOADED_IN_UNSEQ_LIST, tsFileResource);
+      tsFileResource.setLastValues(null);
       return false;
     }
 
@@ -4936,6 +4940,9 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
     }
+
+    // The file is published. Only loadNewTsFile needs the last values from this point on.
+    tsFileResource.setLastValues(null);
 
     // Only published mods belong in FileMetrics. Also replace any cached source-side handle.
     tsFileResource.setExclusiveModFile(ModificationFile.getExclusiveMods(tsFileResource));

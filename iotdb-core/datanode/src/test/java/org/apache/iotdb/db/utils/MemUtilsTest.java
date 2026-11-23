@@ -29,8 +29,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
-import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
@@ -47,20 +45,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MemUtilsTest {
-
-  @Test
-  public void testNullablePrimitiveAndVectorRamBytes() {
-    Assert.assertEquals(0, MemUtils.getTsPrimitiveTypeRamBytes(null));
-    TsPrimitiveType.TsBinary binary = new TsPrimitiveType.TsBinary(new Binary(new byte[48]));
-    TsPrimitiveType[] elements = {binary, null};
-    TsPrimitiveType vector = new TsPrimitiveType.TsVector(elements);
-    Assert.assertEquals(
-        RamUsageEstimator.shallowSizeOf(vector)
-            + RamUsageEstimator.shallowSizeOf(elements)
-            + RamUsageEstimator.shallowSizeOf(binary)
-            + binary.getBinary().ramBytesUsed(),
-        MemUtils.getTsPrimitiveTypeRamBytes(vector));
-  }
 
   @Test
   public void getRecordSizeTest() {
