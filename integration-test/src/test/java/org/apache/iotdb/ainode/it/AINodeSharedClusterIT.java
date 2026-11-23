@@ -22,6 +22,8 @@ package org.apache.iotdb.ainode.it;
 import org.apache.iotdb.ainode.utils.AINodeTestUtils;
 import org.apache.iotdb.ainode.utils.AINodeTestUtils.FakeModelInfo;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.AINodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.AIClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -43,7 +45,9 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -665,16 +669,51 @@ public class AINodeSharedClusterIT {
     }
   }
 
+  @FunctionalInterface
+  interface ClusterReinitAction {
+    void reinit() throws SQLException;
+  }
+
   private static void resetSharedCluster() throws SQLException {
+    resetSharedCluster(
+        EnvFactory.getEnv(),
+        () -> {
+          EnvFactory.getEnv().initClusterEnvironment(1, 1);
+          prepareDataInTree();
+          prepareDataInTable();
+          prepareDataForConcurrentForecast();
+        });
+  }
+
+  static void resetSharedCluster(BaseEnv env, ClusterReinitAction reinitAction)
+      throws SQLException {
     LOGGER.warn(
         "Resetting shared AINode test cluster after unresolved model or worker cleanup failure.");
     boolean interrupted = Thread.interrupted();
     try {
-      EnvFactory.getEnv().cleanClusterEnvironment();
-      EnvFactory.getEnv().initClusterEnvironment(1, 1);
-      prepareDataInTree();
-      prepareDataInTable();
-      prepareDataForConcurrentForecast();
+      List<AbstractNodeWrapper> previousNodes = env.getNodeWrapperList();
+      List<AbstractNodeWrapper> previousNodesSnapshot =
+          previousNodes == null ? Collections.emptyList() : new ArrayList<>(previousNodes);
+      env.cleanClusterEnvironment();
+      List<String> survivingNodes = new ArrayList<>();
+      for (AbstractNodeWrapper node : previousNodesSnapshot) {
+        if (node != null && node.isAlive()) {
+          if (node instanceof AINodeWrapper) {
+            survivingNodes.add(
+                node.getId() + "(pids=" + ((AINodeWrapper) node).getSurvivingPids() + ")");
+          } else {
+            Process instance = node.getInstance();
+            survivingNodes.add(
+                node.getId() + "(pid=" + (instance != null ? instance.pid() : -1L) + ")");
+          }
+        }
+      }
+      if (!survivingNodes.isEmpty()) {
+        throw new IllegalStateException(
+            "Failed to confirm exit of previous cluster node(s) before starting replacement cluster: "
+                + String.join(", ", survivingNodes));
+      }
+      reinitAction.reinit();
     } finally {
       if (interrupted) {
         Thread.currentThread().interrupt();

@@ -697,6 +697,13 @@ public abstract class AbstractEnv implements BaseEnv {
             nodeWrapper -> logger.info("You can find logs at {}", nodeWrapper.getLogDirPath()));
     for (final AbstractNodeWrapper nodeWrapper : allNodeWrappers) {
       nodeWrapper.stopForcibly();
+      if (nodeWrapper.isAlive()) {
+        logger.error(
+            IntegrationTestEnvMessages
+                .LOG_NODE_ARG_IS_STILL_ALIVE_AFTER_STOPFORCIBLY_SKIPPING_DIRECTORY_CLEANUP_AND_LOCK_FILE_REMOVAL_55F75817,
+            nodeWrapper.getId());
+        continue;
+      }
       nodeWrapper.destroyDir();
       final String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());
       try {
