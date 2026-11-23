@@ -215,8 +215,10 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
 
   @Override
   protected void login(final String password) {
-    if (AuthorityChecker.checkUser(userName, password).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (AuthorityChecker.checkUser(userName, password, true).getCode()
+            != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && AuthorityChecker.checkUser(userName, password).getCode()
+            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format("Failed to check source password for pipe %s.", pipeName));
     }

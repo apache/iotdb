@@ -85,7 +85,7 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", sinkAttributes)
-                  .setExtractorAttributes(sourceAttributes)
+                  .setExtractorAttributes(withRootSourceAuthentication(sourceAttributes))
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 

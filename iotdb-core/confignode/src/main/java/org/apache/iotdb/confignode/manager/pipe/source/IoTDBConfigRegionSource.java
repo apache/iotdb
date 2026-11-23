@@ -134,8 +134,18 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
   @Override
   protected void login(final String password) {
-    if (ConfigNode.getInstance().getConfigManager().login(userName, password).getStatus().getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (ConfigNode.getInstance()
+                .getConfigManager()
+                .login(userName, password, true)
+                .getStatus()
+                .getCode()
+            != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && ConfigNode.getInstance()
+                .getConfigManager()
+                .login(userName, password)
+                .getStatus()
+                .getCode()
+            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format("Failed to check source password for pipe %s.", pipeName));
     }
