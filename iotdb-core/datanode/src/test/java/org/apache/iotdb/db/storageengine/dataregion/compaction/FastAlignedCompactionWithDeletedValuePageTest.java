@@ -87,6 +87,21 @@ public class FastAlignedCompactionWithDeletedValuePageTest extends AbstractCompa
   }
 
   @Test
+  public void testDeserializePageWithFullyDeletedValuePage() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(100);
+    // Force the pages to be deserialized instead of being flushed directly, so that the fully
+    // deleted value page is read back through the page reader.
+    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(10240000);
+    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(200000);
+    unseqResources.add(createAlignedResource(false, Collections.singletonList("s1")));
+
+    TsFileResource targetResource = performInnerCompaction();
+
+    Assert.assertTrue(summary.pageNoneOverlapButDeserialize > 0);
+    validate(targetResource, readRows(Collections.emptyList(), unseqResources));
+  }
+
+  @Test
   public void testFlushPageWithFullyDeletedValuePageInBatch() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(2);
     unseqResources.add(createAlignedResource(false, Arrays.asList("s1", "s2")));

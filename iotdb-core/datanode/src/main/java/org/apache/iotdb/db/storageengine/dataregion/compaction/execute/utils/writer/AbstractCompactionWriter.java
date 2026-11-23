@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
@@ -37,7 +35,6 @@ import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -402,9 +399,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     // flush new value pages to chunk writer directly
     for (int i = 0; i < valuePageHeaders.size(); i++) {
       PageHeader valuePageHeader = valuePageHeaders.get(i);
-      if (valuePageHeader == null
-          || isValuePageFullyDeleted(alignedPageElement, timePageHeader, i)) {
-        // write an empty page, otherwise the data of a fully deleted page would be revived
+      if (valuePageHeader == null) {
+        // sub sensor does not exist in current file or value page has been deleted completely;
+        // write an empty page, which is excluded from the size accounting below
         alignedChunkWriter.getValueChunkWriterByIndex(i).writeEmptyPageToPageBuffer();
         continue;
       }
@@ -421,20 +418,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       writtenPointTotalSizeArray[subTaskId] +=
           timePageHeader.getSerializedPageSize() + writtenValuePageSize;
     }
-  }
-
-  private static boolean isValuePageFullyDeleted(
-      AlignedPageElement alignedPageElement, PageHeader timePageHeader, int columnIndex) {
-    IChunkMetadata chunkMetadata =
-        ((AbstractAlignedChunkMetadata) alignedPageElement.getChunkMetadataElement().chunkMetadata)
-            .getValueChunkMetadataList()
-            .get(columnIndex);
-    return chunkMetadata != null
-        && AlignedSeriesBatchCompactionUtils.checkIsModified(
-                timePageHeader.getStartTime(),
-                timePageHeader.getEndTime(),
-                chunkMetadata.getDeleteIntervalList())
-            == ModifiedStatus.ALL_DELETED;
   }
 
   protected void checkChunkSizeAndMayOpenANewChunk(
