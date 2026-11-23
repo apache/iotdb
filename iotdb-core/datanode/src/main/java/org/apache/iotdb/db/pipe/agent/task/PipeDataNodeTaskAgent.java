@@ -852,7 +852,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     try {
       final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName, isTableModel);
       if (Objects.isNull(pipeMeta)
-          || pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.RUNNING) {
+          || pipeMeta.getRuntimeMeta().getStatus().get() != PipeStatus.RUNNING
+          || pipeMeta.isTaskInstallationIncomplete()) {
         return false;
       }
       final Map<Integer, PipeTask> pipeTasks =

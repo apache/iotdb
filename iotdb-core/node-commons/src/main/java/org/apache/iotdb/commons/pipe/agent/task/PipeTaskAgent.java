@@ -279,8 +279,20 @@ public abstract class PipeTaskAgent {
     // Then check if pipe runtime meta has changed, if so, update the pipe
     final PipeRuntimeMeta runtimeMetaInAgent = metaInAgent.getRuntimeMeta();
     final PipeRuntimeMeta runtimeMetaFromCoordinator = metaFromCoordinator.getRuntimeMeta();
-    executeSinglePipeRuntimeMetaChanges(
-        staticMetaFromCoordinator, runtimeMetaFromCoordinator, runtimeMetaInAgent);
+    try {
+      executeSinglePipeRuntimeMetaChanges(
+          staticMetaFromCoordinator, runtimeMetaFromCoordinator, runtimeMetaInAgent);
+    } finally {
+      // Partial sync can replay the local meta itself, which lacks any rolled-back assignments.
+      if (metaFromCoordinator != metaInAgent && PipeStaticMeta.isSubscriptionPipe(pipeName)) {
+        metaInAgent.setTaskInstallationIncomplete(
+            !runtimeMetaInAgent
+                .getConsensusGroupId2TaskMetaMap()
+                .keySet()
+                .containsAll(
+                    runtimeMetaFromCoordinator.getConsensusGroupId2TaskMetaMap().keySet()));
+      }
+    }
   }
 
   private void executeSinglePipeRuntimeMetaChanges(

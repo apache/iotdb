@@ -815,6 +815,47 @@ public class SubscriptionRetainedInitialReplayTest {
   }
 
   @Test
+  public void testRetainedSnapshotRetriesCompletionAfterFinalRegionLookupIsContended()
+      throws Exception {
+    final ArrayDequeBlockingPendingQueue pending = new ArrayDequeBlockingPendingQueue();
+    try (final RetainedSubscription subscription =
+        new RetainedSubscription(false, true, TopicConstant.MODE_SNAPSHOT_VALUE, true, pending)) {
+      final String pipeName =
+          PipeStaticMeta.generateSubscriptionPipeName(subscription.topic, subscription.group);
+      final long creationTime = 102L;
+      final int regionId = 1;
+      final Optional<Set<Integer>> expectedRegions = Optional.of(Collections.singleton(regionId));
+      doReturn(expectedRegions, Optional.empty())
+          .when(subscription.queue)
+          .getExpectedDataRegionIds(pipeName, creationTime);
+      final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
+      commitManager.register(pipeName, creationTime, regionId, "subscription");
+      try {
+        final PipeTerminateEvent terminate =
+            new PipeTerminateEvent(pipeName, creationTime, null, regionId, true);
+        commitManager.enrichWithCommitterKeyAndCommitId(terminate, creationTime, regionId);
+        assertTrue(terminate.getCommitId() > 0);
+        assertTrue(terminate.increaseReferenceCount("test"));
+        pending.directOffer(terminate);
+
+        subscription.queue.executePrefetchV2();
+        assertTrue(terminate.isReleased());
+        assertFalse(subscription.queue.isCompleted());
+
+        doReturn(expectedRegions)
+            .when(subscription.queue)
+            .getExpectedDataRegionIds(pipeName, creationTime);
+        assertEquals(
+            Collections.singletonList(subscription.topic),
+            subscription.broker.fetchTopicNamesToUnsubscribe(
+                Collections.singleton(subscription.topic)));
+      } finally {
+        commitManager.clear(pipeName, creationTime);
+      }
+    }
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   public void testRetainedSnapshotEmitsTerminationWhenRunningWithoutLocalTasks() throws Exception {
     for (final boolean tableModel : new boolean[] {false, true}) {

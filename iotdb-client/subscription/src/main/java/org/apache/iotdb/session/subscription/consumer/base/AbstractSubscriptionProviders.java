@@ -384,18 +384,40 @@ final class AbstractSubscriptionProviders {
       final List<SubscriptionCommitContext> processorBufferedCommitContexts =
           consumer.getProcessorBufferedCommitContexts(provider.getDataNodeId());
       final PipeSubscribeHeartbeatResp resp = provider.heartbeat(processorBufferedCommitContexts);
-      if (consumer.isClosed()
-          || consumer.isFenced()
-          || !containsProvider(provider)
-          || !provider.isAvailable()) {
-        return;
-      }
-      provider.setAvailable();
-      synchronized (heartbeatResponseLock) {
-        consumer.subscribedTopics = resp.getTopics();
-        for (final String topicName : resp.getTopicNamesToUnsubscribe()) {
-          consumer.handleProviderTopicTermination(provider.getDataNodeId(), topicName);
+      final Set<Integer> advertisedDataNodeIds = resp.getEndPoints().keySet();
+      acquireReadLock();
+      if (!knownClusterDataNodeIds.containsAll(advertisedDataNodeIds)) {
+        // Expand membership under the write lock before applying completion notices.
+        releaseReadLock();
+        acquireWriteLock();
+        try {
+          if (!containsProvider(provider) || !provider.isAvailable() || consumer.isClosed()) {
+            return;
+          }
+          addAdvertisedDataNodes(consumer, advertisedDataNodeIds);
+          acquireReadLock();
+        } finally {
+          releaseWriteLock();
         }
+      }
+      try {
+        synchronized (heartbeatResponseLock) {
+          if (consumer.isClosed()
+              || consumer.isFenced()
+              || !containsProvider(provider)
+              || !provider.isAvailable()) {
+            return;
+          }
+          provider.setAvailable();
+          consumer.subscribedTopics = resp.getTopics();
+          consumer.invalidateProviderTopicCompletions(
+              provider.getDataNodeId(), resp.getTopicNamesToUnsubscribe());
+          for (final String topicName : resp.getTopicNamesToUnsubscribe()) {
+            consumer.handleProviderTopicTermination(provider.getDataNodeId(), topicName);
+          }
+        }
+      } finally {
+        releaseReadLock();
       }
     } catch (final SubscriptionConsumerFencedException e) {
       if (containsProvider(provider)) {
@@ -420,6 +442,15 @@ final class AbstractSubscriptionProviders {
 
   boolean containsProvider(final AbstractSubscriptionProvider provider) {
     return subscriptionProviders.get(provider.getDataNodeId()) == provider;
+  }
+
+  // Endpoint sync reconciles removals and establishes connections for newly discovered DataNodes.
+  private void addAdvertisedDataNodes(
+      final AbstractSubscriptionConsumer consumer, final Set<Integer> advertisedDataNodeIds) {
+    if (knownClusterDataNodeIds.addAll(advertisedDataNodeIds)) {
+      consumer.clearTerminatedProviderStates();
+      topologyGeneration.incrementAndGet();
+    }
   }
 
   /////////////////////////////// sync endpoints ///////////////////////////////
@@ -520,7 +551,11 @@ final class AbstractSubscriptionProviders {
       if (Objects.nonNull(provider) && provider.isAvailable()) {
         // Existing provider
         try {
-          consumer.subscribedTopics = provider.heartbeat().getTopics();
+          final PipeSubscribeHeartbeatResp resp = provider.heartbeat();
+          addAdvertisedDataNodes(consumer, resp.getEndPoints().keySet());
+          consumer.subscribedTopics = resp.getTopics();
+          consumer.invalidateProviderTopicCompletions(
+              provider.getDataNodeId(), resp.getTopicNamesToUnsubscribe());
           provider.setAvailable();
         } catch (final SubscriptionConsumerFencedException e) {
           consumer.fence(e);

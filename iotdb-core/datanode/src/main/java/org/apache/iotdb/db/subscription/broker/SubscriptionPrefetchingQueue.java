@@ -128,6 +128,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private final Map<Integer, PipeTerminateEvent> pendingTerminateEventByRegion = new HashMap<>();
   private final Set<Integer> committedTerminateDataRegionIds = ConcurrentHashMap.newKeySet();
   private final Set<CommitterKey> awaitingCompletionCommitterKeys = ConcurrentHashMap.newKeySet();
+  private volatile boolean completionVerificationPending;
   private volatile long activeTerminatePipeCreationTime = Long.MIN_VALUE;
   private volatile String activeTerminatePipeName;
   private PipeTerminateEvent currentNonMarkingTerminateEvent;
@@ -211,6 +212,7 @@ public abstract class SubscriptionPrefetchingQueue {
       pendingTerminateEventByRegion.clear();
       committedTerminateDataRegionIds.clear();
       awaitingCompletionCommitterKeys.clear();
+      completionVerificationPending = false;
       activeTerminatePipeCreationTime = Long.MIN_VALUE;
       activeTerminatePipeName = null;
       if (Objects.nonNull(currentNonMarkingTerminateEvent)) {
@@ -453,7 +455,7 @@ public abstract class SubscriptionPrefetchingQueue {
         remapInFlightEventsSnapshot(
             committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
         return true;
-      } else if (hasPendingTerminateEvents()) {
+      } else if (hasPendingTerminateEvents() || completionVerificationPending) {
         tryCommitPendingTerminateEvents();
         peekOnce();
         remapInFlightEventsSnapshot(
@@ -877,10 +879,10 @@ public abstract class SubscriptionPrefetchingQueue {
     }
     committedTerminateDataRegionIds.add(regionId);
     awaitingCompletionCommitterKeys.remove(committerKey);
-    recheckAwaitingCompletionCommitters(pipeName, creationTime);
+    verifyCompletion(pipeName, creationTime);
   }
 
-  private void recheckAwaitingCompletionCommitters(final String pipeName, final long creationTime) {
+  private void verifyCompletion(final String pipeName, final long creationTime) {
     if (isCompleted || creationTime != activeTerminatePipeCreationTime) {
       return;
     }
@@ -917,6 +919,7 @@ public abstract class SubscriptionPrefetchingQueue {
       pendingTerminateEventByRegion.clear();
       committedTerminateDataRegionIds.clear();
       awaitingCompletionCommitterKeys.clear();
+      completionVerificationPending = false;
     }
     activeTerminatePipeCreationTime = eventCreationTime;
     activeTerminatePipeName = terminateEvent.getPipeName();
@@ -958,8 +961,8 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private synchronized boolean tryCommitPendingTerminateEvents() {
     final boolean committedNonMarking = tryCommitCurrentNonMarkingTerminateEvent();
-    if (!isCompleted && !awaitingCompletionCommitterKeys.isEmpty()) {
-      recheckAwaitingCompletionCommitters(activeTerminatePipeName, activeTerminatePipeCreationTime);
+    if (completionVerificationPending) {
+      verifyCompletion(activeTerminatePipeName, activeTerminatePipeCreationTime);
     }
     if (pendingTerminateEvents.isEmpty()) {
       return committedNonMarking;
@@ -1034,7 +1037,8 @@ public abstract class SubscriptionPrefetchingQueue {
     }
     pendingTerminateEvents.clear();
     pendingTerminateEventByRegion.clear();
-    recheckAwaitingCompletionCommitters(pipeName, creationTime);
+    completionVerificationPending = !isCompleted;
+    verifyCompletion(pipeName, creationTime);
     return true;
   }
 
@@ -1404,14 +1408,15 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   public boolean isCompleted() {
-    if (!isCompleted && !awaitingCompletionCommitterKeys.isEmpty()) {
-      recheckAwaitingCompletionCommitters(activeTerminatePipeName, activeTerminatePipeCreationTime);
+    if (completionVerificationPending) {
+      verifyCompletion(activeTerminatePipeName, activeTerminatePipeCreationTime);
     }
     return isCompleted;
   }
 
   public void markCompleted() {
     isCompleted = true;
+    completionVerificationPending = false;
   }
 
   /////////////////////////////// stringify ///////////////////////////////

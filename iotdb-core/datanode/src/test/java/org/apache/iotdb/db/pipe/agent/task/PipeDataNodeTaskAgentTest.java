@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.task;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -37,6 +38,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -49,6 +51,7 @@ import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.powermock.reflect.Whitebox;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -709,6 +712,67 @@ public class PipeDataNodeTaskAgentTest {
     Assert.assertNull(manager.getPipeTask(pipeMeta.getStaticMeta(), REGION_ID));
     Assert.assertNull(pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().get(REGION_ID));
     Assert.assertEquals(PipeStatus.RUNNING, pipeMeta.getRuntimeMeta().getStatus().get());
+  }
+
+  @Test
+  public void testFailedSubscriptionTaskStartDoesNotReportZeroLocalTasks() throws Exception {
+    final CommonConfig originalConfig =
+        Whitebox.getInternalState(SubscriptionConfig.class, "COMMON_CONFIG");
+    final CommonConfig enabledConfig = Mockito.spy(originalConfig);
+    Mockito.doReturn(true).when(enabledConfig).getSubscriptionEnabled();
+    final PipeTask task = Mockito.mock(PipeTask.class);
+    Mockito.doThrow(new IllegalStateException()).doNothing().when(task).start();
+    final PipeDataNodeTaskAgent agent =
+        new PipeDataNodeTaskAgent() {
+          @Override
+          protected boolean isShutdown() {
+            return false;
+          }
+
+          @Override
+          protected void createPipeTask(
+              final int regionId, final PipeStaticMeta staticMeta, final PipeTaskMeta taskMeta) {
+            pipeMetaKeeper
+                .getPipeMeta(staticMeta)
+                .getRuntimeMeta()
+                .getConsensusGroupId2TaskMetaMap()
+                .put(regionId, taskMeta);
+            pipeTaskManager.addPipeTask(staticMeta, regionId, task);
+          }
+        };
+    final String pipeName = PipeStaticMeta.generateSubscriptionPipeName("snapshot", "group");
+    final PipeStaticMeta staticMeta =
+        new PipeStaticMeta(pipeName, 1L, new HashMap<>(), new HashMap<>(), new HashMap<>());
+    final PipeMeta localMeta = new PipeMeta(staticMeta, new PipeRuntimeMeta());
+    localMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+    keeper.addPipeMeta(localMeta);
+
+    final PipeMeta coordinatorMeta =
+        createPipeMeta(
+            staticMeta,
+            MinimumProgressIndex.INSTANCE,
+            IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
+    coordinatorMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    Whitebox.setInternalState(SubscriptionConfig.class, "COMMON_CONFIG", enabledConfig);
+    try {
+      Assert.assertTrue(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+      Assert.assertNull(agent.handleSinglePipeMetaChanges(coordinatorMeta));
+      Mockito.verify(task).drop();
+      Assert.assertTrue(localMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().isEmpty());
+      Assert.assertFalse(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+
+      Assert.assertNull(agent.handleSinglePipeMetaChanges(coordinatorMeta));
+      Mockito.verify(task, Mockito.times(2)).start();
+      Assert.assertFalse(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+
+      final PipeMeta noAssignments = new PipeMeta(staticMeta, new PipeRuntimeMeta());
+      noAssignments.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+      Assert.assertNull(agent.handleSinglePipeMetaChanges(noAssignments));
+      Assert.assertTrue(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+    } finally {
+      Whitebox.setInternalState(SubscriptionConfig.class, "COMMON_CONFIG", originalConfig);
+    }
   }
 
   @Test

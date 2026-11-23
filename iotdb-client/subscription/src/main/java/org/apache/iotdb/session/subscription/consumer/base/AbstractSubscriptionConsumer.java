@@ -831,6 +831,19 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
   }
 
+  void invalidateProviderTopicCompletions(
+      final int dataNodeId, final Collection<String> completedTopics) {
+    synchronized (topicTerminationLock) {
+      terminatedDataNodeIdsByTopic
+          .entrySet()
+          .removeIf(
+              entry ->
+                  !completedTopics.contains(entry.getKey())
+                      && entry.getValue().remove(dataNodeId)
+                      && entry.getValue().isEmpty());
+    }
+  }
+
   void handleProviderTopicTermination(final int dataNodeId, final String topicName)
       throws SubscriptionException {
     final TopicConfig topicConfig = subscribedTopics.get(topicName);
@@ -859,21 +872,21 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             return;
           }
         }
+        try {
+          if (providers.getTopologyGeneration() != topologyGeneration) {
+            return;
+          }
+          LOGGER.info(
+              SubscriptionMessages
+                  .LOG_TERMINATION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_UNSUBSCRIBE_TOPIC_ARG_AUTOMATICALLY_E9B695FA,
+              coreReportMessage(),
+              topicName);
+          unsubscribe(Collections.singleton(topicName), false);
+        } finally {
+          autoUnsubscribingTopics.remove(topicName);
+        }
       } finally {
         providers.releaseReadLock();
-      }
-      try {
-        if (providers.getTopologyGeneration() != topologyGeneration) {
-          return;
-        }
-        LOGGER.info(
-            SubscriptionMessages
-                .LOG_TERMINATION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_UNSUBSCRIBE_TOPIC_ARG_AUTOMATICALLY_E9B695FA,
-            coreReportMessage(),
-            topicName);
-        unsubscribe(Collections.singleton(topicName), false);
-      } finally {
-        autoUnsubscribingTopics.remove(topicName);
       }
       return;
     }
