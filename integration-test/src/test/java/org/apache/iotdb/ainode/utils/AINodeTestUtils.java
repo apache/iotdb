@@ -23,7 +23,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import com.google.common.collect.ImmutableSet;
-import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -114,15 +113,18 @@ public class AINodeTestUtils {
   }
 
   public static void concurrentInference(
-      Statement statement, String sql, int threadCnt, int loop, int expectedOutputLength)
+      String sqlDialect, String sql, int threadCnt, int loop, int expectedOutputLength)
       throws InterruptedException {
-    AtomicBoolean allPass = new AtomicBoolean(true);
+    AtomicReference<Throwable> firstFailure = new AtomicReference<>();
     Thread[] threads = new Thread[threadCnt];
     for (int i = 0; i < threadCnt; i++) {
       threads[i] =
           new Thread(
               () -> {
-                try {
+                // JDBC Statements cannot be shared concurrently because executing a new query
+                // closes any previously open ResultSet on that Statement.
+                try (Connection connection = EnvFactory.getEnv().getConnection(sqlDialect);
+                    Statement statement = connection.createStatement()) {
                   for (int j = 0; j < loop; j++) {
                     try (ResultSet resultSet = statement.executeQuery(sql)) {
                       int outputCnt = 0;
@@ -130,34 +132,45 @@ public class AINodeTestUtils {
                         outputCnt++;
                       }
                       if (expectedOutputLength != outputCnt) {
-                        allPass.set(false);
-                        fail(
-                            "Output count mismatch for SQL: "
-                                + sql
-                                + ". Expected: "
-                                + expectedOutputLength
-                                + ", but got: "
-                                + outputCnt);
+                        AssertionError error =
+                            new AssertionError(
+                                "Output count mismatch for SQL: "
+                                    + sql
+                                    + ". Expected: "
+                                    + expectedOutputLength
+                                    + ", but got: "
+                                    + outputCnt);
+                        firstFailure.compareAndSet(null, error);
+                        LOGGER.error("Concurrent inference output mismatch", error);
+                        return;
                       }
-                    } catch (SQLException e) {
-                      allPass.set(false);
-                      fail(e.getMessage());
                     }
                   }
-                } catch (Exception e) {
-                  allPass.set(false);
-                  fail(e.getMessage());
+                } catch (Throwable t) {
+                  firstFailure.compareAndSet(null, t);
+                  LOGGER.error("Concurrent inference failed for SQL: {}", sql, t);
                 }
-              });
+              },
+              "ainode-concurrent-inference-" + i);
       threads[i].start();
     }
+    long deadlineNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(10);
     for (Thread thread : threads) {
-      thread.join(TimeUnit.MINUTES.toMillis(10));
+      long remainingNanos = deadlineNanos - System.nanoTime();
+      if (remainingNanos > 0) {
+        thread.join(Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remainingNanos)));
+      }
       if (thread.isAlive()) {
-        fail("Thread timeout after 10 minutes");
+        for (Thread activeThread : threads) {
+          activeThread.interrupt();
+        }
+        fail("Thread timeout after 10 minutes: " + thread.getName());
       }
     }
-    Assert.assertTrue(allPass.get());
+    Throwable failure = firstFailure.get();
+    if (failure != null) {
+      throw new AssertionError("Concurrent inference failed: " + failure.getMessage(), failure);
+    }
   }
 
   public static void checkModelOnSpecifiedDevice(Statement statement, String modelId, String device)

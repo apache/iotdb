@@ -541,19 +541,40 @@ public class AINodeSharedClusterIT {
       // PR CI keeps a concurrency smoke check; nightly/daily can dial this up if regressions
       // appear.
       final int loop = 10;
-      statement.execute(
-          String.format("LOAD MODEL %s TO DEVICES '%s'", modelInfo.getModelId(), devices));
-      checkModelOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
-      long startTime = System.currentTimeMillis();
-      concurrentInference(statement, forecastSQL, threadCnt, loop, forecastLength);
-      long endTime = System.currentTimeMillis();
-      LOGGER.info(
-          String.format(
-              "Model %s concurrent inference %d reqs (%d threads, %d loops) in GPU takes time: %dms",
-              modelInfo.getModelId(), threadCnt * loop, threadCnt, loop, endTime - startTime));
-      statement.execute(
-          String.format("UNLOAD MODEL %s FROM DEVICES '%s'", modelInfo.getModelId(), devices));
-      checkModelNotOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
+      boolean loadSubmitted = false;
+      Throwable primaryFailure = null;
+      try {
+        statement.execute(
+            String.format("LOAD MODEL %s TO DEVICES '%s'", modelInfo.getModelId(), devices));
+        loadSubmitted = true;
+        checkModelOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
+        long startTime = System.currentTimeMillis();
+        concurrentInference(
+            BaseEnv.TABLE_SQL_DIALECT, forecastSQL, threadCnt, loop, forecastLength);
+        long endTime = System.currentTimeMillis();
+        LOGGER.info(
+            String.format(
+                "Model %s concurrent inference %d reqs (%d threads, %d loops) in GPU takes time: %dms",
+                modelInfo.getModelId(), threadCnt * loop, threadCnt, loop, endTime - startTime));
+      } catch (Throwable t) {
+        primaryFailure = t;
+        throw t;
+      } finally {
+        if (loadSubmitted) {
+          try {
+            statement.execute(
+                String.format(
+                    "UNLOAD MODEL %s FROM DEVICES '%s'", modelInfo.getModelId(), devices));
+            checkModelNotOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
+          } catch (Throwable cleanupError) {
+            if (primaryFailure != null) {
+              primaryFailure.addSuppressed(cleanupError);
+            } else {
+              throw cleanupError;
+            }
+          }
+        }
+      }
     }
   }
 
