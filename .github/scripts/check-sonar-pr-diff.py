@@ -21,9 +21,10 @@
 """Check whether a PR diff touches any Sonar-analyzable main Java source.
 
 SonarCloud for apache_iotdb analyzes main Java sources (`src/main/java/**` and
-`src/main/i18n/en/**`) in the default Maven reactor excluding `distribution`
-(and excluding profile-only modules such as `integration-test`, `code-coverage`,
-`iotdb-client/client-cpp`, and `iotdb-core/ainode`).
+`src/main/i18n/en/**`) in the default Maven reactor excluding `distribution`,
+any module (and its subtree) marked `<sonar.skip>true</sonar.skip>` (such as
+`example`), and profile-only modules (`integration-test`, `code-coverage`,
+`iotdb-client/client-cpp`, `iotdb-core/ainode`).
 
 Given a base Git ref and head ref, this script inspects the three-dot PR diff
 (`<base>...<head>`) and emits `run_sonar=true|false` for GitHub Actions so PRs
@@ -54,11 +55,17 @@ def discover_reactor_modules(repo_root: Path) -> set[str]:
         pom_path = repo_root / rel_str / "pom.xml" if rel_str != "." else repo_root / "pom.xml"
         if not pom_path.is_file():
             return
-        modules.add(rel_str)
 
         tree = ET.parse(pom_path)
         root = tree.getroot()
         ns = MAVEN_NS if root.tag.startswith(MAVEN_NS) else ""
+        props_elem = root.find(f"{ns}properties")
+        if props_elem is not None:
+            sonar_skip = props_elem.findtext(f"{ns}sonar.skip", "").strip().lower()
+            if sonar_skip == "true":
+                return
+        modules.add(rel_str)
+
         modules_elem = root.find(f"{ns}modules")
         if modules_elem is None:
             return
