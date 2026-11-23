@@ -321,12 +321,19 @@ public class PipeTsFileInsertionEventTest {
   }
 
   @Test
-  public void testHistoricalTableEventWithUnknownTableNamesDefersPrivilegeCheck() {
+  public void testHistoricalTableEventWithUnknownTableNamesChecksPrivilegesAfterClose() {
+    final AccessControl oldControl = AuthorityChecker.getAccessControl();
+    final TestAccessControl accessControl = Mockito.spy(new TestAccessControl());
     final TsFileResource resource = Mockito.mock(TsFileResource.class);
+    final IDeviceID deviceID =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table", "d1"});
     Mockito.when(resource.getTsFile()).thenReturn(new File("sequence/db/1/0/1-1-0-0.tsfile"));
+    Mockito.when(resource.getDevices()).thenReturn(Collections.singleton(deviceID));
+    Mockito.when(resource.isEmpty()).thenReturn(false);
     Mockito.when(resource.isClosed()).thenReturn(true);
     Mockito.when(resource.isGeneratedByPipe()).thenReturn(false);
     Mockito.when(resource.isGeneratedByIoTConsensusV2()).thenReturn(false);
+    AuthorityChecker.setAccessControl(accessControl);
 
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
@@ -349,11 +356,48 @@ public class PipeTsFileInsertionEventTest {
             false,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
+    PipeTsFileInsertionEvent skipIfNoPrivilegesEvent = null;
     try {
+      Assert.assertThrows(AccessDeniedException.class, event::throwIfNoPrivilege);
+      Mockito.doReturn(true)
+          .when(accessControl)
+          .checkCanSelectFromTable4Pipe(Mockito.anyString(), Mockito.any(), Mockito.any());
       event.throwIfNoPrivilege();
-      Assert.assertTrue(event.shouldParse4Privilege());
+      Assert.assertFalse(event.shouldParse4Privilege());
+
+      Mockito.doReturn(false)
+          .when(accessControl)
+          .checkCanSelectFromTable4Pipe(Mockito.anyString(), Mockito.any(), Mockito.any());
+      skipIfNoPrivilegesEvent =
+          new PipeTsFileInsertionEvent(
+              true,
+              "db",
+              resource,
+              null,
+              false,
+              false,
+              true,
+              null,
+              null,
+              0,
+              null,
+              buildUnionPattern(
+                  false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+              new TablePattern(true, null, null),
+              "0",
+              "user",
+              "localhost",
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      skipIfNoPrivilegesEvent.throwIfNoPrivilege();
+      Assert.assertTrue(skipIfNoPrivilegesEvent.shouldParse4Privilege());
     } finally {
       event.close();
+      if (skipIfNoPrivilegesEvent != null) {
+        skipIfNoPrivilegesEvent.close();
+      }
+      AuthorityChecker.setAccessControl(oldControl);
     }
   }
 

@@ -79,6 +79,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     implements TsFileInsertionEvent, ReferenceTrackableEvent {
@@ -869,29 +870,32 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
       if (isTableModelEvent()) {
         if (Objects.isNull(tableNames)) {
-          shouldParse4Privilege = true;
-        } else {
-          for (final String table : tableNames) {
-            if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
-                || !tablePattern.matchesTable(table)) {
-              continue;
-            }
-            if (!AuthorityChecker.getAccessControl()
-                .checkCanSelectFromTable4Pipe(
-                    userName,
-                    new QualifiedObjectName(getTableModelDatabaseName(), table),
-                    new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
-              if (skipIfNoPrivileges) {
-                shouldParse4Privilege = true;
-              } else {
-                throw new AccessDeniedException(
-                    String.format(
-                        DataNodePipeMessages
-                            .PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299,
-                        userName,
-                        tableModelDatabaseName,
-                        table));
-              }
+          final Set<IDeviceID> devices = resource.getDevices();
+          if (devices.isEmpty() && !resource.isEmpty()) {
+            throw new IOException();
+          }
+          tableNames = devices.stream().map(IDeviceID::getTableName).collect(Collectors.toSet());
+        }
+        for (final String table : tableNames) {
+          if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
+              || !tablePattern.matchesTable(table)) {
+            continue;
+          }
+          if (!AuthorityChecker.getAccessControl()
+              .checkCanSelectFromTable4Pipe(
+                  userName,
+                  new QualifiedObjectName(getTableModelDatabaseName(), table),
+                  new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
+            if (skipIfNoPrivileges) {
+              shouldParse4Privilege = true;
+            } else {
+              throw new AccessDeniedException(
+                  String.format(
+                      DataNodePipeMessages
+                          .PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299,
+                      userName,
+                      tableModelDatabaseName,
+                      table));
             }
           }
         }
