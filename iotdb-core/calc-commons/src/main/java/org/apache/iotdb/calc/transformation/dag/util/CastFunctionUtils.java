@@ -34,6 +34,13 @@ public class CastFunctionUtils {
   public static final String ERROR_MSG =
       CalcMessages.EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_ARG_AFE3789A;
 
+  // Widening Integer.MAX_VALUE to float or Long.MAX_VALUE to float/double rounds up to 2^31 / 2^63,
+  // so `value > MAX_VALUE` wrongly accepts those out-of-range powers of two and lets Math.round()
+  // silently saturate to MAX_VALUE. Use strict exclusive upper bounds instead.
+  private static final float FLOAT_INT_UPPER_BOUND_EXCLUSIVE = 0x1.0p31f;
+  private static final float FLOAT_LONG_UPPER_BOUND_EXCLUSIVE = 0x1.0p63f;
+  private static final double DOUBLE_LONG_UPPER_BOUND_EXCLUSIVE = 0x1.0p63;
+
   public static int castLongToInt(long value) {
     if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
       throw new SemanticException(
@@ -44,7 +51,7 @@ public class CastFunctionUtils {
   }
 
   public static int castFloatToInt(float value) {
-    if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
+    if (value >= FLOAT_INT_UPPER_BOUND_EXCLUSIVE || value < Integer.MIN_VALUE) {
       throw new SemanticException(
           String.format(
               CalcMessages.EXCEPTION_FLOAT_VALUE_ARG_OUT_RANGE_INTEGER_VALUE_B0E6DDED, value));
@@ -53,7 +60,7 @@ public class CastFunctionUtils {
   }
 
   public static long castFloatToLong(float value) {
-    if (value > Long.MAX_VALUE || value < Long.MIN_VALUE) {
+    if (value >= FLOAT_LONG_UPPER_BOUND_EXCLUSIVE || value < Long.MIN_VALUE) {
       throw new SemanticException(
           String.format(
               CalcMessages.EXCEPTION_FLOAT_VALUE_ARG_OUT_RANGE_LONG_VALUE_62F8153E, value));
@@ -71,7 +78,7 @@ public class CastFunctionUtils {
   }
 
   public static long castDoubleToLong(double value) {
-    if (value > Long.MAX_VALUE || value < Long.MIN_VALUE) {
+    if (value >= DOUBLE_LONG_UPPER_BOUND_EXCLUSIVE || value < Long.MIN_VALUE) {
       throw new SemanticException(
           String.format(
               CalcMessages.EXCEPTION_DOUBLE_VALUE_ARG_OUT_RANGE_LONG_VALUE_5793A91E, value));

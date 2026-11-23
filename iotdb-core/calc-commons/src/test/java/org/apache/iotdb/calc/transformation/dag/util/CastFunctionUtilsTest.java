@@ -50,6 +50,8 @@ public class CastFunctionUtilsTest {
   public void castFloatToIntInRange() {
     Assert.assertEquals(2, CastFunctionUtils.castFloatToInt(1.5f));
     Assert.assertEquals(-1, CastFunctionUtils.castFloatToInt(-1.4f));
+    Assert.assertEquals(2147483520, CastFunctionUtils.castFloatToInt(Math.nextDown(0x1.0p31f)));
+    Assert.assertEquals(Integer.MIN_VALUE, CastFunctionUtils.castFloatToInt(-0x1.0p31f));
   }
 
   @Test(expected = SemanticException.class)
@@ -57,15 +59,42 @@ public class CastFunctionUtilsTest {
     CastFunctionUtils.castFloatToInt(Float.MAX_VALUE);
   }
 
+  @Test(expected = SemanticException.class)
+  public void castFloatToIntAtIntUpperBoundPowerOfTwo() {
+    // (float) Integer.MAX_VALUE rounds up to 2^31 (2147483648.0f), which is strictly >
+    // Integer.MAX_VALUE.
+    CastFunctionUtils.castFloatToInt(0x1.0p31f);
+  }
+
+  @Test(expected = SemanticException.class)
+  public void castFloatToIntJustBelowMin() {
+    CastFunctionUtils.castFloatToInt(Math.nextDown(-0x1.0p31f));
+  }
+
   // ---- castFloatToLong ----
   @Test
   public void castFloatToLongInRange() {
     Assert.assertEquals(2L, CastFunctionUtils.castFloatToLong(1.5f));
+    Assert.assertEquals(
+        9223371487098961920L, CastFunctionUtils.castFloatToLong(Math.nextDown(0x1.0p63f)));
+    Assert.assertEquals(Long.MIN_VALUE, CastFunctionUtils.castFloatToLong(-0x1.0p63f));
   }
 
   @Test(expected = SemanticException.class)
   public void castFloatToLongOverflow() {
     CastFunctionUtils.castFloatToLong(Float.MAX_VALUE);
+  }
+
+  @Test(expected = SemanticException.class)
+  public void castFloatToLongAtLongUpperBoundPowerOfTwo() {
+    // (float) Long.MAX_VALUE rounds up to 2^63 (9223372036854775808.0f), which is strictly >
+    // Long.MAX_VALUE.
+    CastFunctionUtils.castFloatToLong(0x1.0p63f);
+  }
+
+  @Test(expected = SemanticException.class)
+  public void castFloatToLongJustBelowMin() {
+    CastFunctionUtils.castFloatToLong(Math.nextDown(-0x1.0p63f));
   }
 
   // ---- castDoubleToInt ----
@@ -114,11 +143,26 @@ public class CastFunctionUtilsTest {
   @Test
   public void castDoubleToLongInRange() {
     Assert.assertEquals(2L, CastFunctionUtils.castDoubleToLong(1.5));
+    Assert.assertEquals(
+        9223372036854774784L, CastFunctionUtils.castDoubleToLong(Math.nextDown(0x1.0p63)));
+    Assert.assertEquals(Long.MIN_VALUE, CastFunctionUtils.castDoubleToLong(-0x1.0p63));
   }
 
   @Test(expected = SemanticException.class)
   public void castDoubleToLongOverflow() {
     CastFunctionUtils.castDoubleToLong(Double.MAX_VALUE);
+  }
+
+  @Test(expected = SemanticException.class)
+  public void castDoubleToLongAtLongUpperBoundPowerOfTwo() {
+    // (double) Long.MAX_VALUE rounds up to 2^63 (9223372036854775808.0), which is strictly >
+    // Long.MAX_VALUE.
+    CastFunctionUtils.castDoubleToLong(0x1.0p63);
+  }
+
+  @Test(expected = SemanticException.class)
+  public void castDoubleToLongJustBelowMin() {
+    CastFunctionUtils.castDoubleToLong(Math.nextDown(-0x1.0p63));
   }
 
   // ---- castDoubleToFloat ----
