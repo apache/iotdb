@@ -59,6 +59,7 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.concurrentInference;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTable;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTree;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.unloadSubmittedModel;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -542,12 +543,16 @@ public class AINodeSharedClusterIT {
       // appear.
       final int loop = 10;
       boolean loadSubmitted = false;
+      boolean loadCompleted = false;
+      long loadSubmittedNanos = 0L;
       Throwable primaryFailure = null;
       try {
+        loadSubmittedNanos = System.nanoTime();
         statement.execute(
             String.format("LOAD MODEL %s TO DEVICES '%s'", modelInfo.getModelId(), devices));
         loadSubmitted = true;
         checkModelOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
+        loadCompleted = true;
         long startTime = System.currentTimeMillis();
         concurrentInference(
             BaseEnv.TABLE_SQL_DIALECT, forecastSQL, threadCnt, loop, forecastLength);
@@ -562,10 +567,8 @@ public class AINodeSharedClusterIT {
       } finally {
         if (loadSubmitted) {
           try {
-            statement.execute(
-                String.format(
-                    "UNLOAD MODEL %s FROM DEVICES '%s'", modelInfo.getModelId(), devices));
-            checkModelNotOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
+            unloadSubmittedModel(
+                statement, modelInfo.getModelId(), devices, loadCompleted, loadSubmittedNanos);
           } catch (Throwable cleanupError) {
             if (primaryFailure != null) {
               primaryFailure.addSuppressed(cleanupError);

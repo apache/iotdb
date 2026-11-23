@@ -21,6 +21,7 @@ package org.apache.iotdb.ainode.utils;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.jdbc.Constant;
 
 import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
@@ -32,12 +33,17 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -96,6 +102,19 @@ public class AINodeTestUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AINodeTestUtils.class);
 
+  private static final long CONCURRENT_INFERENCE_TIMEOUT_MILLIS = TimeUnit.MINUTES.toMillis(10);
+  private static final int CONCURRENT_INFERENCE_QUERY_TIMEOUT_SECONDS = 120;
+  private static final long CONCURRENT_INFERENCE_WORKER_DRAIN_TIMEOUT_MILLIS =
+      TimeUnit.SECONDS.toMillis(CONCURRENT_INFERENCE_QUERY_TIMEOUT_SECONDS + 30L);
+  private static final long MODEL_STATUS_POLL_INTERVAL_MILLIS = TimeUnit.SECONDS.toMillis(3);
+  private static final long MODEL_LOAD_SETTLE_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(600);
+  private static final long MODEL_UNLOAD_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(150);
+
+  @FunctionalInterface
+  interface ConnectionSupplier {
+    Connection get() throws SQLException;
+  }
+
   public static void checkHeader(ResultSetMetaData resultSetMetaData, String title)
       throws SQLException {
     String[] headers = title.split(",");
@@ -115,21 +134,75 @@ public class AINodeTestUtils {
   public static void concurrentInference(
       String sqlDialect, String sql, int threadCnt, int loop, int expectedOutputLength)
       throws InterruptedException {
+    // Use the Version overload so profiles with ReadAndVerifyWithMultiNode=false (such as
+    // AIClusterIT) return direct IoTDBConnections instead of ClusterTestConnection, avoiding the
+    // 5-thread cap in RequestThreadPool and exercising all concurrent workers simultaneously.
+    concurrentInference(
+        () -> EnvFactory.getEnv().getConnection(Constant.Version.V_1_0, sqlDialect),
+        sql,
+        threadCnt,
+        loop,
+        expectedOutputLength,
+        CONCURRENT_INFERENCE_TIMEOUT_MILLIS,
+        CONCURRENT_INFERENCE_QUERY_TIMEOUT_SECONDS,
+        CONCURRENT_INFERENCE_WORKER_DRAIN_TIMEOUT_MILLIS);
+  }
+
+  static void concurrentInference(
+      ConnectionSupplier connectionSupplier,
+      String sql,
+      int threadCnt,
+      int loop,
+      int expectedOutputLength,
+      long overallTimeoutMillis,
+      int perQueryTimeoutSeconds,
+      long workerDrainTimeoutMillis)
+      throws InterruptedException {
+    AtomicBoolean cancelled = new AtomicBoolean(false);
+    AtomicInteger completedRequests = new AtomicInteger(0);
     AtomicReference<Throwable> firstFailure = new AtomicReference<>();
+    int boundedPerQueryTimeoutSeconds = Math.max(1, perQueryTimeoutSeconds);
+    long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(overallTimeoutMillis);
     Thread[] threads = new Thread[threadCnt];
     for (int i = 0; i < threadCnt; i++) {
       threads[i] =
           new Thread(
               () -> {
+                if (cancelled.get() || Thread.currentThread().isInterrupted()) {
+                  return;
+                }
                 // JDBC Statements cannot be shared concurrently because executing a new query
                 // closes any previously open ResultSet on that Statement.
-                try (Connection connection = EnvFactory.getEnv().getConnection(sqlDialect);
+                try (Connection connection = connectionSupplier.get();
                     Statement statement = connection.createStatement()) {
                   for (int j = 0; j < loop; j++) {
+                    if (cancelled.get() || Thread.currentThread().isInterrupted()) {
+                      return;
+                    }
+                    long remainingNanos = deadlineNanos - System.nanoTime();
+                    if (remainingNanos <= 0L) {
+                      if (!cancelled.get()) {
+                        firstFailure.compareAndSet(
+                            null,
+                            new AssertionError(
+                                "Concurrent inference deadline exceeded before completing all loops for SQL: "
+                                    + sql));
+                      }
+                      return;
+                    }
+                    long remainingSecondsCeil = (remainingNanos - 1L) / 1_000_000_000L + 1L;
+                    int queryTimeoutSeconds =
+                        (int) Math.min(boundedPerQueryTimeoutSeconds, remainingSecondsCeil);
+                    statement.setQueryTimeout(queryTimeoutSeconds);
                     try (ResultSet resultSet = statement.executeQuery(sql)) {
                       int outputCnt = 0;
-                      while (resultSet.next()) {
+                      while (!cancelled.get()
+                          && !Thread.currentThread().isInterrupted()
+                          && resultSet.next()) {
                         outputCnt++;
+                      }
+                      if (cancelled.get() || Thread.currentThread().isInterrupted()) {
+                        return;
                       }
                       if (expectedOutputLength != outputCnt) {
                         AssertionError error =
@@ -144,33 +217,126 @@ public class AINodeTestUtils {
                         LOGGER.error("Concurrent inference output mismatch", error);
                         return;
                       }
+                      completedRequests.incrementAndGet();
                     }
                   }
                 } catch (Throwable t) {
-                  firstFailure.compareAndSet(null, t);
-                  LOGGER.error("Concurrent inference failed for SQL: {}", sql, t);
+                  if (!cancelled.get()) {
+                    firstFailure.compareAndSet(null, t);
+                    LOGGER.error("Concurrent inference failed for SQL: {}", sql, t);
+                  } else {
+                    LOGGER.debug(
+                        "Concurrent inference worker stopped after cancellation for SQL: {}",
+                        sql,
+                        t);
+                  }
                 }
               },
               "ainode-concurrent-inference-" + i);
       threads[i].start();
     }
-    long deadlineNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(10);
-    for (Thread thread : threads) {
-      long remainingNanos = deadlineNanos - System.nanoTime();
-      if (remainingNanos > 0) {
-        thread.join(Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remainingNanos)));
-      }
-      if (thread.isAlive()) {
-        for (Thread activeThread : threads) {
-          activeThread.interrupt();
+
+    List<String> timedOutThreads = new ArrayList<>();
+    try {
+      for (Thread thread : threads) {
+        long remainingNanos = deadlineNanos - System.nanoTime();
+        if (remainingNanos > 0L) {
+          thread.join(Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remainingNanos)));
         }
-        fail("Thread timeout after 10 minutes: " + thread.getName());
+        if (thread.isAlive()) {
+          timedOutThreads.add(thread.getName());
+        }
       }
+    } catch (InterruptedException e) {
+      cancelled.set(true);
+      interruptAll(threads);
+      List<String> survivingThreads =
+          drainWorkersUninterruptibly(threads, workerDrainTimeoutMillis);
+      Throwable failure = firstFailure.get();
+      if (failure != null) {
+        e.addSuppressed(failure);
+      }
+      if (!survivingThreads.isEmpty()) {
+        e.addSuppressed(
+            new IllegalStateException(
+                "Inference workers still alive after cancellation drain timeout: "
+                    + survivingThreads));
+      }
+      throw e;
     }
+
+    if (!timedOutThreads.isEmpty()) {
+      cancelled.set(true);
+      interruptAll(threads);
+      List<String> survivingThreads =
+          drainWorkersUninterruptibly(threads, workerDrainTimeoutMillis);
+      StringBuilder message =
+          new StringBuilder("Thread timeout after ")
+              .append(overallTimeoutMillis)
+              .append(" ms: ")
+              .append(timedOutThreads);
+      if (!survivingThreads.isEmpty()) {
+        message.append("; still alive after drain timeout: ").append(survivingThreads);
+      }
+      Throwable failure = firstFailure.get();
+      if (failure != null) {
+        message.append("; first worker failure: ").append(failure.getMessage());
+        throw new AssertionError(message.toString(), failure);
+      }
+      throw new AssertionError(message.toString());
+    }
+
     Throwable failure = firstFailure.get();
     if (failure != null) {
       throw new AssertionError("Concurrent inference failed: " + failure.getMessage(), failure);
     }
+    assertEquals(
+        "Completed concurrent inference request count mismatch for SQL: " + sql,
+        threadCnt * loop,
+        completedRequests.get());
+  }
+
+  private static void interruptAll(Thread[] threads) {
+    for (Thread thread : threads) {
+      if (thread != null) {
+        thread.interrupt();
+      }
+    }
+  }
+
+  private static List<String> drainWorkersUninterruptibly(
+      Thread[] threads, long drainTimeoutMillis) {
+    long drainDeadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(drainTimeoutMillis);
+    boolean interrupted = false;
+    try {
+      for (Thread thread : threads) {
+        if (thread == null) {
+          continue;
+        }
+        while (thread.isAlive()) {
+          long remainingNanos = drainDeadlineNanos - System.nanoTime();
+          if (remainingNanos <= 0L) {
+            break;
+          }
+          try {
+            thread.join(Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remainingNanos)));
+          } catch (InterruptedException e) {
+            interrupted = true;
+          }
+        }
+      }
+    } finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    List<String> survivingThreads = new ArrayList<>();
+    for (Thread thread : threads) {
+      if (thread != null && thread.isAlive()) {
+        survivingThreads.add(thread.getName());
+      }
+    }
+    return survivingThreads;
   }
 
   public static void checkModelOnSpecifiedDevice(Statement statement, String modelId, String device)
@@ -179,22 +345,17 @@ public class AINodeTestUtils {
     LOGGER.info("Checking model: {} on target devices: {}", modelId, targetDevices);
     for (int retry = 0; retry < 200; retry++) {
       Set<String> foundDevices = new HashSet<>();
-      try (final ResultSet resultSet =
-          statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
-        while (resultSet.next()) {
-          String deviceId = resultSet.getString("DeviceId");
-          String loadedModelId = resultSet.getString("ModelId");
-          int count = resultSet.getInt("Count(instances)");
-          LOGGER.info("Model {} found in device {}, count {}", loadedModelId, deviceId, count);
-          if (loadedModelId.equals(modelId) && targetDevices.contains(deviceId) && count > 0) {
-            foundDevices.add(deviceId);
-            LOGGER.info("Model {} is loaded to device {}", modelId, deviceId);
-          }
+      Map<String, Integer> deviceCounts =
+          queryModelDeviceCounts(statement, modelId, device, targetDevices);
+      for (Map.Entry<String, Integer> entry : deviceCounts.entrySet()) {
+        if (entry.getValue() > 0) {
+          foundDevices.add(entry.getKey());
+          LOGGER.info("Model {} is loaded to device {}", modelId, entry.getKey());
         }
-        if (foundDevices.containsAll(targetDevices)) {
-          LOGGER.info("Model {} is loaded to devices {}, start testing", modelId, targetDevices);
-          return;
-        }
+      }
+      if (foundDevices.containsAll(targetDevices)) {
+        LOGGER.info("Model {} is loaded to devices {}, start testing", modelId, targetDevices);
+        return;
       }
       TimeUnit.SECONDS.sleep(3);
     }
@@ -207,27 +368,196 @@ public class AINodeTestUtils {
     Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
     LOGGER.info("Checking model: {} not on target devices: {}", modelId, targetDevices);
     for (int retry = 0; retry < 50; retry++) {
-      Set<String> foundDevices = new HashSet<>();
-      try (final ResultSet resultSet =
-          statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
-        while (resultSet.next()) {
-          String deviceId = resultSet.getString("DeviceId");
-          String loadedModelId = resultSet.getString("ModelId");
-          int count = resultSet.getInt("Count(instances)");
-          LOGGER.info("Model {} found in device {}, count {}", loadedModelId, deviceId, count);
-          if (loadedModelId.equals(modelId) && targetDevices.contains(deviceId) && count > 0) {
-            foundDevices.add(deviceId);
-            LOGGER.info("Model {} is loaded to device {}", modelId, device);
-          }
-        }
-        if (foundDevices.isEmpty()) {
-          LOGGER.info("Model {} is unloaded from devices {}.", modelId, targetDevices);
-          return;
-        }
+      Map<String, Integer> deviceCounts =
+          queryModelDeviceCounts(statement, modelId, device, targetDevices);
+      if (deviceCounts.isEmpty()) {
+        LOGGER.info("Model {} is unloaded from devices {}.", modelId, targetDevices);
+        return;
       }
+      LOGGER.info("Model {} is still present on devices {}", modelId, deviceCounts);
       TimeUnit.SECONDS.sleep(3);
     }
     fail("Model " + modelId + " is still loaded on device " + device);
+  }
+
+  public static void unloadSubmittedModel(
+      Statement statement,
+      String modelId,
+      String device,
+      boolean loadCompleted,
+      long loadSubmittedNanos)
+      throws SQLException {
+    unloadSubmittedModel(
+        statement,
+        modelId,
+        device,
+        loadCompleted,
+        loadSubmittedNanos,
+        MODEL_STATUS_POLL_INTERVAL_MILLIS,
+        MODEL_LOAD_SETTLE_TIMEOUT_MILLIS,
+        MODEL_UNLOAD_TIMEOUT_MILLIS);
+  }
+
+  static void unloadSubmittedModel(
+      Statement statement,
+      String modelId,
+      String device,
+      boolean loadCompleted,
+      long loadSubmittedNanos,
+      long pollIntervalMillis,
+      long loadSettleTimeoutMillis,
+      long unloadTimeoutMillis)
+      throws SQLException {
+    Set<String> targetDevices = ImmutableSet.copyOf(device.split(","));
+    boolean interrupted = Thread.interrupted();
+    try {
+      if (!loadCompleted) {
+        // LOAD MODEL returns as soon as the task is queued in AINode's PoolController. If we
+        // issue UNLOAD MODEL before any device registers a pool, AINode skips queuing an unload
+        // and the later load would leave the model resident for subsequent tests. Wait for the
+        // submitted load to complete or settle before unloading.
+        interrupted |=
+            waitForSubmittedModelLoadToSettle(
+                statement,
+                modelId,
+                device,
+                targetDevices,
+                loadSubmittedNanos,
+                pollIntervalMillis,
+                loadSettleTimeoutMillis);
+      }
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES '%s'", modelId, device));
+      interrupted |=
+          waitForModelRemoval(
+              statement, modelId, device, targetDevices, pollIntervalMillis, unloadTimeoutMillis);
+    } finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  private static boolean waitForSubmittedModelLoadToSettle(
+      Statement statement,
+      String modelId,
+      String device,
+      Set<String> targetDevices,
+      long loadSubmittedNanos,
+      long pollIntervalMillis,
+      long loadSettleTimeoutMillis)
+      throws SQLException {
+    boolean interrupted = false;
+    long settleDeadlineNanos =
+        loadSubmittedNanos + TimeUnit.MILLISECONDS.toNanos(loadSettleTimeoutMillis);
+    Set<String> everRegisteredDevices = new HashSet<>();
+    while (true) {
+      Map<String, Integer> deviceCounts =
+          queryModelDeviceCounts(statement, modelId, device, targetDevices);
+      everRegisteredDevices.addAll(deviceCounts.keySet());
+      Set<String> runningDevices = new HashSet<>();
+      boolean hasInitializingDevice = false;
+      for (Map.Entry<String, Integer> entry : deviceCounts.entrySet()) {
+        if (entry.getValue() > 0) {
+          runningDevices.add(entry.getKey());
+        } else {
+          hasInitializingDevice = true;
+        }
+      }
+      if (runningDevices.containsAll(targetDevices)) {
+        LOGGER.info(
+            "Submitted load of model {} completed on devices {} before cleanup unload.",
+            modelId,
+            targetDevices);
+        return interrupted;
+      }
+      if (everRegisteredDevices.containsAll(targetDevices) && !hasInitializingDevice) {
+        LOGGER.info(
+            "Submitted load of model {} settled on devices {} (running={}) before cleanup unload.",
+            modelId,
+            targetDevices,
+            runningDevices);
+        return interrupted;
+      }
+      long remainingNanos = settleDeadlineNanos - System.nanoTime();
+      if (remainingNanos <= 0L) {
+        LOGGER.warn(
+            "Timed out waiting for submitted load of model {} on devices {} to settle (current={}); proceeding with unload.",
+            modelId,
+            targetDevices,
+            deviceCounts);
+        return interrupted;
+      }
+      long sleepMillis =
+          Math.min(pollIntervalMillis, Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remainingNanos)));
+      interrupted |= sleepUninterruptibly(sleepMillis);
+    }
+  }
+
+  private static boolean waitForModelRemoval(
+      Statement statement,
+      String modelId,
+      String device,
+      Set<String> targetDevices,
+      long pollIntervalMillis,
+      long unloadTimeoutMillis)
+      throws SQLException {
+    boolean interrupted = false;
+    long unloadDeadlineNanos =
+        System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(unloadTimeoutMillis);
+    while (true) {
+      Map<String, Integer> deviceCounts =
+          queryModelDeviceCounts(statement, modelId, device, targetDevices);
+      if (deviceCounts.isEmpty()) {
+        LOGGER.info("Model {} is unloaded from devices {}.", modelId, targetDevices);
+        return interrupted;
+      }
+      long remainingNanos = unloadDeadlineNanos - System.nanoTime();
+      if (remainingNanos <= 0L) {
+        fail("Model " + modelId + " is still loaded on device " + device + ": " + deviceCounts);
+      }
+      long sleepMillis =
+          Math.min(pollIntervalMillis, Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remainingNanos)));
+      interrupted |= sleepUninterruptibly(sleepMillis);
+    }
+  }
+
+  private static Map<String, Integer> queryModelDeviceCounts(
+      Statement statement, String modelId, String device, Set<String> targetDevices)
+      throws SQLException {
+    Map<String, Integer> deviceCounts = new HashMap<>();
+    try (final ResultSet resultSet =
+        statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
+      while (resultSet.next()) {
+        String deviceId = resultSet.getString("DeviceId");
+        String loadedModelId = resultSet.getString("ModelId");
+        int count = resultSet.getInt("Count(instances)");
+        LOGGER.info("Model {} found in device {}, count {}", loadedModelId, deviceId, count);
+        if (loadedModelId.equals(modelId) && targetDevices.contains(deviceId)) {
+          deviceCounts.put(deviceId, count);
+        }
+      }
+    }
+    return deviceCounts;
+  }
+
+  private static boolean sleepUninterruptibly(long millis) {
+    if (millis <= 0L) {
+      return false;
+    }
+    boolean interrupted = false;
+    long endNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(millis);
+    while (true) {
+      long remainingNanos = endNanos - System.nanoTime();
+      if (remainingNanos <= 0L) {
+        return interrupted;
+      }
+      try {
+        TimeUnit.NANOSECONDS.sleep(remainingNanos);
+        return interrupted;
+      } catch (InterruptedException e) {
+        interrupted = true;
+      }
+    }
   }
 
   private static final String[] WRITE_SQL_IN_TREE =
