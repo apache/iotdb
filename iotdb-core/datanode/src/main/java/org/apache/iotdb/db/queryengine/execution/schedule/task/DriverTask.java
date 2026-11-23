@@ -53,7 +53,7 @@ public class DriverTask implements IDIndexedAccessible {
 
   private final boolean isHighestPriority;
 
-  private Throwable abortCause;
+  private final AtomicReference<Throwable> abortCause = new AtomicReference<>();
 
   private final AtomicReference<Priority> priority;
 
@@ -165,11 +165,13 @@ public class DriverTask implements IDIndexedAccessible {
   }
 
   public Optional<Throwable> getAbortCause() {
-    return Optional.ofNullable(abortCause);
+    return Optional.ofNullable(abortCause.get());
   }
 
   public void setAbortCause(Throwable abortCause) {
-    this.abortCause = abortCause;
+    if (abortCause != null) {
+      this.abortCause.compareAndSet(null, abortCause);
+    }
   }
 
   public SettableFuture<Void> getBlockedDependencyDriver() {

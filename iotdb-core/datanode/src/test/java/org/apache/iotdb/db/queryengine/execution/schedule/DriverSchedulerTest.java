@@ -182,4 +182,21 @@ public class DriverSchedulerTest {
         task3.getAbortCause().get().getMessage());
     Assert.assertFalse(task4.getAbortCause().isPresent());
   }
+
+  @Test
+  public void testSetAbortCausePreservesFirstNonNullCause() {
+    DriverTask task = new DriverTask();
+    Throwable firstCause = new RuntimeException("first cause");
+    Throwable secondCause = new RuntimeException("second cause");
+
+    task.setAbortCause(null);
+    Assert.assertFalse(task.getAbortCause().isPresent());
+
+    task.setAbortCause(firstCause);
+    task.setAbortCause(secondCause);
+    task.setAbortCause(null);
+
+    Assert.assertTrue(task.getAbortCause().isPresent());
+    Assert.assertSame(firstCause, task.getAbortCause().get());
+  }
 }

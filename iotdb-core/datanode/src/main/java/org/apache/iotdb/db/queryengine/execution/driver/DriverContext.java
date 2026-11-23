@@ -43,6 +43,8 @@ public class DriverContext {
   private ExchangeOperator downstreamOperator;
 
   private final AtomicBoolean finished = new AtomicBoolean();
+  private final Object failureLock = new Object();
+  private boolean failureReported = false;
   private boolean mayHaveTmpFile = false;
 
   @TestOnly
@@ -127,9 +129,18 @@ public class DriverContext {
   }
 
   public void failed(Throwable cause) {
-    if (finished.compareAndSet(false, true)) {
-      fragmentInstanceContext.failed(cause);
-      finished.set(true);
+    // Serialize failure reporting so concurrent aborters wait until the failure cause has been
+    // recorded on FragmentInstanceContext before deregistering sinks (which read getFailureCause).
+    // Decouple from `finished` so a cascading abort still records its cause even if finished() ran.
+    synchronized (failureLock) {
+      if (!failureReported) {
+        try {
+          fragmentInstanceContext.failed(cause);
+        } finally {
+          failureReported = true;
+          finished.set(true);
+        }
+      }
     }
   }
 
