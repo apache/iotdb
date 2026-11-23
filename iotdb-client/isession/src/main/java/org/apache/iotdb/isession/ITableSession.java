@@ -40,6 +40,10 @@ public interface ITableSession extends AutoCloseable {
   /**
    * Inserts a {@link Tablet} into the database.
    *
+   * <p>A multi-device Tablet may be written to multiple DataNodes. The operation is not atomic;
+   * some rows may be persisted even if an error is returned. Mixed-version clusters in which some
+   * DataNodes do not support database-scoped Tablet insertion are not supported.
+   *
    * @param tablet the tablet containing time-series data to be inserted.
    * @throws StatementExecutionException if an error occurs while executing the statement.
    * @throws IoTDBConnectionException if there is an issue with the IoTDB connection.
@@ -51,6 +55,10 @@ public interface ITableSession extends AutoCloseable {
    *
    * <p>The database does not become the current database of this session and subsequent operations
    * are unaffected.
+   *
+   * <p>A multi-device Tablet may be written to multiple DataNodes. The operation is not atomic;
+   * some rows may be persisted even if an error is returned. Mixed-version clusters in which some
+   * DataNodes do not support database-scoped Tablet insertion are not supported.
    *
    * @param tablet the tablet containing time-series data to be inserted.
    * @param database the target database for this insertion; if null, the current database of this

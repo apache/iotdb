@@ -97,7 +97,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
+import static org.apache.iotdb.isession.util.TableModelDatabaseUtils.MAX_DATABASE_NAME_LENGTH;
 
 public class ImportWAL {
 

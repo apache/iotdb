@@ -3062,6 +3062,10 @@ public class Session implements ISession {
    * insert a relational Tablet. Note: This method is for internal use only, we do not guarantee
    * compatibility with subsequent versions.
    *
+   * <p>A multi-device Tablet may be written to multiple DataNodes. The operation is not atomic;
+   * some rows may be persisted even if an error is returned. Mixed-version clusters in which some
+   * DataNodes do not support database-scoped Tablet insertion are not supported.
+   *
    * @param tablet data batch
    */
   public void insertRelationalTablet(Tablet tablet)
@@ -3071,6 +3075,10 @@ public class Session implements ISession {
 
   /**
    * Inserts a relational {@link Tablet} into the specified database for this invocation only.
+   *
+   * <p>A multi-device Tablet may be written to multiple DataNodes. The operation is not atomic;
+   * some rows may be persisted even if an error is returned. Mixed-version clusters in which some
+   * DataNodes do not support database-scoped Tablet insertion are not supported.
    *
    * @param tablet data batch
    * @param database target database; if null, use the current database of this session
@@ -3262,6 +3270,7 @@ public class Session implements ISession {
 
     StringBuilder errMsgBuilder = new StringBuilder();
     List<Throwable> errors = new ArrayList<>();
+    boolean unsupportedOperationFound = false;
     for (CompletableFuture<Void> completableFuture : completableFutures) {
       try {
         completableFuture.join();
@@ -3272,6 +3281,11 @@ public class Session implements ISession {
           throw (IoTDBConnectionException) cause;
         } else {
           errors.add(cause);
+          if (cause instanceof StatementExecutionException
+              && ((StatementExecutionException) cause).getStatusCode()
+                  == TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode()) {
+            unsupportedOperationFound = true;
+          }
           if (errMsgBuilder.length() > 0) {
             errMsgBuilder.append(";");
           }
@@ -3281,7 +3295,11 @@ public class Session implements ISession {
     }
     if (errMsgBuilder.length() > 0) {
       StatementExecutionException exception =
-          new StatementExecutionException(errMsgBuilder.toString());
+          unsupportedOperationFound
+              ? new StatementExecutionException(
+                  new TSStatus(TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode())
+                      .setMessage(errMsgBuilder.toString()))
+              : new StatementExecutionException(errMsgBuilder.toString());
       errors.forEach(exception::addSuppressed);
       throw exception;
     }

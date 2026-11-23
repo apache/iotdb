@@ -903,6 +903,69 @@ public class SessionCacheLeaderTest {
   }
 
   @Test
+  public void testGroupedRelationalTabletPreservesUnsupportedOperationStatus() throws Exception {
+    AtomicBoolean failWrites = new AtomicBoolean();
+    session =
+        new MockSession("127.0.0.1", 55560, true, "table") {
+          @Override
+          public SessionConnection constructSessionConnection(
+              Session owner, TEndPoint endpoint, ZoneId zoneId) {
+            return new MockSessionConnection(owner, endpoint, zoneId) {
+              @Override
+              protected void insertTablet(TSInsertTabletReq request)
+                  throws RedirectException, IoTDBConnectionException, StatementExecutionException {
+                if (failWrites.get() && endpoint.getPort() == 55561) {
+                  throw new StatementExecutionException(
+                      new TSStatus(TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode())
+                          .setMessage("database-scoped tablet is unsupported"));
+                }
+                super.insertTablet(request);
+              }
+            };
+          }
+        };
+    session.open();
+    try {
+      Tablet tablet =
+          new Tablet(
+              "table1",
+              Arrays.asList("id", "field"),
+              Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+              Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+              50);
+      for (int i = 0; i < 50; i++) {
+        int row = tablet.getRowSize();
+        tablet.addTimestamp(row, row);
+        tablet.addValue("id", row, "id" + (row % 4));
+        tablet.addValue("field", row, 1L);
+      }
+      session.insertRelationalTablet(tablet, "db1");
+
+      failWrites.set(true);
+      tablet.reset();
+      for (int i = 0; i < 4; i++) {
+        int row = tablet.getRowSize();
+        tablet.addTimestamp(row, row);
+        tablet.addValue("id", row, "id" + row);
+        tablet.addValue("field", row, 1L);
+      }
+      StatementExecutionException failure =
+          Assert.assertThrows(
+              StatementExecutionException.class,
+              () -> session.insertRelationalTablet(tablet, "db1"));
+
+      assertEquals(TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(), failure.getStatusCode());
+      assertEquals(1, failure.getSuppressed().length);
+      assertTrue(failure.getSuppressed()[0] instanceof StatementExecutionException);
+      assertEquals(
+          TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+          ((StatementExecutionException) failure.getSuppressed()[0]).getStatusCode());
+    } finally {
+      session.close();
+    }
+  }
+
+  @Test
   public void testInsertRecordsWithSessionBroken() throws StatementExecutionException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);

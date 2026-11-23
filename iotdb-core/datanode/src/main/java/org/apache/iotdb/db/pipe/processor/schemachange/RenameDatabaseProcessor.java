@@ -34,8 +34,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_RENAME_DATABASE_NEW_DB_NAME;
+import static org.apache.iotdb.isession.util.TableModelDatabaseUtils.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 @TableModel
