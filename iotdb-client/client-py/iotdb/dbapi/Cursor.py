@@ -37,14 +37,9 @@ from .Parameters import format_operation
 
 class Cursor(object):
     def __init__(self, connection, session: Session, sqlalchemy_mode=False):
-        # Keep the legacy argument position, but reject the removed adapter mode.
-        if sqlalchemy_mode is not False:
-            raise NotSupportedError(
-                "sqlalchemy_mode is no longer supported by DB-API; "
-                "the SQLAlchemy dialect requires a separate adapter"
-            )
         self.__connection = connection
         self.__session = session
+        self.__sqlalchemy_mode = bool(sqlalchemy_mode)
         self.__arraysize = 1
         self.__is_close = False
         self.__data_set = None
@@ -52,6 +47,8 @@ class Cursor(object):
         self.__has_result_set = False
         self.__rowcount = -1
         self.__operation = None
+        self.__time_indexes = []
+        self.__time_names = []
 
     @property
     def description(self):
@@ -84,6 +81,10 @@ class Cursor(object):
 
         try:
             # PEP 249 retains the operation object for possible reuse.
+            if self.__sqlalchemy_mode:
+                operation, self.__time_indexes, self.__time_names = (
+                    self.__strip_sqlalchemy_time_markers(operation)
+                )
             self.__operation = operation
             sql = format_operation(operation, parameters)
             data_set = self.__session.execute_statement(sql)
@@ -93,10 +94,23 @@ class Cursor(object):
             self.__data_set = data_set
             column_names = list(data_set.get_column_names())
             column_types = list(data_set.get_column_types())
-            self.__description = tuple(
+            description = [
                 (name, data_type.value, None, None, None, None, None)
                 for name, data_type in zip(column_names, column_types)
-            )
+            ]
+            if self.__sqlalchemy_mode:
+                if self.__time_indexes:
+                    for index, name in zip(self.__time_indexes, self.__time_names):
+                        description.insert(
+                            index, (name, None, None, None, None, None, None)
+                        )
+                else:
+                    description.insert(0, ("Time", None, None, None, None, None, None))
+                description = [
+                    (name, None, None, None, None, None, None)
+                    for name, *_ in description
+                ]
+            self.__description = tuple(description)
             self.__has_result_set = True
             return None
         except Error:
@@ -141,6 +155,12 @@ class Cursor(object):
         if row is None:
             self.__release_result_checked()
             return None
+        if self.__sqlalchemy_mode:
+            timestamp, *values = row
+            if self.__time_indexes:
+                for index in self.__time_indexes:
+                    values.insert(index, timestamp)
+                row = tuple(values)
         return row
 
     def fetchmany(self, size=None):
@@ -244,6 +264,25 @@ class Cursor(object):
         except Exception:
             pass
         self.__reset_result()
+
+    @staticmethod
+    def __strip_sqlalchemy_time_markers(operation):
+        if not isinstance(operation, str):
+            return operation, [], []
+        time_indexes = []
+        time_names = []
+        sql_lines = []
+        for line in operation.split("\n"):
+            if "FROM Time Index" in line:
+                time_indexes = [
+                    int(index)
+                    for index in line.replace("FROM Time Index", "").split()
+                ]
+            elif "FROM Time Name" in line:
+                time_names = line.replace("FROM Time Name", "").split()
+            else:
+                sql_lines.append(line)
+        return "\n".join(sql_lines), time_indexes, time_names
 
     @staticmethod
     def __validate_fetch_size(value):

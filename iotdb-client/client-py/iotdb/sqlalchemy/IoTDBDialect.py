@@ -66,7 +66,7 @@ class IoTDBDialect(default.DefaultDialect):
         # inherits the docstring from interfaces.Dialect.create_connect_args
         opts = url.translate_connect_args()
         opts.update(url.query)
-        opts.update({"sqlalchemy_mode": True})
+        opts.update({"sqlalchemy_mode": True, "sql_dialect": "tree"})
         return [[], opts]
 
     @classmethod

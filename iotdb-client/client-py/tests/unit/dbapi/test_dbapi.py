@@ -334,18 +334,50 @@ def test_execute_statement_sends_fetch_size_and_timeout():
     assert requests[0].timeout == 1234
 
 
-@pytest.mark.parametrize("mode", [True, "true", "false", None, 1])
-def test_removed_adapter_mode_is_rejected_before_connecting(monkeypatch, mode):
+def test_legacy_sqlalchemy_mode_keeps_the_dialect_adapter(monkeypatch):
     connection_module = importlib.import_module("iotdb.dbapi.Connection")
 
-    def unexpected_open(*args, **kwargs):
-        pytest.fail("unsupported mode must fail before opening a session")
+    class SessionStub(object):
+        DEFAULT_USER = "root"
+        DEFAULT_PASSWORD = "root"
+        DEFAULT_FETCH_SIZE = 1024
+        DEFAULT_ZONE_ID = "UTC"
 
-    monkeypatch.setattr(connection_module.Session, "open", unexpected_open)
-    with pytest.raises(dbapi.NotSupportedError, match="sqlalchemy_mode"):
-        dbapi.connect("localhost", 6667, sqlalchemy_mode=mode)
-    with pytest.raises(dbapi.NotSupportedError, match="sqlalchemy_mode"):
-        Cursor(FakeConnection(), FakeSession(), mode)
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def open(self, enable_compression):
+            pass
+
+        def execute_statement(self, statement):
+            return None
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(connection_module, "Session", SessionStub)
+    connection = dbapi.connect("localhost", 6667, sqlalchemy_mode=True)
+    cursor = connection.cursor()
+    assert cursor.execute("SELECT 1") is None
+    connection.close()
+
+
+def test_sqlalchemy_cursor_restores_compiler_time_markers():
+    data_set = FakeDataSet([(100, "a", 1), (200, "b", 2)])
+    session = FakeSession(data_set)
+    cursor = Cursor(FakeConnection(), session, sqlalchemy_mode=True)
+    cursor.execute(
+        "SELECT name, value\n FROM Time Index 1\n FROM Time Name event_time"
+    )
+
+    assert session.statements == ["SELECT name, value"]
+    assert cursor.description == (
+        ("name", None, None, None, None, None, None),
+        ("event_time", None, None, None, None, None, None),
+        ("value", None, None, None, None, None, None),
+    )
+    assert cursor.fetchone() == ("a", 100, 1)
+    assert cursor.fetchone() == ("b", 200, 2)
 
 
 def test_cursor_preserves_session_column_order_and_rows():

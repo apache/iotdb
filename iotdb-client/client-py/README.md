@@ -481,10 +481,9 @@ conn.close()
 ```
 
 DB-API executes ordinary SQL and preserves the column order returned by Session.
-It does not interpret adapter-specific markers or rearrange time columns.
-The legacy `sqlalchemy_mode` argument retains its position in the Connection and
-Cursor signatures, but only `False` is accepted; any other value raises
-`NotSupportedError` before a connection is opened or a cursor is created.
+The legacy `sqlalchemy_mode=True` path is retained for the experimental SQLAlchemy
+dialect. It handles that dialect's time-column markers and result metadata without
+changing the standard DB-API behavior.
 
 #### DB-API 2.0 conformance
 
@@ -499,7 +498,7 @@ capabilities; defaulting to the table dialect is an IoTDB choice, not a PEP rule
 | [Cursor attributes](https://peps.python.org/pep-0249/#cursor-attributes) | `description` is `None` without a result set; otherwise each column has seven entries, with a native type code comparable to a DB-API type object. Unknown row counts are `-1`. |
 | [Cursor methods](https://peps.python.org/pep-0249/#cursor-methods) | Parameterized execution, repeated execution, tuple rows, exhaustion and invalid-state errors. `arraysize` defaults to 1; buffer-size hints are accepted as no-ops. |
 | [Type objects and constructors](https://peps.python.org/pep-0249/#type-objects-and-constructors) | Date/time/binary constructors, type categories, and `None` for SQL NULL. Nanosecond timestamps retain their precision. |
-| [Optional extensions](https://peps.python.org/pep-0249/#optional-db-api-extensions) | Forward iteration is supported. Stored procedures, multiple result sets, scrolling and two-phase transactions are not exposed. SQLAlchemy compatibility is outside this scope. |
+| [Optional extensions](https://peps.python.org/pep-0249/#optional-db-api-extensions) | Forward iteration is supported. Stored procedures, multiple result sets, scrolling and two-phase transactions are not exposed. |
 
 `execute()` and `executemany()` return `None`; applications should fetch rows
 separately. `executemany()` performs individual executions and rejects result sets;
@@ -511,14 +510,10 @@ The `Time` constructor is available, but IoTDB has no standalone TIME column typ
 
 ### IoTDB SQLAlchemy Dialect (Experimental)
 
-**Currently unsupported with this DB-API implementation.** The existing dialect
-passes `sqlalchemy_mode=True`, so connecting through it raises `NotSupportedError`.
-SQLAlchemy adaptation is deferred to a separate commit. The dialect code and the
-historical design notes below are retained; they do not imply current compatibility.
-The follow-up adapter must handle the time-column positions and aliases, choose
-the SQL dialect explicitly, and validate result metadata and parameter handling
-against the public DB-API. These responsibilities do not belong in the generic
-Connection or Cursor.
+The legacy adapter remains available to the experimental tree-model dialect.
+It handles the dialect's time-column positions, aliases and result metadata.
+The DB-API default remains the table dialect, while the SQLAlchemy dialect still
+requires explicit validation before production use.
 
 The SQLAlchemy dialect of IoTDB is written to adapt to Apache Superset.
 This part is still being improved.

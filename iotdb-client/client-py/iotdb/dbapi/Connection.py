@@ -42,12 +42,6 @@ class Connection(object):
         sql_dialect="table",
         database=None,
     ):
-        # Keep the legacy argument position, but reject the removed adapter mode.
-        if sqlalchemy_mode is not False:
-            raise NotSupportedError(
-                "sqlalchemy_mode is no longer supported by DB-API; "
-                "the SQLAlchemy dialect requires a separate adapter"
-            )
         if sql_dialect not in ("tree", "table"):
             raise InterfaceError("sql_dialect must be either 'tree' or 'table'")
 
@@ -74,6 +68,7 @@ class Connection(object):
             raise ConnectionError(str(error)) from error
 
         self.__is_close = False
+        self.__sqlalchemy_mode = bool(sqlalchemy_mode)
         # Track live cursors for connection cleanup without preventing their garbage collection.
         self.__cursors = weakref.WeakSet()
 
@@ -101,7 +96,7 @@ class Connection(object):
 
     def cursor(self):
         self.__ensure_open()
-        cursor = Cursor(self, self.__session)
+        cursor = Cursor(self, self.__session, self.__sqlalchemy_mode)
         self.__cursors.add(cursor)
         return cursor
 
