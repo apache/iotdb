@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
@@ -1243,6 +1244,93 @@ public class AlignedTVListTest {
     Assert.assertTrue(materializationGrowth <= expectedMaterialization + 1024);
     assertStructureRamCostMatches(tvList);
     tvList.clear();
+  }
+
+  @Test
+  public void testAllValueColDeletedMapDoesNotMaterializeOpenBlockTail() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            new ArrayList<>(Arrays.asList(TSDataType.INT64, TSDataType.INT64)));
+    tvList.putAlignedValue(0, new Object[] {1L, 2L});
+    // The second row only writes the first column, so the open block has an implicit null tail for
+    // the second column that is not materialized in its bitmap yet.
+    tvList.putAlignedValue(1, new Object[] {3L}, new int[] {0});
+    Assert.assertNull(tvList.getBitMaps());
+
+    Assert.assertNull(tvList.getAllValueColDeletedMap());
+
+    // Computing the all-null map runs on the query thread and must not materialize the tail: a
+    // concurrent flush or query may move or release columns of this list at the same time.
+    Assert.assertNull(tvList.getBitMaps());
+    Assert.assertTrue(tvList.isNullValue(1, 1));
+  }
+
+  @Test
+  public void testAllValueColDeletedMapAfterDeleteAllAndReAdd() {
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(
+            new ArrayList<>(Arrays.asList(TSDataType.INT64, TSDataType.INT64)));
+    tvList.putAlignedValue(9, new Object[] {1L, 2L});
+    tvList.putAlignedValue(11, new Object[] {3L, 4L});
+    // DELETE TIMESERIES deletes every row of every column and removes the measurements, then the
+    // aligned timeseries are re-created and written again.
+    tvList.deleteColumn(0);
+    tvList.deleteColumn(1);
+    tvList.extendColumns(new ArrayList<>(Arrays.asList(TSDataType.INT64, TSDataType.INT64)));
+    tvList.putAlignedValue(9, new Object[] {5L, 6L}, new int[] {2, 3});
+    tvList.putAlignedValue(11, new Object[] {7L}, new int[] {2});
+
+    BitMap allValueDeletedMap = tvList.getAllValueColDeletedMap();
+    Assert.assertTrue(allValueDeletedMap.isMarked(0));
+    Assert.assertTrue(allValueDeletedMap.isMarked(1));
+    Assert.assertFalse(allValueDeletedMap.isMarked(2));
+    Assert.assertFalse(allValueDeletedMap.isMarked(3));
+  }
+
+  @Test
+  public void testAllValueColDeletedMapMatchesSparseWriteNullState() {
+    int columnCount = 4;
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < columnCount; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
+    Random random = new Random(20261123L);
+    int rowCount = ARRAY_SIZE + 9;
+    for (int row = 0; row < rowCount; row++) {
+      // Write a random subset of the columns so that most rows only have implicit nulls for the
+      // columns they do not write.
+      int[] destColumns = new int[columnCount];
+      Object[] values = new Object[columnCount];
+      int writtenColumns = 0;
+      for (int column = 0; column < columnCount; column++) {
+        if (random.nextBoolean()) {
+          destColumns[writtenColumns] = column;
+          values[writtenColumns] = (long) row * columnCount + column;
+          writtenColumns++;
+        }
+      }
+      if (writtenColumns == 0) {
+        // An all-null row.
+        for (int column = 0; column < columnCount; column++) {
+          destColumns[column] = column;
+          values[column] = null;
+        }
+        writtenColumns = columnCount;
+      }
+      tvList.putAlignedValue(
+          row, Arrays.copyOf(values, writtenColumns), Arrays.copyOf(destColumns, writtenColumns));
+    }
+
+    BitMap allValueDeletedMap = tvList.getAllValueColDeletedMap();
+    for (int row = 0; row < rowCount; row++) {
+      boolean allNull = true;
+      for (int column = 0; column < columnCount; column++) {
+        allNull &= tvList.isNullValue(row, column);
+      }
+      Assert.assertEquals(
+          "row " + row, allNull, allValueDeletedMap != null && allValueDeletedMap.isMarked(row));
+    }
   }
 
   private static long lazyColumnContainerRamCost() {

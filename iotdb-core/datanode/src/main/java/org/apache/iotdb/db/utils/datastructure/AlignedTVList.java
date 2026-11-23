@@ -944,8 +944,11 @@ public abstract class AlignedTVList extends TVList {
 
   /**
    * Materialize the unwritten tail of every column that has a value array in the open block. The
-   * tail is the null range [last written row, upToExclusive); it is normally materialized when the
-   * block closes, and also before the block is read or copied.
+   * tail is the null range [last written row, upToExclusive); it is materialized when the block
+   * closes and before the block is encoded for flush or serialized to WAL.
+   *
+   * <p>This method mutates the bitmap containers, so it must not be called from a query read path:
+   * a concurrent flush or query may release or move columns of this list while a reader runs.
    */
   private void materializeOpenBlockTails(int upToExclusive) {
     int arrayIndex = timestamps.size() - 1;
@@ -957,7 +960,8 @@ public abstract class AlignedTVList extends TVList {
     int openBlockRows = Math.min(rowCount - arrayIndex * ARRAY_SIZE, ARRAY_SIZE);
     int limit = Math.min(upToExclusive, openBlockRows);
     for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-      if (!isTouched(columnIndex)) {
+      if (!isTouched(columnIndex) || values.get(columnIndex) == null) {
+        // A released or moved column has no container left to materialize.
         continue;
       }
       int lastRow = blockLastRow[columnIndex];
@@ -1198,8 +1202,14 @@ public abstract class AlignedTVList extends TVList {
    */
   public synchronized void deleteColumn(int columnIndex) {
     hasNull = true;
+    // A removed column is null in every row and is never written again: drop its open-block
+    // progress, otherwise readers and encoders keep treating it as a column that is still being
+    // appended to (same bookkeeping as releaseNonQueryColumns).
+    clearTouched(columnIndex);
+    blockLastRow[columnIndex] = 0;
     List<Object> columnValues = values.get(columnIndex);
     if (columnValues == null) {
+      invalidateStructureRamCost();
       return;
     }
     for (int arrayIndex = 0; arrayIndex < columnValues.size(); arrayIndex++) {
@@ -2310,11 +2320,22 @@ public abstract class AlignedTVList extends TVList {
     if (rowCount <= 0) {
       return null;
     }
-    materializeOpenBlockTails(rowCount);
 
     int blockCount = (rowCount + ARRAY_SIZE - 1) / ARRAY_SIZE;
-    // Preserve the dense fast path: one column without null blocks or bitmaps proves that every row
-    // has at least one value.
+    // The last allocated block is still append-only, so the rows a column has not written yet are
+    // implicit nulls that are not materialized in its bitmap. This method must not materialize
+    // them: it runs on the query thread while the flush process or another query can release or
+    // move columns of this list (which nulls their value and bitmap containers), so writing
+    // bitmaps here would race with those ownership changes. The implicit tails are derived from
+    // blockLastRow instead, exactly like isNullValue does.
+    int openBlockIndex = timestamps.size() - 1;
+    int openBlockRows =
+        openBlockIndex < 0 || openBlockIndex >= blockCount
+            ? 0
+            : Math.min(rowCount - openBlockIndex * ARRAY_SIZE, ARRAY_SIZE);
+
+    // Preserve the dense fast path: one column without null blocks, bitmaps or an implicit null
+    // tail proves that every row has at least one value.
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       List<Object> columnValues = values.get(columnIndex);
       if (columnValues == null) {
@@ -2329,6 +2350,13 @@ public abstract class AlignedTVList extends TVList {
           break;
         }
       }
+      if (columnHasNoNull
+          && openBlockRows > 0
+          && isTouched(columnIndex)
+          && blockLastRow[columnIndex] < openBlockRows) {
+        // The open block still has an implicit null tail for this column.
+        columnHasNoNull = false;
+      }
       if (columnHasNoNull) {
         return null;
       }
@@ -2339,7 +2367,9 @@ public abstract class AlignedTVList extends TVList {
     for (int blockIndex = 0; blockIndex < blockCount; blockIndex++) {
       int row = blockIndex * ARRAY_SIZE;
       int byteIndex = row / Byte.SIZE;
-      int byteCount = (Math.min(rowCount - row, ARRAY_SIZE) + Byte.SIZE - 1) / Byte.SIZE;
+      int rowsInBlock = Math.min(rowCount - row, ARRAY_SIZE);
+      int byteCount = (rowsInBlock + Byte.SIZE - 1) / Byte.SIZE;
+      boolean openBlock = blockIndex == openBlockIndex;
       for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
         List<Object> columnValues = values.get(columnIndex);
         if (columnValues == null || columnValues.get(blockIndex) == null) {
@@ -2348,14 +2378,34 @@ public abstract class AlignedTVList extends TVList {
 
         List<BitMap> columnBitMaps = bitMaps == null ? null : bitMaps.get(columnIndex);
         BitMap bitMap = columnBitMaps == null ? null : columnBitMaps.get(blockIndex);
-        if (bitMap == null) {
+        // A closed block materialized its null tails when it was closed. In the open block only
+        // the rows before blockLastRow are materialized; the rest are implicit nulls.
+        int materializedRows =
+            openBlock && isTouched(columnIndex)
+                ? Math.min(blockLastRow[columnIndex], rowsInBlock)
+                : rowsInBlock;
+        if (bitMap == null && materializedRows == rowsInBlock) {
+          // No row of this block is null in this column.
           Arrays.fill(rowBitsArr, byteIndex, byteIndex + byteCount, (byte) 0x00);
           break;
         }
 
-        byte[] bitMapBytes = bitMap.getByteArray();
+        byte[] bitMapBytes = bitMap == null ? null : bitMap.getByteArray();
+        int fullBytes = materializedRows / Byte.SIZE;
+        int partialBits = materializedRows - fullBytes * Byte.SIZE;
         for (int i = 0; i < byteCount; i++) {
-          rowBitsArr[byteIndex + i] &= bitMapBytes[i];
+          int nullBits;
+          if (i < fullBytes) {
+            nullBits = bitMapBytes == null ? 0 : bitMapBytes[i] & 0xFF;
+          } else if (i == fullBytes) {
+            // Rows from materializedRows on are implicit nulls, so their bits stay set.
+            int materializedMask = partialBits == 0 ? 0 : (1 << partialBits) - 1;
+            int bitmapBits = bitMapBytes == null ? 0 : bitMapBytes[i] & 0xFF;
+            nullBits = (bitmapBits & materializedMask) | (~materializedMask & 0xFF);
+          } else {
+            nullBits = 0xFF;
+          }
+          rowBitsArr[byteIndex + i] &= (byte) nullBits;
         }
       }
     }
