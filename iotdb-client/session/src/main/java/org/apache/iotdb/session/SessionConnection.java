@@ -129,7 +129,7 @@ public class SessionConnection {
   // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
   private int timeFactor = 1_000;
 
-  private boolean supportsDatabaseScopedTablet;
+  private volatile boolean supportsDatabaseScopedTablet;
   private volatile boolean forceClosed;
 
   // TestOnly

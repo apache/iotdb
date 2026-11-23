@@ -29,12 +29,13 @@ public final class TableModelDatabaseUtils {
   private static final Pattern DATABASE_NAME_PATTERN =
       Pattern.compile("([a-zA-Z0-9`_\\-\\u2E80-\\u9FFF]+)");
 
-  private TableModelDatabaseUtils() {}
+  private TableModelDatabaseUtils() {
+    // Utility class.
+  }
 
   public static boolean isValidDatabaseName(String databaseName, int maxLength) {
     return databaseName != null
         && databaseName.length() <= maxLength
-        && databaseName.indexOf('.') < 0
         && DATABASE_NAME_PATTERN.matcher(databaseName).matches();
   }
 }

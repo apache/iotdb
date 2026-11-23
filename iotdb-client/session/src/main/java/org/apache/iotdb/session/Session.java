@@ -709,7 +709,10 @@ public class Session implements ISession {
     isClosed = false;
     if (enableRedirection || enableQueryRedirection) {
       this.deviceIdToEndpoint = deviceIdToEndpoint;
-      this.tableModelDeviceIdToEndpoint = tableModelDeviceIdToEndpoint;
+      this.tableModelDeviceIdToEndpoint =
+          tableModelDeviceIdToEndpoint == null
+              ? new ConcurrentHashMap<>()
+              : tableModelDeviceIdToEndpoint;
       endPointToSessionConnection = new ConcurrentHashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, getDefaultSessionConnection());
     }
@@ -1488,11 +1491,6 @@ public class Session implements ISession {
     }
   }
 
-  private Map<IDeviceID, TEndPoint> getTableModelDatabaseRoutes(String routeDatabase) {
-    Map<IDeviceID, TEndPoint> databaseToEndpoint = tableModelDeviceIdToEndpoint.get(routeDatabase);
-    return databaseToEndpoint == null ? Collections.emptyMap() : databaseToEndpoint;
-  }
-
   private SessionConnection getSessionConnection(
       Map<IDeviceID, TEndPoint> databaseToEndpoint, IDeviceID deviceId)
       throws IoTDBConnectionException {
@@ -1504,6 +1502,11 @@ public class Session implements ISession {
     } else {
       return getDefaultSessionConnection();
     }
+  }
+
+  private Map<IDeviceID, TEndPoint> getTableModelDatabaseRoutes(String routeDatabase) {
+    Map<IDeviceID, TEndPoint> databaseToEndpoint = tableModelDeviceIdToEndpoint.get(routeDatabase);
+    return databaseToEndpoint == null ? Collections.emptyMap() : databaseToEndpoint;
   }
 
   @Override
@@ -1538,8 +1541,8 @@ public class Session implements ISession {
         }
       }
       if (tableModelDeviceIdToEndpoint != null && !tableModelDeviceIdToEndpoint.isEmpty()) {
-        for (Map<IDeviceID, TEndPoint> deviceIdToEndpoint : tableModelDeviceIdToEndpoint.values()) {
-          for (Iterator<Entry<IDeviceID, TEndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
+        for (Map<IDeviceID, TEndPoint> databaseToEndpoint : tableModelDeviceIdToEndpoint.values()) {
+          for (Iterator<Entry<IDeviceID, TEndPoint>> it = databaseToEndpoint.entrySet().iterator();
               it.hasNext(); ) {
             Entry<IDeviceID, TEndPoint> entry = it.next();
             if (Objects.equals(entry.getValue(), endPoint)) {
@@ -3071,6 +3074,8 @@ public class Session implements ISession {
    *
    * @param tablet data batch
    * @param database target database; if null, use the current database of this session
+   * @throws IoTDBConnectionException if there is an issue with the IoTDB connection
+   * @throws StatementExecutionException if an error occurs while executing the statement
    */
   public void insertRelationalTablet(Tablet tablet, String database)
       throws IoTDBConnectionException, StatementExecutionException {
