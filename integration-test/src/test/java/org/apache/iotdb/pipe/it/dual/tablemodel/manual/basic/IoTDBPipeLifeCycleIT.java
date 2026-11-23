@@ -607,6 +607,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelSharedClusterIT 
 
     TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
 
+    TableModelUtils.assertData("test", "test", 0, 200, receiverEnv, handleFailure);
+
     TableModelUtils.insertData("test", "test", 200, 300, receiverEnv);
 
     try (final SyncConfigNodeIServiceClient client =
