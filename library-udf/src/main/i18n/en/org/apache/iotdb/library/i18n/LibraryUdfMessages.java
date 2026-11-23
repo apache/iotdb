@@ -25,6 +25,9 @@ public final class LibraryUdfMessages {
   public static final String NO_SUCH_DATA_TYPE = "No such kind of data type.";
 
   // UDTFLOF
+  public static final String
+      EXCEPTION_LOF_NEIGHBOR_GRAPH_EXCEEDS_THE_64_MIB_WORKING_MEMORY_LIMIT_7BF9B997 =
+          "LOF neighbor graph exceeds the 64 MiB working-memory limit.";
   public static final String FAIL_TO_GET_LOF = "Fail to get LOF ";
 
   // TimeSeriesQuality, ValueRepair

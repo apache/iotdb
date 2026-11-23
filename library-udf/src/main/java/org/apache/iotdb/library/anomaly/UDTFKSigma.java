@@ -38,7 +38,10 @@ public class UDTFKSigma implements UDTF {
 
   private double mean = 0.0;
   private double sumSquaredDeviation = 0.0;
+  private double safeMomentMagnitude;
+  private double statisticScale;
   private double multipleK;
+  private boolean usesScaledStatistics;
   private int windowSize = 0;
   private CircularQueue<Object> v;
   private LongCircularQueue t;
@@ -76,6 +79,9 @@ public class UDTFKSigma implements UDTF {
     this.windowSize = udfParameters.getIntOrDefault("window", DEFAULT_WINDOW_SIZE);
     this.mean = 0.0;
     this.sumSquaredDeviation = 0.0;
+    this.safeMomentMagnitude = Math.sqrt(Double.MAX_VALUE / (8.0 * windowSize));
+    this.statisticScale = 0.0;
+    this.usesScaledStatistics = false;
     this.v = new CircularQueue<>(windowSize);
     this.t = new LongCircularQueue(windowSize);
   }
@@ -96,7 +102,7 @@ public class UDTFKSigma implements UDTF {
         v.push(storedValue);
         t.push(timestamp);
         addValue(value);
-        if (v.getSize() > 1 && Math.abs(value - mean) > multipleK * sampleStandardDeviation()) {
+        if (v.getSize() > 1 && isOutlier(value)) {
           valueWriter.write(collector, timestamp, storedValue);
         }
       } else {
@@ -105,12 +111,10 @@ public class UDTFKSigma implements UDTF {
         t.push(timestamp);
         addValue(value);
         if (v.getSize() == this.windowSize) {
-          double standardDeviation = sampleStandardDeviation();
           for (int i = 0; i < v.getSize(); i++) {
             Object windowValue = this.v.get(i);
             timestamp = this.t.get(i);
-            if (Math.abs(Double.parseDouble(windowValue.toString()) - mean)
-                > multipleK * standardDeviation) {
+            if (isOutlier(Double.parseDouble(windowValue.toString()))) {
               valueWriter.write(collector, timestamp, windowValue);
             }
           }
@@ -122,12 +126,10 @@ public class UDTFKSigma implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (!v.isFull() && v.getSize() > 1) {
-      double standardDeviation = sampleStandardDeviation();
       for (int i = 0; i < v.getSize(); i++) {
         Object windowValue = this.v.get(i);
         long timestamp = this.t.get(i);
-        if (Math.abs(Double.parseDouble(windowValue.toString()) - mean)
-            > multipleK * standardDeviation) {
+        if (isOutlier(Double.parseDouble(windowValue.toString()))) {
           valueWriter.write(collector, timestamp, windowValue);
         }
       }
@@ -135,17 +137,29 @@ public class UDTFKSigma implements UDTF {
   }
 
   private void addValue(double value) {
+    if (usesScaledStatistics || Math.abs(value) > safeMomentMagnitude) {
+      recomputeStatistics();
+      return;
+    }
     int newCount = v.getSize();
     double delta = value - mean;
     mean += delta / newCount;
     sumSquaredDeviation += delta * (value - mean);
+    if (!Double.isFinite(mean) || !Double.isFinite(sumSquaredDeviation)) {
+      recomputeStatistics();
+    }
   }
 
   private void removeValue(double value) {
+    if (usesScaledStatistics) {
+      recomputeStatistics();
+      return;
+    }
     int remainingCount = v.getSize();
     if (remainingCount == 0) {
       mean = 0;
       sumSquaredDeviation = 0;
+      statisticScale = 0;
       return;
     }
     double delta = value - mean;
@@ -158,6 +172,17 @@ public class UDTFKSigma implements UDTF {
   }
 
   private void recomputeStatistics() {
+    double maxMagnitude = 0;
+    for (int i = 0; i < v.getSize(); i++) {
+      maxMagnitude = Math.max(maxMagnitude, Math.abs(Double.parseDouble(v.get(i).toString())));
+    }
+    if (maxMagnitude > safeMomentMagnitude) {
+      recomputeScaledStatistics(maxMagnitude);
+      return;
+    }
+
+    usesScaledStatistics = false;
+    statisticScale = 0;
     mean = 0;
     sumSquaredDeviation = 0;
     for (int i = 0; i < v.getSize(); i++) {
@@ -166,7 +191,34 @@ public class UDTFKSigma implements UDTF {
       double delta = value - mean;
       mean += delta / count;
       sumSquaredDeviation += delta * (value - mean);
+      if (!Double.isFinite(mean) || !Double.isFinite(sumSquaredDeviation)) {
+        recomputeScaledStatistics(maxMagnitude);
+        return;
+      }
     }
+  }
+
+  private void recomputeScaledStatistics(double scale) {
+    mean = 0;
+    sumSquaredDeviation = 0;
+    statisticScale = scale;
+    usesScaledStatistics = scale > 0;
+    if (!usesScaledStatistics) {
+      return;
+    }
+
+    for (int i = 0; i < v.getSize(); i++) {
+      double value = Double.parseDouble(v.get(i).toString()) / scale;
+      int count = i + 1;
+      double delta = value - mean;
+      mean += delta / count;
+      sumSquaredDeviation += delta * (value - mean);
+    }
+  }
+
+  private boolean isOutlier(double value) {
+    double comparedValue = usesScaledStatistics ? value / statisticScale : value;
+    return Math.abs(comparedValue - mean) > multipleK * sampleStandardDeviation();
   }
 
   private double sampleStandardDeviation() {

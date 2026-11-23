@@ -179,6 +179,24 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testKSigmaHandlesExtremeFiniteWindow() throws Exception {
+    UDFParameters parameters =
+        createSingleDoubleSeriesParameters(Map.of("k", "0.5", "window", "3"));
+    UDTFKSigma kSigma = new UDTFKSigma();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    kSigma.validate(new UDFParameterValidator(parameters));
+    kSigma.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    kSigma.transform(new DoubleRow(1, Double.MAX_VALUE), collector);
+    kSigma.transform(new DoubleRow(2, -Double.MAX_VALUE), collector);
+    kSigma.transform(new DoubleRow(3, Double.MAX_VALUE), collector);
+
+    Assert.assertEquals(Arrays.asList(1L, 2L, 3L), collector.timestamps);
+    Assert.assertEquals(
+        Arrays.asList(Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE), collector.values);
+  }
+
+  @Test
   public void testMvAvgUsesRunningWindowSum() throws Exception {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("window", "3");
@@ -357,6 +375,46 @@ public class UDFWindowAndQueueTest {
     for (double value : collector.values) {
       Assert.assertEquals(1.0, value, 1e-12);
     }
+  }
+
+  @Test
+  public void testLOFSeriesUsesOlderNearestVectorsAcrossAccessWindows() throws Exception {
+    UDFParameters parameters =
+        createSingleDoubleSeriesParameters(Map.of("method", "series", "window", "1", "k", "2"));
+    UDTFLOF lof = new UDTFLOF();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    lof.validate(new UDFParameterValidator(parameters));
+    lof.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    lof.transform(
+        new SimpleRowWindow(
+            new DoubleRow(1, 0.0),
+            new DoubleRow(2, 0.1),
+            new DoubleRow(3, 100.0),
+            new DoubleRow(4, 100.0)),
+        collector);
+    lof.transform(new SimpleRowWindow(new DoubleRow(5, 0.2)), collector);
+
+    Assert.assertEquals(5, collector.timestamps.size());
+    Assert.assertEquals(Long.valueOf(5), collector.timestamps.get(4));
+    Assert.assertEquals(0.875, collector.values.get(4), 1e-12);
+  }
+
+  @Test
+  public void testLOFRejectsNeighborGraphOverMemoryLimit() throws Exception {
+    UDFParameters parameters =
+        createSingleDoubleSeriesParameters(Map.of("k", "9999", "window", "10000"));
+    UDTFLOF lof = new UDTFLOF();
+    RecordingPointCollector collector = new RecordingPointCollector();
+    Row[] rows = new Row[10000];
+    for (int i = 0; i < rows.length; i++) {
+      rows[i] = new DoubleRow(i, i);
+    }
+
+    lof.validate(new UDFParameterValidator(parameters));
+    lof.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    Assert.assertThrows(
+        UDFException.class, () -> lof.transform(new SimpleRowWindow(rows), collector));
   }
 
   @Test
@@ -2098,6 +2156,24 @@ public class UDFWindowAndQueueTest {
       Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
       Assert.assertEquals(yValues[0] < yValues[1] ? 1.0 : -1.0, collector.values.get(0), 1e-12);
     }
+  }
+
+  @Test
+  public void testCovarianceHandlesFiniteMixedRangeEndpoints() throws Exception {
+    UDFParameters parameters = createTwoDoubleSeriesParameters(Collections.emptyMap());
+    UDAFCov cov = new UDAFCov();
+    RecordingPointCollector collector = new RecordingPointCollector();
+    cov.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    cov.transform(
+        new DoubleRow(1, new double[] {-Double.MAX_VALUE, -Double.MIN_VALUE}, new boolean[2]),
+        collector);
+    cov.transform(
+        new DoubleRow(2, new double[] {Double.MAX_VALUE, Double.MIN_VALUE}, new boolean[2]),
+        collector);
+    cov.terminate(collector);
+
+    Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
+    Assert.assertEquals(Double.MAX_VALUE * Double.MIN_VALUE, collector.values.get(0), 1e-28);
   }
 
   @Test

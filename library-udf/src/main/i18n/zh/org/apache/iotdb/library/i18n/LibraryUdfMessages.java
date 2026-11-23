@@ -25,6 +25,9 @@ public final class LibraryUdfMessages {
   public static final String NO_SUCH_DATA_TYPE = "不支持此数据类型。";
 
   // UDTFLOF
+  public static final String
+      EXCEPTION_LOF_NEIGHBOR_GRAPH_EXCEEDS_THE_64_MIB_WORKING_MEMORY_LIMIT_7BF9B997 =
+          "LOF 邻居图的工作内存超过 64 MiB 限制。";
   public static final String FAIL_TO_GET_LOF = "获取 LOF 失败 ";
 
   // TimeSeriesQuality, ValueRepair
