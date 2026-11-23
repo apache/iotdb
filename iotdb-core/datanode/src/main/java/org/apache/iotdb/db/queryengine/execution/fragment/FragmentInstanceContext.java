@@ -164,7 +164,7 @@ public class FragmentInstanceContext extends QueryContext {
   // Queries can start before the data regions finish recovering after a restart. During that
   // window the time index may still change from FILE TIME INDEX to DEVICE TIME INDEX, so an
   // absent device must not be treated as corruption or remembered as absent.
-  private boolean isStorageEngineRecovering = false;
+  private boolean startedDuringStorageEngineRecovery = false;
 
   private QueryDataSourceType queryDataSourceType = QueryDataSourceType.SERIES_SCAN;
 
@@ -457,7 +457,8 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void start() {
     long now = System.currentTimeMillis();
-    isStorageEngineRecovering = !StorageEngine.getInstance().isReadyForNonReadWriteFunctions();
+    startedDuringStorageEngineRecovery =
+        !StorageEngine.getInstance().isReadyForNonReadWriteFunctions();
     executionStartTime.compareAndSet(null, now);
     startNanos.compareAndSet(0, System.nanoTime());
 
@@ -1643,9 +1644,9 @@ public class FragmentInstanceContext extends QueryContext {
     return unclosedSeqFileNum.get();
   }
 
-  /** Whether this query started while the storage engine was still recovering its data regions. */
-  public boolean isStorageEngineRecovering() {
-    return isStorageEngineRecovering;
+  @Override
+  public boolean startedDuringStorageEngineRecovery() {
+    return startedDuringStorageEngineRecovery;
   }
 
   /**

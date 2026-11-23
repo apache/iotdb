@@ -103,6 +103,11 @@ public class QueryContext {
     this.timeout = timeout;
   }
 
+  /** Whether the query started during DataRegion recovery. */
+  public boolean startedDuringStorageEngineRecovery() {
+    return false;
+  }
+
   public boolean isExternalTsFileScan() {
     return false;
   }

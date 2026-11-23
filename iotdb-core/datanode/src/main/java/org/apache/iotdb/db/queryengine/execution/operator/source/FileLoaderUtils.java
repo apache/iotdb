@@ -65,6 +65,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.tsfile.common.constant.TsFileConstant.TIME_COLUMN_ID;
 
 public class FileLoaderUtils {
 
@@ -111,7 +112,7 @@ public class FileLoaderUtils {
                         seriesPath.getDeviceId(),
                         seriesPath.getMeasurement()),
                     allSensors,
-                    context.isStorageEngineRecovering()
+                    context.startedDuringStorageEngineRecovery()
                         || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                     context.isDebug(),
                     context);
@@ -334,74 +335,54 @@ public class FileLoaderUtils {
       boolean ignoreAllNullRows,
       long[] rootMeasurementMetadataIndexNodeOffset)
       throws IOException {
-    AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
-    // load all the TimeseriesMetadata of vector, the first one is for time column and the
-    // remaining is for sub sensors
-    // the order of timeSeriesMetadata list is same as subSensorList's order
-    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
-    List<String> valueMeasurementList = alignedPath.getMeasurementList();
-    // resolves the time column and every selected sensor in one call: the cache reads each leaf
-    // group that holds one of them once and answers the whole group from that read, so a wide
-    // projection does not walk the device metadata index once per column
-    Set<String> allSensors = alignedPath.getAllSensors();
-
-    // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
-    // we should not ignore the non-exist of device in TsFileMetadata
-    boolean ignoreNotExists =
-        context.isStorageEngineRecovering()
+    boolean ignoreMissingDevice =
+        context.startedDuringStorageEngineRecovery()
             || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
-
-    Map<String, TimeseriesMetadata> metadata =
-        cache.getDeviceTimeseriesMetadata(
-            resource.getTsFilePath(),
-            resource.getTsFileID(),
-            alignedPath.getDeviceId(),
-            allSensors,
-            ignoreNotExists,
-            context.isDebug(),
-            context,
-            rootMeasurementMetadataIndexNodeOffset);
-
-    TimeseriesMetadata timeColumn = metadata.get("");
-    if (timeColumn != null) {
-      // only need time column, like count_time aggregation
-      if (valueMeasurementList.isEmpty()) {
-        // whatever for table or tree model, if we only need time column, that means that we
-        // shouldn't ignore all null rows
-        alignedTimeSeriesMetadata =
-            setModifications(
-                resource,
-                timeColumn,
-                Collections.emptyList(),
-                alignedPath,
+    Map<String, TimeseriesMetadata> metadataByMeasurement =
+        TimeSeriesMetadataCache.getInstance()
+            .getAlignedTimeseriesMetadata(
+                resource.getTsFilePath(),
+                resource.getTsFileID(),
+                alignedPath.getDeviceId(),
+                alignedPath.getAllSensors(),
+                ignoreMissingDevice,
                 context,
-                globalTimeFilter,
-                false);
-      } else {
-        List<TimeseriesMetadata> valueTimeSeriesMetadataList =
-            new ArrayList<>(valueMeasurementList.size());
-        for (String measurement : valueMeasurementList) {
-          valueTimeSeriesMetadataList.add(metadata.get(measurement));
-        }
-        // if all the queried aligned sensors do not exist, skip the device in this file
-        boolean exist = false;
-        for (TimeseriesMetadata valueColumn : valueTimeSeriesMetadataList) {
-          exist = (exist || (valueColumn != null));
-        }
-        if (!ignoreAllNullRows || exist) {
-          alignedTimeSeriesMetadata =
-              setModifications(
-                  resource,
-                  timeColumn,
-                  valueTimeSeriesMetadataList,
-                  alignedPath,
-                  context,
-                  globalTimeFilter,
-                  ignoreAllNullRows);
-        }
-      }
+                rootMeasurementMetadataIndexNodeOffset);
+
+    if (metadataByMeasurement == null) {
+      return null;
     }
-    return alignedTimeSeriesMetadata;
+    TimeseriesMetadata timeColumn = metadataByMeasurement.get(TIME_COLUMN_ID);
+    List<String> valueMeasurements = alignedPath.getMeasurementList();
+    if (valueMeasurements.isEmpty()) {
+      // A time-only projection such as count_time includes rows with all null values.
+      return setModifications(
+          resource,
+          timeColumn,
+          Collections.emptyList(),
+          alignedPath,
+          context,
+          globalTimeFilter,
+          false);
+    }
+    List<TimeseriesMetadata> valueColumns = new ArrayList<>(valueMeasurements.size());
+    boolean hasValueColumn = false;
+    for (String measurement : valueMeasurements) {
+      TimeseriesMetadata valueColumn = metadataByMeasurement.get(measurement);
+      valueColumns.add(valueColumn);
+      hasValueColumn |= valueColumn != null;
+    }
+    if (ignoreAllNullRows && !hasValueColumn) {
+      return null;
+    }
+    return setModifications(
+        resource,
+        timeColumn,
+        valueColumns,
+        alignedPath,
+        context,
+        globalTimeFilter,
+        ignoreAllNullRows);
   }
 
   private static AbstractAlignedTimeSeriesMetadata setModifications(
