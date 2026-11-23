@@ -579,6 +579,11 @@ public abstract class AlignedTVList extends TVList {
       }
       writeCell(columnIndex, arrayIndex, elementIndex, columnValue);
     }
+    if (destColumns.length < dataTypes.size()) {
+      // The row leaves at least one column unwritten, so its cell is null even though no bitmap
+      // update happened above (for example an all-null row).
+      hasNull = true;
+    }
     if (indices != null) {
       indices.get(arrayIndex)[elementIndex] = rowCount;
     }
@@ -947,7 +952,10 @@ public abstract class AlignedTVList extends TVList {
     if (arrayIndex < 0) {
       return;
     }
-    int limit = Math.min(upToExclusive, ARRAY_SIZE);
+    // Only the rows that already exist in the open block may be marked. Marking rows that will be
+    // appended later would hide the values of the following writes.
+    int openBlockRows = Math.min(rowCount - arrayIndex * ARRAY_SIZE, ARRAY_SIZE);
+    int limit = Math.min(upToExclusive, openBlockRows);
     for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
       if (!isTouched(columnIndex)) {
         continue;
@@ -997,6 +1005,10 @@ public abstract class AlignedTVList extends TVList {
    */
   private void recordWrittenSegment(int[] destColumns, int arrayIndex, int elementIdx, int len) {
     int columnCount = getColumnCount(destColumns);
+    if (columnCount < dataTypes.size()) {
+      // Rows that do not write every column have null cells even if no bitmap was updated.
+      hasNull = true;
+    }
     for (int j = 0; j < columnCount; j++) {
       int columnIndex = getColumnIndex(destColumns, j);
       if (values.get(columnIndex).get(arrayIndex) == null) {

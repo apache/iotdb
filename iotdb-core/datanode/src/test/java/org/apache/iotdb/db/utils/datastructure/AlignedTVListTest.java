@@ -1057,6 +1057,20 @@ public class AlignedTVListTest {
   }
 
   @Test
+  public void testAllNullRowIsReportedAsNull() {
+    // A single-column list has no "untouched column" that would make hasNull true, so an all-null
+    // row (a row that writes no measurement at all) must still be reported as null.
+    AlignedTVList tvList =
+        AlignedTVList.newAlignedList(new ArrayList<>(Collections.singletonList(TSDataType.INT64)));
+    tvList.putAlignedValue(0, new Object[] {1L}, new int[] {0});
+    tvList.putAlignedValue(1, new Object[0], new int[0]);
+    Assert.assertFalse(tvList.isNullValue(0, 0));
+    Assert.assertTrue(tvList.isNullValue(1, 0));
+    Assert.assertEquals(2, tvList.rowCount());
+    tvList.clear();
+  }
+
+  @Test
   public void testNullCellsAreNeverMaterializedAsDefaultValues() {
     // A block that holds no value for a column must stay "no array at all" so that null is never
     // confused with a default value such as 0. This is the same representation the list used before
