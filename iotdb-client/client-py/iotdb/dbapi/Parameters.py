@@ -54,6 +54,13 @@ def format_operation(operation, parameters):
                 "escape literal percent signs as %%"
             )
 
+    if not named and not parameters:
+        has_value_placeholder = any(
+            match.group() != "%%" for match in _PLACEHOLDER.finditer(operation)
+        )
+        if not has_value_placeholder:
+            return operation % () if "%%" in operation else operation
+
     try:
         values = (
             _LiteralMapping(parameters)

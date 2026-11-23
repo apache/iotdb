@@ -119,6 +119,19 @@ def test_parameter_mismatches_raise_programming_error(operation, parameters):
         format_operation(operation, parameters)
 
 
+@pytest.mark.parametrize(
+    "operation, expected",
+    [("SELECT 1", "SELECT 1"), ("SELECT '100%%'", "SELECT '100%'")],
+)
+def test_empty_positional_parameters_without_placeholders(operation, expected):
+    assert format_operation(operation, ()) == expected
+
+
+def test_empty_positional_parameters_still_require_matching_placeholders():
+    with pytest.raises(dbapi.ProgrammingError):
+        format_operation("SELECT %s", ())
+
+
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), object()])
 def test_unsupported_parameter_values_raise_data_error(value):
     with pytest.raises(dbapi.DataError):
@@ -146,7 +159,7 @@ def test_cursor_streams_rows_and_releases_result():
 
 def test_session_data_set_tuple_uses_stable_python_types():
     data_set = SessionDataSet.__new__(SessionDataSet)
-    data_set.iotdb_rpc_data_set = SimpleNamespace(ignore_timestamp=False)
+    data_set.iotdb_rpc_data_set = SimpleNamespace(ignore_timestamp=True)
     data_set.next = lambda: RowRecord(
         np.int64(1),
         [
@@ -160,8 +173,21 @@ def test_session_data_set_tuple_uses_stable_python_types():
     )
 
     row = data_set.next_tuple()
-    assert row == (1, True, 2, 3.5, "value", b"\x00\xff", None)
-    assert tuple(type(value) for value in row[:4]) == (int, bool, int, float)
+    assert row == (True, 2, 3.5, "value", b"\x00\xff", None)
+    assert tuple(type(value) for value in row[:3]) == (bool, int, float)
+
+
+def test_session_data_set_tuple_converts_implicit_tree_timestamp():
+    import pandas as pd
+
+    data_set = SessionDataSet.__new__(SessionDataSet)
+    data_set.__dict__["_SessionDataSet__zone_id"] = "UTC"
+    data_set.__dict__["_SessionDataSet__time_precision"] = "ms"
+    data_set.iotdb_rpc_data_set = SimpleNamespace(ignore_timestamp=False)
+    data_set.next = lambda: RowRecord(123, [])
+
+    row = data_set.next_tuple()
+    assert row == (pd.Timestamp(123, unit="ms", tz="UTC").to_pydatetime(),)
 
 
 def test_cursor_state_and_executemany_query_errors():

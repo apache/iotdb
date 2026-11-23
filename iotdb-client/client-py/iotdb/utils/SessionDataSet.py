@@ -24,6 +24,7 @@ from iotdb.utils.iotdb_rpc_dataset import IoTDBRpcDataSet
 
 # for package
 from iotdb.utils.IoTDBConstants import TSDataType
+from iotdb.utils.rpc_utils import convert_to_timestamp
 from iotdb.utils.RowRecord import RowRecord
 
 logger = logging.getLogger("IoTDB")
@@ -49,6 +50,8 @@ class SessionDataSet(object):
         time_precision,
         column_index_2_tsblock_column_index_list,
     ):
+        self.__zone_id = zone_id
+        self.__time_precision = time_precision
         self.iotdb_rpc_data_set = IoTDBRpcDataSet(
             sql,
             column_name_list,
@@ -119,7 +122,11 @@ class SessionDataSet(object):
 
         values = []
         if not self.iotdb_rpc_data_set.ignore_timestamp:
-            values.append(int(row_record.get_timestamp()))
+            values.append(
+                convert_to_timestamp(
+                    row_record.get_timestamp(), self.__time_precision, self.__zone_id
+                )
+            )
         for field in row_record.get_fields():
             value = field.get_object_value(field.get_data_type())
             if field.get_data_type() == TSDataType.TIMESTAMP and hasattr(
