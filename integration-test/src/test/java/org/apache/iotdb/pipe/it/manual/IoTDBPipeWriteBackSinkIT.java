@@ -76,8 +76,6 @@ public class IoTDBPipeWriteBackSinkIT extends AbstractPipeDualManualIT {
       sourceAttributes.put("extractor.inclusion", "data.insert");
       sourceAttributes.put("extractor.forwarding-pipe-requests", "false");
       sourceAttributes.put("extractor.path", "root.source.**");
-      sourceAttributes.put("user", "root");
-
       sinkAttributes.put("sink", "write-back-sink");
       sinkAttributes.put("sink.database", targetDatabase);
       sinkAttributes.put("user", "root");

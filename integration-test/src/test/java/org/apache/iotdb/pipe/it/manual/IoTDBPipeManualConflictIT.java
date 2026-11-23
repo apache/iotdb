@@ -225,6 +225,9 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualManualIT {
             "flush"),
         null);
 
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
+
     TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
