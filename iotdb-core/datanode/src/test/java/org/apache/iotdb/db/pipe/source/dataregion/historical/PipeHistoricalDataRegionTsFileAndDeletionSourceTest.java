@@ -49,6 +49,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -61,7 +62,6 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -83,35 +83,72 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
 
+  @SuppressWarnings("unchecked")
   @Test
   public void testActiveUnclosedTsFileIsSelectedConservatively() throws Exception {
     final File tempDir = Files.createTempDirectory("pipeHistoricalActiveTsFile").toFile();
+    final File partitionDir = new File(tempDir, "sequence/db/2147483645/0");
+    Assert.assertTrue(partitionDir.mkdirs());
+    final String pipeName = "historical_active_tsfile";
+    final String resourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, System.nanoTime());
+    final PipeTsFileResourceManager resourceManager = PipeDataNodeResourceManager.tsfile();
+    final TsFileManager tsFileManager =
+        new TsFileManager("root.db", "2147483645", tempDir.getAbsolutePath());
     final PipeHistoricalDataRegionTsFileAndDeletionSource source =
         new PipeHistoricalDataRegionTsFileAndDeletionSource();
     try {
-      final TsFileResource resource = createTsFileResource(tempDir, "active.tsfile");
+      final TsFileResource resource = createTsFileResource(partitionDir, "1-1-0-0.tsfile");
+      resource.setTimeIndexType(ITimeIndex.FILE_TIME_INDEX_TYPE);
       resource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
       final TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
       Mockito.when(processor.alreadyMarkedClosing()).thenReturn(false);
       resource.setProcessor(processor);
+      tsFileManager.add(resource, true);
+
+      setPrivateField(source, "pipeName", pipeName);
+      setPrivateField(source, "pipeNameWithCreationTime", resourcePipeName);
+      setPrivateField(source, "dataRegionId", 2147483645);
+      setPrivateField(source, "startIndex", new SimpleProgressIndex(0, 1));
       setPrivateField(source, "isHistoricalSourceEnabled", true);
+      setPrivateField(source, "isModelDetected", true);
+      setPrivateField(source, "isTableModel", true);
+      setPrivateField(source, "tablePattern", new TablePattern(true, null, "selected_table"));
 
-      final Class<?> statisticsClass =
-          Class.forName(
-              PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName()
-                  + "$HistoricalTsFileExtractionStatistics");
-      final Constructor<?> statisticsConstructor = statisticsClass.getDeclaredConstructor();
-      statisticsConstructor.setAccessible(true);
-      final Method shouldExtractTsFileResource =
+      final List<PersistentResource> extractedResources = new ArrayList<>();
+      final Method extractTsFiles =
           PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredMethod(
-              "shouldExtractTsFileResource", TsFileResource.class, statisticsClass);
-      shouldExtractTsFileResource.setAccessible(true);
+              "extractTsFiles",
+              TsFileManager.class,
+              List.class,
+              List.class,
+              long.class,
+              List.class);
+      extractTsFiles.setAccessible(true);
+      extractTsFiles.invoke(
+          source,
+          tsFileManager,
+          tsFileManager.getTsFileList(true),
+          Collections.<TsFileResource>emptyList(),
+          System.currentTimeMillis(),
+          extractedResources);
 
-      Assert.assertTrue(
-          (Boolean)
-              shouldExtractTsFileResource.invoke(
-                  source, resource, statisticsConstructor.newInstance()));
+      final Map<TsFileResource, Set<String>> selectedResources =
+          (Map<TsFileResource, Set<String>>)
+              getPrivateField(source, "filteredTsFileResources2TableNames");
+      Assert.assertEquals(Collections.singletonList(resource), extractedResources);
+      Assert.assertTrue(selectedResources.containsKey(resource));
+      Assert.assertNull(selectedResources.get(resource));
+
+      final Method isCoveredByTablePattern =
+          PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredMethod(
+              "isTsFileResourceCoveredByTablePattern", TsFileResource.class, Set.class);
+      isCoveredByTablePattern.setAccessible(true);
+      Assert.assertFalse((Boolean) isCoveredByTablePattern.invoke(source, resource, null));
     } finally {
+      source.close();
+      tsFileManager.getTsFileList(true).forEach(resource -> tsFileManager.remove(resource, true));
+      resourceManager.cleanPipeTsFileDir(resourcePipeName);
       FileUtils.deleteFileOrDirectory(tempDir);
     }
   }

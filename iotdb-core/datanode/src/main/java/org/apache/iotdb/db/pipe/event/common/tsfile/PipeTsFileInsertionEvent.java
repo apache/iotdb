@@ -868,26 +868,30 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         return;
       }
       if (isTableModelEvent()) {
-        for (final String table : tableNames) {
-          if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
-              || !tablePattern.matchesTable(table)) {
-            continue;
-          }
-          if (!AuthorityChecker.getAccessControl()
-              .checkCanSelectFromTable4Pipe(
-                  userName,
-                  new QualifiedObjectName(getTableModelDatabaseName(), table),
-                  new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
-            if (skipIfNoPrivileges) {
-              shouldParse4Privilege = true;
-            } else {
-              throw new AccessDeniedException(
-                  String.format(
-                      DataNodePipeMessages
-                          .PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299,
-                      userName,
-                      tableModelDatabaseName,
-                      table));
+        if (Objects.isNull(tableNames)) {
+          shouldParse4Privilege = true;
+        } else {
+          for (final String table : tableNames) {
+            if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
+                || !tablePattern.matchesTable(table)) {
+              continue;
+            }
+            if (!AuthorityChecker.getAccessControl()
+                .checkCanSelectFromTable4Pipe(
+                    userName,
+                    new QualifiedObjectName(getTableModelDatabaseName(), table),
+                    new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
+              if (skipIfNoPrivileges) {
+                shouldParse4Privilege = true;
+              } else {
+                throw new AccessDeniedException(
+                    String.format(
+                        DataNodePipeMessages
+                            .PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299,
+                        userName,
+                        tableModelDatabaseName,
+                        table));
+              }
             }
           }
         }

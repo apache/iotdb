@@ -321,6 +321,43 @@ public class PipeTsFileInsertionEventTest {
   }
 
   @Test
+  public void testHistoricalTableEventWithUnknownTableNamesDefersPrivilegeCheck() {
+    final TsFileResource resource = Mockito.mock(TsFileResource.class);
+    Mockito.when(resource.getTsFile()).thenReturn(new File("sequence/db/1/0/1-1-0-0.tsfile"));
+    Mockito.when(resource.isClosed()).thenReturn(true);
+    Mockito.when(resource.isGeneratedByPipe()).thenReturn(false);
+    Mockito.when(resource.isGeneratedByIoTConsensusV2()).thenReturn(false);
+
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            true,
+            "db",
+            resource,
+            null,
+            false,
+            false,
+            true,
+            null,
+            null,
+            0,
+            null,
+            buildUnionPattern(false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+            new TablePattern(true, null, null),
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    try {
+      event.throwIfNoPrivilege();
+      Assert.assertTrue(event.shouldParse4Privilege());
+    } finally {
+      event.close();
+    }
+  }
+
+  @Test
   public void testTsFileDedupScopeIdIsPreservedForCleanupAndCopy() throws Exception {
     final PipeTsFileEpochProgressIndexKeeper keeper =
         PipeTsFileEpochProgressIndexKeeper.getInstance();

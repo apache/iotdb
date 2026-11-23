@@ -815,7 +815,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     try {
       for (Map.Entry<Long, TsFileResourcesByPartition> entry : snapshotsByPartition.entrySet()) {
         final long timePartition = entry.getKey();
-        currentResult = extractTsFilesInPartition(tsFileManager, entry.getValue());
+        currentResult = extractTsFilesInPartition(entry.getValue());
         if (!currentResult.snapshotInvalid
             && !isTsFilePartitionSnapshotCurrent(tsFileManager, timePartition, entry.getValue())) {
           currentResult.snapshotInvalid = true;
@@ -841,7 +841,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             tsFileManager.readUnlock();
           }
 
-          currentResult = extractTsFilesInPartition(tsFileManager, refreshedResources);
+          currentResult = extractTsFilesInPartition(refreshedResources);
           if (!currentResult.snapshotInvalid
               && !isTsFilePartitionSnapshotCurrent(
                   tsFileManager, timePartition, refreshedResources)) {
@@ -927,22 +927,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private TsFilePartitionExtractionResult extractTsFilesInPartition(
-      final TsFileManager tsFileManager, final TsFileResourcesByPartition resources) {
+      final TsFileResourcesByPartition resources) {
     final TsFilePartitionExtractionResult result = new TsFilePartitionExtractionResult(resources);
     try {
       for (TsFileResource resource : resources.sequenceResources) {
-        extractTsFileResource(tsFileManager, resource, true, result);
-        if (result.snapshotInvalid) {
-          break;
-        }
+        extractTsFileResource(resource, true, result);
       }
-      if (!result.snapshotInvalid) {
-        for (TsFileResource resource : resources.unsequenceResources) {
-          extractTsFileResource(tsFileManager, resource, false, result);
-          if (result.snapshotInvalid) {
-            break;
-          }
-        }
+      for (TsFileResource resource : resources.unsequenceResources) {
+        extractTsFileResource(resource, false, result);
       }
       return result;
     } catch (final RuntimeException | Error e) {
@@ -955,7 +947,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private void extractTsFileResource(
-      final TsFileManager tsFileManager,
       final TsFileResource resource,
       final boolean isSequence,
       final TsFilePartitionExtractionResult result) {
@@ -963,26 +954,19 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     try {
       resource.readLock();
       resourceReadLockAcquired = true;
-      tsFileManager.readLock();
-      try {
-        if (!tsFileManager.contains(resource, isSequence)) {
-          result.snapshotInvalid = true;
-          return;
-        }
-      } finally {
-        tsFileManager.readUnlock();
-      }
 
       if (!shouldExtractTsFileResource(resource, result.statistics)) {
         return;
       }
 
       final Set<String> tableNames =
-          isModelDetected && isTableModel
-              ? resource.getDevices().stream()
-                  .map(IDeviceID::getTableName)
-                  .collect(Collectors.toSet())
-              : Collections.emptySet();
+          !resource.isClosed()
+              ? null
+              : isModelDetected && isTableModel
+                  ? resource.getDevices().stream()
+                      .map(IDeviceID::getTableName)
+                      .collect(Collectors.toSet())
+                  : Collections.emptySet();
       if (isSequence) {
         ++result.selectedSequenceTsFileCount;
       } else {
