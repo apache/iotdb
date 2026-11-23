@@ -127,6 +127,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private final List<PipeTerminateEvent> pendingTerminateEvents = new ArrayList<>();
   private final Set<Integer> terminatedDataRegionIds = new HashSet<>();
   private long activeTerminatePipeCreationTime = Long.MIN_VALUE;
+  private PipeTerminateEvent currentNonMarkingTerminateEvent;
 
   public SubscriptionPrefetchingQueue(
       final String brokerId,
@@ -206,6 +207,10 @@ public abstract class SubscriptionPrefetchingQueue {
       pendingTerminateEvents.clear();
       terminatedDataRegionIds.clear();
       activeTerminatePipeCreationTime = Long.MIN_VALUE;
+      if (Objects.nonNull(currentNonMarkingTerminateEvent)) {
+        currentNonMarkingTerminateEvent.clearReferenceCount(this.getClass().getName());
+        currentNonMarkingTerminateEvent = null;
+      }
     }
   }
 
@@ -546,6 +551,10 @@ public abstract class SubscriptionPrefetchingQueue {
    * {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty.
    */
   private synchronized void tryPrefetch() {
+    if (Objects.nonNull(currentNonMarkingTerminateEvent)
+        && !tryCommitCurrentNonMarkingTerminateEvent()) {
+      return;
+    }
     tryCommitPendingTerminateEvents();
 
     while (!inputPendingQueue.isEmpty() || Objects.nonNull(currentTabletInsertionEvent)) {
@@ -579,7 +588,9 @@ public abstract class SubscriptionPrefetchingQueue {
       }
 
       if (event instanceof PipeTerminateEvent) {
-        onTerminateEvent((PipeTerminateEvent) event);
+        if (!onTerminateEvent((PipeTerminateEvent) event)) {
+          return;
+        }
         continue;
       }
 
@@ -623,6 +634,10 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   private synchronized void tryPrefetchV2() {
+    if (Objects.nonNull(currentNonMarkingTerminateEvent)
+        && !tryCommitCurrentNonMarkingTerminateEvent()) {
+      return;
+    }
     tryCommitPendingTerminateEvents();
 
     if (!prefetchingQueue.isEmpty()) {
@@ -694,7 +709,9 @@ public abstract class SubscriptionPrefetchingQueue {
       }
 
       if (event instanceof PipeTerminateEvent) {
-        onTerminateEvent((PipeTerminateEvent) event);
+        if (!onTerminateEvent((PipeTerminateEvent) event)) {
+          return;
+        }
         continue;
       }
 
@@ -831,30 +848,20 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   private synchronized boolean hasPendingTerminateEvents() {
-    return !pendingTerminateEvents.isEmpty();
+    return !pendingTerminateEvents.isEmpty() || Objects.nonNull(currentNonMarkingTerminateEvent);
   }
 
-  private synchronized void onTerminateEvent(final PipeTerminateEvent terminateEvent) {
+  private synchronized boolean onTerminateEvent(final PipeTerminateEvent terminateEvent) {
     if (!terminateEvent.isShouldMark()) {
-      try {
-        batches.emitAll(this::prefetchEvent);
-      } catch (final Exception e) {
-        LOGGER.warn(
-            DataNodeMiscMessages.EXCEPTION_EMIT_EVENTS_BEFORE_COMMIT_TERMINATE_EVENT,
-            this,
-            terminateEvent,
-            e);
-      }
-      terminateEvent.decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
-      LOGGER.info(DataNodeMiscMessages.COMMIT_TERMINATE_EVENT, this, terminateEvent);
-      return;
+      currentNonMarkingTerminateEvent = terminateEvent;
+      return tryCommitCurrentNonMarkingTerminateEvent();
     }
 
     final long eventCreationTime = terminateEvent.getCreationTime();
     if (activeTerminatePipeCreationTime != Long.MIN_VALUE
         && eventCreationTime < activeTerminatePipeCreationTime) {
       terminateEvent.decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), false);
-      return;
+      return true;
     }
     if (activeTerminatePipeCreationTime != Long.MIN_VALUE
         && eventCreationTime > activeTerminatePipeCreationTime) {
@@ -868,11 +875,43 @@ public abstract class SubscriptionPrefetchingQueue {
     pendingTerminateEvents.add(terminateEvent);
     terminatedDataRegionIds.add(terminateEvent.getDataRegionId());
     tryCommitPendingTerminateEvents();
+    return true;
+  }
+
+  private synchronized boolean tryCommitCurrentNonMarkingTerminateEvent() {
+    if (Objects.isNull(currentNonMarkingTerminateEvent)) {
+      return false;
+    }
+
+    try {
+      batches.emitAll(this::prefetchEvent);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          DataNodeMiscMessages.EXCEPTION_EMIT_EVENTS_BEFORE_COMMIT_TERMINATE_EVENT,
+          this,
+          currentNonMarkingTerminateEvent,
+          e);
+      return false;
+    }
+
+    // Requeue adds to prefetchingQueue before removing from inFlightEvents. Check in-flight first
+    // so a concurrent requeue cannot make both collections appear empty across that transition.
+    // Polling takes this monitor while moving events in the opposite direction.
+    if (!inFlightEvents.isEmpty() || !prefetchingQueue.isEmpty()) {
+      return false;
+    }
+
+    currentNonMarkingTerminateEvent.decreaseReferenceCount(
+        SubscriptionPrefetchingQueue.class.getName(), true);
+    LOGGER.info(DataNodeMiscMessages.COMMIT_TERMINATE_EVENT, this, currentNonMarkingTerminateEvent);
+    currentNonMarkingTerminateEvent = null;
+    return true;
   }
 
   private synchronized boolean tryCommitPendingTerminateEvents() {
+    final boolean committedNonMarking = tryCommitCurrentNonMarkingTerminateEvent();
     if (pendingTerminateEvents.isEmpty()) {
-      return false;
+      return committedNonMarking;
     }
 
     if (!inputPendingQueue.isEmpty()

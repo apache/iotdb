@@ -663,6 +663,64 @@ public class SubscriptionRetainedInitialReplayTest {
   }
 
   @Test
+  public void testNonMarkingTerminateEventPreservesDrainBarrierBeforeRealtimePrefetch()
+      throws Exception {
+    for (final boolean tableModel : new boolean[] {false, true}) {
+      final ArrayDequeBlockingPendingQueue initialPending = new ArrayDequeBlockingPendingQueue();
+      try (final RetainedSubscription subscription =
+          new RetainedSubscription(
+              tableModel, true, TopicConstant.MODE_INITIAL_VALUE, false, initialPending)) {
+        final SubscriptionPrefetchingQueueStates spiedStates =
+            spy(
+                (SubscriptionPrefetchingQueueStates)
+                    Whitebox.getInternalState(subscription.queue, "states"));
+        doReturn(true).when(spiedStates).shouldPrefetch();
+        Whitebox.setInternalState(subscription.queue, "states", spiedStates);
+
+        final PipeRawTabletInsertionEvent historical = createTabletEvent(tableModel, 1, 1L);
+        assertTrue(historical.increaseReferenceCount("test"));
+        final PipeTerminateEvent initTerm = new PipeTerminateEvent("init_pipe", 1L, null, 1, false);
+        assertTrue(initTerm.increaseReferenceCount("test"));
+        final PipeRawTabletInsertionEvent realtime = createTabletEvent(tableModel, 1, 2L);
+        assertTrue(realtime.increaseReferenceCount("test"));
+
+        initialPending.directOffer(historical);
+        initialPending.directOffer(initTerm);
+        initialPending.directOffer(realtime);
+
+        // Prefetch emits and buffers the historical event, then holds initTerm at the drain
+        // barrier before prefetching the realtime event.
+        subscription.queue.executePrefetch();
+        final SubscriptionEvent historicalPolled = subscription.poll("first");
+        org.junit.Assert.assertNotNull(historicalPolled);
+        assertFalse(initTerm.isReleased());
+
+        // While historicalPolled is still in flight (unacknowledged), a subsequent prefetch must
+        // keep holding initTerm and must NOT prefetch the realtime event.
+        subscription.queue.executePrefetch();
+        assertFalse(initTerm.isReleased());
+        assertNull(subscription.poll("first"));
+
+        // Once the historical event is acknowledged, initTerm is released (without marking
+        // completed) and the realtime event can be prefetched and polled.
+        assertTrue(subscription.queue.ack("first", historicalPolled.getCommitContext()));
+        assertTrue(initTerm.isReleased());
+        assertFalse(subscription.queue.isCompleted());
+        assertTrue(
+            subscription
+                .broker
+                .fetchTopicNamesToUnsubscribe(Collections.singleton(subscription.topic))
+                .isEmpty());
+
+        subscription.queue.executePrefetch();
+        final SubscriptionEvent realtimePolled = subscription.poll("first");
+        org.junit.Assert.assertNotNull(realtimePolled);
+        assertTrue(subscription.queue.ack("first", realtimePolled.getCommitContext()));
+      }
+    }
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   public void testRetainedSnapshotEmitsTerminationWhenRunningWithoutLocalTasks() throws Exception {
     for (final boolean tableModel : new boolean[] {false, true}) {
