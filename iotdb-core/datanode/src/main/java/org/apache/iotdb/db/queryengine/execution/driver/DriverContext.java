@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
@@ -133,31 +132,30 @@ public class DriverContext {
   public void failed(Throwable cause) {
     // Serialize failure reporting so concurrent aborters wait until the failure cause has been
     // recorded on FragmentInstanceContext before deregistering sinks (which read getFailureCause).
-    // Decouple from `finished` so a cascading abort still records its cause when a finished driver
-    // belongs to an active fragment, while skipping duplicate or synthetic appends once the
-    // fragment has already reached a terminal state (e.g., terminal cleanup of sibling drivers).
+    // If this driver has already finished, only report while the fragment is still active so
+    // terminal fragment cleanup (which closes all drivers before calling abortFragmentInstance)
+    // does not append synthetic aborts or duplicate failure copies.
     synchronized (failureLock) {
       if (failureReported) {
         return;
       }
+      failureReported = true;
       try {
         if (shouldReportFailureToFragment()) {
           fragmentInstanceContext.failed(cause);
         }
       } finally {
-        failureReported = true;
         finished.set(true);
       }
     }
   }
 
   private boolean shouldReportFailureToFragment() {
-    FragmentInstanceStateMachine stateMachine = fragmentInstanceContext.getStateMachine();
-    if (stateMachine == null) {
+    if (!finished.get()) {
       return true;
     }
-    FragmentInstanceState state = stateMachine.getState();
-    return state == null || !state.isDone();
+    FragmentInstanceStateMachine stateMachine = fragmentInstanceContext.getStateMachine();
+    return stateMachine == null || !stateMachine.getState().isDone();
   }
 
   public void finished() {

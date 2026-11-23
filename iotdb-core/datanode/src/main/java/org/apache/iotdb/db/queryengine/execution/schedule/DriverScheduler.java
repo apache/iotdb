@@ -640,10 +640,8 @@ public class DriverScheduler implements IDriverScheduler, IService {
       if (fragmentInstanceContext != null) {
         Optional<Throwable> fragmentCause = fragmentInstanceContext.getFailureCause();
         if (fragmentCause.isPresent()
-            && !(fragmentCause.get() instanceof DriverTaskAbortedException)) {
-          return fragmentCause;
-        }
-        if (!abortCause.isPresent()) {
+            && (!abortCause.isPresent()
+                || !(fragmentCause.get() instanceof DriverTaskAbortedException))) {
           return fragmentCause;
         }
       }

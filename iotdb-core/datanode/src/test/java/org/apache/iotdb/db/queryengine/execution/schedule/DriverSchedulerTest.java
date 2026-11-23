@@ -379,6 +379,46 @@ public class DriverSchedulerTest {
   }
 
   @Test
+  public void testToAbortedFallsBackToTaskSyntheticCauseWhenFragmentHasNoFailure()
+      throws Exception {
+    manager.setBlockManager(Mockito.mock(IMPPDataExchangeManager.class));
+    QueryId queryId = new QueryId("to_aborted_synthetic_fallback");
+    FragmentInstanceId rootId = new FragmentInstanceId(new PlanFragmentId(queryId, 1), "0");
+    FragmentInstanceId leafId = new FragmentInstanceId(new PlanFragmentId(queryId, 2), "0");
+
+    FragmentInstanceStateMachine rootStateMachine =
+        new FragmentInstanceStateMachine(rootId, directExecutor());
+    FragmentInstanceContext rootContext =
+        FragmentInstanceContext.createFragmentInstanceContext(rootId, rootStateMachine);
+    FragmentInstanceStateMachine leafStateMachine =
+        new FragmentInstanceStateMachine(leafId, directExecutor());
+    FragmentInstanceContext leafContext =
+        FragmentInstanceContext.createFragmentInstanceContext(leafId, leafStateMachine);
+
+    DataDriverContext rootDriverContext = new DataDriverContext(rootContext, 0);
+    rootDriverContext.setSink(Mockito.mock(ISink.class));
+    IDriver rootDriver = new DataDriver(Mockito.mock(Operator.class), rootDriverContext, 0L);
+
+    DataDriverContext leafDriverContext = new DataDriverContext(leafContext, 0);
+    leafDriverContext.setSink(Mockito.mock(ISink.class));
+    IDriver leafDriver = new DataDriver(Mockito.mock(Operator.class), leafDriverContext, 0L);
+
+    manager.submitDrivers(queryId, Collections.singletonList(rootDriver), QUERY_TIMEOUT_MS, null);
+    manager.submitDrivers(queryId, Collections.singletonList(leafDriver), QUERY_TIMEOUT_MS, null);
+
+    DriverTask leafTask = manager.getQueryMap().get(queryId).get(leafId).iterator().next();
+    DriverTaskAbortedException fallback =
+        new DriverTaskAbortedException(
+            leafTask.getDriverTaskId().getFullId(),
+            DriverTaskAbortedException.BY_ALREADY_BEING_CANCELLED);
+    leafTask.setAbortCause(fallback);
+
+    manager.getScheduler().toAborted(leafTask);
+
+    Assert.assertEquals(Optional.of(fallback), rootContext.getFailureCause());
+  }
+
+  @Test
   public void testExplicitCancellationWithFourPipelinesRetainsEmptyFailureList() throws Exception {
     int previousDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);

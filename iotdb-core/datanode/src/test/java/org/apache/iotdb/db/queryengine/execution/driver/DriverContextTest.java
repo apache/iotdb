@@ -170,6 +170,8 @@ public class DriverContextTest {
     ListenableFuture<?> blocked = exchange.sourceHandle.isBlocked();
 
     finishedDriver.finished();
+    siblingDriver1.finished();
+    siblingDriver2.finished();
     Assert.assertTrue(finishedDriver.isDone());
     Assert.assertEquals(FragmentInstanceState.RUNNING, stateMachine.getState());
 
