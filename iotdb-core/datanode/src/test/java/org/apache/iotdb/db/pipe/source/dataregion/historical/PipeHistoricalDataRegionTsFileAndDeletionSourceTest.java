@@ -63,6 +63,7 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
@@ -145,6 +146,78 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
               "isTsFileResourceCoveredByTablePattern", TsFileResource.class, Set.class);
       isCoveredByTablePattern.setAccessible(true);
       Assert.assertFalse((Boolean) isCoveredByTablePattern.invoke(source, resource, null));
+    } finally {
+      source.close();
+      tsFileManager.getTsFileList(true).forEach(resource -> tsFileManager.remove(resource, true));
+      resourceManager.cleanPipeTsFileDir(resourcePipeName);
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test
+  public void testActiveUnclosedTsFilePinFailureFailsExtraction() throws Exception {
+    final AtomicBoolean failPathResolution = new AtomicBoolean(true);
+    final File tempDir = Files.createTempDirectory("pipeHistoricalActivePinFailure").toFile();
+    final File partitionDir = new File(tempDir, "sequence/db/2147483645/0");
+    Assert.assertTrue(partitionDir.mkdirs());
+    final String pipeName = "historical_active_pin_failure";
+    final String resourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, System.nanoTime());
+    final PipeTsFileResourceManager resourceManager = PipeDataNodeResourceManager.tsfile();
+    final TsFileManager tsFileManager =
+        new TsFileManager("root.db", "2147483645", tempDir.getAbsolutePath());
+    final PipeHistoricalDataRegionTsFileAndDeletionSource source =
+        new PipeHistoricalDataRegionTsFileAndDeletionSource();
+    try {
+      final TsFileResource previouslyPinnedResource =
+          createClosedTsFileResource(partitionDir, "1-1-0-0.tsfile", new SimpleProgressIndex(0, 1));
+      final TsFileResource resource = createTsFileResource(partitionDir, "2-1-0-0.tsfile");
+      final File previouslyPinnedTsFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              previouslyPinnedResource.getTsFile(), resourcePipeName);
+      resource.setFile(new CanonicalPathFailingFile(resource.getTsFilePath(), failPathResolution));
+      resource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
+      final TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+      Mockito.when(processor.alreadyMarkedClosing()).thenReturn(false);
+      resource.setProcessor(processor);
+      tsFileManager.add(previouslyPinnedResource, true);
+      tsFileManager.add(resource, true);
+
+      setPrivateField(source, "pipeName", pipeName);
+      setPrivateField(source, "pipeNameWithCreationTime", resourcePipeName);
+      setPrivateField(source, "dataRegionId", 2147483645);
+      setPrivateField(source, "historicalDataExtractionStartTime", Long.MIN_VALUE);
+      setPrivateField(source, "historicalDataExtractionEndTime", Long.MAX_VALUE);
+      setPrivateField(source, "startIndex", MinimumProgressIndex.INSTANCE);
+      setPrivateField(source, "isHistoricalSourceEnabled", true);
+      setPrivateField(source, "isDbNameCoveredByPattern", true);
+
+      final Method extractTsFiles =
+          PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredMethod(
+              "extractTsFiles",
+              TsFileManager.class,
+              List.class,
+              List.class,
+              long.class,
+              List.class);
+      extractTsFiles.setAccessible(true);
+      final InvocationTargetException extractionException =
+          Assert.assertThrows(
+              InvocationTargetException.class,
+              () ->
+                  extractTsFiles.invoke(
+                      source,
+                      tsFileManager,
+                      Collections.singletonList(previouslyPinnedResource),
+                      Collections.singletonList(resource),
+                      System.currentTimeMillis(),
+                      new ArrayList<PersistentResource>()));
+
+      Assert.assertTrue(extractionException.getCause() instanceof PipeException);
+      Assert.assertTrue(
+          ((Set<TsFileResource>) getPrivateField(source, "resourcesWithPinnedTsFile")).isEmpty());
+      Assert.assertEquals(
+          0, resourceManager.getFileReferenceCount(previouslyPinnedTsFile, resourcePipeName));
     } finally {
       source.close();
       tsFileManager.getTsFileList(true).forEach(resource -> tsFileManager.remove(resource, true));

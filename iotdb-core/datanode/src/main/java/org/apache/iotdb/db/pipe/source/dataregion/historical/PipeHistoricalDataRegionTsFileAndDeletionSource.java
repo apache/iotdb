@@ -955,12 +955,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       resource.readLock();
       resourceReadLockAcquired = true;
 
+      final boolean wasUnclosed = !resource.isClosed();
       if (!shouldExtractTsFileResource(resource, result.statistics)) {
         return;
       }
 
       final Set<String> tableNames =
-          !resource.isClosed()
+          wasUnclosed
               ? null
               : isModelDetected && isTableModel
                   ? resource.getDevices().stream()
@@ -986,6 +987,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         ++result.statistics.pinFailedCount;
         LOGGER.warn(
             DataNodePipeMessages.PIPE_FAILED_TO_PIN_TSFILERESOURCE, resource.getTsFilePath(), e);
+        if (wasUnclosed) {
+          throw new PipeException(e.getMessage(), e);
+        }
       }
     } finally {
       if (resourceReadLockAcquired) {
