@@ -885,6 +885,18 @@ public class PartitionManager {
     return partitionInfo.getAllReplicaSets();
   }
 
+  public List<TRegionReplicaSet> getAllActiveReplicaSets() {
+    return partitionInfo.getAllActiveReplicaSets();
+  }
+
+  public Pair<Long, List<TRegionReplicaSet>> getAllActiveReplicaSetsSnapshot() {
+    return partitionInfo.getAllActiveReplicaSetsSnapshot();
+  }
+
+  public long getRegionReplicaSetVersion() {
+    return partitionInfo.getRegionReplicaSetVersion();
+  }
+
   /**
    * Only leader use this interface.
    *

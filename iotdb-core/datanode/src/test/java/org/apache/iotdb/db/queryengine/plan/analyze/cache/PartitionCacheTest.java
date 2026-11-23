@@ -23,17 +23,26 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -49,13 +58,23 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class PartitionCacheTest {
 
@@ -80,6 +99,7 @@ public class PartitionCacheTest {
   private static final Integer TIME_PARTITION_PER_STORAGE_GROUP = 10;
 
   private PartitionCache partitionCache;
+  private ConfigNodeClient routeClient;
 
   static {
     for (int storageGroupNumber = 0;
@@ -149,7 +169,11 @@ public class PartitionCacheTest {
 
   @Before
   public void setUp() throws Exception {
-    partitionCache = new PartitionCache();
+    final IClientManager<ConfigRegionId, ConfigNodeClient> clientManager =
+        mock(IClientManager.class);
+    routeClient = mock(ConfigNodeClient.class);
+    when(clientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)).thenReturn(routeClient);
+    partitionCache = new PartitionCache(clientManager) {};
     partitionCache.updateDatabaseCache(databases);
     partitionCache.updateSchemaPartitionCache(schemaPartitionTable);
     partitionCache.updateDataPartitionCache(dataPartitionTable);
@@ -246,7 +270,12 @@ public class PartitionCacheTest {
   }
 
   @Test
-  public void testNeedLastCacheDefaultsToTrueWhenUnset() {
+  public void testNeedLastCacheDefaultsToTrueWhenUnset() throws Exception {
+    when(routeClient.getMatchedDatabaseSchemas(any()))
+        .thenReturn(
+            new TDatabaseSchemaResp()
+                .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+                .setDatabaseSchemaMap(Collections.emptyMap()));
     final Map<String, TDatabaseSchema> databaseSchemaMap = new HashMap<>();
 
     final TDatabaseSchema unsetSchema = new TDatabaseSchema();
@@ -297,6 +326,128 @@ public class PartitionCacheTest {
         }
       }
     }
+  }
+
+  @Test
+  public void testDelayedRouteMapCannotReplaceNewerSnapshot() {
+    final TConsensusGroupId regionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 9000);
+    final TRegionReplicaSet staleReplicaSet =
+        new TRegionReplicaSet(regionId, Collections.emptyList());
+    final TDataNodeLocation currentLocation = new TDataNodeLocation().setDataNodeId(99);
+    final TRegionReplicaSet currentReplicaSet =
+        new TRegionReplicaSet(regionId, Collections.singletonList(currentLocation));
+
+    assertTrue(
+        partitionCache.updateGroupIdToReplicaSetMap(
+            200, Collections.singletonMap(regionId, currentReplicaSet)));
+    partitionCache.invalidReplicaSetCache(regionId);
+    assertFalse(
+        partitionCache.updateGroupIdToReplicaSetMap(
+            150, Collections.singletonMap(regionId, staleReplicaSet)));
+    assertTrue(
+        partitionCache.updateGroupIdToReplicaSetMap(
+            200, Collections.singletonMap(regionId, currentReplicaSet)));
+    assertEquals(
+        currentReplicaSet,
+        partitionCache.getRegionReplicaSet(Collections.singletonList(regionId)).get(0));
+  }
+
+  @Test
+  public void testNewPushWinsWhileOlderPullIsInFlight() throws Exception {
+    final TConsensusGroupId regionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 9000);
+    final TRegionReplicaSet stale = new TRegionReplicaSet(regionId, List.of());
+    final TRegionReplicaSet current =
+        new TRegionReplicaSet(regionId, List.of(new TDataNodeLocation().setDataNodeId(99)));
+    final CountDownLatch fetching = new CountDownLatch(1);
+    final CountDownLatch completePull = new CountDownLatch(1);
+    when(routeClient.getLatestRegionRouteMap())
+        .thenAnswer(
+            invocation -> {
+              fetching.countDown();
+              assertTrue(completePull.await(10, TimeUnit.SECONDS));
+              return new TRegionRouteMapResp(
+                      new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+                  .setRegionRouteMap(Map.of(regionId, stale))
+                  .setTimestamp(150);
+            });
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      final Future<List<TRegionReplicaSet>> pull =
+          executor.submit(() -> partitionCache.getRegionReplicaSet(List.of(regionId)));
+      assertTrue(fetching.await(10, TimeUnit.SECONDS));
+      final Future<Boolean> push =
+          executor.submit(
+              () -> partitionCache.updateGroupIdToReplicaSetMap(200, Map.of(regionId, current)));
+      assertTrue(push.get(5, TimeUnit.SECONDS));
+      completePull.countDown();
+      assertEquals(List.of(current), pull.get(5, TimeUnit.SECONDS));
+    } finally {
+      completePull.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testInvalidationDuringPullCannotRestoreStaleRoute() throws Exception {
+    final TConsensusGroupId regionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 9001);
+    final TRegionReplicaSet stale = new TRegionReplicaSet(regionId, List.of());
+    final TRegionReplicaSet current =
+        new TRegionReplicaSet(regionId, List.of(new TDataNodeLocation().setDataNodeId(100)));
+    assertTrue(partitionCache.updateGroupIdToReplicaSetMap(150, Map.of(regionId, stale)));
+    partitionCache.invalidReplicaSetCache(regionId);
+
+    final CountDownLatch fetching = new CountDownLatch(1);
+    final CountDownLatch completePull = new CountDownLatch(1);
+    final AtomicInteger fetchCount = new AtomicInteger();
+    when(routeClient.getLatestRegionRouteMap())
+        .thenAnswer(
+            invocation -> {
+              if (fetchCount.incrementAndGet() == 1) {
+                fetching.countDown();
+                assertTrue(completePull.await(10, TimeUnit.SECONDS));
+                return new TRegionRouteMapResp(
+                        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+                    .setRegionRouteMap(Map.of(regionId, stale))
+                    .setTimestamp(150);
+              }
+              return new TRegionRouteMapResp(
+                      new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+                  .setRegionRouteMap(Map.of(regionId, current))
+                  .setTimestamp(200);
+            });
+
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      final Future<List<TRegionReplicaSet>> pull =
+          executor.submit(() -> partitionCache.getRegionReplicaSet(List.of(regionId)));
+      assertTrue(fetching.await(10, TimeUnit.SECONDS));
+      partitionCache.invalidReplicaSetCache(regionId);
+      completePull.countDown();
+
+      assertEquals(List.of(current), pull.get(5, TimeUnit.SECONDS));
+      assertEquals(2, fetchCount.get());
+    } finally {
+      completePull.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testFailedRouteResponseCannotAdvanceCacheVersion() throws Exception {
+    final TConsensusGroupId regionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 9000);
+    final TRegionReplicaSet replicaSet = new TRegionReplicaSet(regionId, List.of());
+    when(routeClient.getLatestRegionRouteMap())
+        .thenReturn(
+            new TRegionRouteMapResp(
+                    new TSStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()))
+                .setTimestamp(300)
+                .setRegionRouteMap(Map.of(regionId, replicaSet)));
+
+    assertThrows(
+        StatementAnalyzeException.class,
+        () -> partitionCache.getRegionReplicaSet(List.of(regionId)));
+    assertTrue(partitionCache.updateGroupIdToReplicaSetMap(200, Map.of(regionId, replicaSet)));
+    assertEquals(List.of(replicaSet), partitionCache.getRegionReplicaSet(List.of(regionId)));
   }
 
   /**

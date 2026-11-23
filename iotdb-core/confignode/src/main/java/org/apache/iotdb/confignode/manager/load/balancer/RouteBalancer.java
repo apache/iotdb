@@ -59,6 +59,16 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -74,6 +84,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BooleanSupplier;
+import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
 /** The RouteBalancer guides the cluster RegionGroups' leader distribution and routing priority. */
@@ -106,6 +118,13 @@ public class RouteBalancer implements IClusterStatusSubscriber {
           TimeUnit.SECONDS.toMillis(10));
   private static final long WAIT_PRIORITY_INTERVAL = 10;
   private static final long RATIS_CHANGE_LEADER_RPC_TIMEOUT_IN_MS = TimeUnit.SECONDS.toMillis(10);
+  private static final int REGION_ROUTE_MAP_SEQUENCE_BITS = 40;
+  private static final long REGION_ROUTE_MAP_SEQUENCE_MASK =
+      (1L << REGION_ROUTE_MAP_SEQUENCE_BITS) - 1;
+  private static final long REGION_ROUTE_MAP_TIMESTAMP_BASE = 1L << 42;
+  private static final long MAX_REGION_ROUTE_MAP_EPOCH =
+      (Long.MAX_VALUE - REGION_ROUTE_MAP_TIMESTAMP_BASE) >>> REGION_ROUTE_MAP_SEQUENCE_BITS;
+  private static final String REGION_ROUTE_MAP_EPOCH_FILE_NAME = "region_route_map_epoch";
 
   private final IManager configManager;
   // For serializing and generating optimal Region leader distribution by RegionGroup type
@@ -115,6 +134,12 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   private final IPriorityBalancer priorityRouter;
 
   private final ReentrantReadWriteLock priorityMapLock;
+  private long regionRouteMapEpoch;
+  private long regionRouteMapSequence;
+  private long regionRouteMapTimestamp = encodeRouteMapVersion(0, 0);
+  private long publishedReplicaSetVersion = -1;
+  private volatile BooleanSupplier currentLeaderEpoch = () -> false;
+  private volatile PendingLeaderEpoch pendingLeaderEpoch;
   // Map<RegionGroupId, Region priority>
   // The client requests are preferentially routed to the Region with the lowest index in the
   // TRegionReplicaSet
@@ -177,6 +202,17 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
     private boolean hasBalancedDataRegion() {
       return !balancedDataRegionSet.isEmpty();
+    }
+  }
+
+  private static class PendingLeaderEpoch {
+
+    private final LongSupplier epochSupplier;
+    private final BooleanSupplier isCurrentEpoch;
+
+    private PendingLeaderEpoch(LongSupplier epochSupplier, BooleanSupplier isCurrentEpoch) {
+      this.epochSupplier = epochSupplier;
+      this.isCurrentEpoch = isCurrentEpoch;
     }
   }
 
@@ -592,24 +628,37 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   }
 
   /** Balance cluster RegionGroup route priority through configured algorithm. */
-  private synchronized void balanceRegionPriority() {
-    priorityMapLock.writeLock().lock();
-    AtomicBoolean needBroadcast = new AtomicBoolean(false);
-    Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> differentPriorityMap =
-        new TreeMap<>();
-    try {
-      Map<TConsensusGroupId, Integer> regionLeaderMap = getLoadManager().getRegionLeaderMap();
+  private void balanceRegionPriority() {
+    balanceRegionPriority(false);
+  }
 
-      // Balancing region priority in each SchemaRegionGroup
-      Map<TConsensusGroupId, TRegionReplicaSet> optimalRegionPriorityMap =
+  public void refreshRegionPriorityIfNeeded() {
+    balanceRegionPriority(true);
+  }
+
+  private void balanceRegionPriority(boolean onlyIfMetadataChanged) {
+    if (!tryStartPendingLeaderEpoch()) {
+      return;
+    }
+    final BooleanSupplier leaderEpoch = currentLeaderEpoch;
+    if (!leaderEpoch.getAsBoolean()) {
+      return;
+    }
+    final Pair<Long, Map<TConsensusGroupId, TRegionReplicaSet>> routeMapSnapshot;
+    final Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> differentPriorityMap =
+        new TreeMap<>();
+    priorityMapLock.writeLock().lock();
+    try {
+      final PartitionManager partitionManager = getPartitionManager();
+      if (onlyIfMetadataChanged
+          && publishedReplicaSetVersion == partitionManager.getRegionReplicaSetVersion()) {
+        return;
+      }
+      final Pair<Long, List<TRegionReplicaSet>> replicaSets =
+          partitionManager.getAllActiveReplicaSetsSnapshot();
+      final Map<TConsensusGroupId, TRegionReplicaSet> optimalRegionPriorityMap =
           priorityRouter.generateOptimalRoutePriority(
-              getPartitionManager().getAllReplicaSets(TConsensusGroupType.SchemaRegion),
-              regionLeaderMap);
-      // Balancing region priority in each DataRegionGroup
-      optimalRegionPriorityMap.putAll(
-          priorityRouter.generateOptimalRoutePriority(
-              getPartitionManager().getAllReplicaSets(TConsensusGroupType.DataRegion),
-              regionLeaderMap));
+              replicaSets.getRight(), getLoadManager().getRegionLeaderMap());
 
       optimalRegionPriorityMap.forEach(
           (regionGroupId, optimalRegionPriority) -> {
@@ -617,22 +666,38 @@ public class RouteBalancer implements IClusterStatusSubscriber {
             if (!optimalRegionPriority.equals(currentRegionPriority)) {
               differentPriorityMap.put(
                   regionGroupId, new Pair<>(currentRegionPriority, optimalRegionPriority));
-              regionPriorityMap.put(regionGroupId, optimalRegionPriority);
-              needBroadcast.set(true);
             }
           });
+      if (replicaSets.getLeft() != partitionManager.getRegionReplicaSetVersion()
+          || leaderEpoch != currentLeaderEpoch
+          || !leaderEpoch.getAsBoolean()) {
+        return;
+      }
+      if (publishedReplicaSetVersion < 0
+          || !differentPriorityMap.isEmpty()
+          || optimalRegionPriorityMap.size() != regionPriorityMap.size()) {
+        updateRegionRouteMapTimestamp();
+        regionPriorityMap.clear();
+        regionPriorityMap.putAll(optimalRegionPriorityMap);
+        routeMapSnapshot = new Pair<>(regionRouteMapTimestamp, optimalRegionPriorityMap);
+      } else {
+        routeMapSnapshot = null;
+      }
+      publishedReplicaSetVersion = replicaSets.getLeft();
     } finally {
       priorityMapLock.writeLock().unlock();
     }
 
-    if (needBroadcast.get()) {
+    if (routeMapSnapshot != null) {
       recordRegionPriorityMap(differentPriorityMap);
-      broadcastLatestRegionPriorityMap();
+      broadcastRegionPriorityMap(routeMapSnapshot, leaderEpoch);
     }
   }
 
   /** Broadcast the latest Region route priority map to all available DataNodes. */
-  private void broadcastLatestRegionPriorityMap() {
+  void broadcastRegionPriorityMap(
+      Pair<Long, Map<TConsensusGroupId, TRegionReplicaSet>> routeMapSnapshot,
+      BooleanSupplier leaderEpoch) {
     // Broadcast the RegionRouteMap to all DataNodes except the unknown ones
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         getNodeManager()
@@ -642,12 +707,13 @@ public class RouteBalancer implements IClusterStatusSubscriber {
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
 
-    long broadcastTime = System.currentTimeMillis();
-    Map<TConsensusGroupId, TRegionReplicaSet> tmpPriorityMap = getRegionPriorityMap();
+    if (leaderEpoch != currentLeaderEpoch || !leaderEpoch.getAsBoolean()) {
+      return;
+    }
     DataNodeAsyncRequestContext<TRegionRouteReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
             CnToDnAsyncRequestType.UPDATE_REGION_ROUTE_MAP,
-            new TRegionRouteReq(broadcastTime, tmpPriorityMap),
+            new TRegionRouteReq(routeMapSnapshot.getLeft(), routeMapSnapshot.getRight()),
             dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
   }
@@ -689,20 +755,181 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
   }
 
-  /** Remove one RegionGroup's route priority from the local cache. */
-  public void removeRegionPriority(TConsensusGroupId regionGroupId) {
+  /** Return the published snapshot if it still represents the active Region replica sets. */
+  public Pair<Long, Map<TConsensusGroupId, TRegionReplicaSet>> getRegionPriorityMapSnapshot() {
+    if (!tryStartPendingLeaderEpoch()) {
+      return null;
+    }
+    if (!priorityMapLock.readLock().tryLock()) {
+      return null;
+    }
+    try {
+      final PartitionManager partitionManager = getPartitionManager();
+      final long replicaSetVersion = partitionManager.getRegionReplicaSetVersion();
+      if (publishedReplicaSetVersion < 0
+          || publishedReplicaSetVersion != replicaSetVersion
+          || !currentLeaderEpoch.getAsBoolean()) {
+        return null;
+      }
+      final Map<TConsensusGroupId, TRegionReplicaSet> snapshot = new TreeMap<>(regionPriorityMap);
+      if (replicaSetVersion != partitionManager.getRegionReplicaSetVersion()
+          || !currentLeaderEpoch.getAsBoolean()) {
+        return null;
+      }
+      return new Pair<>(regionRouteMapTimestamp, snapshot);
+    } finally {
+      priorityMapLock.readLock().unlock();
+    }
+  }
+
+  public void startLeaderEpoch(long leaderEpoch, BooleanSupplier isCurrentEpoch) {
+    if (leaderEpoch < 0 || leaderEpoch > MAX_REGION_ROUTE_MAP_EPOCH) {
+      throw new IllegalStateException();
+    }
     priorityMapLock.writeLock().lock();
     try {
-      regionPriorityMap.remove(regionGroupId);
+      pendingLeaderEpoch = null;
+      if (isCurrentEpoch.getAsBoolean() && leaderEpoch >= regionRouteMapEpoch) {
+        if (leaderEpoch > regionRouteMapEpoch) {
+          regionRouteMapSequence = 0;
+        }
+        regionRouteMapEpoch = leaderEpoch;
+        publishedReplicaSetVersion = -1;
+        regionPriorityMap.clear();
+        currentLeaderEpoch = isCurrentEpoch;
+      }
     } finally {
       priorityMapLock.writeLock().unlock();
     }
+  }
+
+  public void startLeaderEpoch(LongSupplier leaderEpoch, BooleanSupplier isCurrentEpoch) {
+    priorityMapLock.writeLock().lock();
+    try {
+      currentLeaderEpoch = () -> false;
+      pendingLeaderEpoch = new PendingLeaderEpoch(leaderEpoch, isCurrentEpoch);
+      publishedReplicaSetVersion = -1;
+      regionPriorityMap.clear();
+    } finally {
+      priorityMapLock.writeLock().unlock();
+    }
+    tryStartPendingLeaderEpoch();
+  }
+
+  private boolean tryStartPendingLeaderEpoch() {
+    final PendingLeaderEpoch pending = pendingLeaderEpoch;
+    if (pending == null || !pending.isCurrentEpoch.getAsBoolean()) {
+      return pending == null && currentLeaderEpoch.getAsBoolean();
+    }
+
+    final long leaderEpoch = pending.epochSupplier.getAsLong();
+    if (leaderEpoch <= 0) {
+      return false;
+    }
+    if (leaderEpoch > MAX_REGION_ROUTE_MAP_EPOCH) {
+      throw new IllegalStateException();
+    }
+
+    priorityMapLock.writeLock().lock();
+    try {
+      if (pendingLeaderEpoch != pending
+          || !pending.isCurrentEpoch.getAsBoolean()
+          || pending.epochSupplier.getAsLong() != leaderEpoch
+          || leaderEpoch < regionRouteMapEpoch) {
+        return false;
+      }
+      if (leaderEpoch > regionRouteMapEpoch) {
+        regionRouteMapSequence = 0;
+      }
+      regionRouteMapEpoch = leaderEpoch;
+      publishedReplicaSetVersion = -1;
+      regionPriorityMap.clear();
+      currentLeaderEpoch =
+          () ->
+              pending.isCurrentEpoch.getAsBoolean()
+                  && pending.epochSupplier.getAsLong() == leaderEpoch;
+      pendingLeaderEpoch = null;
+      return currentLeaderEpoch.getAsBoolean();
+    } finally {
+      priorityMapLock.writeLock().unlock();
+    }
+  }
+
+  public void startLeaderEpochFromPersistentState(Path systemDir, BooleanSupplier isCurrentEpoch)
+      throws IOException {
+    Files.createDirectories(systemDir);
+    final Path epochFile = systemDir.resolve(REGION_ROUTE_MAP_EPOCH_FILE_NAME);
+    final Path temporaryFile = systemDir.resolve(REGION_ROUTE_MAP_EPOCH_FILE_NAME + ".tmp");
+    long previousEpoch = 0;
+    try {
+      previousEpoch = Long.parseLong(Files.readString(epochFile, StandardCharsets.UTF_8).trim());
+    } catch (NoSuchFileException ignored) {
+      // The first process starts from epoch zero.
+    } catch (NumberFormatException e) {
+      throw new IOException(e);
+    }
+    if (previousEpoch < 0) {
+      throw new IOException();
+    }
+
+    final long nextEpoch;
+    try {
+      nextEpoch = Math.addExact(previousEpoch, 1);
+    } catch (ArithmeticException e) {
+      throw new IOException(e);
+    }
+    if (nextEpoch > MAX_REGION_ROUTE_MAP_EPOCH) {
+      throw new IOException();
+    }
+
+    try {
+      try (FileChannel channel =
+          FileChannel.open(
+              temporaryFile,
+              StandardOpenOption.CREATE,
+              StandardOpenOption.TRUNCATE_EXISTING,
+              StandardOpenOption.WRITE)) {
+        final ByteBuffer buffer = StandardCharsets.UTF_8.encode(Long.toString(nextEpoch));
+        while (buffer.hasRemaining()) {
+          channel.write(buffer);
+        }
+        channel.force(true);
+      }
+      try {
+        Files.move(
+            temporaryFile,
+            epochFile,
+            StandardCopyOption.ATOMIC_MOVE,
+            StandardCopyOption.REPLACE_EXISTING);
+      } catch (AtomicMoveNotSupportedException e) {
+        Files.move(temporaryFile, epochFile, StandardCopyOption.REPLACE_EXISTING);
+      }
+    } finally {
+      Files.deleteIfExists(temporaryFile);
+    }
+    startLeaderEpoch(nextEpoch, isCurrentEpoch);
+  }
+
+  private void updateRegionRouteMapTimestamp() {
+    if (regionRouteMapSequence == REGION_ROUTE_MAP_SEQUENCE_MASK) {
+      throw new IllegalStateException();
+    }
+    regionRouteMapTimestamp = encodeRouteMapVersion(regionRouteMapEpoch, ++regionRouteMapSequence);
+  }
+
+  private static long encodeRouteMapVersion(long leaderEpoch, long sequence) {
+    return REGION_ROUTE_MAP_TIMESTAMP_BASE
+        + (leaderEpoch << REGION_ROUTE_MAP_SEQUENCE_BITS)
+        + sequence;
   }
 
   /** Clear all cached Region route priorities. */
   public void clearRegionPriority() {
     priorityMapLock.writeLock().lock();
     try {
+      currentLeaderEpoch = () -> false;
+      pendingLeaderEpoch = null;
+      publishedReplicaSetVersion = -1;
       regionPriorityMap.clear();
     } finally {
       priorityMapLock.writeLock().unlock();

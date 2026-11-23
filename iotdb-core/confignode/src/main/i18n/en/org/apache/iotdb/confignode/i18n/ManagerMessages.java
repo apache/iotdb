@@ -666,6 +666,9 @@ public final class ManagerMessages {
       MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F =
           "ConfigNode leader is waiting for cluster heartbeat sampling.";
   public static final String
+      MESSAGE_THE_CURRENT_CONFIGNODE_LEADER_CANNOT_PROVIDE_THE_REGION_ROUTE_MAP_YET_RETRY_LATER_FA500387 =
+          "The current ConfigNode leader cannot provide the Region route map yet; retry later.";
+  public static final String
       MESSAGE_CONFIGNODE_LEADER_IS_WAITING_FOR_FIRST_HEARTBEAT_FROM_REGISTERED_CONFIGNODES_DATANODES_ARG_2FD3F6FA =
           "ConfigNode leader is waiting for first heartbeat from registered ConfigNodes/DataNodes:"
               + " %s";

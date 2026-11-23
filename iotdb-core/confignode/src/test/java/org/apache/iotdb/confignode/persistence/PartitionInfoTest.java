@@ -33,6 +33,8 @@ import org.apache.iotdb.commons.snapshot.SnapshotStreamFactory;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -255,6 +257,39 @@ public class PartitionInfoTest {
         Optional.of(TConsensusGroupType.DataRegion),
         partitionInfo.getRegionType(dataRegionId.getId()));
     Assert.assertEquals(Optional.empty(), partitionInfo.getRegionType(-1));
+  }
+
+  @Test
+  public void testActiveRegionSnapshotVersionTracksCreateAndDelete() {
+    partitionInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.route_version")));
+    final long databaseVersion = partitionInfo.getRegionReplicaSetVersion();
+
+    final TConsensusGroupId regionId =
+        generateTConsensusGroupId(
+            testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion);
+    final TRegionReplicaSet replicaSet =
+        generateTRegionReplicaSet(testFlag.SchemaPartition.getFlag(), regionId);
+    final CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    createRegionGroupsPlan.addRegionGroup("root.route_version", replicaSet);
+    partitionInfo.createRegionGroups(createRegionGroupsPlan);
+
+    Assert.assertTrue(partitionInfo.getRegionReplicaSetVersion() > databaseVersion);
+    Assert.assertEquals(
+        Collections.singletonList(replicaSet), partitionInfo.getAllActiveReplicaSets());
+    final long createdVersion = partitionInfo.getRegionReplicaSetVersion();
+
+    partitionInfo.preDeleteDatabase(
+        new PreDeleteDatabasePlan(
+            "root.route_version", PreDeleteDatabasePlan.PreDeleteType.EXECUTE));
+    Assert.assertTrue(partitionInfo.getRegionReplicaSetVersion() > createdVersion);
+    Assert.assertTrue(partitionInfo.getAllActiveReplicaSets().isEmpty());
+    final long preDeletedVersion = partitionInfo.getRegionReplicaSetVersion();
+
+    partitionInfo.deleteDatabase(new DeleteDatabasePlan("root.route_version"));
+    Assert.assertTrue(partitionInfo.getRegionReplicaSetVersion() > preDeletedVersion);
+    Assert.assertTrue(partitionInfo.getAllActiveReplicaSets().isEmpty());
   }
 
   @Test

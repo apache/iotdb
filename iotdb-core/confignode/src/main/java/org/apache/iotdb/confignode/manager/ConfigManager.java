@@ -310,8 +310,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
@@ -325,6 +325,8 @@ public class ConfigManager implements IManager {
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
+  private static final long REGION_ROUTE_MAP_RETRY_INTERVAL_IN_MS = 100;
+  private static final long MAX_REGION_ROUTE_MAP_WAIT_TIMEOUT_IN_MS = TimeUnit.SECONDS.toMillis(30);
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer. */
   private final AtomicReference<ConsensusManager> consensusManager = new AtomicReference<>();
@@ -2214,43 +2216,70 @@ public class ConfigManager implements IManager {
 
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() {
-    final long retryIntervalInMS = 100;
-    TSStatus status = confirmLeader();
-    TRegionRouteMapResp resp = new TRegionRouteMapResp(status);
+    return getLatestRegionRouteMap(System::nanoTime);
+  }
 
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      for (int retry = 0;
-          retry < CONF.getHeartbeatIntervalInMs() * 4L / retryIntervalInMS;
-          retry++) {
-        AtomicBoolean containsAllRegionGroups = new AtomicBoolean(true);
-        Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap =
-            getLoadManager().getRegionPriorityMap();
-        getPartitionManager()
-            .getAllReplicaSets()
-            .forEach(
-                replicaSet -> {
-                  if (!regionPriorityMap.containsKey(replicaSet.getRegionId())) {
-                    containsAllRegionGroups.set(false);
-                  }
-                });
-        if (containsAllRegionGroups.get()) {
-          break;
-        }
-
-        try {
-          TimeUnit.MILLISECONDS.sleep(retryIntervalInMS);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          LOGGER.warn(
-              ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_RETRY_GETTING_LATEST_REGION_ROUTE_MAP);
-          resp.getStatus().setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
-          return resp;
-        }
+  TRegionRouteMapResp getLatestRegionRouteMap(LongSupplier nanoTime) {
+    final long timeoutNanos =
+        TimeUnit.MILLISECONDS.toNanos(
+            getLatestRegionRouteMapWaitTimeoutInMs(CONF.getHeartbeatIntervalInMs()));
+    final long startNanos = nanoTime.getAsLong();
+    while (nanoTime.getAsLong() - startNanos < timeoutNanos) {
+      final TSStatus status = confirmLeader();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return new TRegionRouteMapResp(status);
       }
-      resp.setTimestamp(System.currentTimeMillis());
-      resp.setRegionRouteMap(getLoadManager().getRegionPriorityMap());
+      final Pair<Long, Map<TConsensusGroupId, TRegionReplicaSet>> snapshot =
+          getLoadManager().getRegionPriorityMapSnapshot();
+      final long remainingNanos = timeoutNanos - (nanoTime.getAsLong() - startNanos);
+      if (remainingNanos <= 0) {
+        break;
+      }
+      if (snapshot != null) {
+        final TSStatus currentStatus = confirmLeader();
+        if (currentStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return new TRegionRouteMapResp(currentStatus);
+        }
+        return new TRegionRouteMapResp(currentStatus)
+            .setTimestamp(snapshot.getLeft())
+            .setRegionRouteMap(snapshot.getRight());
+      }
+      try {
+        waitForRegionRouteMap(remainingNanos);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn(
+            ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_RETRY_GETTING_LATEST_REGION_ROUTE_MAP);
+        return new TRegionRouteMapResp(RpcUtils.getStatus(TSStatusCode.REDIRECTION_RECOMMEND));
+      }
     }
-    return resp;
+    final TSStatus currentStatus = confirmLeader();
+    if (currentStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TRegionRouteMapResp(currentStatus);
+    }
+    return new TRegionRouteMapResp(
+        RpcUtils.getStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP)
+            .setMessage(
+                ManagerMessages
+                    .MESSAGE_THE_CURRENT_CONFIGNODE_LEADER_CANNOT_PROVIDE_THE_REGION_ROUTE_MAP_YET_RETRY_LATER_FA500387));
+  }
+
+  void waitForRegionRouteMap(long remainingNanos) throws InterruptedException {
+    TimeUnit.NANOSECONDS.sleep(
+        Math.min(
+            TimeUnit.MILLISECONDS.toNanos(REGION_ROUTE_MAP_RETRY_INTERVAL_IN_MS), remainingNanos));
+  }
+
+  static long getLatestRegionRouteMapWaitTimeoutInMs(long heartbeatIntervalInMs) {
+    final long heartbeatTimeoutInMs =
+        heartbeatIntervalInMs <= 0
+            ? 0
+            : heartbeatIntervalInMs > Long.MAX_VALUE / 4
+                ? Long.MAX_VALUE
+                : heartbeatIntervalInMs * 4L;
+    return Math.max(
+        REGION_ROUTE_MAP_RETRY_INTERVAL_IN_MS,
+        Math.min(heartbeatTimeoutInMs, MAX_REGION_ROUTE_MAP_WAIT_TIMEOUT_IN_MS));
   }
 
   @Override

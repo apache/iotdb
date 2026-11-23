@@ -66,14 +66,16 @@ public class EventService {
           ThreadName.CONFIG_NODE_EVENT_SERVICE.getName());
 
   private final LoadCache loadCache;
+  private final Runnable refreshRegionPriority;
   private final Map<Integer, NodeStatistics> previousNodeStatisticsMap;
   private final Map<TConsensusGroupId, RegionGroupStatistics> previousRegionGroupStatisticsMap;
   private final Map<TConsensusGroupId, ConsensusGroupStatistics>
       previousConsensusGroupStatisticsMap;
   private final EventBus eventPublisher;
 
-  public EventService(LoadCache loadCache) {
+  public EventService(LoadCache loadCache, Runnable refreshRegionPriority) {
     this.loadCache = loadCache;
+    this.refreshRegionPriority = refreshRegionPriority;
     this.previousNodeStatisticsMap = new TreeMap<>();
     this.previousRegionGroupStatisticsMap = new TreeMap<>();
     this.previousConsensusGroupStatisticsMap = new TreeMap<>();
@@ -146,6 +148,7 @@ public class EventService {
     checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
     checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
     checkAndBroadcastConsensusGroupStatisticsChangeEventIfNecessary();
+    refreshRegionPriority.run();
   }
 
   public synchronized void checkAndBroadcastNodeStatisticsChangeEventIfNecessary() {

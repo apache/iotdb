@@ -195,20 +195,27 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLHandshakeException;
+
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.LongSupplier;
 
 public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient> {
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
@@ -219,6 +226,11 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
       String.format(ConfigMessages.MSG_RECONNECTION_FAIL, NODE_TYPE_NAME);
 
   private static final long REGISTER_LEADER_WARMING_UP_RETRY_TIMEOUT_MS = 60_000L;
+  private static final long ROUTE_MAP_RETRY_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(60);
+  private static final long ROUTE_MAP_RETRY_INTERVAL_NANOS =
+      TimeUnit.MILLISECONDS.toNanos(WAIT_CN_LEADER_ELECTION_INTERVAL_MS);
+  private static final int ROUTE_MAP_MAX_RETRY_ATTEMPTS =
+      (int) (ROUTE_MAP_RETRY_TIMEOUT_NANOS / ROUTE_MAP_RETRY_INTERVAL_NANOS) + 1;
 
   private static final String UNSUPPORTED_INVOCATION =
       DataNodeMiscMessages.UNSUPPORTED_INVOCATION_BY_DATANODE;
@@ -765,8 +777,97 @@ public class ConfigNodeClient extends AbstractConfigNodeClient<ConfigNodeClient>
 
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.getLatestRegionRouteMap(), resp -> !updateConfigNodeLeader(resp.status));
+    return getLatestRegionRouteMap(System::nanoTime);
+  }
+
+  TRegionRouteMapResp getLatestRegionRouteMap(LongSupplier nanoTime) throws TException {
+    final long startNanos = nanoTime.getAsLong();
+    final LongSupplier remainingNanos =
+        () -> ROUTE_MAP_RETRY_TIMEOUT_NANOS - (nanoTime.getAsLong() - startNanos);
+    TException lastFailure = null;
+    boolean reconnect = false;
+    for (int attempt = 0; attempt < ROUTE_MAP_MAX_RETRY_ATTEMPTS; attempt++) {
+      final long remaining = remainingNanos.getAsLong();
+      if (remaining <= 0) {
+        break;
+      }
+      if (attempt > 0) {
+        try {
+          waitBeforeRouteMapRetry(Math.min(remaining, ROUTE_MAP_RETRY_INTERVAL_NANOS));
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new TException(ConfigMessages.UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK, e);
+        }
+        if (remainingNanos.getAsLong() <= 0) {
+          break;
+        }
+      }
+
+      final TRegionRouteMapResp response;
+      try {
+        if (reconnect) {
+          connectAndSync(remainingNanos);
+        }
+        response = fetchRegionRouteMap(getBoundedTimeoutMs(remainingNanos));
+      } catch (TException e) {
+        invalidate();
+        if ((e instanceof TTransportException transportException
+                && transportException.getType() == TTransportException.CORRUPTED_DATA)
+            || e.getCause() instanceof SSLHandshakeException) {
+          throw e;
+        }
+        configLeader = null;
+        reconnect = true;
+        lastFailure = e;
+        continue;
+      }
+
+      if (remainingNanos.getAsLong() <= 0) {
+        throw new TTransportException(TTransportException.TIMED_OUT, MSG_RECONNECTION_FAIL);
+      }
+
+      final TSStatus status = response.getStatus();
+      if (isConfigNodeLeaderWarmingUp(status)) {
+        lastFailure = new TException(status.toString());
+        reconnect = false;
+      } else if (updateConfigNodeLeader(status)) {
+        lastFailure = new TException(status.toString());
+        reconnect = true;
+      } else if (remainingNanos.getAsLong() > 0) {
+        return response;
+      } else {
+        throw new TTransportException(TTransportException.TIMED_OUT, MSG_RECONNECTION_FAIL);
+      }
+    }
+    if (remainingNanos.getAsLong() <= 0) {
+      throw new TTransportException(TTransportException.TIMED_OUT, MSG_RECONNECTION_FAIL);
+    }
+    if (lastFailure != null) {
+      throw lastFailure;
+    }
+    throw new TTransportException(TTransportException.TIMED_OUT, MSG_RECONNECTION_FAIL);
+  }
+
+  void waitBeforeRouteMapRetry(long nanos) throws InterruptedException {
+    TimeUnit.NANOSECONDS.sleep(nanos);
+  }
+
+  private TRegionRouteMapResp fetchRegionRouteMap(int timeoutMs) throws TException {
+    if (!(transport instanceof TimeoutChangeableTransport socketTransport)) {
+      return client.getLatestRegionRouteMap();
+    }
+    final int previousTimeout;
+    try {
+      previousTimeout = socketTransport.getTimeOut();
+    } catch (SocketException e) {
+      throw new TTransportException(e);
+    }
+    socketTransport.setTimeout(timeoutMs);
+    try {
+      return client.getLatestRegionRouteMap();
+    } finally {
+      socketTransport.setTimeout(previousTimeout);
+    }
   }
 
   @Override
