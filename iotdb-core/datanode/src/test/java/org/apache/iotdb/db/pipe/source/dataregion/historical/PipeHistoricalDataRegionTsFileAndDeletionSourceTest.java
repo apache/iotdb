@@ -43,6 +43,7 @@ import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -56,9 +57,11 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -79,6 +82,39 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
+
+  @Test
+  public void testActiveUnclosedTsFileIsSelectedConservatively() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalActiveTsFile").toFile();
+    final PipeHistoricalDataRegionTsFileAndDeletionSource source =
+        new PipeHistoricalDataRegionTsFileAndDeletionSource();
+    try {
+      final TsFileResource resource = createTsFileResource(tempDir, "active.tsfile");
+      resource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
+      final TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+      Mockito.when(processor.alreadyMarkedClosing()).thenReturn(false);
+      resource.setProcessor(processor);
+      setPrivateField(source, "isHistoricalSourceEnabled", true);
+
+      final Class<?> statisticsClass =
+          Class.forName(
+              PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName()
+                  + "$HistoricalTsFileExtractionStatistics");
+      final Constructor<?> statisticsConstructor = statisticsClass.getDeclaredConstructor();
+      statisticsConstructor.setAccessible(true);
+      final Method shouldExtractTsFileResource =
+          PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredMethod(
+              "shouldExtractTsFileResource", TsFileResource.class, statisticsClass);
+      shouldExtractTsFileResource.setAccessible(true);
+
+      Assert.assertTrue(
+          (Boolean)
+              shouldExtractTsFileResource.invoke(
+                  source, resource, statisticsConstructor.newInstance()));
+    } finally {
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
 
   @Test
   public void testClosingTsFileKeepsTimeFiltering() throws Exception {

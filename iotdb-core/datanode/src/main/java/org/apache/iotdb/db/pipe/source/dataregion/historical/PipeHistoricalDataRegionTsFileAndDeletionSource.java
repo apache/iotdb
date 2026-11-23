@@ -60,7 +60,6 @@ import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -1121,12 +1120,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return false;
     }
 
-    // Closing files may still have incomplete progress and time metadata. Select them
+    // Unclosed files may still have incomplete progress and time metadata. Select them
     // conservatively; the event waits for the file to close before parsing or transfer.
-    if (!resource.isClosed()
-        && Optional.ofNullable(resource.getProcessor())
-            .map(TsFileProcessor::alreadyMarkedClosing)
-            .orElse(true)) {
+    if (!resource.isClosed()) {
       ++statistics.selectedByUnclosedOrClosingCount;
       return true;
     }
