@@ -250,6 +250,8 @@ public class ConfigNodeConfig {
   private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
+  private boolean enableSyncSchemaDeletion = false;
+
   /** Maximum number of tree-model timeseries deletion tasks waiting to execute. */
   private int timeseriesDeletionQueueCapacity = 1024;
 
@@ -803,6 +805,14 @@ public class ConfigNodeConfig {
 
   public void setProcedureCoreWorkerThreadsCount(int procedureCoreWorkerThreadsCount) {
     this.procedureCoreWorkerThreadsCount = procedureCoreWorkerThreadsCount;
+  }
+
+  public boolean isEnableSyncSchemaDeletion() {
+    return enableSyncSchemaDeletion;
+  }
+
+  public void setEnableSyncSchemaDeletion(boolean enableSyncSchemaDeletion) {
+    this.enableSyncSchemaDeletion = enableSyncSchemaDeletion;
   }
 
   public int getLoadStatisticsPublisherThreadCount() {

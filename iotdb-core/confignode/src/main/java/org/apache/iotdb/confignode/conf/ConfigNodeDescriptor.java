@@ -418,6 +418,11 @@ public class ConfigNodeDescriptor {
                 "procedure_core_worker_thread_count",
                 String.valueOf(conf.getProcedureCoreWorkerThreadsCount()))));
 
+    conf.setEnableSyncSchemaDeletion(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_sync_schema_deletion", String.valueOf(conf.isEnableSyncSchemaDeletion()))));
+
     conf.setTimeseriesDeletionQueueCapacity(
         Integer.parseInt(
             properties.getProperty(
