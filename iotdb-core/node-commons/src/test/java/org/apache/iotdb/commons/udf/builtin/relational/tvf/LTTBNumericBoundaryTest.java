@@ -44,6 +44,21 @@ import static org.junit.Assert.assertThrows;
 public class LTTBNumericBoundaryTest {
 
   @Test
+  public void testIntegralAreasSurviveCancellation() {
+    // The doubled areas are 1 and 3. Rounding the two cross-products separately gives 1 and 0.
+    // The larger scale also forces the products beyond the range of long.
+    for (long scale : new long[] {1L << 28, 1L << 34}) {
+      long[] times = {0, 1, scale - 2, scale + 1};
+      Long[][] values = {{0L}, {1L}, {scale - 3}, {scale}};
+      long[] expected = {0, scale - 2, scale + 1};
+      assertArrayEquals(expected, longValues(sample("TARGET_COUNT", 3, 3, 0, times, values)[1]));
+      assertArrayEquals(expected, longValues(sample("COUNT_WINDOW", 4, 4, 0, times, values)[1]));
+      assertArrayEquals(
+          expected, longValues(sample("TIME_WINDOW", scale + 2, scale + 2, 0, times, values)[2]));
+    }
+  }
+
+  @Test
   public void testInt64TargetCountPreservesPeakAtLargeBaselines() {
     Long[][] values = {{0L}, {1L}, {8L}, {2L}, {0L}, {0L}};
     for (long offset : new long[] {0, 1L << 60, Long.MIN_VALUE, Long.MAX_VALUE - 8}) {

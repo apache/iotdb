@@ -88,6 +88,11 @@ public class IoTDBLTTBTableFunctionIT {
               + "(0, 'd1', 0.0, 1), (1, 'd1', 1.0, 1), (2, 'd1', 2.0, 1),"
               + "(3, 'd1', null, 1), (4, 'd1', null, 1), (5, 'd1', null, 1),"
               + "(6, 'd1', 0.0, 1), (7, 'd1', 0.0, 1), (8, 'd1', 0.0, 1)");
+      statement.execute(
+          "CREATE TABLE observations(observed_at TIMESTAMP FIELD, value INT32 FIELD)");
+      statement.execute(
+          "INSERT INTO observations(time, observed_at, value) VALUES "
+              + "(1, 1970-01-01T00:00:00.000+00:00, 10), (2, null, 20)");
       // Two devices share one site tag; both write t = 0 so the partition has a duplicate
       // timestamp.
       statement.execute("CREATE TABLE shared(site STRING TAG, device STRING TAG, s1 DOUBLE FIELD)");
@@ -237,6 +242,21 @@ public class IoTDBLTTBTableFunctionIT {
     tableAssertTestFail(
         duplicated + "SIZE => 2ms, ORIGIN => 1970-01-01T00:00:00.000+00:00)",
         expected,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testNullableTimeColumn() {
+    String query = "SELECT * FROM LTTB(DATA => (SELECT observed_at, value FROM observations";
+    String args = ") ORDER BY observed_at, TIMECOL => 'observed_at', ";
+    for (String mode : new String[] {"N => 3", "SIZE => 2", "SIZE => 2ms"}) {
+      tableAssertTestFail(
+          query + args + mode + ")", "701: Time column should never be null", DATABASE_NAME);
+    }
+    tableResultSetEqualTest(
+        query + " WHERE observed_at IS NOT NULL" + args + "N => 3)",
+        new String[] {"window_index", "value_time", "value"},
+        new String[] {"0,1970-01-01T00:00:00.000Z,10,"},
         DATABASE_NAME);
   }
 

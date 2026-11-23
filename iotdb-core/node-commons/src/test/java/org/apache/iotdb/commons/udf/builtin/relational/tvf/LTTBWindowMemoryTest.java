@@ -31,11 +31,14 @@ import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
@@ -194,6 +197,61 @@ public class LTTBWindowMemoryTest {
         assertEquals(1, times.build().getLong(1));
         assertEquals(1.0, valuesBuilder.build().getDouble(0), 0.0);
         assertEquals(5.0, valuesBuilder.build().getDouble(1), 0.0);
+      } finally {
+        processor.beforeDestroy();
+      }
+    }
+  }
+
+  @Test
+  public void testSparseColumnsReleaseTheirFirstWindowWhenEmitted() throws Exception {
+    for (boolean timeWindow : new boolean[] {false, true}) {
+      TableFunctionDataProcessor processor = processor(timeWindow, 1, 1, Type.DOUBLE, Type.DOUBLE);
+      List<ColumnBuilder> builders = new ArrayList<>(builders(timeWindow));
+      builders.add(new LongColumnBuilder(null, 16));
+      builders.add(new DoubleColumnBuilder(null, 16));
+      try {
+        processor.process(record(0, 11.0, null), builders, null);
+        processor.process(record(1, null, 22.0), builders, null);
+        processor.process(record(2, null, null), builders, null);
+        assertEquals(2, builders.get(0).getPositionCount());
+        Field field = processor.getClass().getSuperclass().getDeclaredField("firstEligibleWindows");
+        field.setAccessible(true);
+        for (Object firstWindow : (Object[]) field.get(processor)) {
+          assertNull(firstWindow);
+        }
+      } finally {
+        processor.beforeDestroy();
+      }
+    }
+  }
+
+  @Test
+  public void testFiniteLookaheadBeyondNonFiniteBuckets() {
+    for (boolean timeWindow : new boolean[] {false, true}) {
+      TableFunctionDataProcessor processor = processor(timeWindow, 3, 3, Type.DOUBLE);
+      List<ColumnBuilder> builders = builders(timeWindow);
+      try {
+        processor.process(record(0, 0.0), builders, null);
+        processor.process(record(1, 0.0), builders, null);
+        processor.process(record(2, 100.0), builders, null);
+        for (int i = 3; i < 900; i++) {
+          processor.process(record(i, Double.NaN), builders, null);
+        }
+        assertEquals(0, builders.get(0).getPositionCount());
+        processor.process(record(900, 45_000.0), builders, null);
+        processor.process(record(901, (Number) null), builders, null);
+        processor.process(record(902, (Number) null), builders, null);
+        processor.process(record(903, 0.0), builders, null);
+        ColumnBuilder times = builders.get(timeWindow ? 2 : 1);
+        // C lies on the line through t=0 and t=2, so t=1 wins once its lookahead closes.
+        assertEquals(301, times.getPositionCount());
+        assertEquals(1, times.build().getLong(1));
+        assertEquals(897, times.build().getLong(300));
+        processor.finish(builders, null);
+        assertEquals(303, times.getPositionCount());
+        assertEquals(900, times.build().getLong(301));
+        assertEquals(903, times.build().getLong(302));
       } finally {
         processor.beforeDestroy();
       }

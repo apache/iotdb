@@ -26,6 +26,8 @@ import org.apache.iotdb.calc.execution.operator.process.function.partition.Parti
 import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BatchedTableFunctionDataProcessor;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.LTTBTableFunction;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -35,6 +37,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 
@@ -50,6 +53,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -63,7 +67,10 @@ import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanc
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 public class TableFunctionOperatorTest {
@@ -475,6 +482,96 @@ public class TableFunctionOperatorTest {
       Assert.assertTrue("Returned block count: " + returnedBlocks, returnedBlocks > 2);
     } finally {
       TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(originalMaxBlockSize);
+    }
+  }
+
+  @Test
+  public void testLttbDrainsEachPartitionInBoundedBatches() throws Exception {
+    int previousSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(16);
+    try {
+      OperatorContext context = createOperatorContext("lttb_partition_batches");
+      TableFunctionProcessorProvider lttb =
+          new LTTBTableFunction()
+              .getProcessorProvider(
+                  new MapTableFunctionHandle.Builder()
+                      .addProperty(LTTBTableFunction.MODE_PROPERTY, "TARGET_COUNT")
+                      .addProperty(LTTBTableFunction.PARTITION_TYPES_PROPERTY, "STRING")
+                      .addProperty(LTTBTableFunction.PARTICIPANT_TYPES_PROPERTY, "INT32")
+                      .addProperty(LTTBTableFunction.N_PARAMETER_NAME, 3L)
+                      .build());
+      List<BatchedTableFunctionDataProcessor> processors = new ArrayList<>();
+      TableFunctionProcessorProvider provider =
+          new TableFunctionProcessorProvider() {
+            @Override
+            public TableFunctionDataProcessor getDataProcessor() {
+              BatchedTableFunctionDataProcessor processor =
+                  mock(
+                      BatchedTableFunctionDataProcessor.class,
+                      delegatesTo(lttb.getDataProcessor()));
+              processors.add(processor);
+              return processor;
+            }
+          };
+      List<TSDataType> input =
+          Arrays.asList(
+              TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.DOUBLE, TSDataType.INT32);
+      List<TSDataType> output =
+          Arrays.asList(
+              TSDataType.INT64, TSDataType.STRING, TSDataType.TIMESTAMP, TSDataType.INT32);
+      List<Binary> keys =
+          Arrays.asList(
+              D1_BINARY, D1_BINARY, D1_BINARY, D2_BINARY, D2_BINARY, D2_BINARY, D3_BINARY,
+              D3_BINARY, D5_BINARY, D5_BINARY, D5_BINARY);
+      long[] timestamps = {
+        1717171200000L,
+        1719763200000L,
+        1722441600000L,
+        1725120000000L,
+        1725130000000L,
+        1725140000000L,
+        1722441600000L,
+        1722441800000L,
+        1722551600000L,
+        1722552800000L,
+        1722553000000L
+      };
+      int[] values = {60, 60, 61, 62, 62, 63, 63, 64, 64, 65, 65};
+      int row = 0;
+      try (TableFunctionOperator operator =
+          new TableFunctionOperator(
+              context,
+              provider,
+              0L,
+              constructChildOperator(context.getDriverContext()),
+              input,
+              output,
+              4,
+              Arrays.asList(0, 1, 3),
+              Collections.emptyList(),
+              false,
+              Collections.singletonList(1),
+              false,
+              mock(IoTDBLocal.class))) {
+        while (!operator.isFinished()) {
+          operator.isBlocked();
+          TsBlock block = operator.next();
+          if (block != null) {
+            assertEquals(1, block.getPositionCount());
+            assertEquals(0L, block.getColumn(0).getLong(0));
+            assertEquals(keys.get(row), block.getColumn(1).getBinary(0));
+            assertEquals(timestamps[row], block.getColumn(2).getLong(0));
+            assertEquals(values[row++], block.getColumn(3).getInt(0));
+          }
+        }
+      }
+      assertEquals(keys.size(), row);
+      assertEquals(4, processors.size());
+      for (int i = 0; i < processors.size(); i++) {
+        verify(processors.get(i), times(i == 2 ? 2 : 3)).finishBatch(any(), any());
+      }
+    } finally {
+      TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(previousSize);
     }
   }
 

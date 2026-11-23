@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
@@ -301,13 +302,35 @@ public class LTTBRegressionTest {
   }
 
   @Test
+  public void testNullTimestampIsRejectedAndEpochZeroIsPreserved() {
+    for (String mode : new String[] {"TARGET_COUNT", "COUNT_WINDOW", "TIME_WINDOW"}) {
+      TableFunctionDataProcessor processor = processor(mode, 3, 3, 0, 1);
+      try {
+        processor.process(record(null, 1.0), Collections.emptyList(), null);
+        fail("Expected a null time column to be rejected in " + mode);
+      } catch (SemanticException expected) {
+        assertEquals(QueryMessages.TIME_COLUMN_SHOULD_NOT_BE_NULL, expected.getMessage());
+      } finally {
+        processor.beforeDestroy();
+      }
+
+      List<ColumnBuilder> output = sample(mode, 3, 3, 0, new Double[][] {{1.0}});
+      int timeIndex = output.size() - 2;
+      assertEquals(1, output.get(timeIndex).getPositionCount());
+      assertEquals(0L, output.get(timeIndex).build().getLong(0));
+    }
+  }
+
+  @Test
   public void testTargetColumnsShareMemoryBudget() {
     TableFunctionDataProcessor processor = processor("TARGET_COUNT", 3, 3, 0, 8);
     try {
       for (int i = 0; i < 350_000; i++) {
         // timestamps must be unique within the partition, so advance the input time
         processor.process(
-            record(i, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), Collections.emptyList(), null);
+            record((long) i, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+            Collections.emptyList(),
+            null);
       }
       fail(
           "Expected a controlled memory-limit exception before buffering 350000 rows in eight columns");
@@ -365,7 +388,7 @@ public class LTTBRegressionTest {
     return new LTTBTableFunction().getProcessorProvider(handle).getDataProcessor();
   }
 
-  private static Record record(long time, Double... values) {
+  private static Record record(Long time, Double... values) {
     // A lightweight row avoids Mockito invocation bookkeeping in the memory-limit test.
     return (Record)
         Proxy.newProxyInstance(
@@ -375,11 +398,11 @@ public class LTTBRegressionTest {
               int index = (int) arguments[0];
               switch (method.getName()) {
                 case "getLong":
-                  return time;
+                  return time == null ? 0L : time;
                 case "getDouble":
                   return values[index - 1];
                 case "isNull":
-                  return index != 0 && values[index - 1] == null;
+                  return index == 0 ? time == null : values[index - 1] == null;
                 default:
                   throw new UnsupportedOperationException(method.getName());
               }

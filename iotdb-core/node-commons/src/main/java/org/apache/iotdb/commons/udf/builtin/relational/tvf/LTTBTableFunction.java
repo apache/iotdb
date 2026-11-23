@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.i18n.QueryMessages;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BatchedTableFunctionDataProcessor;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableFunctionProcessorMemoryBudget;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -54,6 +55,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
 
@@ -525,32 +527,8 @@ public class LTTBTableFunction implements TableFunction {
                 ? count
                 : bucketBoundary(lookaheadBucket + 1, intermediate, bucketCount);
       }
-      double sumTime = 0;
-      double sumValue = 0;
-      int finiteCount = 0;
-      for (int i = lookaheadStart; i < lookaheadEnd; i++) {
-        if (!isFiniteValue(values, integralValues, i)) {
-          continue;
-        }
-        sumTime += differenceAsDouble(times[i], anchorTime);
-        sumValue += relativeValue(values, integralValues, i, anchorValue, integralAnchor);
-        finiteCount++;
-      }
-      // A non-finite lookahead point means the whole partition is non-finite; every area is then
-      // undefined and the bucket keeps its earliest point.
-      double avgTime;
-      double avgValue;
-      if (finiteCount == 0) {
-        avgTime = differenceAsDouble(times[lookaheadStart], anchorTime);
-        avgValue =
-            relativeValue(values, integralValues, lookaheadStart, anchorValue, integralAnchor);
-      } else {
-        avgTime = sumTime / finiteCount;
-        avgValue = sumValue / finiteCount;
-      }
-
       int pick =
-          argMaxArea(
+          selectBucketPoint(
               times,
               values,
               integralValues,
@@ -559,26 +537,11 @@ public class LTTBTableFunction implements TableFunction {
               anchorTime,
               anchorValue,
               integralAnchor,
-              avgTime,
-              avgValue);
-      if (pick == NOT_SELECTED) {
-        // The exact fallback has to score the candidates against the same C as the normal path.
-        pick =
-            argMaxAreaExactly(
-                times,
-                values,
-                integralValues,
-                currentStart,
-                currentEnd,
-                anchorTime,
-                anchorValue,
-                integralAnchor,
-                times,
-                values,
-                integralValues,
-                lookaheadStart,
-                lookaheadEnd);
-      }
+              times,
+              values,
+              integralValues,
+              lookaheadStart,
+              lookaheadEnd);
       selected[selectedCount++] = pick;
       if (isFiniteValue(values, integralValues, pick)) {
         anchor = pick;
@@ -613,32 +576,6 @@ public class LTTBTableFunction implements TableFunction {
   }
 
   /**
-   * Area of the triangle formed by the candidate {@code index}, the anchor and the lookahead point,
-   * or {@code -1} when no finite area exists. Areas are non-negative, so {@code -1} unambiguously
-   * marks a candidate that cannot be scored.
-   *
-   * <p>A {@code NaN} or infinite participant value yields a non-finite (undefined) area rather than
-   * an overflow: no arithmetic can make it finite. Such a candidate never beats a finite one, so a
-   * bucket whose candidates are all non-finite keeps its earliest point.
-   */
-  private static double boundedArea(
-      long[] times,
-      double[] values,
-      long[] integralValues,
-      int index,
-      long anchorTime,
-      double anchorValue,
-      long integralAnchor,
-      double nextTime,
-      double nextValue) {
-    double area =
-        Math.abs(
-            nextTime * relativeValue(values, integralValues, index, anchorValue, integralAnchor)
-                - differenceAsDouble(times[index], anchorTime) * nextValue);
-    return Double.isFinite(area) ? area : -1;
-  }
-
-  /**
    * Whether the participant value at {@code index} is finite: integral columns always are, and a
    * floating-point value qualifies when it is neither NaN nor infinite. Such a value can serve as a
    * triangle vertex and is representable as an exact decimal.
@@ -647,7 +584,8 @@ public class LTTBTableFunction implements TableFunction {
     return integralValues != null || Double.isFinite(values[index]);
   }
 
-  private static int argMaxArea(
+  /** Score candidates against the next bucket average, keeping the first candidate on ties. */
+  private static int selectBucketPoint(
       long[] times,
       double[] values,
       long[] integralValues,
@@ -656,38 +594,115 @@ public class LTTBTableFunction implements TableFunction {
       long anchorTime,
       double anchorValue,
       long integralAnchor,
-      double nextTime,
-      double nextValue) {
-    // An undefined area means one of the vertices is not representable exactly (NaN or infinity);
-    // such a candidate cannot be scored. An overflow over representable input is different: the
-    // exact fallback recomputes it from the original points, so the whole bucket switches to it —
-    // but only when the anchor is itself representable, because the fallback converts it directly.
-    boolean exactIsPossible = Double.isFinite(anchorValue);
-    int pick = start;
-    double maxArea = -1;
-    for (int i = start; i < end; i++) {
-      double area =
-          boundedArea(
-              times,
-              values,
-              integralValues,
-              i,
-              anchorTime,
-              anchorValue,
-              integralAnchor,
-              nextTime,
-              nextValue);
-      if (area < 0) {
-        if (!isFiniteValue(values, integralValues, i)) {
-          // Non-finite participant: boundedArea scored it as the smallest area.
-          continue;
-        }
-        if (exactIsPossible) {
-          // Overflow on representable input: let the caller compare the whole bucket exactly.
-          return NOT_SELECTED;
+      long[] nextTimes,
+      double[] nextValues,
+      long[] nextIntegralValues,
+      int nextStart,
+      int nextEnd) {
+    if (end - start == 1) {
+      return start;
+    }
+    if (integralValues != null) {
+      try {
+        return argMaxIntegralArea(
+            times,
+            integralValues,
+            start,
+            end,
+            anchorTime,
+            integralAnchor,
+            nextTimes,
+            nextIntegralValues,
+            nextStart,
+            nextEnd);
+      } catch (ArithmeticException overflow) {
+        // A difference, sum or cross-product can exceed the long range.
+      }
+    } else {
+      double sumTime = 0;
+      double sumValue = 0;
+      int finiteCount = 0;
+      for (int i = nextStart; i < nextEnd; i++) {
+        if (Double.isFinite(nextValues[i])) {
+          sumTime += differenceAsDouble(nextTimes[i], anchorTime);
+          sumValue += nextValues[i] - anchorValue;
+          finiteCount++;
         }
       }
-      if (area > maxArea) {
+      if (finiteCount == 0) {
+        return start;
+      }
+      double nextTime = sumTime / finiteCount;
+      double nextValue = sumValue / finiteCount;
+      int pick = start;
+      double maxArea = -1;
+      for (int i = start; i < end; i++) {
+        if (!Double.isFinite(values[i])) {
+          continue;
+        }
+        double area =
+            Math.abs(
+                nextTime * (values[i] - anchorValue)
+                    - differenceAsDouble(times[i], anchorTime) * nextValue);
+        if (!Double.isFinite(area)) {
+          // Re-score every candidate against the same exact lookahead sum.
+          pick = NOT_SELECTED;
+          break;
+        }
+        if (area > maxArea) {
+          maxArea = area;
+          pick = i;
+        }
+      }
+      if (pick != NOT_SELECTED) {
+        return pick;
+      }
+    }
+    return argMaxAreaExactly(
+        times,
+        values,
+        integralValues,
+        start,
+        end,
+        anchorTime,
+        anchorValue,
+        integralAnchor,
+        nextTimes,
+        nextValues,
+        nextIntegralValues,
+        nextStart,
+        nextEnd);
+  }
+
+  /** Compare scaled triangle areas using the lookahead sums, preserving integer precision. */
+  private static int argMaxIntegralArea(
+      long[] times,
+      long[] values,
+      int start,
+      int end,
+      long anchorTime,
+      long anchorValue,
+      long[] nextTimes,
+      long[] nextValues,
+      int nextStart,
+      int nextEnd) {
+    long sumTime = 0;
+    long sumValue = 0;
+    for (int i = nextStart; i < nextEnd; i++) {
+      sumTime = Math.addExact(sumTime, Math.subtractExact(nextTimes[i], anchorTime));
+      sumValue = Math.addExact(sumValue, Math.subtractExact(nextValues[i], anchorValue));
+    }
+    int pick = start;
+    long maxArea = 0;
+    for (int i = start; i < end; i++) {
+      long value = Math.subtractExact(values[i], anchorValue);
+      long time = Math.subtractExact(times[i], anchorTime);
+      long determinant =
+          Math.subtractExact(
+              Math.multiplyExact(sumTime, value), Math.multiplyExact(time, sumValue));
+      // abs(MIN_VALUE) represents 2^63 when compared as an unsigned long.
+      long area = Math.abs(determinant);
+      if (Long.compareUnsigned(area, maxArea) > 0) {
         maxArea = area;
         pick = i;
       }
@@ -754,13 +769,6 @@ public class LTTBTableFunction implements TableFunction {
     return integralValues == null
         ? new BigDecimal(values[index])
         : BigDecimal.valueOf(integralValues[index]);
-  }
-
-  private static double relativeValue(
-      double[] values, long[] integralValues, int index, double origin, long integralOrigin) {
-    return integralValues == null
-        ? values[index] - origin
-        : differenceAsDouble(integralValues[index], integralOrigin);
   }
 
   private static double differenceAsDouble(long value, long origin) {
@@ -988,34 +996,6 @@ public class LTTBTableFunction implements TableFunction {
       size--;
     }
 
-    /** Average timestamp of the finite points, relative to {@code origin}. */
-    double finiteAverageTime(long origin) {
-      double sum = 0;
-      int count = 0;
-      for (int i = 0; i < size; i++) {
-        if (!Double.isFinite(values[i])) {
-          continue;
-        }
-        sum += differenceAsDouble(times[i], origin);
-        count++;
-      }
-      return sum / count;
-    }
-
-    /** Average value of the finite points, relative to {@code origin}. */
-    double finiteAverageValue(double origin, long integralOrigin) {
-      double sum = 0;
-      int count = 0;
-      for (int i = 0; i < size; i++) {
-        if (!Double.isFinite(values[i])) {
-          continue;
-        }
-        sum += relativeValue(values, integralValues, i, origin, integralOrigin);
-        count++;
-      }
-      return sum / count;
-    }
-
     /** Whether at least one point has a finite value. */
     boolean hasFinitePoint() {
       for (int i = 0; i < size; i++) {
@@ -1110,12 +1090,17 @@ public class LTTBTableFunction implements TableFunction {
     }
 
     /**
-     * Rejects a repeated input timestamp of the partition. Runs at the partition input boundary,
+     * Rejects a null or repeated timestamp in the partition. Runs at the partition input boundary,
      * before per-column {@code NULL} filtering and before window expansion, so a row shared by
      * several overlapping windows is still a single input row.
      */
-    protected final void checkTimestamp(long time) {
+    protected final long readTimestamp(Record input) {
+      if (input.isNull(0)) {
+        throw new SemanticException(QueryMessages.TIME_COLUMN_SHOULD_NOT_BE_NULL);
+      }
+      long time = input.getLong(0);
       timestampChecker.check(time);
+      return time;
     }
 
     protected final PointBuffer[] newBuffers(BufferMemoryBudget memoryBudget) {
@@ -1171,11 +1156,16 @@ public class LTTBTableFunction implements TableFunction {
   }
 
   /** Buffers the whole partition and applies the standard LTTB algorithm in {@link #finish}. */
-  private static final class TargetCountLTTBDataProcessor extends AbstractLTTBDataProcessor {
+  private static final class TargetCountLTTBDataProcessor extends AbstractLTTBDataProcessor
+      implements BatchedTableFunctionDataProcessor {
     private final long n;
     private final PointBuffer[] buffers;
     private final BufferMemoryBudget memoryBudget;
     private boolean hasRows;
+    private int[][] selections;
+    private int[] selectedIndexes;
+    private int rowCount;
+    private int nextRow;
 
     private TargetCountLTTBDataProcessor(
         long n,
@@ -1195,18 +1185,35 @@ public class LTTBTableFunction implements TableFunction {
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
       hasRows = true;
-      long time = input.getLong(0);
-      checkTimestamp(time);
+      long time = readTimestamp(input);
       capturePartitionValues(input);
       collect(input, time, buffers);
     }
 
     @Override
-    public void finish(
-        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+    public boolean finishBatch(List<ColumnBuilder> builders, BooleanSupplier blockFull) {
       if (!hasRows) {
-        return;
+        return true;
       }
+      if (selections == null) {
+        prepareSelections();
+      }
+      while (nextRow < rowCount) {
+        builders.get(0).writeLong(0L);
+        for (int i = 0; i < participantColumns.length; i++) {
+          selectedIndexes[i] =
+              nextRow < selections[i].length ? selections[i][nextRow] : NOT_SELECTED;
+        }
+        writeRow(builders, 1, buffers, selectedIndexes);
+        nextRow++;
+        if (blockFull.getAsBoolean()) {
+          break;
+        }
+      }
+      return nextRow == rowCount;
+    }
+
+    private void prepareSelections() {
       long selectionBytes =
           RamUsageEstimator.sizeOfObjectArray(participantColumns.length)
               + RamUsageEstimator.sizeOfIntArray(participantColumns.length);
@@ -1214,28 +1221,21 @@ public class LTTBTableFunction implements TableFunction {
         selectionBytes += RamUsageEstimator.sizeOfIntArray((int) Math.min(buffer.size, n));
       }
       memoryBudget.reserve(selectionBytes);
-      int[][] selections = new int[participantColumns.length][];
-      int rowCount = 0;
+      selections = new int[participantColumns.length][];
+      selectedIndexes = new int[participantColumns.length];
       for (int i = 0; i < participantColumns.length; i++) {
         PointBuffer buffer = buffers[i];
         selections[i] =
             selectTargetCount(buffer.times, buffer.values, buffer.integralValues, buffer.size, n);
         rowCount = Math.max(rowCount, selections[i].length);
       }
-
-      int[] selectedIndexes = new int[participantColumns.length];
-      for (int row = 0; row < rowCount; row++) {
-        properColumnBuilders.get(0).writeLong(0L);
-        for (int i = 0; i < participantColumns.length; i++) {
-          selectedIndexes[i] = row < selections[i].length ? selections[i][row] : NOT_SELECTED;
-        }
-        writeRow(properColumnBuilders, 1, buffers, selectedIndexes);
-      }
     }
 
     @Override
     public void beforeDestroy() {
       Arrays.fill(buffers, null);
+      selections = null;
+      selectedIndexes = null;
       memoryBudget.reservedBytes = 0;
     }
   }
@@ -1247,10 +1247,12 @@ public class LTTBTableFunction implements TableFunction {
    */
   private abstract static class WindowState {
     protected final PointBuffer[] buffers;
+    final WindowState[] nextFinite;
     protected final long endExclusive;
 
     private WindowState(PointBuffer[] buffers, long endExclusive) {
       this.buffers = buffers;
+      this.nextFinite = new WindowState[buffers.length];
       this.endExclusive = endExclusive;
     }
 
@@ -1358,6 +1360,9 @@ public class LTTBTableFunction implements TableFunction {
     protected final long slide;
     protected final Deque<W> activeWindows = new ArrayDeque<>();
     private final Deque<W> pendingWindows = new ArrayDeque<>();
+    // Closed buckets with finite points, in window order for each column.
+    private final WindowState[] firstPendingFinite;
+    private final WindowState[] lastPendingFinite;
     private final BufferMemoryBudget memoryBudget;
     private final long windowMetadataBytes;
 
@@ -1397,8 +1402,11 @@ public class LTTBTableFunction implements TableFunction {
       this.slide = slide;
       this.memoryBudget = new BufferMemoryBudget(maxBufferedBytes);
       int columnCount = participantColumns.length;
-      this.windowMetadataBytes =
-          WINDOW_INSTANCE_SIZE + 3 * RamUsageEstimator.sizeOfObjectArray(columnCount);
+      long referenceArrayBytes = RamUsageEstimator.sizeOfObjectArray(columnCount);
+      memoryBudget.reserve(2 * referenceArrayBytes);
+      this.firstPendingFinite = new WindowState[columnCount];
+      this.lastPendingFinite = new WindowState[columnCount];
+      this.windowMetadataBytes = WINDOW_INSTANCE_SIZE + 4 * referenceArrayBytes;
       this.hasFirstEligible = new boolean[columnCount];
       this.firstEligibleTimes = new long[columnCount];
       this.firstEligibleValues = new double[columnCount];
@@ -1431,8 +1439,20 @@ public class LTTBTableFunction implements TableFunction {
     }
 
     private void releaseWindow(W window) {
-      for (PointBuffer buffer : window.buffers) {
-        buffer.release();
+      for (int i = 0; i < participantColumns.length; i++) {
+        if (firstEligibleWindows[i] == window) {
+          firstEligibleWindows[i] = null;
+        }
+        if (lastRowWindows[i] == window) {
+          lastRowWindows[i] = null;
+        }
+        if (firstPendingFinite[i] == window) {
+          firstPendingFinite[i] = window.nextFinite[i];
+          if (firstPendingFinite[i] == null) {
+            lastPendingFinite[i] = null;
+          }
+        }
+        window.buffers[i].release();
       }
       memoryBudget.release(windowMetadataBytes);
     }
@@ -1442,8 +1462,7 @@ public class LTTBTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      long time = input.getLong(0);
-      checkTimestamp(time);
+      long time = readTimestamp(input);
       capturePartitionValues(input);
       processRecord(input, time, properColumnBuilders);
     }
@@ -1500,6 +1519,7 @@ public class LTTBTableFunction implements TableFunction {
         W window = activeWindows.removeFirst();
         if (canEmitAnyRow(window)) {
           pendingWindows.addLast(window);
+          indexFiniteBuckets(window);
         } else {
           // A closed window that holds no bucket and reports no F can never emit a row, and L is
           // never its own row because L was collected into every bucket that contains it. Queueing
@@ -1509,6 +1529,20 @@ public class LTTBTableFunction implements TableFunction {
         }
       }
       emitReadyWindows(builders);
+    }
+
+    private void indexFiniteBuckets(WindowState window) {
+      for (int i = 0; i < participantColumns.length; i++) {
+        window.nextFinite[i] = null;
+        if (window.buffers[i].hasFinitePoint()) {
+          if (lastPendingFinite[i] == null) {
+            firstPendingFinite[i] = window;
+          } else {
+            lastPendingFinite[i].nextFinite[i] = window;
+          }
+          lastPendingFinite[i] = window;
+        }
+      }
     }
 
     /** Whether {@code window} can still contribute at least one output row. */
@@ -1540,6 +1574,9 @@ public class LTTBTableFunction implements TableFunction {
       while (!activeWindows.isEmpty()) {
         pendingWindows.addLast(activeWindows.removeFirst());
       }
+      // Removing L can turn a formerly finite lookahead bucket into an empty or non-finite one.
+      Arrays.fill(firstPendingFinite, null);
+      Arrays.fill(lastPendingFinite, null);
       for (WindowState window : pendingWindows) {
         for (int i = 0; i < participantColumns.length; i++) {
           PointBuffer bucket = window.buffers[i];
@@ -1551,6 +1588,7 @@ public class LTTBTableFunction implements TableFunction {
             lastRowWindows[i] = window;
           }
         }
+        indexFiniteBuckets(window);
       }
       for (int i = 0; i < participantColumns.length; i++) {
         if (!hasLastEligible[i]) {
@@ -1564,6 +1602,8 @@ public class LTTBTableFunction implements TableFunction {
     public final void beforeDestroy() {
       activeWindows.clear();
       pendingWindows.clear();
+      Arrays.fill(firstPendingFinite, null);
+      Arrays.fill(lastPendingFinite, null);
       Arrays.fill(firstEligibleWindows, null);
       Arrays.fill(lastRowWindows, null);
       // Also covers a reservation made by a window whose construction failed at the limit.
@@ -1596,11 +1636,10 @@ public class LTTBTableFunction implements TableFunction {
         if (hasLastEligible[i] && containsPosition(window, lastEligiblePositions[i])) {
           return false;
         }
-        PointBuffer bucket = window.buffers[i];
-        if (bucket.isEmpty() || !bucket.hasFinitePoint()) {
+        if (firstPendingFinite[i] != window) {
           continue;
         }
-        WindowState lookahead = findLookahead(window, i);
+        WindowState lookahead = window.nextFinite[i];
         if (lookahead == null
             || (hasLastEligible[i] && containsPosition(lookahead, lastEligiblePositions[i]))) {
           return false;
@@ -1609,23 +1648,7 @@ public class LTTBTableFunction implements TableFunction {
       return true;
     }
 
-    /** The next closed window after {@code window} whose bucket of {@code column} supplies C. */
-    private WindowState findLookahead(WindowState window, int column) {
-      for (WindowState candidate : pendingWindows) {
-        if (candidate.endExclusive <= window.endExclusive) {
-          continue;
-        }
-        PointBuffer bucket = candidate.buffers[column];
-        if (!bucket.isEmpty() && bucket.hasFinitePoint()) {
-          return candidate;
-        }
-      }
-      return null;
-    }
-
-    /**
-     * A one-point lookahead used by the exact fallback when {@code C} is the last eligible point.
-     */
+    /** A one-point lookahead when {@code C} is the last finite point. */
     private PointBuffer singlePoint(long time, double value, int column) {
       PointBuffer point = new PointBuffer(participantColumns[column].isIntegral(), null);
       point.add(
@@ -1715,6 +1738,9 @@ public class LTTBTableFunction implements TableFunction {
 
     /** Selects the point of {@code bucket} with the largest triangle against {@code A} and C. */
     private WindowRow pickInBucket(W window, int column, PointBuffer bucket) {
+      if (firstPendingFinite[column] != window) {
+        return WindowRow.of(bucket, 0);
+      }
       long anchorTime;
       double anchorValue;
       long integralAnchor;
@@ -1732,29 +1758,19 @@ public class LTTBTableFunction implements TableFunction {
         return WindowRow.of(bucket, 0);
       }
 
-      WindowState lookaheadWindow = findLookahead(window, column);
-      double nextTime;
-      double nextValue;
-      PointBuffer exactLookahead;
+      WindowState lookaheadWindow = window.nextFinite[column];
+      PointBuffer lookahead;
       if (lookaheadWindow != null) {
-        PointBuffer lookahead = lookaheadWindow.buffers[column];
-        nextTime = lookahead.finiteAverageTime(anchorTime);
-        nextValue = lookahead.finiteAverageValue(anchorValue, integralAnchor);
-        exactLookahead = lookahead;
+        lookahead = lookaheadWindow.buffers[column];
       } else if (finishing && hasLastFinite[column]) {
         // No later bucket carries a finite point: C is the last finite eligible point.
-        nextTime = differenceAsDouble(lastFiniteTimes[column], anchorTime);
-        nextValue =
-            participantColumns[column].isIntegral()
-                ? differenceAsDouble(integralLastFiniteValues[column], integralAnchor)
-                : lastFiniteValues[column] - anchorValue;
-        exactLookahead = singlePoint(lastFiniteTimes[column], lastFiniteValues[column], column);
+        lookahead = singlePoint(lastFiniteTimes[column], lastFiniteValues[column], column);
       } else {
         return WindowRow.of(bucket, 0);
       }
 
       int pick =
-          argMaxArea(
+          selectBucketPoint(
               bucket.times,
               bucket.values,
               bucket.integralValues,
@@ -1763,26 +1779,12 @@ public class LTTBTableFunction implements TableFunction {
               anchorTime,
               anchorValue,
               integralAnchor,
-              nextTime,
-              nextValue);
-      if (pick == NOT_SELECTED && exactLookahead != null) {
-        pick =
-            argMaxAreaExactly(
-                bucket.times,
-                bucket.values,
-                bucket.integralValues,
-                0,
-                bucket.size(),
-                anchorTime,
-                anchorValue,
-                integralAnchor,
-                exactLookahead.times,
-                exactLookahead.values,
-                exactLookahead.integralValues,
-                0,
-                exactLookahead.size());
-      }
-      if (pick == NOT_SELECTED || !isFiniteValue(bucket.values, bucket.integralValues, pick)) {
+              lookahead.times,
+              lookahead.values,
+              lookahead.integralValues,
+              0,
+              lookahead.size());
+      if (!isFiniteValue(bucket.values, bucket.integralValues, pick)) {
         // The bucket has no finite candidate; return its earliest point and keep A unchanged.
         return WindowRow.of(bucket, 0);
       }

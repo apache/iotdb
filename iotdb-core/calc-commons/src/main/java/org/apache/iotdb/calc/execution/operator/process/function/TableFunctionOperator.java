@@ -29,6 +29,7 @@ import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BatchedTableFunctionDataProcessor;
 import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
@@ -166,29 +167,25 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
     } else {
       List<ColumnBuilder> properColumnBuilders = getProperColumnBuilders();
       ColumnBuilder passThroughIndexBuilder = getPassThroughIndexBuilder();
-      if (stateType == PartitionState.StateType.FINISHED) {
-        if (processor != null) {
-          processor.finish(properColumnBuilders, passThroughIndexBuilder, ioTDBLocal);
-        }
-        finished = true;
+      if (stateType == PartitionState.StateType.FINISHED
+          || (stateType == PartitionState.StateType.NEW_PARTITION && processor != null)) {
+        boolean drained = finishPartition(properColumnBuilders, passThroughIndexBuilder);
         resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
-        partitionCache.clear();
-        consumeCurrentPartitionState();
+        if (drained) {
+          partitionCache.clear();
+          if (stateType == PartitionState.StateType.FINISHED) {
+            finished = true;
+            consumeCurrentPartitionState();
+          } else {
+            destroyProcessor(processor);
+            processor = null;
+          }
+        }
         return getNextResultTsBlock();
       }
       if (stateType == PartitionState.StateType.NEW_PARTITION) {
-        if (processor != null) {
-          // previous partition state has not finished consuming yet
-          processor.finish(properColumnBuilders, passThroughIndexBuilder, ioTDBLocal);
-          resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
-          partitionCache.clear();
-          destroyProcessor(processor);
-          processor = null;
-          return getNextResultTsBlock();
-        } else {
-          processor = processorProvider.getDataProcessor();
-          processor.beforeStart(ioTDBLocal);
-        }
+        processor = processorProvider.getDataProcessor();
+        processor.beforeStart(ioTDBLocal);
       }
       // the cached slices are only needed when the output has
       // columns declared as pass-through. Without them every output column is written by the
@@ -222,6 +219,17 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   private List<ColumnBuilder> getProperColumnBuilders() {
     return Arrays.asList(properBlockBuilder.getValueColumnBuilders());
+  }
+
+  private boolean finishPartition(List<ColumnBuilder> builders, ColumnBuilder passThroughIndex) {
+    if (processor instanceof BatchedTableFunctionDataProcessor) {
+      return ((BatchedTableFunctionDataProcessor) processor)
+          .finishBatch(builders, properBlockBuilder::isFull);
+    }
+    if (processor != null) {
+      processor.finish(builders, passThroughIndex, ioTDBLocal);
+    }
+    return true;
   }
 
   private ColumnBuilder getPassThroughIndexBuilder() {
