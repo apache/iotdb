@@ -703,6 +703,7 @@ public class SubscriptionRetainedInitialReplayTest {
 
         // Once the historical event is acknowledged, initTerm is released (without marking
         // completed) and the realtime event can be prefetched and polled.
+        drainTabletsResponses(historicalPolled);
         assertTrue(subscription.queue.ack("first", historicalPolled.getCommitContext()));
         assertTrue(initTerm.isReleased());
         assertFalse(subscription.queue.isCompleted());
@@ -715,8 +716,17 @@ public class SubscriptionRetainedInitialReplayTest {
         subscription.queue.executePrefetch();
         final SubscriptionEvent realtimePolled = subscription.poll("first");
         org.junit.Assert.assertNotNull(realtimePolled);
+        drainTabletsResponses(realtimePolled);
         assertTrue(subscription.queue.ack("first", realtimePolled.getCommitContext()));
       }
+    }
+  }
+
+  private static void drainTabletsResponses(final SubscriptionEvent event) throws Exception {
+    int nextOffset = ((TabletsPayload) event.getCurrentResponse().getPayload()).getNextOffset();
+    while (nextOffset != -1) {
+      event.fetchNextResponse(nextOffset);
+      nextOffset = ((TabletsPayload) event.getCurrentResponse().getPayload()).getNextOffset();
     }
   }
 
