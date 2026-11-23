@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from datetime import date, datetime, timezone
+
 import pytest
 
 from iotdb.dbapi import DatabaseError, NotSupportedError, ProgrammingError, connect
@@ -64,6 +66,7 @@ def test_tree_cursor_contract_and_parameters():
             database.get_container_host_ip(),
             database.get_exposed_port(6667),
             sql_dialect="tree",
+            zone_id="UTC",
         )
         cursor = connection.cursor()
         cursor.execute("CREATE DATABASE root.dbapi_tree")
@@ -77,8 +80,16 @@ def test_tree_cursor_contract_and_parameters():
         )
 
         cursor.execute("SELECT temperature FROM root.dbapi_tree.device")
-        assert cursor.fetchone() == (1, pytest.approx(0.3))
-        assert cursor.fetchall() == [(2, pytest.approx(0.4))]
+        assert cursor.fetchone() == (
+            datetime(1970, 1, 1, microsecond=1000, tzinfo=timezone.utc),
+            pytest.approx(0.3),
+        )
+        assert cursor.fetchall() == [
+            (
+                datetime(1970, 1, 1, microsecond=2000, tzinfo=timezone.utc),
+                pytest.approx(0.4),
+            )
+        ]
         with pytest.raises(ProgrammingError):
             cursor.fetchmany(-1)
 
@@ -88,8 +99,6 @@ def test_tree_cursor_contract_and_parameters():
 
 
 def test_table_paging_types_and_multiple_cursors():
-    from datetime import date, datetime, timezone
-
     with IoTDBContainer("iotdb:dev") as database:
         with connect(
             database.get_container_host_ip(),
