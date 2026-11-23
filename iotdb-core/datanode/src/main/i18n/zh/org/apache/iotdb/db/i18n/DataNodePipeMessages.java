@@ -31,6 +31,9 @@ public final class DataNodePipeMessages {
 
   private DataNodePipeMessages() {}
 
+  public static final String EXCEPTION_THE_AGGREGATOR_AND_OUTPUT_NAME_ARG_IS_INVALID_2C76EEE3 =
+      "聚合器和输出名称 %s 无效。";
+
   public static final String
       EXCEPTION_FORCERESIZE_FAILED_AFTER_ARG_RETRIES_TOTAL_ARG_BYTES_USED_ARG_BYTES_USEDTABLETS_ARG_BYTES_USEDTSFILES_ARG_BYTES_TABLETLIMIT_ARG_BYTES_TSFILELIMIT_ARG_BYTES_TABLETANDTSFILELIMIT_ARG_BYTES_PROTECTEDPARSERLIMIT_ARG_BYTES_REQUESTED_ARG_BYTES_311C8C7E =
           "forceResize 重试 %d 次后仍无法分配内存：total=%d bytes，used=%d bytes，"

@@ -37,18 +37,24 @@ import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class TimeSeriesWindow {
   private static final Logger LOGGER = LoggerFactory.getLogger(TimeSeriesWindow.class);
+  private static final int STATE_FORMAT_MARKER = -1;
+  private static final int PREVIOUS_STATE_FORMAT_VERSION = 1;
+  private static final int CURRENT_STATE_FORMAT_VERSION = 2;
 
   // A window is typically with a timestamp. We define it here to avoid
   // boxing/unboxing and simplify the logics.
   private long timestamp = 0;
+  private boolean legacyStatisticsFormula;
   private Map<String, AggregatedResultOperator> aggregatedOutputName2OperatorMap;
   private final Map<String, Pair<TSDataType, IntermediateResultOperator>>
       intermediateResultName2tsTypeAndOperatorMap = new HashMap<>();
@@ -566,8 +572,20 @@ public class TimeSeriesWindow {
             intermediateResultName2tsTypeAndOperatorMap.entrySet().stream()
                 .collect(
                     Collectors.toMap(
-                        Map.Entry::getKey, entry -> entry.getValue().getRight().getResult())));
+                        Map.Entry::getKey, entry -> entry.getValue().getRight().getResult())),
+            legacyStatisticsFormula);
     return aggregatedOutputName2OperatorMap.entrySet().stream()
+        .filter(
+            entry -> {
+              final AggregatedResultOperator operator = entry.getValue();
+              final Set<String> requiredIntermediateResultNames =
+                  legacyStatisticsFormula && operator.supportsLegacyIntermediateResults()
+                      ? operator.getLegacyIntermediateValueNames()
+                      : operator.getDeclaredIntermediateValueNames();
+              return intermediateResultName2tsTypeAndOperatorMap
+                  .keySet()
+                  .containsAll(requiredIntermediateResultNames);
+            })
         .collect(
             Collectors.toMap(
                 Map.Entry::getKey,
@@ -578,6 +596,9 @@ public class TimeSeriesWindow {
 
   public void serialize(final DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(timestamp, outputStream);
+    ReadWriteIOUtils.write(STATE_FORMAT_MARKER, outputStream);
+    ReadWriteIOUtils.write(CURRENT_STATE_FORMAT_VERSION, outputStream);
+    ReadWriteIOUtils.write(legacyStatisticsFormula ? 1 : 0, outputStream);
     ReadWriteIOUtils.write(intermediateResultName2tsTypeAndOperatorMap.size(), outputStream);
     for (final Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry :
         intermediateResultName2tsTypeAndOperatorMap.entrySet()) {
@@ -596,15 +617,51 @@ public class TimeSeriesWindow {
   // processor, only adding intermediate values is permitted.
   public void deserialize(final ByteBuffer byteBuffer) throws IOException {
     timestamp = ReadWriteIOUtils.readLong(byteBuffer);
-    final int size = ReadWriteIOUtils.readInt(byteBuffer);
+    final int sizeOrFormatMarker = ReadWriteIOUtils.readInt(byteBuffer);
+    final int stateFormatVersion;
+    final int size;
+    if (sizeOrFormatMarker == STATE_FORMAT_MARKER) {
+      final int windowStateFormatVersion = ReadWriteIOUtils.readInt(byteBuffer);
+      if (windowStateFormatVersion == PREVIOUS_STATE_FORMAT_VERSION) {
+        legacyStatisticsFormula = true;
+        stateFormatVersion = IntermediateResultOperator.CURRENT_STATE_FORMAT_VERSION;
+        size = ReadWriteIOUtils.readInt(byteBuffer);
+      } else if (windowStateFormatVersion == CURRENT_STATE_FORMAT_VERSION) {
+        final int legacyStatisticsFormulaFlag = ReadWriteIOUtils.readInt(byteBuffer);
+        if (legacyStatisticsFormulaFlag != 0 && legacyStatisticsFormulaFlag != 1) {
+          throw new IOException();
+        }
+        legacyStatisticsFormula = legacyStatisticsFormulaFlag == 1;
+        stateFormatVersion = IntermediateResultOperator.CURRENT_STATE_FORMAT_VERSION;
+        size = ReadWriteIOUtils.readInt(byteBuffer);
+      } else {
+        throw new IOException();
+      }
+    } else if (sizeOrFormatMarker >= 0) {
+      legacyStatisticsFormula = true;
+      stateFormatVersion = IntermediateResultOperator.LEGACY_STATE_FORMAT_VERSION;
+      size = sizeOrFormatMarker;
+    } else {
+      throw new IOException();
+    }
+    final Set<String> restoredIntermediateResultNames = new HashSet<>();
     for (int i = 0; i < size; i++) {
       final String intermediateResultName = ReadWriteIOUtils.readString(byteBuffer);
       final Pair<TSDataType, IntermediateResultOperator> initializedAndOperatorPair =
           intermediateResultName2tsTypeAndOperatorMap.get(intermediateResultName);
-      if (Objects.nonNull(initializedAndOperatorPair)) {
-        initializedAndOperatorPair.setLeft(TSDataType.deserializeFrom(byteBuffer));
-        initializedAndOperatorPair.getRight().deserialize(byteBuffer);
+      if (Objects.isNull(initializedAndOperatorPair)) {
+        throw new IOException();
       }
+      restoredIntermediateResultNames.add(intermediateResultName);
+      initializedAndOperatorPair.setLeft(TSDataType.deserializeFrom(byteBuffer));
+      initializedAndOperatorPair.getRight().deserialize(byteBuffer, stateFormatVersion);
+    }
+    if (legacyStatisticsFormula) {
+      intermediateResultName2tsTypeAndOperatorMap
+          .keySet()
+          .removeIf(
+              intermediateResultName ->
+                  !restoredIntermediateResultNames.contains(intermediateResultName));
     }
     processor.deserializeCustomizedAttributes(this, byteBuffer);
   }

@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric;
 
+import org.apache.tsfile.enums.TSDataType;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 public class IntegralPoweredSumOperator extends AbstractSameTypeNumericOperator {
   private final transient int power;
 
@@ -33,45 +38,70 @@ public class IntegralPoweredSumOperator extends AbstractSameTypeNumericOperator 
 
   @Override
   public boolean initAndGetIsSupport(int initialInput, long initialTimestamp) {
-    intValue = (int) Math.pow(initialInput, power);
-    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+    doubleValue = Math.pow(initialInput, power);
+    outPutDataType = TSDataType.DOUBLE;
+    return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(long initialInput, long initialTimestamp) {
-    longValue = (long) Math.pow(initialInput, power);
-    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+    doubleValue = Math.pow(initialInput, power);
+    outPutDataType = TSDataType.DOUBLE;
+    return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(float initialInput, long initialTimestamp) {
-    floatValue = (float) Math.pow(initialInput, power);
-    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+    doubleValue = Math.pow(initialInput, power);
+    outPutDataType = TSDataType.DOUBLE;
+    return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(double initialInput, long initialTimestamp) {
     doubleValue = Math.pow(initialInput, power);
-    return super.initAndGetIsSupport(initialInput, initialTimestamp);
+    outPutDataType = TSDataType.DOUBLE;
+    return true;
   }
 
   @Override
   public void updateValue(int input, long timestamp) {
-    intValue += (int) Math.pow(input, power);
+    doubleValue += Math.pow(input, power);
   }
 
   @Override
   public void updateValue(long input, long timestamp) {
-    longValue += (long) Math.pow(input, power);
+    doubleValue += Math.pow(input, power);
   }
 
   @Override
   public void updateValue(float input, long timestamp) {
-    floatValue += (float) Math.pow(input, power);
+    doubleValue += Math.pow(input, power);
   }
 
   @Override
   public void updateValue(double input, long timestamp) {
     doubleValue += Math.pow(input, power);
+  }
+
+  @Override
+  public void deserialize(final ByteBuffer byteBuffer) throws IOException {
+    super.deserialize(byteBuffer);
+    switch (outPutDataType) {
+      case INT32:
+        doubleValue = intValue;
+        break;
+      case INT64:
+        doubleValue = longValue;
+        break;
+      case FLOAT:
+        doubleValue = floatValue;
+        break;
+      case DOUBLE:
+        break;
+      default:
+        throw new IOException();
+    }
+    outPutDataType = TSDataType.DOUBLE;
   }
 }

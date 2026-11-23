@@ -34,10 +34,17 @@ import java.util.Map;
 
 public class CustomizedReadableIntermediateResults {
   private final Map<String, Pair<TSDataType, Object>> intermediateResults;
+  private final boolean legacyStatisticsFormula;
 
   public CustomizedReadableIntermediateResults(
-      final Map<String, Pair<TSDataType, Object>> intermediateResults) {
+      final Map<String, Pair<TSDataType, Object>> intermediateResults,
+      final boolean legacyStatisticsFormula) {
     this.intermediateResults = intermediateResults;
+    this.legacyStatisticsFormula = legacyStatisticsFormula;
+  }
+
+  public boolean isLegacyStatisticsFormula() {
+    return legacyStatisticsFormula;
   }
 
   public boolean getBoolean(final String key) {
