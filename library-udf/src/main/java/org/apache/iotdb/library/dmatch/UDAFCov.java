@@ -34,6 +34,7 @@ import java.math.MathContext;
 
 /** This function calculates Covariance between two input series. */
 public class UDAFCov implements UDTF {
+  private static final MathContext SCALED_CONTEXT = new MathContext(700);
 
   private long count = 0;
   private double maxAbsX = 0.0;
@@ -43,6 +44,9 @@ public class UDAFCov implements UDTF {
   private double meanX = 0.0;
   private double meanY = 0.0;
   private double coMoment = 0.0;
+  private BigDecimal scaledMeanX = BigDecimal.ZERO;
+  private BigDecimal scaledMeanY = BigDecimal.ZERO;
+  private BigDecimal scaledCoMoment = BigDecimal.ZERO;
   private boolean scaledAccumulation;
 
   @Override
@@ -65,6 +69,9 @@ public class UDAFCov implements UDTF {
     meanX = 0;
     meanY = 0;
     coMoment = 0;
+    scaledMeanX = BigDecimal.ZERO;
+    scaledMeanY = BigDecimal.ZERO;
+    scaledCoMoment = BigDecimal.ZERO;
     scaledAccumulation = false;
   }
 
@@ -100,42 +107,69 @@ public class UDAFCov implements UDTF {
   private void initializeScaledAccumulation(double x, double y) {
     scaleX = Math.max(maxAbsX, Math.abs(x));
     scaleY = Math.max(maxAbsY, Math.abs(y));
-    meanX = scaleX == 0 ? 0 : meanX / scaleX;
-    meanY = scaleY == 0 ? 0 : meanY / scaleY;
-    coMoment =
+    scaledMeanX =
+        scaleX == 0
+            ? BigDecimal.ZERO
+            : new BigDecimal(meanX).divide(new BigDecimal(scaleX), SCALED_CONTEXT);
+    scaledMeanY =
+        scaleY == 0
+            ? BigDecimal.ZERO
+            : new BigDecimal(meanY).divide(new BigDecimal(scaleY), SCALED_CONTEXT);
+    scaledCoMoment =
         scaleX == 0 || scaleY == 0
-            ? 0
+            ? BigDecimal.ZERO
             : new BigDecimal(coMoment)
-                .divide(new BigDecimal(scaleX), MathContext.DECIMAL128)
-                .divide(new BigDecimal(scaleY), MathContext.DECIMAL128)
-                .doubleValue();
+                .divide(new BigDecimal(scaleX), SCALED_CONTEXT)
+                .divide(new BigDecimal(scaleY), SCALED_CONTEXT);
     scaledAccumulation = true;
   }
 
   private void addScaledValue(double x, double y) {
     double absoluteX = Math.abs(x);
     if (absoluteX > scaleX) {
-      double ratio = scaleX == 0 ? 0 : scaleX / absoluteX;
-      meanX *= ratio;
-      coMoment *= ratio;
+      if (scaleX == 0) {
+        scaledMeanX = BigDecimal.ZERO;
+        scaledCoMoment = BigDecimal.ZERO;
+      } else {
+        BigDecimal oldScale = new BigDecimal(scaleX);
+        BigDecimal newScale = new BigDecimal(absoluteX);
+        scaledMeanX = scaledMeanX.multiply(oldScale).divide(newScale, SCALED_CONTEXT);
+        scaledCoMoment = scaledCoMoment.multiply(oldScale).divide(newScale, SCALED_CONTEXT);
+      }
       scaleX = absoluteX;
     }
     double absoluteY = Math.abs(y);
     if (absoluteY > scaleY) {
-      double ratio = scaleY == 0 ? 0 : scaleY / absoluteY;
-      meanY *= ratio;
-      coMoment *= ratio;
+      if (scaleY == 0) {
+        scaledMeanY = BigDecimal.ZERO;
+        scaledCoMoment = BigDecimal.ZERO;
+      } else {
+        BigDecimal oldScale = new BigDecimal(scaleY);
+        BigDecimal newScale = new BigDecimal(absoluteY);
+        scaledMeanY = scaledMeanY.multiply(oldScale).divide(newScale, SCALED_CONTEXT);
+        scaledCoMoment = scaledCoMoment.multiply(oldScale).divide(newScale, SCALED_CONTEXT);
+      }
       scaleY = absoluteY;
     }
 
-    double normalizedX = scaleX == 0 ? 0 : x / scaleX;
-    double normalizedY = scaleY == 0 ? 0 : y / scaleY;
+    BigDecimal normalizedX =
+        scaleX == 0
+            ? BigDecimal.ZERO
+            : new BigDecimal(x).divide(new BigDecimal(scaleX), SCALED_CONTEXT);
+    BigDecimal normalizedY =
+        scaleY == 0
+            ? BigDecimal.ZERO
+            : new BigDecimal(y).divide(new BigDecimal(scaleY), SCALED_CONTEXT);
     count++;
-    double deltaX = normalizedX - meanX;
-    double deltaY = normalizedY - meanY;
-    meanX += deltaX / count;
-    meanY += deltaY / count;
-    coMoment += deltaX * (normalizedY - meanY);
+    BigDecimal deltaX = normalizedX.subtract(scaledMeanX);
+    BigDecimal deltaY = normalizedY.subtract(scaledMeanY);
+    scaledMeanX =
+        scaledMeanX.add(deltaX.divide(BigDecimal.valueOf(count), SCALED_CONTEXT), SCALED_CONTEXT);
+    scaledMeanY =
+        scaledMeanY.add(deltaY.divide(BigDecimal.valueOf(count), SCALED_CONTEXT), SCALED_CONTEXT);
+    scaledCoMoment =
+        scaledCoMoment.add(
+            deltaX.multiply(normalizedY.subtract(scaledMeanY), SCALED_CONTEXT), SCALED_CONTEXT);
   }
 
   @Override
@@ -144,9 +178,9 @@ public class UDAFCov implements UDTF {
       double cov = coMoment / count;
       if (scaledAccumulation) {
         cov =
-            new BigDecimal(coMoment)
-                .multiply(new BigDecimal(scaleX))
-                .multiply(new BigDecimal(scaleY))
+            scaledCoMoment
+                .multiply(new BigDecimal(scaleX), SCALED_CONTEXT)
+                .multiply(new BigDecimal(scaleY), SCALED_CONTEXT)
                 .divide(BigDecimal.valueOf(count), MathContext.DECIMAL128)
                 .doubleValue();
       }

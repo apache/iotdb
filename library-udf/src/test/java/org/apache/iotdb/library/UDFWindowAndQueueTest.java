@@ -208,18 +208,34 @@ public class UDFWindowAndQueueTest {
     kSigma.transform(new DoubleRow(1, Double.MAX_VALUE), collector);
     kSigma.transform(new DoubleRow(2, -Double.MAX_VALUE), collector);
     kSigma.transform(new DoubleRow(3, Double.MAX_VALUE), collector);
+    List<Long> expectedTimestamps = new ArrayList<>();
+    List<Double> expectedValues = new ArrayList<>();
+    expectedTimestamps.add(1L);
+    expectedTimestamps.add(2L);
+    expectedTimestamps.add(3L);
+    expectedValues.add(Double.MAX_VALUE);
+    expectedValues.add(-Double.MAX_VALUE);
+    expectedValues.add(Double.MAX_VALUE);
     for (int i = 0; i < 500; i++) {
       double value = i % 2 == 0 ? -Double.MAX_VALUE : Double.MAX_VALUE;
       kSigma.transform(new DoubleRow(i + 4L, value), collector);
+      expectedTimestamps.add(i + 4L);
+      expectedValues.add(value);
     }
 
-    Assert.assertTrue(usesScaledStatistics(kSigma));
     for (int i = 0; i < 3; i++) {
       kSigma.transform(new DoubleRow(i + 504L, 0.0), collector);
     }
+    expectedTimestamps.add(505L);
+    expectedValues.add(0.0);
+    kSigma.transform(new DoubleRow(507, 0.0), collector);
+    kSigma.transform(new DoubleRow(508, 0.0), collector);
+    kSigma.transform(new DoubleRow(509, 100.0), collector);
+    expectedTimestamps.add(509L);
+    expectedValues.add(100.0);
 
-    Assert.assertFalse(usesScaledStatistics(kSigma));
-    assertAllValuesFinite(collector);
+    Assert.assertEquals(expectedTimestamps, collector.timestamps);
+    Assert.assertEquals(expectedValues, collector.values);
   }
 
   @Test
@@ -421,9 +437,26 @@ public class UDFWindowAndQueueTest {
         collector);
     lof.transform(new SimpleRowWindow(new DoubleRow(5, 0.2)), collector);
 
-    Assert.assertEquals(5, collector.timestamps.size());
-    Assert.assertEquals(Long.valueOf(5), collector.timestamps.get(4));
-    Assert.assertEquals(0.875, collector.values.get(4), 1e-12);
+    Assert.assertEquals(Arrays.asList(3L, 4L, 5L), collector.timestamps);
+    Assert.assertEquals(Long.valueOf(5), collector.timestamps.get(2));
+    Assert.assertEquals(0.875, collector.values.get(2), 1e-12);
+  }
+
+  @Test
+  public void testLOFSeriesFirstScoreUsesOnlyPastVectorsAndCurrentVector() throws Exception {
+    UDFParameters parameters =
+        createSingleDoubleSeriesParameters(Map.of("method", "series", "window", "1", "k", "2"));
+    UDTFLOF lof = new UDTFLOF();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    lof.validate(new UDFParameterValidator(parameters));
+    lof.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    lof.transform(
+        new SimpleRowWindow(new DoubleRow(1, 0), new DoubleRow(2, 0.1), new DoubleRow(3, 100)),
+        collector);
+
+    Assert.assertEquals(Collections.singletonList(3L), collector.timestamps);
+    Assert.assertEquals(0.99975, collector.values.get(0), 1e-12);
   }
 
   @Test
@@ -459,6 +492,33 @@ public class UDFWindowAndQueueTest {
 
     Assert.assertEquals(rows.length, collector.values.size());
     assertAllValuesFinite(collector);
+  }
+
+  @Test
+  public void testLOFDefaultRejectsExcessiveDistanceWorkBeforeAllocatingVectors() throws Exception {
+    int dimensions = 700;
+    List<String> seriesNames = new ArrayList<>();
+    List<Type> dataTypes = new ArrayList<>();
+    for (int column = 0; column < dimensions; column++) {
+      seriesNames.add("s" + column);
+      dataTypes.add(Type.DOUBLE);
+    }
+    UDFParameters parameters =
+        new UDFParameters(seriesNames, dataTypes, Map.of("k", "3", "window", "10000"));
+    UDTFLOF lof = new UDTFLOF();
+    RecordingPointCollector collector = new RecordingPointCollector();
+    double[] values = new double[dimensions];
+    boolean[] nulls = new boolean[dimensions];
+    Row[] rows = new Row[10000];
+    for (int row = 0; row < rows.length; row++) {
+      rows[row] = new DoubleRow(row, values, nulls);
+    }
+
+    lof.validate(new UDFParameterValidator(parameters));
+    lof.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    Assert.assertThrows(
+        UDFException.class, () -> lof.transform(new SimpleRowWindow(rows), collector));
+    Assert.assertTrue(collector.timestamps.isEmpty());
   }
 
   @Test
@@ -507,7 +567,7 @@ public class UDFWindowAndQueueTest {
             new DoubleRow(10003, 4),
             new DoubleRow(10004, 5)),
         collector);
-    Assert.assertEquals(Arrays.asList(10000L, 10001L, 10002L), collector.timestamps);
+    Assert.assertEquals(Collections.singletonList(10002L), collector.timestamps);
     assertAllValuesFinite(collector);
   }
 
@@ -540,8 +600,8 @@ public class UDFWindowAndQueueTest {
             new DoubleRow(9, 7.0)),
         collector);
 
-    Assert.assertEquals(Arrays.asList(1L, 3L, 4L), collector.timestamps);
-    Assert.assertEquals(3, collector.values.size());
+    Assert.assertEquals(Arrays.asList(3L, 4L), collector.timestamps);
+    Assert.assertEquals(2, collector.values.size());
     for (double value : collector.values) {
       Assert.assertTrue(Double.isFinite(value));
     }
@@ -570,14 +630,14 @@ public class UDFWindowAndQueueTest {
     }
     lof.transform(new SimpleRowWindow(rows), collector);
 
-    Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L), collector.timestamps);
-    Assert.assertEquals(4, collector.values.size());
+    Assert.assertEquals(Collections.singletonList(3L), collector.timestamps);
+    Assert.assertEquals(1, collector.values.size());
     for (double value : collector.values) {
       Assert.assertTrue(Double.isFinite(value));
     }
 
     lof.transform(new SimpleRowWindow(new DoubleRow(10001, 10001.0)), collector);
-    Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L, 4L), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(3L, 4L), collector.timestamps);
     assertAllValuesFinite(collector);
   }
 
@@ -601,10 +661,10 @@ public class UDFWindowAndQueueTest {
     }
 
     lof.transform(new SimpleRowWindow(firstBatch), collector);
-    Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L), collector.timestamps);
+    Assert.assertEquals(Collections.singletonList(3L), collector.timestamps);
     Assert.assertThrows(
         UDFException.class, () -> lof.transform(new SimpleRowWindow(secondBatch), collector));
-    Assert.assertEquals(Arrays.asList(0L, 1L, 2L, 3L), collector.timestamps);
+    Assert.assertEquals(Collections.singletonList(3L), collector.timestamps);
   }
 
   @Test
@@ -2229,6 +2289,28 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testCovariancePreservesCrossMomentAcrossScaleChanges() throws Exception {
+    UDFParameters parameters = createTwoDoubleSeriesParameters(Collections.emptyMap());
+    UDAFCov cov = new UDAFCov();
+    RecordingPointCollector collector = new RecordingPointCollector();
+    cov.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    cov.transform(
+        new DoubleRow(1, new double[] {-Double.MIN_VALUE, -Double.MAX_VALUE}, new boolean[2]),
+        collector);
+    cov.transform(
+        new DoubleRow(2, new double[] {Double.MIN_VALUE, Double.MAX_VALUE}, new boolean[2]),
+        collector);
+    cov.transform(
+        new DoubleRow(3, new double[] {Double.MAX_VALUE, 0.0}, new boolean[2]), collector);
+    cov.transform(
+        new DoubleRow(4, new double[] {-Double.MAX_VALUE, 0.0}, new boolean[2]), collector);
+    cov.terminate(collector);
+
+    Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
+    Assert.assertEquals(Double.MIN_VALUE * Double.MAX_VALUE / 2, collector.values.get(0), 1e-28);
+  }
+
+  @Test
   public void testFrequencyFunctionsIgnoreEmptyInput() throws Exception {
     RecordingPointCollector collector = new RecordingPointCollector();
     UDFParameters singleSeries = createSingleDoubleSeriesParameters(Collections.emptyMap());
@@ -3628,12 +3710,6 @@ public class UDFWindowAndQueueTest {
     Field windowSize = UDTFKSigma.class.getDeclaredField("windowSize");
     windowSize.setAccessible(true);
     return (int) windowSize.get(kSigma);
-  }
-
-  private static boolean usesScaledStatistics(UDTFKSigma kSigma) throws Exception {
-    Field usesScaledStatistics = UDTFKSigma.class.getDeclaredField("usesScaledStatistics");
-    usesScaledStatistics.setAccessible(true);
-    return usesScaledStatistics.getBoolean(kSigma);
   }
 
   private static void runQLB(

@@ -33,6 +33,9 @@ public final class LibraryUdfMessages {
   public static final String
       EXCEPTION_LOF_NEIGHBOR_GRAPH_EXCEEDS_THE_64_MIB_WORKING_MEMORY_LIMIT_7BF9B997 =
           "LOF 邻居图的工作内存超过 64 MiB 限制。";
+  public static final String
+      EXCEPTION_LOF_CALCULATION_EXCEEDS_THE_64_MI_DISTANCE_COORDINATE_OPERATION_LIMIT_PER_ACCESS_WINDOW_551CEFC8 =
+          "LOF 计算在每个访问窗口的距离坐标运算次数超过 64 Mi 限制。";
   public static final String FAIL_TO_GET_LOF = "获取 LOF 失败 ";
 
   // TimeSeriesQuality, ValueRepair

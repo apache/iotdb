@@ -22,6 +22,7 @@ package org.apache.iotdb.library.anomaly;
 import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -338,34 +339,38 @@ public class UDTFLOF implements UDTF {
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     if (this.method.equalsIgnoreCase(DEFAULT_METHOD)) {
       int size = 0;
-      double[][] knn = new double[rowWindow.windowSize()][];
-      long[] timestamp = new long[rowWindow.windowSize()];
-      int row = 0;
-      while (row < rowWindow.windowSize()) {
-        double[] values = new double[dim];
-        boolean valid = true;
-        for (int j = 0; j < dim; j++) {
-          if (rowWindow.getRow(row).isNull(j)) {
-            valid = false;
-            break;
-          }
-          double value = Util.getValueAsDouble(rowWindow.getRow(row), j);
-          if (!Double.isFinite(value)) {
-            valid = false;
-            break;
-          }
-          values[j] = value;
-        }
-        if (valid) {
-          timestamp[size] = rowWindow.getRow(row).getTime();
-          knn[size] = values;
+      for (int row = 0; row < rowWindow.windowSize(); row++) {
+        if (isValidPoint(rowWindow.getRow(row))) {
           size++;
         }
-        row++;
       }
       if (size > multipleK) {
+        ensureLOFWorkingMemory(size, dim);
+        if (estimateDistanceCoordinateOperations(size, dim)
+            > MAX_LOF_DISTANCE_COORDINATE_OPERATIONS_PER_ACCESS) {
+          throw new UDFException(
+              LibraryUdfMessages
+                  .EXCEPTION_LOF_CALCULATION_EXCEEDS_THE_64_MI_DISTANCE_COORDINATE_OPERATION_LIMIT_PER_ACCESS_WINDOW_551CEFC8);
+        }
+
+        double[][] knn = new double[size][];
+        long[] timestamp = new long[size];
+        int validPoint = 0;
+        for (int row = 0; row < rowWindow.windowSize(); row++) {
+          Row currentRow = rowWindow.getRow(row);
+          if (isValidPoint(currentRow)) {
+            double[] values = new double[dim];
+            for (int column = 0; column < dim; column++) {
+              values[column] = Util.getValueAsDouble(currentRow, column);
+            }
+            timestamp[validPoint] = currentRow.getTime();
+            knn[validPoint] = values;
+            validPoint++;
+          }
+        }
+
         double[] lof = calculateLOFs(knn, size);
-        for (int m = 0; m < size; m++) {
+        for (int m = 0; m < validPoint; m++) {
           try {
             collector.putDouble(timestamp[m], lof[m]);
           } catch (Exception e) {
@@ -411,26 +416,37 @@ public class UDTFLOF implements UDTF {
     }
   }
 
+  private boolean isValidPoint(Row row) throws Exception {
+    for (int column = 0; column < dim; column++) {
+      if (row.isNull(column) || !Double.isFinite(Util.getValueAsDouble(row, column))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private void processSeriesVector(SeriesVector vector, PointCollector collector) throws Exception {
     if (!hasInitializedSeries) {
-      seriesHistory.addLast(vector);
-      if (seriesHistory.size() > multipleK) {
-        List<SeriesVector> initialVectors = new ArrayList<>(seriesHistory);
-        double[][] initialPoints = new double[initialVectors.size()][];
-        for (int i = 0; i < initialVectors.size(); i++) {
-          initialPoints[i] = initialVectors.get(i).values;
-        }
-        double[] lofValues = calculateLOFs(initialPoints, initialVectors.size());
-        for (int i = 0; i < initialVectors.size(); i++) {
-          SeriesVector initialVector = initialVectors.get(i);
-          try {
-            collector.putDouble(initialVector.timestamp, lofValues[i]);
-          } catch (Exception e) {
-            throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + initialVector.timestamp, e);
-          }
-        }
-        hasInitializedSeries = true;
+      List<SeriesVector> candidates = new ArrayList<>(seriesHistory);
+      candidates.add(vector);
+      if (seriesHistory.size() < multipleK) {
+        seriesHistory.addLast(vector);
+        return;
       }
+
+      double[][] points = new double[candidates.size()][];
+      for (int i = 0; i < candidates.size(); i++) {
+        points[i] = candidates.get(i).values;
+      }
+      double[] lofValues = calculateLOFs(points, candidates.size());
+      try {
+        collector.putDouble(vector.timestamp, lofValues[lofValues.length - 1]);
+      } catch (Exception e) {
+        throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + vector.timestamp, e);
+      }
+
+      seriesHistory.addLast(vector);
+      hasInitializedSeries = true;
       return;
     }
 

@@ -32,7 +32,8 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-import java.util.TreeMap;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 /** This function detects outliers which lies over average +/- k * sigma. */
 public class UDTFKSigma implements UDTF {
@@ -44,10 +45,12 @@ public class UDTFKSigma implements UDTF {
   private double statisticScale;
   private double multipleK;
   private boolean usesScaledStatistics;
-  private final TreeMap<Double, Integer> valueMagnitudes = new TreeMap<>();
+  private final Deque<MagnitudeEntry> maximumMagnitudes = new ArrayDeque<>();
+  private long nextValueSequence;
   private int windowSize = 0;
   private CircularQueue<Object> v;
   private LongCircularQueue t;
+  private LongCircularQueue valueSequences;
   private Type dataType;
   private TypeServices.RowValueReader valueReader;
   private TypeServices.NumericRowReader numericReader;
@@ -85,9 +88,11 @@ public class UDTFKSigma implements UDTF {
     this.safeMomentMagnitude = Math.sqrt(Double.MAX_VALUE / (8.0 * windowSize));
     this.statisticScale = 0.0;
     this.usesScaledStatistics = false;
-    this.valueMagnitudes.clear();
+    this.maximumMagnitudes.clear();
+    this.nextValueSequence = 0;
     this.v = new CircularQueue<>(windowSize);
     this.t = new LongCircularQueue(windowSize);
+    this.valueSequences = new LongCircularQueue(windowSize);
   }
 
   @Override
@@ -98,14 +103,16 @@ public class UDTFKSigma implements UDTF {
     double value = numericReader.read(row);
     long timestamp = row.getTime();
     if (Double.isFinite(value) && !Double.isNaN(value)) {
+      long sequence = nextValueSequence++;
       if (v.isFull()) {
         final double frontValue = ((Number) v.pop()).doubleValue();
         t.pop();
-        removeValue(frontValue);
+        removeValue(frontValue, valueSequences.pop());
         Object storedValue = valueReader.read(row);
         v.push(storedValue);
         t.push(timestamp);
-        addValue(value);
+        valueSequences.push(sequence);
+        addValue(value, sequence);
         if (v.getSize() > 1 && isOutlier(value)) {
           valueWriter.write(collector, timestamp, storedValue);
         }
@@ -113,7 +120,8 @@ public class UDTFKSigma implements UDTF {
         Object storedValue = valueReader.read(row);
         v.push(storedValue);
         t.push(timestamp);
-        addValue(value);
+        valueSequences.push(sequence);
+        addValue(value, sequence);
         if (v.getSize() == this.windowSize) {
           for (int i = 0; i < v.getSize(); i++) {
             Object windowValue = this.v.get(i);
@@ -140,11 +148,14 @@ public class UDTFKSigma implements UDTF {
     }
   }
 
-  private void addValue(double value) {
+  private void addValue(double value, long sequence) {
     double magnitude = Math.abs(value);
-    valueMagnitudes.merge(magnitude, 1, Integer::sum);
+    while (!maximumMagnitudes.isEmpty() && maximumMagnitudes.peekLast().magnitude <= magnitude) {
+      maximumMagnitudes.removeLast();
+    }
+    maximumMagnitudes.addLast(new MagnitudeEntry(sequence, magnitude));
     if (usesScaledStatistics) {
-      double newScale = valueMagnitudes.lastKey();
+      double newScale = maximumMagnitudes.peekFirst().magnitude;
       if (newScale <= safeMomentMagnitude) {
         recomputeStatistics();
         return;
@@ -166,8 +177,10 @@ public class UDTFKSigma implements UDTF {
     }
   }
 
-  private void removeValue(double value) {
-    removeMagnitude(Math.abs(value));
+  private void removeValue(double value, long sequence) {
+    if (!maximumMagnitudes.isEmpty() && maximumMagnitudes.peekFirst().sequence == sequence) {
+      maximumMagnitudes.removeFirst();
+    }
     if (usesScaledStatistics) {
       int remainingCount = v.getSize();
       if (remainingCount == 0) {
@@ -203,7 +216,7 @@ public class UDTFKSigma implements UDTF {
   }
 
   private void recomputeStatistics() {
-    double maxMagnitude = valueMagnitudes.isEmpty() ? 0 : valueMagnitudes.lastKey();
+    double maxMagnitude = maximumMagnitudes.isEmpty() ? 0 : maximumMagnitudes.peekFirst().magnitude;
     if (maxMagnitude > safeMomentMagnitude) {
       recomputeScaledStatistics(maxMagnitude);
       return;
@@ -261,12 +274,13 @@ public class UDTFKSigma implements UDTF {
     statisticScale = newScale;
   }
 
-  private void removeMagnitude(double magnitude) {
-    int count = valueMagnitudes.get(magnitude);
-    if (count == 1) {
-      valueMagnitudes.remove(magnitude);
-    } else {
-      valueMagnitudes.put(magnitude, count - 1);
+  private static class MagnitudeEntry {
+    private final long sequence;
+    private final double magnitude;
+
+    private MagnitudeEntry(long sequence, double magnitude) {
+      this.sequence = sequence;
+      this.magnitude = magnitude;
     }
   }
 

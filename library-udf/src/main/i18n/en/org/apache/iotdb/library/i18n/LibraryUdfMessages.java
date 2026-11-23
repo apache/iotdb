@@ -33,6 +33,9 @@ public final class LibraryUdfMessages {
   public static final String
       EXCEPTION_LOF_NEIGHBOR_GRAPH_EXCEEDS_THE_64_MIB_WORKING_MEMORY_LIMIT_7BF9B997 =
           "LOF neighbor graph exceeds the 64 MiB working-memory limit.";
+  public static final String
+      EXCEPTION_LOF_CALCULATION_EXCEEDS_THE_64_MI_DISTANCE_COORDINATE_OPERATION_LIMIT_PER_ACCESS_WINDOW_551CEFC8 =
+          "LOF calculation exceeds the 64 Mi distance-coordinate operation limit per access window.";
   public static final String FAIL_TO_GET_LOF = "Fail to get LOF ";
 
   // TimeSeriesQuality, ValueRepair
