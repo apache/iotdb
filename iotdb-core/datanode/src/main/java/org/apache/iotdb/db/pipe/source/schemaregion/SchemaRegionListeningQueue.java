@@ -109,6 +109,10 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
     }
   }
 
+  public static boolean hasSnapshot(final File snapshotDir) {
+    return snapshotDir != null && new File(snapshotDir, SNAPSHOT_FILE_NAME).isFile();
+  }
+
   public synchronized void loadSnapshot(final File snapshotDir) {
     try {
       super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));

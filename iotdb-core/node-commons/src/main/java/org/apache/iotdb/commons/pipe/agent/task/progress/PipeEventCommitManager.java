@@ -78,6 +78,13 @@ public class PipeEventCommitManager {
     LOGGER.info("Pipe committer deregistered for pipe on region: {}", committerKey);
   }
 
+  public void clear(final String pipeName, final long creationTime) {
+    eventCommitterMap.keySet().removeIf(key -> clearIfMatches(key, pipeName, creationTime, true));
+    eventCommitterRestartTimesMap
+        .keySet()
+        .removeIf(key -> clearIfMatches(key, pipeName, creationTime, false));
+  }
+
   /**
    * Assign a commit id and a key for commit. Make sure {@code EnrichedEvent.pipeName} is set before
    * calling this.
@@ -88,8 +95,15 @@ public class PipeEventCommitManager {
       return;
     }
 
+    final String pipeName = event.getPipeName();
+    final CommitterKey restartTimesKey =
+        generateCommitterRestartTimesKey(pipeName, creationTime, regionId);
     final CommitterKey committerKey =
-        generateCommitterKey(event.getPipeName(), creationTime, regionId);
+        taskAgent.getCommitterKey(
+            pipeName,
+            creationTime,
+            regionId,
+            eventCommitterRestartTimesMap.getOrDefault(restartTimesKey, 0));
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
     if (committer == null) {
       return;
@@ -144,10 +158,11 @@ public class PipeEventCommitManager {
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
 
     if (committer == null) {
-      final int currentRestartTimes =
-          eventCommitterRestartTimesMap.computeIfAbsent(
-              generateCommitterRestartTimesKey(committerKey), k -> 0);
       if (LOGGER.isDebugEnabled()) {
+        // Late commits must not recreate restart state after the pipe has been cleared.
+        final int currentRestartTimes =
+            eventCommitterRestartTimesMap.getOrDefault(
+                generateCommitterRestartTimesKey(committerKey), 0);
         if (committerKey.getRestartTimes() < currentRestartTimes) {
           LOGGER.debug(
               "stale PipeEventCommitter({}) when commit event: {}, current restart times {}",
@@ -172,6 +187,33 @@ public class PipeEventCommitManager {
   public CommitterKey getCommitterKey(
       final String pipeName, final long creationTime, final int regionId) {
     return generateCommitterKey(pipeName, creationTime, regionId);
+  }
+
+  /**
+   * Checks that the committer is still registered and its restart generation is current. The
+   * registration check rejects dropped tasks; comparing the generated key rejects a barrier from an
+   * older committer after the same Pipe/DataRegion task has been restarted.
+   */
+  public boolean isCurrentCommitterKey(final CommitterKey committerKey) {
+    if (committerKey == null) {
+      return false;
+    }
+
+    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
+    if (committer == null) {
+      return false;
+    }
+
+    final int restartTimes =
+        eventCommitterRestartTimesMap.getOrDefault(
+            generateCommitterRestartTimesKey(committerKey), 0);
+    return committerKey.equals(
+            taskAgent.getCommitterKey(
+                committerKey.getPipeName(),
+                committerKey.getCreationTime(),
+                committerKey.getRegionId(),
+                restartTimes))
+        && eventCommitterMap.get(committerKey) == committer;
   }
 
   private CommitterKey generateCommitterKey(
@@ -211,6 +253,20 @@ public class PipeEventCommitManager {
       return 0;
     }
     return committer.getCurrentCommitId();
+  }
+
+  private boolean clearIfMatches(
+      final CommitterKey key,
+      final String pipeName,
+      final long creationTime,
+      final boolean shouldClearMetrics) {
+    if (!Objects.equals(key.getPipeName(), pipeName) || key.getCreationTime() != creationTime) {
+      return false;
+    }
+    if (shouldClearMetrics) {
+      PipeEventCommitMetrics.getInstance().deregister(key.stringify());
+    }
+    return true;
   }
 
   //////////////////////////// singleton ////////////////////////////
