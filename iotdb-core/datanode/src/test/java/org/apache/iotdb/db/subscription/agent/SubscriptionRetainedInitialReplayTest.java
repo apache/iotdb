@@ -676,6 +676,8 @@ public class SubscriptionRetainedInitialReplayTest {
                     Whitebox.getInternalState(subscription.queue, "states"));
         doReturn(true).when(spiedStates).shouldPrefetch();
         Whitebox.setInternalState(subscription.queue, "states", spiedStates);
+        Whitebox.setInternalState(
+            Whitebox.getInternalState(subscription.queue, "batches"), "maxDelayInMs", 0);
 
         final PipeRawTabletInsertionEvent historical = createTabletEvent(tableModel, 1, 1L);
         assertTrue(historical.increaseReferenceCount("test"));
