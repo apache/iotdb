@@ -94,6 +94,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private final long startTime;
   private final long endTime;
   private final Filter filter;
+  private final boolean trackPointCounts;
+  private final Map<IDeviceID, Map<String, Long>> parsedPointCountsByDevice = new HashMap<>();
 
   private IChunkReader chunkReader;
   private BatchData data;
@@ -165,6 +167,37 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final boolean isWithMod,
       final TsFileInsertionEventParserMemoryManager memoryManager)
       throws IOException, IllegalPathException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        skipIfNoPrivileges,
+        sourceEvent,
+        isWithMod,
+        memoryManager,
+        false);
+  }
+
+  private TsFileInsertionEventScanParser(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager,
+      final boolean trackPointCounts)
+      throws IOException, IllegalPathException {
     super(
         tsFile,
         pipeName,
@@ -180,6 +213,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         isWithMod,
         memoryManager);
 
+    this.trackPointCounts = trackPointCounts;
     this.startTime = startTime;
     this.endTime = endTime;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
@@ -211,6 +245,33 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       close();
       throw e;
     }
+  }
+
+  public TsFileInsertionEventScanParser(
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final TsFileInsertionEventParserMemoryManager memoryManager,
+      final boolean trackPointCounts)
+      throws IOException, IllegalPathException {
+    this(
+        null,
+        0,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        null,
+        false,
+        sourceEvent,
+        isWithMod,
+        memoryManager,
+        trackPointCounts);
   }
 
   public TsFileInsertionEventScanParser(
@@ -412,6 +473,13 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     return measurementIds;
   }
 
+  public Map<IDeviceID, Map<String, Long>> getParsedPointCounts() {
+    final Map<IDeviceID, Map<String, Long>> result = new HashMap<>();
+    parsedPointCountsByDevice.forEach(
+        (device, pointCounts) -> result.put(device, new HashMap<>(pointCounts)));
+    return result;
+  }
+
   private Tablet getNextTablet() {
     Tablet tablet = null;
     boolean tabletMemoryReserved = false;
@@ -453,6 +521,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
           final int rowIndex = tablet.getRowSize();
 
+          recordParsedPointCounts(data);
           if (putValueToColumns(data, tablet, rowIndex)) {
             PipeTabletUtils.putTimestamp(tablet, rowIndex, data.currentTime());
           }
@@ -621,6 +690,33 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       PipeTabletUtils.unmarkNullValue(tablet, rowIndex, 0);
     }
     return isNeedFillTime;
+  }
+
+  private void recordParsedPointCounts(final BatchData batchData) {
+    if (!trackPointCounts) {
+      return;
+    }
+
+    if (batchData.getDataType() == TSDataType.VECTOR) {
+      final TsPrimitiveType[] values = batchData.getVector();
+      for (int column = 0; column < values.length; column++) {
+        if (values[column] != null) {
+          addParsedPointCount(currentMeasurements.get(column).getMeasurementName(), 1);
+        }
+      }
+      return;
+    }
+
+    addParsedPointCount(currentMeasurements.get(0).getMeasurementName(), 1);
+  }
+
+  private void addParsedPointCount(final String measurement, final long pointCount) {
+    if (!trackPointCounts || pointCount == 0) {
+      return;
+    }
+    parsedPointCountsByDevice
+        .computeIfAbsent(currentDevice, key -> new HashMap<>())
+        .merge(measurement, pointCount, Long::sum);
   }
 
   private void moveToNextChunkReader()
@@ -853,6 +949,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               statistics.getEndTime(),
               currentModifications,
               false)) {
+        addParsedPointCount(chunkHeader.getMeasurementID(), statistics.getCount());
         tsFileSequenceReader.position(nextMarkerOffset);
         return true;
       }
