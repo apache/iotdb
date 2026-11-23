@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,7 @@ final class AbstractSubscriptionProviders {
 
   private final SortedMap<Integer, AbstractSubscriptionProvider> subscriptionProviders =
       new ConcurrentSkipListMap<>();
+  private final Set<Integer> knownClusterDataNodeIds = ConcurrentHashMap.newKeySet();
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private final AtomicBoolean unavailableSyncInFlight = new AtomicBoolean(false);
   private final Set<AbstractSubscriptionProvider> providersWithHeartbeatInFlight =
@@ -90,6 +92,7 @@ final class AbstractSubscriptionProviders {
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
   void openProviders(final AbstractSubscriptionConsumer consumer) throws SubscriptionException {
     // close stale providers
+    consumer.clearTerminatedProviderStates();
     closeProviders(false);
 
     final Map<TEndPoint, String> connectionFailures = new LinkedHashMap<>();
@@ -126,6 +129,8 @@ final class AbstractSubscriptionProviders {
       final Map<Integer, TEndPoint> allEndPoints;
       try {
         allEndPoints = defaultProvider.heartbeat().getEndPoints();
+        knownClusterDataNodeIds.clear();
+        knownClusterDataNodeIds.addAll(allEndPoints.keySet());
       } catch (final SubscriptionConsumerFencedException e) {
         consumer.fence(e);
         throw e;
@@ -197,6 +202,7 @@ final class AbstractSubscriptionProviders {
   void closeProviders(final boolean closeConsumer) {
     final List<AbstractSubscriptionProvider> providers = getAllProviders();
     subscriptionProviders.clear();
+    knownClusterDataNodeIds.clear();
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
         if (closeConsumer) {
@@ -302,6 +308,13 @@ final class AbstractSubscriptionProviders {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  Set<Integer> getExpectedDataNodeIds() {
+    final Set<Integer> ids = new HashSet<>(knownClusterDataNodeIds);
+    ids.addAll(subscriptionProviders.keySet());
+    return ids;
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   void updateNextDataNodeId() {
     final SortedMap<Integer, AbstractSubscriptionProvider> subProviders =
         subscriptionProviders.tailMap(nextDataNodeId + 1);
@@ -367,12 +380,7 @@ final class AbstractSubscriptionProviders {
       synchronized (heartbeatResponseLock) {
         consumer.subscribedTopics = resp.getTopics();
         for (final String topicName : resp.getTopicNamesToUnsubscribe()) {
-          LOGGER.info(
-              SubscriptionMessages
-                  .LOG_TERMINATION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_UNSUBSCRIBE_TOPIC_ARG_AUTOMATICALLY_E9B695FA,
-              consumer.coreReportMessage(),
-              topicName);
-          consumer.unsubscribe(topicName);
+          consumer.handleProviderTopicTermination(provider.getDataNodeId(), topicName);
         }
       }
     } catch (final SubscriptionConsumerFencedException e) {
@@ -380,6 +388,7 @@ final class AbstractSubscriptionProviders {
         consumer.fence(e);
       }
       provider.setUnavailable();
+      consumer.clearTerminatedProviderStates();
     } catch (final Exception e) {
       LOGGER.warn(
           SubscriptionMessages
@@ -389,6 +398,7 @@ final class AbstractSubscriptionProviders {
           e,
           e);
       provider.setUnavailable();
+      consumer.clearTerminatedProviderStates();
     } finally {
       providersWithHeartbeatInFlight.remove(provider);
     }
@@ -472,6 +482,8 @@ final class AbstractSubscriptionProviders {
     final Map<Integer, TEndPoint> allEndPoints;
     try {
       allEndPoints = consumer.fetchAllEndPointsWithRedirection();
+      knownClusterDataNodeIds.clear();
+      knownClusterDataNodeIds.addAll(allEndPoints.keySet());
     } catch (final SubscriptionConsumerFencedException e) {
       consumer.fence(e);
       return;
@@ -509,6 +521,7 @@ final class AbstractSubscriptionProviders {
 
       if (Objects.nonNull(provider) && !provider.isAvailable()) {
         // Remove unavailable providers before creating replacements in this same sync round.
+        consumer.clearTerminatedProviderStates();
         try {
           closeAndRemoveProvider(entry.getKey());
         } catch (final Exception e) {
@@ -544,6 +557,7 @@ final class AbstractSubscriptionProviders {
               e);
           continue;
         }
+        consumer.clearTerminatedProviderStates();
         addProvider(entry.getKey(), newProvider);
       }
     }
@@ -552,6 +566,7 @@ final class AbstractSubscriptionProviders {
     for (final AbstractSubscriptionProvider provider : getAllProviders()) {
       final int dataNodeId = provider.getDataNodeId();
       if (!allEndPoints.containsKey(dataNodeId)) {
+        consumer.clearTerminatedProviderStates();
         try {
           closeAndRemoveProvider(dataNodeId);
         } catch (final Exception e) {

@@ -711,6 +711,37 @@ public class PipeDataNodeTaskAgentTest {
     Assert.assertEquals(PipeStatus.RUNNING, pipeMeta.getRuntimeMeta().getStatus().get());
   }
 
+  @Test
+  public void testIsRunningSubscriptionPipeWithoutLocalTasksChecksExpectedRegions()
+      throws Exception {
+    final java.util.concurrent.atomic.AtomicReference<java.util.Set<Integer>> expectedRegions =
+        new java.util.concurrent.atomic.AtomicReference<>(Collections.singleton(REGION_ID));
+    final PipeDataNodeTaskAgent agent =
+        new PipeDataNodeTaskAgent() {
+          @Override
+          java.util.Set<Integer> getExpectedDataRegionIds(final PipeMeta pipeMeta) {
+            return expectedRegions.get();
+          }
+        };
+    final PipeMetaKeeper keeper = getField(agent, "pipeMetaKeeper");
+
+    final String pipeName = "__subscription.snapshot_topic_group";
+    final PipeMeta pipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta(pipeName, 1L, new HashMap<>(), new HashMap<>(), new HashMap<>()),
+            new PipeRuntimeMeta());
+    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    keeper.addPipeMeta(pipeMeta);
+
+    // No local PipeTask exists, but a local DataRegion is still expected (e.g., task creation
+    // failed): must NOT report zero local tasks / completion.
+    Assert.assertFalse(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+
+    // Only when both local PipeTasks and expected local DataRegions are empty does it return true.
+    expectedRegions.set(Collections.emptySet());
+    Assert.assertTrue(agent.isRunningSubscriptionPipeWithoutLocalTasks(pipeName, false));
+  }
+
   private PipeStaticMeta createStaticMeta(final long creationTime, final boolean historyEnabled) {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put(

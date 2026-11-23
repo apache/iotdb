@@ -51,10 +51,15 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -119,7 +124,9 @@ public abstract class SubscriptionPrefetchingQueue {
   private volatile TsFileInsertionEvent currentTsFileInsertionEvent;
   private volatile RetryableEvent<TabletInsertionEvent> currentTabletInsertionEvent;
   private volatile SubscriptionTsFileToTabletIterator currentToTabletIterator;
-  private PipeTerminateEvent currentTerminateEvent;
+  private final List<PipeTerminateEvent> pendingTerminateEvents = new ArrayList<>();
+  private final Set<Integer> terminatedDataRegionIds = new HashSet<>();
+  private long activeTerminatePipeCreationTime = Long.MIN_VALUE;
 
   public SubscriptionPrefetchingQueue(
       final String brokerId,
@@ -192,9 +199,13 @@ public abstract class SubscriptionPrefetchingQueue {
           .clearReferenceCount(this.getClass().getName());
       currentTabletInsertionEvent = null;
     }
-    if (Objects.nonNull(currentTerminateEvent)) {
-      currentTerminateEvent.clearReferenceCount(this.getClass().getName());
-      currentTerminateEvent = null;
+    synchronized (this) {
+      for (final PipeTerminateEvent terminateEvent : pendingTerminateEvents) {
+        terminateEvent.clearReferenceCount(this.getClass().getName());
+      }
+      pendingTerminateEvents.clear();
+      terminatedDataRegionIds.clear();
+      activeTerminatePipeCreationTime = Long.MIN_VALUE;
     }
   }
 
@@ -255,6 +266,9 @@ public abstract class SubscriptionPrefetchingQueue {
 
     if (prefetchingQueue.isEmpty()) {
       onEvent();
+    }
+    if (prefetchingQueue.isEmpty()) {
+      tryCommitPendingTerminateEvents();
     }
 
     try {
@@ -320,6 +334,9 @@ public abstract class SubscriptionPrefetchingQueue {
     // Keep the queue-to-in-flight transition atomic with the snapshot completion check.
     if (prefetchingQueue.isEmpty()) {
       onEvent();
+    }
+    if (prefetchingQueue.isEmpty()) {
+      tryCommitPendingTerminateEvents();
     }
 
     final long size = prefetchingQueue.size();
@@ -419,16 +436,18 @@ public abstract class SubscriptionPrefetchingQueue {
       }
       reportStateIfNeeded();
       // TODO: more refined behavior (prefetch/serialize/...) control
-      if (hasCurrentTerminateEvent()) {
-        tryCommitCurrentTerminateEventIfPresent();
-        remapInFlightEventsSnapshot(
-            committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
-        return true;
-      } else if (states.shouldPrefetch()) {
+      if (states.shouldPrefetch()) {
         tryPrefetch();
+        tryCommitPendingTerminateEvents();
         remapInFlightEventsSnapshot(
             committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
         return true;
+      } else if (hasPendingTerminateEvents()) {
+        tryCommitPendingTerminateEvents();
+        peekOnce();
+        remapInFlightEventsSnapshot(
+            committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
+        return hasPendingTerminateEvents();
       } else {
         peekOnce();
         remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
@@ -447,6 +466,7 @@ public abstract class SubscriptionPrefetchingQueue {
       }
       reportStateIfNeeded();
       tryPrefetchV2();
+      tryCommitPendingTerminateEvents();
       remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
       // always return false
       return false;
@@ -526,9 +546,7 @@ public abstract class SubscriptionPrefetchingQueue {
    * {@link SubscriptionPrefetchingQueue#inputPendingQueue} is empty.
    */
   private synchronized void tryPrefetch() {
-    if (Objects.nonNull(currentTerminateEvent) && !tryCommitCurrentTerminateEvent()) {
-      return;
-    }
+    tryCommitPendingTerminateEvents();
 
     while (!inputPendingQueue.isEmpty() || Objects.nonNull(currentTabletInsertionEvent)) {
       if (Objects.nonNull(currentTabletInsertionEvent)) {
@@ -561,10 +579,7 @@ public abstract class SubscriptionPrefetchingQueue {
       }
 
       if (event instanceof PipeTerminateEvent) {
-        currentTerminateEvent = (PipeTerminateEvent) event;
-        if (!tryCommitCurrentTerminateEvent()) {
-          return;
-        }
+        onTerminateEvent((PipeTerminateEvent) event);
         continue;
       }
 
@@ -608,10 +623,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   private synchronized void tryPrefetchV2() {
-    if (Objects.nonNull(currentTerminateEvent)) {
-      tryCommitCurrentTerminateEvent();
-      return;
-    }
+    tryCommitPendingTerminateEvents();
 
     if (!prefetchingQueue.isEmpty()) {
       return;
@@ -660,66 +672,75 @@ public abstract class SubscriptionPrefetchingQueue {
       currentToTabletIterator = null;
     }
 
-    final Event event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
-    if (Objects.isNull(event)) {
-      // The event will be null in two cases:
-      // 1. The inputPendingQueue is empty.
-      // 2. The tsfile event has been deduplicated.
-      return;
-    }
-
-    if (!(event instanceof EnrichedEvent)) {
-      LOGGER.warn(
-          DataNodePipeMessages
-              .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_ONLY_SUPPORT_PREFETCH_F3B33B30,
-          this,
-          event);
-      return;
-    }
-
-    if (event instanceof PipeTerminateEvent) {
-      currentTerminateEvent = (PipeTerminateEvent) event;
-      tryCommitCurrentTerminateEvent();
-      return;
-    }
-
-    if (event instanceof TabletInsertionEvent) {
-      onRetryableTabletInsertionEvent(
-          new RetryableEvent<>((TabletInsertionEvent) event, false, false));
-      return; // always return here
-    }
-
-    if (event instanceof TsFileInsertionEvent) {
-      final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
-      if (canPassThroughTsFile(pipeTsFileInsertionEvent)) {
-        onEvent((TsFileInsertionEvent) event);
-        return;
+    while (true) {
+      final Event event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
+      if (Objects.isNull(event)) {
+        // The event will be null in two cases:
+        // 1. The inputPendingQueue is empty.
+        // 2. The tsfile event has been deduplicated.
+        if (inputPendingQueue.isEmpty()) {
+          break;
+        }
+        continue;
       }
-      if (Objects.nonNull(currentToTabletIterator)) {
+
+      if (!(event instanceof EnrichedEvent)) {
         LOGGER.warn(
             DataNodePipeMessages
-                .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_PREFETCH_TSFILEINSERTIONEVENT_19444D2C,
+                .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_ONLY_SUPPORT_PREFETCH_F3B33B30,
             this,
             event);
-      } else {
-        constructToTabletIterator(pipeTsFileInsertionEvent);
+        continue;
+      }
+
+      if (event instanceof PipeTerminateEvent) {
+        onTerminateEvent((PipeTerminateEvent) event);
+        continue;
+      }
+
+      if (event instanceof TabletInsertionEvent) {
+        onRetryableTabletInsertionEvent(
+            new RetryableEvent<>((TabletInsertionEvent) event, false, false));
+        return; // always return here
+      }
+
+      if (event instanceof TsFileInsertionEvent) {
+        final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
+        if (canPassThroughTsFile(pipeTsFileInsertionEvent)) {
+          onEvent((TsFileInsertionEvent) event);
+          return;
+        }
+        if (Objects.nonNull(currentToTabletIterator)) {
+          LOGGER.warn(
+              DataNodePipeMessages
+                  .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_PREFETCH_TSFILEINSERTIONEVENT_19444D2C,
+              this,
+              event);
+          return;
+        } else {
+          constructToTabletIterator(pipeTsFileInsertionEvent);
+          return;
+        }
+      }
+
+      // TODO:
+      //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
+      //  - UserDefinedEnrichedEvent: ignored?
+      //  - Others: events related to meta sync, safe to ignore
+      LOGGER.info(
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_IGNORE_ENRICHEDEVENT_95C6241C,
+          this,
+          event);
+      ((EnrichedEvent) event)
+          .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), false);
+
+      if (onEvent()) {
         return;
       }
     }
 
-    // TODO:
-    //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
-    //  - UserDefinedEnrichedEvent: ignored?
-    //  - Others: events related to meta sync, safe to ignore
-    LOGGER.info(
-        DataNodePipeMessages
-            .PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_IGNORE_ENRICHEDEVENT_95C6241C,
-        this,
-        event);
-    ((EnrichedEvent) event)
-        .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), false);
-
-    onEvent();
+    tryCommitPendingTerminateEvents();
   }
 
   private void constructToTabletIterator(final TsFileInsertionEvent event) {
@@ -804,24 +825,79 @@ public abstract class SubscriptionPrefetchingQueue {
     return batches.onEvent(this::prefetchEvent);
   }
 
-  private synchronized boolean hasCurrentTerminateEvent() {
-    return Objects.nonNull(currentTerminateEvent);
+  public Optional<Set<Integer>> getExpectedDataRegionIds(
+      final String pipeName, final long creationTime) {
+    return PipeDataNodeAgent.task().getExpectedDataRegionIds(pipeName, creationTime);
   }
 
-  private synchronized void tryCommitCurrentTerminateEventIfPresent() {
-    if (Objects.nonNull(currentTerminateEvent)) {
-      tryCommitCurrentTerminateEvent();
+  private synchronized boolean hasPendingTerminateEvents() {
+    return !pendingTerminateEvents.isEmpty();
+  }
+
+  private synchronized void onTerminateEvent(final PipeTerminateEvent terminateEvent) {
+    if (!terminateEvent.isShouldMark()) {
+      try {
+        batches.emitAll(this::prefetchEvent);
+      } catch (final Exception e) {
+        LOGGER.warn(
+            DataNodeMiscMessages.EXCEPTION_EMIT_EVENTS_BEFORE_COMMIT_TERMINATE_EVENT,
+            this,
+            terminateEvent,
+            e);
+      }
+      terminateEvent.decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
+      LOGGER.info(DataNodeMiscMessages.COMMIT_TERMINATE_EVENT, this, terminateEvent);
+      return;
     }
+
+    final long eventCreationTime = terminateEvent.getCreationTime();
+    if (activeTerminatePipeCreationTime != Long.MIN_VALUE
+        && eventCreationTime < activeTerminatePipeCreationTime) {
+      terminateEvent.decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), false);
+      return;
+    }
+    if (activeTerminatePipeCreationTime != Long.MIN_VALUE
+        && eventCreationTime > activeTerminatePipeCreationTime) {
+      for (final PipeTerminateEvent staleEvent : pendingTerminateEvents) {
+        staleEvent.clearReferenceCount(SubscriptionPrefetchingQueue.class.getName());
+      }
+      pendingTerminateEvents.clear();
+      terminatedDataRegionIds.clear();
+    }
+    activeTerminatePipeCreationTime = eventCreationTime;
+    pendingTerminateEvents.add(terminateEvent);
+    terminatedDataRegionIds.add(terminateEvent.getDataRegionId());
+    tryCommitPendingTerminateEvents();
   }
 
-  private synchronized boolean tryCommitCurrentTerminateEvent() {
+  private synchronized boolean tryCommitPendingTerminateEvents() {
+    if (pendingTerminateEvents.isEmpty()) {
+      return false;
+    }
+
+    if (!inputPendingQueue.isEmpty()
+        || Objects.nonNull(currentTsFileInsertionEvent)
+        || Objects.nonNull(currentTabletInsertionEvent)
+        || Objects.nonNull(currentToTabletIterator)) {
+      return false;
+    }
+
+    final PipeTerminateEvent sampleEvent =
+        pendingTerminateEvents.get(pendingTerminateEvents.size() - 1);
+    final Optional<Set<Integer>> expectedDataRegionIds =
+        getExpectedDataRegionIds(sampleEvent.getPipeName(), sampleEvent.getCreationTime());
+    if (!expectedDataRegionIds.isPresent()
+        || !terminatedDataRegionIds.containsAll(expectedDataRegionIds.get())) {
+      return false;
+    }
+
     try {
       batches.emitAll(this::prefetchEvent);
     } catch (final Exception e) {
       LOGGER.warn(
           DataNodeMiscMessages.EXCEPTION_EMIT_EVENTS_BEFORE_COMMIT_TERMINATE_EVENT,
           this,
-          currentTerminateEvent,
+          sampleEvent,
           e);
       return false;
     }
@@ -833,12 +909,19 @@ public abstract class SubscriptionPrefetchingQueue {
       return false;
     }
 
-    // Add mark completed hook only when all subscription events have been consumed.
-    currentTerminateEvent.addOnCommittedHook(this::markCompleted);
-    currentTerminateEvent.decreaseReferenceCount(
-        SubscriptionPrefetchingQueue.class.getName(), true);
-    LOGGER.info(DataNodeMiscMessages.COMMIT_TERMINATE_EVENT, this, currentTerminateEvent);
-    currentTerminateEvent = null;
+    final PipeTerminateEvent lastTerminateEvent =
+        pendingTerminateEvents.get(pendingTerminateEvents.size() - 1);
+    lastTerminateEvent.addOnCommittedHook(this::markCompleted);
+    for (final PipeTerminateEvent terminateEvent : pendingTerminateEvents) {
+      terminateEvent.decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
+      LOGGER.info(DataNodeMiscMessages.COMMIT_TERMINATE_EVENT, this, terminateEvent);
+    }
+    if (Objects.isNull(lastTerminateEvent.getCommitterKey())
+        || lastTerminateEvent.getCreationTime() == 0
+        || lastTerminateEvent.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
+      markCompleted();
+    }
+    pendingTerminateEvents.clear();
     return true;
   }
 
@@ -1043,6 +1126,10 @@ public abstract class SubscriptionPrefetchingQueue {
           return null; // remove this entry
         });
 
+    if (acked.get() && hasPendingTerminateEvents()) {
+      tryCommitPendingTerminateEvents();
+    }
+
     return acked.get();
   }
 
@@ -1108,6 +1195,10 @@ public abstract class SubscriptionPrefetchingQueue {
           // no need to update inFlightEvents and prefetchingQueue
           return ev;
         });
+
+    if (nacked.get() && hasPendingTerminateEvents()) {
+      tryCommitPendingTerminateEvents();
+    }
 
     return nacked.get();
   }

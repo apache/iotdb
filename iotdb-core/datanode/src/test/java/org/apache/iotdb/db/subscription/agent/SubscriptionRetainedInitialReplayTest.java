@@ -21,27 +21,38 @@ package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskManager;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTaskAgent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBlockingPendingQueue;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueueStates;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
@@ -50,6 +61,8 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 import org.apache.iotdb.session.subscription.util.PollTimer;
 
+import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
@@ -61,10 +74,14 @@ import org.powermock.reflect.Whitebox;
 
 import java.lang.reflect.Field;
 import java.nio.file.Files;
+import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -76,6 +93,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -490,6 +508,306 @@ public class SubscriptionRetainedInitialReplayTest {
     }
   }
 
+  @Test
+  public void testMultiRegionRetainedSnapshotWaitsForAllExpectedRegionsBeforeTermination()
+      throws Exception {
+    for (final boolean tableModel : new boolean[] {false, true}) {
+      // V1 (tablet queue): Region 1 terminating early must not trigger TERMINATION before Region 2
+      // events and terminate event arrive and are acked.
+      final ArrayDequeBlockingPendingQueue v1Pending = new ArrayDequeBlockingPendingQueue();
+      try (final RetainedSubscription subscription =
+          new RetainedSubscription(
+              tableModel, true, TopicConstant.MODE_SNAPSHOT_VALUE, false, v1Pending)) {
+        final SubscriptionPrefetchingQueueStates spiedStates =
+            spy(
+                (SubscriptionPrefetchingQueueStates)
+                    Whitebox.getInternalState(subscription.queue, "states"));
+        doReturn(true).when(spiedStates).shouldPrefetch();
+        Whitebox.setInternalState(subscription.queue, "states", spiedStates);
+        doReturn(Optional.of(ImmutableSet.of(1, 2)))
+            .when(subscription.queue)
+            .getExpectedDataRegionIds("pipe", 1L);
+
+        final PipeTerminateEvent termR1 = new PipeTerminateEvent("pipe", 1L, null, 1, true);
+        assertTrue(termR1.increaseReferenceCount("test"));
+        v1Pending.directOffer(termR1);
+
+        subscription.queue.executePrefetch();
+        final Set<String> topics = Collections.singleton(subscription.topic);
+        assertFalse(subscription.queue.isCompleted());
+        assertFalse(termR1.isReleased());
+        assertTrue(subscription.broker.fetchTopicNamesToUnsubscribe(topics).isEmpty());
+        assertTrue(subscription.broker.poll("first", topics, Long.MAX_VALUE).isEmpty());
+
+        final PipeRawTabletInsertionEvent tabletR2 = createTabletEvent(tableModel, 2, 1L);
+        assertTrue(tabletR2.increaseReferenceCount("test"));
+        final PipeTerminateEvent termR2 = new PipeTerminateEvent("pipe", 1L, null, 2, true);
+        assertTrue(termR2.increaseReferenceCount("test"));
+        v1Pending.directOffer(tabletR2);
+        v1Pending.directOffer(termR2);
+
+        subscription.queue.executePrefetch();
+        assertFalse(subscription.queue.isCompleted());
+        assertFalse(termR1.isReleased());
+        assertFalse(termR2.isReleased());
+        assertTrue(subscription.broker.fetchTopicNamesToUnsubscribe(topics).isEmpty());
+        assertEquals(1, subscription.queue.getPrefetchedEventCount());
+
+        final List<SubscriptionEvent> delivered =
+            subscription.broker.poll("first", topics, Long.MAX_VALUE);
+        assertEquals(1, delivered.size());
+        assertEquals(
+            SubscriptionPollResponseType.TABLETS.getType(),
+            delivered.get(0).getCurrentResponse().getResponseType());
+        assertFalse(subscription.queue.isCompleted());
+        assertTrue(subscription.broker.fetchTopicNamesToUnsubscribe(topics).isEmpty());
+
+        final SubscriptionEvent tabletDelivered = delivered.get(0);
+        int nextOffset =
+            ((TabletsPayload) tabletDelivered.getCurrentResponse().getPayload()).getNextOffset();
+        while (nextOffset != -1) {
+          tabletDelivered.fetchNextResponse(nextOffset);
+          nextOffset =
+              ((TabletsPayload) tabletDelivered.getCurrentResponse().getPayload()).getNextOffset();
+        }
+        assertTrue(subscription.queue.ack("first", tabletDelivered.getCommitContext()));
+        assertTrue(subscription.queue.isCompleted());
+        assertTrue(termR1.isReleased());
+        assertTrue(termR2.isReleased());
+        assertEquals(
+            Collections.singletonList(subscription.topic),
+            subscription.broker.fetchTopicNamesToUnsubscribe(topics));
+        final List<SubscriptionEvent> termEvents =
+            subscription.broker.poll("first", topics, Long.MAX_VALUE);
+        assertEquals(1, termEvents.size());
+        assertEquals(
+            SubscriptionPollResponseType.TERMINATION.getType(),
+            termEvents.get(0).getCurrentResponse().getResponseType());
+      }
+
+      // V2 (TsFile queue): early terminate event in queue must not block draining later regions,
+      // and Optional.empty() expected-region lookup (lock contention) must defer completion.
+      final ArrayDequeBlockingPendingQueue v2Pending = new ArrayDequeBlockingPendingQueue();
+      try (final RetainedSubscription subscription =
+          new RetainedSubscription(
+              tableModel, true, TopicConstant.MODE_SNAPSHOT_VALUE, true, v2Pending)) {
+        doReturn(Optional.empty()).when(subscription.queue).getExpectedDataRegionIds("pipe", 2L);
+
+        final byte[] tsFileBytes = {1, 2, 3, 4};
+        final PipeTerminateEvent termR1 = new PipeTerminateEvent("pipe", 2L, null, 1, true);
+        assertTrue(termR1.increaseReferenceCount("test"));
+        final PipeTsFileInsertionEvent tsFileR2 = mock(PipeTsFileInsertionEvent.class);
+        when(tsFileR2.shouldParseTimeOrPattern()).thenReturn(false);
+        when(tsFileR2.getTsFile())
+            .thenReturn(Files.write(folder.newFile().toPath(), tsFileBytes).toFile());
+        when(tsFileR2.isTableModelEvent()).thenReturn(tableModel);
+        when(tsFileR2.getTableModelDatabaseName()).thenReturn("db");
+        final PipeTerminateEvent termR2 = new PipeTerminateEvent("pipe", 2L, null, 2, true);
+        assertTrue(termR2.increaseReferenceCount("test"));
+        v2Pending.directOffer(termR1);
+        v2Pending.directOffer(tsFileR2);
+        v2Pending.directOffer(termR2);
+
+        subscription.queue.executePrefetchV2();
+        final Set<String> topics = Collections.singleton(subscription.topic);
+        assertFalse(subscription.queue.isCompleted());
+        assertEquals(1, subscription.queue.getPrefetchedEventCount());
+
+        final List<SubscriptionEvent> delivered =
+            subscription.broker.poll("first", topics, Long.MAX_VALUE);
+        assertEquals(1, delivered.size());
+        final SubscriptionEvent tsFileDelivered = delivered.get(0);
+        assertEquals(
+            SubscriptionPollResponseType.FILE_INIT.getType(),
+            tsFileDelivered.getCurrentResponse().getResponseType());
+        tsFileDelivered.fetchNextResponse(0L);
+        tsFileDelivered.fetchNextResponse(tsFileBytes.length);
+        assertTrue(subscription.queue.ack("first", tsFileDelivered.getCommitContext()));
+        // Still unproven because expected region set lookup returned Optional.empty().
+        assertFalse(subscription.queue.isCompleted());
+
+        doReturn(Optional.of(ImmutableSet.of(1, 2)))
+            .when(subscription.queue)
+            .getExpectedDataRegionIds("pipe", 2L);
+        subscription.queue.executePrefetchV2();
+        assertTrue(subscription.queue.isCompleted());
+        assertTrue(termR1.isReleased());
+        assertTrue(termR2.isReleased());
+      }
+
+      // shouldMark=false (mode=initial): terminate event releases without marking completed.
+      final ArrayDequeBlockingPendingQueue initialPending = new ArrayDequeBlockingPendingQueue();
+      try (final RetainedSubscription subscription =
+          new RetainedSubscription(
+              tableModel, true, TopicConstant.MODE_INITIAL_VALUE, false, initialPending)) {
+        final SubscriptionPrefetchingQueueStates spiedStates =
+            spy(
+                (SubscriptionPrefetchingQueueStates)
+                    Whitebox.getInternalState(subscription.queue, "states"));
+        doReturn(true).when(spiedStates).shouldPrefetch();
+        Whitebox.setInternalState(subscription.queue, "states", spiedStates);
+
+        final PipeTerminateEvent initTerm = new PipeTerminateEvent("init_pipe", 1L, null, 1, false);
+        assertTrue(initTerm.increaseReferenceCount("test"));
+        initialPending.directOffer(initTerm);
+        subscription.queue.executePrefetch();
+        assertTrue(initTerm.isReleased());
+        assertFalse(subscription.queue.isCompleted());
+        assertTrue(
+            subscription
+                .broker
+                .fetchTopicNamesToUnsubscribe(Collections.singleton(subscription.topic))
+                .isEmpty());
+      }
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testRetainedSnapshotEmitsTerminationWhenRunningWithoutLocalTasks() throws Exception {
+    for (final boolean tableModel : new boolean[] {false, true}) {
+      try (final RetainedSubscription subscription =
+          new RetainedSubscription(
+              tableModel,
+              true,
+              TopicConstant.MODE_SNAPSHOT_VALUE,
+              false,
+              RetainedSubscription.mockEmptyQueue())) {
+        final Field queuesField =
+            SubscriptionBroker.class.getDeclaredField("topicNameToPrefetchingQueue");
+        queuesField.setAccessible(true);
+        ((Map<String, SubscriptionPrefetchingQueue>) queuesField.get(subscription.broker))
+            .remove(subscription.topic);
+
+        final Set<String> topics = Collections.singleton(subscription.topic);
+        assertTrue(subscription.broker.fetchTopicNamesToUnsubscribe(topics).isEmpty());
+        assertTrue(subscription.broker.poll("first", topics, Long.MAX_VALUE).isEmpty());
+
+        final String pipeName =
+            PipeStaticMeta.generateSubscriptionPipeName(subscription.topic, subscription.group);
+        final Map<String, String> sourceAttrs = new HashMap<>();
+        sourceAttrs.put(SystemConstant.SQL_DIALECT_KEY, tableModel ? "table" : "tree");
+        sourceAttrs.put("source.mode", TopicConstant.MODE_SNAPSHOT_VALUE);
+        sourceAttrs.put("source.realtime.enable", Boolean.FALSE.toString());
+        final PipeStaticMeta staticMeta =
+            new PipeStaticMeta(
+                pipeName,
+                1L,
+                sourceAttrs,
+                Collections.emptyMap(),
+                Collections.singletonMap(PipeSinkConstant.SINK_TOPIC_KEY, subscription.topic));
+        final PipeRuntimeMeta runtimeMeta = new PipeRuntimeMeta();
+        runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+        final PipeMeta pipeMeta = new PipeMeta(staticMeta, runtimeMeta);
+
+        final PipeDataNodeTaskAgent taskAgent = PipeDataNodeAgent.task();
+        final PipeMetaKeeper keeper =
+            (PipeMetaKeeper) Whitebox.getInternalState(taskAgent, "pipeMetaKeeper");
+        final PipeTaskManager taskManager =
+            (PipeTaskManager) Whitebox.getInternalState(taskAgent, "pipeTaskManager");
+        keeper.addPipeMeta(pipeMeta);
+        try {
+          // STOPPED subscription pipe with zero local tasks must not emit TERMINATION.
+          assertTrue(subscription.broker.fetchTopicNamesToUnsubscribe(topics).isEmpty());
+          assertTrue(subscription.broker.poll("first", topics, Long.MAX_VALUE).isEmpty());
+
+          // RUNNING subscription pipe with zero local tasks must emit TERMINATION.
+          runtimeMeta.getStatus().set(PipeStatus.RUNNING);
+          assertEquals(
+              Collections.singletonList(subscription.topic),
+              subscription.broker.fetchTopicNamesToUnsubscribe(topics));
+          final List<SubscriptionEvent> termEvents =
+              subscription.broker.poll("first", topics, Long.MAX_VALUE);
+          assertEquals(1, termEvents.size());
+          assertEquals(
+              SubscriptionPollResponseType.TERMINATION.getType(),
+              termEvents.get(0).getCurrentResponse().getResponseType());
+
+          // Once a local PipeTask exists on this DataNode, zero-local-task fallback is inactive.
+          taskManager.addPipeTask(staticMeta, 1, mock(PipeTask.class));
+          assertTrue(subscription.broker.fetchTopicNamesToUnsubscribe(topics).isEmpty());
+          assertTrue(subscription.broker.poll("first", topics, Long.MAX_VALUE).isEmpty());
+        } finally {
+          taskManager.removePipeTasks(staticMeta);
+          keeper.removePipeMeta(staticMeta);
+        }
+      }
+    }
+  }
+
+  private static PipeRawTabletInsertionEvent createTabletEvent(
+      final boolean tableModel, final int regionId, final long commitId) {
+    final Tablet tablet =
+        tableModel
+            ? new Tablet(
+                "src",
+                Arrays.asList("dev", "s1"),
+                Arrays.asList(TSDataType.STRING, TSDataType.INT64),
+                Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD),
+                1)
+            : new Tablet(
+                "root.retained.d",
+                Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64)),
+                1);
+    tablet.addTimestamp(0, 1000L);
+    if (tableModel) {
+      tablet.addValue(0, 0, "d1");
+      tablet.addValue(0, 1, 7L);
+    } else {
+      tablet.addValue("s1", 0, 7L);
+    }
+    tablet.setRowSize(1);
+    final PipeRawTabletInsertionEvent event =
+        new PipeRawTabletInsertionEvent(
+            tableModel,
+            "root.retained",
+            "db",
+            "root.retained",
+            tablet,
+            false,
+            "pipe",
+            1L,
+            null,
+            null,
+            false);
+    event.setCommitterKeyAndCommitId(new CommitterKey("pipe", 1L, regionId, 0), commitId);
+    return event;
+  }
+
+  private static final class ArrayDequeBlockingPendingQueue
+      extends SubscriptionBlockingPendingQueue {
+    private final Queue<Event> queue = new ArrayDeque<>();
+
+    private ArrayDequeBlockingPendingQueue() {
+      super(null);
+    }
+
+    @Override
+    public synchronized Event waitedPoll() {
+      return queue.poll();
+    }
+
+    @Override
+    public synchronized Event peek() {
+      return queue.peek();
+    }
+
+    @Override
+    public synchronized void directOffer(final Event event) {
+      queue.offer(event);
+    }
+
+    @Override
+    public synchronized int size() {
+      return queue.size();
+    }
+
+    @Override
+    public synchronized boolean isEmpty() {
+      return queue.isEmpty();
+    }
+  }
+
   private static final class RetainedSubscription implements AutoCloseable {
     private final String topic = "retained_replay";
     private final String group = "retained_replay_group";
@@ -507,33 +825,42 @@ public class SubscriptionRetainedInitialReplayTest {
       this(tableModel, retain, TopicConstant.MODE_INITIAL_VALUE);
     }
 
-    @SuppressWarnings("unchecked")
     private RetainedSubscription(final boolean tableModel, final boolean retain, final String mode)
+        throws Exception {
+      this(tableModel, retain, mode, false, mockEmptyQueue());
+    }
+
+    @SuppressWarnings("unchecked")
+    private RetainedSubscription(
+        final boolean tableModel,
+        final boolean retain,
+        final String mode,
+        final boolean tsFileQueue,
+        final SubscriptionBlockingPendingQueue input)
         throws Exception {
       this.tableModel = tableModel;
       this.retain = retain;
+      final Map<String, String> topicAttributes = new HashMap<>();
+      topicAttributes.put(SystemConstant.SQL_DIALECT_KEY, tableModel ? "table" : "tree");
+      topicAttributes.put(TopicConstant.MODE_KEY, mode);
+      topicAttributes.put(
+          TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY, String.valueOf(retain));
+      topicAttributes.put(TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY, "0");
+      if (tsFileQueue) {
+        topicAttributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      }
       assertNull(
           SubscriptionAgent.topic()
-              .handleSingleTopicMetaChanges(
-                  new TopicMeta(
-                      topic,
-                      1L,
-                      Map.of(
-                          SystemConstant.SQL_DIALECT_KEY,
-                          tableModel ? "table" : "tree",
-                          TopicConstant.MODE_KEY,
-                          mode,
-                          TopicConstant.RETAIN_PROGRESS_AFTER_UNSUBSCRIBE_KEY,
-                          String.valueOf(retain),
-                          TopicConstant.RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS_KEY,
-                          "0"))));
+              .handleSingleTopicMetaChanges(new TopicMeta(topic, 1L, topicAttributes)));
       meta = new ConsumerGroupMeta(group, 1L, consumer("first"));
       meta.addSubscription("first", Collections.singleton(topic));
       assertNull(
           SubscriptionAgent.consumer().handleSingleConsumerGroupMetaChanges(meta.deepCopy()));
-      final SubscriptionBlockingPendingQueue input = mock(SubscriptionBlockingPendingQueue.class);
-      when(input.isEmpty()).thenReturn(true);
-      queue = spy(new SubscriptionPrefetchingTabletQueue(group, topic, input, new AtomicLong()));
+      queue =
+          spy(
+              tsFileQueue
+                  ? new SubscriptionPrefetchingTsFileQueue(group, topic, input, new AtomicLong())
+                  : new SubscriptionPrefetchingTabletQueue(group, topic, input, new AtomicLong()));
       final Field brokersField =
           SubscriptionBrokerAgent.class.getDeclaredField("consumerGroupIdToBrokers");
       brokersField.setAccessible(true);
@@ -544,6 +871,12 @@ public class SubscriptionRetainedInitialReplayTest {
           SubscriptionBroker.class.getDeclaredField("topicNameToPrefetchingQueue");
       queuesField.setAccessible(true);
       ((Map<String, SubscriptionPrefetchingQueue>) queuesField.get(broker)).put(topic, queue);
+    }
+
+    private static SubscriptionBlockingPendingQueue mockEmptyQueue() {
+      final SubscriptionBlockingPendingQueue input = mock(SubscriptionBlockingPendingQueue.class);
+      when(input.isEmpty()).thenReturn(true);
+      return input;
     }
 
     private ConsumerMeta consumer(final String id) {

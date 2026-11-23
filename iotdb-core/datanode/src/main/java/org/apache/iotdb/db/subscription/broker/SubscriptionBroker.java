@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -490,7 +491,17 @@ public class SubscriptionBroker implements ISubscriptionBroker {
   private boolean isTopicCompleted(
       final String topicName, final SubscriptionPrefetchingQueue prefetchingQueue) {
     if (Objects.isNull(prefetchingQueue)) {
-      return completedTopicNames.containsKey(topicName);
+      if (completedTopicNames.containsKey(topicName)) {
+        return true;
+      }
+      final TopicConfig config =
+          SubscriptionAgent.topic().getTopicConfig(topicName, isTableModel());
+      return Objects.nonNull(config)
+          && config.isSnapshotMode()
+          && config.isProgressRetainedAfterUnsubscribe()
+          && PipeDataNodeAgent.task()
+              .isRunningSubscriptionPipeWithoutLocalTasks(
+                  PipeStaticMeta.generateSubscriptionPipeName(topicName, brokerId), isTableModel());
     }
     if (!prefetchingQueue.isCompleted()) {
       return false;

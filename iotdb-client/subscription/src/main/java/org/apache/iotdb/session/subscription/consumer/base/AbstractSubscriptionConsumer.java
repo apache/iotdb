@@ -174,6 +174,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private final Map<String, Set<SubscriptionCommitContext>> pendingRedirectAcksByTopicRegion =
       new ConcurrentHashMap<>();
 
+  private final Map<String, Set<Integer>> terminatedDataNodeIdsByTopic = new ConcurrentHashMap<>();
+  private final Set<String> autoUnsubscribingTopics = ConcurrentHashMap.newKeySet();
+  private final Object topicTerminationLock = new Object();
+
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
@@ -409,6 +413,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     // in network I/O. prepareClose() bounds or interrupts those RPCs before providers are detached.
     providers.prepareClose();
     providers.closeProviders(!isFenced());
+    clearTerminatedProviderStates();
+    autoUnsubscribingTopics.clear();
   }
 
   boolean isClosed() {
@@ -456,6 +462,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               .collect(Collectors.toSet());
     }
 
+    topicNames.forEach(terminatedDataNodeIdsByTopic::remove);
+    topicNames.forEach(autoUnsubscribingTopics::remove);
+
     providers.acquireReadLock();
     try {
       subscribeWithRedirection(topicNames);
@@ -492,6 +501,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     try {
       unsubscribeWithRedirection(topicNames);
       topicNames.forEach(this::clearPendingRedirectAcks);
+      topicNames.forEach(terminatedDataNodeIdsByTopic::remove);
     } finally {
       providers.releaseReadLock();
     }
@@ -773,13 +783,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                       TERMINATION,
                       (resp, timer) -> {
                         final SubscriptionCommitContext commitContext = resp.getCommitContext();
-                        final String topicNameToUnsubscribe = commitContext.getTopicName();
-                        LOGGER.info(
-                            SubscriptionMessages
-                                .LOG_TERMINATION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_UNSUBSCRIBE_TOPIC_ARG_AUTOMATICALLY_E9B695FA,
-                            coreReportMessage(),
-                            topicNameToUnsubscribe);
-                        unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
+                        handleProviderTopicTermination(
+                            commitContext.getDataNodeId(), commitContext.getTopicName());
                         return Optional.empty();
                       });
                   put(
@@ -809,6 +814,70 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     } finally {
       providers.releaseReadLock();
     }
+  }
+
+  protected Set<Integer> getExpectedDataNodeIds() {
+    providers.acquireReadLock();
+    try {
+      return providers.getExpectedDataNodeIds();
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  void clearTerminatedProviderStates() {
+    synchronized (topicTerminationLock) {
+      terminatedDataNodeIdsByTopic.clear();
+    }
+  }
+
+  void handleProviderTopicTermination(final int dataNodeId, final String topicName)
+      throws SubscriptionException {
+    final TopicConfig topicConfig = subscribedTopics.get(topicName);
+    if (Objects.nonNull(topicConfig)
+        && topicConfig.isSnapshotMode()
+        && topicConfig.isProgressRetainedAfterUnsubscribe()) {
+      final Set<Integer> expectedDataNodeIds = getExpectedDataNodeIds();
+      synchronized (topicTerminationLock) {
+        if (!subscribedTopics.containsKey(topicName)) {
+          terminatedDataNodeIdsByTopic.remove(topicName);
+          return;
+        }
+        final Set<Integer> terminated =
+            terminatedDataNodeIdsByTopic.computeIfAbsent(
+                topicName, ignored -> ConcurrentHashMap.newKeySet());
+        if (dataNodeId >= 0) {
+          terminated.add(dataNodeId);
+        }
+        if (expectedDataNodeIds.isEmpty()
+            || !terminated.containsAll(expectedDataNodeIds)
+            || !autoUnsubscribingTopics.add(topicName)) {
+          return;
+        }
+      }
+      try {
+        LOGGER.info(
+            SubscriptionMessages
+                .LOG_TERMINATION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_UNSUBSCRIBE_TOPIC_ARG_AUTOMATICALLY_E9B695FA,
+            coreReportMessage(),
+            topicName);
+        unsubscribe(Collections.singleton(topicName), false);
+      } finally {
+        autoUnsubscribingTopics.remove(topicName);
+      }
+      return;
+    }
+    if (terminatedDataNodeIdsByTopic.remove(topicName) != null
+        && !subscribedTopics.containsKey(topicName)) {
+      return;
+    }
+
+    LOGGER.info(
+        SubscriptionMessages
+            .LOG_TERMINATION_OCCURRED_SUBSCRIPTIONCONSUMER_ARG_POLLING_TOPICS_UNSUBSCRIBE_TOPIC_ARG_AUTOMATICALLY_E9B695FA,
+        coreReportMessage(),
+        topicName);
+    unsubscribe(Collections.singleton(topicName), false);
   }
 
   /**
@@ -1507,6 +1576,17 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private List<SubscriptionPollResponse> pollInternal(
       final Set<String> topicNames, final long timeoutMs) throws SubscriptionException {
     checkIfFenced();
+    if (!terminatedDataNodeIdsByTopic.isEmpty()) {
+      for (final String topicName : new ArrayList<>(topicNames)) {
+        final Set<Integer> terminated = terminatedDataNodeIdsByTopic.get(topicName);
+        if (Objects.nonNull(terminated)) {
+          final Set<Integer> expectedDataNodeIds = getExpectedDataNodeIds();
+          if (!expectedDataNodeIds.isEmpty() && terminated.containsAll(expectedDataNodeIds)) {
+            handleProviderTopicTermination(-1, topicName);
+          }
+        }
+      }
+    }
     boolean syncIfUnavailable = false;
     providers.acquireReadLock();
     try {
@@ -1517,10 +1597,30 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         }
         syncIfUnavailable = true;
       } else {
+        final Set<String> effectiveTopicNames;
+        if (terminatedDataNodeIdsByTopic.isEmpty()) {
+          effectiveTopicNames = topicNames;
+        } else {
+          effectiveTopicNames = new HashSet<>(topicNames.size());
+          for (final String topicName : topicNames) {
+            final Set<Integer> terminated = terminatedDataNodeIdsByTopic.get(topicName);
+            if (Objects.nonNull(terminated)
+                && (!subscribedTopics.containsKey(topicName)
+                    || terminated.contains(provider.getDataNodeId()))) {
+              continue;
+            }
+            effectiveTopicNames.add(topicName);
+          }
+          if (effectiveTopicNames.isEmpty()) {
+            return Collections.emptyList();
+          }
+        }
         // ignore SubscriptionConnectionException to improve poll auto retry
         try {
-          return provider.poll(topicNames, timeoutMs, buildCurrentProgressByTopic(topicNames));
+          return provider.poll(
+              effectiveTopicNames, timeoutMs, buildCurrentProgressByTopic(effectiveTopicNames));
         } catch (final SubscriptionConnectionException ignored) {
+          clearTerminatedProviderStates();
           syncIfUnavailable = true;
         }
       }
