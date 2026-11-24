@@ -36,6 +36,8 @@ class BuiltinModelLoadTest(unittest.TestCase):
 
     def setUp(self):
         self.release_download = threading.Event()
+        self.release_unload = threading.Event()
+        self.release_unload.set()
         self.download_succeeds = True
         self.events = []
         self.models = {
@@ -58,7 +60,8 @@ class BuiltinModelLoadTest(unittest.TestCase):
         controller._task_queue = task_queue if task_queue is not None else queue.Queue()
         controller._tasks_waiting_for_download = {}
         controller._pending_loads = Counter()
-        controller._pending_loads_lock = threading.Lock()
+        controller._pending_unloads = Counter()
+        controller._pending_lock = threading.Lock()
         controller._executor = mock.Mock()
         controller._request_pool_map = {}
         controller._model_manager = mock.Mock()
@@ -75,9 +78,14 @@ class BuiltinModelLoadTest(unittest.TestCase):
 
         controller._executor.submit_batch.side_effect = load_on_devices
         controller._load_one_model_task = load
-        controller._unload_one_model_task = lambda model_id, _: self.events.append(
-            ("unload", model_id)
-        )
+
+        def unload(model_id, device_id_list):
+            self.release_unload.wait(10)
+            self.events.append(("unload", model_id))
+            controller._request_pool_map.pop(model_id, None)
+            controller._finish_pending_unloads(model_id, device_id_list)
+
+        controller._unload_one_model_task = unload
         controller._pool_control_worker_thread = threading.Thread(
             target=controller._worker_loop, daemon=True
         )
@@ -97,6 +105,7 @@ class BuiltinModelLoadTest(unittest.TestCase):
 
     def _stop(self):
         self.release_download.set()
+        self.release_unload.set()
         self.controller.stop()
 
     def test_other_models_are_not_blocked_by_a_download(self):
@@ -187,6 +196,27 @@ class BuiltinModelLoadTest(unittest.TestCase):
         unloading.join(5)
         self._wait_for(2)
         self.assertEqual(self.events, [("load", "sundial"), ("unload", "sundial")])
+
+    def test_load_after_a_pending_unload_through_inference_manager_runs_after_it(self):
+        # UNLOAD MODEL is queued while the model still has its pool; a LOAD MODEL that arrives
+        # before the unload has run must not be skipped as already loaded, or the unload then
+        # removes the pool and the model ends up unloaded although the load came last.
+        self.addCleanup(self._stop)
+        manager = object.__new__(InferenceManager)
+        manager._pool_controller = self.controller
+        cpu = torch.device("cpu")
+        self.controller._request_pool_map["sundial"] = {cpu: mock.Mock()}
+        self.release_unload.clear()
+
+        manager.unload_model("sundial", [cpu])
+        self.assertTrue(self.controller.is_unloading("sundial", cpu))
+        manager.load_model("sundial", [cpu])
+        self.assertTrue(self.controller.is_loading("sundial", cpu))
+
+        self.release_unload.set()
+        self._wait_for(2)
+        self.assertEqual(self.events, [("unload", "sundial"), ("load", "sundial")])
+        self.assertFalse(self.controller.is_unloading("sundial", cpu))
 
     def test_failed_download_finishes_the_pending_load(self):
         self.addCleanup(self._stop)

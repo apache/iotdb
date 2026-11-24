@@ -93,9 +93,11 @@ class InferenceManager:
         devices_to_be_processed: list[torch.device] = []
         devices_not_to_be_processed: list[torch.device] = []
         for device_id in device_id_list:
+            # Pools that an unload still pending is about to remove do not count as loaded: the
+            # load is queued after that unload.
             if self._pool_controller.has_request_pools(
                 model_id=existing_model_id, device_id=device_id
-            ):
+            ) and not self._pool_controller.is_unloading(existing_model_id, device_id):
                 devices_not_to_be_processed.append(device_id)
             else:
                 devices_to_be_processed.append(device_id)
