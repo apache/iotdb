@@ -265,6 +265,7 @@ public abstract class SeriesCompactionExecutor {
           // finish writing this page
           break;
         }
+        point = pointPriorityReader.currentPointForOutput();
         compactionWriter.write(point, subTaskId);
         pointPriorityReader.next();
       }
@@ -306,7 +307,7 @@ public abstract class SeriesCompactionExecutor {
       }
 
       // write data point into chunk writer
-      compactionWriter.write(currentPoint, subTaskId);
+      compactionWriter.write(pointPriorityReader.currentPointForOutput(), subTaskId);
       pointPriorityReader.next();
     }
   }
