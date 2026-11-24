@@ -139,6 +139,12 @@ the corresponding module file; link to existing guidance instead of copying it.
 - **Spotless** with Google Java Format (GOOGLE style). Import order: `org.apache.iotdb`, blank, `javax`, `java`, static.
 - **Checkstyle** is also configured (see `checkstyle.xml` at project root).
 - Java source/target level is 17 (compiled with `maven.compiler.release=17` on JDK 17+).
+- **Exception context.** Include enough diagnostic context to identify the failed operation and
+  condition, such as the field being decoded, the expected condition, and the actual value or
+  available input length when safe. Avoid empty or generic exceptions such as `throw new IOException()`
+  when useful context is available. Preserve the cause when wrapping another exception. Do not include
+  secrets or entire payloads in messages. User-facing exception messages must follow the i18n rules
+  below.
 
 ## Architecture
 
