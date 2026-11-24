@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
@@ -37,6 +39,8 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -52,8 +56,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.db.service.RegionMigrateService.isFailed;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -65,6 +73,10 @@ public class ProcedureManagerTest {
   private static RemoveDataNodeHandler REMOVE_DATA_NODE_HANDLER;
 
   private static LoadManager LOAD_MANAGER;
+
+  private static ProcedureExecutor<ConfigNodeProcedureEnv> ORIGINAL_PROCEDURE_EXECUTOR;
+
+  private static ProcedureExecutor<ConfigNodeProcedureEnv> PROCEDURE_EXECUTOR;
 
   private static final ConcurrentHashMap<Long, Procedure<ConfigNodeProcedureEnv>> procedureMap =
       new ConcurrentHashMap<>();
@@ -118,8 +130,8 @@ public class ProcedureManagerTest {
     ProcedureManager procedureManager = CONFIG_MANAGER.getProcedureManager();
     PROCEDURE_MANAGER = spy(procedureManager);
 
-    ProcedureExecutor<ConfigNodeProcedureEnv> procedureExecutor = PROCEDURE_MANAGER.getExecutor();
-    ProcedureExecutor<ConfigNodeProcedureEnv> PROCEDURE_EXECUTOR = spy(procedureExecutor);
+    ORIGINAL_PROCEDURE_EXECUTOR = PROCEDURE_MANAGER.getExecutor();
+    PROCEDURE_EXECUTOR = spy(ORIGINAL_PROCEDURE_EXECUTOR);
 
     ConfigNodeProcedureEnv env = PROCEDURE_MANAGER.getEnv();
     ConfigNodeProcedureEnv ENV = spy(env);
@@ -163,6 +175,81 @@ public class ProcedureManagerTest {
     Assert.assertEquals(
         TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
         PROCEDURE_MANAGER.waitingProcedureFinished(procedure, 0).getCode());
+  }
+
+  @Test
+  public void testSyncSchemaDeletionWaitOption() {
+    final ConfigNodeConfig configNodeConfig = ConfigNodeDescriptor.getInstance().getConf();
+    final boolean originalValue = configNodeConfig.isEnableSyncSchemaDeletion();
+    final Procedure<?> procedure = mock(Procedure.class);
+    final TSStatus asynchronousStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    final TSStatus completedStatus =
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()).setMessage("completed");
+
+    try {
+      doReturn(completedStatus)
+          .when(PROCEDURE_MANAGER)
+          .waitingProcedureFinished(procedure, Long.MAX_VALUE);
+      configNodeConfig.setEnableSyncSchemaDeletion(true);
+      Assert.assertSame(
+          completedStatus,
+          PROCEDURE_MANAGER.waitForSchemaDeletionIfEnabled(procedure, asynchronousStatus));
+
+      configNodeConfig.setEnableSyncSchemaDeletion(false);
+      Assert.assertSame(
+          asynchronousStatus,
+          PROCEDURE_MANAGER.waitForSchemaDeletionIfEnabled(procedure, asynchronousStatus));
+    } finally {
+      configNodeConfig.setEnableSyncSchemaDeletion(originalValue);
+    }
+  }
+
+  @Test
+  public void testSyncDropTableKeepsProcedureReferenceDuringEviction() {
+    final ConfigNodeConfig configNodeConfig = ConfigNodeDescriptor.getInstance().getConf();
+    final boolean originalValue = configNodeConfig.isEnableSyncSchemaDeletion();
+    final ProcedureExecutor<ConfigNodeProcedureEnv> procedureExecutor =
+        PROCEDURE_MANAGER.getExecutor();
+    final long procedureId = 9001L;
+    final DropTableProcedure procedure =
+        new DropTableProcedure("root.db", "table", "retry-after-eviction", false);
+    procedure.setProcId(procedureId);
+    procedureMap.put(procedureId, procedure);
+
+    final TSStatus failureStatus =
+        new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()).setMessage("failed");
+    final AtomicBoolean evictDuringSnapshot = new AtomicBoolean(true);
+    try {
+      PROCEDURE_MANAGER.setExecutor(procedureExecutor);
+      configNodeConfig.setEnableSyncSchemaDeletion(true);
+      doReturn(true).when(procedureExecutor).isRunning();
+      doAnswer(
+              invocation -> {
+                if (evictDuringSnapshot.compareAndSet(true, false)) {
+                  procedureMap.remove(procedureId);
+                }
+                return invocation.callRealMethod();
+              })
+          .when(procedureExecutor)
+          .getCompletedProcedures();
+      doReturn(failureStatus)
+          .when(PROCEDURE_MANAGER)
+          .waitingProcedureFinished(procedure, Long.MAX_VALUE);
+
+      final TAlterOrDropTableReq request =
+          new TAlterOrDropTableReq()
+              .setDatabase("root.db")
+              .setTableName("table")
+              .setQueryId("retry-after-eviction");
+
+      Assert.assertSame(failureStatus, PROCEDURE_MANAGER.dropTable(request));
+    } finally {
+      configNodeConfig.setEnableSyncSchemaDeletion(originalValue);
+      procedureMap.remove(procedureId);
+      PROCEDURE_MANAGER.setExecutor(ORIGINAL_PROCEDURE_EXECUTOR);
+      doCallRealMethod().when(procedureExecutor).isRunning();
+      doCallRealMethod().when(procedureExecutor).getCompletedProcedures();
+    }
   }
 
   @Test
