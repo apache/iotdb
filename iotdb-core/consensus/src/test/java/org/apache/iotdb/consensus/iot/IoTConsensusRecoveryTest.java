@@ -23,8 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.consensus.iot.util.FakeConsensusReqReader;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
 
 import org.junit.After;
@@ -33,6 +37,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,7 +49,13 @@ import java.util.function.BiConsumer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class IoTConsensusRecoveryTest {
 
@@ -123,6 +134,119 @@ public class IoTConsensusRecoveryTest {
   }
 
   @Test
+  public void testRecoveryPublishesWalRetentionAfterRestoringPeers() throws Exception {
+    final DataRegionId regionId = new DataRegionId(1);
+    final List<Peer> peers =
+        Arrays.asList(
+            new Peer(regionId, 2, new TEndPoint("127.0.0.1", 1)),
+            new Peer(regionId, config.getThisNodeId(), config.getThisNodeEndPoint()));
+    consensus.createLocalPeer(regionId, peers);
+    consensus.stop();
+
+    final FakeConsensusReqReader reader = mock(FakeConsensusReqReader.class);
+    when(reader.getReqIterator(anyLong())).thenReturn(mock(ConsensusReqReader.ReqIterator.class));
+    consensus = newConsensus(reader);
+    consensus.recordCorrectPeerListBeforeStarting(Collections.singletonMap(regionId, peers));
+    IoTConsensus.onPeerRecovering =
+        (groupId, server) -> {
+          server.registerDetachedSubscriptionRetention(
+              "test-retention",
+              new SubscriptionWalRetentionPolicy(
+                  "test-topic",
+                  SubscriptionWalRetentionPolicy.UNBOUNDED,
+                  SubscriptionWalRetentionPolicy.UNBOUNDED),
+              () -> 0L);
+          verify(reader, never()).setSafelyDeletedSearchIndex(anyLong());
+          verify(reader, never()).setSubscriptionRetainedMinVersionId(anyLong());
+        };
+    consensus.start();
+
+    verify(reader, never()).setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+    verify(reader).setSafelyDeletedSearchIndex(Long.MIN_VALUE + 1);
+    verify(reader).setSubscriptionRetainedMinVersionId(0L);
+  }
+
+  @Test
+  public void testSingleReplicaRecoveryPublishesUnboundedRetentionAfterPeerRecovery()
+      throws Exception {
+    final DataRegionId regionId = new DataRegionId(1);
+    final List<Peer> peers =
+        Collections.singletonList(
+            new Peer(regionId, config.getThisNodeId(), config.getThisNodeEndPoint()));
+    consensus.createLocalPeer(regionId, peers);
+    consensus.stop();
+
+    final FakeConsensusReqReader reader = mock(FakeConsensusReqReader.class);
+    consensus = newConsensus(reader);
+    consensus.recordCorrectPeerListBeforeStarting(Collections.singletonMap(regionId, peers));
+    IoTConsensus.onPeerRecovering =
+        (groupId, server) -> {
+          verify(reader, never()).setSafelyDeletedSearchIndex(anyLong());
+          verify(reader, never()).setSubscriptionRetainedMinVersionId(anyLong());
+        };
+
+    consensus.start();
+
+    verify(reader).setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+    verify(reader).setSubscriptionRetainedMinVersionId(Long.MAX_VALUE);
+  }
+
+  @Test
+  public void testRecoveryDoesNotPublishWalRetentionWhenPeerRestoreFails() throws Exception {
+    final DataRegionId regionId = new DataRegionId(1);
+    final List<Peer> peers =
+        Arrays.asList(
+            new Peer(regionId, 2, new TEndPoint(config.getThisNodeEndPoint().getIp(), 1)),
+            new Peer(regionId, config.getThisNodeId(), config.getThisNodeEndPoint()));
+    consensus.createLocalPeer(regionId, peers);
+    consensus.stop();
+
+    final FakeConsensusReqReader reader = mock(FakeConsensusReqReader.class);
+    when(reader.getReqIterator(anyLong())).thenReturn(mock(ConsensusReqReader.ReqIterator.class));
+    consensus = newConsensus(reader);
+    consensus.recordCorrectPeerListBeforeStarting(Collections.singletonMap(regionId, peers));
+    final IllegalStateException recoveryFailure = new IllegalStateException();
+    IoTConsensus.onPeerRecovering =
+        (groupId, server) -> {
+          throw recoveryFailure;
+        };
+
+    final IOException exception = assertThrows(IOException.class, () -> consensus.start());
+    assertSame(recoveryFailure, exception.getCause());
+    verify(reader, never()).setSafelyDeletedSearchIndex(anyLong());
+    verify(reader, never()).setSubscriptionRetainedMinVersionId(anyLong());
+    assertTrue(consensus.getAllConsensusGroupIds().isEmpty());
+    assertFalse(consensus.isPeerCreationCallbackPending(regionId));
+
+    IoTConsensus.onPeerRecovering = null;
+    consensus.start();
+
+    verify(reader).setSafelyDeletedSearchIndex(0L);
+  }
+
+  @Test
+  public void testPeerListResetFailureIsReportedAndCleanedUp() throws Exception {
+    final DataRegionId regionId = new DataRegionId(1);
+    final List<Peer> peers =
+        Arrays.asList(
+            new Peer(regionId, 2, new TEndPoint(config.getThisNodeEndPoint().getIp(), 1)),
+            new Peer(regionId, config.getThisNodeId(), config.getThisNodeEndPoint()));
+    consensus.createLocalPeer(regionId, peers);
+    consensus.stop();
+
+    final FakeConsensusReqReader reader = mock(FakeConsensusReqReader.class);
+    when(reader.getReqIterator(anyLong())).thenThrow(new IllegalStateException());
+    consensus = newConsensus(reader);
+    consensus.recordCorrectPeerListBeforeStarting(Collections.singletonMap(regionId, peers));
+
+    assertThrows(IOException.class, () -> consensus.start());
+
+    verify(reader, never()).setSafelyDeletedSearchIndex(anyLong());
+    verify(reader, never()).setSubscriptionRetainedMinVersionId(anyLong());
+    assertTrue(consensus.getAllConsensusGroupIds().isEmpty());
+  }
+
+  @Test
   public void testRecoveryContinuesAfterPeerNotificationFailure() throws Exception {
     final DataRegionId firstRegion = new DataRegionId(1);
     final DataRegionId secondRegion = new DataRegionId(2);
@@ -176,6 +300,18 @@ public class IoTConsensusRecoveryTest {
             });
     instance.recordCorrectPeerListBeforeStarting(peerLists);
     return instance;
+  }
+
+  private IoTConsensus newConsensus(final FakeConsensusReqReader reader) {
+    return new IoTConsensus(
+        config,
+        groupId ->
+            new TestStateMachine() {
+              @Override
+              public synchronized DataSet read(final IConsensusRequest request) {
+                return reader;
+              }
+            });
   }
 
   private void createPeer(final DataRegionId regionId) throws Exception {

@@ -44,15 +44,29 @@ public class PulseFactorOperator implements AggregatedResultOperator {
 
   @Override
   public Set<String> getDeclaredIntermediateValueNames() {
+    return Collections.unmodifiableSet(
+        new HashSet<>(Arrays.asList("abs_max", "sum_x1", "sum_abs_x1", "count")));
+  }
+
+  @Override
+  public boolean supportsLegacyIntermediateResults() {
+    return true;
+  }
+
+  @Override
+  public Set<String> getLegacyIntermediateValueNames() {
     return Collections.unmodifiableSet(new HashSet<>(Arrays.asList("abs_max", "sum_x1", "count")));
   }
 
   @Override
   public Pair<TSDataType, Object> terminateWindow(
       TSDataType measurementDataType, CustomizedReadableIntermediateResults intermediateResults) {
+    final String averageAbsoluteValueName =
+        intermediateResults.isLegacyStatisticsFormula() ? "sum_x1" : "sum_abs_x1";
     return new Pair<>(
         TSDataType.DOUBLE,
         intermediateResults.getDouble("abs_max")
-            / (intermediateResults.getDouble("sum_x1") / intermediateResults.getInt("count")));
+            / (intermediateResults.getDouble(averageAbsoluteValueName)
+                / intermediateResults.getLong("count")));
   }
 }

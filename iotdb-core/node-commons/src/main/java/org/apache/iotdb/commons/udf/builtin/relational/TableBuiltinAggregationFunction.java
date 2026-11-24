@@ -71,7 +71,8 @@ public enum TableBuiltinAggregationFunction {
   RATE("rate"),
   INCREASE("increase"),
   IRATE("irate"),
-  DELTA("delta");
+  DELTA("delta"),
+  INTEGRAL("integral");
 
   private final String functionName;
 
@@ -131,6 +132,7 @@ public enum TableBuiltinAggregationFunction {
       case "increase":
       case "irate":
       case "delta":
+      case "integral":
         return BLOB;
       case "extreme":
       case "max":

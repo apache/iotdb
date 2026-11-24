@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.ModFileDeletionProgress;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -196,7 +197,7 @@ public class DropTableColumnProcedureTest {
         final Field trackerField = DropTableColumnProcedure.class.getDeclaredField("modProgress");
         trackerField.setAccessible(true);
         final Field progressField =
-            TableDeletionModProgress.class.getDeclaredField("modFileProgress");
+            ModFileDeletionProgress.class.getDeclaredField("modFileProgress");
         progressField.setAccessible(true);
         progressField.set(trackerField.get(procedure), progress);
         final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
