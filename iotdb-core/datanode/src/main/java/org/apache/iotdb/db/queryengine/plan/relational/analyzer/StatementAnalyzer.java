@@ -6472,8 +6472,7 @@ public class StatementAnalyzer {
         return analyzeScalarArgument(
             (Expression) argument.getValue(),
             (ScalarParameterSpecification) parameterSpecification,
-            TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(functionName)
-                && LTTBTableFunction.N_PARAMETER_NAME.equals(parameterSpecification.getName()));
+            TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(functionName));
       } else {
         throw new IllegalStateException(
             String.format(
@@ -6648,9 +6647,7 @@ public class StatementAnalyzer {
     }
 
     private ArgumentAnalysis analyzeScalarArgument(
-        Expression expression,
-        ScalarParameterSpecification argumentSpecification,
-        boolean lttbTargetCount) {
+        Expression expression, ScalarParameterSpecification argumentSpecification, boolean isLttb) {
       if (expression instanceof TimeDurationLiteral) {
         if (((TimeDurationLiteral) expression).getValue().monthDuration != 0) {
           throw new SemanticException(
@@ -6666,15 +6663,27 @@ public class StatementAnalyzer {
                 DataNodeQueryMessages.THE_ARGUMENT_CANNOT_BE_NULL,
                 argumentSpecification.getName()));
       }
-      if (lttbTargetCount) {
+      if (isLttb && argumentSpecification.getType() == org.apache.iotdb.udf.api.type.Type.INT64) {
         // TIMESTAMP and INT64 constants share the same Java representation.
         Type type =
             new IrTypeAnalyzer(plannerContext)
                 .getType(sessionContext, TypeProvider.empty(), expression);
-        if (expression instanceof TimeDurationLiteral
-            || (!INT32.equals(type) && !INT64.equals(type))) {
+        boolean targetCount =
+            LTTBTableFunction.N_PARAMETER_NAME.equals(argumentSpecification.getName());
+        boolean validType =
+            expression instanceof TimeDurationLiteral
+                ? !targetCount
+                : INT32.equals(type) || INT64.equals(type);
+        if (!validType) {
           throw new SemanticException(
-              CommonMessages.EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_A_POSITIVE_INTEGER_21795D8E);
+              targetCount
+                  ? CommonMessages
+                      .EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_A_POSITIVE_INTEGER_21795D8E
+                  : String.format(
+                      DataNodeQueryMessages.INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S,
+                      argumentSpecification.getName(),
+                      argumentSpecification.getType(),
+                      type.getDisplayName()));
         }
         constantValue = ((Number) constantValue).longValue();
       }

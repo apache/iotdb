@@ -984,6 +984,7 @@ public class LTTBTableFunction implements TableFunction {
     private double[] values;
     private long[] integralValues;
     private int size;
+    private int onlyFiniteIndex = NOT_SELECTED;
 
     PointBuffer(boolean integral, BufferMemoryBudget memoryBudget) {
       this.memoryBudget = memoryBudget;
@@ -1042,14 +1043,22 @@ public class LTTBTableFunction implements TableFunction {
       size--;
     }
 
-    /** Whether at least one point has a finite value. */
-    boolean hasFinitePoint() {
+    /**
+     * Records the index of a closed bucket's sole finite candidate, if any. Recomputed after
+     * removing the partition's final point from the bucket.
+     */
+    private boolean indexFinitePoints() {
+      onlyFiniteIndex = NOT_SELECTED;
       for (int i = 0; i < size; i++) {
         if (Double.isFinite(values[i])) {
-          return true;
+          if (onlyFiniteIndex != NOT_SELECTED) {
+            onlyFiniteIndex = NOT_SELECTED;
+            return true;
+          }
+          onlyFiniteIndex = i;
         }
       }
-      return false;
+      return onlyFiniteIndex != NOT_SELECTED;
     }
 
     private void ensureCapacity() {
@@ -1594,7 +1603,7 @@ public class LTTBTableFunction implements TableFunction {
     private void indexFiniteBuckets(WindowState window) {
       for (int i = 0; i < participantColumns.length; i++) {
         window.nextFinite[i] = null;
-        if (window.buffers[i].hasFinitePoint()) {
+        if (window.buffers[i].indexFinitePoints()) {
           if (lastPendingFinite[i] == null) {
             firstPendingFinite[i] = window;
           } else {
@@ -1725,7 +1734,8 @@ public class LTTBTableFunction implements TableFunction {
         if (hasLastEligible[i] && containsPosition(window, lastEligiblePositions[i])) {
           return false;
         }
-        if (firstPendingFinite[i] != window) {
+        // Once L is outside this bucket, a sole finite candidate wins for every possible C.
+        if (firstPendingFinite[i] != window || window.buffers[i].onlyFiniteIndex != NOT_SELECTED) {
           continue;
         }
         WindowState lookahead = window.nextFinite[i];
@@ -1827,8 +1837,8 @@ public class LTTBTableFunction implements TableFunction {
       if (firstPendingFinite[column] != window) {
         return WindowRow.of(bucket, 0);
       }
-      if (bucket.size() == 1) {
-        return updateAnchor(bucket, 0, column);
+      if (bucket.onlyFiniteIndex != NOT_SELECTED) {
+        return updateAnchor(bucket, bucket.onlyFiniteIndex, column);
       }
       long anchorTime;
       double anchorValue;

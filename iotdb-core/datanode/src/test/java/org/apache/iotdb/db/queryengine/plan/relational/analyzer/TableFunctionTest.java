@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFu
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.FFTTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.LTTBTableFunction;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
@@ -1182,6 +1183,38 @@ public class TableFunctionTest {
         CommonMessages.EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_A_POSITIVE_INTEGER_21795D8E);
     analyzeSQL(prefix + "CAST(4 AS INT32))", TEST_MATADATA, QUERY_CONTEXT);
     analyzeSQL(prefix + "CAST(4 AS INT64))", TEST_MATADATA, QUERY_CONTEXT);
+  }
+
+  @Test
+  public void testLTTBWindowArgumentsAcceptIntegerCastsAndDurations() {
+    String prefix = "SELECT * FROM LTTB(" + LTTB_DATA_ARGUMENT + ", TIMECOL => 'time', ";
+    analyzeSQL(
+        prefix + "SIZE => CAST(4 AS INT32), SLIDE => CAST(2 AS INT64))",
+        TEST_MATADATA,
+        QUERY_CONTEXT);
+    analyzeSQL(
+        prefix + "SIZE => CAST(4 AS INT64), SLIDE => CAST(2 AS INT32))",
+        TEST_MATADATA,
+        QUERY_CONTEXT);
+    analyzeSQL(prefix + "SIZE => 4s, SLIDE => 2s)", TEST_MATADATA, QUERY_CONTEXT);
+  }
+
+  @Test
+  public void testLTTBWindowArgumentsRejectNonIntegralSqlTypes() {
+    String prefix = "SELECT * FROM LTTB(" + LTTB_DATA_ARGUMENT + ", TIMECOL => 'time', ";
+    for (String type : ImmutableList.of("TIMESTAMP", "DOUBLE")) {
+      String value = "CAST(4 AS " + type + ")";
+      for (String argument : ImmutableList.of("SIZE", "SLIDE")) {
+        String arguments = argument.equals("SIZE") ? "SIZE => " : "SIZE => 4, SLIDE => ";
+        assertAnalyzeFails(
+            prefix + arguments + value + ")",
+            String.format(
+                DataNodeQueryMessages.INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S,
+                argument,
+                "INT64",
+                type));
+      }
+    }
   }
 
   @Test

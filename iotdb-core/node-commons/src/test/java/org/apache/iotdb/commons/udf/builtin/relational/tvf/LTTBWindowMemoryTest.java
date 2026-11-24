@@ -266,6 +266,36 @@ public class LTTBWindowMemoryTest {
   }
 
   @Test
+  public void testSingleFiniteCandidateStreamsAndUpdatesAnchor() {
+    for (boolean timeWindow : new boolean[] {false, true}) {
+      TableFunctionDataProcessor processor = processor(timeWindow, 3, 3, Type.DOUBLE);
+      List<ColumnBuilder> builders = builders(timeWindow);
+      try {
+        Double[] values = {
+          0.0, Double.NaN, 10.0, Double.NaN, Double.NaN, Double.NaN, 0.0, 3.0, null, 0.0
+        };
+        for (int time = 0; time < values.length; time++) {
+          processor.process(record(time, values[time]), builders, null);
+          if (time == 3) {
+            // F and the sole finite candidate are known before any finite lookahead arrives.
+            assertEquals(2, builders.get(0).getPositionCount());
+          }
+        }
+        processor.finish(builders, null);
+        ColumnBuilder times = builders.get(timeWindow ? 2 : 1);
+        // With A=(2,10) and C=(9,0), t=6 beats t=7. The stale anchor (0,0) would pick t=7.
+        long[] expected = {0, 2, 3, 6, 9};
+        assertEquals(expected.length, times.getPositionCount());
+        for (int i = 0; i < expected.length; i++) {
+          assertEquals(expected[i], times.build().getLong(i));
+        }
+      } finally {
+        processor.beforeDestroy();
+      }
+    }
+  }
+
+  @Test
   public void testSparseColumnsReleaseTheirFirstWindowWhenEmitted() throws Exception {
     for (boolean timeWindow : new boolean[] {false, true}) {
       TableFunctionDataProcessor processor = processor(timeWindow, 1, 1, Type.DOUBLE, Type.DOUBLE);
