@@ -726,8 +726,8 @@ public class TimeSeriesMetadataCache {
   }
 
   /**
-   * Striped, strongly referenced monitor for one device+file. A WeakHashMap entry can be reclaimed
-   * by GC between calls, which would let two threads hold "the same" lock simultaneously.
+   * Returns the lock stripe for this device and file. Different pairs can share a stripe. Stripes
+   * are strongly referenced so the same pair always maps to the same monitor.
    */
   private static Object deviceLock(String deviceString, String filePath) {
     return DEVICE_LOCKS[

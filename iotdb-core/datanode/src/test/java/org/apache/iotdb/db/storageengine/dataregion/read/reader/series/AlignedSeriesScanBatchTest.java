@@ -253,8 +253,8 @@ public class AlignedSeriesScanBatchTest {
   private static TsBlock scan(AlignedFullPath scanPath, TsFileResource resource)
       throws IOException {
     AlignedSeriesScanUtil seriesScanUtil = newScanUtil(scanPath, resource);
-    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextFile, true);
-    SeriesReaderTestUtil.assertWithHasNext(seriesScanUtil::hasNextChunk, true);
+    Assert.assertEquals(Optional.of(true), seriesScanUtil.hasNextFile());
+    Assert.assertEquals(Optional.of(true), seriesScanUtil.hasNextChunk());
     Assert.assertTrue(seriesScanUtil.hasNextPage());
     return seriesScanUtil.nextPage();
   }

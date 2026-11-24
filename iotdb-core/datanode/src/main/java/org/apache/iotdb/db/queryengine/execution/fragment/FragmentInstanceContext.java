@@ -266,6 +266,7 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
+    // Compaction is scheduled after this region's file resources have recovered.
     return new FragmentInstanceContext(queryId, null, null, null, false, false);
   }
 
