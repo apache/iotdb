@@ -47,6 +47,8 @@ def triton_available() -> bool:
 # The Triton kernels multiply bfloat16 operands with tl.dot, which needs compute capability 8.0
 # (Ampere) or newer. Older GPUs, such as Volta and Turing, use the PyTorch kernels.
 _MIN_TRITON_CAPABILITY = (8, 0)
+# The kernels' tl.dot needs operands at least 16 wide, so smaller heads run on the PyTorch kernels.
+_MIN_TRITON_HEAD_DIM = 16
 
 
 @cache
@@ -54,11 +56,14 @@ def _supports_triton_kernels(device_index: int) -> bool:
     return torch.cuda.get_device_capability(device_index) >= _MIN_TRITON_CAPABILITY
 
 
-def use_triton(x: torch.Tensor) -> bool:
+def use_triton(x: torch.Tensor, *head_dims: int) -> bool:
     """Whether to run the recurrence of ``x`` on the Triton kernels.
 
-    That is the case for CUDA inputs on a GPU of compute capability 8.0 or newer, when Triton is available.
+    That is the case for CUDA inputs on a GPU of compute capability 8.0 or newer, when Triton is available
+    and every head dimension in ``head_dims`` is at least 16.
     """
+    if any(d < _MIN_TRITON_HEAD_DIM for d in head_dims):
+        return False
     if not (x.is_cuda and triton_available()):
         return False
     index = x.device.index

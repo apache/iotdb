@@ -237,6 +237,14 @@ class TiRex2Test(unittest.TestCase):
     def test_cpu_inputs_use_pytorch_kernels(self):
         self.assertFalse(kernel.use_triton(torch.zeros(1)))
 
+    def test_heads_narrower_than_16_use_pytorch_kernels(self):
+        # Triton's tl.dot needs operands at least 16 wide; the GPU is not even queried
+        cuda_input = mock.Mock(is_cuda=True, device=torch.device("cuda", 0))
+        with mock.patch.object(torch.cuda, "get_device_capability") as capability:
+            self.assertFalse(kernel.use_triton(cuda_input, 8))
+            self.assertFalse(kernel.use_triton(cuda_input, 64, 15))
+        capability.assert_not_called()
+
     def test_pre_ampere_gpus_use_pytorch_kernels(self):
         cuda_input = mock.Mock(is_cuda=True, device=torch.device("cuda", 0))
         for capability, expected in (((7, 0), False), ((7, 5), False), ((8, 0), True)):

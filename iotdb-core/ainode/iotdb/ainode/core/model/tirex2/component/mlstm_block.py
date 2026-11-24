@@ -164,7 +164,12 @@ class mLSTMLayer(nn.Module):
     def _kernel(self, x: torch.Tensor):
         """The chunkwise mLSTM kernel for inputs on the device of ``x``."""
         use_triton = self.config.mlstm_kernel == "triton" or (
-            self.config.mlstm_kernel == "auto" and kernel.use_triton(x)
+            self.config.mlstm_kernel == "auto"
+            and kernel.use_triton(
+                x,
+                self.qk_dim // self.config.num_heads,
+                self.v_dim // self.config.num_heads,
+            )
         )
         # Imported lazily, as triton is not available on every platform.
         if use_triton:

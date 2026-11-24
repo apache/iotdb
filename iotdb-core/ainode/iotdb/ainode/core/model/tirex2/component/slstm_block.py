@@ -225,7 +225,7 @@ class sLSTMLayer(nn.Module):
         and run the recurrent matmul on bfloat16 operands.
         """
         if backend == "auto":
-            backend = "triton" if kernel.use_triton(Wx) else "torch"
+            backend = "triton" if kernel.use_triton(Wx, Wx.shape[-1]) else "torch"
         # Imported lazily, as triton is not available on every platform.
         if backend == "triton":
             from iotdb.ainode.core.model.tirex2.component.kernel.slstm_triton import (
