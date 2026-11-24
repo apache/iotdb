@@ -145,6 +145,48 @@ class PoolController:
         #     )
 
     # =============== Pool Management ===============
+    # A load or unload is decided and queued in one step under _pending_lock: it reads the
+    # pools and the loads and unloads still pending, marks its own work pending and puts it on
+    # the task queue. Requests are therefore serialised in the order they take the lock, and each
+    # sees the work of the earlier ones, whether it already ran (in the pools) or not (pending):
+    # a task clears its pending mark only after it has changed the pools.
+    def request_load(
+        self, model_id: str, device_id_list: list[torch.device]
+    ) -> list[torch.device]:
+        """
+        Queue a load of the model to the devices where it is not loaded, or where an unload still
+        pending is about to remove it. Returns the devices the load was queued for.
+        """
+        with self._pending_lock:
+            devices = [
+                d
+                for d in device_id_list
+                if not self.has_request_pools(model_id, d)
+                or self._pending_unloads[(model_id, d)] > 0
+            ]
+            if devices:
+                self._queue_load(model_id, devices)
+            return devices
+
+    def request_unload(
+        self, model_id: str, device_id_list: list[torch.device]
+    ) -> list[torch.device]:
+        """
+        Queue an unload of the model from the devices where it is loaded, or where a load still
+        pending (for example while the model downloads) is about to load it. Returns the devices
+        the unload was queued for.
+        """
+        with self._pending_lock:
+            devices = [
+                d
+                for d in device_id_list
+                if self.has_request_pools(model_id, d)
+                or self._pending_loads[(model_id, d)] > 0
+            ]
+            if devices:
+                self._queue_unload(model_id, devices)
+            return devices
+
     def load_model(self, model_id: str, device_id_list: list[torch.device]):
         """
         Load the model to the specified devices asynchronously.
@@ -152,13 +194,32 @@ class PoolController:
             model_id (str): The ID of the model to be loaded.
             device_id_list (list[torch.device]): List of device_ids where the model should be loaded.
         """
-        # Publishing the pending load and queueing it are one step under the lock, so that an
-        # unload that sees the load pending (is_loading) is always queued after it.
         with self._pending_lock:
-            self._pending_loads.update((model_id, d) for d in device_id_list)
-            self._task_queue.put(
-                (self._load_one_model_task, (model_id, device_id_list), {})
-            )
+            self._queue_load(model_id, device_id_list)
+
+    def unload_model(self, model_id: str, device_id_list: list[torch.device]):
+        """
+        Unload the model from the specified devices asynchronously.
+        Args:
+            model_id (str): The ID of the model to be unloaded.
+            device_id_list (list[torch.device]): List of device_ids where the model should be unloaded.
+        """
+        with self._pending_lock:
+            self._queue_unload(model_id, device_id_list)
+
+    def _queue_load(self, model_id: str, device_id_list: list[torch.device]):
+        # Called with _pending_lock held
+        self._pending_loads.update((model_id, d) for d in device_id_list)
+        self._task_queue.put(
+            (self._load_one_model_task, (model_id, device_id_list), {})
+        )
+
+    def _queue_unload(self, model_id: str, device_id_list: list[torch.device]):
+        # Called with _pending_lock held
+        self._pending_unloads.update((model_id, d) for d in device_id_list)
+        self._task_queue.put(
+            (self._unload_one_model_task, (model_id, device_id_list), {})
+        )
 
     def is_loading(self, model_id: str, device_id: torch.device) -> bool:
         """
@@ -187,20 +248,6 @@ class PoolController:
         with self._pending_lock:
             self._pending_unloads.subtract((model_id, d) for d in device_id_list)
             self._pending_unloads += Counter()  # drop the entries that reached 0
-
-    def unload_model(self, model_id: str, device_id_list: list[torch.device]):
-        """
-        Unload the model from the specified devices asynchronously.
-        Args:
-            model_id (str): The ID of the model to be unloaded.
-            device_id_list (list[torch.device]): List of device_ids where the model should be unloaded.
-        """
-        # As for loads: a load that sees the unload pending (is_unloading) is queued after it.
-        with self._pending_lock:
-            self._pending_unloads.update((model_id, d) for d in device_id_list)
-            self._task_queue.put(
-                (self._unload_one_model_task, (model_id, device_id_list), {})
-            )
 
     def show_loaded_models(
         self, device_id_list: list[torch.device]

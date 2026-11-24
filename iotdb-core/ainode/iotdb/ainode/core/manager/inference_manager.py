@@ -90,21 +90,14 @@ class InferenceManager:
         Returns:
             TSStatus: The status of the load model operation.
         """
-        devices_to_be_processed: list[torch.device] = []
-        devices_not_to_be_processed: list[torch.device] = []
-        for device_id in device_id_list:
-            # Pools that an unload still pending is about to remove do not count as loaded: the
-            # load is queued after that unload.
-            if self._pool_controller.has_request_pools(
-                model_id=existing_model_id, device_id=device_id
-            ) and not self._pool_controller.is_unloading(existing_model_id, device_id):
-                devices_not_to_be_processed.append(device_id)
-            else:
-                devices_to_be_processed.append(device_id)
-        if len(devices_to_be_processed) > 0:
-            self._pool_controller.load_model(
-                model_id=existing_model_id, device_id_list=devices_to_be_processed
-            )
+        # Deciding which devices need the load and queueing it is one step in the controller, so
+        # that a concurrent UNLOAD MODEL is ordered entirely before or after this request.
+        devices_to_be_processed = self._pool_controller.request_load(
+            existing_model_id, device_id_list
+        )
+        devices_not_to_be_processed = [
+            d for d in device_id_list if d not in devices_to_be_processed
+        ]
         logger.info(
             f"[Inference] Start loading model [{existing_model_id}] to devices [{devices_to_be_processed}], skipped devices [{devices_not_to_be_processed}] cause they have already loaded this model."
         )
@@ -116,21 +109,14 @@ class InferenceManager:
     def unload_model(
         self, model_id: str, device_id_list: list[torch.device]
     ) -> TSStatus:
-        devices_to_be_processed = []
-        devices_not_to_be_processed = []
-        for device_id in device_id_list:
-            # A load that is still pending, e.g. while the model downloads, counts as loaded:
-            # the unload is queued after it.
-            if self._pool_controller.has_request_pools(
-                model_id=model_id, device_id=device_id
-            ) or self._pool_controller.is_loading(model_id, device_id):
-                devices_to_be_processed.append(device_id)
-            else:
-                devices_not_to_be_processed.append(device_id)
-        if len(devices_to_be_processed) > 0:
-            self._pool_controller.unload_model(
-                model_id=model_id, device_id_list=device_id_list
-            )
+        # As for loads: deciding and queueing are one step in the controller. A load still
+        # pending, e.g. while the model downloads, counts as loaded, and the unload follows it.
+        devices_to_be_processed = self._pool_controller.request_unload(
+            model_id, device_id_list
+        )
+        devices_not_to_be_processed = [
+            d for d in device_id_list if d not in devices_to_be_processed
+        ]
         logger.info(
             f"[Inference] Start unloading model [{model_id}] from devices [{devices_to_be_processed}], skipped devices [{devices_not_to_be_processed}] cause they haven't loaded this model."
         )

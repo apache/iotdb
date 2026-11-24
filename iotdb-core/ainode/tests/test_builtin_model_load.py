@@ -218,6 +218,74 @@ class BuiltinModelLoadTest(unittest.TestCase):
         self.assertEqual(self.events, [("unload", "sundial"), ("load", "sundial")])
         self.assertFalse(self.controller.is_unloading("sundial", cpu))
 
+    def _pause_check_of(self, thread_name):
+        """Hold the named thread inside its pool check until released, after signalling it."""
+        entered, release = threading.Event(), threading.Event()
+        has_request_pools = self.controller.has_request_pools
+
+        def check(model_id, device_id=None):
+            if threading.current_thread().name == thread_name and not entered.is_set():
+                entered.set()
+                release.wait(10)
+            return has_request_pools(model_id, device_id)
+
+        self.controller.has_request_pools = check
+        return entered, release
+
+    def _race(self, first, second):
+        """Run first until it is inside its pool check, then second; return whether second
+        finished while first was held there."""
+        entered, release = self._pause_check_of("first")
+        threads = [
+            threading.Thread(target=first, name="first"),
+            threading.Thread(target=second, name="second"),
+        ]
+        threads[0].start()
+        self.assertTrue(entered.wait(5))
+        threads[1].start()
+        threads[1].join(0.5)
+        overtook = not threads[1].is_alive()
+        release.set()
+        for thread in threads:
+            thread.join(5)
+        return overtook
+
+    def test_unload_during_a_load_check_is_ordered_after_the_load(self):
+        # LOAD MODEL finds the model loaded and skips; an UNLOAD MODEL issued while the LOAD is
+        # still deciding must wait for it, and then unloads: the outcome of LOAD, then UNLOAD.
+        self.addCleanup(self._stop)
+        manager = object.__new__(InferenceManager)
+        manager._pool_controller = self.controller
+        cpu = torch.device("cpu")
+        self.controller._request_pool_map["sundial"] = {cpu: mock.Mock()}
+
+        overtook = self._race(
+            lambda: manager.load_model("sundial", [cpu]),
+            lambda: manager.unload_model("sundial", [cpu]),
+        )
+        self.assertFalse(overtook)
+        self._wait_for(1)
+        self.assertEqual(self.events, [("unload", "sundial")])
+        self.assertFalse(self.controller.is_loading("sundial", cpu))
+
+    def test_load_during_an_unload_check_is_ordered_after_the_unload(self):
+        # UNLOAD MODEL finds the model loaded; a LOAD MODEL issued while the UNLOAD is still
+        # deciding must not skip on the pool the UNLOAD is about to remove: it waits, sees the
+        # unload pending and loads again, the outcome of UNLOAD, then LOAD.
+        self.addCleanup(self._stop)
+        manager = object.__new__(InferenceManager)
+        manager._pool_controller = self.controller
+        cpu = torch.device("cpu")
+        self.controller._request_pool_map["sundial"] = {cpu: mock.Mock()}
+
+        overtook = self._race(
+            lambda: manager.unload_model("sundial", [cpu]),
+            lambda: manager.load_model("sundial", [cpu]),
+        )
+        self.assertFalse(overtook)
+        self._wait_for(2)
+        self.assertEqual(self.events, [("unload", "sundial"), ("load", "sundial")])
+
     def test_failed_download_finishes_the_pending_load(self):
         self.addCleanup(self._stop)
         self.download_succeeds = False
