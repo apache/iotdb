@@ -115,6 +115,10 @@ public class UDTFLOF implements UDTF {
   }
 
   private void ensureLOFWorkingMemory(int length, int dimensions) throws UDFException {
+    estimateLOFWorkingMemoryBytes(length, dimensions);
+  }
+
+  private long estimateLOFWorkingMemoryBytes(int length, int dimensions) throws UDFException {
     long bytesPerPoint = (long) dimensions * Double.BYTES + 128L;
     if (bytesPerPoint <= 0 || length > MAX_LOF_WORKING_MEMORY_BYTES / bytesPerPoint) {
       throw new UDFException(
@@ -129,6 +133,7 @@ public class UDTFLOF implements UDTF {
       throw new UDFException(
           LibraryUdfMessages.EXCEPTION_LOF_WORKING_MEMORY_EXCEEDS_THE_64_MIB_LIMIT_A21CB57F);
     }
+    return workingMemoryBytes + neighborEntries * (Integer.BYTES + (long) Double.BYTES);
   }
 
   private void ensureSeriesHistoryMemory(int historySize) throws UDFException {
@@ -137,6 +142,49 @@ public class UDTFLOF implements UDTF {
       throw new UDFException(
           LibraryUdfMessages.EXCEPTION_LOF_WORKING_MEMORY_EXCEEDS_THE_64_MIB_LIMIT_A21CB57F);
     }
+  }
+
+  private void validateSeriesBatchMemory(int incomingRowCount) throws UDFException {
+    long maximumValueCount = seriesContextValues.size() + (long) incomingRowCount;
+    long maximumVectorCount = Math.max(0, maximumValueCount - window + 1);
+    long maximumCandidateCount = estimateMaximumSeriesCandidateCount(maximumVectorCount);
+    long lofWorkingMemoryBytes;
+    if (maximumCandidateCount > 0) {
+      lofWorkingMemoryBytes = estimateLOFWorkingMemoryBytes((int) maximumCandidateCount, window);
+    } else {
+      long maximumHistorySize =
+          Math.min(
+              (long) seriesHistory.size() + maximumVectorCount,
+              hasInitializedSeries ? 2L * multipleK : multipleK);
+      long bytesPerVector = window * (long) Double.BYTES + 128L;
+      if (maximumHistorySize > MAX_LOF_WORKING_MEMORY_BYTES / bytesPerVector) {
+        throw new UDFException(
+            LibraryUdfMessages.EXCEPTION_LOF_WORKING_MEMORY_EXCEEDS_THE_64_MIB_LIMIT_A21CB57F);
+      }
+      lofWorkingMemoryBytes = maximumHistorySize * bytesPerVector;
+    }
+    long inputMemoryBytes = maximumValueCount * 128L;
+    if (inputMemoryBytes > MAX_LOF_WORKING_MEMORY_BYTES - lofWorkingMemoryBytes) {
+      throw new UDFException(
+          LibraryUdfMessages.EXCEPTION_LOF_WORKING_MEMORY_EXCEEDS_THE_64_MIB_LIMIT_A21CB57F);
+    }
+  }
+
+  private long estimateMaximumSeriesCandidateCount(long vectorCount) {
+    if (vectorCount == 0) {
+      return 0;
+    }
+    long maximumCandidateCount;
+    if (hasInitializedSeries) {
+      maximumCandidateCount = seriesHistory.size() + vectorCount;
+    } else {
+      long vectorsUntilFirstCandidate = multipleK - (long) seriesHistory.size() + 1;
+      if (vectorCount < vectorsUntilFirstCandidate) {
+        return 0;
+      }
+      maximumCandidateCount = multipleK + 1L + vectorCount - vectorsUntilFirstCandidate;
+    }
+    return Math.min(maximumCandidateCount, Math.min(2L * multipleK, Integer.MAX_VALUE - 1L) + 1);
   }
 
   private long estimateDistanceCoordinateOperations(int length, int dimensions) {
@@ -379,6 +427,7 @@ public class UDTFLOF implements UDTF {
         }
       }
     } else if (this.method.equalsIgnoreCase(METHOD_SERIES)) {
+      validateSeriesBatchMemory(rowWindow.windowSize());
       List<Long> timestamps = new ArrayList<>(seriesContextTimestamps);
       List<Double> values = new ArrayList<>(seriesContextValues);
       for (int row = 0; row < rowWindow.windowSize(); row++) {

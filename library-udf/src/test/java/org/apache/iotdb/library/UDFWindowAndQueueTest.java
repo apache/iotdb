@@ -668,6 +668,32 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testLOFSeriesRejectsLargeBatchBeforeReadingRows() throws Exception {
+    UDFParameters parameters =
+        createSingleDoubleSeriesParameters(
+            Map.of("method", "series", "window", "2000000", "k", "3"));
+    UDTFLOF lof = new UDTFLOF();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    lof.validate(new UDFParameterValidator(parameters));
+    lof.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    RowWindow rowWindow =
+        (RowWindow)
+            Proxy.newProxyInstance(
+                RowWindow.class.getClassLoader(),
+                new Class<?>[] {RowWindow.class},
+                (proxy, method, arguments) -> {
+                  if ("windowSize".equals(method.getName())) {
+                    return 2_000_003;
+                  }
+                  throw new AssertionError("Rows must not be read before the memory preflight");
+                });
+
+    Assert.assertThrows(UDFException.class, () -> lof.transform(rowWindow, collector));
+    Assert.assertTrue(collector.timestamps.isEmpty());
+  }
+
+  @Test
   public void testLOFValidatesAllInputSeriesTypes() {
     UDFParameters parameters =
         new UDFParameters(
