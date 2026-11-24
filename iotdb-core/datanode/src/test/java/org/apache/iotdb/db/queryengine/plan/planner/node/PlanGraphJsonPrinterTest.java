@@ -57,12 +57,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceVi
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableListMultimap;
 import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.gson.JsonArray;
+import org.apache.ratis.thirdparty.com.google.gson.JsonObject;
+import org.apache.ratis.thirdparty.com.google.gson.JsonParser;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.TypeFactory;

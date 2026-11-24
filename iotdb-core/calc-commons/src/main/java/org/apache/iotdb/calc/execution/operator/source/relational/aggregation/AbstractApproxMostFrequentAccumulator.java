@@ -23,7 +23,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.ap
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate.SpaceSavingStateFactory;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 
-import com.google.gson.Gson;
+import org.apache.ratis.thirdparty.com.google.gson.Gson;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;

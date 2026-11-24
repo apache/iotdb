@@ -18,7 +18,6 @@
         "com.github.moquette-io.moquette:moquette-broker",
         "com.github.wendykierp:JTransforms",
         "com.google.code.findbugs:jsr305",
-        "com.google.code.gson:gson",
         "com.google.errorprone:error_prone_annotations",
         "com.h2database:h2-mvstore",
         "com.sun.activation:jakarta.activation",

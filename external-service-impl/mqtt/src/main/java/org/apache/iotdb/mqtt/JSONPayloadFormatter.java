@@ -20,15 +20,15 @@ package org.apache.iotdb.mqtt;
 
 import org.apache.iotdb.mqtt.i18n.MqttMessages;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
-import com.google.gson.reflect.TypeToken;
 import io.netty.buffer.ByteBuf;
 import org.apache.ratis.thirdparty.com.google.common.collect.Lists;
+import org.apache.ratis.thirdparty.com.google.gson.Gson;
+import org.apache.ratis.thirdparty.com.google.gson.GsonBuilder;
+import org.apache.ratis.thirdparty.com.google.gson.JsonArray;
+import org.apache.ratis.thirdparty.com.google.gson.JsonElement;
+import org.apache.ratis.thirdparty.com.google.gson.JsonObject;
+import org.apache.ratis.thirdparty.com.google.gson.JsonParseException;
+import org.apache.ratis.thirdparty.com.google.gson.reflect.TypeToken;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.NotImplementedException;
 
