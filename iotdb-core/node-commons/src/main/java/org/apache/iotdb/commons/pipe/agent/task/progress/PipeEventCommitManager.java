@@ -205,8 +205,8 @@ public class PipeEventCommitManager {
     }
 
     final int restartTimes =
-        eventCommitterRestartTimesMap.computeIfAbsent(
-            generateCommitterRestartTimesKey(committerKey), k -> 0);
+        eventCommitterRestartTimesMap.getOrDefault(
+            generateCommitterRestartTimesKey(committerKey), 0);
     return committerKey.equals(
             taskAgent.getCommitterKey(
                 committerKey.getPipeName(),
