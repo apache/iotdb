@@ -734,6 +734,36 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
   }
 
   @Test
+  public void testScanParserTracksVisibleAlignedPointCountsWithMods() throws Exception {
+    tsFile = new File("load-tree-aligned-scan-visible-point-counts-with-mods.tsfile");
+    writeAlignedBooleanTsFileAcrossChunkGroups(tsFile);
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s0"), 3, 3));
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s1"), 1, 1));
+    }
+
+    try (final TsFileInsertionEventScanParser parser =
+        new TsFileInsertionEventScanParser(
+            tsFile,
+            null,
+            null,
+            true,
+            LoadTsFileParserMemoryManager.getInstance(),
+            new TsFileInsertionEventScanParser.ScanOptions(
+                new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, true))) {
+      parser.toTabletWithIsAligneds().forEach(tabletWithIsAligned -> {});
+      final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE);
+      Assert.assertEquals(Long.valueOf(3), parser.getParsedPointCounts().get(device).get("s0"));
+      Assert.assertEquals(Long.valueOf(2), parser.getParsedPointCounts().get(device).get("s1"));
+      Assert.assertEquals(Long.valueOf(2), parser.getExpectedPointCounts().get(device).get("s0"));
+      Assert.assertEquals(Long.valueOf(1), parser.getExpectedPointCounts().get(device).get("s1"));
+    }
+  }
+
+  @Test
   public void testCompleteModifiedAlignedScanDoesNotReplayDeletedChunks() throws Exception {
     tsFile = new File("load-tree-aligned-scan-point-counts-with-mods.tsfile");
     writeAlignedBooleanTsFileAcrossChunkGroups(tsFile);

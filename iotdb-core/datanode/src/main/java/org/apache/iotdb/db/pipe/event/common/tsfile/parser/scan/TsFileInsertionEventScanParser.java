@@ -114,6 +114,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private final Filter filter;
   private final boolean trackPointCounts;
   private final Map<IDeviceID, Map<String, Long>> parsedPointCountsByDevice = new HashMap<>();
+  private final Map<IDeviceID, Map<String, Long>> expectedPointCountsByDevice = new HashMap<>();
 
   private IChunkReader chunkReader;
   private BatchData data;
@@ -469,6 +470,13 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     return result;
   }
 
+  public Map<IDeviceID, Map<String, Long>> getExpectedPointCounts() {
+    final Map<IDeviceID, Map<String, Long>> result = new HashMap<>();
+    expectedPointCountsByDevice.forEach(
+        (device, pointCounts) -> result.put(device, new HashMap<>(pointCounts)));
+    return result;
+  }
+
   private Tablet getNextTablet() {
     Tablet tablet = null;
     boolean tabletMemoryReserved = false;
@@ -511,6 +519,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           final int rowIndex = tablet.getRowSize();
 
           recordParsedPointCounts(data);
+          recordExpectedPointCounts(data);
           if (putValueToColumns(data, tablet, rowIndex)) {
             PipeTabletUtils.putTimestamp(tablet, rowIndex, data.currentTime());
           }
@@ -699,6 +708,28 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     addParsedPointCount(currentMeasurements.get(0).getMeasurementName(), 1);
   }
 
+  private void recordExpectedPointCounts(final BatchData batchData) {
+    if (!trackPointCounts) {
+      return;
+    }
+
+    if (batchData.getDataType() == TSDataType.VECTOR) {
+      final TsPrimitiveType[] values = batchData.getVector();
+      for (int column = 0; column < values.length; column++) {
+        if (values[column] != null
+            && !ModsOperationUtil.isDelete(batchData.currentTime(), modsInfos.get(column))) {
+          addExpectedPointCount(currentMeasurements.get(column).getMeasurementName());
+        }
+      }
+      return;
+    }
+
+    if (modsInfos.isEmpty()
+        || !ModsOperationUtil.isDelete(batchData.currentTime(), modsInfos.get(0))) {
+      addExpectedPointCount(currentMeasurements.get(0).getMeasurementName());
+    }
+  }
+
   private void addParsedPointCount(final String measurement, final long pointCount) {
     if (!trackPointCounts || pointCount == 0) {
       return;
@@ -706,6 +737,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     parsedPointCountsByDevice
         .computeIfAbsent(currentDevice, key -> new HashMap<>())
         .merge(measurement, pointCount, Long::sum);
+  }
+
+  private void addExpectedPointCount(final String measurement) {
+    expectedPointCountsByDevice
+        .computeIfAbsent(currentDevice, key -> new HashMap<>())
+        .merge(measurement, 1L, Long::sum);
   }
 
   private void moveToNextChunkReader()

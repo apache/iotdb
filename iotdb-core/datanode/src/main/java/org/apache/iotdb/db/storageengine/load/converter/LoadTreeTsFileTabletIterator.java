@@ -296,9 +296,11 @@ class LoadTreeTsFileTabletIterator
 
     final Map<IDeviceID, Map<String, Long>> parsedPointCounts =
         Objects.nonNull(scanParser) ? scanParser.getParsedPointCounts() : Collections.emptyMap();
+    final Map<IDeviceID, Map<String, Long>> expectedPointCounts =
+        Objects.nonNull(scanParser) ? scanParser.getExpectedPointCounts() : Collections.emptyMap();
     closeScanParser();
     try {
-      enqueueQueryTasksForUnemittedData(parsedPointCounts);
+      enqueueQueryTasksForUnemittedData(parsedPointCounts, expectedPointCounts);
     } catch (final Exception e) {
       if (shouldRethrow(e)) {
         throw toRuntimeException(e);
@@ -310,12 +312,15 @@ class LoadTreeTsFileTabletIterator
   }
 
   private void enqueueQueryTasksForUnemittedData(
-      final Map<IDeviceID, Map<String, Long>> parsedPointCounts) throws IOException {
+      final Map<IDeviceID, Map<String, Long>> parsedPointCounts,
+      final Map<IDeviceID, Map<String, Long>> expectedPointCounts)
+      throws IOException {
     if (fallbackTriggered) {
       return;
     }
 
-    final ArrayDeque<QueryTask> queryTasks = buildQueryTasks(parsedPointCounts);
+    final ArrayDeque<QueryTask> queryTasks =
+        buildQueryTasks(parsedPointCounts, expectedPointCounts);
     if (!queryTasks.isEmpty()) {
       fallbackTriggered = true;
       pendingQueryTasks.addAll(queryTasks);
@@ -353,7 +358,7 @@ class LoadTreeTsFileTabletIterator
     closeScanParser();
 
     try {
-      pendingQueryTasks.addAll(buildQueryTasks(emittedPointCountsByDevice));
+      pendingQueryTasks.addAll(buildQueryTasks(emittedPointCountsByDevice, null));
     } catch (final Exception queryInitException) {
       LOGGER.warn(
           StorageEngineMessages
@@ -373,7 +378,9 @@ class LoadTreeTsFileTabletIterator
   }
 
   private ArrayDeque<QueryTask> buildQueryTasks(
-      final Map<IDeviceID, Map<String, Long>> completedPointCountsByDevice) throws IOException {
+      final Map<IDeviceID, Map<String, Long>> completedPointCountsByDevice,
+      final Map<IDeviceID, Map<String, Long>> scannedExpectedPointCountsByDevice)
+      throws IOException {
     final ArrayDeque<QueryTask> tasks = new ArrayDeque<>();
     final boolean containsModifications = hasModifications();
     final Map<IDeviceID, Map<String, Long>> metadataPointCountsByDevice =
@@ -382,7 +389,10 @@ class LoadTreeTsFileTabletIterator
     final Set<IDeviceID> unverifiableDevices = new HashSet<>();
     final Map<IDeviceID, Map<String, Long>> expectedPointCountsByDevice =
         containsModifications
-            ? readExpectedPointCountsWithMods(metadataPointCountsByDevice, unverifiableDevices)
+            ? Objects.nonNull(scannedExpectedPointCountsByDevice)
+                    && pointCountsMatch(completedPointCountsByDevice, metadataPointCountsByDevice)
+                ? scannedExpectedPointCountsByDevice
+                : readExpectedPointCountsWithMods(metadataPointCountsByDevice, unverifiableDevices)
             : metadataPointCountsByDevice;
     final Map<IDeviceID, Map<String, Long>> progressPointCountsByDevice =
         containsModifications ? emittedPointCountsByDevice : completedPointCountsByDevice;
@@ -493,6 +503,47 @@ class LoadTreeTsFileTabletIterator
         }
       }
     }
+  }
+
+  private boolean pointCountsMatch(
+      final Map<IDeviceID, Map<String, Long>> actualPointCountsByDevice,
+      final Map<IDeviceID, Map<String, Long>> expectedPointCountsByDevice) {
+    for (final Map.Entry<IDeviceID, Map<String, Long>> deviceEntry :
+        actualPointCountsByDevice.entrySet()) {
+      if (!measurementPointCountsMatch(
+          deviceEntry.getValue(),
+          expectedPointCountsByDevice.getOrDefault(deviceEntry.getKey(), Collections.emptyMap()))) {
+        return false;
+      }
+    }
+    for (final Map.Entry<IDeviceID, Map<String, Long>> deviceEntry :
+        expectedPointCountsByDevice.entrySet()) {
+      if (!measurementPointCountsMatch(
+          deviceEntry.getValue(),
+          actualPointCountsByDevice.getOrDefault(deviceEntry.getKey(), Collections.emptyMap()))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean measurementPointCountsMatch(
+      final Map<String, Long> actualPointCounts, final Map<String, Long> expectedPointCounts) {
+    for (final Map.Entry<String, Long> measurementEntry : actualPointCounts.entrySet()) {
+      if (!Objects.equals(
+          measurementEntry.getValue(),
+          expectedPointCounts.getOrDefault(measurementEntry.getKey(), 0L))) {
+        return false;
+      }
+    }
+    for (final Map.Entry<String, Long> measurementEntry : expectedPointCounts.entrySet()) {
+      if (!Objects.equals(
+          measurementEntry.getValue(),
+          actualPointCounts.getOrDefault(measurementEntry.getKey(), 0L))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private Map<IDeviceID, Map<String, Long>> readExpectedPointCountsWithMods(
