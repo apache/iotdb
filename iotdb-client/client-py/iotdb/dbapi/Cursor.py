@@ -14,275 +14,362 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
 
-import logging
 import warnings
+from numbers import Integral
 
 from iotdb.Session import Session
+from iotdb.utils.exception import IoTDBConnectionException
+from iotdb.utils.exception import StatementExecutionException
 
-from .Exceptions import ProgrammingError
-
-logger = logging.getLogger("IoTDB")
+from .Exceptions import (
+    DataError,
+    DatabaseError,
+    Error,
+    InterfaceError,
+    InternalError,
+    NotSupportedError,
+    OperationalError,
+    ProgrammingError,
+)
+from .Parameters import format_operation
 
 
 class Cursor(object):
-    def __init__(self, connection, session: Session, sqlalchemy_mode):
+    def __init__(
+        self, connection, session: Session, sqlalchemy_mode=False, fetch_size=None
+    ):
         self.__connection = connection
         self.__session = session
-        self.__sqlalchemy_mode = sqlalchemy_mode
+        self.__sqlalchemy_mode = bool(sqlalchemy_mode)
+        self.__fetch_size = fetch_size
         self.__arraysize = 1
         self.__is_close = False
-        self.__result = None
-        self.__rows = None
+        self.__data_set = None
+        self.__description = None
+        self.__has_result_set = False
         self.__rowcount = -1
+        self.__operation = None
+        self.__time_indexes = []
+        self.__time_names = []
 
     @property
     def description(self):
-        """
-        This read-only attribute is a sequence of 7-item sequences.
-        """
-        if self.__is_close or not self.__result["col_names"]:
-            return
-
-        description = []
-
-        col_names = self.__result["col_names"]
-        col_types = self.__result["col_types"]
-
-        for i in range(len(col_names)):
-            description.append(
-                (
-                    col_names[i],
-                    None if self.__sqlalchemy_mode is True else col_types[i].value,
-                    None,
-                    None,
-                    None,
-                    None,
-                    col_names[i] == "Time",
-                )
-            )
-        return tuple(description)
+        self.__ensure_open()
+        return self.__description
 
     @property
     def arraysize(self):
-        """
-        This read/write attribute specifies the number of rows to fetch at a time with .fetchmany().
-        """
+        self.__ensure_open()
         return self.__arraysize
 
     @arraysize.setter
     def arraysize(self, value):
-        """
-        Set the arraysize.
-        :param value: arraysize
-        """
-        try:
-            self.__arraysize = int(value)
-        except TypeError:
-            self.__arraysize = 1
+        self.__ensure_open()
+        self.__arraysize = self.__validate_fetch_size(value)
 
     @property
     def rowcount(self):
-        """
-        This read-only attribute specifies the number of rows that the last
-        .execute*() produced (for DQL statements like ``SELECT``) or affected
-        (for DML statements like ``DELETE`` or ``INSERT`` return 0 if successful, -1 if unsuccessful).
-        """
-        if self.__is_close or self.__result is None or "row_count" not in self.__result:
-            return -1
-        return self.__result.get("row_count", -1)
+        self.__ensure_open()
+        return self.__rowcount
 
     def execute(self, operation, parameters=None):
-        """
-        Prepare and execute a database operation (query or command).
-        :param operation: a database operation
-        :param parameters: parameters of the operation
-        """
-        if self.__connection.is_close:
-            raise ProgrammingError("Connection closed!")
-
-        if self.__is_close:
-            raise ProgrammingError("Cursor closed!")
-
-        if parameters is None:
-            sql = operation
-        else:
-            sql = operation % parameters
-
-        time_index = []
-        time_names = []
-        if self.__sqlalchemy_mode:
-            sql_seqs = []
-            seqs = sql.split("\n")
-            for seq in seqs:
-                if seq.find("FROM Time Index") >= 0:
-                    time_index = [
-                        int(index)
-                        for index in seq.replace("FROM Time Index", "").split()
-                    ]
-                elif seq.find("FROM Time Name") >= 0:
-                    time_names = [
-                        name for name in seq.replace("FROM Time Name", "").split()
-                    ]
-                else:
-                    sql_seqs.append(seq)
-            sql = "\n".join(sql_seqs)
+        self.__ensure_open()
+        try:
+            self.__release_result_checked()
+        except Error:
+            self.__reset_result()
+            raise
+        self.__reset_result()
 
         try:
-            data_set = self.__session.execute_statement(sql)
-            col_names = None
-            col_types = None
-            rows = []
+            # PEP 249 retains the operation object for possible reuse.
+            if self.__sqlalchemy_mode:
+                operation, self.__time_indexes, self.__time_names = (
+                    self.__strip_sqlalchemy_time_markers(operation)
+                )
+            self.__operation = operation
+            sql = format_operation(operation, parameters)
+            if self.__fetch_size is None:
+                data_set = self.__session.execute_statement(sql)
+            else:
+                data_set = self.__session.execute_statement(
+                    sql, timeout=0, fetch_size=self.__fetch_size
+                )
+            if data_set is None:
+                return None
 
-            if data_set:
-                data = data_set.todf()
+            self.__data_set = data_set
+            column_names = list(data_set.get_column_names())
+            column_types = list(data_set.get_column_types())
+            description = [
+                (name, data_type.value, None, None, None, None, None)
+                for name, data_type in zip(column_names, column_types)
+            ]
+            if self.__sqlalchemy_mode:
+                if self.__time_indexes:
+                    for index, name in zip(self.__time_indexes, self.__time_names):
+                        description.insert(
+                            index, (name, None, None, None, None, None, None)
+                        )
+                else:
+                    description.insert(0, ("Time", None, None, None, None, None, None))
+                description = [
+                    (name, None, None, None, None, None, None)
+                    for name, *_ in description
+                ]
+            self.__description = tuple(description)
+            self.__has_result_set = True
+            return None
+        except Error:
+            self.__discard_result_after_error()
+            raise
+        except Exception as error:
+            self.__discard_result_after_error()
+            raise self.__translate_error(error) from error
 
-                if self.__sqlalchemy_mode and time_index:
-                    time_column = data.columns[0]
-                    time_column_value = data.Time
-                    del data[time_column]
-                    for i in range(len(time_index)):
-                        data.insert(time_index[i], time_names[i], time_column_value)
-
-                col_names = data.columns.tolist()
-                col_types = data_set.get_column_types()
-                rows = data.values.tolist()
-                data_set.close_operation_handle()
-
-            self.__result = {
-                "col_names": col_names,
-                "col_types": col_types,
-                "rows": rows,
-                "row_count": len(rows),
-            }
-        except Exception:
-            logger.error("failed to execute statement:{}".format(sql))
-            self.__result = {
-                "col_names": None,
-                "col_types": None,
-                "rows": [],
-                "row_count": -1,
-            }
-        self.__rows = iter(self.__result["rows"])
-
-    def executemany(self, operation, seq_of_parameters=None):
-        """
-        Prepare a database operation (query or command) and then execute it
-        against all parameter sequences or mappings found in the sequence
-        ``seq_of_parameters``
-        :param operation: a database operation
-        :param seq_of_parameters: pyformat style parameter list of the operation
-        """
-        if self.__connection.is_close:
-            raise ProgrammingError("Connection closed!")
-
-        if self.__is_close:
-            raise ProgrammingError("Cursor closed!")
-
-        rows = []
+    def executemany(self, operation, seq_of_parameters):
+        self.__ensure_open()
+        self.__release_result_checked()
+        self.__reset_result()
         if seq_of_parameters is None:
-            self.execute(operation)
-            rows.extend(self.__result["rows"])
-        else:
-            for parameters in seq_of_parameters:
-                self.execute(operation, parameters)
-                rows.extend(self.__result["rows"])
+            raise ProgrammingError("executemany() requires a sequence of parameters")
 
-        self.__result["rows"] = rows
-        self.__rows = iter(self.__result["rows"])
+        try:
+            iterator = iter(seq_of_parameters)
+        except TypeError as error:
+            raise ProgrammingError(
+                "executemany() parameters must be an iterable"
+            ) from error
+
+        for parameters in iterator:
+            self.execute(operation, parameters)
+            if self.__has_result_set:
+                self.__release_result_checked()
+                self.__reset_result()
+                raise NotSupportedError(
+                    "executemany() does not support operations that return rows"
+                )
+        return None
 
     def fetchone(self):
-        """
-        Fetch the next row of a query result set, returning a single sequence,
-        or None when no more data is available.
-        Alias for ``next()``.
-        """
-        try:
-            return self.next()
-        except StopIteration:
+        self.__ensure_fetchable()
+        if self.__data_set is None:
             return None
+        try:
+            row = self.__data_set.next_tuple()
+        except Exception as error:
+            raise self.__translate_error(error) from error
+        if row is None:
+            self.__release_result_checked()
+            return None
+        if self.__sqlalchemy_mode:
+            timestamp, *values = row
+            if self.__time_indexes:
+                for index in self.__time_indexes:
+                    values.insert(index, timestamp)
+                row = tuple(values)
+        return row
 
-    def fetchmany(self, count=None):
-        """
-        Fetch the next set of rows of a query result, returning a sequence of
-        sequences (e.g. a list of tuples). An empty sequence is returned when
-        no more rows are available.
-        """
-        if count is None:
-            count = self.__arraysize
-        if count == 0:
-            return self.fetchall()
-        result = []
-        for i in range(count):
-            try:
-                result.append(self.next())
-            except StopIteration:
-                pass
-        return result
+    def fetchmany(self, size=None):
+        self.__ensure_fetchable()
+        fetch_size = (
+            self.__arraysize if size is None else self.__validate_fetch_size(size)
+        )
+        rows = []
+        for _ in range(fetch_size):
+            row = self.fetchone()
+            if row is None:
+                break
+            rows.append(row)
+        return rows
 
     def fetchall(self):
-        """
-        Fetch all (remaining) rows of a query result, returning them as a
-        sequence of sequences (e.g. a list of tuples). Note that the cursor's
-        arraysize attribute can affect the performance of this operation.
-        """
-        result = []
-        iterate = True
-        while iterate:
-            try:
-                result.append(self.next())
-            except StopIteration:
-                iterate = False
-        return result
+        self.__ensure_fetchable()
+        rows = []
+        while True:
+            row = self.fetchone()
+            if row is None:
+                return rows
+            rows.append(row)
 
     def next(self):
-        """
-        Return the next row of a query result set, respecting if cursor was
-        closed.
-        """
-        if self.__result is None:
-            raise ProgrammingError(
-                "No result available. execute() or executemany() must be called first."
-            )
-        elif not self.__is_close:
-            return next(self.__rows)
-        else:
-            raise ProgrammingError("Cursor closed!")
+        row = self.fetchone()
+        if row is None:
+            raise StopIteration
+        return row
 
     __next__ = next
 
     def close(self):
-        """
-        Close the cursor now.
-        """
-        self.__is_close = True
-        self.__result = None
+        if self.__is_close:
+            return
+        try:
+            self.__release_result_checked()
+        finally:
+            self.__is_close = True
+            self.__reset_result()
+
+    def _close_from_connection(self):
+        self.close()
 
     def setinputsizes(self, sizes):
-        """
-        Not supported method.
-        """
-        pass
+        self.__ensure_open()
 
     def setoutputsize(self, size, column=None):
-        """
-        Not supported method.
-        """
-        pass
+        self.__ensure_open()
 
     def __iter__(self):
-        """
-        Support iterator interface:
-        http://legacy.python.org/dev/peps/pep-0249/#iter
-        This iterator is shared. Advancing this iterator will advance other
-        iterators created from this cursor.
-        """
-        warnings.warn("DB-API extension cursor.__iter__() used")
+        self.__ensure_open()
+        warnings.warn("DB-API extension cursor.__iter__() used", stacklevel=2)
         return self
 
     def __enter__(self):
+        self.__ensure_open()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    def __ensure_open(self):
+        if self.__is_close:
+            raise InterfaceError("cursor is closed")
+        if self.__connection.is_close:
+            raise InterfaceError("connection is closed")
+
+    def __ensure_fetchable(self):
+        self.__ensure_open()
+        if not self.__has_result_set:
+            raise ProgrammingError(
+                "the previous operation did not produce a result set"
+            )
+
+    def __release_result(self):
+        if self.__data_set is None:
+            return
+        data_set = self.__data_set
+        self.__data_set = None
+        data_set.close_operation_handle()
+
+    def __release_result_checked(self):
+        try:
+            self.__release_result()
+        except Error:
+            raise
+        except Exception as error:
+            raise self.__translate_error(error) from error
+
+    def __reset_result(self):
+        self.__data_set = None
+        self.__description = None
+        self.__has_result_set = False
+        self.__rowcount = -1
+        self.__operation = None
+
+    def __discard_result_after_error(self):
+        try:
+            self.__release_result()
+        except Exception:
+            pass
+        self.__reset_result()
+
+    @staticmethod
+    def __strip_sqlalchemy_time_markers(operation):
+        if not isinstance(operation, str):
+            return operation, [], []
+        time_indexes = []
+        time_names = []
+        sql_lines = []
+        for line in operation.split("\n"):
+            if "FROM Time Index" in line:
+                time_indexes = [
+                    int(index) for index in line.replace("FROM Time Index", "").split()
+                ]
+            elif "FROM Time Name" in line:
+                time_names = line.replace("FROM Time Name", "").split()
+            else:
+                sql_lines.append(line)
+        return "\n".join(sql_lines), time_indexes, time_names
+
+    @staticmethod
+    def __validate_fetch_size(value):
+        if not isinstance(value, Integral):
+            raise ProgrammingError("fetch size must be a non-negative integer")
+        value = int(value)
+        if value < 0:
+            raise ProgrammingError("fetch size must be a non-negative integer")
+        return value
+
+    @staticmethod
+    def __translate_error(error):
+        if isinstance(error, Error):
+            return error
+        if isinstance(error, IoTDBConnectionException):
+            return OperationalError(str(error))
+        if isinstance(error, StatementExecutionException):
+            status = getattr(error, "status", None)
+            code = getattr(status, "code", None)
+            if code in (205, 300, 707):
+                return NotSupportedError(str(error))
+            # Schema codes also include storage/availability failures; do not
+            # classify the entire schema range as programming errors.
+            if code in (
+                303,
+                500,
+                501,
+                503,
+                505,
+                506,
+                508,
+                509,
+                511,
+                512,
+                513,
+                514,
+                515,
+                516,
+                524,
+                525,
+                527,
+                528,
+                529,
+                530,
+                550,
+                551,
+                552,
+                554,
+                560,
+                616,
+                617,
+                700,
+                701,
+                704,
+            ):
+                return ProgrammingError(str(error))
+            if code in (607, 612, 614, 615, 620):
+                return DataError(str(error))
+            if code in (305, 517, 521, 523, 705, 706, 711):
+                return InternalError(str(error))
+            if code in (
+                502,
+                518,
+                520,
+                526,
+                535,
+                536,
+                600,
+                602,
+                606,
+                611,
+                709,
+                712,
+                713,
+                715,
+                717,
+                719,
+                720,
+                721,
+            ):
+                return OperationalError(str(error))
+            return DatabaseError(str(error))
+        return InterfaceError(str(error))

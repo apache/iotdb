@@ -14,45 +14,32 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
 
+import pytest
+
+from iotdb.dbapi import InterfaceError, NotSupportedError, connect
 from tests.integration.iotdb_container import IoTDBContainer
-from iotdb.dbapi import connect
-
-final_flag = True
-failed_count = 0
 
 
-def test_fail():
-    global failed_count
-    global final_flag
-    final_flag = False
-    failed_count += 1
+def test_default_table_and_explicit_tree_connections():
+    with IoTDBContainer("iotdb:dev") as database:
+        host = database.get_container_host_ip()
+        port = database.get_exposed_port(6667)
 
+        table_connection = connect(host, port)
+        tree_connection = connect(host, port, sql_dialect="tree")
+        assert not table_connection.is_close
+        assert not tree_connection.is_close
 
-def print_message(message):
-    print("*********")
-    print(message)
-    print("*********")
-    assert False
+        cursor = table_connection.cursor()
+        table_connection.commit()
+        with pytest.raises(NotSupportedError):
+            table_connection.rollback()
+        table_connection.close()
+        assert table_connection.is_close
+        with pytest.raises(InterfaceError):
+            cursor.execute("SHOW DATABASES")
+        with pytest.raises(InterfaceError):
+            table_connection.cursor()
 
-
-def test_connection():
-    with IoTDBContainer("iotdb:dev") as db:
-        db: IoTDBContainer
-        conn = connect(db.get_container_host_ip(), db.get_exposed_port(6667))
-        if conn.is_close:
-            print("can't create connect")
-            exit(1)
-        conn.close()
-        if not conn.is_close:
-            test_fail()
-            print_message("failed to close the connection!")
-
-
-if final_flag:
-    print("All executions done!!")
-else:
-    print("Some test failed, please have a check")
-    print("failed count: ", failed_count)
-    exit(1)
+        tree_connection.close()

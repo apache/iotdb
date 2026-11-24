@@ -14,16 +14,13 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
 
-import logging
+import weakref
 
 from iotdb.Session import Session
 
 from .Cursor import Cursor
-from .Exceptions import ConnectionError, ProgrammingError
-
-logger = logging.getLogger("IoTDB")
+from .Exceptions import ConnectionError, InterfaceError, NotSupportedError
 
 
 class Connection(object):
@@ -42,70 +39,89 @@ class Connection(object):
         connection_timeout_in_ms=None,
         client_cert=None,
         client_key=None,
+        sql_dialect="table",
+        database=None,
     ):
-        self.__session = Session(
-            host,
-            port,
-            username,
-            password,
-            fetch_size,
-            zone_id,
-            use_ssl=self.__to_bool(use_ssl),
-            ca_certs=ca_certs,
-            connection_timeout_in_ms=self.__to_optional_int(connection_timeout_in_ms),
-            client_cert=client_cert,
-            client_key=client_key,
-        )
-        self.__sqlalchemy_mode = sqlalchemy_mode
-        self.__is_close = True
+        if sql_dialect not in ("tree", "table"):
+            raise InterfaceError("sql_dialect must be either 'tree' or 'table'")
+
         try:
+            self.__session = Session(
+                host,
+                port,
+                username,
+                password,
+                fetch_size,
+                zone_id,
+                use_ssl=self.__to_bool(use_ssl),
+                ca_certs=ca_certs,
+                connection_timeout_in_ms=self.__to_optional_int(
+                    connection_timeout_in_ms
+                ),
+                client_cert=client_cert,
+                client_key=client_key,
+            )
+            self.__session.sql_dialect = sql_dialect
+            self.__session.database = database
             self.__session.open(self.__to_bool(enable_rpc_compression))
-            self.__is_close = False
-        except Exception as e:
-            raise ConnectionError(e)
+        except Exception as error:
+            raise ConnectionError(str(error)) from error
+
+        self.__is_close = False
+        self.__sqlalchemy_mode = bool(sqlalchemy_mode)
+        self.__fetch_size = fetch_size if fetch_size > 0 else Session.DEFAULT_FETCH_SIZE
+        # Track live cursors for connection cleanup without preventing their garbage collection.
+        self.__cursors = weakref.WeakSet()
 
     def close(self):
-        """
-        Close the connection now
-        """
         if self.__is_close:
             return
-        self.__session.close()
-        self.__is_close = True
+
+        first_error = None
+        for cursor in list(self.__cursors):
+            try:
+                cursor._close_from_connection()
+            except Exception as error:
+                if first_error is None:
+                    first_error = error
+        try:
+            self.__session.close()
+        except Exception as error:
+            if first_error is None:
+                first_error = ConnectionError(str(error))
+        finally:
+            self.__is_close = True
+
+        if first_error is not None:
+            raise first_error
 
     def cursor(self):
-        """
-        Return a new Cursor Object using the connection.
-        """
-        if not self.__is_close:
-            return Cursor(self, self.__session, self.__sqlalchemy_mode)
-        else:
-            raise ProgrammingError("Connection closed")
+        self.__ensure_open()
+        cursor = Cursor(self, self.__session, self.__sqlalchemy_mode, self.__fetch_size)
+        self.__cursors.add(cursor)
+        return cursor
 
     def commit(self):
-        """
-        Not supported method.
-        """
-        pass
+        self.__ensure_open()
 
     def rollback(self):
-        """
-        Not supported method.
-        """
-        pass
+        self.__ensure_open()
+        raise NotSupportedError("IoTDB does not support transactions or rollback")
 
     @property
     def is_close(self):
-        """
-        This read-only attribute specified whether the object is closed
-        """
         return self.__is_close
 
     def __enter__(self):
+        self.__ensure_open()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    def __ensure_open(self):
+        if self.__is_close:
+            raise InterfaceError("connection is closed")
 
     @staticmethod
     def __to_bool(value):

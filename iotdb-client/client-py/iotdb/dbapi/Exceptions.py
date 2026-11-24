@@ -57,5 +57,5 @@ class NotSupportedError(DatabaseError):
     pass
 
 
-class ConnectionError(DatabaseError):
+class ConnectionError(OperationalError):
     pass

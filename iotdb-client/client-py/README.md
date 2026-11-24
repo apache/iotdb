@@ -401,20 +401,33 @@ interface for accessing databases in Python.
 #### Examples
 + Initialization
 
-The initialized parameters are consistent with the session part (except for the sqlalchemy_mode).
+DBAPI connections use the table SQL dialect by default. Set `sql_dialect="tree"`
+when executing tree-model SQL.
+
 ```python
 from iotdb.dbapi import connect
 
-ip = "127.0.0.1"
-port_ = "6667"
-username_ = "root"
-password_ = "root"
-conn = connect(ip, port_, username_, password_,fetch_size=1024,zone_id="Asia/Shanghai",sqlalchemy_mode=False)
+conn = connect(
+    "127.0.0.1",
+    6667,
+    username="root",
+    password="root",
+    database="example",
+    fetch_size=1024,
+    zone_id="Asia/Shanghai",
+)
 cursor = conn.cursor()
 ```
+
+For the tree model:
+
+```python
+conn = connect("127.0.0.1", 6667, sql_dialect="tree")
+```
+
 + simple SQL statement execution
 ```python
-cursor.execute("SELECT * FROM root.*")
+cursor.execute("SELECT * FROM readings")
 for row in cursor.fetchall():
     print(row)
 ```
@@ -423,23 +436,43 @@ for row in cursor.fetchall():
 
 IoTDB DBAPI supports pyformat style parameters
 ```python
-cursor.execute("SELECT * FROM root.* WHERE time < %(time)s",{"time":"2017-11-01T00:08:00.000"})
+cursor.execute(
+    "SELECT * FROM readings WHERE time < %(time)s AND device = %(device)s",
+    {"time": "2017-11-01T00:08:00.000", "device": "device's name"},
+)
 for row in cursor.fetchall():
     print(row)
 ```
 
+Parameters are values rather than SQL fragments. Do not add SQL quotes around
+string parameters; the driver quotes and escapes them. Positional `%s`
+parameters are also supported.
+
 + execute SQL with parameter sequences
 ```python
-seq_of_parameters = [
-    {"timestamp": 1, "temperature": 1},
-    {"timestamp": 2, "temperature": 2},
-    {"timestamp": 3, "temperature": 3},
-    {"timestamp": 4, "temperature": 4},
-    {"timestamp": 5, "temperature": 5},
-]
-sql = "insert into root.cursor(timestamp,temperature) values(%(timestamp)s,%(temperature)s)"
-cursor.executemany(sql,seq_of_parameters)
+rows = [(1, "d1", 1), (2, "d2", 2)]
+sql = "INSERT INTO readings(time, device, temperature) VALUES (%s, %s, %s)"
+cursor.executemany(sql, rows)
 ```
+
+`executemany()` is only supported for operations that do not return rows.
+IoTDB does not report reliable affected-row counts through this API, so
+`cursor.rowcount` is `-1`. SQL and connection failures are raised through the
+standard DB-API exception hierarchy. IoTDB applies writes immediately and does
+not support transactions: `commit()` is a no-op, `rollback()` raises
+`NotSupportedError`, and closing a connection does not undo writes.
+
+TIMESTAMP values are returned as Python `datetime` objects. Values with
+sub-microsecond precision retain a pandas `Timestamp` (a `datetime` subclass)
+to preserve nanoseconds. Parameter binding preserves that precision as well.
+When parameters are supplied (including an empty mapping), escape literal `%`
+as `%%` everywhere in the SQL text, including inside strings, identifiers and
+comments. For example, write `/* %%s */` for a literal `%s` in a comment.
+Parameters are converted to SQL values and interpolated using Python formatting;
+the driver does not parse SQL quotes or comments. Only `%s`, `%(name)s` and `%%`
+are accepted, without formatting widths or precisions. Unused mapping keys are
+allowed. Bound parameter values do not require percent escaping. With
+`parameters=None`, SQL is passed through without formatting.
 
 + close the connection and cursor
 ```python
@@ -447,7 +480,41 @@ cursor.close()
 conn.close()
 ```
 
+DB-API executes ordinary SQL and preserves the column order returned by Session.
+The legacy `sqlalchemy_mode=True` path is retained for the experimental SQLAlchemy
+dialect. It handles that dialect's time-column markers and result metadata without
+changing the standard DB-API behavior.
+
+#### DB-API 2.0 conformance
+
+The implementation targets the required PEP 249 interface for a database without
+transactions. The checks below distinguish core requirements from optional
+capabilities; defaulting to the table dialect is an IoTDB choice, not a PEP rule.
+
+| PEP 249 section | Implementation |
+| --- | --- |
+| [Module interface](https://peps.python.org/pep-0249/#module-interface) | `connect`, `apilevel="2.0"`, `threadsafety=1`, `paramstyle="pyformat"`, and the standard exception hierarchy. Connections/cursors must not be shared across threads. |
+| [Connection methods](https://peps.python.org/pep-0249/#connection-methods) and [footnote 3](https://peps.python.org/pep-0249/#footnotes) | Closing invalidates the connection and its cursors. `commit()` does nothing; unsupported `rollback()` raises `NotSupportedError`. |
+| [Cursor attributes](https://peps.python.org/pep-0249/#cursor-attributes) | `description` is `None` without a result set; otherwise each column has seven entries, with a native type code comparable to a DB-API type object. Unknown row counts are `-1`. |
+| [Cursor methods](https://peps.python.org/pep-0249/#cursor-methods) | Parameterized execution, repeated execution, tuple rows, exhaustion and invalid-state errors. `arraysize` defaults to 1; buffer-size hints are accepted as no-ops. |
+| [Type objects and constructors](https://peps.python.org/pep-0249/#type-objects-and-constructors) | Date/time/binary constructors, type categories, and `None` for SQL NULL. Nanosecond timestamps retain their precision. |
+| [Optional extensions](https://peps.python.org/pep-0249/#optional-db-api-extensions) | Forward iteration is supported. Stored procedures, multiple result sets, scrolling and two-phase transactions are not exposed. |
+
+`execute()` and `executemany()` return `None`; applications should fetch rows
+separately. `executemany()` performs individual executions and rejects result sets;
+it is not an atomic batch. Fetching before a query or after a non-query raises
+`ProgrammingError`. Exhaustion returns `None` from `fetchone()` and empty lists
+from `fetchmany()`/`fetchall()`. Native type codes in `description` preserve the
+Session column order and compare equal to `STRING`, `BINARY`, `NUMBER` or `DATETIME`.
+The `Time` constructor is available, but IoTDB has no standalone TIME column type.
+
 ### IoTDB SQLAlchemy Dialect (Experimental)
+
+The legacy adapter remains available to the experimental tree-model dialect.
+It handles the dialect's time-column positions, aliases and result metadata.
+The DB-API default remains the table dialect, while the SQLAlchemy dialect still
+requires explicit validation before production use.
+
 The SQLAlchemy dialect of IoTDB is written to adapt to Apache Superset.
 This part is still being improved.
 Please do not use it in the production environment!
@@ -638,5 +705,4 @@ Namely, these are
 * Run Tests via pytest (optional)
 * Build
 * Release to pypi
-
 

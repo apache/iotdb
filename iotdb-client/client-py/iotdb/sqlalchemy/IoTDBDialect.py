@@ -66,7 +66,7 @@ class IoTDBDialect(default.DefaultDialect):
         # inherits the docstring from interfaces.Dialect.create_connect_args
         opts = url.translate_connect_args()
         opts.update(url.query)
-        opts.update({"sqlalchemy_mode": True})
+        opts.update({"sqlalchemy_mode": True, "sql_dialect": "tree"})
         return [[], opts]
 
     @classmethod
@@ -76,6 +76,10 @@ class IoTDBDialect(default.DefaultDialect):
     @classmethod
     def dbapi(cls):
         return dbapi
+
+    def do_rollback(self, dbapi_connection):
+        # SQLAlchemy uses rollback to reset pooled connections. IoTDB autocommits.
+        pass
 
     def has_schema(self, connection, schema):
         return schema in self.get_schema_names(connection)

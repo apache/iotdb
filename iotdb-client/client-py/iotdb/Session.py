@@ -1664,9 +1664,14 @@ class Session(object):
             else:
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
+        result = rpc_utils.verify_success(resp.status)
+        self.__update_database(resp.database, sql)
+        return result
+
+    def __update_database(self, database, sql):
         previous_db = self.database
-        if resp.database is not None:
-            self.database = resp.database
+        if database is not None:
+            self.database = database
         if previous_db != self.database and self.__endpoint_to_connection is not None:
             iterator = iter(self.__endpoint_to_connection.items())
             for entry in list(iterator):
@@ -1676,12 +1681,17 @@ class Session(object):
                         connection.change_database(sql)
                     except Exception as e:
                         self.__endpoint_to_connection.pop(endpoint)
-        return rpc_utils.verify_success(resp.status)
 
-    def execute_statement(self, sql: str, timeout=0):
+    def execute_statement(self, sql: str, timeout=0, fetch_size=None):
+        effective_fetch_size = self.__fetch_size if fetch_size is None else fetch_size
         request = TSExecuteStatementReq(
-            self.__session_id, sql, self.__statement_id, timeout
+            self.__session_id,
+            sql,
+            self.__statement_id,
+            timeout=timeout,
         )
+        if fetch_size is not None:
+            request.fetchSize = fetch_size
         try:
             resp = self.__client.executeStatementV2(request)
         except TTransport.TException as e:
@@ -1696,6 +1706,7 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
         rpc_utils.verify_success(resp.status)
+        self.__update_database(resp.database, sql)
         if resp.columns:
             return SessionDataSet(
                 sql=sql,
@@ -1710,7 +1721,7 @@ class Session(object):
                 ignore_timestamp=resp.ignoreTimeStamp,
                 time_out=timeout,
                 more_data=resp.moreData,
-                fetch_size=self.__fetch_size,
+                fetch_size=effective_fetch_size,
                 zone_id=self.__zone_id,
                 time_precision=self.__time_precision,
                 column_index_2_tsblock_column_index_list=resp.columnIndex2TsBlockColumnIndexList,

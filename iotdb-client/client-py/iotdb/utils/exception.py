@@ -32,6 +32,7 @@ class IoTDBConnectionException(Exception):
 
 class StatementExecutionException(Exception):
     def __init__(self, status: TSStatus = None, message=None):
+        self.status = status
         if status is not None:
             super().__init__(f"{status.code}: {status.message}")
         elif message is not None:
