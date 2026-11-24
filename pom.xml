@@ -60,7 +60,6 @@
         <awaitility.version>4.2.0</awaitility.version>
         <boost.include.dir/>
         <bouncycastle.version>1.84</bouncycastle.version>
-        <caffeine.version>2.9.3</caffeine.version>
         <cglib.version>3.3.0</cglib.version>
         <cmake.build.type>Release</cmake.build.type>
         <commons-cli.version>1.5.0</commons-cli.version>
@@ -510,17 +509,6 @@
                 <version>${jetty.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.github.ben-manes.caffeine</groupId>
-                <artifactId>caffeine</artifactId>
-                <version>${caffeine.version}</version>
-            </dependency>
-            <!-- Keep Caffeine on the checker-qual version already shipped by IoTDB. -->
-            <dependency>
-                <groupId>org.checkerframework</groupId>
-                <artifactId>checker-qual</artifactId>
-                <version>3.33.0</version>
-            </dependency>
-            <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpcore</artifactId>
                 <version>${httpcore.version}</version>
@@ -606,7 +594,6 @@
                 <artifactId>asm</artifactId>
                 <version>9.3</version>
             </dependency>
-            <!-- Caffeine pulls in 2.10.0. -->
             <dependency>
                 <groupId>com.google.errorprone</groupId>
                 <artifactId>error_prone_annotations</artifactId>

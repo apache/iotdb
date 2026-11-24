@@ -454,4 +454,47 @@ public final class CommonMessages {
   public static final String
       EXCEPTION_USER_ARG_ID_ARG_REQUESTS_AUTHORITY_ON_OBJECT_ARG_WITH_RESULT_ARG_F0A4B9C0 =
           "User %s (ID=%d) requests authority on object %s with result %s";
+
+  // --- caffeine ---
+  public static final String EXCEPTION_AN_INVALID_STATE_WAS_DETECTED_OCCURRING_WHEN_THE_KEY_S_EQUALS_OR_HASHCODE_WAS_MODIFIED_WHILE_RESIDING_IN_THE_CACHE_THIS_VIOLATION_OF_THE_MAP_CONTRACT_CAN_LEAD_TO_NON_DETERMINISTIC_BEHAVIOR_KEY_ARG_KEY_TYPE_ARG_NODE_TYPE_ARG_CACHE_TYPE_ARG_CAA99713 = "An invalid state was detected, occurring when the key's equals or hashCode was modified while residing in the cache. This violation of the Map contract can lead to non-deterministic behavior (key: %s, key type: %s, node type: %s, cache type: %s).";
+  public static final String LOG_EXCEPTION_THROWN_BY_REMOVAL_LISTENER_2D0BFC36 = "Exception thrown by removal listener";
+  public static final String LOG_EXCEPTION_THROWN_WHEN_SUBMITTING_REMOVAL_LISTENER_1A41327E = "Exception thrown when submitting removal listener";
+  public static final String LOG_EXCEPTION_THROWN_BY_EVICTION_LISTENER_E6D3BA60 = "Exception thrown by eviction listener";
+  public static final String EXCEPTION_MAXIMUM_MUST_NOT_BE_NEGATIVE_99D76153 = "maximum must not be negative";
+  public static final String LOG_EXCEPTION_THROWN_WHEN_PERFORMING_THE_MAINTENANCE_TASK_8B817F20 = "Exception thrown when performing the maintenance task";
+  public static final String LOG_THE_CACHE_IS_EXPERIENCING_EXCESSIVE_WAIT_TIMES_FOR_ACQUIRING_THE_EVICTION_LOCK_THIS_MAY_INDICATE_THAT_A_LONG_RUNNING_COMPUTATION_HAS_HALTED_EVICTION_WHEN_TRYING_TO_REMOVE_THE_VICTIM_ENTRY_E115E498 = "The cache is experiencing excessive wait times for acquiring the eviction lock. This may indicate that a long-running computation has halted eviction when trying to remove the victim entry.";
+  public static final String EXCEPTION_INVALID_DRAIN_STATUS_ARG_583D1358 = "Invalid drain status: %s";
+  public static final String LOG_EXCEPTION_THROWN_WHEN_SUBMITTING_MAINTENANCE_TASK_C1E55928 = "Exception thrown when submitting maintenance task";
+  public static final String EXCEPTION_STREAM_HAS_ALREADY_BEEN_CLOSED_069DDD3D = "stream has already been closed";
+  public static final String EXCEPTION_LIMIT_CANNOT_BE_NEGATIVE_ARG_D4D15053 = "limit cannot be negative: %s";
+  public static final String EXCEPTION_WEIGHT_LIMIT_CANNOT_BE_NEGATIVE_ARG_2263B8E8 = "weight limit cannot be negative: %s";
+  public static final String EXCEPTION_DURATION_CANNOT_BE_NEGATIVE_ARG_ARG_3C151FCA = "duration cannot be negative: %s %s";
+  public static final String LOG_CANNOT_DETERMINE_IF_ARG_OVERRIDES_ARG_ARG_065FF946 = "Cannot determine if {} overrides {}({})";
+  public static final String EXCEPTION_INITIAL_CAPACITY_WAS_ALREADY_SET_TO_ARG_79FF9FB8 = "initial capacity was already set to %s";
+  public static final String EXCEPTION_INITIAL_CAPACITY_MUST_NOT_BE_NEGATIVE_89AD0C3E = "initial capacity must not be negative";
+  public static final String EXCEPTION_EXECUTOR_WAS_ALREADY_SET_TO_ARG_58A5EECE = "executor was already set to %s";
+  public static final String EXCEPTION_SCHEDULER_WAS_ALREADY_SET_TO_ARG_E61EFF23 = "scheduler was already set to %s";
+  public static final String EXCEPTION_MAXIMUM_SIZE_WAS_ALREADY_SET_TO_ARG_0FE8510C = "maximum size was already set to %s";
+  public static final String EXCEPTION_MAXIMUM_WEIGHT_WAS_ALREADY_SET_TO_ARG_FFCC0743 = "maximum weight was already set to %s";
+  public static final String EXCEPTION_MAXIMUM_SIZE_CANNOT_BE_COMBINED_WITH_WEIGHER_4A442F9D = "maximum size cannot be combined with weigher";
+  public static final String EXCEPTION_MAXIMUM_SIZE_MUST_NOT_BE_NEGATIVE_16AA24D2 = "maximum size must not be negative";
+  public static final String EXCEPTION_MAXIMUM_WEIGHT_MUST_NOT_BE_NEGATIVE_717B327F = "maximum weight must not be negative";
+  public static final String EXCEPTION_WEIGHER_WAS_ALREADY_SET_TO_ARG_84645186 = "weigher was already set to %s";
+  public static final String EXCEPTION_WEIGHER_CANNOT_BE_COMBINED_WITH_MAXIMUM_SIZE_0A2D1969 = "weigher cannot be combined with maximum size";
+  public static final String EXCEPTION_EXPIREAFTERWRITE_WAS_ALREADY_SET_TO_ARG_NS_7218F232 = "expireAfterWrite was already set to %s ns";
+  public static final String EXCEPTION_EXPIREAFTERACCESS_WAS_ALREADY_SET_TO_ARG_NS_CA739654 = "expireAfterAccess was already set to %s ns";
+  public static final String EXCEPTION_TICKER_WAS_ALREADY_SET_TO_ARG_59220FA7 = "Ticker was already set to %s";
+  public static final String EXCEPTION_EVICTION_LISTENER_WAS_ALREADY_SET_TO_ARG_083BC682 = "eviction listener was already set to %s";
+  public static final String EXCEPTION_REMOVAL_LISTENER_WAS_ALREADY_SET_TO_ARG_5BF5704F = "removal listener was already set to %s";
+  public static final String EXCEPTION_STATISTICS_RECORDING_WAS_ALREADY_SET_8D7AA0B3 = "Statistics recording was already set";
+  public static final String EXCEPTION_MAXIMUMWEIGHT_REQUIRES_WEIGHER_458CD148 = "maximumWeight requires weigher";
+  public static final String EXCEPTION_WEIGHER_REQUIRES_MAXIMUMWEIGHT_D212C663 = "weigher requires maximumWeight";
+  public static final String EXCEPTION_MAX_CAPACITY_MUST_BE_4_OR_MORE_EBF0B1E8 = "Max capacity must be 4 or more";
+  public static final String EXCEPTION_INITIAL_CAPACITY_CANNOT_EXCEED_MAXIMUM_CAPACITY_BOTH_ROUNDED_UP_TO_A_POWER_OF_2_E58CF468 = "Initial capacity cannot exceed maximum capacity(both rounded up to a power of 2)";
+  public static final String EXCEPTION_INITIAL_CAPACITY_MUST_BE_2_OR_MORE_494EA929 = "Initial capacity must be 2 or more";
+  public static final String EXCEPTION_NEW_BUFFER_MUST_HAVE_AT_LEAST_ONE_ELEMENT_EF3B6ADE = "new buffer must have at least one element";
+  public static final String LOG_EXCEPTION_THROWN_WHEN_SUBMITTING_SCHEDULED_TASK_78E45BDD = "Exception thrown when submitting scheduled task";
+  public static final String LOG_EXCEPTION_THROWN_BY_SCHEDULER_DISCARDED_TASK_A219ACAC = "Exception thrown by scheduler; discarded task";
+  public static final String EXCEPTION_WEIGHT_CANNOT_BE_NEGATIVE_ARG_224339E2 = "weight cannot be negative: %s";
+  public static final String LOG_EXCEPTION_THROWN_BY_STATS_COUNTER_259634D3 = "Exception thrown by stats counter";
 }
