@@ -1683,9 +1683,7 @@ class Session(object):
                         self.__endpoint_to_connection.pop(endpoint)
 
     def execute_statement(self, sql: str, timeout=0, fetch_size=None):
-        effective_fetch_size = (
-            self.__fetch_size if fetch_size is None else fetch_size
-        )
+        effective_fetch_size = self.__fetch_size if fetch_size is None else fetch_size
         request = TSExecuteStatementReq(
             self.__session_id,
             sql,

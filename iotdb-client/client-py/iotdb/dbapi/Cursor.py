@@ -36,7 +36,9 @@ from .Parameters import format_operation
 
 
 class Cursor(object):
-    def __init__(self, connection, session: Session, sqlalchemy_mode=False, fetch_size=None):
+    def __init__(
+        self, connection, session: Session, sqlalchemy_mode=False, fetch_size=None
+    ):
         self.__connection = connection
         self.__session = session
         self.__sqlalchemy_mode = bool(sqlalchemy_mode)
@@ -281,8 +283,7 @@ class Cursor(object):
         for line in operation.split("\n"):
             if "FROM Time Index" in line:
                 time_indexes = [
-                    int(index)
-                    for index in line.replace("FROM Time Index", "").split()
+                    int(index) for index in line.replace("FROM Time Index", "").split()
                 ]
             elif "FROM Time Name" in line:
                 time_names = line.replace("FROM Time Name", "").split()

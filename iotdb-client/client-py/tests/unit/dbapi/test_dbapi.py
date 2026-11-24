@@ -403,9 +403,7 @@ def test_sqlalchemy_cursor_restores_compiler_time_markers():
     data_set = FakeDataSet([(100, "a", 1), (200, "b", 2)])
     session = FakeSession(data_set)
     cursor = Cursor(FakeConnection(), session, sqlalchemy_mode=True)
-    cursor.execute(
-        "SELECT name, value\n FROM Time Index 1\n FROM Time Name event_time"
-    )
+    cursor.execute("SELECT name, value\n FROM Time Index 1\n FROM Time Name event_time")
 
     assert session.statements == ["SELECT name, value"]
     assert cursor.description == (

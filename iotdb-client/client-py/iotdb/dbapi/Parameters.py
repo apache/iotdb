@@ -24,7 +24,6 @@ from numbers import Integral, Real
 
 from .Exceptions import DataError, ProgrammingError
 
-
 # Match only the advertised string placeholders and percent escapes. A bare
 # percent catches unsupported conversions, widths and precisions before they
 # can modify an already escaped SQL value. This is not a SQL lexer.

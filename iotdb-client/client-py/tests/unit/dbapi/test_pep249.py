@@ -195,9 +195,7 @@ def test_pep249_optional_cursor_methods_and_iteration(cursor_with_rows):
 def test_pep249_type_constructors_and_type_categories():
     assert dbapi.Date(2026, 11, 23) == date(2026, 11, 23)
     assert dbapi.Time(12, 30, 0) == time(12, 30, 0)
-    assert dbapi.Timestamp(2026, 11, 23, 12, 30, 0) == datetime(
-        2026, 11, 23, 12, 30, 0
-    )
+    assert dbapi.Timestamp(2026, 11, 23, 12, 30, 0) == datetime(2026, 11, 23, 12, 30, 0)
     assert dbapi.Binary(bytearray((0, 255))) == b"\x00\xff"
 
     type_groups = (
