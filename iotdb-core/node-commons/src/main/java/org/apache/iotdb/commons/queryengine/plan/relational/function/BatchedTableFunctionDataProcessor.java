@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function;
 
+import org.apache.iotdb.udf.api.IoTDBLocal;
+import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -26,8 +28,21 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-/** A built-in processor that can drain its proper output across several blocks at partition end. */
+/** A built-in processor whose proper output can span blocks even for a single input row. */
 public interface BatchedTableFunctionDataProcessor extends TableFunctionDataProcessor {
+
+  /**
+   * Accepts a row. The caller keeps the record valid until drainOutput returns true, before
+   * advancing the input iterator or finishing the partition.
+   */
+  default void processInput(Record input, List<ColumnBuilder> builders, IoTDBLocal local) {
+    process(input, builders, null, local);
+  }
+
+  /** Writes ready rows until the block is full. Returns true when more input can be accepted. */
+  default boolean drainOutput(List<ColumnBuilder> builders, BooleanSupplier blockFull) {
+    return true;
+  }
 
   /**
    * Writes until the block is full or output is exhausted. Returns true when all rows are written.

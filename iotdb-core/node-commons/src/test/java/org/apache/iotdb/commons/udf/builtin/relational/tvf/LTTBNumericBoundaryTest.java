@@ -134,6 +134,27 @@ public class LTTBNumericBoundaryTest {
   }
 
   @Test
+  public void testCollinearDoublesKeepEarliestCandidate() {
+    // The lookahead mean is (25/3, 25). Rounding 25/3 before scoring would select t=5.
+    long[] time = {0, 1, 2, 5, 6, 7, 12, 13};
+    Double[][] values = {{0.0}, {3.0}, {6.0}, {15.0}, {18.0}, {21.0}, {36.0}, {39.0}};
+    for (String mode : new String[] {"TARGET_COUNT", "COUNT_WINDOW"}) {
+      Column[] output = sample(mode, 4, 4, 0, time, values, Type.DOUBLE);
+      assertArrayEquals(new long[] {0, 1, 6, 13}, longValues(output[1]));
+    }
+  }
+
+  @Test
+  public void testFloatingLookaheadSurvivesCancellation() {
+    // The lookahead values sum to 1. Losing that 1 makes the points at t=1,2,3 appear tied.
+    double[] values = {0, 0, 0, 0, 1e16, 1, -1e16, 0};
+    for (String mode : new String[] {"TARGET_COUNT", "COUNT_WINDOW"}) {
+      Column[] output = sampleFloating(mode, 4, values);
+      assertArrayEquals(new long[] {0, 3, 4, 7}, longValues(output[1]));
+    }
+  }
+
+  @Test
   public void testFiniteDoublesPreserveSelectionsWhenAreasOverflow() {
     assertFloatingScaleInvariant(new double[] {0, 4, 8, 2, 0, 0});
   }

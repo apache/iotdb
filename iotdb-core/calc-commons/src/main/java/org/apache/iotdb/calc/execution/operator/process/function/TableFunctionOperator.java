@@ -83,6 +83,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
 
   private TableFunctionDataProcessor processor;
   private PartitionState partitionState;
+  private Iterator<Record> batchedInput;
   private ListenableFuture<?> isBlocked;
   private boolean finished = false;
 
@@ -154,6 +155,9 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
     if (retainedTsBlock != null || !resultTsBlocks.isEmpty()) {
       return getNextResultTsBlock();
     }
+    if (batchedInput != null) {
+      return processInputBatch();
+    }
     if (partitionState == null) {
       partitionState = partitionRecognizer.nextState();
     }
@@ -194,6 +198,10 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
         partitionCache.addSlice(slice);
       }
       Iterator<Record> recordIterator = slice.getRequiredRecordIterator(requireRecordSnapshot);
+      if (processor instanceof BatchedTableFunctionDataProcessor) {
+        batchedInput = recordIterator;
+        return processInputBatch();
+      }
       while (recordIterator.hasNext()) {
         processor.process(
             recordIterator.next(), properColumnBuilders, passThroughIndexBuilder, ioTDBLocal);
@@ -221,10 +229,32 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
     return Arrays.asList(properBlockBuilder.getValueColumnBuilders());
   }
 
+  private TsBlock processInputBatch() {
+    BatchedTableFunctionDataProcessor batched = (BatchedTableFunctionDataProcessor) processor;
+    List<ColumnBuilder> builders = getProperColumnBuilders();
+    while (batched.drainOutput(builders, this::isOutputBlockFull) && !isOutputBlockFull()) {
+      if (!batchedInput.hasNext()) {
+        batchedInput = null;
+        consumeCurrentPartitionState();
+        break;
+      }
+      batched.processInput(batchedInput.next(), builders, ioTDBLocal);
+    }
+    resultTsBlocks.addAll(buildTsBlock(builders, null));
+    return getNextResultTsBlock();
+  }
+
+  private boolean isOutputBlockFull() {
+    // Positions are declared in buildTsBlock, after the processor finishes writing this batch.
+    return properBlockBuilder.isFull()
+        || properBlockBuilder.getColumnBuilder(0).getPositionCount()
+            >= properBlockBuilder.getMaxTsBlockLineNumber();
+  }
+
   private boolean finishPartition(List<ColumnBuilder> builders, ColumnBuilder passThroughIndex) {
     if (processor instanceof BatchedTableFunctionDataProcessor) {
       return ((BatchedTableFunctionDataProcessor) processor)
-          .finishBatch(builders, properBlockBuilder::isFull);
+          .finishBatch(builders, this::isOutputBlockFull);
     }
     if (processor != null) {
       processor.finish(builders, passThroughIndex, ioTDBLocal);
@@ -299,6 +329,7 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
   public void close() throws Exception {
     partitionCache.close();
     resultTsBlocks.clear();
+    batchedInput = null;
     resultTsBlock = null;
     retainedTsBlock = null;
     inputOperator.close();

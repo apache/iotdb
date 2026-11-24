@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.BatchedTableFunctionDataProcessor;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableFunctionProcessorMemoryBudget;
+import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -619,41 +620,18 @@ public class LTTBTableFunction implements TableFunction {
         // A difference, sum or cross-product can exceed the long range.
       }
     } else {
-      double sumTime = 0;
-      double sumValue = 0;
-      int finiteCount = 0;
-      for (int i = nextStart; i < nextEnd; i++) {
-        if (Double.isFinite(nextValues[i])) {
-          sumTime += differenceAsDouble(nextTimes[i], anchorTime);
-          sumValue += nextValues[i] - anchorValue;
-          finiteCount++;
-        }
-      }
-      if (finiteCount == 0) {
-        return start;
-      }
-      double nextTime = sumTime / finiteCount;
-      double nextValue = sumValue / finiteCount;
-      int pick = start;
-      double maxArea = -1;
-      for (int i = start; i < end; i++) {
-        if (!Double.isFinite(values[i])) {
-          continue;
-        }
-        double area =
-            Math.abs(
-                nextTime * (values[i] - anchorValue)
-                    - differenceAsDouble(times[i], anchorTime) * nextValue);
-        if (!Double.isFinite(area)) {
-          // Re-score every candidate against the same exact lookahead sum.
-          pick = NOT_SELECTED;
-          break;
-        }
-        if (area > maxArea) {
-          maxArea = area;
-          pick = i;
-        }
-      }
+      int pick =
+          argMaxFloatingArea(
+              times,
+              values,
+              start,
+              end,
+              anchorTime,
+              anchorValue,
+              nextTimes,
+              nextValues,
+              nextStart,
+              nextEnd);
       if (pick != NOT_SELECTED) {
         return pick;
       }
@@ -672,6 +650,75 @@ public class LTTBTableFunction implements TableFunction {
         nextIntegralValues,
         nextStart,
         nextEnd);
+  }
+
+  /** Returns NOT_SELECTED if rounding could change which candidate has the largest area. */
+  private static int argMaxFloatingArea(
+      long[] times,
+      double[] values,
+      int start,
+      int end,
+      long anchorTime,
+      double anchorValue,
+      long[] nextTimes,
+      double[] nextValues,
+      int nextStart,
+      int nextEnd) {
+    double sumTime = 0;
+    double sumValue = 0;
+    double sumAbsTime = 0;
+    double sumAbsValue = 0;
+    int finiteCount = 0;
+    for (int i = nextStart; i < nextEnd; i++) {
+      if (Double.isFinite(nextValues[i])) {
+        double time = differenceAsDouble(nextTimes[i], anchorTime);
+        double value = nextValues[i] - anchorValue;
+        sumTime += time;
+        sumValue += value;
+        sumAbsTime += Math.abs(time);
+        sumAbsValue += Math.abs(value);
+        finiteCount++;
+      }
+    }
+    if (finiteCount == 0) {
+      return start;
+    }
+
+    // Every determinant has the same denominator. Keeping the sums avoids rounding the two
+    // coordinates of the mean separately. Bound cancellation by summing absolute terms: each
+    // sum has at most finiteCount roundings, plus the coordinate differences and determinant.
+    // The factor of two also covers rounding in the bound itself.
+    double errorUlps = 2.0 * (finiteCount + 8);
+    int pick = start;
+    double bestUpper = -1;
+    double bestLower = -1;
+    double runnerUpUpper = -1;
+    for (int i = start; i < end; i++) {
+      if (!Double.isFinite(values[i])) {
+        continue;
+      }
+      double time = differenceAsDouble(times[i], anchorTime);
+      double value = values[i] - anchorValue;
+      double area = Math.abs(sumTime * value - time * sumValue);
+      double scale = sumAbsTime * Math.abs(value) + Math.abs(time) * sumAbsValue;
+      double error = scale == 0 ? 0 : errorUlps * Math.ulp(scale);
+      double upper = area + error;
+      if (!Double.isFinite(upper)) {
+        return NOT_SELECTED;
+      }
+      if (upper > bestUpper) {
+        runnerUpUpper = bestUpper;
+        bestUpper = upper;
+        bestLower = area - error;
+        pick = i;
+      } else {
+        runnerUpUpper = Math.max(runnerUpUpper, upper);
+      }
+    }
+    if (runnerUpUpper < 0 || bestUpper == 0 || bestLower > runnerUpUpper) {
+      return pick;
+    }
+    return NOT_SELECTED;
   }
 
   /** Compare scaled triangle areas using the lookahead sums, preserving integer precision. */
@@ -711,9 +758,8 @@ public class LTTBTableFunction implements TableFunction {
   }
 
   /**
-   * Overflow fallback for input values representable as exact decimals. Recomputes every candidate
-   * so an overflowing area cannot tie with or hide a larger one. Multiplying all areas by the
-   * lookahead point count lets us use sums instead of dividing by that count, keeping the
+   * Exact fallback for overflow and ambiguous floating-point comparisons. Multiplying all areas by
+   * the lookahead point count lets us use sums instead of dividing by that count, keeping the
    * comparison exact even for recurring averages. The normal path does not allocate decimal values.
    *
    * <p>A {@code NaN} or infinite participant cannot be represented by {@link BigDecimal}, so such a
@@ -1350,7 +1396,7 @@ public class LTTBTableFunction implements TableFunction {
    * point without moving {@code A}.
    */
   private abstract static class AbstractWindowLTTBDataProcessor<W extends WindowState>
-      extends AbstractLTTBDataProcessor {
+      extends AbstractLTTBDataProcessor implements BatchedTableFunctionDataProcessor {
     private static final long WINDOW_INSTANCE_SIZE =
         Math.max(
             RamUsageEstimator.shallowSizeOfInstance(TimeWindowState.class),
@@ -1390,6 +1436,11 @@ public class LTTBTableFunction implements TableFunction {
     private final long[] integralAnchorValues;
     private final WindowState[] lastRowWindows;
     private boolean finishing;
+    private Record pendingInput;
+    private long pendingTime;
+    private WindowRow[][] outputRows;
+    private int outputRowCount;
+    private int nextOutputRow;
 
     protected AbstractWindowLTTBDataProcessor(
         long size,
@@ -1462,13 +1513,23 @@ public class LTTBTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      long time = readTimestamp(input);
-      capturePartitionValues(input);
-      processRecord(input, time, properColumnBuilders);
+      processInput(input, properColumnBuilders, null);
+      drainOutput(properColumnBuilders, () -> false);
     }
 
-    protected abstract void processRecord(
-        Record input, long time, List<ColumnBuilder> properColumnBuilders);
+    @Override
+    public final void processInput(Record input, List<ColumnBuilder> builders, IoTDBLocal local) {
+      pendingTime = readTimestamp(input);
+      capturePartitionValues(input);
+      closeWindows(position(pendingTime));
+      // The iterator stays on this record until drainOutput finishes. Release ready windows before
+      // opening the windows for this row, so the old and new buffers need not fit simultaneously.
+      pendingInput = input;
+    }
+
+    protected abstract long position(long time);
+
+    protected abstract void processRecord(Record input, long time);
 
     /**
      * Adds one input row to every open window that contains it. The first eligible point of a
@@ -1514,7 +1575,7 @@ public class LTTBTableFunction implements TableFunction {
     }
 
     /** Moves the windows that ended before {@code position} into the pending queue. */
-    protected final void emitClosedWindows(long position, List<ColumnBuilder> builders) {
+    private void closeWindows(long position) {
       while (!activeWindows.isEmpty() && activeWindows.peekFirst().endExclusive <= position) {
         W window = activeWindows.removeFirst();
         if (canEmitAnyRow(window)) {
@@ -1528,7 +1589,6 @@ public class LTTBTableFunction implements TableFunction {
           releaseWindow(window);
         }
       }
-      emitReadyWindows(builders);
     }
 
     private void indexFiniteBuckets(WindowState window) {
@@ -1556,12 +1616,11 @@ public class LTTBTableFunction implements TableFunction {
     }
 
     @Override
-    public final void finish(
-        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      moveLastEligibleOutOfBuckets();
-      emitReadyWindows(properColumnBuilders);
-      Arrays.fill(firstEligibleWindows, null);
-      Arrays.fill(lastRowWindows, null);
+    public final boolean finishBatch(List<ColumnBuilder> builders, BooleanSupplier blockFull) {
+      if (!finishing) {
+        moveLastEligibleOutOfBuckets();
+      }
+      return drainOutput(builders, blockFull);
     }
 
     /**
@@ -1600,6 +1659,8 @@ public class LTTBTableFunction implements TableFunction {
 
     @Override
     public final void beforeDestroy() {
+      pendingInput = null;
+      outputRows = null;
       activeWindows.clear();
       pendingWindows.clear();
       Arrays.fill(firstPendingFinite, null);
@@ -1610,11 +1671,35 @@ public class LTTBTableFunction implements TableFunction {
       memoryBudget.reservedBytes = 0;
     }
 
-    protected final void emitReadyWindows(List<ColumnBuilder> builders) {
-      while (!pendingWindows.isEmpty() && isReady(pendingWindows.peekFirst())) {
-        W window = pendingWindows.removeFirst();
-        emitWindow(window, builders);
-        releaseWindow(window);
+    @Override
+    public final boolean drainOutput(List<ColumnBuilder> builders, BooleanSupplier blockFull) {
+      while (true) {
+        W window = pendingWindows.peekFirst();
+        if (window == null || !isReady(window)) {
+          if (pendingInput == null) {
+            return true;
+          }
+          processRecord(pendingInput, pendingTime);
+          pendingInput = null;
+          continue;
+        }
+        if (outputRows == null) {
+          selectOutputRows(window);
+        }
+        boolean full = false;
+        while (nextOutputRow < outputRowCount && !full) {
+          window.writeWindowColumns(builders);
+          writeWindowRow(builders, window.getWindowColumnCount(), outputRows, nextOutputRow++);
+          full = blockFull.getAsBoolean();
+        }
+        if (nextOutputRow == outputRowCount) {
+          releaseWindow(pendingWindows.removeFirst());
+          outputRows = null;
+        }
+        if (full) {
+          return pendingInput == null
+              && (pendingWindows.isEmpty() || !isReady(pendingWindows.peekFirst()));
+        }
       }
     }
 
@@ -1663,17 +1748,14 @@ public class LTTBTableFunction implements TableFunction {
       return position >= window.endExclusive - size && position < window.endExclusive;
     }
 
-    private void emitWindow(W window, List<ColumnBuilder> builders) {
-      WindowRow[][] rows = new WindowRow[participantColumns.length][];
-      int rowCount = 0;
+    private void selectOutputRows(W window) {
+      // Selection advances the anchors. Keep the selected cells when a block ends mid-window.
+      outputRows = new WindowRow[participantColumns.length][];
+      nextOutputRow = 0;
+      outputRowCount = 0;
       for (int i = 0; i < participantColumns.length; i++) {
-        rows[i] = selectWindowRows(window, i);
-        rowCount = Math.max(rowCount, rows[i].length);
-      }
-      // A window in which no participant column has an eligible point emits nothing.
-      for (int row = 0; row < rowCount; row++) {
-        window.writeWindowColumns(builders);
-        writeWindowRow(builders, window.getWindowColumnCount(), rows, row);
+        outputRows[i] = selectWindowRows(window, i);
+        outputRowCount = Math.max(outputRowCount, outputRows[i].length);
       }
     }
 
@@ -1816,10 +1898,12 @@ public class LTTBTableFunction implements TableFunction {
     }
 
     @Override
-    protected void processRecord(
-        Record input, long time, List<ColumnBuilder> properColumnBuilders) {
-      emitClosedWindows(time, properColumnBuilders);
+    protected long position(long time) {
+      return time;
+    }
 
+    @Override
+    protected void processRecord(Record input, long time) {
       if (!windowsExhausted) {
         long firstCandidateStart = getFirstWindowStart(time);
         if (!nextWindowStartInitialized || nextWindowStart < firstCandidateStart) {
@@ -1847,7 +1931,6 @@ public class LTTBTableFunction implements TableFunction {
       }
 
       collectIntoWindows(time, input, time);
-      emitReadyWindows(properColumnBuilders);
     }
 
     /** First aligned start whose window ends strictly after the current timestamp. */
@@ -1906,10 +1989,12 @@ public class LTTBTableFunction implements TableFunction {
     }
 
     @Override
-    protected void processRecord(
-        Record input, long time, List<ColumnBuilder> properColumnBuilders) {
-      emitClosedWindows(rowCount, properColumnBuilders);
+    protected long position(long time) {
+      return rowCount;
+    }
 
+    @Override
+    protected void processRecord(Record input, long time) {
       // Input row positions advance one at a time, so no expired starts need to be skipped.
       // Check the end only when a window is reached: a distant future end may be unrepresentable
       // even though every window that actually receives input is valid.
@@ -1933,7 +2018,6 @@ public class LTTBTableFunction implements TableFunction {
 
       collectIntoWindows(rowCount, input, time);
       rowCount++;
-      emitReadyWindows(properColumnBuilders);
     }
   }
 }

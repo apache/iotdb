@@ -72,6 +72,7 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class TableFunctionOperatorTest {
   private static final ExecutorService instanceNotificationExecutor =
@@ -487,10 +488,18 @@ public class TableFunctionOperatorTest {
 
   @Test
   public void testLttbDrainsEachPartitionInBoundedBatches() throws Exception {
-    int previousSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(16);
+    assertLttbTargetCountBatches(16, 1024);
+    assertLttbTargetCountBatches(1024 * 1024, 1);
+  }
+
+  private void assertLttbTargetCountBatches(int maxBytes, int maxRows) throws Exception {
+    OperatorContext context = createOperatorContext("lttb_partition_batches");
+    TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+    int previousSize = config.getMaxTsBlockSizeInBytes();
+    int previousRows = config.getMaxTsBlockLineNumber();
     try {
-      OperatorContext context = createOperatorContext("lttb_partition_batches");
+      config.setMaxTsBlockSizeInBytes(maxBytes);
+      config.setMaxTsBlockLineNumber(maxRows);
       TableFunctionProcessorProvider lttb =
           new LTTBTableFunction()
               .getProcessorProvider(
@@ -571,7 +580,96 @@ public class TableFunctionOperatorTest {
         verify(processors.get(i), times(i == 2 ? 2 : 3)).finishBatch(any(), any());
       }
     } finally {
-      TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(previousSize);
+      config.setMaxTsBlockSizeInBytes(previousSize);
+      config.setMaxTsBlockLineNumber(previousRows);
+    }
+  }
+
+  @Test
+  public void testLttbWindowBatchesDuringInputAndAtPartitionEnd() throws Exception {
+    OperatorContext context = createOperatorContext("lttb_window_batches");
+    List<TSDataType> input =
+        Arrays.asList(TSDataType.TIMESTAMP, TSDataType.INT32, TSDataType.DOUBLE);
+    TsBlockBuilder rows = new TsBlockBuilder(input);
+    for (int t = 0; t < 18; t++) {
+      rows.getColumnBuilder(0).writeLong(t);
+      rows.getColumnBuilder(1).writeInt(t < 15 ? 1 : 2);
+      rows.getColumnBuilder(2).writeDouble(t >= 3 && t < 9 ? Double.NaN : t);
+      rows.declarePosition();
+    }
+    TsBlock data = rows.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, 18));
+    Iterator<TsBlock> blocks =
+        Arrays.asList(data.getRegion(0, 14), data.getRegion(14, 4)).iterator();
+    Operator child = mock(Operator.class);
+    when(child.isBlocked()).thenAnswer(call -> Operator.NOT_BLOCKED);
+    when(child.isFinished()).thenAnswer(call -> !blocks.hasNext());
+    when(child.hasNextWithTimer()).thenAnswer(call -> blocks.hasNext());
+    when(child.nextWithTimer()).thenAnswer(call -> blocks.next());
+    TableFunctionProcessorProvider provider =
+        new LTTBTableFunction()
+            .getProcessorProvider(
+                new MapTableFunctionHandle.Builder()
+                    .addProperty(LTTBTableFunction.MODE_PROPERTY, "COUNT_WINDOW")
+                    .addProperty(LTTBTableFunction.PARTITION_TYPES_PROPERTY, "INT32")
+                    .addProperty(LTTBTableFunction.PARTICIPANT_TYPES_PROPERTY, "DOUBLE")
+                    .addProperty(LTTBTableFunction.SIZE_PARAMETER_NAME, 3L)
+                    .addProperty(LTTBTableFunction.SLIDE_PARAMETER_NAME, 3L)
+                    .build());
+
+    TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+    int previousSize = config.getMaxTsBlockSizeInBytes();
+    int previousRows = config.getMaxTsBlockLineNumber();
+    try {
+      config.setMaxTsBlockSizeInBytes(1024 * 1024);
+      config.setMaxTsBlockLineNumber(1);
+      try (TableFunctionOperator operator =
+          new TableFunctionOperator(
+              context,
+              provider,
+              0L,
+              child,
+              input,
+              Arrays.asList(
+                  TSDataType.INT64, TSDataType.INT32, TSDataType.TIMESTAMP, TSDataType.DOUBLE),
+              4,
+              Arrays.asList(0, 1, 2),
+              Collections.emptyList(),
+              false,
+              Collections.singletonList(1),
+              false,
+              mock(IoTDBLocal.class)) {
+            @Override
+            public TsBlock checkTsBlockSizeAndGetResult() {
+              // Check the materialized block before AbstractOperator has a chance to split it.
+              assertEquals(1, resultTsBlock.getPositionCount());
+              return super.checkTsBlockSizeAndGetResult();
+            }
+          }) {
+        // Closing the first finite lookahead after the NaNs releases three pending windows.
+        // The second partition has just one window and must emit F, its interior pick, then L.
+        int[] times = {0, 1, 3, 6, 9, 12, 14, 15, 16, 17};
+        int output = 0;
+        while (!operator.isFinished()) {
+          operator.isBlocked();
+          TsBlock block = operator.next();
+          if (block == null) {
+            continue;
+          }
+          int t = times[output++];
+          if (t <= 6) {
+            assertTrue(
+                "Ready windows should drain before reading the next input block", blocks.hasNext());
+          }
+          assertEquals(t < 15 ? t / 3 : 0, block.getColumn(0).getLong(0));
+          assertEquals(t < 15 ? 1 : 2, block.getColumn(1).getInt(0));
+          assertEquals(t, block.getColumn(2).getLong(0));
+          assertEquals(t >= 3 && t < 9 ? Double.NaN : t, block.getColumn(3).getDouble(0), 0.0);
+        }
+        assertEquals(times.length, output);
+      }
+    } finally {
+      config.setMaxTsBlockSizeInBytes(previousSize);
+      config.setMaxTsBlockLineNumber(previousRows);
     }
   }
 

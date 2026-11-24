@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BatchedTableFunctionDataProcessor;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
@@ -229,7 +230,8 @@ public class LTTBWindowMemoryTest {
   @Test
   public void testFiniteLookaheadBeyondNonFiniteBuckets() {
     for (boolean timeWindow : new boolean[] {false, true}) {
-      TableFunctionDataProcessor processor = processor(timeWindow, 3, 3, Type.DOUBLE);
+      BatchedTableFunctionDataProcessor processor =
+          (BatchedTableFunctionDataProcessor) processor(timeWindow, 3, 3, Type.DOUBLE);
       List<ColumnBuilder> builders = builders(timeWindow);
       try {
         processor.process(record(0, 0.0), builders, null);
@@ -242,7 +244,12 @@ public class LTTBWindowMemoryTest {
         processor.process(record(900, 45_000.0), builders, null);
         processor.process(record(901, (Number) null), builders, null);
         processor.process(record(902, (Number) null), builders, null);
-        processor.process(record(903, 0.0), builders, null);
+        processor.processInput(record(903, 0.0), builders, null);
+        assertEquals(0, builders.get(0).getPositionCount());
+        for (int row = 1; row <= 301; row++) {
+          assertEquals(row == 301, processor.drainOutput(builders, () -> true));
+          assertEquals(row, builders.get(0).getPositionCount());
+        }
         ColumnBuilder times = builders.get(timeWindow ? 2 : 1);
         // C lies on the line through t=0 and t=2, so t=1 wins once its lookahead closes.
         assertEquals(301, times.getPositionCount());
@@ -252,6 +259,29 @@ public class LTTBWindowMemoryTest {
         assertEquals(303, times.getPositionCount());
         assertEquals(900, times.build().getLong(301));
         assertEquals(903, times.build().getLong(302));
+      } finally {
+        processor.beforeDestroy();
+      }
+    }
+  }
+
+  @Test
+  public void testFinishSplitsThreeRowsOfOneWindow() {
+    for (boolean timeWindow : new boolean[] {false, true}) {
+      BatchedTableFunctionDataProcessor processor =
+          (BatchedTableFunctionDataProcessor) processor(timeWindow, 3, 3, Type.DOUBLE);
+      List<ColumnBuilder> builders = builders(timeWindow);
+      try {
+        for (int time = 0; time < 3; time++) {
+          processor.process(record(time, 5.0), builders, null);
+        }
+        for (int time = 0; time < 3; time++) {
+          assertEquals(time == 2, processor.finishBatch(builders, () -> true));
+          ColumnBuilder times = builders.get(timeWindow ? 2 : 1);
+          assertEquals(1, times.getPositionCount());
+          assertEquals(time, times.build().getLong(0));
+          builders = builders(timeWindow);
+        }
       } finally {
         processor.beforeDestroy();
       }
