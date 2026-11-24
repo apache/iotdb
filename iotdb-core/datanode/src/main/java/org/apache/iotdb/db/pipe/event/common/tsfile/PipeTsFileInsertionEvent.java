@@ -872,7 +872,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         if (Objects.isNull(tableNames)) {
           final Set<IDeviceID> devices = resource.getDevices();
           if (devices.isEmpty() && !resource.isEmpty()) {
-            throw new IOException();
+            throw new IOException(
+                DataNodePipeMessages
+                    .EXCEPTION_CANNOT_DETERMINE_TABLE_NAMES_BECAUSE_THE_NON_EMPTY_TSFILE_RESOURCE_HAS_NO_DEVICE_METADATA_6A0CBC2B);
           }
           tableNames = devices.stream().map(IDeviceID::getTableName).collect(Collectors.toSet());
         }

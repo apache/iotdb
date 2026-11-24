@@ -21,6 +21,10 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
   public static final String
+      EXCEPTION_CANNOT_DETERMINE_TABLE_NAMES_BECAUSE_THE_NON_EMPTY_TSFILE_RESOURCE_HAS_NO_DEVICE_METADATA_6A0CBC2B =
+          "Cannot determine table names because the non-empty TsFile resource has no device metadata.";
+
+  public static final String
       LOG_AIR_GAP_UDP_RECEIVE_BUFFER_IS_ARG_BYTES_BELOW_THE_REQUESTED_ARG_BYTES_INCREASE_THE_OPERATING_SYSTEM_RECEIVE_BUFFER_LIMIT_AND_RESTART_THE_DATANODE_TO_REDUCE_PACKET_LOSS_89B20AFC =
           "Air gap UDP receive buffer is {} bytes, below the requested {} bytes. Increase the operating system receive-buffer limit and restart the DataNode to reduce packet loss.";
 

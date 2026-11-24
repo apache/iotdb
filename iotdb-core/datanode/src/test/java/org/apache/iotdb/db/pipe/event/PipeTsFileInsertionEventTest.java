@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeCompactedTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -398,6 +399,50 @@ public class PipeTsFileInsertionEventTest {
         skipIfNoPrivilegesEvent.close();
       }
       AuthorityChecker.setAccessControl(oldControl);
+    }
+  }
+
+  @Test
+  public void testMissingDeviceMetadataFailsWithClearMessage() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeMissingDeviceMetadata").toFile();
+    final TsFileResource resource =
+        createSpyTsFileResource(tempDir, "missing-device-metadata.tsfile", 1L, 1);
+    Mockito.doReturn(Collections.emptySet()).when(resource).getDevices();
+    resource.setStatus(TsFileResourceStatus.NORMAL);
+
+    final PipeTsFileInsertionEvent event =
+        new PipeTsFileInsertionEvent(
+            true,
+            "db",
+            resource,
+            null,
+            false,
+            true,
+            true,
+            null,
+            null,
+            0,
+            null,
+            buildUnionPattern(false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+            new TablePattern(true, null, null),
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    try {
+      final PipeException exception =
+          Assert.assertThrows(PipeException.class, event::throwIfNoPrivilege);
+      Assert.assertTrue(exception.getCause() instanceof IOException);
+      Assert.assertEquals(
+          DataNodePipeMessages
+              .EXCEPTION_CANNOT_DETERMINE_TABLE_NAMES_BECAUSE_THE_NON_EMPTY_TSFILE_RESOURCE_HAS_NO_DEVICE_METADATA_6A0CBC2B,
+          exception.getCause().getMessage());
+      Assert.assertTrue(exception.getMessage().contains(resource.getTsFilePath()));
+    } finally {
+      event.close();
+      FileUtils.deleteFileOrDirectory(tempDir);
     }
   }
 
