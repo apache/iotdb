@@ -141,6 +141,7 @@ public class DriverContextTest {
     Assert.assertNull(threadError.get());
 
     Assert.assertTrue(driverContext.isDone());
+    Assert.assertTrue(driverContext.isFailureReported());
     Assert.assertEquals(Optional.of(causeA), spyContext.getFailureCause());
     Assert.assertEquals(1, stateMachine.getFailureCauses().size());
     Assert.assertTrue(exchange.sinkChannel.isAborted());

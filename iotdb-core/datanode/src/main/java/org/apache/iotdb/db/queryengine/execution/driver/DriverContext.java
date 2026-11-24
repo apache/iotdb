@@ -166,6 +166,13 @@ public class DriverContext {
     return finished.get();
   }
 
+  @TestOnly
+  boolean isFailureReported() {
+    synchronized (failureLock) {
+      return failureReported;
+    }
+  }
+
   public void setHaveTmpFile(boolean mayHaveTmpFile) {
     this.mayHaveTmpFile = mayHaveTmpFile;
   }
