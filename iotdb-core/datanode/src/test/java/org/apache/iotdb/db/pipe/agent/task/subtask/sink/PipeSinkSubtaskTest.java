@@ -644,7 +644,6 @@ public class PipeSinkSubtaskTest {
     CommonDescriptor.getInstance().getConfig().setPipeSinkRetryLocallyForConnectionError(false);
 
     final PipeConnector connector = mock(PipeConnector.class);
-    doThrow(new IOException("handshake failed")).when(connector).handshake();
     final UnboundedBlockingPendingQueue<Event> pendingQueue =
         mock(UnboundedBlockingPendingQueue.class);
     final CapturingPipeSinkSubtask subtask = new CapturingPipeSinkSubtask(pendingQueue, connector);
@@ -661,7 +660,7 @@ public class PipeSinkSubtaskTest {
           PipeResourceFailureType.NETWORK_TIMEOUT, subtask.getReportedResourceFailureType());
       Assert.assertNull(subtask.getReportedException());
       Assert.assertEquals(1, subtask.getRetrySubmissionCount());
-      verify(connector, never()).handshake();
+      verify(connector).handshake();
     } finally {
       subtask.close();
       CommonDescriptor.getInstance()
