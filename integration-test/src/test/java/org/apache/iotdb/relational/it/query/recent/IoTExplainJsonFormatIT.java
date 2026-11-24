@@ -27,9 +27,9 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import org.apache.ratis.thirdparty.com.google.gson.JsonArray;
+import org.apache.ratis.thirdparty.com.google.gson.JsonObject;
+import org.apache.ratis.thirdparty.com.google.gson.JsonParser;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
