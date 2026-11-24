@@ -389,6 +389,9 @@ public class PipeConfigTreePrivilegeParseVisitor
   }
 
   private boolean canShowSchemaTemplate(final String templateName, final String username) {
+    if (isAdmin(username)) {
+      return true;
+    }
     try {
       return ConfigNode.getInstance()
           .getConfigManager()
