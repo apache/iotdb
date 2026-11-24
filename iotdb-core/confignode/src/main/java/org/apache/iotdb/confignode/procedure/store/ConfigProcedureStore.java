@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.confignode.procedure.store;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
@@ -29,13 +32,19 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -71,12 +80,43 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
 
   @Override
   public List<Procedure<ConfigNodeProcedureEnv>> load() {
-    return procedureInfo.oldLoad();
+    return copyDeletionProcedures(procedureInfo.oldLoad());
   }
 
   @Override
   public List<Procedure<ConfigNodeProcedureEnv>> getProcedures() {
-    return procedureInfo.getProcedures();
+    return copyDeletionProcedures(procedureInfo.getProcedures());
+  }
+
+  private List<Procedure<ConfigNodeProcedureEnv>> copyDeletionProcedures(
+      List<Procedure<ConfigNodeProcedureEnv>> procedures) {
+    final List<Procedure<ConfigNodeProcedureEnv>> copies = new ArrayList<>(procedures.size());
+    for (Procedure<ConfigNodeProcedureEnv> procedure : procedures) {
+      try {
+        copies.add(copyDeletionProcedure(procedure));
+      } catch (IOException e) {
+        throw new IllegalStateException(ConfigNodeMessages.LOAD_PROCEDURE_WAL_FAILED, e);
+      }
+    }
+    return copies;
+  }
+
+  private Procedure<ConfigNodeProcedureEnv> copyDeletionProcedure(
+      Procedure<ConfigNodeProcedureEnv> procedure) throws IOException {
+    if (procedure instanceof DeleteTimeSeriesProcedure
+        || procedure instanceof DeleteDatabaseProcedure
+        || (procedure instanceof DropTableColumnProcedure
+            && !(procedure instanceof DropViewColumnProcedure))) {
+      // ProcedureInfo retains the last consensus-applied instance while ProcedureExecutor mutates
+      // its working procedure before persisting each transition. Sharing the instance would make
+      // an uncommitted state appear durable when a consensus write fails, corrupting retries and
+      // recovery. Round-trip through the update plan to isolate the stored and running copies.
+      return ((UpdateProcedurePlan)
+              ConfigPhysicalPlan.Factory.create(
+                  new UpdateProcedurePlan(procedure).serializeToByteBuffer()))
+          .getProcedure();
+    }
+    return procedure;
   }
 
   @Override
@@ -94,9 +134,13 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     Objects.requireNonNull(
         ProcedureFactory.getProcedureType(procedure),
         ConfigNodeMessages.EXCEPTION_PROCEDURE_TYPE_IS_NULL_93147BD3);
-    final UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan(procedure);
+    final UpdateProcedurePlan updateProcedurePlan =
+        new UpdateProcedurePlan(copyDeletionProcedure(procedure));
     try {
-      configManager.getConsensusManager().write(updateProcedurePlan);
+      final TSStatus status = configManager.getConsensusManager().write(updateProcedurePlan);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBException(status);
+      }
     } catch (ConsensusException e) {
       LOG.warn(
           ConfigNodeMessages.LOG_PID_ARG_FAILED_WRITE_UPDATE_API_EXECUTING_CONSENSUS_LAYER_824FB30E,

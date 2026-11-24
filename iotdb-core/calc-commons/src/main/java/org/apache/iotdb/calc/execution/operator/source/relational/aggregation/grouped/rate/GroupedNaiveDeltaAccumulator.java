@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.rate;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.TimeValueBufferBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.RateFunctionIntermediateStateCodec;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.RateFunctionType;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.rate.RateFunctionValidation;

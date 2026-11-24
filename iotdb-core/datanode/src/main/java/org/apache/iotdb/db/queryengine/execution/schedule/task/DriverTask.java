@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.schedule.DriverTaskAbortedException;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverTaskThread;
 import org.apache.iotdb.db.queryengine.execution.schedule.ExecutionContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
@@ -53,7 +54,7 @@ public class DriverTask implements IDIndexedAccessible {
 
   private final boolean isHighestPriority;
 
-  private Throwable abortCause;
+  private final AtomicReference<Throwable> abortCause = new AtomicReference<>();
 
   private final AtomicReference<Priority> priority;
 
@@ -165,11 +166,26 @@ public class DriverTask implements IDIndexedAccessible {
   }
 
   public Optional<Throwable> getAbortCause() {
-    return Optional.ofNullable(abortCause);
+    return Optional.ofNullable(abortCause.get());
   }
 
   public void setAbortCause(Throwable abortCause) {
-    this.abortCause = abortCause;
+    if (abortCause == null) {
+      return;
+    }
+    // Preserve the first genuine failure, while allowing a genuine failure to replace an earlier
+    // synthetic DriverTaskAbortedException fallback (e.g., BY_INTERNAL_ERROR_SCHEDULED).
+    this.abortCause.updateAndGet(
+        existing -> {
+          if (existing == null) {
+            return abortCause;
+          }
+          if (existing instanceof DriverTaskAbortedException
+              && !(abortCause instanceof DriverTaskAbortedException)) {
+            return abortCause;
+          }
+          return existing;
+        });
   }
 
   public SettableFuture<Void> getBlockedDependencyDriver() {

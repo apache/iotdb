@@ -152,6 +152,7 @@ public class IoTConsensusServerImpl {
   private final Set<Peer> configuration = ConcurrentHashMap.newKeySet();
   private final AtomicLong searchIndex;
   private final Object retentionPublicationLock = new Object();
+  private boolean recoveringPeerConfiguration;
   private final LogDispatcher logDispatcher;
   private IoTConsensusConfig config;
   private final ConsensusReqReader consensusReqReader;
@@ -249,6 +250,7 @@ public class IoTConsensusServerImpl {
     this.cacheQueueMap = new ConcurrentHashMap<>();
     this.syncClientManager = syncClientManager;
     this.configuration.addAll(configuration);
+    this.recoveringPeerConfiguration = configuration.isEmpty();
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.userDataTransferAuditHandler = userDataTransferAuditHandler;
@@ -271,10 +273,18 @@ public class IoTConsensusServerImpl {
   }
 
   public void start() {
-    checkAndUpdateIndex();
+    synchronized (retentionPublicationLock) {
+      checkAndUpdateIndex();
+    }
     MetricService.getInstance().addMetricSet(this.ioTConsensusServerMetrics);
     stateMachine.start();
     logDispatcher.start();
+  }
+
+  void markPeerConfigurationRecovered() {
+    synchronized (retentionPublicationLock) {
+      recoveringPeerConfiguration = false;
+    }
   }
 
   public void stop() {
@@ -1486,6 +1496,9 @@ public class IoTConsensusServerImpl {
    */
   public void checkAndUpdateSafeDeletedSearchIndex() {
     synchronized (retentionPublicationLock) {
+      if (recoveringPeerConfiguration) {
+        return;
+      }
       if (configuration.isEmpty()) {
         logger.error(IoTConsensusMessages.CONFIGURATION_EMPTY_UNEXPECTED);
         return;

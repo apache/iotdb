@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.listener;
 
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeDataRegionAssigner;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
@@ -34,6 +36,35 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class PipeInsertionDataNodeListenerTest {
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testRegionDeletionDrainsAssignerAndBlocksLateRegistration() throws Exception {
+    final PipeInsertionDataNodeListener listener = PipeInsertionDataNodeListener.getInstance();
+    final Field field =
+        PipeInsertionDataNodeListener.class.getDeclaredField("dataRegionId2Assigner");
+    field.setAccessible(true);
+    final ConcurrentMap<Integer, PipeDataRegionAssigner> assigners =
+        (ConcurrentMap<Integer, PipeDataRegionAssigner>) field.get(listener);
+    final int id = Integer.MIN_VALUE + 2;
+    final PipeDataRegionAssigner assigner = mock(PipeDataRegionAssigner.class);
+    assigners.put(id, assigner);
+    try {
+      listener.releaseDataRegion(id);
+      verify(assigner).close();
+      Assert.assertFalse(assigners.containsKey(id));
+      listener.startListenAndAssign(id, mock(PipeRealtimeDataRegionSource.class));
+      Assert.assertFalse(assigners.containsKey(id));
+      listener.onRegionCreated(id);
+      assigners.put(id, assigner);
+      final PipeRealtimeDataRegionSource source = mock(PipeRealtimeDataRegionSource.class);
+      listener.startListenAndAssign(id, source);
+      verify(assigner).startAssignTo(source);
+    } finally {
+      assigners.remove(id);
+      listener.onRegionCreated(id);
+    }
+  }
 
   @Test
   @SuppressWarnings("unchecked")

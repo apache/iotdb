@@ -104,7 +104,7 @@ public class IoTDBRecreatedTimeseriesCompactionIT {
       statement.execute("INSERT INTO root.repro(time, s1) VALUES (1, 1)");
       statement.execute("FLUSH");
 
-      statement.execute("DELETE TIMESERIES root.repro.s1");
+      TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES root.repro.s1");
       statement.execute("CREATE TIMESERIES root.repro.s1 WITH DATATYPE=INT64");
       statement.execute("INSERT INTO root.repro(time, s1) VALUES (2, 2)");
       statement.execute("FLUSH");

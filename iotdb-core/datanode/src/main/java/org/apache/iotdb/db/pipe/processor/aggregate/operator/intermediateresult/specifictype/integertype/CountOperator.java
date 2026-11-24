@@ -33,7 +33,7 @@ import java.time.LocalDate;
 import java.util.Map;
 
 public class CountOperator implements IntermediateResultOperator {
-  private int count;
+  private long count;
 
   @Override
   public String getName() {
@@ -135,7 +135,7 @@ public class CountOperator implements IntermediateResultOperator {
 
   @Override
   public Pair<TSDataType, Object> getResult() {
-    return new Pair<>(TSDataType.INT32, count);
+    return new Pair<>(TSDataType.INT64, count);
   }
 
   @Override
@@ -145,6 +145,15 @@ public class CountOperator implements IntermediateResultOperator {
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) throws IOException {
-    count = ReadWriteIOUtils.readInt(byteBuffer);
+    count = ReadWriteIOUtils.readLong(byteBuffer);
+  }
+
+  @Override
+  public void deserialize(final ByteBuffer byteBuffer, final int stateFormatVersion)
+      throws IOException {
+    count =
+        stateFormatVersion == LEGACY_STATE_FORMAT_VERSION
+            ? ReadWriteIOUtils.readInt(byteBuffer)
+            : ReadWriteIOUtils.readLong(byteBuffer);
   }
 }

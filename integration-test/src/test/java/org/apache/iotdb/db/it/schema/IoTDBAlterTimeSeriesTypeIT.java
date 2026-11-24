@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.utils.MetadataUtils;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -348,8 +349,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
       }
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-        session.executeNonQueryStatement(
-            "DELETE TIMESERIES " + database + ".write_and_alter_column_type.s1");
+        TestUtils.deleteTimeSeries(
+            session, "DELETE TIMESERIES " + database + ".write_and_alter_column_type.s1");
       }
     }
   }
@@ -428,8 +429,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
       standardAccumulatorQueryByTimeInvolveAllDataTypeTest(session, from, to);
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-        session.executeNonQueryStatement(
-            "DELETE TIMESERIES " + database + ".write_and_alter_column_type_write.s1");
+        TestUtils.deleteTimeSeries(
+            session, "DELETE TIMESERIES " + database + ".write_and_alter_column_type_write.s1");
       }
     }
   }
@@ -512,8 +513,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
       assertFalse(dataSet.hasNext());
 
-      session.executeNonQueryStatement(
-          "DELETE TIMESERIES " + database + ".just_alter_column_type.**");
+      TestUtils.deleteTimeSeries(
+          session, "DELETE TIMESERIES " + database + ".just_alter_column_type.**");
     }
   }
 
@@ -1155,7 +1156,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
             resourceFile.delete();
           });
       filesToLoad.clear();
-      session.executeNonQueryStatement("DELETE TIMESERIES root.sg1.d1.s1");
+      TestUtils.deleteTimeSeries(session, "DELETE TIMESERIES root.sg1.d1.s1");
     }
   }
 
@@ -1285,8 +1286,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }
@@ -1425,8 +1426,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }
@@ -1555,8 +1556,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }
@@ -1688,8 +1689,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }
@@ -1818,8 +1819,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }
@@ -1949,8 +1950,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                     "show timeseries " + database + ".construct_and_alter_column_type.**", timeout)
                 .hasNext();
         if (isExist) {
-          session.executeNonQueryStatement(
-              "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
+          TestUtils.deleteTimeSeries(
+              session, "DELETE TIMESERIES " + database + ".construct_and_alter_column_type.**");
         }
       }
     }

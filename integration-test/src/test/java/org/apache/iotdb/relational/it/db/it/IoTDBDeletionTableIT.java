@@ -3690,7 +3690,7 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
-  public void testDropAndAlter() throws IoTDBConnectionException, StatementExecutionException {
+  public void testDropAndAlter() throws Exception {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
       session.executeNonQueryStatement("CREATE TABLE IF NOT EXISTS drop_and_alter (s1 int32)");
 
@@ -3720,6 +3720,7 @@ public class IoTDBDeletionTableIT {
       tablet.reset();
 
       session.executeNonQueryStatement("ALTER TABLE drop_and_alter DROP COLUMN s1");
+      TestUtils.waitForColumnDeletion(EnvFactory.getEnv(), "test", "drop_and_alter", "s1");
 
       // time=3 and time=4 are STRING
       tablet =
@@ -3747,6 +3748,7 @@ public class IoTDBDeletionTableIT {
       tablet.reset();
 
       session.executeNonQueryStatement("ALTER TABLE drop_and_alter DROP COLUMN s1");
+      TestUtils.waitForColumnDeletion(EnvFactory.getEnv(), "test", "drop_and_alter", "s1");
       session.executeNonQueryStatement("ALTER TABLE drop_and_alter ADD COLUMN s1 TEXT");
 
       // time=5 and time=6 are TEXT

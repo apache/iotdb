@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
+  public static final String
+      LOG_AIR_GAP_UDP_RECEIVE_BUFFER_IS_ARG_BYTES_BELOW_THE_REQUESTED_ARG_BYTES_INCREASE_THE_OPERATING_SYSTEM_RECEIVE_BUFFER_LIMIT_AND_RESTART_THE_DATANODE_TO_REDUCE_PACKET_LOSS_89B20AFC =
+          "Air gap UDP 接收缓冲区实际为 {} 字节，小于请求的 {} 字节。请提高操作系统接收缓冲区上限并重启 DataNode，以减少丢包。";
+
   public static final String LOG_SUBSCRIPTION_REPLAY_STALLED_FOR_ARG_MS_ARG_DIAGNOSTICS_ARG_INSPECT_PREFETCH_WORKER_STACKS_AND_WAL_I_O_CB012F98 =
       "订阅回放已停滞 {} ms：{}；diagnostics={}。请检查预取工作线程栈和 WAL I/O。";
 
@@ -2954,4 +2958,8 @@ public final class DataNodePipeMessages {
   public static final String
       EXCEPTION_FAILED_TO_PIN_THE_TSFILE_ARG_BY_CREATING_A_HARDLINK_AND_THE_TSFILE_CAN_NOT_BE_COPIED_BECAUSE_IT_IS_NOT_CLOSED_YET_4E346D68 =
           "通过创建硬链接固化 TsFile %s 失败，且该 TsFile 尚未关闭，无法改为拷贝";
+  public static final String EXCEPTION_DELETION_RESOURCE_MANAGER_FOR_DATAREGION_ARG_IS_CLOSED_OR_DELETED_951C0622 =
+      "DataRegion %s 的删除资源管理器已关闭或已删除。";
+  public static final String LOG_DELETION_PERSIST_ARG_TIMED_OUT_WAITING_FOR_ARG_DELETIONS_TO_FLUSH_BEFORE_SHUTDOWN_52469B0D =
+      "Deletion persist-{}：关闭前等待 {} 条删除记录持久化超时。";
 }

@@ -46,6 +46,7 @@ import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDua
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,6 +62,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -390,6 +392,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         }
         return;
       } catch (final Exception e) {
+        if (!isRetryablePipeFailure(e)) {
+          throw new AssertionError("Pipe replication failed due to a non-transient failure", e);
+        }
         if (retry < 4) {
           IoTDBTestLogger.logger.warn(
               "Retrying table pipe leader-stop scenario after attempt {}", retry + 1, e);
@@ -416,10 +421,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
               try {
                 TableModelUtils.insertData(database, database, 200, 300, senderEnv);
               } catch (final RuntimeException e) {
-                if (e.getCause() instanceof SQLException sqlException
-                    && sqlException.getMessage() != null
-                    && (sqlException.getMessage().contains("Connection reset by peer")
-                        || sqlException.getMessage().contains("Connection refused"))) {
+                if (isTransientRpcFailure(e)) {
                   throw new AssertionError(
                       "DataNode internal RPC connections have not recovered after leader restart",
                       e);
@@ -427,6 +429,49 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
                 throw e;
               }
             });
+  }
+
+  private static boolean isTransientRpcFailure(final Throwable failure) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof SQLException sqlException) {
+        for (SQLException nextException = sqlException;
+            nextException != null;
+            nextException = nextException.getNextException()) {
+          if (isTransientRpcFailureMessage(nextException.getMessage())) {
+            return true;
+          }
+        }
+      }
+
+      if (isTransientRpcFailureMessage(cause.getMessage())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isRetryablePipeFailure(final Throwable failure) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof ConditionTimeoutException) {
+        return false;
+      }
+    }
+    return isTransientRpcFailure(failure);
+  }
+
+  private static boolean isTransientRpcFailureMessage(final String message) {
+    if (message == null) {
+      return false;
+    }
+
+    final String lowerCaseMessage = message.toLowerCase(Locale.ROOT);
+    return lowerCaseMessage.contains("connection reset")
+        || lowerCaseMessage.contains("connection refused")
+        || lowerCaseMessage.contains("broken pipe")
+        || lowerCaseMessage.contains("socket is closed by peer")
+        || lowerCaseMessage.contains("connection aborted")
+        || lowerCaseMessage.contains("forcibly closed by the remote host")
+        || lowerCaseMessage.contains("aborted by the software in your host machine");
   }
 
   private int restartTableDataRegionLeader(

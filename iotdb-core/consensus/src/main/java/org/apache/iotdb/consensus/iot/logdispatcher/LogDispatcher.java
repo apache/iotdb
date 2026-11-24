@@ -105,7 +105,11 @@ public class LogDispatcher {
 
   public synchronized void start() {
     if (!threads.isEmpty()) {
-      threads.forEach(logDispatcherThread -> executorService.submit(logDispatcherThread));
+      threads.forEach(
+          logDispatcherThread -> {
+            logDispatcherThread.markSubmitted();
+            executorService.submit(logDispatcherThread);
+          });
     }
   }
 
@@ -140,6 +144,7 @@ public class LogDispatcher {
       initLogSyncThreadPool();
     }
     if (startNow) {
+      thread.markSubmitted();
       executorService.submit(thread);
     }
   }
@@ -309,6 +314,7 @@ public class LogDispatcher {
     private final LogDispatcherThreadMetrics logDispatcherThreadMetrics;
 
     private final CountDownLatch runFinished = new CountDownLatch(1);
+    private volatile boolean submitted;
     private volatile long lastIdleWriterSafeTimeBarrierSentTimeMs = 0L;
 
     public LogDispatcherThread(Peer peer, IoTConsensusConfig config, long initialSyncIndex) {
@@ -385,8 +391,15 @@ public class LogDispatcher {
       processStopped();
     }
 
+    private void markSubmitted() {
+      submitted = true;
+    }
+
     private void setStopped() {
       stopped = true;
+      if (!submitted) {
+        runFinished.countDown();
+      }
     }
 
     private void processStopped() {
