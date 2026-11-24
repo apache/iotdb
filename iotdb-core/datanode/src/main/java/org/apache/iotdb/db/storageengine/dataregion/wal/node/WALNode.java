@@ -107,6 +107,7 @@ public class WALNode implements IWALNode {
   // used to avoid write amplification caused by frequent snapshot
   private final Map<Long, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
   // insert nodes whose search index are before this value can be deleted safely
+  private final Object walRetentionLock = new Object();
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
   private volatile boolean deleted = false;
@@ -242,13 +243,14 @@ public class WALNode implements IWALNode {
     private File[] sortedWalFilesExcludingLast;
 
     private List<MemTableInfo> activeOrPinnedMemTables;
+    private long cachedSafelyDeletedSearchIndex;
+    private int fileIndexAfterFilterSafelyDeleteIndex;
 
     private static final int MAX_RECURSION_TIME = 5;
 
     // the effective information ratio
     private double effectiveInfoRatio = 1.0d;
 
-    private int fileIndexAfterFilterSafelyDeleteIndex = Integer.MAX_VALUE;
     private List<Long> successfullyDeleted;
     private long deleteFileSize;
 
@@ -273,7 +275,7 @@ public class WALNode implements IWALNode {
       this.sortedWalFilesExcludingLast =
           Arrays.copyOfRange(allWalFilesOfOneNode, 0, allWalFilesOfOneNode.length - 1);
       this.activeOrPinnedMemTables = checkpointManager.activeOrPinnedMemTables();
-      this.fileIndexAfterFilterSafelyDeleteIndex = initFileIndexAfterFilterSafelyDeleteIndex();
+      updateFileIndexAfterFilterSafelyDeleteIndex();
       this.successfullyDeleted = new ArrayList<>();
       this.deleteFileSize = 0;
       return true;
@@ -362,15 +364,17 @@ public class WALNode implements IWALNode {
         File currentWal = sortedWalFilesExcludingLast[fileArrIdx];
         WALFileStatus walFileStatus = WALFileUtils.parseStatusCode(currentWal.getName());
         long versionId = WALFileUtils.parseVersionId(currentWal.getName());
-        if (canDeleteFile(fileArrIdx, walFileStatus, versionId)) {
-          long fileSize = currentWal.length();
-          if (currentWal.delete()) {
-            deleteFileSize += fileSize;
-            buffer.removeMemTableIdsOfWal(versionId);
-            successfullyDeleted.add(versionId);
-          } else {
-            logger.info(
-                "Fail to delete outdated wal file {} of wal node-{}.", currentWal, identifier);
+        synchronized (walRetentionLock) {
+          if (canDeleteFile(fileArrIdx, walFileStatus, versionId)) {
+            long fileSize = currentWal.length();
+            if (currentWal.delete()) {
+              deleteFileSize += fileSize;
+              buffer.removeMemTableIdsOfWal(versionId);
+              successfullyDeleted.add(versionId);
+            } else {
+              logger.info(
+                  "Fail to delete outdated wal file {} of wal node-{}.", currentWal, identifier);
+            }
           }
         }
       }
@@ -378,11 +382,13 @@ public class WALNode implements IWALNode {
       buffer.subtractFileNum(successfullyDeleted.size());
     }
 
-    private int initFileIndexAfterFilterSafelyDeleteIndex() {
-      return safelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
-          ? sortedWalFilesExcludingLast.length
-          : WALFileUtils.binarySearchFileBySearchIndex(
-              sortedWalFilesExcludingLast, safelyDeletedSearchIndex + 1);
+    private void updateFileIndexAfterFilterSafelyDeleteIndex() {
+      cachedSafelyDeletedSearchIndex = safelyDeletedSearchIndex;
+      fileIndexAfterFilterSafelyDeleteIndex =
+          cachedSafelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
+              ? sortedWalFilesExcludingLast.length
+              : WALFileUtils.binarySearchFileBySearchIndex(
+                  sortedWalFilesExcludingLast, cachedSafelyDeletedSearchIndex + 1);
     }
 
     /** Return true iff effective information ratio is too small or disk usage is too large. */
@@ -548,6 +554,9 @@ public class WALNode implements IWALNode {
     }
 
     private boolean canDeleteFile(long fileArrIdx, WALFileStatus walFileStatus, long versionId) {
+      if (cachedSafelyDeletedSearchIndex != safelyDeletedSearchIndex) {
+        updateFileIndexAfterFilterSafelyDeleteIndex();
+      }
       return (fileArrIdx < fileIndexAfterFilterSafelyDeleteIndex
               || walFileStatus == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)
           && !isContainsActiveOrPinnedMemTable(versionId);
@@ -559,7 +568,9 @@ public class WALNode implements IWALNode {
   // region Search interfaces for consensus group
   @Override
   public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
-    this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+    synchronized (walRetentionLock) {
+      this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+    }
   }
 
   /** This iterator is not concurrency-safe, cannot read the current-writing wal file. */

@@ -116,6 +116,8 @@ public class IoTConsensusServerImpl {
   private final String storageDir;
   private final TreeSet<Peer> configuration;
   private final AtomicLong searchIndex;
+  private final Object retentionPublicationLock = new Object();
+  private boolean recoveringPeerConfiguration;
   private final LogDispatcher logDispatcher;
   private IoTConsensusConfig config;
   private final ConsensusReqReader consensusReqReader;
@@ -144,6 +146,7 @@ public class IoTConsensusServerImpl {
     this.cacheQueueMap = new ConcurrentHashMap<>();
     this.syncClientManager = syncClientManager;
     this.configuration = configuration;
+    this.recoveringPeerConfiguration = configuration.isEmpty();
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
@@ -159,10 +162,18 @@ public class IoTConsensusServerImpl {
   }
 
   public void start() {
-    checkAndUpdateIndex();
+    synchronized (retentionPublicationLock) {
+      checkAndUpdateIndex();
+    }
     MetricService.getInstance().addMetricSet(this.ioTConsensusServerMetrics);
     stateMachine.start();
     logDispatcher.start();
+  }
+
+  void markPeerConfigurationRecovered() {
+    synchronized (retentionPublicationLock) {
+      recoveringPeerConfiguration = false;
+    }
   }
 
   public void stop() {
@@ -577,6 +588,10 @@ public class IoTConsensusServerImpl {
     }
   }
 
+  public void waitNewPeerUntilSyncLogCompleted(Peer peer) throws ConsensusGroupModifyPeerException {
+    logDispatcher.waitUntilSyncLogCompleted(peer, getSearchIndex(), TimeUnit.MINUTES.toMillis(10));
+  }
+
   public void waitTargetPeerUntilSyncLogCompleted(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
     long checkIntervalInMs = 10_000L;
@@ -659,21 +674,31 @@ public class IoTConsensusServerImpl {
 
   /** build SyncLog channel with safeIndex as the default initial sync index. */
   public void buildSyncLogChannel(Peer targetPeer, boolean startNow) {
-    buildSyncLogChannel(targetPeer, getMinSyncIndex(), startNow);
+    stateMachineLock.lock();
+    try {
+      synchronized (retentionPublicationLock) {
+        buildSyncLogChannel(targetPeer, getMinSyncIndex(), startNow);
+      }
+    } finally {
+      stateMachineLock.unlock();
+    }
   }
 
   public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex, boolean startNow) {
-    KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
-    configuration.add(targetPeer);
-    if (Objects.equals(targetPeer, thisNode)) {
-      return;
+    synchronized (retentionPublicationLock) {
+      KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
+      configuration.add(targetPeer);
+      if (Objects.equals(targetPeer, thisNode)) {
+        return;
+      }
+      logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex, startNow);
+      checkAndUpdateSafeDeletedSearchIndex();
+      logger.info(
+          "[IoTConsensus] Successfully build sync log channel to {} with initialSyncIndex {}. {}",
+          targetPeer,
+          initialSyncIndex,
+          startNow ? "Sync log channel has started." : "Sync log channel maybe start later.");
     }
-    logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex, startNow);
-    logger.info(
-        "[IoTConsensus] Successfully build sync log channel to {} with initialSyncIndex {}. {}",
-        targetPeer,
-        initialSyncIndex,
-        startNow ? "Sync log channel has started." : "Sync log channel maybe start later.");
   }
 
   /**
@@ -870,13 +895,18 @@ public class IoTConsensusServerImpl {
    * latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
    */
   void checkAndUpdateSafeDeletedSearchIndex() {
-    if (configuration.isEmpty()) {
-      logger.error(
-          "Configuration is empty, which is unexpected. Safe deleted search index won't be updated this time.");
-    } else if (configuration.size() == 1) {
-      consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
-    } else {
-      consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
+    synchronized (retentionPublicationLock) {
+      if (recoveringPeerConfiguration) {
+        return;
+      }
+      if (configuration.isEmpty()) {
+        logger.error(
+            "Configuration is empty, which is unexpected. Safe deleted search index won't be updated this time.");
+      } else if (configuration.size() == 1) {
+        consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+      } else {
+        consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
+      }
     }
   }
 

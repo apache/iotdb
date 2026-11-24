@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
@@ -101,7 +102,11 @@ public class LogDispatcher {
 
   public synchronized void start() {
     if (!threads.isEmpty()) {
-      threads.forEach(logDispatcherThread -> executorService.submit(logDispatcherThread));
+      threads.forEach(
+          logDispatcherThread -> {
+            logDispatcherThread.markSubmitted();
+            executorService.submit(logDispatcherThread);
+          });
     }
   }
 
@@ -136,6 +141,7 @@ public class LogDispatcher {
       initLogSyncThreadPool();
     }
     if (startNow) {
+      thread.markSubmitted();
       executorService.submit(thread);
     }
   }
@@ -165,6 +171,41 @@ public class LogDispatcher {
 
   public synchronized OptionalLong getMinFlushedSyncIndex() {
     return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedSyncIndex).min();
+  }
+
+  public void waitUntilSyncLogCompleted(Peer peer, long targetIndex, long timeoutMs)
+      throws ConsensusGroupModifyPeerException {
+    LogDispatcherThread thread = null;
+    synchronized (this) {
+      for (LogDispatcherThread candidate : threads) {
+        if (candidate.getPeer().equals(peer)) {
+          thread = candidate;
+          break;
+        }
+      }
+    }
+    if (thread == null) {
+      throw new ConsensusGroupModifyPeerException(new IllegalStateException());
+    }
+    final long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+    while (true) {
+      if (thread.replicationFailure != null) {
+        throw new ConsensusGroupModifyPeerException(thread.replicationFailure);
+      }
+      if (thread.stopped) {
+        throw new ConsensusGroupModifyPeerException(new IllegalStateException());
+      }
+      if (thread.getCurrentSyncIndex() >= targetIndex) return;
+      if (System.nanoTime() >= deadline) {
+        throw new ConsensusGroupModifyPeerException(new java.util.concurrent.TimeoutException());
+      }
+      try {
+        TimeUnit.MILLISECONDS.sleep(100);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new ConsensusGroupModifyPeerException(e);
+      }
+    }
   }
 
   public void checkAndFlushIndex() {
@@ -229,6 +270,7 @@ public class LogDispatcher {
         (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
     private final IoTConsensusMemoryManager iotConsensusMemoryManager =
         IoTConsensusMemoryManager.getInstance();
+    private volatile Exception replicationFailure;
     private volatile boolean stopped = false;
 
     private final ConsensusReqReader.ReqIterator walEntryIterator;
@@ -236,6 +278,7 @@ public class LogDispatcher {
     private final LogDispatcherThreadMetrics logDispatcherThreadMetrics;
 
     private final CountDownLatch runFinished = new CountDownLatch(1);
+    private volatile boolean submitted;
 
     public LogDispatcherThread(Peer peer, IoTConsensusConfig config, long initialSyncIndex) {
       this.peer = peer;
@@ -311,8 +354,13 @@ public class LogDispatcher {
       processStopped();
     }
 
+    private void markSubmitted() {
+      submitted = true;
+    }
+
     private void setStopped() {
       stopped = true;
+      if (!submitted) runFinished.countDown();
     }
 
     private void processStopped() {
@@ -386,6 +434,7 @@ public class LogDispatcher {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       } catch (Exception e) {
+        replicationFailure = e;
         logger.error("Unexpected error in logDispatcher for peer {}", peer, e);
       }
       runFinished.countDown();
@@ -453,9 +502,8 @@ public class LogDispatcher {
         // Prevents gap between logs. For example, some requests are not written into the queue when
         // the queue is full. In this case, requests need to be loaded from the WAL
         if (startIndex != prev.getSearchIndex()) {
-          boolean hasCorruptedData =
-              constructBatchFromWAL(startIndex, prev.getSearchIndex(), batches);
-          if (hasCorruptedData || !batches.canAccumulate()) {
+          constructBatchFromWAL(startIndex, prev.getSearchIndex(), batches);
+          if (!batches.canAccumulate()) {
             batches.buildIndex();
             logger.debug(
                 "{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batches);
@@ -478,9 +526,8 @@ public class LogDispatcher {
           // Prevents gap between logs. For example, some logs are not written into the queue when
           // the queue is full. In this case, requests need to be loaded from the WAL
           if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
-            boolean hasCorruptedData =
-                constructBatchFromWAL(prev.getSearchIndex() + 1, current.getSearchIndex(), batches);
-            if (hasCorruptedData || !batches.canAccumulate()) {
+            constructBatchFromWAL(prev.getSearchIndex() + 1, current.getSearchIndex(), batches);
+            if (!batches.canAccumulate()) {
               batches.buildIndex();
               logger.debug(
                   "gap {} : accumulated a {} from queue and wal when gap",
@@ -526,14 +573,13 @@ public class LogDispatcher {
       return syncStatus;
     }
 
-    private boolean constructBatchFromWAL(long currentIndex, long maxIndex, Batch logBatches) {
+    private void constructBatchFromWAL(long currentIndex, long maxIndex, Batch logBatches) {
       logger.debug(
           "DataRegion[{}]->{}: currentIndex: {}, maxIndex: {}",
           peer.getGroupId().getId(),
           peer.getEndpoint().getIp(),
           currentIndex,
           maxIndex);
-      boolean hasCorruptedData = false;
       // targetIndex is the index of request that we need to find
       long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.
@@ -555,12 +601,7 @@ public class LogDispatcher {
               data.getSearchIndex());
           continue;
         } else if (data.getSearchIndex() > targetIndex) {
-          logger.warn(
-              "search for one Entry which index is {}, but find a larger one, index : {}."
-                  + "Perhaps the wal file is corrupted, in which case we skip it and choose a larger index to replicate",
-              targetIndex,
-              data.getSearchIndex());
-          hasCorruptedData = true;
+          throw new IllegalStateException();
         }
         targetIndex = data.getSearchIndex() + 1;
         data.buildSerializedRequests();
@@ -569,9 +610,6 @@ public class LogDispatcher {
             new TLogEntry(
                 data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize()));
       }
-      // In the case of corrupt Data, we return true so that we can send a batch as soon as
-      // possible, avoiding potential duplication
-      return hasCorruptedData;
     }
 
     private void constructBatchIndexedFromConsensusRequest(

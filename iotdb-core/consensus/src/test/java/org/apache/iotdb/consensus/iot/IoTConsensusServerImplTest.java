@@ -23,10 +23,16 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
+import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher;
+import org.apache.iotdb.consensus.iot.util.FakeConsensusReqReader;
+import org.apache.iotdb.consensus.iot.util.RequestSets;
 import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -35,20 +41,203 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.List;
 import java.util.TreeSet;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class IoTConsensusServerImplTest {
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+  @Test
+  public void testRecoveryDoesNotPublishWalBoundaryUntilPeerListIsRestored() throws Exception {
+    AtomicLong boundary = new AtomicLong();
+    AtomicInteger boundaryUpdates = new AtomicInteger();
+    FakeConsensusReqReader reader =
+        new FakeConsensusReqReader(new RequestSets(Collections.emptySet())) {
+          @Override
+          public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
+            boundary.set(safelyDeletedSearchIndex);
+            boundaryUpdates.incrementAndGet();
+          }
+        };
+    ScheduledExecutorService background = Executors.newSingleThreadScheduledExecutor();
+    Peer self = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    Peer peer = new Peer(new DataRegionId(1), 1, new TEndPoint("127.0.0.1", 6668));
+    IoTConsensusServerImpl server =
+        new IoTConsensusServerImpl(
+            temporaryFolder.getRoot().getAbsolutePath(),
+            self,
+            new TreeSet<>(),
+            new TestStateMachine() {
+              @Override
+              public synchronized DataSet read(IConsensusRequest request) {
+                return reader;
+              }
+            },
+            background,
+            null,
+            null,
+            IoTConsensusConfig.newBuilder().build());
+    try {
+      server.buildSyncLogChannel(self, false);
+      server.buildSyncLogChannel(peer, false);
+      assertEquals(0, boundaryUpdates.get());
+
+      server.markPeerConfigurationRecovered();
+      server.checkAndUpdateSafeDeletedSearchIndex();
+
+      assertEquals(1, boundaryUpdates.get());
+      assertFalse(boundary.get() == Long.MAX_VALUE);
+    } finally {
+      server.stop();
+      background.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testNewPeerImmediatelyProtectsWALAndCatchupTimesOut() throws Exception {
+    AtomicLong boundary = new AtomicLong();
+    FakeConsensusReqReader reader =
+        new FakeConsensusReqReader(new RequestSets(Collections.emptySet())) {
+          @Override
+          public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
+            boundary.set(safelyDeletedSearchIndex);
+          }
+        };
+    ScheduledExecutorService background = Executors.newSingleThreadScheduledExecutor();
+    Peer self = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    Peer peer = new Peer(new DataRegionId(1), 1, new TEndPoint("127.0.0.1", 6668));
+    IoTConsensusServerImpl server = newRetentionTestServer(self, reader, background);
+    try {
+      server.getIndexObject().set(10);
+      server.checkAndUpdateSafeDeletedSearchIndex();
+      assertEquals(Long.MAX_VALUE, boundary.get());
+      server.buildSyncLogChannel(peer, false);
+      assertEquals(10, boundary.get());
+      server.getLogDispatcher().waitUntilSyncLogCompleted(peer, 10, 100);
+      assertThrows(
+          ConsensusGroupModifyPeerException.class,
+          () -> server.getLogDispatcher().waitUntilSyncLogCompleted(peer, 11, 1));
+    } finally {
+      server.stop();
+      background.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testMissingWALCannotProduceAnAcknowledgableBatch() throws Exception {
+    FakeConsensusReqReader reader =
+        new FakeConsensusReqReader(new RequestSets(Collections.emptySet())) {
+          @Override
+          public ReqIterator getReqIterator(long startIndex) {
+            return new ReqIterator() {
+              @Override
+              public boolean hasNext() {
+                return true;
+              }
+
+              @Override
+              public IndexedConsensusRequest next() {
+                return new IndexedConsensusRequest(4, Collections.emptyList());
+              }
+
+              @Override
+              public void waitForNextReady() {}
+
+              @Override
+              public void waitForNextReady(long time, TimeUnit unit) {}
+
+              @Override
+              public void skipTo(long targetIndex) {}
+            };
+          }
+        };
+    ScheduledExecutorService background = Executors.newSingleThreadScheduledExecutor();
+    Peer self = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    Peer peer = new Peer(new DataRegionId(1), 1, new TEndPoint("127.0.0.1", 6668));
+    IoTConsensusServerImpl server = newRetentionTestServer(self, reader, background);
+    try {
+      server.getIndexObject().set(4);
+      server.buildSyncLogChannel(peer, 0, false);
+      Field threadsField = LogDispatcher.class.getDeclaredField("threads");
+      threadsField.setAccessible(true);
+      @SuppressWarnings("unchecked")
+      List<LogDispatcher.LogDispatcherThread> threads =
+          (List<LogDispatcher.LogDispatcherThread>) threadsField.get(server.getLogDispatcher());
+      LogDispatcher.LogDispatcherThread thread = threads.get(0);
+      assertThrows(IllegalStateException.class, thread::getBatch);
+      assertEquals(0, thread.getCurrentSyncIndex());
+      thread.run();
+      assertThrows(
+          ConsensusGroupModifyPeerException.class,
+          () -> server.getLogDispatcher().waitUntilSyncLogCompleted(peer, 4, 100));
+    } finally {
+      server.stop();
+      background.shutdownNow();
+    }
+  }
+
+  @Test
+  public void testStoppingUnsubmittedDispatcherCompletesWaitLatch() throws Exception {
+    FakeConsensusReqReader reader =
+        new FakeConsensusReqReader(new RequestSets(Collections.emptySet()));
+    ScheduledExecutorService background = Executors.newSingleThreadScheduledExecutor();
+    Peer self = new Peer(new DataRegionId(1), 0, new TEndPoint("127.0.0.1", 6667));
+    Peer peer = new Peer(new DataRegionId(1), 1, new TEndPoint("127.0.0.1", 6668));
+    IoTConsensusServerImpl server = newRetentionTestServer(self, reader, background);
+    try {
+      server.buildSyncLogChannel(peer, false);
+      Field threadsField = LogDispatcher.class.getDeclaredField("threads");
+      threadsField.setAccessible(true);
+      @SuppressWarnings("unchecked")
+      List<LogDispatcher.LogDispatcherThread> threads =
+          (List<LogDispatcher.LogDispatcherThread>) threadsField.get(server.getLogDispatcher());
+      Object dispatcherThread = threads.get(0);
+      Field runFinishedField = dispatcherThread.getClass().getDeclaredField("runFinished");
+      runFinishedField.setAccessible(true);
+      CountDownLatch runFinished = (CountDownLatch) runFinishedField.get(dispatcherThread);
+      Method setStopped = dispatcherThread.getClass().getDeclaredMethod("setStopped");
+      setStopped.setAccessible(true);
+      setStopped.invoke(dispatcherThread);
+      assertEquals(0, runFinished.getCount());
+    } finally {
+      server.stop();
+      background.shutdownNow();
+    }
+  }
+
+  private IoTConsensusServerImpl newRetentionTestServer(
+      Peer self, FakeConsensusReqReader reader, ScheduledExecutorService background) {
+    return new IoTConsensusServerImpl(
+        temporaryFolder.getRoot().getAbsolutePath(),
+        self,
+        new TreeSet<>(Collections.singletonList(self)),
+        new TestStateMachine() {
+          @Override
+          public synchronized DataSet read(IConsensusRequest request) {
+            return reader;
+          }
+        },
+        background,
+        null,
+        null,
+        IoTConsensusConfig.newBuilder().build());
+  }
 
   @Test
   public void testSyncLogBecomesReadOnlyWhileWaiting() throws Exception {

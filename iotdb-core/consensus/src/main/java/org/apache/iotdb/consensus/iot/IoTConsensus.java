@@ -81,6 +81,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -138,25 +139,46 @@ public class IoTConsensus implements IConsensus {
 
   @Override
   public synchronized void start() throws IOException {
-    initAndRecover();
-    service.initSyncedServiceImpl(new IoTConsensusRPCServiceProcessor(this));
     try {
-      registerManager.register(service);
-    } catch (StartupException e) {
-      throw new IOException(e);
+      initAndRecover();
+      service.initSyncedServiceImpl(new IoTConsensusRPCServiceProcessor(this));
+      try {
+        registerManager.register(service);
+      } catch (StartupException e) {
+        throw new IOException(e);
+      }
+      if (updateReaderFuture == null) {
+        updateReaderFuture =
+            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+                backgroundTaskService,
+                () ->
+                    stateMachineMap
+                        .values()
+                        .forEach(impl -> impl.getLogDispatcher().checkAndFlushIndex()),
+                READER_UPDATE_INTERVAL_IN_MINUTES,
+                READER_UPDATE_INTERVAL_IN_MINUTES,
+                TimeUnit.MINUTES);
+      }
+    } catch (IOException | RuntimeException e) {
+      cleanupAfterFailedStart(e);
+      throw e;
     }
-    if (updateReaderFuture == null) {
-      updateReaderFuture =
-          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-              backgroundTaskService,
-              () ->
-                  stateMachineMap
-                      .values()
-                      .forEach(impl -> impl.getLogDispatcher().checkAndFlushIndex()),
-              READER_UPDATE_INTERVAL_IN_MINUTES,
-              READER_UPDATE_INTERVAL_IN_MINUTES,
-              TimeUnit.MINUTES);
+  }
+
+  private void cleanupAfterFailedStart(final Throwable startupFailure) {
+    if (updateReaderFuture != null) {
+      updateReaderFuture.cancel(false);
+      updateReaderFuture = null;
     }
+    registerManager.deregisterAll();
+    for (IoTConsensusServerImpl impl : stateMachineMap.values()) {
+      try {
+        impl.stop();
+      } catch (RuntimeException e) {
+        startupFailure.addSuppressed(e);
+      }
+    }
+    stateMachineMap.clear();
   }
 
   private void initAndRecover() throws IOException {
@@ -186,6 +208,7 @@ public class IoTConsensus implements IConsensus {
       }
     }
     if (correctPeerListBeforeStart != null) {
+      final AtomicReference<Exception> peerListResetFailure = new AtomicReference<>();
       BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
           (consensusGroupId, peers) -> {
             try {
@@ -193,6 +216,7 @@ public class IoTConsensus implements IConsensus {
             } catch (ConsensusGroupNotExistException ignore) {
 
             } catch (Exception e) {
+              peerListResetFailure.compareAndSet(null, e);
               logger.warn("Failed to reset peer list while start", e);
             }
           };
@@ -206,6 +230,13 @@ public class IoTConsensus implements IConsensus {
           .forEach(
               consensusGroupId ->
                   resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
+      final Exception resetFailure = peerListResetFailure.get();
+      if (resetFailure != null) {
+        throw new IOException(resetFailure);
+      }
+    }
+    if (correctPeerListBeforeStart != null) {
+      stateMachineMap.values().forEach(IoTConsensusServerImpl::markPeerConfigurationRecovered);
     }
     stateMachineMap.values().forEach(IoTConsensusServerImpl::start);
   }
@@ -354,6 +385,7 @@ public class IoTConsensus implements IConsensus {
         // step 6: active new Peer
         logger.info("[IoTConsensus] activate new peer...");
         impl.activePeer(peer);
+        impl.waitNewPeerUntilSyncLogCompleted(peer);
 
         // step 7: notify remote peer to clean up transferred snapshot
         logger.info("[IoTConsensus] clean up remote snapshot...");

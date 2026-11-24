@@ -52,6 +52,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -259,6 +261,47 @@ public class WALNodeTest {
     Map<Long, MemTableInfo> actualMemTableId2Info =
         CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();
     assertEquals(expectedMemTableId2Info, actualMemTableId2Info);
+  }
+
+  @Test
+  public void testCleanupRechecksLoweredReplicationBoundary() throws Exception {
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+    long memTableId = memTable.getMemTableId();
+    String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
+    walNode.onMemTableCreated(memTable, tsFilePath);
+    for (long index = 1; index <= 3; index++) {
+      InsertTabletNode node = getInsertTabletNode(devicePath, new long[] {index});
+      node.setSearchIndex(index);
+      assertEquals(
+          WALFlushListener.Status.SUCCESS,
+          walNode.log(memTableId, node, 0, node.getRowCount()).waitForResult());
+      walNode.rollWALFile();
+    }
+    walNode.onMemTableFlushed(memTable);
+    Awaitility.await().until(walNode::isAllWALEntriesConsumed);
+    walNode.setSafelyDeletedSearchIndex(Long.MAX_VALUE - 1);
+    Class<?> taskClass = Class.forName(WALNode.class.getName() + "$DeleteOutdatedFileTask");
+    Constructor<?> constructor = taskClass.getDeclaredConstructor(WALNode.class);
+    constructor.setAccessible(true);
+    Object task = constructor.newInstance(walNode);
+    Method initialize = taskClass.getDeclaredMethod("initAndCheckIfNeedContinue");
+    initialize.setAccessible(true);
+    assertTrue((Boolean) initialize.invoke(task));
+    walNode.setSafelyDeletedSearchIndex(0);
+    Method delete = taskClass.getDeclaredMethod("deleteOutdatedFilesAndUpdateMetric");
+    delete.setAccessible(true);
+    delete.invoke(task);
+    int retained = 0;
+    for (File file : WALFileUtils.listAllWALFiles(new File(logDirectory))) {
+      try (WALReader reader = new WALReader(file)) {
+        while (reader.hasNext()) {
+          if (reader.next().getValue() instanceof InsertTabletNode) {
+            retained++;
+          }
+        }
+      }
+    }
+    assertEquals(3, retained);
   }
 
   @Test
