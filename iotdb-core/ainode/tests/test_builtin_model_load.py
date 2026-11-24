@@ -52,10 +52,10 @@ class BuiltinModelLoadTest(unittest.TestCase):
         }
         self.controller = self._controller()
 
-    def _controller(self):
+    def _controller(self, task_queue=None):
         controller = object.__new__(PoolController)
         controller._stop_event = threading.Event()
-        controller._task_queue = queue.Queue()
+        controller._task_queue = task_queue if task_queue is not None else queue.Queue()
         controller._tasks_waiting_for_download = {}
         controller._pending_loads = Counter()
         controller._pending_loads_lock = threading.Lock()
@@ -147,6 +147,46 @@ class BuiltinModelLoadTest(unittest.TestCase):
         self._wait_for(2)
         self.assertEqual(self.events, [("load", "timestral"), ("unload", "timestral")])
         self.assertFalse(self.controller.is_loading("timestral", cpu))
+
+    def test_unload_racing_a_load_through_inference_manager_runs_after_it(self):
+        # LOAD MODEL publishes the load as pending and queues it. An UNLOAD MODEL arriving between
+        # the two must not be queued first, or it finds no pool and the load then leaves the
+        # model loaded. The queue holds the load's put() open while the unload is issued.
+        self.controller.stop()
+        entered, release = threading.Event(), threading.Event()
+        controller = None
+
+        class GatedQueue(queue.Queue):
+            def put(self, item, *args, **kwargs):
+                if item is not None and item[0] == controller._load_one_model_task:
+                    entered.set()
+                    release.wait(10)
+                super().put(item, *args, **kwargs)
+
+        controller = self.controller = self._controller(GatedQueue())
+        self.addCleanup(self._stop)
+        manager = object.__new__(InferenceManager)
+        manager._pool_controller = controller
+        cpu = torch.device("cpu")
+
+        loading = threading.Thread(target=manager.load_model, args=("sundial", [cpu]))
+        loading.start()
+        self.assertTrue(entered.wait(5))
+        unloaded = threading.Event()
+
+        def unload():
+            manager.unload_model("sundial", [cpu])
+            unloaded.set()
+
+        unloading = threading.Thread(target=unload)
+        unloading.start()
+        # The unload must wait for the load to be queued; give it the chance to overtake.
+        self.assertFalse(unloaded.wait(0.5))
+        release.set()
+        loading.join(5)
+        unloading.join(5)
+        self._wait_for(2)
+        self.assertEqual(self.events, [("load", "sundial"), ("unload", "sundial")])
 
     def test_failed_download_finishes_the_pending_load(self):
         self.addCleanup(self._stop)

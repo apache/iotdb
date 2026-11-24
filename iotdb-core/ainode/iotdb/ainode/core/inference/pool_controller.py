@@ -150,11 +150,13 @@ class PoolController:
             model_id (str): The ID of the model to be loaded.
             device_id_list (list[torch.device]): List of device_ids where the model should be loaded.
         """
+        # Publishing the pending load and queueing it are one step under the lock, so that an
+        # unload that sees the load pending (is_loading) is always queued after it.
         with self._pending_loads_lock:
             self._pending_loads.update((model_id, d) for d in device_id_list)
-        self._task_queue.put(
-            (self._load_one_model_task, (model_id, device_id_list), {})
-        )
+            self._task_queue.put(
+                (self._load_one_model_task, (model_id, device_id_list), {})
+            )
 
     def is_loading(self, model_id: str, device_id: torch.device) -> bool:
         """
