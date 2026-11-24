@@ -242,6 +242,7 @@ The project uses compile-time i18n via the `build-helper-maven-plugin`. The prop
 
 ## Git Commit
 
+- Before every commit, run `mvn spotless:apply` from the repository root and confirm it succeeds. Review the resulting diff and stage only intended changes; do not commit until Spotless has run.
 - Do NOT add `Co-Authored-By` trailer to commit messages.
 
 ## Security
