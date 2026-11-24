@@ -48,6 +48,10 @@ public final class ResidentSeriesCounter {
   }
 
   public long getSeriesCount() {
+    // An empty registry already gives an exact count, even when a region writer holds the lock.
+    if (tables.isEmpty()) {
+      return 0;
+    }
     // Working schemas can change under the region write lock. A flush may release a table
     // concurrently, but it does not alter its measurement indexes.
     regionReadLock.lock();

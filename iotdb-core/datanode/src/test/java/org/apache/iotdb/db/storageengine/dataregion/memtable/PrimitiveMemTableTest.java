@@ -86,6 +86,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
@@ -158,6 +159,31 @@ public class PrimitiveMemTableTest {
       i++;
     }
     Assert.assertEquals(count, i);
+  }
+
+  @Test
+  public void testResidentSeriesWhenLastTableIsReleasedDuringCollection() {
+    Lock readLock = Mockito.mock(Lock.class);
+    ResidentSeriesCounter counter = new ResidentSeriesCounter(readLock);
+    Assert.assertEquals(0, counter.getSeriesCount());
+    Mockito.verify(readLock, Mockito.never()).lock();
+
+    PrimitiveMemTable table = new PrimitiveMemTable(counter, database, dataRegionId);
+    table.write(
+        deviceID,
+        Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)),
+        1,
+        new Object[] {1});
+    // The last flush completes while the collector is waiting for a region writer.
+    Mockito.doAnswer(
+            invocation -> {
+              table.release();
+              return null;
+            })
+        .when(readLock)
+        .lock();
+    Assert.assertEquals(0, counter.getSeriesCount());
+    Mockito.verify(readLock).unlock();
   }
 
   @Test
