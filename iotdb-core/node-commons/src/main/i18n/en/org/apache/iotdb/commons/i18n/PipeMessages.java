@@ -204,6 +204,8 @@ public final class PipeMessages {
       "PipeReceiverReqDecompressedMaxLengthInBytes: {}";
   public static final String CONFIG_PIPE_AIR_GAP_RECEIVER_MAX_PAYLOAD_SIZE_IN_BYTES =
       "PipeAirGapReceiverMaxPayloadSizeInBytes: {}";
+  public static final String CONFIG_PIPE_AIR_GAP_RECEIVER_UDP_MAX_PENDING_REQUEST_COUNT =
+      "PipeAirGapReceiverUdpMaxPendingRequestCount: {}";
   public static final String CONFIG_PIPE_RECEIVER_LOAD_CONVERSION_ENABLED =
       "PipeReceiverLoadConversionEnabled: {}";
   public static final String CONFIG_PIPE_PERIODICAL_LOG_MIN_INTERVAL_SECONDS =

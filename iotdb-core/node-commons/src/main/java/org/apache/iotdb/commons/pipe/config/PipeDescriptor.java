@@ -492,6 +492,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_air_gap_receiver_udp_socket_buffer_size_in_bytes",
                 Integer.toString(config.getPipeAirGapReceiverUdpSocketBufferSizeInBytes()))));
+    config.setPipeAirGapReceiverUdpMaxPendingRequestCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_air_gap_receiver_udp_max_pending_request_count",
+                Integer.toString(config.getPipeAirGapReceiverUdpMaxPendingRequestCount()))));
     config.setPipeReceiverLoadConversionEnabled(
         Boolean.parseBoolean(
             properties.getProperty(

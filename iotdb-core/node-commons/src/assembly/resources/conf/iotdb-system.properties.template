@@ -2140,6 +2140,12 @@ pipe_air_gap_receiver_enabled=false
 # effectiveMode: restart
 pipe_air_gap_receiver_port=9780
 
+# Maximum number of incomplete UDP slice requests retained for reordering per receiver.
+# When the limit is reached, the least recently used request is evicted.
+# effectiveMode: restart
+# Datatype: int, must be greater than 0
+pipe_air_gap_receiver_udp_max_pending_request_count=32
+
 # The total bytes that all pipe sinks can transfer per second.
 # When given a value less than or equal to 0, it means no limit.
 # default value is -1, which means no limit.

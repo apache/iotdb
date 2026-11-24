@@ -68,16 +68,21 @@ public class PipeTransferSliceReqBuilderTest {
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private int originalRequestSliceThresholdBytes;
+  private int originalAirGapUdpMaxPendingRequestCount;
 
   @Before
   public void setUp() {
     originalRequestSliceThresholdBytes = commonConfig.getPipeSinkRequestSliceThresholdBytes();
+    originalAirGapUdpMaxPendingRequestCount =
+        commonConfig.getPipeAirGapReceiverUdpMaxPendingRequestCount();
     commonConfig.setPipeSinkRequestSliceThresholdBytes(4);
   }
 
   @After
   public void tearDown() {
     commonConfig.setPipeSinkRequestSliceThresholdBytes(originalRequestSliceThresholdBytes);
+    commonConfig.setPipeAirGapReceiverUdpMaxPendingRequestCount(
+        originalAirGapUdpMaxPendingRequestCount);
   }
 
   @Test
@@ -281,10 +286,11 @@ public class PipeTransferSliceReqBuilderTest {
 
   @Test
   public void testUdpSliceHandlerBoundsPendingRequests() throws IOException {
+    commonConfig.setPipeAirGapReceiverUdpMaxPendingRequestCount(8);
     final TPipeTransferReq req = createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 4);
     final PipeTransferSliceReqHandler handler = new PipeTransferSliceReqHandler();
     final List<Long> evictedIds = new ArrayList<>();
-    for (int orderId = 0; orderId < 33; orderId++) {
+    for (int orderId = 0; orderId < 9; orderId++) {
       final PipeTransferSliceReq firstSlice =
           PipeTransferSliceReq.toTPipeTransferReq(
               orderId, req.getType(), 0, 2, req.body.duplicate(), 0, 2);

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.sink.payload.thrift.common;
 
 import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -41,7 +42,6 @@ import java.util.function.LongConsumer;
 public class PipeTransferSliceReqHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferSliceReqHandler.class);
-  private static final int MAX_PENDING_UDP_SLICE_REQUESTS = 32;
   private static final int MAX_RETIRED_UDP_ORDER_IDS = 64;
 
   private int orderId = -1;
@@ -95,7 +95,10 @@ public class PipeTransferSliceReqHandler {
             req,
             true,
             () -> {
-              if (isNewRequest && pendingUdpRequests.size() >= MAX_PENDING_UDP_SLICE_REQUESTS) {
+              if (isNewRequest
+                  && pendingUdpRequests.size()
+                      >= PipeConfig.getInstance()
+                          .getPipeAirGapReceiverUdpMaxPendingRequestCount()) {
                 final Iterator<Map.Entry<Long, PipeTransferSliceReqHandler>> iterator =
                     pendingUdpRequests.entrySet().iterator();
                 evictUdpRequest(iterator, iterator.next(), onEviction);
