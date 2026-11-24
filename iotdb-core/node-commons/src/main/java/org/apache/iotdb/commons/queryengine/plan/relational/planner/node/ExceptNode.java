@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 
-import com.google.common.collect.ListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ListMultimap;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

@@ -51,7 +51,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.google.common.math.LongMath.saturatedAdd;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataSet {
 

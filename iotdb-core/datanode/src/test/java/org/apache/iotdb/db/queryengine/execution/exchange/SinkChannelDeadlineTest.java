@@ -37,8 +37,8 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import com.google.common.base.Throwables;
-import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.ratis.thirdparty.com.google.common.base.Throwables;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.junit.After;

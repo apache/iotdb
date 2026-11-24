@@ -38,7 +38,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class TableModeAccumulator implements TableAccumulator {
 

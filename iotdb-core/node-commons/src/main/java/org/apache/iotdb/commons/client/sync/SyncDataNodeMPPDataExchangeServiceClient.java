@@ -32,10 +32,10 @@ import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcSslUtils;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
-import com.google.common.io.Closer;
-import com.google.common.net.InetAddresses;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
+import org.apache.ratis.thirdparty.com.google.common.io.Closer;
+import org.apache.ratis.thirdparty.com.google.common.net.InetAddresses;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;

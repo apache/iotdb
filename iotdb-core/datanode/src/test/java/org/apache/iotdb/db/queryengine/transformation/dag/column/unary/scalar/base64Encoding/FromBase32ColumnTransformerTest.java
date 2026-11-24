@@ -26,7 +26,7 @@ import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.GenericCodec
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.factory.CodecStrategiesFactory;
 import org.apache.iotdb.commons.exception.SemanticException;
 
-import com.google.common.io.BaseEncoding;
+import org.apache.ratis.thirdparty.com.google.common.io.BaseEncoding;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;

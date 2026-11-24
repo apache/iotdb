@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.memory;
 
 import org.apache.iotdb.db.queryengine.plan.execution.memory.MemorySourceHandle;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Assert;
 import org.junit.Test;

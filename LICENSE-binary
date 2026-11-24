@@ -231,10 +231,6 @@ com.github.moquette-io.moquette:moquette-broker:0.18.0
 com.google.code.findbugs:jsr305:3.0.2
 com.google.code.gson:gson:2.13.1
 com.google.errorprone:error_prone_annotations:2.18.0
-com.google.guava:failureaccess:1.0.1
-com.google.guava:guava:32.1.2-jre
-com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava
-com.google.j2objc:j2objc-annotations:2.8
 com.zaxxer:HikariCP:2.4.7
 commons-cli:commons-cli:1.5.0
 commons-codec:commons-codec:1.16.1
