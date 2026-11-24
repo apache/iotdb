@@ -36,6 +36,7 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import com.google.common.hash.Hashing;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -189,7 +190,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           currentDatagramRequestId != null
               && udpRequestDeduplicator != null
               && req.type != PipeRequestType.TRANSFER_SLICE.getType();
-      final long requestFingerprint = deduplicate ? ByteBuffer.wrap(data).getLong() : 0;
+      final byte[] requestFingerprint = deduplicate ? calculateUdpRequestFingerprint(data) : null;
       if (deduplicate
           && udpRequestDeduplicator.isCompleted(currentDatagramRequestId, requestFingerprint)) {
         ok();
@@ -554,8 +555,12 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
   interface UdpRequestDeduplicator {
 
-    boolean isCompleted(long requestId, long fingerprint);
+    boolean isCompleted(long requestId, byte[] fingerprint);
 
-    void markCompleted(long requestId, long fingerprint);
+    void markCompleted(long requestId, byte[] fingerprint);
+  }
+
+  static byte[] calculateUdpRequestFingerprint(final byte[] data) {
+    return Hashing.sha256().hashBytes(data).asBytes();
   }
 }

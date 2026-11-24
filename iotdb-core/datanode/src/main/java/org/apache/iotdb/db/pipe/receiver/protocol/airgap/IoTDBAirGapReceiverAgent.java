@@ -228,13 +228,13 @@ public class IoTDBAirGapReceiverAgent implements IService {
     final IoTDBAirGapReceiver.UdpRequestDeduplicator deduplicator =
         new IoTDBAirGapReceiver.UdpRequestDeduplicator() {
           @Override
-          public boolean isCompleted(final long requestId, final long fingerprint) {
+          public boolean isCompleted(final long requestId, final byte[] fingerprint) {
             final UdpClientSession session = udpClientSessions.get(receiverKey);
             return session != null && session.isCompleted(requestId, fingerprint);
           }
 
           @Override
-          public void markCompleted(final long requestId, final long fingerprint) {
+          public void markCompleted(final long requestId, final byte[] fingerprint) {
             final UdpClientSession session = udpClientSessions.get(receiverKey);
             if (session != null) {
               session.markCompleted(requestId, fingerprint);
@@ -434,7 +434,7 @@ public class IoTDBAirGapReceiverAgent implements IService {
   static class UdpClientSession implements IoTDBAirGapReceiver.UdpRequestDeduplicator {
 
     private final ClientSession session;
-    private final Map<Long, Long> completedRequestFingerprints =
+    private final Map<Long, byte[]> completedRequestFingerprints =
         new LinkedHashMap<>(16, 0.75f, true);
     volatile long lastAccessTimeNanos;
 
@@ -444,14 +444,13 @@ public class IoTDBAirGapReceiverAgent implements IService {
     }
 
     @Override
-    public synchronized boolean isCompleted(final long requestId, final long fingerprint) {
-      final Long completedFingerprint = completedRequestFingerprints.get(requestId);
-      return completedFingerprint != null && completedFingerprint == fingerprint;
+    public synchronized boolean isCompleted(final long requestId, final byte[] fingerprint) {
+      return Arrays.equals(completedRequestFingerprints.get(requestId), fingerprint);
     }
 
     @Override
-    public synchronized void markCompleted(final long requestId, final long fingerprint) {
-      completedRequestFingerprints.put(requestId, fingerprint);
+    public synchronized void markCompleted(final long requestId, final byte[] fingerprint) {
+      completedRequestFingerprints.put(requestId, Arrays.copyOf(fingerprint, fingerprint.length));
       while (completedRequestFingerprints.size() > UDP_COMPLETED_REQUEST_CACHE_SIZE) {
         final Iterator<Long> iterator = completedRequestFingerprints.keySet().iterator();
         iterator.next();

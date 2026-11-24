@@ -45,6 +45,7 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -206,7 +207,8 @@ public class IoTDBAirGapReceiverAgentTest {
     final IoTDBAirGapReceiverAgent.UdpClientSession queuedSession =
         new IoTDBAirGapReceiverAgent.UdpClientSession(
             new ClientSession(new Socket()), expiredUdpSessionAccessTimeNanos());
-    queuedSession.markCompleted(7L, 99L);
+    final byte[] fingerprint = new byte[] {99};
+    queuedSession.markCompleted(7L, fingerprint);
     agent.udpClientSessions.put(queuedReceiverKey, queuedSession);
     agent.markUdpRequestPending(queuedReceiverKey);
 
@@ -221,7 +223,7 @@ public class IoTDBAirGapReceiverAgentTest {
 
       Assert.assertTrue(registeredSession[0]);
       Assert.assertSame(queuedSession, agent.udpClientSessions.get(queuedReceiverKey));
-      Assert.assertTrue(queuedSession.isCompleted(7L, 99L));
+      Assert.assertTrue(queuedSession.isCompleted(7L, fingerprint));
     } finally {
       SessionManager.getInstance().removeCurrSession();
       agent.releaseUdpRequestPending(queuedReceiverKey);
@@ -383,8 +385,6 @@ public class IoTDBAirGapReceiverAgentTest {
               .put(new byte[] {1, 2, 3})
               .array();
       final byte[] datagramBytes = toUdpDatagram(requestId, request);
-      final CRC32 crc32 = new CRC32();
-      crc32.update(request);
       final long timeoutNanos =
           TimeUnit.MILLISECONDS.toNanos(
               Math.max(1, PipeConfig.getInstance().getPipeSinkTransferTimeoutMs()));
@@ -393,7 +393,11 @@ public class IoTDBAirGapReceiverAgentTest {
       final IoTDBAirGapReceiverAgent.UdpClientSession session =
           new IoTDBAirGapReceiverAgent.UdpClientSession(
               new ClientSession(new Socket()), expiredAccessTimeNanos);
-      session.markCompleted(requestId, crc32.getValue());
+      session.markCompleted(
+          requestId,
+          IoTDBAirGapReceiver.calculateUdpRequestFingerprint(
+              Arrays.copyOfRange(
+                  datagramBytes, Long.BYTES + 2 * Integer.BYTES, datagramBytes.length)));
       agent.udpClientSessions.put(receiverKey, session);
       final IoTDBReceiver previousReceiver =
           receiverMap.put(
@@ -504,19 +508,27 @@ public class IoTDBAirGapReceiverAgentTest {
   }
 
   @Test
-  public void testCompletedUdpRequestCacheIsBounded() {
+  public void testCompletedUdpRequestCacheUsesFullFingerprintAndIsBounded() {
     final IoTDBAirGapReceiverAgent.UdpClientSession session =
         new IoTDBAirGapReceiverAgent.UdpClientSession(new ClientSession(new Socket()), 0L);
-    session.markCompleted(1L, 101L);
-    Assert.assertTrue(session.isCompleted(1L, 101L));
-    Assert.assertFalse(session.isCompleted(1L, 102L));
+    final byte[] firstData = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    final byte[] differentDataWithSameLegacyFingerprint = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 10};
+    final byte[] firstFingerprint = IoTDBAirGapReceiver.calculateUdpRequestFingerprint(firstData);
+    final byte[] differentFingerprint =
+        IoTDBAirGapReceiver.calculateUdpRequestFingerprint(differentDataWithSameLegacyFingerprint);
+    Assert.assertFalse(Arrays.equals(firstFingerprint, differentFingerprint));
+    session.markCompleted(1L, firstFingerprint);
+    Assert.assertTrue(session.isCompleted(1L, firstFingerprint));
+    Assert.assertFalse(session.isCompleted(1L, differentFingerprint));
 
     for (long requestId = 2; requestId <= 257; requestId++) {
-      session.markCompleted(requestId, requestId + 100);
+      session.markCompleted(
+          requestId, ByteBuffer.allocate(Long.BYTES).putLong(requestId + 100).array());
     }
 
-    Assert.assertFalse(session.isCompleted(1L, 101L));
-    Assert.assertTrue(session.isCompleted(257L, 357L));
+    Assert.assertFalse(session.isCompleted(1L, firstFingerprint));
+    Assert.assertTrue(
+        session.isCompleted(257L, ByteBuffer.allocate(Long.BYTES).putLong(357L).array()));
   }
 
   @Test
