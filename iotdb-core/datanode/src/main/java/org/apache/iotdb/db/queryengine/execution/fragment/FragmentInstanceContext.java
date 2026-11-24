@@ -41,6 +41,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.execution.schedule.DriverTaskAbortedException;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -676,11 +677,20 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public Optional<Throwable> getFailureCause() {
-    return Optional.ofNullable(
-        stateMachine.getFailureCauses().stream()
-            .filter(e -> e instanceof IoTDBException || e instanceof IoTDBRuntimeException)
-            .findFirst()
-            .orElse(stateMachine.getFailureCauses().peek()));
+    Throwable firstNonAborted = null;
+    Throwable first = null;
+    for (Throwable cause : stateMachine.getFailureCauses()) {
+      if (first == null) {
+        first = cause;
+      }
+      if (cause instanceof IoTDBException || cause instanceof IoTDBRuntimeException) {
+        return Optional.of(cause);
+      }
+      if (firstNonAborted == null && !(cause instanceof DriverTaskAbortedException)) {
+        firstNonAborted = cause;
+      }
+    }
+    return Optional.ofNullable(firstNonAborted != null ? firstNonAborted : first);
   }
 
   public Filter getGlobalTimeFilter() {
