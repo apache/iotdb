@@ -15,6 +15,7 @@ on:
       - '.github/workflows/multi-language-client.yml'
       - '.github/workflows/client-cpp-package.yml'
       - '.github/scripts/package-client-cpp-*.sh'
+      - '.github/scripts/native-linux-env.sh'
   pull_request:
     branches:
       - master
@@ -30,6 +31,7 @@ on:
       - '.github/workflows/multi-language-client.yml'
       - '.github/workflows/client-cpp-package.yml'
       - '.github/scripts/package-client-cpp-*.sh'
+      - '.github/scripts/native-linux-env.sh'
   # allow manually run the action:
   workflow_dispatch:
 
@@ -82,7 +84,7 @@ jobs:
           go=false
           while IFS= read -r file; do
             case "$file" in
-              pom.xml|iotdb-client/pom.xml|iotdb-client/client-cpp/*|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/multi-language-client.yml|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh)
+              pom.xml|iotdb-client/pom.xml|iotdb-client/client-cpp/*|iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift|iotdb-protocol/thrift-commons/src/main/thrift/common.thrift|.github/workflows/multi-language-client.yml|.github/workflows/client-cpp-package.yml|.github/scripts/package-client-cpp-*.sh|.github/scripts/native-linux-env.sh)
                 cpp=true
                 ;;
             esac
@@ -164,7 +166,9 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install winflexbison3 -y
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           choco install boost-msvc-14.3 -y
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
           
@@ -173,13 +177,37 @@ jobs:
           $sslZip = "$env:RUNNER_TEMP\openssl-3.5.3.zip"
           $sslDir = "$env:RUNNER_TEMP\openssl-3"
           curl.exe -L --fail --retry 3 -o $sslZip 'https://download.firedaemon.com/FireDaemon-OpenSSL/openssl-3.5.3.zip'
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           Expand-Archive -Path $sslZip -DestinationPath $sslDir -Force
           $sslPath = (Get-ChildItem $sslDir -Recurse -Directory -Filter 'x64' | Select-Object -First 1).FullName
           if (-not $sslPath) { throw "OpenSSL x64 dir not found under $sslDir" }
           echo "$sslPath\bin" >> $env:GITHUB_PATH
           echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
-          choco install llvm --version=17.0.6 --force -y
-          clang-format --version
+      - uses: actions/setup-python@v6
+        if: runner.os == 'Windows'
+        with:
+          python-version: '3.13'
+      - name: Install pinned C++ formatter (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Install independently of the runner's LLVM and Chocolatey feeds.
+          $formatterRoot = Join-Path $env:RUNNER_TEMP 'clang-format-17'
+          python -m pip install --disable-pip-version-check --target $formatterRoot 'clang-format==17.0.6'
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $formatterBin = Join-Path $formatterRoot 'clang_format/data/bin'
+          $version = & "$formatterBin/clang-format.exe" --version
+          if ($LASTEXITCODE -or $version -notmatch '\b17\.0\.6\b') {
+            throw "Expected clang-format 17.0.6, got: $version"
+          }
+          Write-Host $version
+          # Spotless 2.44.5 treats every `where clang-format` result as one path.
+          # Hide preinstalled formatters so Windows resolves exactly one binary.
+          $cleanPath = ($env:PATH -split ';' | Where-Object {
+            $_ -and -not (Test-Path -LiteralPath (Join-Path $_ 'clang-format.exe'))
+          }) -join ';'
+          "PATH=$cleanPath" >> $env:GITHUB_ENV
+          $formatterBin >> $env:GITHUB_PATH
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:

@@ -16,6 +16,7 @@
 #
 # Build client-cpp in manylinux_2_28 and verify max required GLIBC symbol <= 2.28.
 set -euxo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/native-linux-env.sh"
 
 MACHINE=$(uname -m)
 case "${MACHINE}" in
@@ -64,7 +65,7 @@ export JAVA_HOME
 gcc --version
 c++ --version
 gcc_major=$(gcc -dumpversion | cut -d. -f1)
-if (( gcc_major < 14 )); then
+if (( gcc_major < NATIVE_GCC_MIN_MAJOR )); then
   echo "ERROR: GCC >= 14 is required; got $(gcc -dumpversion)"
   exit 1
 fi
@@ -78,9 +79,9 @@ java -version
 # modules (IPC::Cmd, Data::Dumper) that are not on the minimal image - install
 # them even when perl itself is already present.
 if command -v dnf >/dev/null 2>&1; then
-  dnf install -y perl perl-IPC-Cmd perl-Data-Dumper
+  dnf install -y perl perl-IPC-Cmd perl-Data-Dumper perl-Time-Piece
 else
-  yum install -y perl perl-IPC-Cmd perl-Data-Dumper
+  yum install -y perl perl-IPC-Cmd perl-Data-Dumper perl-Time-Piece
 fi
 
 cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
@@ -106,8 +107,9 @@ if [[ -z "${max_glibc}" ]]; then
   exit 1
 fi
 
-if awk -v max="${max_glibc}" "BEGIN { exit !(max > 2.28) }"; then
-  echo "ERROR: libiotdb_session.so requires glibc > 2.28 (max=${max_glibc})"
+highest_glibc=$(printf '%s\n' "${max_glibc}" "${NATIVE_GLIBC_BASELINE}" | sort -V | tail -1)
+if [[ "${highest_glibc}" != "${NATIVE_GLIBC_BASELINE}" ]]; then
+  echo "ERROR: libiotdb_session.so requires glibc > ${NATIVE_GLIBC_BASELINE} (max=${max_glibc})"
   exit 1
 fi
 

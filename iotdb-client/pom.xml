@@ -40,6 +40,12 @@
     </modules>
     <profiles>
         <profile>
+            <id>with-odbc</id>
+            <modules>
+                <module>odbc</module>
+            </modules>
+        </profile>
+        <profile>
             <id>with-cpp</id>
             <modules>
                 <module>client-cpp</module>

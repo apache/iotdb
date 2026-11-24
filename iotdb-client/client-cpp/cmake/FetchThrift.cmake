@@ -67,9 +67,12 @@ if(NOT EXISTS "${_thrift_tarball}")
 endif()
 
 # ---------------------------------------------------------------------------
-# Extract once into ${CMAKE_BINARY_DIR}/_deps/thrift/src
+# Extract once into ${CMAKE_CURRENT_BINARY_DIR}/_deps/thrift/src
 # ---------------------------------------------------------------------------
-set(_thrift_root  "${CMAKE_BINARY_DIR}/_deps/thrift")
+set(_thrift_root  "${CMAKE_CURRENT_BINARY_DIR}/_deps/thrift")
+if(IOTDB_SESSION_STATIC)
+    string(APPEND _thrift_root "-static-${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_CXX_COMPILER_ID}-${CMAKE_CXX_COMPILER_VERSION}-${CMAKE_BUILD_TYPE}-crt${IOTDB_STATIC_CRT}-ssl${WITH_SSL}-abi${IOTDB_USE_CXX11_ABI}")
+endif()
 set(_thrift_src   "${_thrift_root}/src/${_thrift_dirname}")
 set(_thrift_build "${_thrift_root}/build")
 set(_thrift_install "${_thrift_root}/install")
@@ -125,19 +128,28 @@ endif()
 
 if(MSVC)
     list(APPEND _thrift_cmake_args
-            "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+            "-DWITH_MT=${IOTDB_STATIC_CRT}"
+            "-DCMAKE_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY}")
 else()
     set(_thrift_cxxflags "-fPIC")
-    if(IOTDB_USE_CXX11_ABI)
+    if(NOT IOTDB_USE_CXX11_ABI STREQUAL "")
         set(_thrift_cxxflags "${_thrift_cxxflags} -D_GLIBCXX_USE_CXX11_ABI=${IOTDB_USE_CXX11_ABI}")
     endif()
     list(APPEND _thrift_cmake_args
+            "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
+            "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
             "-DCMAKE_C_FLAGS=-fPIC"
             "-DCMAKE_CXX_FLAGS=${_thrift_cxxflags}")
 endif()
 
 if(WITH_SSL)
     list(APPEND _thrift_cmake_args "-DWITH_OPENSSL=ON")
+    list(APPEND _thrift_cmake_args
+            "-DOPENSSL_USE_STATIC_LIBS=${IOTDB_OPENSSL_STATIC}"
+            "-DOPENSSL_MSVC_STATIC_RT=${IOTDB_STATIC_CRT}"
+            "-DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}"
+            "-DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}"
+            "-DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}")
     # Build Thrift's TSSLSocket against the same OpenSSL that iotdb_session links
     # and bundles, so the runtime libraries match. find_package does not set
     # OPENSSL_ROOT_DIR itself, so derive it from the resolved include dir.

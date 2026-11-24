@@ -21,6 +21,7 @@ from iotdb.Session import Session
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.Tablet import Tablet
 from .iotdb_container import IoTDBContainer
+from .utils import assert_timeseries_deleted
 
 # whether the test has passed
 final_flag = True
@@ -127,10 +128,9 @@ def test_aligned_timeseries():
             print_message("delete time series failed")
 
         # checking time series
-        # s_07 expecting False
-        if session.check_time_series_exists("root.sg_test_01.d_02.s_07"):
-            test_fail()
-            print_message("root.sg_test_01.d_02.s_07 shouldn't exist")
+        assert_timeseries_deleted(
+            session, [f"root.sg_test_01.d_02.s_{i:02d}" for i in range(7, 10)]
+        )
 
         # s_03 expecting True
         if not session.check_time_series_exists("root.sg_test_01.d_02.s_03"):

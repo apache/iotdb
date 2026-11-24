@@ -19,7 +19,9 @@
 #ifndef IOTDB_EXPORT_H
 #define IOTDB_EXPORT_H
 
-#if defined(_WIN32) && defined(IOTDB_BUILDING_SHARED)
+#if defined(IOTDB_SESSION_STATIC)
+#define IOTDB_SESSION_API
+#elif defined(_WIN32) && defined(IOTDB_BUILDING_SHARED)
 #define IOTDB_SESSION_API __declspec(dllexport)
 #elif defined(_WIN32)
 #define IOTDB_SESSION_API __declspec(dllimport)

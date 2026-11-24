@@ -1,0 +1,104 @@
+; Licensed to the Apache Software Foundation (ASF) under one
+; or more contributor license agreements.  See the NOTICE file
+; distributed with this work for additional information
+; regarding copyright ownership.  The ASF licenses this file
+; to you under the Apache License, Version 2.0 (the
+; "License"); you may not use this file except in compliance
+; with the License.  You may obtain a copy of the License at
+;
+;     http://www.apache.org/licenses/LICENSE-2.0
+;
+; Unless required by applicable law or agreed to in writing,
+; software distributed under the License is distributed on an
+; "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+; KIND, either express or implied.  See the License for the
+; specific language governing permissions and limitations
+; under the License.
+EXPORTS
+    ;odbcinst.h functions
+    ConfigDSN
+    ;sql.h functions
+    SQLAllocConnect
+    SQLAllocEnv
+    SQLAllocHandle
+    SQLAllocStmt
+    SQLBindCol
+    SQLBindParam
+    SQLBindParameter
+    SQLCancel
+    SQLCancelHandle
+    SQLCloseCursor
+    SQLColAttribute
+    SQLColumns
+    SQLConnect
+    SQLCopyDesc
+    SQLDataSources
+    SQLDescribeCol
+    SQLDisconnect
+    SQLEndTran
+    SQLError
+    SQLExecDirect
+    SQLExecute
+    SQLFetch
+    SQLFetchScroll
+    SQLFreeConnect
+    SQLFreeEnv
+    SQLFreeHandle
+    SQLFreeStmt
+    SQLGetConnectAttr
+    SQLGetConnectOption
+    SQLGetCursorName
+    SQLGetData
+    SQLGetDescField
+    SQLGetDescRec
+    SQLGetDiagField
+    SQLGetDiagRec
+    SQLGetEnvAttr
+    SQLGetFunctions
+    SQLGetInfo
+    SQLGetStmtAttr
+    SQLGetStmtOption
+    SQLGetTypeInfo
+    SQLNativeSql
+    SQLNumResultCols
+    SQLNumParams
+    SQLParamData
+    SQLPrepare
+    SQLPutData
+    SQLRowCount
+    SQLSetConnectAttr
+    SQLSetConnectOption
+    SQLSetCursorName
+    SQLSetDescField
+    SQLSetDescRec
+    SQLSetEnvAttr
+    SQLSetParam
+    SQLSetStmtAttr
+    SQLSetStmtOption
+    SQLSpecialColumns
+    SQLStatistics
+    SQLTables
+    SQLTransact
+    ;sqlext.h functions
+    SQLDriverConnect
+    SQLMoreResults
+    SQLExecDirectW
+    SQLPrepareW
+    SQLDriverConnectW
+    SQLConnectW
+    SQLTablesW
+    SQLColumnsW
+    SQLDescribeColW
+    SQLColAttributeW
+    SQLGetInfoW
+    SQLGetDiagRecW
+    SQLGetTypeInfoW
+    SQLGetStmtAttrW
+    SQLSetStmtAttrW
+    SQLGetDiagFieldW
+    SQLGetConnectAttrW
+    SQLSetConnectAttrW
+    SQLNativeSqlW
+    SQLGetDescFieldW
+    SQLGetDescRecW
+    SQLSetDescFieldW
