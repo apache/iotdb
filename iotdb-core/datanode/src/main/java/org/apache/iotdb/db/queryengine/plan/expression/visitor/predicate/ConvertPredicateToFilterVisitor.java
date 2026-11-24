@@ -63,8 +63,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression.flipType;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.enums.TSDataType.DOUBLE;
 import static org.apache.tsfile.enums.TSDataType.INT32;
 import static org.apache.tsfile.enums.TSDataType.INT64;

@@ -32,6 +32,21 @@ import java.util.concurrent.TimeUnit;
 
 public class CompletedProcedureRecyclerTest {
 
+  private static class PendingCleanupProcedure extends NoopProcedure
+      implements ProcedureWithPendingCleanup {
+    private int cleanupAttempts;
+
+    @Override
+    public boolean hasPendingCleanup() {
+      return cleanupAttempts < 2;
+    }
+
+    @Override
+    public void retryPendingCleanup() {
+      cleanupAttempts++;
+    }
+  }
+
   @SuppressWarnings("unchecked")
   private static IProcedureStore<TestProcEnv> runningStore() {
     NoopProcedureStore store = new NoopProcedureStore();
@@ -72,5 +87,23 @@ public class CompletedProcedureRecyclerTest {
     Assert.assertFalse(
         "A procedure completed 300s ago must be evicted by a 100s evict TTL",
         completed.containsKey(2L));
+  }
+
+  @Test
+  public void pendingCleanupIsRetriedBeforeExpiredProcedureIsEvicted() {
+    final PendingCleanupProcedure procedure = new PendingCleanupProcedure();
+    procedure.setLastUpdate(System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(300));
+    final Map<Long, CompletedProcedureContainer<TestProcEnv>> completed = new ConcurrentHashMap<>();
+    completed.put(1L, new CompletedProcedureContainer<>(procedure));
+    final CompletedProcedureRecycler<TestProcEnv> recycler =
+        new CompletedProcedureRecycler<>(runningStore(), completed, 30, 100);
+
+    recycler.periodicExecute(null);
+    Assert.assertEquals(1, procedure.cleanupAttempts);
+    Assert.assertTrue(completed.containsKey(1L));
+
+    recycler.periodicExecute(null);
+    Assert.assertEquals(2, procedure.cleanupAttempts);
+    Assert.assertFalse(completed.containsKey(1L));
   }
 }

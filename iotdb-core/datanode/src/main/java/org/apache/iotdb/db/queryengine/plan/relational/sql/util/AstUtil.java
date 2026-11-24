@@ -38,8 +38,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.NoOpSymbolResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 
-import com.google.common.graph.SuccessorsFunction;
-import com.google.common.graph.Traverser;
+import org.apache.ratis.thirdparty.com.google.common.graph.SuccessorsFunction;
+import org.apache.ratis.thirdparty.com.google.common.graph.Traverser;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
@@ -52,9 +52,9 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static com.google.common.collect.Streams.stream;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Streams.stream;
 
 public final class AstUtil {
 

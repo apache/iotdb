@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.schema.column;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.List;
@@ -696,7 +696,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PATHS, TSDataType.TEXT),
           new ColumnHeader(STATE, TSDataType.TEXT),
           new ColumnHeader("Progress", TSDataType.TEXT),
-          new ColumnHeader("ErrorMessage", TSDataType.TEXT));
+          new ColumnHeader("ErrorMessage", TSDataType.TEXT),
+          new ColumnHeader("WrittenModFileCount", TSDataType.INT64),
+          new ColumnHeader("RemainingModFileCount", TSDataType.INT64));
 
   public static final List<ColumnHeader> showRepairDataPartitionTableProgressColumnHeaders =
       ImmutableList.of(

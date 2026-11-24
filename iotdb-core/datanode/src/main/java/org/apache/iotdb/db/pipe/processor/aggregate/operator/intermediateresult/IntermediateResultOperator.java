@@ -43,6 +43,9 @@ import java.util.Map;
  */
 public interface IntermediateResultOperator {
 
+  int LEGACY_STATE_FORMAT_VERSION = 0;
+  int CURRENT_STATE_FORMAT_VERSION = 1;
+
   /**
    * Return the name of the operator, the name shall be in lower case
    *
@@ -121,4 +124,9 @@ public interface IntermediateResultOperator {
 
   /** Deserialize the object from byteBuffer to allow shutdown restart */
   void deserialize(final ByteBuffer byteBuffer) throws IOException;
+
+  default void deserialize(final ByteBuffer byteBuffer, final int stateFormatVersion)
+      throws IOException {
+    deserialize(byteBuffer);
+  }
 }

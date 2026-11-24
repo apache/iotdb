@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.DirectBufferMemoryAllocationException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 
-import com.google.common.collect.Lists;
+import org.apache.ratis.thirdparty.com.google.common.collect.Lists;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

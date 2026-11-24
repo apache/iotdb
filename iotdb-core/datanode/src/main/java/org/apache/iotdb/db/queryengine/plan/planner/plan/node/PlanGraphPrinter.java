@@ -105,7 +105,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFi
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 
-import com.google.common.base.Joiner;
+import org.apache.ratis.thirdparty.com.google.common.base.Joiner;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
 
@@ -117,7 +117,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 

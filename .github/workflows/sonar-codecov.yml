@@ -60,6 +60,13 @@ jobs:
         run: |
           mvn -B -P with-code-coverage clean package -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true -DforkCount=4
           mvn -B -P with-code-coverage post-integration-test -pl code-coverage
+      - name: Upload JaCoCo report for SonarCloud
+        uses: actions/upload-artifact@v6
+        with:
+          name: jacoco-merged-report
+          path: code-coverage/target/jacoco-merged-reports/jacoco.xml
+          retention-days: 1
+          if-no-files-found: warn
       - name: Upload coverage reports to codecov
         uses: codecov/codecov-action@v5
         with:
@@ -67,11 +74,45 @@ jobs:
           files: ./code-coverage/target/jacoco-merged-reports/jacoco.xml
 
   sonar:
+    needs: [codecov]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push'
+    if: ${{ !cancelled() && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb') || github.event_name == 'push') }}
+    env:
+      MAVEN_OPTS: -Xms2g -Xmx8g -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Check SonarCloud scan scope
+        id: sonar-scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" = "push" ]; then
+            echo "Push event on ${GITHUB_REF}: running full SonarCloud scan (excluding distribution)."
+            echo 'run_sonar=true' >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          if ! git rev-parse --verify --quiet "refs/remotes/origin/${BASE_REF}" >/dev/null; then
+            git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+          fi
+          python3 .github/scripts/check-sonar-pr-diff.py \
+            --base-ref "refs/remotes/origin/${BASE_REF}" \
+            --head-ref HEAD \
+            --github-output "${GITHUB_OUTPUT}"
+      - name: Download JaCoCo report from codecov job
+        if: steps.sonar-scope.outputs.run_sonar == 'true' && needs.codecov.result == 'success'
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: jacoco-merged-report
+          path: ${{ runner.temp }}/sonar-coverage
       - name: Set up JDK 21
+        if: steps.sonar-scope.outputs.run_sonar == 'true'
         uses: actions/setup-java@v5
         with:
           distribution: corretto
@@ -79,19 +120,40 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
+        if: steps.sonar-scope.outputs.run_sonar == 'true'
         uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
+      - name: Cache SonarCloud packages
+        if: steps.sonar-scope.outputs.run_sonar == 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
       - name: SonarCloud Report
+        if: steps.sonar-scope.outputs.run_sonar == 'true'
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
+          JACOCO_REPORT: ${{ runner.temp }}/sonar-coverage/jacoco.xml
         run: |
-          mvn -B -P with-integration-tests,with-code-coverage verify sonar:sonar \
-          -Dsonar.organization=apache \
-          -Dsonar.projectKey=apache_iotdb \
-          -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.token=${{ secrets.SONARCLOUD_TOKEN }} \
-          -DskipTests -pl '!distribution,!integration-test' -am
+          set -euo pipefail
+          SONAR_ARGS=(
+            -Dsonar.organization=apache
+            -Dsonar.projectKey=apache_iotdb
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.token="${SONAR_TOKEN}"
+          )
+          if [ -f "${JACOCO_REPORT}" ]; then
+            echo "Using JaCoCo coverage report: ${JACOCO_REPORT}"
+            SONAR_ARGS+=("-Dsonar.coverage.jacoco.xmlReportPaths=${JACOCO_REPORT}")
+          else
+            echo "JaCoCo coverage report not found at ${JACOCO_REPORT}; running SonarCloud without coverage."
+          fi
+          mvn -B verify sonar:sonar \
+            "${SONAR_ARGS[@]}" \
+            -DskipTests -pl '!distribution' -am

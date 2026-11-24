@@ -52,7 +52,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager.Registration;
 import org.apache.iotdb.db.utils.MemUtils;
 
-import com.google.common.util.concurrent.RateLimiter;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;

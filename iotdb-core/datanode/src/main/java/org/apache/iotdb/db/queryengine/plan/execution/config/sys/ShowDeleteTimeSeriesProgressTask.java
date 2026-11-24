@@ -26,8 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -54,7 +54,9 @@ public class ShowDeleteTimeSeriesProgressTask implements IConfigTask {
                 TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT,
-                TSDataType.TEXT));
+                TSDataType.TEXT,
+                TSDataType.INT64,
+                TSDataType.INT64));
     for (TDeleteTimeSeriesProcedureInfo info :
         procedures == null ? Collections.<TDeleteTimeSeriesProcedureInfo>emptyList() : procedures) {
       builder.getTimeColumnBuilder().writeLong(0);
@@ -77,6 +79,16 @@ public class ShowDeleteTimeSeriesProgressTask implements IConfigTask {
             .writeBinary(new Binary(info.getErrorMessage(), TSFileConfig.STRING_CHARSET));
       } else {
         builder.getColumnBuilder(5).appendNull();
+      }
+      if (info.isSetWrittenModFileCount()) {
+        builder.getColumnBuilder(6).writeLong(info.getWrittenModFileCount());
+      } else {
+        builder.getColumnBuilder(6).appendNull();
+      }
+      if (info.isSetRemainingModFileCount()) {
+        builder.getColumnBuilder(7).writeLong(info.getRemainingModFileCount());
+      } else {
+        builder.getColumnBuilder(7).appendNull();
       }
       builder.declarePosition();
     }

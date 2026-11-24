@@ -28,16 +28,16 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.Iterables;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class AssignUniqueId extends SingleChildProcessNode {
   private final Symbol idColumn;

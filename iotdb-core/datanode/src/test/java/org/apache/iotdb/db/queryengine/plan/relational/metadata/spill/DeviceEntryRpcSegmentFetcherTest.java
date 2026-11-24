@@ -33,9 +33,11 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -73,6 +75,27 @@ public class DeviceEntryRpcSegmentFetcherTest {
 
     assertArrayEquals(payload, fetcher.fetch(handle, 0));
     verify(client, times(3)).fetchDeviceEntrySegment(any());
+  }
+
+  @Test
+  public void driverInterruptStopsRetriesForFetchAndFinish() throws Exception {
+    when(client.fetchDeviceEntrySegment(any()))
+        .thenAnswer(
+            call -> {
+              Thread.currentThread().interrupt();
+              throw new TException(new ClosedByInterruptException());
+            });
+    when(client.finishDeviceEntrySegment(any(), any()))
+        .thenThrow(new TException(new ClosedByInterruptException()));
+    try {
+      assertThrows(IOException.class, () -> fetcher.fetch(handle, 0));
+      assertTrue(Thread.currentThread().isInterrupted());
+      verify(client).fetchDeviceEntrySegment(any());
+      fetcher.finish(handle);
+      verify(client).finishDeviceEntrySegment(any(), any());
+    } finally {
+      Thread.interrupted();
+    }
   }
 
   @Test

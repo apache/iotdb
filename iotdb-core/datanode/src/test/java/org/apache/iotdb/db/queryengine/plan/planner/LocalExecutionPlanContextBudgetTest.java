@@ -52,8 +52,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.collect.ArrayListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.junit.After;

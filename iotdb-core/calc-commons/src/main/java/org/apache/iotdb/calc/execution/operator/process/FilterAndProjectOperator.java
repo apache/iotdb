@@ -34,7 +34,7 @@ import org.apache.iotdb.calc.transformation.dag.column.ternary.TernaryColumnTran
 import org.apache.iotdb.calc.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;

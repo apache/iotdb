@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearF
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 
 import java.util.Optional;
 import java.util.Set;

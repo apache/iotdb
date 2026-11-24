@@ -71,7 +71,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;

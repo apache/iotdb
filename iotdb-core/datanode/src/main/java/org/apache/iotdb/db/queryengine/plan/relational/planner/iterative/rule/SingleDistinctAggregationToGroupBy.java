@@ -27,9 +27,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.Iterables;
 
 import java.util.HashSet;
 import java.util.List;
@@ -38,10 +38,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.aggregation;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 /**
  * Implements distinct aggregations with similar inputs by transforming plans of the following

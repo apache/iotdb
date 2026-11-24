@@ -21,12 +21,12 @@ package org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
 
-import com.google.common.annotations.VisibleForTesting;
+import org.apache.ratis.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 import java.util.Arrays;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class ArrayView {
   public static final ArrayView EMPTY = new ArrayView(new int[] {}, 0);

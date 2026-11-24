@@ -42,8 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
 
 public class LoadTsFile extends Statement {
 

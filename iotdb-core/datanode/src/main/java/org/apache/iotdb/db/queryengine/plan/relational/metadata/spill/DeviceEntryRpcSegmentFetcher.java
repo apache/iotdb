@@ -72,7 +72,8 @@ public final class DeviceEntryRpcSegmentFetcher implements DeviceEntrySegmentFet
         }
       } catch (ClientManagerException | TException e) {
         failure = new IOException(e);
-        if (System.nanoTime() - startTime > RETRY_TIMEOUT_NANOS) {
+        if (Thread.currentThread().isInterrupted()
+            || System.nanoTime() - startTime > RETRY_TIMEOUT_NANOS) {
           throw failure;
         }
         continue;
@@ -105,7 +106,8 @@ public final class DeviceEntryRpcSegmentFetcher implements DeviceEntrySegmentFet
         return;
       } catch (ClientManagerException | TException e) {
         // Cleanup notification is best effort and must not fail the query.
-        if (System.nanoTime() - startTime > RETRY_TIMEOUT_NANOS) {
+        if (Thread.currentThread().isInterrupted()
+            || System.nanoTime() - startTime > RETRY_TIMEOUT_NANOS) {
           return;
         }
       }

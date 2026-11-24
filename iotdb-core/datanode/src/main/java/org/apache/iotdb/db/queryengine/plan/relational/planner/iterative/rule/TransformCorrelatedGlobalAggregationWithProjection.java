@@ -37,8 +37,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanNodeDecorrelator;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.LongType;
 
@@ -48,8 +48,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Pattern.empty;
@@ -69,6 +67,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patte
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.correlatedJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
 
 /**
  * This rule decorrelates a correlated subquery of LEFT or INNER correlated join with: - single

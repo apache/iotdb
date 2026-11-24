@@ -53,6 +53,6 @@ public class RootMeanSquareOperator implements AggregatedResultOperator {
     return new Pair<>(
         TSDataType.DOUBLE,
         Math.pow(
-            intermediateResults.getDouble("sum_x2") / intermediateResults.getInt("count"), 0.5));
+            intermediateResults.getDouble("sum_x2") / intermediateResults.getLong("count"), 0.5));
   }
 }

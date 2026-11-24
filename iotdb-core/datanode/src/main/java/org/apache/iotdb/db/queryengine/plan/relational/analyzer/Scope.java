@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,13 +39,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.asQualifiedName;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.FIELD;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.TABLE;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Iterables.getOnlyElement;
 
 public class Scope {
 

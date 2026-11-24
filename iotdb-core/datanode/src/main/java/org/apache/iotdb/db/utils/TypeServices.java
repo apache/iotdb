@@ -91,12 +91,12 @@ import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.rpc.RpcUtils;
 
-import com.google.common.io.BaseEncoding;
 import com.sun.jna.platform.win32.OaIdl;
 import com.sun.jna.platform.win32.OleAuto;
 import com.sun.jna.platform.win32.Variant;
 import com.sun.jna.platform.win32.WTypes;
 import com.sun.jna.platform.win32.WinDef;
+import org.apache.ratis.thirdparty.com.google.common.io.BaseEncoding;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;

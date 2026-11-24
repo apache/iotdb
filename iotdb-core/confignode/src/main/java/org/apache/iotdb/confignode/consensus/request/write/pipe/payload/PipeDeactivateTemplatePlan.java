@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
-import com.google.common.collect.Maps;
+import org.apache.ratis.thirdparty.com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;

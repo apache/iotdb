@@ -36,7 +36,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.nio.ByteBuffer;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class GroupedRegressionAccumulator implements GroupedAccumulator {
 

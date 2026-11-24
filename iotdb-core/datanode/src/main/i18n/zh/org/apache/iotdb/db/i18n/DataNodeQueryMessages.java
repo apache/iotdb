@@ -202,8 +202,6 @@ public final class DataNodeQueryMessages {
       "发送新数据块事件失败，尝试次数：{}";
   public static final String FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT =
       "发送数据块结束事件失败，尝试次数：{}";
-  public static final String FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT_2 =
-      "所有重试后仍无法发送数据块结束事件";
   public static final String SOURCE_HANDLE_IS_BLOCKED =
       "Source handle 已被阻塞。";
   public static final String RESERVED_DATA_BLOCK_SIZE_IS_NULL =
@@ -2375,6 +2373,12 @@ public final class DataNodeQueryMessages {
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_OR_THREE_ARGUMENTS =
 
       "聚合函数 [%s] 只能有两个或三个参数";
+  public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_ONE_TWO_OR_THREE_ARGUMENTS_C1ADA261 =
+
+      "聚合函数 [%s] 只能有一个、两个或三个参数";
+  public static final String SECOND_ARGUMENT_OF_AGGREGATE_FUNCTIONS_S_SHOULD_BE_A_POSITIVE_DURATION_LITERAL_OR_INTEGER_498530E4 =
+
+      "聚合函数 [%s] 的第二个参数应为正的 duration 字面量（如 1s、1m、1h）或整数字面量";
   public static final String AGGREGATE_FUNCTIONS_S_SHOULD_ONLY_HAVE_TWO_ARGUMENTS =
 
       "聚合函数 [%s] 只能有两个参数";
@@ -2710,6 +2714,8 @@ public final class DataNodeQueryMessages {
   public static final String INVALID_ARGUMENT_S_ORDERING_CAN_NOT_BE_SPECIFIED_FOR_TABLE_ARGUMENT_WITH_ROW_SEMANTICS =
 
       "无效参数 %s。不能为 row 语义的表参数指定 Ordering";
+  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_ASCENDING_ORDER_5E26E74A = "参数 %s 的 ORDER BY 子句必须为升序。";
+  public static final String EXCEPTION_THE_ORDER_BY_CLAUSE_OF_THE_ARGUMENT_S_MUST_BE_IN_DESCENDING_ORDER_C2B688D7 = "参数 %s 的 ORDER BY 子句必须为降序。";
   public static final String INVALID_SCALAR_ARGUMENT_S_EXPECTED_TYPE_S_GOT_S =
 
       "无效标量参数 '%s'。期望类型 %s，实际为 %s";
@@ -5675,6 +5681,9 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s：%s ms，调用 %s 次，应用 %s 次";
+
+  public static final String INVALID_SCALAR_ARGUMENT_S_VALUE_OUT_OF_RANGE_FOR_INT32_A865664C =
+      "无效标量参数 '%s'。值超出 INT32 的范围";
 
   public static final String
       EXCEPTION_REQUEST_OFFSET_ARG_DOES_NOT_MATCH_THE_PENDING_RESULT_FRAGMENT_OFFSET_ARG_A1B13DBC =

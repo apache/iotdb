@@ -34,8 +34,10 @@ import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDele
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
+import org.apache.iotdb.confignode.procedure.ProcedureWithPendingCleanup;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.ModFileDeletionProgress;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
@@ -57,14 +59,15 @@ import java.util.Map;
 import java.util.Objects;
 
 public class DropTableColumnProcedure
-    extends AbstractAlterOrDropTableProcedure<DropTableColumnState> {
+    extends AbstractAlterOrDropTableProcedure<DropTableColumnState>
+    implements ProcedureWithPendingCleanup {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTableColumnProcedure.class);
 
   private String columnName;
   private boolean isAttributeColumn;
-  private final TableDeletionModProgress modProgress =
-      new TableDeletionModProgress(
+  private final ModFileDeletionProgress modProgress =
+      new ModFileDeletionProgress(
           this::getProcId,
           () -> !isFinished() && getCurrentState() == DropTableColumnState.EXECUTE_ON_REGIONS);
 
@@ -100,6 +103,16 @@ public class DropTableColumnProcedure
 
   public void updateModFileProgress() {
     modProgress.update();
+  }
+
+  @Override
+  public boolean hasPendingCleanup() {
+    return modProgress.hasPendingCleanup();
+  }
+
+  @Override
+  public void retryPendingCleanup() {
+    updateModFileProgress();
   }
 
   @Override
@@ -229,6 +242,7 @@ public class DropTableColumnProcedure
     if (!relatedRegionGroup.isEmpty()) {
       if (!isAttributeColumn) {
         modProgress.setRegionCount(relatedRegionGroup.size());
+        modProgress.trackRegionReplicas(relatedRegionGroup);
       }
       new TableRegionTaskExecutor<>(
               ProcedureMessages.MESSAGE_DELETE_DATA_FOR_DROP_TABLE_A678391E,
@@ -244,7 +258,8 @@ public class DropTableColumnProcedure
                         tableName,
                         columnName,
                         isAttributeColumn)
-                    .setProcedureId(getProcId());
+                    .setProcedureId(getProcId())
+                    .setTrackModFileProgress(!isAttributeColumn);
               }))
           .execute();
     }

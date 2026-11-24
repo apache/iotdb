@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
-import com.google.common.collect.Maps;
+import org.apache.ratis.thirdparty.com.google.common.collect.Maps;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import jakarta.validation.constraints.NotNull;

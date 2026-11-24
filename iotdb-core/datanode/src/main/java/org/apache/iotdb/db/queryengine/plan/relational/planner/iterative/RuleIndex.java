@@ -23,9 +23,9 @@ import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.calc.plan.relational.utils.matching.pattern.TypeOfPattern;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.collect.ListMultimap;
-import com.google.common.reflect.TypeToken;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.reflect.TypeToken;
 
 import java.util.Set;
 import java.util.stream.Stream;

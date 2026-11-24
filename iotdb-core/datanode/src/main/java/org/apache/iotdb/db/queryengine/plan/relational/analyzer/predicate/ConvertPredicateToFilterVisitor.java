@@ -47,8 +47,8 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.utils.TypeServices;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.math.DoubleMath;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.math.DoubleMath;
 import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.LongType;
@@ -71,13 +71,13 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor.getLongValue;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.enums.TSDataType.INT32;
 import static org.apache.tsfile.enums.TSDataType.INT64;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;

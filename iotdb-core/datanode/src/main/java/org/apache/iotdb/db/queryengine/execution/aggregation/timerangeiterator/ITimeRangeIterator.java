@@ -23,7 +23,7 @@ import org.apache.tsfile.read.common.TimeRange;
 
 import java.math.BigInteger;
 
-import static com.google.common.math.LongMath.saturatedAdd;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 /**
  * This interface used for iteratively generating aggregated time windows in GROUP BY query.

@@ -152,6 +152,8 @@ struct TSendFragmentInstanceReq {
   // Attempt metadata is absent for a legacy coordinator. Do not change the binary FI body.
   3: optional i32 queryAttemptId
   4: optional TQueryAdmissionToken admissionToken
+  // The receiver anchors the remaining duration to its own clock at RPC receipt.
+  5: optional i64 remainingQueryTimeMs
 }
 
 struct TSendFragmentInstanceResp {
@@ -397,12 +399,14 @@ struct TDeleteColumnDataReq {
   3: required string columnName,
   4: required bool isAttributeColumn
   5: optional i64 procedureId
+  6: optional bool trackModFileProgress
 }
 
 struct TDeleteDataOrDevicesForDropTableReq {
   1: required list<common.TConsensusGroupId> regionIdList
   2: required string tableName
   3: optional i64 procedureId
+  4: optional bool trackModFileProgress
 }
 
 struct TDropTableModProgress {
@@ -414,6 +418,7 @@ struct TDropTableModProgress {
 struct TGetDropTableModProgressReq {
   1: required i64 procedureId
   2: required list<common.TConsensusGroupId> regionIdList
+  3: optional bool clearProgress
 }
 
 struct TGetDropTableModProgressResp {
@@ -515,6 +520,8 @@ struct TDeleteDataForDeleteSchemaReq {
   1: required list<common.TConsensusGroupId> dataRegionIdList
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional i64 procedureId
+  5: optional bool trackModFileProgress
 }
 
 struct TDeleteTimeSeriesReq {

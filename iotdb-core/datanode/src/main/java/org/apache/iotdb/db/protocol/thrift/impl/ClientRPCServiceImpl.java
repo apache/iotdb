@@ -243,7 +243,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
@@ -255,6 +254,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 import static org.apache.iotdb.db.utils.QueryDataSetUtils.convertTsBlockByFetchSize;
 import static org.apache.iotdb.rpc.RpcUtils.TIME_PRECISION;
 import static org.apache.iotdb.rpc.TSStatusCode.QUERY_WAS_KILLED;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
 
 public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 

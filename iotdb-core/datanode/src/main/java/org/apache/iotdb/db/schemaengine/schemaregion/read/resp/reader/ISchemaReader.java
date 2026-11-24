@@ -21,10 +21,10 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
-import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.immediateFuture;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
 /**
  * ISchemaReader is a non-blocking iterator.

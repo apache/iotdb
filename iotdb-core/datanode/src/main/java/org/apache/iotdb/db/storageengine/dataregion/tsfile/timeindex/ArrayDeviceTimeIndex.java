@@ -27,8 +27,8 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.CommonUtils;
 
-import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.RateLimiter;
+import org.apache.ratis.thirdparty.com.google.common.collect.Sets;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.FilePathUtils;

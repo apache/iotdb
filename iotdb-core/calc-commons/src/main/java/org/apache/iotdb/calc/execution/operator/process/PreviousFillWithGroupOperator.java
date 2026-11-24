@@ -26,7 +26,7 @@ import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -37,8 +37,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.Comparator;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 /** Used for table previous fill with group. */
 public class PreviousFillWithGroupOperator implements ProcessOperator {

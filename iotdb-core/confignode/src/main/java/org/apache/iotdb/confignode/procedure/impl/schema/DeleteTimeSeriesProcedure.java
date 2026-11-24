@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.procedure.ProcedureWithPendingCleanup;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -78,11 +80,17 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 
 public class DeleteTimeSeriesProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteTimeSeriesState> {
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteTimeSeriesState>
+    implements ProcedureWithPendingCleanup {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTimeSeriesProcedure.class);
 
   private String queryId;
+
+  private final ModFileDeletionProgress modProgress =
+      new ModFileDeletionProgress(
+          this::getProcId,
+          () -> !isFinished() && getCurrentState() == DeleteTimeSeriesState.DELETE_DATA);
 
   private PathPatternTree patternTree;
   private PathPatternTree originalPatternTree;
@@ -160,6 +168,9 @@ public class DeleteTimeSeriesProcedure
           }
           return Flow.NO_MORE_STATE;
         case DELETE_DATABASES:
+          if (patternTree.isEmpty()) {
+            modProgress.finishWithoutModFiles();
+          }
           // This is a background task: an RPC wait timeout must not allow recreation while a
           // database-deletion procedure is still running.
           final TSStatus deleteStatus =
@@ -333,20 +344,9 @@ public class DeleteTimeSeriesProcedure
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
-    deleteDataWithRawPathPattern(env);
-  }
-
-  private void deleteDataWithRawPathPattern(final ConfigNodeProcedureEnv env) {
-    executeDeleteData(env, patternTree);
-    if (isFailed()) {
-      return;
-    }
-    setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
-  }
-
-  private void executeDeleteData(
-      final ConfigNodeProcedureEnv env, final PathPatternTree patternTree) {
     if (isAllLogicalView) {
+      modProgress.finishWithoutModFiles();
+      setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
       return;
     }
 
@@ -355,9 +355,13 @@ public class DeleteTimeSeriesProcedure
 
     // Target timeSeries has no data
     if (relatedDataRegionGroup.isEmpty()) {
+      modProgress.finishWithoutModFiles();
+      setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
       return;
     }
 
+    modProgress.setRegionCount(relatedDataRegionGroup.size());
+    modProgress.trackRegionReplicas(relatedDataRegionGroup);
     final DeleteTimeSeriesRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
         new DeleteTimeSeriesRegionTaskExecutor<>(
             ProcedureMessages.MESSAGE_DELETE_DATA_1896591B,
@@ -365,12 +369,40 @@ public class DeleteTimeSeriesProcedure
             relatedDataRegionGroup,
             false,
             CnToDnAsyncRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
-            ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeleteDataForDeleteSchemaReq(
-                        new ArrayList<>(consensusGroupIdList),
-                        preparePatternTreeBytesData(patternTree))
-                    .setIsGeneratedByPipe(isGeneratedByPipe)));
+            (dataNodeLocation, consensusGroupIdList) -> {
+              modProgress.trackRegions(dataNodeLocation, consensusGroupIdList);
+              return new TDeleteDataForDeleteSchemaReq(
+                      new ArrayList<>(consensusGroupIdList),
+                      preparePatternTreeBytesData(patternTree))
+                  .setIsGeneratedByPipe(isGeneratedByPipe)
+                  .setProcedureId(getProcId())
+                  .setTrackModFileProgress(true);
+            });
     deleteDataTask.execute();
+    modProgress.finish(
+        () -> {
+          if (!isFailed()) {
+            setNextState(DeleteTimeSeriesState.DELETE_TIMESERIES_SCHEMA);
+          }
+        });
+  }
+
+  public TDropTableModProgress getModFileProgress() {
+    return modProgress.snapshot();
+  }
+
+  public void updateModFileProgress() {
+    modProgress.update();
+  }
+
+  @Override
+  public boolean hasPendingCleanup() {
+    return modProgress.hasPendingCleanup();
+  }
+
+  @Override
+  public void retryPendingCleanup() {
+    updateModFileProgress();
   }
 
   private void deleteTimeSeriesSchema(final ConfigNodeProcedureEnv env) {
@@ -524,6 +556,7 @@ public class DeleteTimeSeriesProcedure
       ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(database, stream);
     }
     ReadWriteIOUtils.write(databaseDeletionFailure, stream);
+    modProgress.serialize(stream);
   }
 
   @Override
@@ -555,6 +588,7 @@ public class DeleteTimeSeriesProcedure
         databaseDeletionFailure = ReadWriteIOUtils.readString(byteBuffer);
       }
     }
+    modProgress.deserialize(byteBuffer);
   }
 
   @Override

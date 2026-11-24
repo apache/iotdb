@@ -43,7 +43,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Collections;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.utils.BytesUtils.boolToBytes;
 
 /** max(x,y) returns the value of x associated with the maximum value of y over all input values. */

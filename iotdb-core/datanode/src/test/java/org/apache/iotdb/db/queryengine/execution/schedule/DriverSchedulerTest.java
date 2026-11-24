@@ -19,26 +19,52 @@
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
+import org.apache.iotdb.db.queryengine.execution.driver.DataDriver;
+import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.IMPPDataExchangeManager;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
+import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
+import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceExecution;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskStatus;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 
 public class DriverSchedulerTest {
 
@@ -181,5 +207,306 @@ public class DriverSchedulerTest {
         "DriverTask test.0.inst-2.0 is aborted by query cascading aborted",
         task3.getAbortCause().get().getMessage());
     Assert.assertFalse(task4.getAbortCause().isPresent());
+  }
+
+  @Test
+  public void testSetAbortCauseLetsGenuineFailureReplaceFallbackAndPreservesFirstGenuine() {
+    DriverTask task = new DriverTask();
+    DriverTaskAbortedException fallback1 =
+        new DriverTaskAbortedException(
+            "task-0", DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
+    DriverTaskAbortedException fallback2 =
+        new DriverTaskAbortedException(
+            "task-0", DriverTaskAbortedException.BY_QUERY_CASCADING_ABORTED);
+    ArithmeticException firstGenuine = new ArithmeticException("long overflow");
+    RuntimeException secondGenuine = new RuntimeException("second genuine");
+
+    task.setAbortCause(null);
+    Assert.assertFalse(task.getAbortCause().isPresent());
+
+    task.setAbortCause(fallback1);
+    task.setAbortCause(fallback2);
+    Assert.assertSame(fallback1, task.getAbortCause().get());
+
+    // Genuine failure replaces synthetic scheduler fallback.
+    task.setAbortCause(firstGenuine);
+    Assert.assertSame(firstGenuine, task.getAbortCause().get());
+
+    // Subsequent synthetic fallbacks, genuine failures, or nulls do not replace the first genuine.
+    task.setAbortCause(fallback2);
+    task.setAbortCause(secondGenuine);
+    task.setAbortCause(null);
+    Assert.assertSame(firstGenuine, task.getAbortCause().get());
+  }
+
+  @Test
+  public void testToAbortedPropagatesOriginalArithmeticExceptionInsteadOfFallback()
+      throws Exception {
+    verifyArithmeticExceptionPropagatesToLocalResultQueue(true);
+    tearDown();
+    verifyArithmeticExceptionPropagatesToLocalResultQueue(false);
+  }
+
+  private void verifyArithmeticExceptionPropagatesToLocalResultQueue(boolean replaceBeforeToAborted)
+      throws Exception {
+    QueryId queryId =
+        new QueryId("arithmetic_propagation_" + (replaceBeforeToAborted ? "replaced" : "resolved"));
+    FragmentInstanceId rootId = new FragmentInstanceId(new PlanFragmentId(queryId, 1), "0");
+    FragmentInstanceId leafId = new FragmentInstanceId(new PlanFragmentId(queryId, 2), "0");
+
+    FragmentInstanceStateMachine rootStateMachine =
+        new FragmentInstanceStateMachine(rootId, directExecutor());
+    FragmentInstanceContext rootContext =
+        FragmentInstanceContext.createFragmentInstanceContext(rootId, rootStateMachine);
+    FragmentInstanceStateMachine leafStateMachine =
+        new FragmentInstanceStateMachine(leafId, directExecutor());
+    FragmentInstanceContext leafContext =
+        FragmentInstanceContext.createFragmentInstanceContext(leafId, leafStateMachine);
+
+    LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    MemoryManager memoryManager = new MemoryManager(1024L * 1024L);
+    MemoryPool memoryPool = new MemoryPool("test", memoryManager, 1024L * 1024L);
+    Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(memoryPool);
+    SharedTsBlockQueue rootQueue =
+        new SharedTsBlockQueue(
+            rootId.toThrift(), "result_node", mockLocalMemoryManager, newDirectExecutorService());
+    LocalSourceHandle resultHandle =
+        new LocalSourceHandle(
+            new TFragmentInstanceId(queryId.getId(), 0, "0"),
+            "result_node",
+            rootQueue,
+            Mockito.mock(SourceHandleListener.class));
+    LocalSinkChannel rootSink =
+        new LocalSinkChannel(
+            rootId.toThrift(),
+            rootQueue,
+            new SinkListener() {
+              @Override
+              public void onFinish(ISink sink) {}
+
+              @Override
+              public void onEndOfBlocks(ISink sink) {}
+
+              @Override
+              public Optional<Throwable> onAborted(ISink sink) {
+                return rootContext.getFailureCause();
+              }
+
+              @Override
+              public void onFailure(ISink sink, Throwable t) {}
+            });
+    ListenableFuture<?> resultBlocked = resultHandle.isBlocked();
+
+    IMPPDataExchangeManager mockExchangeManager = Mockito.mock(IMPPDataExchangeManager.class);
+    Mockito.doAnswer(
+            invocation -> {
+              TFragmentInstanceId fiId = invocation.getArgument(0);
+              if (rootId.toThrift().equals(fiId)) {
+                rootSink.abort();
+              }
+              return null;
+            })
+        .when(mockExchangeManager)
+        .forceDeregisterFragmentInstance(Mockito.any());
+    manager.setBlockManager(mockExchangeManager);
+
+    DataDriverContext rootDriverContext = new DataDriverContext(rootContext, 0);
+    rootDriverContext.setSink(rootSink);
+    IDriver rootDriver = new DataDriver(Mockito.mock(Operator.class), rootDriverContext, 0L);
+
+    DataDriverContext leafDriverContext = new DataDriverContext(leafContext, 0);
+    leafDriverContext.setSink(Mockito.mock(ISink.class));
+    IDriver leafDriver = new DataDriver(Mockito.mock(Operator.class), leafDriverContext, 0L);
+
+    manager.submitDrivers(queryId, Collections.singletonList(rootDriver), QUERY_TIMEOUT_MS, null);
+    manager.submitDrivers(queryId, Collections.singletonList(leafDriver), QUERY_TIMEOUT_MS, null);
+
+    DriverTask leafTask = manager.getQueryMap().get(queryId).get(leafId).iterator().next();
+
+    // Leaf driver records the real ArithmeticException on its FragmentInstanceContext first, then
+    // AbstractDriverThread stores a synthetic DriverTaskAbortedException fallback on leafTask.
+    ArithmeticException originalFailure = new ArithmeticException("long overflow");
+    leafDriver.failed(originalFailure);
+    leafTask.setAbortCause(
+        new DriverTaskAbortedException(
+            leafTask.getDriverTaskId().getFullId(),
+            DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED));
+    if (replaceBeforeToAborted) {
+      // Simulates fragment cleanup supplying the original cause before toAborted propagates it.
+      leafTask.setAbortCause(leafContext.getFailureCause().orElse(null));
+    }
+
+    manager.getScheduler().toAborted(leafTask);
+
+    Assert.assertEquals(Optional.of(originalFailure), rootContext.getFailureCause());
+    try {
+      resultBlocked.get(5, TimeUnit.SECONDS);
+      Assert.fail("Expected ExecutionException carrying ArithmeticException");
+    } catch (ExecutionException e) {
+      Assert.assertSame(originalFailure, e.getCause());
+    }
+  }
+
+  @Test
+  public void testAbortFragmentInstanceReplacesSchedulerFallbackOnTask() throws Exception {
+    manager.setBlockManager(Mockito.mock(IMPPDataExchangeManager.class));
+    QueryId queryId = new QueryId("abort_fi_replaces_fallback");
+    FragmentInstanceId leafId = new FragmentInstanceId(new PlanFragmentId(queryId, 2), "0");
+    FragmentInstanceStateMachine leafStateMachine =
+        new FragmentInstanceStateMachine(leafId, directExecutor());
+    FragmentInstanceContext leafContext =
+        FragmentInstanceContext.createFragmentInstanceContext(leafId, leafStateMachine);
+    DataDriverContext leafDriverContext = new DataDriverContext(leafContext, 0);
+    leafDriverContext.setSink(Mockito.mock(ISink.class));
+    IDriver leafDriver = new DataDriver(Mockito.mock(Operator.class), leafDriverContext, 0L);
+
+    manager.submitDrivers(queryId, Collections.singletonList(leafDriver), QUERY_TIMEOUT_MS, null);
+    DriverTask leafTask = manager.getQueryMap().get(queryId).get(leafId).iterator().next();
+
+    ArithmeticException originalFailure = new ArithmeticException("long overflow");
+    leafDriver.failed(originalFailure);
+    leafTask.setAbortCause(
+        new DriverTaskAbortedException(
+            leafTask.getDriverTaskId().getFullId(),
+            DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED));
+
+    manager.abortFragmentInstance(leafId, leafContext.getFailureCause().orElse(null));
+
+    Assert.assertEquals(DriverTaskStatus.ABORTED, leafTask.getStatus());
+    Assert.assertEquals(Optional.of(originalFailure), leafTask.getAbortCause());
+    Assert.assertEquals(1, leafStateMachine.getFailureCauses().size());
+    Assert.assertEquals(Optional.of(originalFailure), leafContext.getFailureCause());
+  }
+
+  @Test
+  public void testToAbortedFallsBackToTaskSyntheticCauseWhenFragmentHasNoFailure()
+      throws Exception {
+    manager.setBlockManager(Mockito.mock(IMPPDataExchangeManager.class));
+    QueryId queryId = new QueryId("to_aborted_synthetic_fallback");
+    FragmentInstanceId rootId = new FragmentInstanceId(new PlanFragmentId(queryId, 1), "0");
+    FragmentInstanceId leafId = new FragmentInstanceId(new PlanFragmentId(queryId, 2), "0");
+
+    FragmentInstanceStateMachine rootStateMachine =
+        new FragmentInstanceStateMachine(rootId, directExecutor());
+    FragmentInstanceContext rootContext =
+        FragmentInstanceContext.createFragmentInstanceContext(rootId, rootStateMachine);
+    FragmentInstanceStateMachine leafStateMachine =
+        new FragmentInstanceStateMachine(leafId, directExecutor());
+    FragmentInstanceContext leafContext =
+        FragmentInstanceContext.createFragmentInstanceContext(leafId, leafStateMachine);
+
+    DataDriverContext rootDriverContext = new DataDriverContext(rootContext, 0);
+    rootDriverContext.setSink(Mockito.mock(ISink.class));
+    IDriver rootDriver = new DataDriver(Mockito.mock(Operator.class), rootDriverContext, 0L);
+
+    DataDriverContext leafDriverContext = new DataDriverContext(leafContext, 0);
+    leafDriverContext.setSink(Mockito.mock(ISink.class));
+    IDriver leafDriver = new DataDriver(Mockito.mock(Operator.class), leafDriverContext, 0L);
+
+    manager.submitDrivers(queryId, Collections.singletonList(rootDriver), QUERY_TIMEOUT_MS, null);
+    manager.submitDrivers(queryId, Collections.singletonList(leafDriver), QUERY_TIMEOUT_MS, null);
+
+    DriverTask leafTask = manager.getQueryMap().get(queryId).get(leafId).iterator().next();
+    DriverTaskAbortedException fallback =
+        new DriverTaskAbortedException(
+            leafTask.getDriverTaskId().getFullId(),
+            DriverTaskAbortedException.BY_ALREADY_BEING_CANCELLED);
+    leafTask.setAbortCause(fallback);
+
+    manager.getScheduler().toAborted(leafTask);
+
+    Assert.assertEquals(Optional.of(fallback), rootContext.getFailureCause());
+  }
+
+  @Test
+  public void testExplicitCancellationWithFourPipelinesRetainsEmptyFailureList() throws Exception {
+    int previousDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+    try {
+      manager.setBlockManager(Mockito.mock(IMPPDataExchangeManager.class));
+      QueryId queryId = new QueryId("driver_context_cancel_four_pipelines");
+      FragmentInstanceId instanceId = new FragmentInstanceId(new PlanFragmentId(queryId, 1), "0");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, directExecutor());
+      FragmentInstanceContext context =
+          FragmentInstanceContext.createFragmentInstanceContext(instanceId, stateMachine);
+      ISink sink = Mockito.mock(ISink.class);
+      List<IDriver> drivers = createFourPipelineDrivers(context, sink);
+      context.initializeNumOfDrivers(drivers.size());
+
+      FragmentInstanceExecution.createFragmentInstanceExecution(
+          manager,
+          instanceId,
+          context,
+          drivers,
+          sink,
+          stateMachine,
+          QUERY_TIMEOUT_MS,
+          false,
+          Mockito.mock(MPPDataExchangeManager.class));
+
+      context.cancel();
+
+      Assert.assertEquals(FragmentInstanceState.CANCELLED, stateMachine.getState());
+      Assert.assertTrue(stateMachine.getFailureCauses().isEmpty());
+      Assert.assertTrue(context.getFailureInfoList().isEmpty());
+      Assert.assertFalse(context.getFailureCause().isPresent());
+      Assert.assertFalse(manager.getQueryMap().containsKey(queryId));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(previousDataNodeId);
+    }
+  }
+
+  @Test
+  public void testSingleOperatorFailureWithFourPipelinesRecordsSingleFailureEntry()
+      throws Exception {
+    int previousDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+    try {
+      manager.setBlockManager(Mockito.mock(IMPPDataExchangeManager.class));
+      QueryId queryId = new QueryId("driver_context_single_failure_four_pipelines");
+      FragmentInstanceId instanceId = new FragmentInstanceId(new PlanFragmentId(queryId, 1), "0");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, directExecutor());
+      FragmentInstanceContext context =
+          FragmentInstanceContext.createFragmentInstanceContext(instanceId, stateMachine);
+      ISink sink = Mockito.mock(ISink.class);
+      List<IDriver> drivers = createFourPipelineDrivers(context, sink);
+      context.initializeNumOfDrivers(drivers.size());
+
+      FragmentInstanceExecution.createFragmentInstanceExecution(
+          manager,
+          instanceId,
+          context,
+          drivers,
+          sink,
+          stateMachine,
+          QUERY_TIMEOUT_MS,
+          false,
+          Mockito.mock(MPPDataExchangeManager.class));
+
+      ArithmeticException operatorFailure = new ArithmeticException("long overflow");
+      drivers.get(0).failed(operatorFailure);
+
+      Assert.assertEquals(FragmentInstanceState.FAILED, stateMachine.getState());
+      Assert.assertEquals(1, stateMachine.getFailureCauses().size());
+      Assert.assertEquals(1, context.getFailureInfoList().size());
+      Assert.assertEquals(Optional.of(operatorFailure), context.getFailureCause());
+      Assert.assertFalse(manager.getQueryMap().containsKey(queryId));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(previousDataNodeId);
+    }
+  }
+
+  private static List<IDriver> createFourPipelineDrivers(
+      FragmentInstanceContext context, ISink sink) {
+    List<IDriver> drivers = new ArrayList<>(4);
+    for (int i = 0; i < 4; i++) {
+      DataDriverContext driverContext = new DataDriverContext(context, i);
+      driverContext.setSink(sink);
+      Operator operator = Mockito.mock(Operator.class);
+      drivers.add(new DataDriver(operator, driverContext, 0L));
+    }
+    return drivers;
   }
 }
