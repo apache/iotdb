@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -39,6 +38,7 @@ import org.apache.iotdb.confignode.procedure.state.schema.DeleteTimeSeriesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -46,7 +46,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
@@ -498,17 +498,19 @@ public class DeleteTimeSeriesProcedureTest {
         new DeleteTimeSeriesProcedure("legacy", tree, false, false);
     final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
     procedure.serialize(new DataOutputStream(bytes));
-    // Remove the original-tree flag, empty database-schema count and null deletion-failure string.
-    final ByteBuffer buffer = ByteBuffer.wrap(bytes.toByteArray(), 0, bytes.size() - 9);
+    // Keep the legacy audit flag and remove all optional fields added after it.
+    final ByteBuffer buffer =
+        ByteBuffer.wrap(bytes.toByteArray(), 0, bytes.size() - 3 * Byte.BYTES - 2 * Integer.BYTES);
     buffer.getShort();
     final DeleteTimeSeriesProcedure restored = new DeleteTimeSeriesProcedure(false);
     restored.deserialize(buffer);
     Assert.assertEquals(tree, restored.getPatternTree());
     Assert.assertEquals("legacy", restored.getQueryId());
+    Assert.assertNull(restored.getModFileProgress());
   }
 
   @Test
-  public void serializeDeserializeTest() throws IllegalPathException, IOException {
+  public void serializeDeserializeTest() throws Exception {
     String queryId = "1";
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.sg1.**"));
@@ -516,6 +518,12 @@ public class DeleteTimeSeriesProcedureTest {
     patternTree.constructTree();
     DeleteTimeSeriesProcedure deleteTimeSeriesProcedure =
         new DeleteTimeSeriesProcedure(queryId, patternTree, false, false);
+    final Field trackerField = DeleteTimeSeriesProcedure.class.getDeclaredField("modProgress");
+    trackerField.setAccessible(true);
+    final Field progressField = ModFileDeletionProgress.class.getDeclaredField("modFileProgress");
+    progressField.setAccessible(true);
+    final TDropTableModProgress progress = new TDropTableModProgress(4).setRemainingModFileCount(0);
+    progressField.set(trackerField.get(deleteTimeSeriesProcedure), progress);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -530,6 +538,7 @@ public class DeleteTimeSeriesProcedureTest {
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(queryId, deserializedProcedure.getQueryId());
+    Assert.assertEquals(progress, deserializedProcedure.getModFileProgress());
 
     List<PartialPath> pathList = deserializedProcedure.getPatternTree().getAllPathPatterns();
     pathList.sort(PartialPath::compareTo);

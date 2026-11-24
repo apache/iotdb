@@ -22,7 +22,7 @@ package org.apache.iotdb.db.schemaengine.lease;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException;
 import org.apache.iotdb.commons.exception.MetadataLeaseFencedException.LeaseFencedRetryPolicy;
 
-import com.google.common.util.concurrent.MoreExecutors;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors;
 
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicLong;

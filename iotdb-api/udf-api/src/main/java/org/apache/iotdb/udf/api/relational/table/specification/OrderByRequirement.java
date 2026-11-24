@@ -17,18 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.wal.exception;
+package org.apache.iotdb.udf.api.relational.table.specification;
 
-public class MemTablePinException extends WALException {
-  public MemTablePinException(Throwable cause) {
-    super(cause);
-  }
+/**
+ * The requirement a table function imposes on the ORDER BY clause of a table argument. A table
+ * parameter specification carrying no requirement accepts any ORDER BY clause, including its
+ * absence.
+ */
+public enum OrderByRequirement {
 
-  public MemTablePinException(String message) {
-    super(message);
-  }
+  /** The clause is required and every sort item must be in ascending order. */
+  ASCENDING,
 
-  public MemTablePinException(String message, Throwable cause) {
-    super(message, cause);
-  }
+  /** The clause is required and every sort item must be in descending order. */
+  DESCENDING,
+
+  /** The clause is required, but its direction is not constrained. */
+  ORDERED
 }

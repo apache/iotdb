@@ -23,8 +23,8 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
 /**
  * {@link IDriver} encapsulates some methods which are necessary for FragmentInstanceTaskExecutor to

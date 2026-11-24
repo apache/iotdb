@@ -76,6 +76,15 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
       final CompletedProcedureContainer<Env> retainer = entry.getValue();
       final Procedure<?> proc = retainer.getProcedure();
       if (retainer.isExpired(now, evictTTLInMs)) {
+        if (proc instanceof ProcedureWithPendingCleanup) {
+          final ProcedureWithPendingCleanup cleanup = (ProcedureWithPendingCleanup) proc;
+          if (cleanup.hasPendingCleanup()) {
+            cleanup.retryPendingCleanup();
+            if (cleanup.hasPendingCleanup()) {
+              continue;
+            }
+          }
+        }
         // Failed procedures aren't persisted in WAL.
         batchIds[batchCount++] = entry.getKey();
         if (batchCount == batchIds.length) {

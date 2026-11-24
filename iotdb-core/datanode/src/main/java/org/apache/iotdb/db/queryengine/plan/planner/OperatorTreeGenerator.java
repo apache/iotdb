@@ -251,8 +251,8 @@ import org.apache.iotdb.db.utils.columngenerator.SlidingTimeColumnGenerator;
 import org.apache.iotdb.db.utils.columngenerator.parameter.ColumnGeneratorParameter;
 import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGeneratorParameter;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
@@ -289,8 +289,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
@@ -305,6 +303,8 @@ import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.Aggreg
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.iotdb.db.utils.TypeServices.Transformation.CONSTANT_FILL_SERVICE;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
 public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecutionPlanContext> {

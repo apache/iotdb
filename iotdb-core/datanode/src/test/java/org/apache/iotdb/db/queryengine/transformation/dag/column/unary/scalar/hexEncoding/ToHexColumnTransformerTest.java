@@ -23,7 +23,7 @@ import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.GenericCodecColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.factory.CodecStrategiesFactory;
 
-import com.google.common.io.BaseEncoding;
+import org.apache.ratis.thirdparty.com.google.common.io.BaseEncoding;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;

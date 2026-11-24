@@ -32,7 +32,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -44,7 +44,8 @@ public class ClusterSchedulerLifecycleTest {
   private final QueryStateMachine state =
       new QueryStateMachine(
           new QueryId("scheduler_test"),
-          com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService());
+          org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors
+              .newDirectExecutorService());
   private final IFragInstanceDispatcher dispatcher = mock(IFragInstanceDispatcher.class);
   private final IFragInstanceStateTracker tracker = mock(IFragInstanceStateTracker.class);
   private final IQueryTerminator terminator = mock(IQueryTerminator.class);

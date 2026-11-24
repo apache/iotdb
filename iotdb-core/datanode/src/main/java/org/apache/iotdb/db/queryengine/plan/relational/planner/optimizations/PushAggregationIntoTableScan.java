@@ -39,7 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -51,6 +51,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.DELTA;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.INCREASE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.INTEGRAL;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.IRATE;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.RATE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
@@ -152,7 +153,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       boolean hasProject = projectNode != null;
       Map<Symbol, Expression> assignments =
           hasProject ? projectNode.getAssignments().getMap() : null;
-      if (containsRateFunction(values)) {
+      if (containsOrderSensitiveFunction(values)) {
         return PushDownLevel.NOOP;
       }
       // calculate Function part
@@ -270,7 +271,10 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
     }
   }
 
-  static boolean containsRateFunction(Collection<AggregationNode.Aggregation> aggregations) {
+  // These functions compute over the raw time-ordered sequence of each group, so they cannot be
+  // pre-aggregated inside AggregationTableScan.
+  static boolean containsOrderSensitiveFunction(
+      Collection<AggregationNode.Aggregation> aggregations) {
     return aggregations.stream()
         .map(aggregation -> aggregation.getResolvedFunction().getSignature().getName())
         .anyMatch(
@@ -278,7 +282,8 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
                 RATE.equalsIgnoreCase(functionName)
                     || INCREASE.equalsIgnoreCase(functionName)
                     || IRATE.equalsIgnoreCase(functionName)
-                    || DELTA.equalsIgnoreCase(functionName));
+                    || DELTA.equalsIgnoreCase(functionName)
+                    || INTEGRAL.equalsIgnoreCase(functionName));
   }
 
   private enum PushDownLevel {

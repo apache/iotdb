@@ -25,10 +25,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.RpcUtils;
 
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.FutureCallback;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors;
 
 import jakarta.validation.constraints.NotNull;
 

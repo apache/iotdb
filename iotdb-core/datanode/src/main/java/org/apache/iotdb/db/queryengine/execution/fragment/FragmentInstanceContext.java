@@ -41,6 +41,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.execution.schedule.DriverTaskAbortedException;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -181,6 +182,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   // Outer query deadline (startTime + timeout) for IoTDBLocal UDF
   private long outerQueryDeadlineMs = -1L;
+  private long exchangeDeadlineMs = -1L;
 
   private QueryAttemptRegistry.Registration queryAttemptRegistration;
   private boolean executionInitialized;
@@ -662,12 +664,33 @@ public class FragmentInstanceContext extends QueryContext {
     return outerQueryDeadlineMs;
   }
 
+  void setExchangeDeadlineMs(long deadlineMs) {
+    exchangeDeadlineMs = deadlineMs;
+  }
+
+  public long getExchangeDeadlineMs() {
+    // Legacy coordinators only send the remaining FI timeout. Also honor an earlier local FI limit.
+    if (exchangeDeadlineMs < 0 || outerQueryDeadlineMs < 0) {
+      return Math.max(exchangeDeadlineMs, outerQueryDeadlineMs);
+    }
+    return Math.min(outerQueryDeadlineMs, exchangeDeadlineMs);
+  }
+
   public Optional<Throwable> getFailureCause() {
-    return Optional.ofNullable(
-        stateMachine.getFailureCauses().stream()
-            .filter(e -> e instanceof IoTDBException || e instanceof IoTDBRuntimeException)
-            .findFirst()
-            .orElse(stateMachine.getFailureCauses().peek()));
+    Throwable firstNonAborted = null;
+    Throwable first = null;
+    for (Throwable cause : stateMachine.getFailureCauses()) {
+      if (first == null) {
+        first = cause;
+      }
+      if (cause instanceof IoTDBException || cause instanceof IoTDBRuntimeException) {
+        return Optional.of(cause);
+      }
+      if (firstNonAborted == null && !(cause instanceof DriverTaskAbortedException)) {
+        firstNonAborted = cause;
+      }
+    }
+    return Optional.ofNullable(firstNonAborted != null ? firstNonAborted : first);
   }
 
   public Filter getGlobalTimeFilter() {

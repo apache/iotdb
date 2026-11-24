@@ -19,13 +19,103 @@
 
 #include "catch.hpp"
 #include "SessionC.h"
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <memory>
+#include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 extern CSession* g_session;
+
+static std::string lastErrorMessage() {
+  const char* message = ts_get_last_error();
+  return message == nullptr ? "unknown error" : message;
+}
+
+static int64_t latestDeleteTimeSeriesProcedureId(CSession* session) {
+  CSessionDataSet* rawDataSet = nullptr;
+  if (ts_session_execute_query(session, "SHOW DELETE TIMESERIES PROGRESS", &rawDataSet) != TS_OK) {
+    throw std::runtime_error(lastErrorMessage());
+  }
+  if (rawDataSet == nullptr) {
+    throw std::runtime_error("SHOW DELETE TIMESERIES PROGRESS returned no dataset");
+  }
+  std::unique_ptr<CSessionDataSet, decltype(&ts_dataset_destroy)> dataSet(rawDataSet,
+                                                                        ts_dataset_destroy);
+  int64_t latestId = -1;
+  while (ts_dataset_has_next(dataSet.get())) {
+    std::unique_ptr<CRowRecord, decltype(&ts_row_record_destroy)> record(
+        ts_dataset_next(dataSet.get()), ts_row_record_destroy);
+    if (!record) {
+      throw std::runtime_error(lastErrorMessage());
+    }
+    latestId = std::max(latestId, ts_row_record_get_int64(record.get(), 0));
+  }
+  return latestId;
+}
+
+static void waitForDeleteTimeSeriesProcedure(CSession* session, int64_t previousId) {
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+  do {
+    CSessionDataSet* rawDataSet = nullptr;
+    if (ts_session_execute_query(session, "SHOW DELETE TIMESERIES PROGRESS", &rawDataSet) !=
+        TS_OK) {
+      throw std::runtime_error(lastErrorMessage());
+    }
+    if (rawDataSet == nullptr) {
+      throw std::runtime_error("SHOW DELETE TIMESERIES PROGRESS returned no dataset");
+    }
+    std::unique_ptr<CSessionDataSet, decltype(&ts_dataset_destroy)> dataSet(rawDataSet,
+                                                                          ts_dataset_destroy);
+    while (ts_dataset_has_next(dataSet.get())) {
+      std::unique_ptr<CRowRecord, decltype(&ts_row_record_destroy)> record(
+          ts_dataset_next(dataSet.get()), ts_row_record_destroy);
+      if (!record) {
+        throw std::runtime_error(lastErrorMessage());
+      }
+      if (ts_row_record_get_int64(record.get(), 0) <= previousId) {
+        continue;
+      }
+      const char* stateValue = ts_row_record_get_string(record.get(), 3);
+      if (stateValue == nullptr) {
+        throw std::runtime_error("Delete timeseries progress returned a null state");
+      }
+      const std::string state(stateValue);
+      if (state == "ROLLEDBACK") {
+        const char* errorValue = ts_row_record_get_string(record.get(), 5);
+        throw std::runtime_error(std::string("Asynchronous timeseries deletion rolled back: ") +
+                                 (errorValue == nullptr ? "unknown error" : errorValue));
+      }
+      if (state == "SUCCESS") {
+        return;
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  } while (std::chrono::steady_clock::now() < deadline);
+  throw std::runtime_error("Timed out waiting for asynchronous timeseries deletion");
+}
+
+static void deleteTimeseriesAndWait(CSession* session, const char* path) {
+  const int64_t previousId = latestDeleteTimeSeriesProcedureId(session);
+  if (ts_session_delete_timeseries(session, path) != TS_OK) {
+    throw std::runtime_error(lastErrorMessage());
+  }
+  waitForDeleteTimeSeriesProcedure(session, previousId);
+}
+
+static void deleteTimeseriesBatchAndWait(CSession* session, int pathCount,
+                                         const char* const* paths) {
+  const int64_t previousId = latestDeleteTimeSeriesProcedureId(session);
+  if (ts_session_delete_timeseries_batch(session, paths, pathCount) != TS_OK) {
+    throw std::runtime_error(lastErrorMessage());
+  }
+  waitForDeleteTimeSeriesProcedure(session, previousId);
+}
 
 static int global_test_id = 0;
 
@@ -51,7 +141,7 @@ static void dropTimeseriesIfExists(CSession* session, const char* path) {
   bool exists = false;
   REQUIRE(ts_session_check_timeseries_exists(session, path, &exists) == TS_OK);
   if (exists) {
-    REQUIRE(ts_session_delete_timeseries(session, path) == TS_OK);
+    deleteTimeseriesAndWait(session, path);
   }
 }
 
@@ -100,14 +190,14 @@ TEST_CASE("C API - Create timeseries", "[c_createTimeseries]") {
   bool exists = false;
   REQUIRE(ts_session_check_timeseries_exists(g_session, path, &exists) == TS_OK);
   REQUIRE(exists);
-  REQUIRE(ts_session_delete_timeseries(g_session, path) == TS_OK);
+  deleteTimeseriesAndWait(g_session, path);
 }
 
 TEST_CASE("C API - Delete timeseries", "[c_deleteTimeseries]") {
   CaseReporter cr("c_deleteTimeseries");
   const char* path = "root.ctest.d1.s1";
   ensureTimeseries(g_session, path, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
-  REQUIRE(ts_session_delete_timeseries(g_session, path) == TS_OK);
+  deleteTimeseriesAndWait(g_session, path);
   bool exists = true;
   REQUIRE(ts_session_check_timeseries_exists(g_session, path, &exists) == TS_OK);
   REQUIRE_FALSE(exists);
@@ -384,7 +474,7 @@ TEST_CASE("C API - Multi-node session", "[c_multiNode]") {
   bool exists = false;
   REQUIRE(ts_session_check_timeseries_exists(localSession, path, &exists) == TS_OK);
   REQUIRE(exists);
-  REQUIRE(ts_session_delete_timeseries(localSession, path) == TS_OK);
+  deleteTimeseriesAndWait(localSession, path);
 
   ts_session_close(localSession);
   ts_session_destroy(localSession);
@@ -478,8 +568,8 @@ TEST_CASE("C API - Database and extended timeseries APIs", "[c_dbTimeseries]") {
     dropTimeseriesIfExists(g_session, pathsM[i]);
   }
   REQUIRE(ts_session_create_multi_timeseries(g_session, 2, pathsM, tsM, encM, compM) == TS_OK);
-  REQUIRE(ts_session_delete_timeseries_batch(g_session, pathsM, 2) == TS_OK);
-  REQUIRE(ts_session_delete_timeseries(g_session, pathEx) == TS_OK);
+  deleteTimeseriesBatchAndWait(g_session, 2, pathsM);
+  deleteTimeseriesAndWait(g_session, pathEx);
   REQUIRE(ts_session_delete_database(g_session, sgEx) == TS_OK);
 }
 
@@ -782,14 +872,14 @@ TEST_CASE("C API - RowRecord and delete data APIs", "[c_rowDelete]") {
   const char* delPaths[] = {pi, pf};
   REQUIRE(ts_session_delete_data_range(g_session, 2, delPaths, 400LL, 600LL) == TS_OK);
 
-  REQUIRE(ts_session_delete_timeseries(g_session, pb) == TS_OK);
-  REQUIRE(ts_session_delete_timeseries(g_session, pi) == TS_OK);
-  REQUIRE(ts_session_delete_timeseries(g_session, pf) == TS_OK);
-  REQUIRE(ts_session_delete_timeseries(g_session, pd) == TS_OK);
-  REQUIRE(ts_session_delete_timeseries(g_session, pt) == TS_OK);
-  REQUIRE(ts_session_delete_timeseries(g_session, pstr) == TS_OK);
-  REQUIRE(ts_session_delete_timeseries(g_session, pdate) == TS_OK);
-  REQUIRE(ts_session_delete_timeseries(g_session, pblob) == TS_OK);
+  deleteTimeseriesAndWait(g_session, pb);
+  deleteTimeseriesAndWait(g_session, pi);
+  deleteTimeseriesAndWait(g_session, pf);
+  deleteTimeseriesAndWait(g_session, pd);
+  deleteTimeseriesAndWait(g_session, pt);
+  deleteTimeseriesAndWait(g_session, pstr);
+  deleteTimeseriesAndWait(g_session, pdate);
+  deleteTimeseriesAndWait(g_session, pblob);
   REQUIRE(ts_session_delete_database(g_session, sg) == TS_OK);
 }
 
@@ -820,5 +910,5 @@ TEST_CASE("C API - Query DATE 1000-01-01", "[c_dateMinYear]") {
   ts_row_record_destroy(record);
   ts_dataset_destroy(dataSet);
 
-  REQUIRE(ts_session_delete_timeseries(g_session, path) == TS_OK);
+  deleteTimeseriesAndWait(g_session, path);
 }

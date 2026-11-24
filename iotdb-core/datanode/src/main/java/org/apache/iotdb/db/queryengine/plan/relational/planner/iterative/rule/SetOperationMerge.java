@@ -29,8 +29,8 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
-import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.collect.Iterables;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.Iterables;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,8 +38,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
 
 public class SetOperationMerge {
 

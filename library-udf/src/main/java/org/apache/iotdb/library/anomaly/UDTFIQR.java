@@ -30,7 +30,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-import com.google.common.math.Quantiles;
+import org.apache.ratis.thirdparty.com.google.common.math.Quantiles;
 
 import java.util.ArrayList;
 

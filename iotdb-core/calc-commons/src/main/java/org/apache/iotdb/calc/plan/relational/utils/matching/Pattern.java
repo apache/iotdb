@@ -24,15 +24,15 @@ import org.apache.iotdb.calc.plan.relational.utils.matching.pattern.FilterPatter
 import org.apache.iotdb.calc.plan.relational.utils.matching.pattern.TypeOfPattern;
 import org.apache.iotdb.calc.plan.relational.utils.matching.pattern.WithPattern;
 
-import com.google.common.collect.Iterables;
+import org.apache.ratis.thirdparty.com.google.common.collect.Iterables;
 
 import java.util.Optional;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Predicates.not;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Predicates.not;
 
 public abstract class Pattern<T> {
   private final Optional<Pattern<?>> previous;

@@ -35,7 +35,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.utils.BytesUtils.doubleToBytes;
 import static org.apache.tsfile.utils.BytesUtils.longToBytes;
 

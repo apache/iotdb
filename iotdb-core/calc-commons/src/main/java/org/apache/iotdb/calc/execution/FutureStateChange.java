@@ -21,9 +21,9 @@ package org.apache.iotdb.calc.execution;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
@@ -32,8 +32,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 @ThreadSafe
 public class FutureStateChange<T> {

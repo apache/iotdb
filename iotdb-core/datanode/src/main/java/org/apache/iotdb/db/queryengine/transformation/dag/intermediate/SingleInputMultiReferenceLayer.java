@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static com.google.common.math.LongMath.saturatedAdd;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 public class SingleInputMultiReferenceLayer extends IntermediateLayer {
 

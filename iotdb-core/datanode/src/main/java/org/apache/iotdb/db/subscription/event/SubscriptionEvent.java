@@ -51,7 +51,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
 
 public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
 

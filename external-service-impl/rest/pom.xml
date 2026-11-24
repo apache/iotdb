@@ -137,8 +137,8 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
+            <groupId>org.apache.ratis</groupId>
+            <artifactId>ratis-thirdparty-misc</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>

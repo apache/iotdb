@@ -22,9 +22,9 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.a
 import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 
-import com.google.common.base.Preconditions;
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
+import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
+import org.apache.ratis.thirdparty.com.google.common.hash.HashFunction;
+import org.apache.ratis.thirdparty.com.google.common.hash.Hashing;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;

@@ -37,22 +37,22 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.VariableDefi
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.Range;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
-import com.google.common.collect.Streams;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.Sets;
+import org.apache.ratis.thirdparty.com.google.common.collect.Streams;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ProcessingMode.Mode.FINAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet.toImmutableSet;
 
 public class PatternRecognitionAnalyzer {
   private PatternRecognitionAnalyzer() {}

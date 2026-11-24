@@ -28,7 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 /** Removes an inner sort superseded by the TAG/TIME sort required for COPY TO TsFile. */
 public class RemoveRedundantSortForCopyTo implements PlanOptimizer {

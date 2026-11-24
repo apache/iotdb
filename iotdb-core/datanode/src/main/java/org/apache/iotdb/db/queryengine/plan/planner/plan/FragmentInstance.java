@@ -46,6 +46,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
+
 public class FragmentInstance implements IConsensusRequest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstance.class);
@@ -65,6 +67,8 @@ public class FragmentInstance implements IConsensusRequest {
   private final TimePredicate globalTimePredicate;
 
   private final long timeOut;
+  // Process-local deadline. The dispatch envelope carries only the remaining duration.
+  private long queryDeadlineMs = -1;
 
   private boolean isRoot;
 
@@ -362,6 +366,14 @@ public class FragmentInstance implements IConsensusRequest {
     this.hostDataNode =
         executorType.getRegionReplicaSet().getDataNodeLocations().get(nextRetryIndex);
     return hostDataNode;
+  }
+
+  public void setQueryDeadlineFromTimeout(long localStartMs, long timeoutMs) {
+    queryDeadlineMs = saturatedAdd(localStartMs, Math.max(0, timeoutMs));
+  }
+
+  public long getQueryDeadlineMs() {
+    return queryDeadlineMs;
   }
 
   public long getTimeOut() {
