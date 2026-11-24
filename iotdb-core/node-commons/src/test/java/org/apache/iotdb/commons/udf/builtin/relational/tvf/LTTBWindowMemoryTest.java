@@ -172,10 +172,8 @@ public class LTTBWindowMemoryTest {
 
   @Test
   public void testWindowsAfterTheLastValueDoNotStallEmission() {
-    // Two eligible points followed by a long NULL tail. The window holding the second point is the
-    // one that may report L, so it must wait for the end of the partition; every window after it is
-    // empty and emittable by nobody. Queuing those empty windows would block the head of the queue
-    // and keep their buffers alive until finish, which exhausts the budget on a sparse partition.
+    // Two eligible points followed by a long NULL tail. The empty windows must release their
+    // buffers as they close so a sparse partition can span more windows than fit in the budget.
     for (boolean timeWindow : new boolean[] {false, true}) {
       TableFunctionDataProcessor processor = processor(timeWindow, 1, 1, Type.DOUBLE);
       List<ColumnBuilder> builders = builders(timeWindow);
@@ -198,6 +196,69 @@ public class LTTBWindowMemoryTest {
         assertEquals(1, times.build().getLong(1));
         assertEquals(1.0, valuesBuilder.build().getDouble(0), 0.0);
         assertEquals(5.0, valuesBuilder.build().getDouble(1), 0.0);
+      } finally {
+        processor.beforeDestroy();
+      }
+    }
+  }
+
+  @Test
+  public void testDisjointSingletonsStreamAcrossNullAndNonFiniteTails() {
+    for (boolean timeWindow : new boolean[] {false, true}) {
+      TableFunctionDataProcessor processor = processor(timeWindow, 1, 1, Type.DOUBLE, Type.DOUBLE);
+      List<ColumnBuilder> builders = new ArrayList<>(builders(timeWindow));
+      builders.add(new LongColumnBuilder(null, 16));
+      builders.add(new DoubleColumnBuilder(null, 16));
+      try {
+        for (int time = 0; time < 16; time++) {
+          processor.process(
+              record(time, time < 2 ? (double) time : Double.NaN, time < 2 ? (double) time : null),
+              builders,
+              null);
+          // All earlier windows closed, even though neither column has a later finite point.
+          assertEquals(time, builders.get(0).getPositionCount());
+        }
+        processor.finish(builders, null);
+        assertEquals(16, builders.get(0).getPositionCount());
+        int firstTime = timeWindow ? 2 : 1;
+        for (int time = 0; time < 16; time++) {
+          assertEquals(time, builders.get(firstTime).build().getLong(time));
+          assertEquals(
+              time < 2 ? (double) time : Double.NaN,
+              builders.get(firstTime + 1).build().getDouble(time),
+              0.0);
+          if (time < 2) {
+            assertEquals(time, builders.get(firstTime + 2).build().getLong(time));
+            assertEquals(time, builders.get(firstTime + 3).build().getDouble(time), 0.0);
+          } else {
+            assertTrue(builders.get(firstTime + 2).build().isNull(time));
+            assertTrue(builders.get(firstTime + 3).build().isNull(time));
+          }
+        }
+      } finally {
+        processor.beforeDestroy();
+      }
+    }
+  }
+
+  @Test
+  public void testDisjointFiniteSingletonUpdatesAnchor() {
+    for (boolean timeWindow : new boolean[] {false, true}) {
+      TableFunctionDataProcessor processor = processor(timeWindow, 2, 2, Type.DOUBLE);
+      List<ColumnBuilder> builders = builders(timeWindow);
+      try {
+        Double[] values = {0.0, 10.0, Double.NaN, null, 0.0, 3.0, 0.0};
+        for (int time = 0; time < values.length; time++) {
+          processor.process(record(time, values[time]), builders, null);
+        }
+        processor.finish(builders, null);
+        ColumnBuilder times = builders.get(timeWindow ? 2 : 1);
+        // A is (1,10) after the singleton and the NaN, so (4,0) beats (5,3) against C=(6,0).
+        long[] expected = {0, 1, 2, 4, 6};
+        assertEquals(expected.length, times.getPositionCount());
+        for (int i = 0; i < expected.length; i++) {
+          assertEquals(expected[i], times.build().getLong(i));
+        }
       } finally {
         processor.beforeDestroy();
       }
@@ -246,13 +307,13 @@ public class LTTBWindowMemoryTest {
         processor.process(record(902, (Number) null), builders, null);
         processor.processInput(record(903, 0.0), builders, null);
         assertEquals(0, builders.get(0).getPositionCount());
-        for (int row = 1; row <= 301; row++) {
-          assertEquals(row == 301, processor.drainOutput(builders, () -> true));
+        for (int row = 1; row <= 302; row++) {
+          assertEquals(row == 302, processor.drainOutput(builders, () -> true));
           assertEquals(row, builders.get(0).getPositionCount());
         }
         ColumnBuilder times = builders.get(timeWindow ? 2 : 1);
         // C lies on the line through t=0 and t=2, so t=1 wins once its lookahead closes.
-        assertEquals(301, times.getPositionCount());
+        assertEquals(302, times.getPositionCount());
         assertEquals(1, times.build().getLong(1));
         assertEquals(897, times.build().getLong(300));
         processor.finish(builders, null);

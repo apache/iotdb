@@ -1704,9 +1704,8 @@ public class LTTBTableFunction implements TableFunction {
     }
 
     /**
-     * Whether the first pending window can be emitted. A window that contains {@code L} must wait
-     * for the end of the partition, and so must a window whose {@code C} would come from a bucket
-     * that can still lose {@code L}.
+     * Whether the first pending window can be emitted. A window must wait while moving {@code L}
+     * into its own bucket could change its output or the lookahead used to choose its sample.
      *
      * <p>A column with fewer than two eligible points has no {@code L}: the only point is {@code F}
      * and was never collected into a bucket. {@link #lastEligiblePositions} still holds its default
@@ -1718,6 +1717,11 @@ public class LTTBTableFunction implements TableFunction {
         return true;
       }
       for (int i = 0; i < participantColumns.length; i++) {
+        // A disjoint bucket's only candidate is emitted here even if it turns out to be L.
+        // Its selection needs no lookahead, and no later window can claim that endpoint.
+        if (slide >= size && window.buffers[i].size() == 1) {
+          continue;
+        }
         if (hasLastEligible[i] && containsPosition(window, lastEligiblePositions[i])) {
           return false;
         }
@@ -1823,6 +1827,9 @@ public class LTTBTableFunction implements TableFunction {
       if (firstPendingFinite[column] != window) {
         return WindowRow.of(bucket, 0);
       }
+      if (bucket.size() == 1) {
+        return updateAnchor(bucket, 0, column);
+      }
       long anchorTime;
       double anchorValue;
       long integralAnchor;
@@ -1870,7 +1877,11 @@ public class LTTBTableFunction implements TableFunction {
         // The bucket has no finite candidate; return its earliest point and keep A unchanged.
         return WindowRow.of(bucket, 0);
       }
-      WindowRow row = WindowRow.of(bucket, pick);
+      return updateAnchor(bucket, pick, column);
+    }
+
+    private WindowRow updateAnchor(PointBuffer bucket, int index, int column) {
+      WindowRow row = WindowRow.of(bucket, index);
       hasAnchor[column] = true;
       anchorTimes[column] = row.time;
       anchorValues[column] = row.value;

@@ -139,6 +139,7 @@ import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
@@ -149,6 +150,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ReadTsFileTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TranslationMap;
@@ -320,6 +322,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 public class StatementAnalyzer {
 
@@ -6075,7 +6079,7 @@ public class StatementAnalyzer {
           ParameterSpecification parameterSpecification =
               argumentSpecificationsByName.remove(argumentName);
           ArgumentAnalysis argumentAnalysis =
-              analyzeArgument(parameterSpecification, argument, scope);
+              analyzeArgument(functionName, parameterSpecification, argument, scope);
           passedArguments.put(argumentName, argumentAnalysis.getArgument());
           argumentAnalysis.getTableArgumentAnalysis().ifPresent(tableArgumentAnalyses::add);
         }
@@ -6095,7 +6099,7 @@ public class StatementAnalyzer {
           TableFunctionArgument argument = arguments.get(i);
           ParameterSpecification parameterSpecification = parameterSpecifications.get(i);
           ArgumentAnalysis argumentAnalysis =
-              analyzeArgument(parameterSpecification, argument, scope);
+              analyzeArgument(functionName, parameterSpecification, argument, scope);
           passedArguments.put(parameterSpecification.getName(), argumentAnalysis.getArgument());
           argumentAnalysis.getTableArgumentAnalysis().ifPresent(tableArgumentAnalyses::add);
         }
@@ -6245,11 +6249,6 @@ public class StatementAnalyzer {
           throw new SemanticException(
               CommonMessages
                   .EXCEPTION_THE_N_ARGUMENT_OF_LTTB_CANNOT_BE_COMBINED_WITH_THE_SLIDE_OR_ORIGIN_ARGUMENTS_C2FF1FE1);
-        }
-        if (!(nArgument.get().getValue() instanceof Expression)
-            || nArgument.get().getValue() instanceof TimeDurationLiteral) {
-          throw new SemanticException(
-              CommonMessages.EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_A_POSITIVE_INTEGER_21795D8E);
         }
       } else {
         if (!(sizeArgument.get().getValue() instanceof Expression)) {
@@ -6434,6 +6433,7 @@ public class StatementAnalyzer {
     }
 
     private ArgumentAnalysis analyzeArgument(
+        String functionName,
         ParameterSpecification parameterSpecification,
         TableFunctionArgument argument,
         Optional<Scope> scope) {
@@ -6471,7 +6471,9 @@ public class StatementAnalyzer {
         }
         return analyzeScalarArgument(
             (Expression) argument.getValue(),
-            (ScalarParameterSpecification) parameterSpecification);
+            (ScalarParameterSpecification) parameterSpecification,
+            TableBuiltinTableFunction.LTTB.getFunctionName().equalsIgnoreCase(functionName)
+                && LTTBTableFunction.N_PARAMETER_NAME.equals(parameterSpecification.getName()));
       } else {
         throw new IllegalStateException(
             String.format(
@@ -6646,7 +6648,9 @@ public class StatementAnalyzer {
     }
 
     private ArgumentAnalysis analyzeScalarArgument(
-        Expression expression, ScalarParameterSpecification argumentSpecification) {
+        Expression expression,
+        ScalarParameterSpecification argumentSpecification,
+        boolean lttbTargetCount) {
       if (expression instanceof TimeDurationLiteral) {
         if (((TimeDurationLiteral) expression).getValue().monthDuration != 0) {
           throw new SemanticException(
@@ -6654,14 +6658,25 @@ public class StatementAnalyzer {
         }
       }
       // currently, only constant arguments are supported
-      Object constantValue =
-          evaluateConstantExpression(
-              expression, new PlannerContext(metadata, typeManager), sessionContext);
+      PlannerContext plannerContext = new PlannerContext(metadata, typeManager);
+      Object constantValue = evaluateConstantExpression(expression, plannerContext, sessionContext);
       if (constantValue == null) {
         throw new SemanticException(
             String.format(
                 DataNodeQueryMessages.THE_ARGUMENT_CANNOT_BE_NULL,
                 argumentSpecification.getName()));
+      }
+      if (lttbTargetCount) {
+        // TIMESTAMP and INT64 constants share the same Java representation.
+        Type type =
+            new IrTypeAnalyzer(plannerContext)
+                .getType(sessionContext, TypeProvider.empty(), expression);
+        if (expression instanceof TimeDurationLiteral
+            || (!INT32.equals(type) && !INT64.equals(type))) {
+          throw new SemanticException(
+              CommonMessages.EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_A_POSITIVE_INTEGER_21795D8E);
+        }
+        constantValue = ((Number) constantValue).longValue();
       }
       if (!argumentSpecification.getType().checkObjectType(constantValue)) {
         if ((argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.STRING)

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -1171,6 +1172,16 @@ public class TableFunctionTest {
         output(
             tableFunctionProcessor(
                 tableFunctionMatcher, mergeSort(exchange(), exchange(), exchange()))));
+  }
+
+  @Test
+  public void testLTTBTargetCountRequiresIntegralSqlType() {
+    String prefix = "SELECT * FROM LTTB(" + LTTB_DATA_ARGUMENT + ", TIMECOL => 'time', N => ";
+    assertAnalyzeFails(
+        prefix + "CAST('2026-01-01T00:00:00.000+00:00' AS TIMESTAMP))",
+        CommonMessages.EXCEPTION_THE_N_ARGUMENT_OF_LTTB_MUST_BE_A_POSITIVE_INTEGER_21795D8E);
+    analyzeSQL(prefix + "CAST(4 AS INT32))", TEST_MATADATA, QUERY_CONTEXT);
+    analyzeSQL(prefix + "CAST(4 AS INT64))", TEST_MATADATA, QUERY_CONTEXT);
   }
 
   @Test
