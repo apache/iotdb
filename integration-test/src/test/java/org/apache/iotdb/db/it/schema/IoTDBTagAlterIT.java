@@ -667,7 +667,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
         assertFalse(resultSet.next());
       }
 
-      statement.execute("DELETE TIMESERIES " + path);
+      TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES " + path);
       statement.execute(
           "CREATE TIMESERIES "
               + path

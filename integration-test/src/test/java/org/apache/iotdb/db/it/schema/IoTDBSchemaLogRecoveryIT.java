@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -134,7 +135,12 @@ public class IoTDBSchemaLogRecoveryIT extends AbstractSchemaIT {
           "ALTER TIMESERIES "
               + device
               + ".s UPSERT ALIAS=new_alias TAGS(site='new') ATTRIBUTES(owner='carol')",
-          "DELETE TIMESERIES " + device + ".reused",
+          "FLUSH");
+      try (Statement delete = control.createStatement()) {
+        TestUtils.deleteTimeSeries(delete, "DELETE TIMESERIES " + device + ".reused");
+      }
+      execute(
+          control,
           "CREATE TIMESERIES "
               + device
               + ".reused(fresh_alias) DOUBLE ENCODING=PLAIN COMPRESSION=SNAPPY TAGS(site='rebuilt') ATTRIBUTES(owner='dave')",

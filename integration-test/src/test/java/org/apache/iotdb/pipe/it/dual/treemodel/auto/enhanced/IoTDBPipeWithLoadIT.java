@@ -210,7 +210,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select time, value from " + loadedDevice,
+          "select value from " + loadedDevice,
           "Time," + loadedDevice + ".value,",
           Set.of("1,11,", "3,33,"));
 
@@ -247,7 +247,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           senderEnv,
-          "select time, value from " + localDevice,
+          "select value from " + localDevice,
           "Time," + localDevice + ".value,",
           Collections.singleton("100,999,"));
 
@@ -283,8 +283,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
       try (Connection connection = receiverEnv.getConnection();
           Statement statement = connection.createStatement();
           ResultSet resultSet =
-              statement.executeQuery(
-                  "select time, value from " + loadedDevice + " where time = 2")) {
+              statement.executeQuery("select value from " + loadedDevice + " where time = 2")) {
         Assert.assertFalse("The SQL LOAD copy's deletion mods must be preserved", resultSet.next());
       }
 
@@ -301,14 +300,13 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
       createLoadPipe(senderEnv, "historicalLoadToReceiver", receiverEnv, false);
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select time, value from " + loadedDevice,
+          "select value from " + loadedDevice,
           "Time," + loadedDevice + ".value,",
           Set.of("1,11,", "3,33,"));
       try (Connection connection = receiverEnv.getConnection();
           Statement statement = connection.createStatement();
           ResultSet resultSet =
-              statement.executeQuery(
-                  "select time, value from " + loadedDevice + " where time = 2")) {
+              statement.executeQuery("select value from " + loadedDevice + " where time = 2")) {
         Assert.assertFalse(
             "Historical extraction must preserve the SQL LOAD copy's deletion mods",
             resultSet.next());
@@ -379,7 +377,13 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
 
   private void stopPipeIfPresent(final BaseEnv sourceEnv, final String pipeName) {
     try {
-      stopPipe(sourceEnv, pipeName);
+      try (final SyncConfigNodeIServiceClient client =
+          (SyncConfigNodeIServiceClient) sourceEnv.getLeaderConfigNodeConnection()) {
+        final int statusCode = client.stopPipe(pipeName).getCode();
+        Assert.assertTrue(
+            statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                || statusCode == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode());
+      }
     } catch (final Exception ignored) {
       // A pipe may not have been created if its setup failed.
     }
