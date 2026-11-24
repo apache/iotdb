@@ -803,17 +803,16 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               final long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
               chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-              if (filterChunk(currentChunkHeaderOffset, chunkHeader, true, marker)) {
-                break;
-              }
-
-              // Increase value index.
               final String measurementID =
                   tabletStringInternPool.intern(chunkHeader.getMeasurementID());
               final int valueIndex =
                   measurementIndexMap.compute(
                       measurementID,
                       (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
+
+              if (filterChunk(currentChunkHeaderOffset, chunkHeader, true, marker)) {
+                break;
+              }
 
               // Do not record or end current value chunks when there are empty chunks.
               if (chunkHeader.getDataSize() == 0) {

@@ -51,9 +51,11 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -781,6 +783,45 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
   }
 
   @Test
+  public void testModifiedAlignedScanPreservesValueChunkOrderAfterSkippingDeletedChunk()
+      throws Exception {
+    tsFile = new File("load-tree-aligned-scan-skipped-value-chunk.tsfile");
+    writeAlignedBooleanTsFileWithMultipleChunksInGroup(tsFile);
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s0"), 0, 0));
+    }
+
+    final List<Long> visibleTimestamps = new ArrayList<>();
+    try (final TsFileInsertionEventScanParser parser =
+        new TsFileInsertionEventScanParser(
+            tsFile,
+            null,
+            null,
+            true,
+            LoadTsFileParserMemoryManager.getInstance(),
+            new TsFileInsertionEventScanParser.ScanOptions(
+                new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, true))) {
+      for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
+        final Tablet tablet = tabletWithIsAligned.getLeft();
+        for (int column = 0; column < tablet.getSchemas().size(); column++) {
+          if (!"s0".equals(tablet.getSchemas().get(column).getMeasurementName())) {
+            continue;
+          }
+          for (int row = 0; row < tablet.getRowSize(); row++) {
+            if (!tablet.isNull(row, column)) {
+              visibleTimestamps.add(tablet.getTimestamp(row));
+            }
+          }
+        }
+      }
+    }
+
+    Assert.assertEquals(Collections.singletonList(1L), visibleTimestamps);
+  }
+
+  @Test
   public void testModifiedAlignedScanVerifiesPointCountsAboveLongCacheBoundary() throws Exception {
     tsFile = File.createTempFile("load-tree-aligned-scan-large-point-counts-with-mods-", ".tsfile");
     final List<IMeasurementSchema> schemas =
@@ -1190,6 +1231,26 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
         tablet.addValue("s1", row, row % 2 != 0);
       }
       writer.writeAligned(tablet);
+    }
+  }
+
+  private void writeAlignedBooleanTsFileWithMultipleChunksInGroup(final File file)
+      throws Exception {
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.BOOLEAN, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    try (final TsFileIOWriter writer = new TsFileIOWriter(file)) {
+      writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create(ALIGNED_DEVICE));
+      for (int timestamp = 0; timestamp < 2; timestamp++) {
+        final AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemas);
+        chunkWriter.getTimeChunkWriter().write(timestamp);
+        chunkWriter.getValueChunkWriterByIndex(0).write(timestamp, timestamp == 0, false);
+        chunkWriter.getValueChunkWriterByIndex(1).write(timestamp, timestamp != 0, false);
+        chunkWriter.writeToFileWriter(writer);
+      }
+      writer.endChunkGroup();
+      writer.endFile();
     }
   }
 
