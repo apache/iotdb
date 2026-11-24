@@ -40,6 +40,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -299,25 +300,24 @@ public class FastCompactionPerformerAlignedTest {
         Arrays.asList(
             new MeasurementSchema("s0", TSDataType.INT64),
             new MeasurementSchema("s1", TSDataType.INT64));
-    IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device);
 
     TsFileResource highPriorityResource =
         writeAlignedTsFile(
             "1-3-0-0.tsfile",
-            deviceId,
+            device,
             schemas,
             new long[] {1, 2},
             new Long[][] {{10L, null}, {12L, null}});
     TsFileResource lowPriorityResource =
         writeAlignedTsFile(
             "1-1-0-0.tsfile",
-            deviceId,
+            device,
             schemas,
             new long[] {1, 2},
             new Long[][] {{null, 11L}, {null, 1L}});
     TsFileResource intermediatePriorityResource =
         writeAlignedTsFile(
-            "2-2-0-0.tsfile", deviceId, schemas, new long[] {2}, new Long[][] {{null, 2L}});
+            "2-2-0-0.tsfile", device, schemas, new long[] {2}, new Long[][] {{null, 2L}});
 
     List<TsFileResource> sourceResources =
         Arrays.asList(highPriorityResource, lowPriorityResource, intermediatePriorityResource);
@@ -330,7 +330,7 @@ public class FastCompactionPerformerAlignedTest {
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
 
-    IFullPath alignedPath = new AlignedFullPath(deviceId, Arrays.asList("s0", "s1"), schemas);
+    PartialPath alignedPath = new AlignedPath(device, Arrays.asList("s0", "s1"), schemas);
     List<TimeValuePair> compactedData =
         CompactionCheckerUtils.getDataByQuery(
                 Collections.singletonList(alignedPath),
@@ -347,7 +347,7 @@ public class FastCompactionPerformerAlignedTest {
 
   private TsFileResource writeAlignedTsFile(
       String fileName,
-      IDeviceID deviceId,
+      String device,
       List<IMeasurementSchema> schemas,
       long[] timestamps,
       Long[][] values)
@@ -366,11 +366,12 @@ public class FastCompactionPerformerAlignedTest {
               .write(timestamp, value == null ? 0 : value, value == null);
         }
       }
-      writer.startChunkGroup(deviceId);
+      writer.startChunkGroup(device);
       chunkWriter.writeToFileWriter(writer);
       writer.endChunkGroup();
       writer.endFile();
     }
+    PlainDeviceID deviceId = new PlainDeviceID(device);
     for (long timestamp : timestamps) {
       resource.updateStartTime(deviceId, timestamp);
       resource.updateEndTime(deviceId, timestamp);
