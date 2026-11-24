@@ -21,10 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -70,27 +68,35 @@ public final class ResidentSeriesCounter {
       }
 
       Map<IDeviceID, Set<String>> firstMeasurements = new HashMap<>();
-      first.forEach((device, group) -> firstMeasurements.put(device, group.getMeasurements()));
-      Map<IDeviceID, List<Set<String>>> overlaps = new HashMap<>();
+      Map<IDeviceID, Set<String>> additionalMeasurements = new HashMap<>();
+      long count = 0;
+      for (var entry : first.entrySet()) {
+        Set<String> names = entry.getValue().getMeasurements();
+        firstMeasurements.put(entry.getKey(), names);
+        count += names.size();
+      }
       while (snapshot.hasNext()) {
         for (var entry : snapshot.next().getMemTableMap().entrySet()) {
+          IDeviceID device = entry.getKey();
           Set<String> names = entry.getValue().getMeasurements();
-          Set<String> previous = firstMeasurements.putIfAbsent(entry.getKey(), names);
-          if (previous != null && !previous.containsAll(names)) {
-            overlaps.computeIfAbsent(entry.getKey(), ignored -> new ArrayList<>()).add(names);
+          Set<String> previous = firstMeasurements.putIfAbsent(device, names);
+          if (previous == null) {
+            count += names.size();
+            continue;
           }
-        }
-      }
-
-      long count = 0;
-      for (var entry : firstMeasurements.entrySet()) {
-        List<Set<String>> others = overlaps.get(entry.getKey());
-        if (others == null) {
-          count += entry.getValue().size();
-        } else {
-          Set<String> unique = new HashSet<>(entry.getValue());
-          others.forEach(unique::addAll);
-          count += unique.size();
+          Set<String> additional = additionalMeasurements.get(device);
+          for (String name : names) {
+            if (previous.contains(name)) {
+              continue;
+            }
+            if (additional == null) {
+              additional = new HashSet<>();
+              additionalMeasurements.put(device, additional);
+            }
+            if (additional.add(name)) {
+              count++;
+            }
+          }
         }
       }
       return count;

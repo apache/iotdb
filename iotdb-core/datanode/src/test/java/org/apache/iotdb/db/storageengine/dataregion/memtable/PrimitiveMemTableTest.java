@@ -221,21 +221,22 @@ public class PrimitiveMemTableTest {
     PrimitiveMemTable third = new PrimitiveMemTable(counter, database, dataRegionId);
     List<IMeasurementSchema> s3 =
         Collections.singletonList(new MeasurementSchema("s3", TSDataType.INT32));
+    second.writeAlignedRow(device, s3, 4, new Object[] {4});
     third.writeAlignedRow(device, s2, 4, new Object[] {4});
     third.writeAlignedRow(device, s3, 4, new Object[] {4});
     Assert.assertEquals(4, counter.getSeriesCount());
     third.release();
     first.release();
-    Assert.assertEquals(2, counter.getSeriesCount());
+    Assert.assertEquals(3, counter.getSeriesCount());
     first.release();
-    Assert.assertEquals(2, counter.getSeriesCount());
+    Assert.assertEquals(3, counter.getSeriesCount());
     second.delete(
         new TreeDeletionEntry(
             new MeasurementPath("root.test.d1.s1", TSDataType.INT32),
             Long.MIN_VALUE,
             Long.MAX_VALUE),
         true);
-    Assert.assertEquals(1, counter.getSeriesCount());
+    Assert.assertEquals(2, counter.getSeriesCount());
     second.release();
     Assert.assertEquals(0, counter.getSeriesCount());
   }
