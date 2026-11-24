@@ -201,6 +201,12 @@ jobs:
             throw "Expected clang-format 17.0.6, got: $version"
           }
           Write-Host $version
+          # Spotless 2.44.5 treats every `where clang-format` result as one path.
+          # Hide preinstalled formatters so Windows resolves exactly one binary.
+          $cleanPath = ($env:PATH -split ';' | Where-Object {
+            $_ -and -not (Test-Path -LiteralPath (Join-Path $_ 'clang-format.exe'))
+          }) -join ';'
+          "PATH=$cleanPath" >> $env:GITHUB_ENV
           $formatterBin >> $env:GITHUB_PATH
       - name: Cache Maven packages
         uses: actions/cache@v5
