@@ -25,6 +25,7 @@ from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import Tablet
+from . import assert_timeseries_deleted
 from .iotdb_container import IoTDBContainer
 
 # whether the test has passed
@@ -180,24 +181,13 @@ def session_test(use_session_pool=False):
             None,
         )
 
-        # delete time series
-        try:
-            session.delete_time_series(
-                [
-                    "root.sg_test_01.d_01.s_07",
-                    "root.sg_test_01.d_01.s_08",
-                    "root.sg_test_01.d_01.s_09",
-                ]
-            )
-        except Exception:
-            test_fail()
-            print_message("delete time series failed")
-
-        # checking time series
-        # s_07 expecting False
-        if session.check_time_series_exists("root.sg_test_01.d_01.s_07"):
-            test_fail()
-            print_message("root.sg_test_01.d_01.s_07 shouldn't exist")
+        paths_to_delete = [
+            "root.sg_test_01.d_01.s_07",
+            "root.sg_test_01.d_01.s_08",
+            "root.sg_test_01.d_01.s_09",
+        ]
+        session.delete_time_series(paths_to_delete)
+        assert_timeseries_deleted(session, paths_to_delete)
 
         # s_03 expecting True
         if not session.check_time_series_exists("root.sg_test_01.d_01.s_03"):

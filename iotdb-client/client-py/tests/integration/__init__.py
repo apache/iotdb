@@ -15,3 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+import time
+
+
+def assert_timeseries_deleted(session, paths):
+    # The delete RPC acknowledges submission before the schema change is visible.
+    deadline = time.monotonic() + 30
+    for path in paths:
+        while session.check_time_series_exists(path):
+            if time.monotonic() >= deadline:
+                raise AssertionError(f"{path} still exists after deletion")
+            time.sleep(0.1)

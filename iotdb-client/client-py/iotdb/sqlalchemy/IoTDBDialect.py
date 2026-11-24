@@ -77,6 +77,10 @@ class IoTDBDialect(default.DefaultDialect):
     def dbapi(cls):
         return dbapi
 
+    def do_rollback(self, dbapi_connection):
+        # SQLAlchemy uses rollback to reset pooled connections. IoTDB autocommits.
+        pass
+
     def has_schema(self, connection, schema):
         return schema in self.get_schema_names(connection)
 
