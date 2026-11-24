@@ -715,14 +715,12 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     try (final TsFileInsertionEventScanParser parser =
         new TsFileInsertionEventScanParser(
             tsFile,
-            new IoTDBTreePattern(null),
-            Long.MIN_VALUE,
-            Long.MAX_VALUE,
             null,
             null,
             true,
             LoadTsFileParserMemoryManager.getInstance(),
-            true)) {
+            new TsFileInsertionEventScanParser.ScanOptions(
+                new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, true))) {
       parser.toTabletWithIsAligneds().forEach(tabletWithIsAligned -> {});
       final Map<String, Long> pointCounts =
           parser
@@ -759,14 +757,12 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
                     file ->
                         new TsFileInsertionEventScanParser(
                             file,
-                            new IoTDBTreePattern(null),
-                            Long.MIN_VALUE,
-                            Long.MAX_VALUE,
                             null,
                             null,
                             true,
                             LoadTsFileParserMemoryManager.getInstance(),
-                            true),
+                            new TsFileInsertionEventScanParser.ScanOptions(
+                                new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, true)),
                     (file, device, measurements, startTime, endTime, isWithMod) ->
                         createThrowingQueryParser()));
 
@@ -781,6 +777,44 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s1", "2=false");
     assertBooleanSeriesData(loadedPointData, "root.sg.intermediate.other", "10=true");
     Assert.assertEquals(3, loadedPointData.size());
+    Assert.assertFalse("Successfully loaded TsFile should be deleted.", tsFile.exists());
+  }
+
+  @Test
+  public void testModifiedAlignedScanVerifiesPointCountsAboveLongCacheBoundary() throws Exception {
+    tsFile = File.createTempFile("load-tree-aligned-scan-large-point-counts-with-mods-", ".tsfile");
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
+      writer.registerAlignedTimeseries(new PartialPath(ALIGNED_DEVICE), schemas);
+      writeRows(writer, schemas, ALIGNED_DEVICE, 0, 200, true);
+    }
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s0"), 0, 0));
+    }
+
+    final Map<String, Map<Long, Long>> loadedPoints = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedLongPoints(statement, loadedPoints);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    final Map<Long, Long> modifiedSeries = loadedPoints.get(ALIGNED_DEVICE + ".s0");
+    Assert.assertEquals(199, modifiedSeries.size());
+    Assert.assertFalse(modifiedSeries.containsKey(0L));
+    Assert.assertEquals(200, loadedPoints.get(ALIGNED_DEVICE + ".s1").size());
     Assert.assertFalse("Successfully loaded TsFile should be deleted.", tsFile.exists());
   }
 
@@ -984,14 +1018,12 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     try (final TsFileInsertionEventScanParser parser =
         new TsFileInsertionEventScanParser(
             tsFile,
-            new IoTDBTreePattern(null),
-            Long.MIN_VALUE,
-            Long.MAX_VALUE,
             null,
             null,
             true,
             LoadTsFileParserMemoryManager.getInstance(),
-            true)) {
+            new TsFileInsertionEventScanParser.ScanOptions(
+                new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, true))) {
       parser.toTabletWithIsAligneds().forEach(tabletWithIsAligned -> {});
       final Map<String, Long> pointCounts =
           parser

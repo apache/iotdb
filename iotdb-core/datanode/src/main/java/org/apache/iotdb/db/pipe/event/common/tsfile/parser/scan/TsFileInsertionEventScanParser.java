@@ -91,6 +91,24 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   private static final int TS_FILE_INPUT_BUFFER_SIZE_IN_BYTES = 8 * 1024;
 
+  private record ParserContext(
+      String pipeName,
+      long creationTime,
+      File tsFile,
+      ScanOptions scanOptions,
+      PipeTaskMeta pipeTaskMeta,
+      IAuditEntity entity,
+      ParserOptions parserOptions) {}
+
+  private record ParserOptions(
+      boolean skipIfNoPrivileges,
+      PipeInsertionEvent sourceEvent,
+      boolean isWithMod,
+      TsFileInsertionEventParserMemoryManager memoryManager) {}
+
+  public record ScanOptions(
+      TreePattern pattern, long startTime, long endTime, boolean trackPointCounts) {}
+
   private final long startTime;
   private final long endTime;
   private final Filter filter;
@@ -168,54 +186,38 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final TsFileInsertionEventParserMemoryManager memoryManager)
       throws IOException, IllegalPathException {
     this(
-        pipeName,
-        creationTime,
-        tsFile,
-        pattern,
-        startTime,
-        endTime,
-        pipeTaskMeta,
-        entity,
-        skipIfNoPrivileges,
-        sourceEvent,
-        isWithMod,
-        memoryManager,
-        false);
+        new ParserContext(
+            pipeName,
+            creationTime,
+            tsFile,
+            new ScanOptions(pattern, startTime, endTime, false),
+            pipeTaskMeta,
+            entity,
+            new ParserOptions(skipIfNoPrivileges, sourceEvent, isWithMod, memoryManager)));
   }
 
-  private TsFileInsertionEventScanParser(
-      final String pipeName,
-      final long creationTime,
-      final File tsFile,
-      final TreePattern pattern,
-      final long startTime,
-      final long endTime,
-      final PipeTaskMeta pipeTaskMeta,
-      final IAuditEntity entity,
-      final boolean skipIfNoPrivileges,
-      final PipeInsertionEvent sourceEvent,
-      final boolean isWithMod,
-      final TsFileInsertionEventParserMemoryManager memoryManager,
-      final boolean trackPointCounts)
+  private TsFileInsertionEventScanParser(final ParserContext parserContext)
       throws IOException, IllegalPathException {
     super(
-        tsFile,
-        pipeName,
-        creationTime,
-        pattern,
+        parserContext.tsFile(),
+        parserContext.pipeName(),
+        parserContext.creationTime(),
+        parserContext.scanOptions().pattern(),
         null,
-        startTime,
-        endTime,
-        pipeTaskMeta,
-        entity,
-        skipIfNoPrivileges,
-        sourceEvent,
-        isWithMod,
-        memoryManager);
+        parserContext.scanOptions().startTime(),
+        parserContext.scanOptions().endTime(),
+        parserContext.pipeTaskMeta(),
+        parserContext.entity(),
+        parserContext.parserOptions().skipIfNoPrivileges(),
+        parserContext.parserOptions().sourceEvent(),
+        parserContext.parserOptions().isWithMod(),
+        parserContext.parserOptions().memoryManager());
 
-    this.trackPointCounts = trackPointCounts;
-    this.startTime = startTime;
-    this.endTime = endTime;
+    final ScanOptions scanOptions = parserContext.scanOptions();
+    final ParserOptions parserOptions = parserContext.parserOptions();
+    this.trackPointCounts = scanOptions.trackPointCounts();
+    this.startTime = scanOptions.startTime();
+    this.endTime = scanOptions.endTime();
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
 
     this.allocatedMemoryBlockForBatchData =
@@ -226,15 +228,16 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
     try {
       currentModifications =
-          isWithMod
-              ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
+          parserOptions.isWithMod()
+              ? ModsOperationUtil.loadModificationsFromTsFile(parserContext.tsFile())
               : PatternTreeMapFactory.getModsPatternTreeMap();
       allocatedMemoryBlockForModifications =
           allocateTabletMemory(
               TsFileInsertionEventScanParser.class.getSimpleName() + "#modifications",
               currentModifications.ramBytesUsed());
 
-      tsFileSequenceReader = createTsFileSequenceReader(tsFile, !currentModifications.isEmpty());
+      tsFileSequenceReader =
+          createTsFileSequenceReader(parserContext.tsFile(), !currentModifications.isEmpty());
       tsFileSequenceReader.position(tsFileSequenceReader.getDataStartOffset());
 
       prepareData();
@@ -249,29 +252,21 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   public TsFileInsertionEventScanParser(
       final File tsFile,
-      final TreePattern pattern,
-      final long startTime,
-      final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod,
       final TsFileInsertionEventParserMemoryManager memoryManager,
-      final boolean trackPointCounts)
+      final ScanOptions scanOptions)
       throws IOException, IllegalPathException {
     this(
-        null,
-        0,
-        tsFile,
-        pattern,
-        startTime,
-        endTime,
-        pipeTaskMeta,
-        null,
-        false,
-        sourceEvent,
-        isWithMod,
-        memoryManager,
-        trackPointCounts);
+        new ParserContext(
+            null,
+            0,
+            tsFile,
+            scanOptions,
+            pipeTaskMeta,
+            null,
+            new ParserOptions(false, sourceEvent, isWithMod, memoryManager)));
   }
 
   public TsFileInsertionEventScanParser(
@@ -305,18 +300,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final TsFileInsertionEventParserMemoryManager memoryManager)
       throws IOException, IllegalPathException {
     this(
-        null,
-        0,
         tsFile,
-        pattern,
-        startTime,
-        endTime,
         pipeTaskMeta,
-        null,
-        false,
         sourceEvent,
         isWithMod,
-        memoryManager);
+        memoryManager,
+        new ScanOptions(pattern, startTime, endTime, false));
   }
 
   private TsFileSequenceReader createTsFileSequenceReader(

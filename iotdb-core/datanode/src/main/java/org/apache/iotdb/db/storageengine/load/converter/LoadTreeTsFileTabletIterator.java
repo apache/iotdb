@@ -131,14 +131,12 @@ class LoadTreeTsFileTabletIterator
         sourceFile ->
             new TsFileInsertionEventScanParser(
                 sourceFile,
-                LOAD_TREE_PATTERN,
-                Long.MIN_VALUE,
-                Long.MAX_VALUE,
                 null,
                 null,
                 isWithMod,
                 LoadTsFileParserMemoryManager.getInstance(),
-                true));
+                new TsFileInsertionEventScanParser.ScanOptions(
+                    LOAD_TREE_PATTERN, Long.MIN_VALUE, Long.MAX_VALUE, true)));
   }
 
   @TestOnly
@@ -377,7 +375,25 @@ class LoadTreeTsFileTabletIterator
   private ArrayDeque<QueryTask> buildQueryTasks(
       final Map<IDeviceID, Map<String, Long>> completedPointCountsByDevice) throws IOException {
     final ArrayDeque<QueryTask> tasks = new ArrayDeque<>();
-    final boolean hasModifications = hasModifications();
+    final boolean containsModifications = hasModifications();
+    final Map<IDeviceID, Map<String, Long>> metadataPointCountsByDevice =
+        readMetadataPointCountsByDevice();
+
+    final Set<IDeviceID> unverifiableDevices = new HashSet<>();
+    final Map<IDeviceID, Map<String, Long>> expectedPointCountsByDevice =
+        containsModifications
+            ? readExpectedPointCountsWithMods(metadataPointCountsByDevice, unverifiableDevices)
+            : metadataPointCountsByDevice;
+    final Map<IDeviceID, Map<String, Long>> progressPointCountsByDevice =
+        containsModifications ? emittedPointCountsByDevice : completedPointCountsByDevice;
+
+    appendQueryTasksForIncompleteMeasurements(
+        tasks, expectedPointCountsByDevice, progressPointCountsByDevice, unverifiableDevices);
+    verifyCompletedPointCounts(progressPointCountsByDevice, expectedPointCountsByDevice);
+    return tasks;
+  }
+
+  private Map<IDeviceID, Map<String, Long>> readMetadataPointCountsByDevice() throws IOException {
     final Map<IDeviceID, Map<String, Long>> metadataPointCountsByDevice = new LinkedHashMap<>();
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
       // iterAllTimeseriesMetadata treats an IOException as the end of iteration. Use the
@@ -403,50 +419,67 @@ class LoadTreeTsFileTabletIterator
       }
     }
 
-    final Set<IDeviceID> unverifiableDevices = new HashSet<>();
-    final Map<IDeviceID, Map<String, Long>> expectedPointCountsByDevice =
-        hasModifications
-            ? readExpectedPointCountsWithMods(metadataPointCountsByDevice, unverifiableDevices)
-            : metadataPointCountsByDevice;
-    final Map<IDeviceID, Map<String, Long>> progressPointCountsByDevice =
-        hasModifications ? emittedPointCountsByDevice : completedPointCountsByDevice;
+    return metadataPointCountsByDevice;
+  }
 
+  private void appendQueryTasksForIncompleteMeasurements(
+      final ArrayDeque<QueryTask> tasks,
+      final Map<IDeviceID, Map<String, Long>> expectedPointCountsByDevice,
+      final Map<IDeviceID, Map<String, Long>> progressPointCountsByDevice,
+      final Set<IDeviceID> unverifiableDevices)
+      throws IOException {
     for (final Map.Entry<IDeviceID, Map<String, Long>> deviceEntry :
         expectedPointCountsByDevice.entrySet()) {
-      final Map<String, Long> completedPointCounts =
-          progressPointCountsByDevice.getOrDefault(deviceEntry.getKey(), Collections.emptyMap());
-      final List<String> fallbackMeasurements = new ArrayList<>();
-      final Map<String, Long> fallbackPointCounts = new LinkedHashMap<>();
-      for (final Map.Entry<String, Long> measurementEntry : deviceEntry.getValue().entrySet()) {
-        final long completedPointCount =
-            completedPointCounts.getOrDefault(measurementEntry.getKey(), 0L);
-        if (unverifiableDevices.contains(deviceEntry.getKey())) {
-          fallbackMeasurements.add(measurementEntry.getKey());
-          fallbackPointCounts.put(
-              measurementEntry.getKey(),
-              Math.max(0, measurementEntry.getValue() - completedPointCount));
-          continue;
-        }
-        if (completedPointCount > measurementEntry.getValue()) {
-          throw new IOException(
-              StorageEngineMessages
-                  .EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3);
-        }
-        if (completedPointCount < measurementEntry.getValue()) {
-          fallbackMeasurements.add(measurementEntry.getKey());
-          fallbackPointCounts.put(
-              measurementEntry.getKey(), measurementEntry.getValue() - completedPointCount);
-        }
-      }
-      if (fallbackMeasurements.isEmpty()) {
+      final IDeviceID device = deviceEntry.getKey();
+      addQueryTasksForDevice(
+          tasks,
+          device,
+          deviceEntry.getValue(),
+          progressPointCountsByDevice.getOrDefault(device, Collections.emptyMap()),
+          unverifiableDevices.contains(device));
+    }
+  }
+
+  private void addQueryTasksForDevice(
+      final ArrayDeque<QueryTask> tasks,
+      final IDeviceID device,
+      final Map<String, Long> expectedPointCounts,
+      final Map<String, Long> completedPointCounts,
+      final boolean unverifiable)
+      throws IOException {
+    final List<String> fallbackMeasurements = new ArrayList<>();
+    final Map<String, Long> fallbackPointCounts = new LinkedHashMap<>();
+    for (final Map.Entry<String, Long> measurementEntry : expectedPointCounts.entrySet()) {
+      final String measurement = measurementEntry.getKey();
+      final long completedPointCount = completedPointCounts.getOrDefault(measurement, 0L);
+      if (unverifiable) {
+        fallbackMeasurements.add(measurement);
+        fallbackPointCounts.put(
+            measurement, Math.max(0, measurementEntry.getValue() - completedPointCount));
         continue;
       }
-
-      expectedQueryFallbackPointCountsByDevice.put(deviceEntry.getKey(), fallbackPointCounts);
-      addQueryTasks(
-          tasks, deviceEntry.getKey(), fallbackMeasurements, Long.MIN_VALUE, Long.MAX_VALUE);
+      if (completedPointCount > measurementEntry.getValue()) {
+        throw new IOException(
+            StorageEngineMessages
+                .EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3);
+      }
+      if (completedPointCount < measurementEntry.getValue()) {
+        fallbackMeasurements.add(measurement);
+        fallbackPointCounts.put(measurement, measurementEntry.getValue() - completedPointCount);
+      }
+    }
+    if (fallbackMeasurements.isEmpty()) {
+      return;
     }
 
+    expectedQueryFallbackPointCountsByDevice.put(device, fallbackPointCounts);
+    addQueryTasks(tasks, device, fallbackMeasurements, Long.MIN_VALUE, Long.MAX_VALUE);
+  }
+
+  private void verifyCompletedPointCounts(
+      final Map<IDeviceID, Map<String, Long>> progressPointCountsByDevice,
+      final Map<IDeviceID, Map<String, Long>> expectedPointCountsByDevice)
+      throws IOException {
     for (final Map.Entry<IDeviceID, Map<String, Long>> deviceEntry :
         progressPointCountsByDevice.entrySet()) {
       final Map<String, Long> expectedPointCounts =
@@ -460,7 +493,6 @@ class LoadTreeTsFileTabletIterator
         }
       }
     }
-    return tasks;
   }
 
   private Map<IDeviceID, Map<String, Long>> readExpectedPointCountsWithMods(
@@ -493,7 +525,7 @@ class LoadTreeTsFileTabletIterator
           final Map<String, Long> parsedPointCounts = new LinkedHashMap<>();
           final Map<String, Long> expectedPointCounts = new LinkedHashMap<>();
 
-          if (deviceWithAlignment.getRight()) {
+          if (Boolean.TRUE.equals(deviceWithAlignment.getRight())) {
             countAlignedPoints(
                 reader,
                 reader.getAlignedChunkMetadataByMetadataIndexNode(device, metadataIndexNode, true),
@@ -526,11 +558,25 @@ class LoadTreeTsFileTabletIterator
       }
     }
 
+    markDevicesWithoutParsedPointCounts(
+        metadataPointCountsByDevice,
+        parsedPointCountsByDevice,
+        expectedPointCountsByDevice,
+        unverifiableDevices);
+    return expectedPointCountsByDevice;
+  }
+
+  private void markDevicesWithoutParsedPointCounts(
+      final Map<IDeviceID, Map<String, Long>> metadataPointCountsByDevice,
+      final Map<IDeviceID, Map<String, Long>> parsedPointCountsByDevice,
+      final Map<IDeviceID, Map<String, Long>> expectedPointCountsByDevice,
+      final Set<IDeviceID> unverifiableDevices) {
     for (final Map.Entry<IDeviceID, Map<String, Long>> deviceEntry :
         metadataPointCountsByDevice.entrySet()) {
-      if (!parsedPointCountsByDevice.containsKey(deviceEntry.getKey())) {
-        unverifiableDevices.add(deviceEntry.getKey());
-        expectedPointCountsByDevice.put(deviceEntry.getKey(), deviceEntry.getValue());
+      final IDeviceID device = deviceEntry.getKey();
+      if (!parsedPointCountsByDevice.containsKey(device)) {
+        unverifiableDevices.add(device);
+        expectedPointCountsByDevice.put(device, deviceEntry.getValue());
         if (unrecoverableQueryFailure == null) {
           unrecoverableQueryFailure =
               toRuntimeException(
@@ -540,7 +586,6 @@ class LoadTreeTsFileTabletIterator
         }
       }
     }
-    return expectedPointCountsByDevice;
   }
 
   private void countAlignedPoints(
@@ -552,58 +597,96 @@ class LoadTreeTsFileTabletIterator
       final Map<String, Long> expectedPointCounts)
       throws IOException {
     for (final AbstractAlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
-      final List<ChunkMetadata> valueChunkMetadata = new ArrayList<>();
-      for (final org.apache.tsfile.file.metadata.IChunkMetadata metadata :
-          alignedChunkMetadata.getValueChunkMetadataList()) {
-        valueChunkMetadata.add(metadata == null ? null : (ChunkMetadata) metadata);
-      }
-      if (valueChunkMetadata.size() != measurements.size()) {
-        throw new IOException(
-            StorageEngineMessages
-                .EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3);
-      }
+      countAlignedChunk(
+          reader,
+          alignedChunkMetadata,
+          measurements,
+          modsInfos,
+          parsedPointCounts,
+          expectedPointCounts);
+    }
+  }
 
-      final Chunk timeChunk =
-          reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
-      final List<Chunk> valueChunks = new ArrayList<>(valueChunkMetadata.size());
-      boolean chunksTransferredToReader = false;
-      try {
-        for (final ChunkMetadata metadata : valueChunkMetadata) {
-          valueChunks.add(metadata == null ? null : reader.readMemChunk(metadata));
-        }
-        chunksTransferredToReader = true;
-        try (final IChunkReader chunkReader = new AlignedChunkReader(timeChunk, valueChunks)) {
-          while (chunkReader.hasNextSatisfiedPage()) {
-            final BatchData pageData = chunkReader.nextPageData();
-            while (pageData.hasCurrent()) {
-              final TsPrimitiveType[] values = pageData.getVector();
-              if (values.length != measurements.size()) {
-                throw new IOException(
-                    StorageEngineMessages
-                        .EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3);
+  private void countAlignedChunk(
+      final TsFileSequenceReader reader,
+      final AbstractAlignedChunkMetadata alignedChunkMetadata,
+      final List<String> measurements,
+      final List<ModsInfo> modsInfos,
+      final Map<String, Long> parsedPointCounts,
+      final Map<String, Long> expectedPointCounts)
+      throws IOException {
+    final List<ChunkMetadata> valueChunkMetadata = new ArrayList<>();
+    for (final org.apache.tsfile.file.metadata.IChunkMetadata metadata :
+        alignedChunkMetadata.getValueChunkMetadataList()) {
+      valueChunkMetadata.add(metadata == null ? null : (ChunkMetadata) metadata);
+    }
+    if (valueChunkMetadata.size() != measurements.size()) {
+      throw new IOException(
+          StorageEngineMessages.EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3);
+    }
+
+    final Chunk timeChunk =
+        reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
+    final List<Chunk> valueChunks = new ArrayList<>(valueChunkMetadata.size());
+    boolean chunksTransferredToReader = false;
+    try {
+      for (final ChunkMetadata metadata : valueChunkMetadata) {
+        valueChunks.add(metadata == null ? null : reader.readMemChunk(metadata));
+      }
+      chunksTransferredToReader = true;
+      countAlignedChunkData(
+          timeChunk, valueChunks, measurements, modsInfos, parsedPointCounts, expectedPointCounts);
+    } finally {
+      if (!chunksTransferredToReader) {
+        timeChunk.close();
+        valueChunks.forEach(
+            chunk -> {
+              if (chunk != null) {
+                chunk.close();
               }
-              for (int column = 0; column < values.length; column++) {
-                if (values[column] != null) {
-                  final String measurement = measurements.get(column);
-                  parsedPointCounts.merge(measurement, 1L, Long::sum);
-                  if (!isDeletedByMods(pageData.currentTime(), modsInfos.get(column))) {
-                    expectedPointCounts.merge(measurement, 1L, Long::sum);
-                  }
-                }
-              }
-              pageData.next();
-            }
-          }
+            });
+      }
+    }
+  }
+
+  private void countAlignedChunkData(
+      final Chunk timeChunk,
+      final List<Chunk> valueChunks,
+      final List<String> measurements,
+      final List<ModsInfo> modsInfos,
+      final Map<String, Long> parsedPointCounts,
+      final Map<String, Long> expectedPointCounts)
+      throws IOException {
+    try (final IChunkReader chunkReader = new AlignedChunkReader(timeChunk, valueChunks)) {
+      while (chunkReader.hasNextSatisfiedPage()) {
+        final BatchData pageData = chunkReader.nextPageData();
+        while (pageData.hasCurrent()) {
+          countAlignedPage(
+              pageData, measurements, modsInfos, parsedPointCounts, expectedPointCounts);
+          pageData.next();
         }
-      } finally {
-        if (!chunksTransferredToReader) {
-          timeChunk.close();
-          valueChunks.forEach(
-              chunk -> {
-                if (chunk != null) {
-                  chunk.close();
-                }
-              });
+      }
+    }
+  }
+
+  private void countAlignedPage(
+      final BatchData pageData,
+      final List<String> measurements,
+      final List<ModsInfo> modsInfos,
+      final Map<String, Long> parsedPointCounts,
+      final Map<String, Long> expectedPointCounts)
+      throws IOException {
+    final TsPrimitiveType[] values = pageData.getVector();
+    if (values.length != measurements.size()) {
+      throw new IOException(
+          StorageEngineMessages.EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3);
+    }
+    for (int column = 0; column < values.length; column++) {
+      if (values[column] != null) {
+        final String measurement = measurements.get(column);
+        parsedPointCounts.merge(measurement, 1L, Long::sum);
+        if (!isDeletedByMods(pageData.currentTime(), modsInfos.get(column))) {
+          expectedPointCounts.merge(measurement, 1L, Long::sum);
         }
       }
     }
@@ -658,8 +741,9 @@ class LoadTreeTsFileTabletIterator
       final Map<String, Long> metadataPointCounts)
       throws IOException {
     for (final String measurement : measurements) {
-      if (parsedPointCounts.getOrDefault(measurement, 0L)
-          != metadataPointCounts.getOrDefault(measurement, 0L)) {
+      final long parsedPointCount = parsedPointCounts.getOrDefault(measurement, 0L);
+      final long metadataPointCount = metadataPointCounts.getOrDefault(measurement, 0L);
+      if (parsedPointCount != metadataPointCount) {
         throw new IOException(
             StorageEngineMessages
                 .EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3);
