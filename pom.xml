@@ -124,7 +124,8 @@
         <reflections.version>0.10.2</reflections.version>
         <slf4j.version>2.0.9</slf4j.version>
         <snappy-java.version>1.1.10.9</snappy-java.version>
-        <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.exclusions>**/generated-sources/**</sonar.coverage.exclusions>
+        <sonar.coverage.jacoco.xmlReportPaths>${maven.multiModuleProjectDirectory}/code-coverage/target/jacoco-merged-reports/jacoco.xml,target/jacoco-merged-reports/jacoco.xml,target/jacoco-unit-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
         <sonar.test.exclusions>**/test/**</sonar.test.exclusions>
