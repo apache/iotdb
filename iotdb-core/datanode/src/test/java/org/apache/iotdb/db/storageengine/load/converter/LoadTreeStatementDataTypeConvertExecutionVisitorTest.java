@@ -785,6 +785,41 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
   }
 
   @Test
+  public void testModifiedAlignedQueryFallbackUsesVisiblePointCounts() throws Exception {
+    tsFile = new File("load-tree-query-fallback-aligned-mods.tsfile");
+    final long secondGroupOffset = writeAlignedBooleanTsFileAcrossChunkGroups(tsFile);
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s0"), 1, 1));
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath(ALIGNED_DEVICE + ".s1"), 1, 1));
+    }
+    corruptGroupMarker(tsFile, secondGroupOffset);
+
+    final Map<String, List<String>> loadedPointData = new LinkedHashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointData(statement, loadedPointData);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()).setDeleteAfterLoad(true),
+            null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+    assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s0", "0=true", "3=true");
+    assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s1", "2=false");
+    assertBooleanSeriesData(loadedPointData, "root.sg.intermediate.other", "10=true");
+    Assert.assertEquals(3, loadedPointData.size());
+    Assert.assertFalse("Successfully loaded TsFile should be deleted.", tsFile.exists());
+  }
+
+  @Test
   public void testEofFallbackFailsWhenNoPointsFollowLastEmittedTimestamp() throws Exception {
     tsFile = new File("load-tree-query-fallback-eof-no-resumable-points.tsfile");
     writeAlignedBooleanTsFile(tsFile);
@@ -1156,7 +1191,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
     }
   }
 
-  private void writeAlignedBooleanTsFileAcrossChunkGroups(final File file) throws Exception {
+  private long writeAlignedBooleanTsFileAcrossChunkGroups(final File file) throws Exception {
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -1184,6 +1219,8 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       otherTablet.addTimestamp(0, 10);
       otherTablet.addValue("other", 0, true);
       writer.writeTree(otherTablet);
+      writer.flush();
+      final long secondGroupOffset = writer.getIOWriter().getPos();
 
       final Tablet secondAlignedTablet = new Tablet(ALIGNED_DEVICE, alignedSchemas, 2);
       secondAlignedTablet.addTimestamp(0, 2);
@@ -1191,6 +1228,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
       secondAlignedTablet.addTimestamp(1, 3);
       secondAlignedTablet.addValue("s0", 1, true);
       writer.writeAligned(secondAlignedTablet);
+      return secondGroupOffset;
     }
   }
 
