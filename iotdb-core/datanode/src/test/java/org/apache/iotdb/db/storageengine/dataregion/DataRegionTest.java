@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
@@ -75,9 +76,9 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.DropTableModProgress;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.SchemaDeletionModProgress;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
@@ -2689,7 +2690,9 @@ public class DataRegionTest {
             new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
     dataRegion.deleteByTable(
         new RelationalDeleteDataNode(
-            DropTableModProgress.planNodeId(42), deletionEntry, dataRegion.getDatabaseName()));
+            SchemaDeletionModProgress.dropTablePlanNodeId(42),
+            deletionEntry,
+            dataRegion.getDatabaseName()));
 
     Assert.assertEquals(
         new TDropTableModProgress(1).setRemainingModFileCount(0),
@@ -2706,6 +2709,75 @@ public class DataRegionTest {
           ModificationFile.readAllModifications(targetTsFile.getTsFile(), false));
     } finally {
       targetTsFile.removeModFile();
+    }
+  }
+
+  @Test
+  public void testTreeDeletionCascadesModsForAlreadyDeletedCompactionSource() throws Exception {
+    final TSRecord record = new TSRecord(deviceId, 1);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, "10"));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    final TsFileResource sourceTsFile = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    final TsFileResource targetTsFile =
+        new TsFileResource(new File(sourceTsFile.getTsFile().getParent(), "tree-target.tsfile"));
+    try {
+      sourceTsFile.link(targetTsFile);
+      sourceTsFile.setStatusForTest(TsFileResourceStatus.DELETED);
+
+      final MeasurementPath deletionPath = new MeasurementPath(deviceId, measurementId);
+      final TreeDeletionEntry deletionEntry =
+          new TreeDeletionEntry(deletionPath, Long.MIN_VALUE, Long.MAX_VALUE);
+      dataRegion.deleteByDevice(
+          deletionPath,
+          new DeleteDataNode(
+              new PlanNodeId("tree-deletion"),
+              Collections.singletonList(deletionPath),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE));
+
+      targetTsFile.getModFileForWrite().close();
+      assertTrue(sourceTsFile.getTsFile().exists());
+      assertTrue(targetTsFile.getTsFile().exists());
+      Assert.assertEquals(
+          Collections.singletonList(deletionEntry),
+          ModificationFile.readAllModifications(targetTsFile.getTsFile(), false));
+    } finally {
+      Assert.assertTrue(targetTsFile.remove());
+    }
+  }
+
+  @Test
+  public void testTableDeletionCascadesModsForAlreadyDeletedCompactionSource() throws Exception {
+    dataRegion.insertTablet(genInsertTabletNode(10, 0));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    final TsFileResource sourceTsFile = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    final TsFileResource targetTsFile =
+        new TsFileResource(new File(sourceTsFile.getTsFile().getParent(), "table-target.tsfile"));
+    try {
+      sourceTsFile.link(targetTsFile);
+      sourceTsFile.setStatusForTest(TsFileResourceStatus.DELETED);
+
+      final TableDeletionEntry deletionEntry =
+          new TableDeletionEntry(
+              new DeletionPredicate(StatementTestUtils.tableName(), new NOP()),
+              new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
+      dataRegion.deleteByTable(
+          new RelationalDeleteDataNode(
+              SchemaDeletionModProgress.dropTablePlanNodeId(53),
+              deletionEntry,
+              dataRegion.getDatabaseName()));
+
+      targetTsFile.getModFileForWrite().close();
+      assertTrue(sourceTsFile.getTsFile().exists());
+      assertTrue(targetTsFile.getTsFile().exists());
+      Assert.assertEquals(
+          Collections.singletonList(deletionEntry),
+          ModificationFile.readAllModifications(targetTsFile.getTsFile(), false));
+    } finally {
+      Assert.assertTrue(targetTsFile.remove());
     }
   }
 
@@ -2826,6 +2898,138 @@ public class DataRegionTest {
   }
 
   @Test
+  public void testTimeSeriesDeletionCountsDistinctModFiles() throws Exception {
+    final String secondMeasurement = "s1";
+    final TSRecord record = new TSRecord(deviceId, 1);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, "10"));
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, secondMeasurement, "20"));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    final TsFileResource resource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    final ModificationFile modFile = Mockito.spy(resource.getModFileForWrite());
+    resource.setExclusiveModFile(modFile);
+    final long procedureId = 48;
+    final AtomicInteger closeCount = new AtomicInteger();
+    Mockito.doAnswer(
+            invocation -> {
+              if (closeCount.incrementAndGet() == 2) {
+                Assert.assertEquals(
+                    new TDropTableModProgress(1), dataRegion.getDropTableModProgress(procedureId));
+              }
+              return invocation.callRealMethod();
+            })
+        .when(modFile)
+        .close();
+
+    final DeleteDataNode deletion =
+        new DeleteDataNode(
+            SchemaDeletionModProgress.deleteTimeSeriesPlanNodeId(procedureId),
+            Arrays.asList(
+                new MeasurementPath(deviceId, measurementId),
+                new MeasurementPath(deviceId, secondMeasurement)),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    final TSStatus status = new DataExecutionVisitor().visitDeleteData(deletion, dataRegion);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertEquals(2, closeCount.get());
+    Assert.assertEquals(2, resource.getAllModEntries().size());
+    Assert.assertEquals(
+        new TDropTableModProgress(1).setRemainingModFileCount(0),
+        dataRegion.getDropTableModProgress(procedureId, true));
+    Assert.assertNull(dataRegion.getDropTableModProgress(procedureId));
+  }
+
+  @Test
+  public void testRemoteConsensusTimeSeriesDeletionDoesNotRetainProgress() throws Exception {
+    final TSRecord record = new TSRecord(deviceId, 1);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, "10"));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    final long procedureId = 50;
+    final DeleteDataNode deletion =
+        new DeleteDataNode(
+            SchemaDeletionModProgress.deleteTimeSeriesPlanNodeId(procedureId),
+            Collections.singletonList(new MeasurementPath(deviceId, measurementId)),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    deletion.markAsGeneratedByRemoteConsensusLeader();
+
+    final TSStatus status = new DataExecutionVisitor().visitDeleteData(deletion, dataRegion);
+
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertNull(dataRegion.getDropTableModProgress(procedureId));
+  }
+
+  @Test
+  public void testRemoteConsensusTableDeletionDoesNotRetainProgress() throws Exception {
+    dataRegion.insertTablet(genInsertTabletNode(10, 0));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    final long procedureId = 51;
+    final RelationalDeleteDataNode deletion = dropTableNode(procedureId);
+    deletion.markAsGeneratedByRemoteConsensusLeader();
+
+    final TSStatus status = new DataExecutionVisitor().visitDeleteData(deletion, dataRegion);
+
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    Assert.assertNull(dataRegion.getDropTableModProgress(procedureId));
+  }
+
+  @Test
+  public void testFailedTimeSeriesDeletionKeepsRemainingCountUnknownAndCanBeCleared()
+      throws Exception {
+    final TSRecord record = new TSRecord(deviceId, 1);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, "10"));
+    dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    final TsFileResource resource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    final ModificationFile modFile = Mockito.spy(resource.getModFileForWrite());
+    resource.setExclusiveModFile(modFile);
+    Mockito.doThrow(new IOException()).when(modFile).close();
+
+    final long procedureId = 49;
+    final DeleteDataNode deletion =
+        new DeleteDataNode(
+            SchemaDeletionModProgress.deleteTimeSeriesPlanNodeId(procedureId),
+            Collections.singletonList(new MeasurementPath(deviceId, measurementId)),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    try {
+      final TSStatus status = new DataExecutionVisitor().visitDeleteData(deletion, dataRegion);
+      Assert.assertEquals(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode(), status.getCode());
+      final TDropTableModProgress progress = dataRegion.getDropTableModProgress(procedureId);
+      Assert.assertEquals(0, progress.getWrittenModFileCount());
+      Assert.assertFalse(progress.isSetRemainingModFileCount());
+      Assert.assertEquals(progress, dataRegion.getDropTableModProgress(procedureId, true));
+      Assert.assertNull(dataRegion.getDropTableModProgress(procedureId));
+    } finally {
+      Mockito.doCallRealMethod().when(modFile).close();
+      modFile.close();
+    }
+  }
+
+  @Test
+  public void testActiveTimeSeriesModProgressIsNotEvicted() {
+    final long firstProcedureId = 1000;
+    final int progressCount = 129;
+    for (int index = 0; index < progressCount; index++) {
+      final long procedureId = firstProcedureId + index;
+      dataRegion.startTimeSeriesModProgress(
+          SchemaDeletionModProgress.deleteTimeSeriesPlanNodeId(procedureId));
+    }
+
+    Assert.assertEquals(
+        new TDropTableModProgress(0), dataRegion.getDropTableModProgress(firstProcedureId));
+
+    for (int index = 0; index < progressCount; index++) {
+      final long procedureId = firstProcedureId + index;
+      Assert.assertNotNull(dataRegion.getDropTableModProgress(procedureId, true));
+      Assert.assertNull(dataRegion.getDropTableModProgress(procedureId));
+    }
+  }
+
+  @Test
   public void testDropTableModProgressWithoutModFiles() throws Exception {
     dataRegion.deleteByTable(dropTableNode(45));
     Assert.assertEquals(
@@ -2838,13 +3042,16 @@ public class DataRegionTest {
     Assert.assertFalse(resource.getTsFile().exists());
     Assert.assertEquals(
         new TDropTableModProgress(0).setRemainingModFileCount(0),
-        dataRegion.getDropTableModProgress(46));
+        dataRegion.getDropTableModProgress(45, true));
     Assert.assertNull(dataRegion.getDropTableModProgress(45));
+    Assert.assertEquals(
+        new TDropTableModProgress(0).setRemainingModFileCount(0),
+        dataRegion.getDropTableModProgress(46));
   }
 
   private RelationalDeleteDataNode dropTableNode(final long procedureId) {
     return new RelationalDeleteDataNode(
-        DropTableModProgress.planNodeId(procedureId),
+        SchemaDeletionModProgress.dropTablePlanNodeId(procedureId),
         new TableDeletionEntry(
             new DeletionPredicate(StatementTestUtils.tableName()),
             new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
@@ -3056,7 +3263,9 @@ public class DataRegionTest {
             new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
     dataRegion.deleteByTable(
         new RelationalDeleteDataNode(
-            DropTableModProgress.planNodeId(47), deletion, dataRegion.getDatabaseName()));
+            SchemaDeletionModProgress.dropTablePlanNodeId(47),
+            deletion,
+            dataRegion.getDatabaseName()));
     Assert.assertEquals(
         new TDropTableModProgress(1).setRemainingModFileCount(0),
         dataRegion.getDropTableModProgress(47));

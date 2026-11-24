@@ -90,6 +90,7 @@
         <iotConsensusV2StreamMode.dataRegionReplicaNumber>2</iotConsensusV2StreamMode.dataRegionReplicaNumber>
         <iotConsensusV2StreamMode.schemaRegionConsensus>Ratis</iotConsensusV2StreamMode.schemaRegionConsensus>
         <iotConsensusV2StreamMode.schemaRegionReplicaNumber>3</iotConsensusV2StreamMode.schemaRegionReplicaNumber>
+        <sonar.skip>true</sonar.skip>
     </properties>
     <dependencies>
         <dependency>

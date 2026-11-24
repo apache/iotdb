@@ -54,7 +54,7 @@ public class CrestFactorOperator implements AggregatedResultOperator {
         TSDataType.DOUBLE,
         intermediateResults.getDouble("abs_max")
             / Math.pow(
-                intermediateResults.getDouble("sum_x2") / intermediateResults.getInt("count"),
+                intermediateResults.getDouble("sum_x2") / intermediateResults.getLong("count"),
                 0.5));
   }
 }

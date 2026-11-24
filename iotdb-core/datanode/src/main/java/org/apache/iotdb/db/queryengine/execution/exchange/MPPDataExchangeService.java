@@ -20,12 +20,10 @@
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.client.sync.MPPDataExchangeClientManager;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
@@ -60,26 +58,34 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   private final ExecutorService executorService;
 
   private MPPDataExchangeService() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    executorService =
-        IoTDBThreadPoolFactory.newThreadPool(
-            config.getMppDataExchangeCorePoolSize(),
-            config.getMppDataExchangeMaxPoolSize(),
-            config.getMppDataExchangeKeepAliveTimeInMs(),
-            TimeUnit.MILLISECONDS,
-            // TODO: Use a priority queue.
-            new LinkedBlockingQueue<>(),
-            new IoTThreadFactory(ThreadName.MPP_DATA_EXCHANGE_TASK_EXECUTOR.getName()),
-            ThreadName.MPP_DATA_EXCHANGE_TASK_EXECUTOR.getName());
+    MPPDataExchangeClientManager clients = new MPPDataExchangeClientManager();
+    executorService = createExchangeExecutor(clients);
     this.mppDataExchangeManager =
         new MPPDataExchangeManager(
-            new LocalMemoryManager(),
-            new TsBlockSerdeFactory(),
-            executorService,
-            new IClientManager.Factory<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>()
-                .createClientManager(
-                    new ClientPoolFactory.SyncDataNodeMPPDataExchangeServiceClientPoolFactory()));
+            new LocalMemoryManager(), new TsBlockSerdeFactory(), executorService, clients);
     LOGGER.info(DataNodeQueryMessages.MPPDATAEXCHANGEMANAGER_INIT_SUCCESSFULLY);
+  }
+
+  static ExecutorService createExchangeExecutor(MPPDataExchangeClientManager clients) {
+    String name = ThreadName.MPP_DATA_EXCHANGE_TASK_EXECUTOR.getName();
+    return new WrappedThreadPoolExecutor(
+        config.getMppDataExchangeCorePoolSize(),
+        config.getMppDataExchangeMaxPoolSize(),
+        config.getMppDataExchangeKeepAliveTimeInMs(),
+        TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue<>(),
+        new IoTThreadFactory(name),
+        name) {
+      @Override
+      protected void terminated() {
+        // Queued notifications can still borrow clients while shutdown drains the exchange workers.
+        try {
+          clients.close();
+        } finally {
+          super.terminated();
+        }
+      }
+    };
   }
 
   @Override
