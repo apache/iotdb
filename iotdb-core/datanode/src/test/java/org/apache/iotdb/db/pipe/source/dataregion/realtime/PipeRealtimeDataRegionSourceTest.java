@@ -104,7 +104,7 @@ public class PipeRealtimeDataRegionSourceTest {
   }
 
   private static PipeRealtimeEvent createCompletionBarrierEvent() {
-    final PipeRealtimeEvent event = PipeRealtimeEventFactory.createCompletionBarrierEvent(1);
+    final PipeRealtimeEvent event = PipeRealtimeEventFactory.createCompletionBarrierEvent("1");
     Assert.assertTrue(event.increaseReferenceCount(TEST_REFERENCE_HOLDER));
     return event;
   }

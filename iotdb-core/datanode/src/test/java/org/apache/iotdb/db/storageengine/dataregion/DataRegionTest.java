@@ -2231,7 +2231,7 @@ public class DataRegionTest {
 
   @Test
   public void testFullFlushClosesProcessorAfterOrdinaryAsyncFlush() throws Exception {
-    final TSRecord record = new TSRecord(deviceId, 100);
+    final TSRecord record = new TSRecord(100, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
     dataRegion.insert(buildInsertRowNodeByTSRecord(record));
 
@@ -2276,7 +2276,7 @@ public class DataRegionTest {
               }
             }));
 
-    final TSRecord record = new TSRecord(deviceId, 100);
+    final TSRecord record = new TSRecord(100, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
     dataRegion.insert(buildInsertRowNodeByTSRecord(record));
     final TsFileProcessor tsFileProcessor =
@@ -2328,7 +2328,7 @@ public class DataRegionTest {
               }
             }));
 
-    final TSRecord firstRecord = new TSRecord(deviceId, 100);
+    final TSRecord firstRecord = new TSRecord(100, deviceId);
     firstRecord.addTuple(
         DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
     dataRegion.insert(buildInsertRowNodeByTSRecord(firstRecord));
@@ -2351,7 +2351,7 @@ public class DataRegionTest {
     TsFileProcessor replacementProcessor;
     try {
       Assert.assertTrue(closeListenerBlocked.await(30, TimeUnit.SECONDS));
-      final TSRecord secondRecord = new TSRecord(deviceId, 101);
+      final TSRecord secondRecord = new TSRecord(101, deviceId);
       secondRecord.addTuple(
           DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(101)));
       dataRegion.insert(buildInsertRowNodeByTSRecord(secondRecord));
@@ -2378,7 +2378,7 @@ public class DataRegionTest {
         .thenAnswer(
             invocation -> {
               waitStarted.countDown();
-              assertTrue(allowClose.await(10, TimeUnit.SECONDS));
+              Assert.assertTrue(allowClose.await(10, TimeUnit.SECONDS));
               return null;
             });
 
@@ -2392,7 +2392,7 @@ public class DataRegionTest {
     CompletableFuture<Void> syncCloseTask = null;
     try {
       syncCloseTask = CompletableFuture.runAsync(dataRegion::syncCloseAllWorkingTsFileProcessors);
-      assertTrue(waitStarted.await(10, TimeUnit.SECONDS));
+      Assert.assertTrue(waitStarted.await(10, TimeUnit.SECONDS));
       Assert.assertFalse(syncCloseTask.isDone());
       allowClose.countDown();
       syncCloseTask.get(10, TimeUnit.SECONDS);

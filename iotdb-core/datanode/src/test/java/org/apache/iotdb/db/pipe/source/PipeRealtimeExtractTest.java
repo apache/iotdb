@@ -64,11 +64,10 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
-import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -88,7 +87,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -109,6 +107,7 @@ public class PipeRealtimeExtractTest {
 
   private final String dataRegion1 = "1";
   private final String dataRegion2 = "2";
+  private final int dataRegion1Id = Integer.parseInt(dataRegion1);
   private final String pattern1 = "root.sg.d";
   private final String pattern2 = "root.sg.d.a";
   private final String[] device = new String[] {"root", "sg", "d"};
@@ -393,14 +392,14 @@ public class PipeRealtimeExtractTest {
               new PipeTaskSourceRuntimeEnvironment(
                   "region-level-downgrading-disabled",
                   TEST_PIPE_CREATION_TIME,
-                  dataRegion1,
+                  dataRegion1Id,
                   new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
       final PipeTaskRuntimeConfiguration enabledConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
                   "region-level-downgrading-enabled",
                   TEST_PIPE_CREATION_TIME,
-                  dataRegion1,
+                  dataRegion1Id,
                   new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
 
       disabledExtractor.validate(new PipeParameterValidator(disabledParameters));
@@ -418,7 +417,7 @@ public class PipeRealtimeExtractTest {
     registerTestPipeMeta();
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     try (final PipeRealtimeDataRegionHybridSource extractor =
         new PipeRealtimeDataRegionHybridSource()) {
       final PipeParameters parameters =
@@ -435,7 +434,7 @@ public class PipeRealtimeExtractTest {
       final PipeTaskRuntimeConfiguration configuration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
-                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, pipeTaskMeta));
 
       extractor.validate(new PipeParameterValidator(parameters));
       extractor.customize(parameters, configuration);
@@ -444,10 +443,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent firstTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("first-degraded-tablet", "a"),
-                  firstResource),
+                  createInsertRowNode("first-degraded-tablet", "a"), firstResource),
               extractor,
               pipeTaskMeta);
 
@@ -463,10 +459,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent secondTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("second-degraded-tablet", "a"),
-                  secondResource),
+                  createInsertRowNode("second-degraded-tablet", "a"), secondResource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(secondTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -486,7 +479,7 @@ public class PipeRealtimeExtractTest {
 
       final PipeRealtimeEvent firstTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", firstResource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(firstResource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(firstTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -500,7 +493,7 @@ public class PipeRealtimeExtractTest {
 
       final PipeRealtimeEvent secondTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", secondResource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(secondResource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(secondTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -539,7 +532,7 @@ public class PipeRealtimeExtractTest {
       Assert.assertNull(getGlobalTsFileEpochDegraded());
       Assert.assertNull(extractor.supply());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
@@ -548,28 +541,21 @@ public class PipeRealtimeExtractTest {
     registerTestPipeMeta();
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    final String dedupScopeId = "generated-tablet-transfer-test";
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     try {
       final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
       final TsFileResource resource = createTsFileResource(dataRegion1, "110-110-0-0.tsfile");
       final PipeTsFileInsertionEvent tsFileEvent =
-          new PipeTsFileInsertionEvent(false, "root.sg", resource, false)
+          new PipeTsFileInsertionEvent(resource, false)
               .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                   TEST_PIPE_NAME,
                   TEST_PIPE_CREATION_TIME,
                   pipeTaskMeta,
                   null,
-                  null,
-                  null,
-                  null,
-                  null,
-                  true,
                   Long.MIN_VALUE,
                   Long.MAX_VALUE);
-      tsFileEvent.bindTsFileDedupScopeID(dedupScopeId);
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .registerProgressIndex(dataRegion1, dedupScopeId, resource);
+          .registerProgressIndex(dataRegion1, TEST_PIPE_NAME, resource);
 
       final AtomicBoolean transferred = new AtomicBoolean(false);
       tsFileEvent.addOnTransferredHook(() -> transferred.set(true));
@@ -593,17 +579,17 @@ public class PipeRealtimeExtractTest {
       Assert.assertFalse(transferred.get());
       Assert.assertTrue(
           PipeTsFileEpochProgressIndexKeeper.getInstance()
-              .containsTsFile(dataRegion1, dedupScopeId, resource.getTsFilePath()));
+              .containsTsFile(dataRegion1, TEST_PIPE_NAME, resource.getTsFilePath()));
 
       commitSuppliedEvent(secondGeneratedTabletEvent, commitManager);
       Assert.assertTrue(transferred.get());
       Assert.assertFalse(
           PipeTsFileEpochProgressIndexKeeper.getInstance()
-              .containsTsFile(dataRegion1, dedupScopeId, resource.getTsFilePath()));
+              .containsTsFile(dataRegion1, TEST_PIPE_NAME, resource.getTsFilePath()));
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .clearProgressIndex(dataRegion1, dedupScopeId);
+          .clearProgressIndex(dataRegion1, TEST_PIPE_NAME);
     }
   }
 
@@ -612,26 +598,19 @@ public class PipeRealtimeExtractTest {
     registerTestPipeMeta();
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
-    final String dedupScopeId = "deferred-generated-tablet-transfer-test";
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     try {
       final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
       final TsFileResource resource = createTsFileResource(dataRegion1, "111-111-0-0.tsfile");
       final PipeTsFileInsertionEvent tsFileEvent =
-          new PipeTsFileInsertionEvent(false, "root.sg", resource, false)
+          new PipeTsFileInsertionEvent(resource, false)
               .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                   TEST_PIPE_NAME,
                   TEST_PIPE_CREATION_TIME,
                   pipeTaskMeta,
                   null,
-                  null,
-                  null,
-                  null,
-                  null,
-                  true,
                   Long.MIN_VALUE,
                   Long.MAX_VALUE);
-      tsFileEvent.bindTsFileDedupScopeID(dedupScopeId);
 
       final AtomicBoolean transferred = new AtomicBoolean(false);
       tsFileEvent.addOnTransferredHook(() -> transferred.set(true));
@@ -648,9 +627,9 @@ public class PipeRealtimeExtractTest {
       commitSuppliedEvent(generatedTabletEvent, commitManager);
       Assert.assertTrue(transferred.get());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .clearProgressIndex(dataRegion1, dedupScopeId);
+          .clearProgressIndex(dataRegion1, TEST_PIPE_NAME);
     }
   }
 
@@ -659,14 +638,14 @@ public class PipeRealtimeExtractTest {
     registerTestPipeMeta();
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     try (final PipeRealtimeDataRegionHybridSource extractor =
         new PipeRealtimeDataRegionHybridSource()) {
       final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
       final PipeTaskRuntimeConfiguration configuration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
-                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, pipeTaskMeta));
       final PipeParameters parameters =
           new PipeParameters(
               new HashMap<String, String>() {
@@ -684,7 +663,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent tabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false, "root.sg", createInsertRowNode("discarded-tsfile-tablet", "a"), resource),
+                  createInsertRowNode("discarded-tsfile-tablet", "a"), resource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(tabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -695,7 +674,7 @@ public class PipeRealtimeExtractTest {
 
       final PipeRealtimeEvent tsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", resource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(resource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(tsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -709,7 +688,7 @@ public class PipeRealtimeExtractTest {
       Assert.assertEquals(0, getInFlightTsFileCount(extractor));
       Assert.assertNull(getGlobalTsFileEpochDegraded());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
@@ -718,14 +697,14 @@ public class PipeRealtimeExtractTest {
     registerTestPipeMeta();
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     try (final PipeRealtimeDataRegionHybridSource extractor =
         new PipeRealtimeDataRegionHybridSource()) {
       final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
       final PipeTaskRuntimeConfiguration configuration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
-                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, pipeTaskMeta));
       final PipeParameters parameters =
           new PipeParameters(
               new HashMap<String, String>() {
@@ -743,10 +722,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent tabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("discarded-generated-tablet", "a"),
-                  resource),
+                  createInsertRowNode("discarded-generated-tablet", "a"), resource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(tabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -756,7 +732,7 @@ public class PipeRealtimeExtractTest {
 
       final PipeRealtimeEvent tsFileRealtimeEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", resource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(resource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(tsFileRealtimeEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -778,7 +754,7 @@ public class PipeRealtimeExtractTest {
       Assert.assertTrue(secondGeneratedTablet.increaseReferenceCount(TEST_REFERENCE_HOLDER));
 
       commitManager.enrichWithCommitterKeyAndCommitId(
-          suppliedTsFile, TEST_PIPE_CREATION_TIME, dataRegion1);
+          suppliedTsFile, TEST_PIPE_CREATION_TIME, dataRegion1Id);
       Assert.assertTrue(suppliedTsFile.decreaseReferenceCount(TEST_REFERENCE_HOLDER, false));
       firstGeneratedTablet.clearReferenceCount(TEST_REFERENCE_HOLDER);
       Assert.assertEquals(1, getInFlightTsFileCount(extractor));
@@ -787,7 +763,7 @@ public class PipeRealtimeExtractTest {
       Assert.assertEquals(0, getInFlightTsFileCount(extractor));
       Assert.assertNull(getGlobalTsFileEpochDegraded());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
@@ -797,7 +773,7 @@ public class PipeRealtimeExtractTest {
     registerTestPipeMeta();
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     try (final PipeRealtimeDataRegionHybridSource extractor =
         new PipeRealtimeDataRegionHybridSource()) {
       final PipeParameters parameters =
@@ -814,7 +790,7 @@ public class PipeRealtimeExtractTest {
       final PipeTaskRuntimeConfiguration configuration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
-                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, pipeTaskMeta));
 
       extractor.validate(new PipeParameterValidator(parameters));
       extractor.customize(parameters, configuration);
@@ -823,10 +799,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent firstTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("first-degraded-tablet", "a"),
-                  firstResource),
+                  createInsertRowNode("first-degraded-tablet", "a"), firstResource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(firstTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -837,10 +810,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent secondTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("fully-buffered-tablet", "a"),
-                  secondResource),
+                  createInsertRowNode("fully-buffered-tablet", "a"), secondResource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(secondTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -854,7 +824,7 @@ public class PipeRealtimeExtractTest {
 
       final PipeRealtimeEvent firstTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", firstResource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(firstResource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(firstTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -872,10 +842,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent newRealtimeTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("new-realtime-tablet", "a"),
-                  secondResource),
+                  createInsertRowNode("new-realtime-tablet", "a"), secondResource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(newRealtimeTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -895,7 +862,7 @@ public class PipeRealtimeExtractTest {
 
       final PipeRealtimeEvent secondTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", secondResource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(secondResource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(secondTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -905,7 +872,7 @@ public class PipeRealtimeExtractTest {
       Assert.assertNull(extractor.supply());
       Assert.assertNull(getGlobalTsFileEpochDegraded());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
@@ -914,7 +881,7 @@ public class PipeRealtimeExtractTest {
     registerTestPipeMeta();
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     try (final PipeRealtimeDataRegionHybridSource extractor =
         new PipeRealtimeDataRegionHybridSource()) {
       final PipeParameters parameters =
@@ -931,7 +898,7 @@ public class PipeRealtimeExtractTest {
       final PipeTaskRuntimeConfiguration configuration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
-                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, pipeTaskMeta));
 
       extractor.validate(new PipeParameterValidator(parameters));
       extractor.customize(parameters, configuration);
@@ -940,10 +907,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent firstTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("first-degraded-tablet", "a"),
-                  firstResource),
+                  createInsertRowNode("first-degraded-tablet", "a"), firstResource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(firstTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -957,10 +921,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent secondTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("second-buffered-tablet", "a"),
-                  secondResource),
+                  createInsertRowNode("second-buffered-tablet", "a"), secondResource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(secondTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -968,7 +929,7 @@ public class PipeRealtimeExtractTest {
 
       final PipeRealtimeEvent secondTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", secondResource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(secondResource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(secondTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -978,10 +939,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent thirdTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("latest-buffered-tablet", "a"),
-                  thirdResource),
+                  createInsertRowNode("latest-buffered-tablet", "a"), thirdResource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(thirdTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1000,7 +958,7 @@ public class PipeRealtimeExtractTest {
       // flush completion order, decides which file can pass downstream.
       final PipeRealtimeEvent firstTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", firstResource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(firstResource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(firstTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1024,7 +982,7 @@ public class PipeRealtimeExtractTest {
 
       final PipeRealtimeEvent thirdTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", thirdResource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(thirdResource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(thirdTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1033,7 +991,7 @@ public class PipeRealtimeExtractTest {
       Assert.assertNull(extractor.supply());
       Assert.assertNull(getGlobalTsFileEpochDegraded());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
@@ -1042,7 +1000,7 @@ public class PipeRealtimeExtractTest {
     registerTestPipeMeta();
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     try (final PipeRealtimeDataRegionHybridSource extractor =
         new PipeRealtimeDataRegionHybridSource()) {
       final PipeParameters parameters =
@@ -1059,7 +1017,7 @@ public class PipeRealtimeExtractTest {
       final PipeTaskRuntimeConfiguration configuration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
-                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, pipeTaskMeta));
 
       extractor.validate(new PipeParameterValidator(parameters));
       extractor.customize(parameters, configuration);
@@ -1069,8 +1027,7 @@ public class PipeRealtimeExtractTest {
       loadedUnseqResource.setSeq(false);
       final PipeRealtimeEvent loadedUnseqTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(
-                  false, "root.sg", loadedUnseqResource, true),
+              PipeRealtimeEventFactory.createRealtimeEvent(loadedUnseqResource, true),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(loadedUnseqTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1082,10 +1039,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent firstUnseqTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("first-unseq-degraded-tablet", "a"),
-                  firstUnseqResource),
+                  createInsertRowNode("first-unseq-degraded-tablet", "a"), firstUnseqResource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(firstUnseqTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1108,10 +1062,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent seqTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("lower-priority-seq-tail", "a"),
-                  seqResource),
+                  createInsertRowNode("lower-priority-seq-tail", "a"), seqResource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(seqTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1119,7 +1070,7 @@ public class PipeRealtimeExtractTest {
 
       final PipeRealtimeEvent seqTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", seqResource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(seqResource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(seqTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1127,8 +1078,7 @@ public class PipeRealtimeExtractTest {
 
       final PipeRealtimeEvent firstUnseqTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(
-                  false, "root.sg", firstUnseqResource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(firstUnseqResource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(firstUnseqTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1156,7 +1106,7 @@ public class PipeRealtimeExtractTest {
       Assert.assertNull(getGlobalTsFileEpochDegraded());
       Assert.assertNull(extractor.supply());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
@@ -1166,7 +1116,7 @@ public class PipeRealtimeExtractTest {
     registerTestPipeMeta();
 
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     try (final PipeRealtimeDataRegionHybridSource extractor =
         new PipeRealtimeDataRegionHybridSource()) {
       final PipeParameters parameters =
@@ -1183,7 +1133,7 @@ public class PipeRealtimeExtractTest {
       final PipeTaskRuntimeConfiguration configuration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
-                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta));
+                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, pipeTaskMeta));
 
       extractor.validate(new PipeParameterValidator(parameters));
       extractor.customize(parameters, configuration);
@@ -1192,10 +1142,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent olderTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("queued-before-downgrading", "a"),
-                  olderResource),
+                  createInsertRowNode("queued-before-downgrading", "a"), olderResource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(olderTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1204,7 +1151,7 @@ public class PipeRealtimeExtractTest {
       // Seal the older epoch while leaving its tablet queued in the source.
       final PipeRealtimeEvent olderTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", olderResource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(olderResource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(olderTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1215,10 +1162,7 @@ public class PipeRealtimeExtractTest {
       final PipeRealtimeEvent degradedTabletEvent =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(
-                  false,
-                  "root.sg",
-                  createInsertRowNode("trigger-region-downgrading", "a"),
-                  degradedResource),
+                  createInsertRowNode("trigger-region-downgrading", "a"), degradedResource),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(degradedTabletEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1237,8 +1181,7 @@ public class PipeRealtimeExtractTest {
 
       final PipeRealtimeEvent degradedTsFileEvent =
           bindToTestPipe(
-              PipeRealtimeEventFactory.createRealtimeEvent(
-                  false, "root.sg", degradedResource, false),
+              PipeRealtimeEventFactory.createRealtimeEvent(degradedResource, false),
               extractor,
               pipeTaskMeta);
       Assert.assertTrue(degradedTsFileEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
@@ -1259,7 +1202,7 @@ public class PipeRealtimeExtractTest {
       Assert.assertNull(getGlobalTsFileEpochDegraded());
       Assert.assertNull(extractor.supply());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
@@ -1305,7 +1248,7 @@ public class PipeRealtimeExtractTest {
   public void testTsFileSourceRegionLevelDowngradingSuppliesHeartbeatWhileTsFileIsInFlight()
       throws Exception {
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     try (final PipeRealtimeDataRegionTsFileSource extractor =
         createTsFileSourceForTest(
@@ -1320,11 +1263,6 @@ public class PipeRealtimeExtractTest {
           extractTsFileForTest(extractor, pipeTaskMeta, firstResource, false);
       final PipeRealtimeEvent secondEvent =
           extractTsFileForTest(extractor, pipeTaskMeta, secondResource, false);
-      // Match the assigner binding so successful commits retire the source's deduplication entries.
-      ((PipeTsFileInsertionEvent) firstEvent.getEvent())
-          .bindTsFileDedupScopeID(extractor.getTsFileDedupScopeID());
-      ((PipeTsFileInsertionEvent) secondEvent.getEvent())
-          .bindTsFileDedupScopeID(extractor.getTsFileDedupScopeID());
       final PipeRealtimeEvent heartbeat =
           bindToTestPipe(
               PipeRealtimeEventFactory.createRealtimeEvent(dataRegion1, false),
@@ -1412,14 +1350,14 @@ public class PipeRealtimeExtractTest {
       Assert.assertEquals(secondProgressIndex, pipeTaskMeta.getProgressIndex());
       Assert.assertNull(extractor.supply());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
   @Test
   public void testTsFileSourceRegionLevelDowngradingFollowsQueryPriority() throws Exception {
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     try (final PipeRealtimeDataRegionTsFileSource extractor =
         createTsFileSourceForTest(
@@ -1447,14 +1385,14 @@ public class PipeRealtimeExtractTest {
       }
       Assert.assertNull(extractor.supply());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
   @Test
   public void testTsFileSourceRegionLevelDowngradingWaitsForGeneratedTablets() throws Exception {
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     try (final PipeRealtimeDataRegionTsFileSource extractor =
         createTsFileSourceForTest(
@@ -1499,63 +1437,38 @@ public class PipeRealtimeExtractTest {
       releaseSuppliedEvent(progressEvent.getEvent());
       Assert.assertNull(extractor.supply());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
   @Test
-  public void testTsFileSourceReleasesSplitTableFileAfterTabletCommit() throws Exception {
-    verifySplitTableFileCompletion(false);
+  public void testTsFileSourceReleasesSplitFileAfterTabletCommit() throws Exception {
+    verifySplitFileCompletion(false);
   }
 
   @Test
-  public void testTsFileSourceReleasesSplitTableFileAfterOriginalRelease() throws Exception {
-    verifySplitTableFileCompletion(true);
+  public void testTsFileSourceReleasesSplitFileAfterOriginalRelease() throws Exception {
+    verifySplitFileCompletion(true);
   }
 
-  private void verifySplitTableFileCompletion(final boolean commitTabletBeforeOriginalRelease)
+  private void verifySplitFileCompletion(final boolean commitTabletBeforeOriginalRelease)
       throws Exception {
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     final UnboundedBlockingPendingQueue<Event> pendingQueue =
         new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
     final PipeRealtimeEvent[] events = new PipeRealtimeEvent[2];
     try (final PipeRealtimeDataRegionTsFileSource extractor =
-        new PipeRealtimeDataRegionTsFileSource()) {
-      final PipeParameters parameters =
-          new PipeParameters(
-              Map.of(
-                  PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "true",
-                  PipeSourceConstant.SOURCE_TABLE_NAME_KEY, "t0",
-                  PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY, "true"));
-      extractor.validate(new PipeParameterValidator(parameters));
-      extractor.customize(
-          parameters,
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskSourceRuntimeEnvironment(
-                  TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta)));
-      for (int i = 0; i < events.length; i++) {
-        events[i] =
-            PipeRealtimeEventFactory.createRealtimeEvent(
-                    true,
-                    "table_db",
-                    createTableTsFileResource("126-" + (i + 1) + "-0-0.tsfile"),
-                    false)
-                .shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-                    TEST_PIPE_NAME,
-                    TEST_PIPE_CREATION_TIME,
-                    pipeTaskMeta,
-                    extractor.getTreePattern(),
-                    extractor.getTablePattern(),
-                    "0",
-                    "root",
-                    "localhost",
-                    true,
-                    Long.MIN_VALUE,
-                    Long.MAX_VALUE);
-        Assert.assertTrue(events[i].increaseReferenceCount(TEST_REFERENCE_HOLDER));
-        extractor.extract(events[i]);
+        createTsFileSourceForTest(
+            PipeSourceConstant.SOURCE_REALTIME_REGION_LEVEL_DOWNGRADING_KEY, pipeTaskMeta)) {
+      for (int index = 0; index < events.length; index++) {
+        events[index] =
+            extractTsFileForTest(
+                extractor,
+                pipeTaskMeta,
+                createTreeTsFileResource("126-" + (index + 1) + "-0-0.tsfile"),
+                false);
       }
 
       final PipeTsFileInsertionEvent firstTsFile = (PipeTsFileInsertionEvent) extractor.supply();
@@ -1563,10 +1476,9 @@ public class PipeRealtimeExtractTest {
           new PipeEventCollector(
               pendingQueue,
               TEST_PIPE_CREATION_TIME,
-              dataRegion1,
+              dataRegion1Id,
               extractor.getSourceId(),
-              false,
-              false,
+              true,
               false);
       collector.collect(firstTsFile);
       Assert.assertFalse(collector.hasNoGeneratedEvent());
@@ -1606,7 +1518,7 @@ public class PipeRealtimeExtractTest {
           event.clearReferenceCount(TEST_REFERENCE_HOLDER);
         }
       }
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
@@ -1629,7 +1541,7 @@ public class PipeRealtimeExtractTest {
   private void verifyProcessedTabletCompletion(
       final boolean discardTablets, final boolean originalCommitPending) throws Exception {
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     final UnboundedBlockingPendingQueue<Event> pendingQueue =
         new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
@@ -1656,9 +1568,9 @@ public class PipeRealtimeExtractTest {
       if (originalCommitPending) {
         Assert.assertTrue(earlierEvent.increaseReferenceCount(TEST_REFERENCE_HOLDER));
         commitManager.enrichWithCommitterKeyAndCommitId(
-            earlierEvent, TEST_PIPE_CREATION_TIME, dataRegion1);
+            earlierEvent, TEST_PIPE_CREATION_TIME, dataRegion1Id);
         commitManager.enrichWithCommitterKeyAndCommitId(
-            firstTsFile, TEST_PIPE_CREATION_TIME, dataRegion1);
+            firstTsFile, TEST_PIPE_CREATION_TIME, dataRegion1Id);
         Assert.assertNotNull(earlierEvent.getCommitterKey());
         Assert.assertNotNull(firstTsFile.getCommitterKey());
       } else {
@@ -1668,9 +1580,8 @@ public class PipeRealtimeExtractTest {
           new PipeEventCollector(
               pendingQueue,
               TEST_PIPE_CREATION_TIME,
-              dataRegion1,
+              dataRegion1Id,
               extractor.getSourceId(),
-              false,
               false,
               false);
       firstTsFile.consumeTabletInsertionEventsWithRetry(
@@ -1741,7 +1652,7 @@ public class PipeRealtimeExtractTest {
         }
       }
       earlierEvent.clearReferenceCount(TEST_REFERENCE_HOLDER);
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
@@ -1749,7 +1660,7 @@ public class PipeRealtimeExtractTest {
   public void testTsFileSourceRegionLevelDowngradingCompensatesForDiscardedEvents()
       throws Exception {
     final PipeEventCommitManager commitManager = PipeEventCommitManager.getInstance();
-    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, "test");
+    commitManager.register(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, "test");
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     try (final PipeRealtimeDataRegionTsFileSource extractor =
         createTsFileSourceForTest(
@@ -1796,7 +1707,7 @@ public class PipeRealtimeExtractTest {
       releaseSuppliedEvent(thirdEvent.getEvent());
       Assert.assertNull(extractor.supply());
     } finally {
-      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1);
+      commitManager.deregister(TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     }
   }
 
@@ -1860,7 +1771,7 @@ public class PipeRealtimeExtractTest {
         parameters,
         new PipeTaskRuntimeConfiguration(
             new PipeTaskSourceRuntimeEnvironment(
-                TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1, pipeTaskMeta)));
+                TEST_PIPE_NAME, TEST_PIPE_CREATION_TIME, dataRegion1Id, pipeTaskMeta)));
     return extractor;
   }
 
@@ -1871,105 +1782,12 @@ public class PipeRealtimeExtractTest {
       final boolean isLoaded) {
     final PipeRealtimeEvent event =
         bindToTestPipe(
-            PipeRealtimeEventFactory.createRealtimeEvent(false, "root.sg", resource, isLoaded),
+            PipeRealtimeEventFactory.createRealtimeEvent(resource, isLoaded),
             extractor,
             pipeTaskMeta);
     Assert.assertTrue(event.increaseReferenceCount(TEST_REFERENCE_HOLDER));
     extractor.extract(event);
     return event;
-  }
-
-  private Future<?> write2DataRegion(
-      final int writeNum, final int dataRegionId, final int startNum) {
-    final File dataRegionDir =
-        new File(tsFileDir.getPath() + File.separator + dataRegionId + File.separator + "0");
-    final boolean ignored = dataRegionDir.mkdirs();
-    return writeService.submit(
-        () -> {
-          for (int i = startNum; i < startNum + writeNum; ++i) {
-            final File tsFile = new File(dataRegionDir, String.format("%s-%s-0-0.tsfile", i, i));
-            try {
-              final boolean ignored1 = tsFile.createNewFile();
-            } catch (final IOException e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
-
-            final TsFileResource resource = new TsFileResource(tsFile);
-            resource.updateStartTime(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(
-                    String.join(TsFileConstant.PATH_SEPARATOR, device)),
-                0);
-
-            try {
-              resource.close();
-            } catch (final IOException e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
-
-            PipeInsertionDataNodeListener.getInstance()
-                .listenToInsertNode(
-                    dataRegionId,
-                    Integer.toString(dataRegionId),
-                    new InsertRowNode(
-                        new PlanNodeId(String.valueOf(i)),
-                        new PartialPath(device),
-                        false,
-                        new String[] {"a"},
-                        new TSDataType[] {TSDataType.INT32},
-                        0,
-                        new Integer[] {1},
-                        false),
-                    resource);
-            PipeInsertionDataNodeListener.getInstance()
-                .listenToInsertNode(
-                    dataRegionId,
-                    Integer.toString(dataRegionId),
-                    new InsertRowNode(
-                        new PlanNodeId(String.valueOf(i)),
-                        new PartialPath(device),
-                        false,
-                        new String[] {"b"},
-                        new TSDataType[] {TSDataType.INT32},
-                        0,
-                        new Integer[] {1},
-                        false),
-                    resource);
-            PipeInsertionDataNodeListener.getInstance()
-                .listenToTsFile(dataRegionId, Integer.toString(dataRegionId), resource, false);
-          }
-        });
-  }
-
-  private Future<?> listen(
-      final PipeRealtimeDataRegionSource extractor,
-      final Function<Event, Integer> weight,
-      final int expectNum) {
-    return listenerService.submit(
-        () -> {
-          int eventNum = 0;
-          try {
-            while (alive.get() && eventNum < expectNum) {
-              Event event;
-              try {
-                event = extractor.supply();
-              } catch (final Exception e) {
-                throw new RuntimeException(e);
-              }
-              if (event != null) {
-                eventNum += weight.apply(event);
-              }
-            }
-          } finally {
-            Assert.assertEquals(expectNum, eventNum);
-          }
-        });
-  }
-
-  private TsFileResource createTsFileResource(final int dataRegionId, final String fileName)
-      throws IOException {
-    return createTsFileResource(dataRegionId, "0", fileName);
   }
 
   private TsFileResource createTreeTsFileResource(final String fileName) throws Exception {
@@ -1982,103 +1800,17 @@ public class PipeRealtimeExtractTest {
             Collections.singletonList(new MeasurementSchema("s0", TSDataType.INT64)),
             1);
     tablet.addTimestamp(0, 1);
-    tablet.addValue(0, 0, 1L);
+    tablet.addValue("s0", 0, 1L);
     try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
-      writer.registerTimeseries(new PartialPath("root.sg.d"), tablet.getSchemas());
-      writer.writeTree(tablet);
+      writer.registerTimeseries(new Path("root.sg.d"), tablet.getSchemas());
+      writer.write(tablet);
     }
     final TsFileResource resource = new TsFileResource(tsFile);
-    final IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d");
+    final IDeviceID deviceId = new PlainDeviceID("root.sg.d");
     resource.updateStartTime(deviceId, 1);
     resource.updateEndTime(deviceId, 1);
     resource.close();
     return resource;
-  }
-
-  private TsFileResource createTableTsFileResource(final String fileName) throws Exception {
-    final File dataRegionDir = new File(tsFileDir, dataRegion1 + File.separator + "0");
-    Assert.assertTrue(dataRegionDir.mkdirs() || dataRegionDir.isDirectory());
-    final File tsFile = new File(dataRegionDir, fileName);
-    final List<ColumnCategory> categories = List.of(ColumnCategory.TAG, ColumnCategory.FIELD);
-    try (final TsFileWriter writer = new TsFileWriter(tsFile)) {
-      writer.registerTableSchema(
-          new TableSchema(
-              "t0",
-              List.of(
-                  new MeasurementSchema("device_id", TSDataType.STRING),
-                  new MeasurementSchema("s0", TSDataType.INT64)),
-              categories));
-      final Tablet tablet =
-          new Tablet(
-              "t0",
-              List.of("device_id", "s0"),
-              List.of(TSDataType.STRING, TSDataType.INT64),
-              categories,
-              1);
-      tablet.addTimestamp(0, 1);
-      tablet.addValue(0, 0, "d0");
-      tablet.addValue(0, 1, 1L);
-      writer.writeTable(tablet);
-    }
-    final TsFileResource resource = new TsFileResource(tsFile);
-    final IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"t0", "d0"});
-    resource.updateStartTime(deviceId, 1);
-    resource.updateEndTime(deviceId, 1);
-    resource.close();
-    return resource;
-  }
-
-  private TsFileResource createTsFileResource(
-      final int dataRegionId, final String timePartition, final String fileName)
-      throws IOException {
-    final File dataRegionDir =
-        new File(
-            tsFileDir.getPath() + File.separator + dataRegionId + File.separator + timePartition);
-    Assert.assertTrue(dataRegionDir.mkdirs() || dataRegionDir.isDirectory());
-
-    final File tsFile = new File(dataRegionDir, fileName);
-    Assert.assertTrue(tsFile.createNewFile());
-
-    final TsFileResource resource = new TsFileResource(tsFile);
-    resource.updateStartTime(
-        IDeviceID.Factory.DEFAULT_FACTORY.create(
-            String.join(TsFileConstant.PATH_SEPARATOR, device)),
-        0);
-    resource.close();
-    return resource;
-  }
-
-  private InsertRowNode createInsertRowNode(final String planNodeId, final String measurement)
-      throws Exception {
-    return new InsertRowNode(
-        new PlanNodeId(planNodeId),
-        new PartialPath(device),
-        false,
-        new String[] {measurement},
-        new TSDataType[] {TSDataType.INT32},
-        0,
-        new Integer[] {1},
-        false);
-  }
-
-  private void registerTestPipeMeta() throws Exception {
-    final PipeMetaKeeper pipeMetaKeeper = getPipeMetaKeeper();
-    pipeMetaKeeper.acquireWriteLock();
-    try {
-      pipeMetaKeeper.removePipeMeta(TEST_PIPE_NAME);
-      pipeMetaKeeper.addPipeMeta(
-          new PipeMeta(
-                  new PipeStaticMeta(
-                      TEST_PIPE_NAME,
-                      TEST_PIPE_CREATION_TIME,
-                      new HashMap<>(),
-                      new HashMap<>(),
-                      new HashMap<>()),
-                  new PipeRuntimeMeta())
-              .deepCopy4TaskAgent());
-    } finally {
-      pipeMetaKeeper.releaseWriteLock();
-    }
   }
 
   @Test
@@ -2130,7 +1862,7 @@ public class PipeRealtimeExtractTest {
               new PipeTaskSourceRuntimeEnvironment(
                   TEST_PIPE_NAME,
                   TEST_PIPE_CREATION_TIME,
-                  dataRegion1,
+                  dataRegion1Id,
                   new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
 
       extractor.validate(new PipeParameterValidator(parameters));
@@ -2257,12 +1989,7 @@ public class PipeRealtimeExtractTest {
         TEST_PIPE_NAME,
         TEST_PIPE_CREATION_TIME,
         pipeTaskMeta,
-        extractor.getTreePattern(),
-        extractor.getTablePattern(),
-        String.valueOf(extractor.getUserId()),
-        extractor.getUserName(),
-        extractor.getCliHostname(),
-        extractor.isSkipIfNoPrivileges(),
+        extractor.getPipePattern(),
         extractor.getRealtimeDataExtractionStartTime(),
         extractor.getRealtimeDataExtractionEndTime());
   }
@@ -2270,7 +1997,7 @@ public class PipeRealtimeExtractTest {
   private void commitSuppliedEvent(final Event event, final PipeEventCommitManager commitManager) {
     final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
     commitManager.enrichWithCommitterKeyAndCommitId(
-        enrichedEvent, TEST_PIPE_CREATION_TIME, dataRegion1);
+        enrichedEvent, TEST_PIPE_CREATION_TIME, dataRegion1Id);
     Assert.assertTrue(enrichedEvent.decreaseReferenceCount(TEST_REFERENCE_HOLDER, true));
   }
 
@@ -2387,8 +2114,13 @@ public class PipeRealtimeExtractTest {
 
   private TsFileResource createTsFileResource(final String dataRegionId, final String fileName)
       throws IOException {
-    final File dataRegionDir =
-        new File(tsFileDir.getPath() + File.separator + dataRegionId + File.separator + "0");
+    return createTsFileResource(dataRegionId, "0", fileName);
+  }
+
+  private TsFileResource createTsFileResource(
+      final String dataRegionId, final String timePartition, final String fileName)
+      throws IOException {
+    final File dataRegionDir = new File(tsFileDir, dataRegionId + File.separator + timePartition);
     Assert.assertTrue(dataRegionDir.mkdirs() || dataRegionDir.isDirectory());
 
     final File tsFile = new File(dataRegionDir, fileName);
@@ -2420,6 +2152,7 @@ public class PipeRealtimeExtractTest {
     try {
       pipeMetaKeeper.removePipeMeta(TEST_PIPE_NAME);
       pipeMetaKeeper.addPipeMeta(
+          TEST_PIPE_NAME,
           new PipeMeta(
                   new PipeStaticMeta(
                       TEST_PIPE_NAME,

@@ -51,9 +51,9 @@ public class PipeEventCollectorTest {
   @Test
   public void testRealtimeQueueRetainsRetryHeartbeatAfterCompletionBarrier() {
     final PipeRealtimePriorityBlockingQueue pendingQueue = new PipeRealtimePriorityBlockingQueue();
-    final PipeHeartbeatEvent completionBarrier = new PipeHeartbeatEvent(1, false, true);
-    final PipeHeartbeatEvent retryHeartbeat = new PipeHeartbeatEvent(1, false);
-    final PipeHeartbeatEvent coalescedHeartbeat = new PipeHeartbeatEvent(1, false);
+    final PipeHeartbeatEvent completionBarrier = new PipeHeartbeatEvent("1", false, true);
+    final PipeHeartbeatEvent retryHeartbeat = new PipeHeartbeatEvent("1", false);
+    final PipeHeartbeatEvent coalescedHeartbeat = new PipeHeartbeatEvent("1", false);
     Assert.assertTrue(completionBarrier.increaseReferenceCount(PipeEventCollector.class.getName()));
     Assert.assertTrue(retryHeartbeat.increaseReferenceCount(PipeEventCollector.class.getName()));
     Assert.assertTrue(

@@ -42,21 +42,21 @@ public class PipeInsertionDataNodeListenerTest {
     final Field assignerMapField =
         PipeInsertionDataNodeListener.class.getDeclaredField("dataRegionId2Assigner");
     assignerMapField.setAccessible(true);
-    final ConcurrentMap<Integer, PipeDataRegionAssigner> assignerMap =
-        (ConcurrentMap<Integer, PipeDataRegionAssigner>) assignerMapField.get(listener);
-    final int dataRegionId = Integer.MIN_VALUE + 1;
+    final ConcurrentMap<String, PipeDataRegionAssigner> assignerMap =
+        (ConcurrentMap<String, PipeDataRegionAssigner>) assignerMapField.get(listener);
+    final String dataRegionId = Integer.toString(Integer.MIN_VALUE + 1);
     final PipeDataRegionAssigner assigner = mock(PipeDataRegionAssigner.class);
     assignerMap.put(dataRegionId, assigner);
 
     try {
       when(assigner.shouldListenToInsertNode()).thenReturn(false);
-      listener.listenToInsertNode(dataRegionId, null, null, null);
+      listener.listenToInsertNode(dataRegionId, null, null);
       verify(assigner).invalidateCompletionBarrier();
       verify(assigner, never()).invalidateCompletion();
 
       reset(assigner);
       when(assigner.shouldListenToInsertNode()).thenReturn(true);
-      listener.listenToInsertNode(dataRegionId, null, null, null);
+      listener.listenToInsertNode(dataRegionId, null, null);
       verify(assigner).publishInsertDataEventToAssign(any());
       verify(assigner, never()).publishDataEventToAssign(any());
     } finally {

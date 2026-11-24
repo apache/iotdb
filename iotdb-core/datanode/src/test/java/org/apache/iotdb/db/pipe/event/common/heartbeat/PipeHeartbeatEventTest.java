@@ -33,24 +33,14 @@ public class PipeHeartbeatEventTest {
 
   @Test
   public void testOnlyBoundCompletionBarrierNeedsOrderedCommit() {
-    final PipeHeartbeatEvent rawBarrier = new PipeHeartbeatEvent(1, false, true);
+    final PipeHeartbeatEvent rawBarrier = new PipeHeartbeatEvent("1", false, true);
     rawBarrier.bindCompletionBarrier(2L, 3L);
     assertFalse(rawBarrier.needToCommit());
 
     final PipeTaskMeta taskMeta = mock(PipeTaskMeta.class);
     final EnrichedEvent copiedEvent =
         rawBarrier.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-            "test_pipe",
-            1L,
-            taskMeta,
-            null,
-            null,
-            null,
-            null,
-            null,
-            true,
-            Long.MIN_VALUE,
-            Long.MAX_VALUE);
+            "test_pipe", 1L, taskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
     final PipeHeartbeatEvent boundBarrier = (PipeHeartbeatEvent) copiedEvent;
 
     assertTrue(boundBarrier.isCompletionBarrier());
@@ -66,20 +56,10 @@ public class PipeHeartbeatEventTest {
     assertEquals(4L, boundBarrier.getSourceId());
     assertEquals(1, boundBarrier.getOnCommittedHooks().size());
 
-    final PipeHeartbeatEvent periodicHeartbeat = new PipeHeartbeatEvent(1, false);
+    final PipeHeartbeatEvent periodicHeartbeat = new PipeHeartbeatEvent("1", false);
     final EnrichedEvent boundPeriodicHeartbeat =
         periodicHeartbeat.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-            "test_pipe",
-            1L,
-            taskMeta,
-            null,
-            null,
-            null,
-            null,
-            null,
-            true,
-            Long.MIN_VALUE,
-            Long.MAX_VALUE);
+            "test_pipe", 1L, taskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
     assertFalse(boundPeriodicHeartbeat.needToCommit());
     assertTrue(boundPeriodicHeartbeat.getOnCommittedHooks().isEmpty());
     boundPeriodicHeartbeat.bindSource(6L);

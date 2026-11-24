@@ -68,7 +68,7 @@ public class IoTDBDataRegionAirGapSinkTest {
       Assert.assertFalse(tablet.isReleased());
       Assert.assertEquals(1, sink.getBatchSize());
 
-      sink.transfer(new PipeHeartbeatEvent(1, false, true));
+      sink.transfer(new PipeHeartbeatEvent("1", false, true));
       Assert.assertEquals(0, sink.getBatchSize());
       Assert.assertTrue(tablet.isReleased());
       Assert.assertEquals(2, sink.sentRequests.size());
