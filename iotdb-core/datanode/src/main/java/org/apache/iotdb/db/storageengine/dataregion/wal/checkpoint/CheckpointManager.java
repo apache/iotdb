@@ -90,7 +90,7 @@ public class CheckpointManager implements AutoCloseable {
     logHeader();
   }
 
-  public List<MemTableInfo> activeOrPinnedMemTables() {
+  public List<MemTableInfo> activeMemTables() {
     infoLock.lock();
     try {
       return new ArrayList<>(memTableId2Info.values());
@@ -123,7 +123,7 @@ public class CheckpointManager implements AutoCloseable {
    */
   private void makeGlobalInfoCP() {
     long start = System.nanoTime();
-    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
+    List<MemTableInfo> memTableInfos = activeMemTables();
     memTableInfos.removeIf(MemTableInfo::isFlushed);
     Checkpoint checkpoint = new Checkpoint(CheckpointType.GLOBAL_MEMORY_TABLE_INFO, memTableInfos);
     logByCachedByteBuffer(checkpoint);
@@ -259,7 +259,7 @@ public class CheckpointManager implements AutoCloseable {
 
   public MemTableInfo getOldestMemTableInfo() {
     // find oldest memTable
-    return activeOrPinnedMemTables().stream()
+    return activeMemTables().stream()
         .min(Comparator.comparingLong(MemTableInfo::getMemTableId))
         .orElse(null);
   }
@@ -270,7 +270,7 @@ public class CheckpointManager implements AutoCloseable {
    * @return Return {@link Long#MIN_VALUE} if no file is valid
    */
   public long getFirstValidWALVersionId() {
-    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
+    List<MemTableInfo> memTableInfos = activeMemTables();
     long firstValidVersionId = memTableInfos.isEmpty() ? Long.MIN_VALUE : Long.MAX_VALUE;
     for (MemTableInfo memTableInfo : memTableInfos) {
       firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
@@ -293,7 +293,7 @@ public class CheckpointManager implements AutoCloseable {
 
   /** Get total cost of active memTables. */
   public long getTotalCostOfActiveMemTables() {
-    List<MemTableInfo> memTableInfos = activeOrPinnedMemTables();
+    List<MemTableInfo> memTableInfos = activeMemTables();
     long totalCost = 0;
     for (MemTableInfo memTableInfo : memTableInfos) {
       // flushed memTables are not active
