@@ -63,17 +63,22 @@ public class PointPriorityReader {
     this.isAligned = isAligned;
   }
 
+  /** Returns the current point without aligned null filling. */
   public TimeValuePair currentPoint() {
     if (currentPointElement == null) {
       // if the current point is overlapped with other pages, then get the highest priority point
       // from queue
       currentPoint = pointQueue.peek().timeValuePair;
       lastTime = currentPoint.getTimestamp();
+    }
+    return currentPoint;
+  }
 
-      // fill aligned null value with the same timestamp
-      if (isAligned) {
-        fillAlignedNullValue();
-      }
+  /** Fill aligned null values when the current point is ready to be written. */
+  public TimeValuePair currentPointForOutput() {
+    currentPoint();
+    if (isAligned && currentPointElement == null) {
+      fillAlignedNullValue();
     }
     return currentPoint;
   }
