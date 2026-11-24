@@ -709,7 +709,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   }
 
   private void recordExpectedPointCounts(final BatchData batchData) {
-    if (!trackPointCounts) {
+    if (!trackPointCounts || currentModifications.isEmpty()) {
       return;
     }
 
