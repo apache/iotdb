@@ -407,6 +407,42 @@ public class AutoResizingBufferTest {
   }
 
   @Test
+  public void testReclaimOneIdleConnectionRefreshesCandidateSnapshot() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport oldest = newServerTransport(pool, new TMemoryBuffer(0))) {
+        oldest.write(new byte[32]);
+        oldest.flush();
+        Thread.sleep(10);
+
+        try (TElasticFramedTransport next = newServerTransport(pool, new TMemoryBuffer(0))) {
+          next.write(new byte[64]);
+          next.flush();
+
+          Assert.assertTrue(pool.reclaimOneIdleConnection() > 0);
+          Assert.assertEquals(8, oldest.writeBuffer.getBuffer().length);
+
+          next.getServerConnectionState().setRequestInProgress(true);
+          try (TElasticFramedTransport newest = newServerTransport(pool, new TMemoryBuffer(0))) {
+            newest.write(new byte[48]);
+            newest.flush();
+
+            Assert.assertTrue(pool.reclaimOneIdleConnection() > 0);
+            Assert.assertEquals(8, newest.writeBuffer.getBuffer().length);
+
+            next.getServerConnectionState().setRequestInProgress(false);
+            Assert.assertTrue(pool.reclaimOneIdleConnection() > 0);
+            Assert.assertEquals(8, next.writeBuffer.getBuffer().length);
+          }
+        }
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
   public void testMemoryPressureReclaimsBothServerTransportsWhileWaitingForNextFrame()
       throws Exception {
     AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);

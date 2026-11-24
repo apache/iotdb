@@ -151,7 +151,10 @@ public final class AutoResizingBufferMemoryManager {
     pool.collectCandidates(candidates, System.nanoTime());
     candidates.sort(ServerConnectionCandidate.RECLAMATION_ORDER);
     for (ServerConnectionCandidate candidate : candidates) {
-      candidate.connection().reclaimIdleBuffers(candidate.idleSinceNanos());
+      long reclaimedBytes = candidate.connection().reclaimIdleBuffers(candidate.idleSinceNanos());
+      if (reclaimedBytes > 0) {
+        pool.invalidateReclamationCandidates();
+      }
       if (memoryControl.allocate(sizeInBytes)) {
         return true;
       }
@@ -175,7 +178,10 @@ public final class AutoResizingBufferMemoryManager {
     }
     candidates.sort(ServerConnectionCandidate.RECLAMATION_ORDER);
     for (ServerConnectionCandidate candidate : candidates) {
-      candidate.connection().reclaimIdleBuffers(candidate.idleSinceNanos());
+      long reclaimedBytes = candidate.connection().reclaimIdleBuffers(candidate.idleSinceNanos());
+      if (reclaimedBytes > 0) {
+        candidate.connection().pool.invalidateReclamationCandidates();
+      }
       if (memoryControl.allocate(sizeInBytes)) {
         return true;
       }
@@ -199,10 +205,8 @@ public final class AutoResizingBufferMemoryManager {
       return 0;
     }
     try {
-      List<ServerConnectionCandidate> candidates = new ArrayList<>();
-      pool.collectCandidates(candidates, System.nanoTime());
-      candidates.sort(ServerConnectionCandidate.RECLAMATION_ORDER);
-      for (ServerConnectionCandidate candidate : candidates) {
+      ServerConnectionCandidate candidate;
+      while ((candidate = pool.nextReclamationCandidate()) != null) {
         long reclaimedBytes = candidate.connection().reclaimIdleBuffers(candidate.idleSinceNanos());
         if (reclaimedBytes > 0) {
           return reclaimedBytes;
@@ -267,6 +271,9 @@ public final class AutoResizingBufferMemoryManager {
   public static final class ServerBufferPool implements AutoCloseable {
     private final Map<TTransport, ServerConnectionState> connectionsByTransport =
         new IdentityHashMap<>();
+    private final AtomicLong reclamationCandidatesVersion = new AtomicLong();
+    private volatile CandidateSnapshot candidateSnapshot;
+    private long exhaustedCandidateVersion = Long.MIN_VALUE;
     private volatile boolean closed;
     private boolean retired;
 
@@ -332,6 +339,7 @@ public final class AutoResizingBufferMemoryManager {
               transport.getSocket(), socket -> new ServerConnectionState(this));
       state.registerTransport(transport);
       transport.setServerConnectionState(state);
+      invalidateReclamationCandidates();
       if (retired) {
         serverBufferPools.add(this);
       }
@@ -345,6 +353,7 @@ public final class AutoResizingBufferMemoryManager {
           serverBufferPools.remove(this);
         }
       }
+      invalidateReclamationCandidates();
       transport.setServerConnectionState(null);
     }
 
@@ -372,13 +381,43 @@ public final class AutoResizingBufferMemoryManager {
           break;
         }
       }
+      if (reclaimedBytes > 0) {
+        invalidateReclamationCandidates();
+      }
       return reclaimedBytes;
+    }
+
+    private synchronized ServerConnectionCandidate nextReclamationCandidate() {
+      long version = reclamationCandidatesVersion.get();
+      if (exhaustedCandidateVersion == version) {
+        return null;
+      }
+      CandidateSnapshot snapshot = candidateSnapshot;
+      if (snapshot == null || snapshot.version != version) {
+        List<ServerConnectionCandidate> candidates = new ArrayList<>();
+        collectCandidates(candidates, System.nanoTime());
+        candidates.sort(ServerConnectionCandidate.RECLAMATION_ORDER);
+        snapshot = new CandidateSnapshot(version, candidates);
+        candidateSnapshot = snapshot;
+      }
+      if (snapshot.nextCandidateIndex >= snapshot.candidates.size()) {
+        candidateSnapshot = null;
+        exhaustedCandidateVersion = version;
+        return null;
+      }
+      return snapshot.candidates.get(snapshot.nextCandidateIndex++);
+    }
+
+    private void invalidateReclamationCandidates() {
+      reclamationCandidatesVersion.incrementAndGet();
+      candidateSnapshot = null;
     }
 
     @Override
     public synchronized void close() {
       closed = true;
       connectionsByTransport.clear();
+      invalidateReclamationCandidates();
       serverBufferPools.remove(this);
     }
   }
@@ -403,10 +442,13 @@ public final class AutoResizingBufferMemoryManager {
     }
 
     synchronized void setRequestInProgress(boolean requestInProgress) {
-      if (this.requestInProgress && !requestInProgress) {
-        idleSinceNanos = System.nanoTime();
+      if (this.requestInProgress != requestInProgress) {
+        if (!requestInProgress) {
+          idleSinceNanos = System.nanoTime();
+        }
+        this.requestInProgress = requestInProgress;
+        pool.invalidateReclamationCandidates();
       }
-      this.requestInProgress = requestInProgress;
     }
 
     private synchronized ServerConnectionCandidate getReclamationCandidate(long now) {
@@ -455,5 +497,16 @@ public final class AutoResizingBufferMemoryManager {
                 Comparator.comparingDouble(ServerConnectionCandidate::reclaimableRatio).reversed())
             .thenComparing(
                 Comparator.comparingLong(ServerConnectionCandidate::reclaimableBytes).reversed());
+  }
+
+  private static final class CandidateSnapshot {
+    private final long version;
+    private final List<ServerConnectionCandidate> candidates;
+    private int nextCandidateIndex;
+
+    private CandidateSnapshot(long version, List<ServerConnectionCandidate> candidates) {
+      this.version = version;
+      this.candidates = candidates;
+    }
   }
 }
