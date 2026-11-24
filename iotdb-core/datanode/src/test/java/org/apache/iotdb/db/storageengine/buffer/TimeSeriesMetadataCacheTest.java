@@ -486,7 +486,7 @@ public class TimeSeriesMetadataCacheTest {
 
       Map<String, TimeseriesMetadata> result =
           getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
-      assertNull(result.get(""));
+      assertNull(result);
       Mockito.verify(reader, Mockito.never())
           .readTimeseriesMetadataForMeasurements(
               Mockito.any(),
@@ -539,9 +539,7 @@ public class TimeSeriesMetadataCacheTest {
       // With negative caching disabled, a file-index lookup must leave the next read uncached.
       Map<String, TimeseriesMetadata> ignored =
           getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true);
-      assertNull(ignored.get(""));
-      assertNull(ignored.get("s1"));
-      assertNull(ignored.get("s2"));
+      assertNull(ignored);
 
       // a normal query must surface the reader's failure instead of a silently empty device
       assertThrows(
@@ -700,8 +698,7 @@ public class TimeSeriesMetadataCacheTest {
       Map<String, TimeseriesMetadata> result =
           getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
 
-      assertNull(result.get(""));
-      assertNull(result.get("s1"));
+      assertNull(result);
       Mockito.verify(reader, Mockito.never())
           .readTimeseriesMetadataForMeasurements(
               Mockito.any(),
@@ -817,21 +814,19 @@ public class TimeSeriesMetadataCacheTest {
       Map<String, TimeseriesMetadata> ignored =
           cache.getTimeseriesMetadata(
               filePath, tsFileID, deviceID, allSensors, true, false, recovering, null);
-      assertNull(ignored.get(""));
-      assertNull(ignored.get("s1"));
+      assertNull(ignored);
 
       // A strict query after recovery must still reach the reader.
       assertThrows(
           IOException.class,
           () -> getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false));
 
-      assertNull(
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true).get(""));
+      assertNull(getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, true));
       QueryContext fileIndexQuery = new QueryContext(false, false);
       Map<String, TimeseriesMetadata> cached =
           cache.getTimeseriesMetadata(
               filePath, tsFileID, deviceID, allSensors, true, false, fileIndexQuery, null);
-      assertNull(cached.get(""));
+      assertNull(cached);
       assertEquals(
           1, fileIndexQuery.getQueryStatistics().getLoadTimeSeriesMetadataFromCacheCount().get());
       assertEquals(
@@ -954,6 +949,9 @@ public class TimeSeriesMetadataCacheTest {
 
       Map<String, TimeseriesMetadata> first =
           getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+      assertNotNull(first.get(""));
+      assertNotNull(first.get("s1"));
+      assertTrue(first.containsKey("s2"));
       assertNull(first.get("s2"));
 
       // the reader confirmed s2 absent, so the second query is answered from the cache alone
@@ -1112,7 +1110,12 @@ public class TimeSeriesMetadataCacheTest {
       Mockito.doAnswer(
               invocation -> {
                 getTimeseriesMetadata(
-                    cache, filePath, tsFileID, deviceID, Collections.singleton("s1"), false);
+                    cache,
+                    filePath,
+                    tsFileID,
+                    deviceID,
+                    new HashSet<>(Arrays.asList("", "s1")),
+                    false);
                 now.addAndGet(valueCheckNanos);
                 return false;
               })
@@ -1197,6 +1200,16 @@ public class TimeSeriesMetadataCacheTest {
         assertNotNull(measurement, result.get(measurement));
         assertEquals(measurement, result.get(measurement).getMeasurementId());
       }
+      assertNull(
+          cache.getTimeseriesMetadata(
+              filePath,
+              resource.getTsFileID(),
+              Factory.DEFAULT_FACTORY.create("root.external.missing"),
+              allSensors,
+              true,
+              false,
+              EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
+              null));
     } finally {
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setQueryDataSourceType(
           QueryDataSourceType.SERIES_SCAN);

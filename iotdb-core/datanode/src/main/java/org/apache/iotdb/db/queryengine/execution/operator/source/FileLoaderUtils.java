@@ -362,8 +362,8 @@ public class FileLoaderUtils {
             context,
             rootMeasurementMetadataIndexNodeOffset);
 
-    TimeseriesMetadata timeColumn = metadata.get("");
-    if (timeColumn != null) {
+    if (metadata != null) {
+      TimeseriesMetadata timeColumn = metadata.get("");
       // only need time column, like count_time aggregation
       if (valueMeasurementList.isEmpty()) {
         // whatever for table or tree model, if we only need time column, that means that we
