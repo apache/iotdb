@@ -354,6 +354,7 @@ public class FastCompactionPerformerAlignedTest {
       throws IOException {
     TsFileResource resource = new TsFileResource(new File(dataDirectory, fileName));
     resource.setSeq(true);
+    PlainDeviceID deviceId = new PlainDeviceID(device);
     try (TsFileIOWriter writer = new TsFileIOWriter(resource.getTsFile())) {
       AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemas);
       for (int row = 0; row < timestamps.length; row++) {
@@ -366,12 +367,11 @@ public class FastCompactionPerformerAlignedTest {
               .write(timestamp, value == null ? 0 : value, value == null);
         }
       }
-      writer.startChunkGroup(device);
+      writer.startChunkGroup(deviceId);
       chunkWriter.writeToFileWriter(writer);
       writer.endChunkGroup();
       writer.endFile();
     }
-    PlainDeviceID deviceId = new PlainDeviceID(device);
     for (long timestamp : timestamps) {
       resource.updateStartTime(deviceId, timestamp);
       resource.updateEndTime(deviceId, timestamp);
