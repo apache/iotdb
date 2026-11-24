@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkResourceException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -41,10 +42,13 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.IOException;
+import java.net.SocketException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -594,10 +598,125 @@ public class PipeSinkSubtaskTest {
     }
   }
 
+  @Test
+  public void testBrokenPipeFromReceiverResourcePressureDoesNotReportCriticalException() {
+    final long originalSleepIntervalInitMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalInitMs();
+    final long originalSleepIntervalMaxMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalMaxMs();
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalInitMs(1);
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalMaxMs(2);
+
+    final PipeConnector connector = mock(PipeConnector.class);
+    final UnboundedBlockingPendingQueue<Event> pendingQueue =
+        mock(UnboundedBlockingPendingQueue.class);
+    final CapturingPipeSinkSubtask subtask = new CapturingPipeSinkSubtask(pendingQueue, connector);
+
+    try {
+      subtask.handleExceptionForTest(
+          mock(EnrichedEvent.class),
+          new PipeException("transfer failed", new IOException("Broken pipe")));
+
+      Assert.assertEquals(
+          PipeResourceFailureType.NETWORK_TIMEOUT, subtask.getReportedResourceFailureType());
+      Assert.assertNull(subtask.getReportedException());
+    } finally {
+      subtask.close();
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalInitMs(originalSleepIntervalInitMs);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalMaxMs(originalSleepIntervalMaxMs);
+    }
+  }
+
+  @Test
+  public void testConnectionResetRetriesLocallyWhenConnectionRetryIsDisabled() throws Exception {
+    final long originalSleepIntervalInitMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalInitMs();
+    final long originalSleepIntervalMaxMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalMaxMs();
+    final boolean originalRetryLocallyForConnectionError =
+        CommonDescriptor.getInstance().getConfig().isPipeSinkRetryLocallyForConnectionError();
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalInitMs(1);
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalMaxMs(2);
+    CommonDescriptor.getInstance().getConfig().setPipeSinkRetryLocallyForConnectionError(false);
+
+    final PipeConnector connector = mock(PipeConnector.class);
+    doThrow(new IOException("handshake failed")).when(connector).handshake();
+    final UnboundedBlockingPendingQueue<Event> pendingQueue =
+        mock(UnboundedBlockingPendingQueue.class);
+    final CapturingPipeSinkSubtask subtask = new CapturingPipeSinkSubtask(pendingQueue, connector);
+    final EnrichedEvent event = mock(EnrichedEvent.class);
+    subtask.prepareFailure(event);
+    subtask.allowSubmittingSelf();
+
+    try {
+      subtask.onFailure(
+          new PipeConnectionException(
+              "transfer failed", new TTransportException(new SocketException("Connection reset"))));
+
+      Assert.assertEquals(
+          PipeResourceFailureType.NETWORK_TIMEOUT, subtask.getReportedResourceFailureType());
+      Assert.assertNull(subtask.getReportedException());
+      Assert.assertEquals(1, subtask.getRetrySubmissionCount());
+      verify(connector, never()).handshake();
+    } finally {
+      subtask.close();
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalInitMs(originalSleepIntervalInitMs);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalMaxMs(originalSleepIntervalMaxMs);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkRetryLocallyForConnectionError(originalRetryLocallyForConnectionError);
+    }
+  }
+
+  @Test
+  public void testForcedRetryQueueResourceFailureRetriesWithoutCriticalStop() {
+    final long originalSleepIntervalInitMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalInitMs();
+    final long originalSleepIntervalMaxMs =
+        CommonDescriptor.getInstance().getConfig().getPipeSinkSubtaskSleepIntervalMaxMs();
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalInitMs(1);
+    CommonDescriptor.getInstance().getConfig().setPipeSinkSubtaskSleepIntervalMaxMs(2);
+
+    final PipeConnector connector = mock(PipeConnector.class);
+    final UnboundedBlockingPendingQueue<Event> pendingQueue =
+        mock(UnboundedBlockingPendingQueue.class);
+    final CapturingPipeSinkSubtask subtask = new CapturingPipeSinkSubtask(pendingQueue, connector);
+    final EnrichedEvent event = mock(EnrichedEvent.class);
+    subtask.prepareFailure(event);
+    subtask.allowSubmittingSelf();
+
+    try {
+      subtask.onFailure(
+          new PipeRuntimeSinkResourceException(
+              "retry queue resource failure", PipeResourceFailureType.NETWORK_TIMEOUT, true));
+
+      Assert.assertNull(subtask.getReportedException());
+      Assert.assertNull(subtask.getReportedResourceFailureType());
+      Assert.assertEquals(1, subtask.getRetrySubmissionCount());
+    } finally {
+      subtask.close();
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalInitMs(originalSleepIntervalInitMs);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeSinkSubtaskSleepIntervalMaxMs(originalSleepIntervalMaxMs);
+    }
+  }
+
   private static class CapturingPipeSinkSubtask extends PipeSinkSubtask {
 
     private PipeRuntimeException reportedException;
     private PipeResourceFailureType reportedResourceFailureType;
+    private int retrySubmissionCount;
 
     private CapturingPipeSinkSubtask(
         final UnboundedBlockingPendingQueue<Event> pendingQueue, final PipeConnector connector) {
@@ -625,9 +744,21 @@ public class PipeSinkSubtaskTest {
       return reportedResourceFailureType;
     }
 
+    private int getRetrySubmissionCount() {
+      return retrySubmissionCount;
+    }
+
     private void handleExceptionForTest(final EnrichedEvent event, final Exception exception) {
       handleException(event, exception);
     }
+
+    @Override
+    public void submitSelf() {
+      retrySubmissionCount++;
+    }
+
+    @Override
+    protected void sleepIfNoHighPriorityTask(final long sleepMillis) {}
 
     @Override
     protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {

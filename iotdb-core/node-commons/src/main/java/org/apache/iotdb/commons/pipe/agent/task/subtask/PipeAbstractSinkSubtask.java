@@ -107,6 +107,20 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       }
     }
 
+    if (throwable instanceof Exception && !PipeStopStrategy.accept((Exception) throwable, null)) {
+      final Exception exception = (Exception) throwable;
+      final PipeResourceFailureType failureType =
+          PipeStopStrategy.getResourceFailureType(exception, null);
+      if (lastEvent instanceof EnrichedEvent
+          && !PipeStopStrategy.isResourceFailureRecorded(exception)) {
+        reportResourceFailure((EnrichedEvent) lastEvent, failureType);
+      }
+      super.onFailure(
+          new PipeRuntimeSinkNonReportTimeConfigurableException(
+              throwable.getMessage(), Long.MAX_VALUE));
+      return;
+    }
+
     if (throwable instanceof PipeConnectionException) {
       // Retry to connect to the target system if the connection is broken. Do not hold the subtask
       // lock here because handshaking with an external sink may block for a long time, while drop

@@ -91,7 +91,7 @@ public final class AutoResizingBufferMemoryManager {
       }
     }
     memoryAllocationFailureCount.incrementAndGet();
-    throw new IOException(
+    throw new AutoResizingBufferMemoryAllocationException(
         String.format(
             RpcMessages.AUTO_RESIZING_BUFFER_ALLOCATE_FAILED,
             sizeInBytes,

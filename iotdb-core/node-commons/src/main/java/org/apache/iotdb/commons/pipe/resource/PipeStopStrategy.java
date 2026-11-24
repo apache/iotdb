@@ -23,9 +23,15 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkResourceException;
+import org.apache.iotdb.rpc.AutoResizingBufferMemoryAllocationException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.transport.TTransportException;
+
 import javax.annotation.Nullable;
+
+import java.io.IOException;
+import java.util.Locale;
 
 public final class PipeStopStrategy {
 
@@ -50,7 +56,13 @@ public final class PipeStopStrategy {
       if (current instanceof PipeRuntimeOutOfMemoryCriticalException) {
         return PipeResourceFailureType.MEMORY_TIMEOUT;
       }
+      if (current instanceof AutoResizingBufferMemoryAllocationException) {
+        return PipeResourceFailureType.MEMORY_TIMEOUT;
+      }
       if (current instanceof ClientManagerException) {
+        return PipeResourceFailureType.NETWORK_TIMEOUT;
+      }
+      if (isPeerConnectionClosed(current)) {
         return PipeResourceFailureType.NETWORK_TIMEOUT;
       }
       current = current.getCause();
@@ -61,6 +73,31 @@ public final class PipeStopStrategy {
                 == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()
         ? PipeResourceFailureType.RECEIVER_UNAVAILABLE
         : null;
+  }
+
+  private static boolean isPeerConnectionClosed(final Throwable throwable) {
+    if (throwable instanceof TTransportException
+        && ((TTransportException) throwable).getType() == TTransportException.END_OF_FILE) {
+      return true;
+    }
+
+    if (!(throwable instanceof IOException) && !(throwable instanceof TTransportException)) {
+      return false;
+    }
+
+    final String message = throwable.getMessage();
+    if (message == null) {
+      return false;
+    }
+
+    final String normalizedMessage = message.toLowerCase(Locale.ROOT);
+    return normalizedMessage.contains("broken pipe")
+        || normalizedMessage.contains("connection reset")
+        || normalizedMessage.contains("connection was reset")
+        || normalizedMessage.contains("closed by peer")
+        || normalizedMessage.contains("read call frame size failed")
+        || normalizedMessage.contains("forcibly closed by the remote host")
+        || normalizedMessage.contains("connection was aborted");
   }
 
   public static boolean isResourceFailureRecorded(final @Nullable Exception exception) {
