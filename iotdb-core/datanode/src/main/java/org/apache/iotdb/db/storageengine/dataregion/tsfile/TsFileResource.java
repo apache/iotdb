@@ -419,6 +419,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
     buffer.putLong(timeIndex.getMaxEndTime());
   }
 
+  // Writers build device times before registering the sealed resource. Updating registered files
+  // device by device would remeasure the entire index for each mutation.
   public void updateStartTime(IDeviceID device, long time) {
     timeIndex.updateStartTime(device, time);
     updateMemoryCostIfRegistered(true);
@@ -574,38 +576,46 @@ public class TsFileResource implements PersistentResource, Cloneable {
     }
 
     synchronized (this) {
-      if (exclusiveModFile == null) {
-        if (exclusiveModFileFuture != null) {
-          try {
-            exclusiveModFile = exclusiveModFileFuture.get();
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.warn(StorageEngineMessages.UPGRADING_MOD_FILE_INTERRUPTED, e);
-            exclusiveModFile = ModificationFile.getExclusiveMods(this);
-          } catch (ExecutionException e) {
-            LOGGER.warn(StorageEngineMessages.CANNOT_UPGRADE_MOD_FILE, e);
-            exclusiveModFile = ModificationFile.getExclusiveMods(this);
-          }
-        } else {
-          exclusiveModFile = ModificationFile.getExclusiveMods(this);
-        }
-        exclusiveModFileFuture = null;
-        updateMemoryCostIfRegistered();
+      current = exclusiveModFile;
+      if (current != null) {
+        return current;
       }
-      return exclusiveModFile;
+      if (exclusiveModFileFuture != null) {
+        try {
+          current = exclusiveModFileFuture.get();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          LOGGER.warn(StorageEngineMessages.UPGRADING_MOD_FILE_INTERRUPTED, e);
+          current = ModificationFile.getExclusiveMods(this);
+        } catch (ExecutionException e) {
+          LOGGER.warn(StorageEngineMessages.CANNOT_UPGRADE_MOD_FILE, e);
+          current = ModificationFile.getExclusiveMods(this);
+        }
+      } else {
+        current = ModificationFile.getExclusiveMods(this);
+      }
+      exclusiveModFile = current;
+      exclusiveModFileFuture = null;
     }
+    updateMemoryCostIfRegistered();
+    return current;
   }
 
   public ModificationFile getCompactionModFile() {
-    if (compactionModFile == null) {
-      synchronized (this) {
-        if (compactionModFile == null) {
-          compactionModFile = ModificationFile.getCompactionMods(this);
-          updateMemoryCostIfRegistered();
-        }
-      }
+    ModificationFile current = compactionModFile;
+    if (current != null) {
+      return current;
     }
-    return compactionModFile;
+    synchronized (this) {
+      current = compactionModFile;
+      if (current != null) {
+        return current;
+      }
+      current = ModificationFile.getCompactionMods(this);
+      compactionModFile = current;
+    }
+    updateMemoryCostIfRegistered();
+    return current;
   }
 
   public void removeCompactionModFile() throws IOException {
@@ -1248,6 +1258,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   /** A rebuilt device index must be measured by its owner when the resident index is file-level. */
+  @TestOnly
   public Optional<Long> getDeviceTimeIndexRamSize() {
     ITimeIndex index = timeIndex;
     return isClosed() && index instanceof ArrayDeviceTimeIndex
@@ -1461,11 +1472,6 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return isRecordedByMetric.compareAndSet(true, false);
   }
 
-  public int compareIndexDegradePriority(TsFileResource tsFileResource) {
-    int cmp = timeIndex.compareDegradePriority(tsFileResource.timeIndex);
-    return cmp == 0 ? file.getAbsolutePath().compareTo(tsFileResource.file.getAbsolutePath()) : cmp;
-  }
-
   public byte getTimeIndexType() {
     return timeIndex.getTimeIndexType();
   }
@@ -1487,7 +1493,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
     }
   }
 
-  /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
+  /** Degrades the index and scans the detached index to measure the size difference. */
+  @TestOnly
   public long degradeTimeIndex() {
     ITimeIndex previous = replaceDeviceTimeIndexWithFileTimeIndex();
     return previous == null ? 0 : previous.calculateRamSize() - FileTimeIndex.INSTANCE_SIZE;

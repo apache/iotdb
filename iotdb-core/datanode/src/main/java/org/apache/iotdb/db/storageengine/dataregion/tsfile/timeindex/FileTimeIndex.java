@@ -281,19 +281,6 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public int compareDegradePriority(ITimeIndex timeIndex) {
-    if (timeIndex instanceof ArrayDeviceTimeIndex) {
-      return 1;
-    } else if (timeIndex instanceof FileTimeIndex) {
-      return Long.compare(startTime, timeIndex.getMinStartTime());
-    } else {
-      logger.error(StorageEngineMessages.WRONG_TIME_INDEX_TYPE_LOG, timeIndex.getClass().getName());
-      throw new RuntimeException(
-          StorageEngineMessages.WRONG_TIME_INDEX_TYPE + timeIndex.getClass().getName());
-    }
-  }
-
-  @Override
   public boolean definitelyNotContains(IDeviceID device) {
     return false;
   }

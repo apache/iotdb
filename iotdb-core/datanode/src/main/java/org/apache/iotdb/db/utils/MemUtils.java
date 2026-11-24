@@ -26,6 +26,7 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.sun.management.HotSpotDiagnosticMXBean;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -42,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.lang.management.ManagementFactory;
 import java.util.List;
 
 // Notice : methods in this class may not be accurate.
@@ -50,9 +52,37 @@ public class MemUtils {
   private static final long FILE_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(File.class);
 
+  private static final long STRING_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(String.class);
+  private static final boolean COMPACT_STRINGS = usesCompactStrings();
+
+  private static boolean usesCompactStrings() {
+    try {
+      HotSpotDiagnosticMXBean vm =
+          ManagementFactory.getPlatformMXBean(HotSpotDiagnosticMXBean.class);
+      return vm != null && Boolean.parseBoolean(vm.getVMOption("CompactStrings").getValue());
+    } catch (RuntimeException | NoClassDefFoundError unavailable) {
+      // The two-byte estimate also works on VMs that do not expose the HotSpot option.
+      return false;
+    }
+  }
+
+  /** Heap occupied by a file path string and its backing array. */
+  public static long getFilePathRamBytes(String path) {
+    if (path == null || !COMPACT_STRINGS) {
+      return RamUsageEstimator.sizeOf(path);
+    }
+    for (int i = 0; i < path.length(); i++) {
+      if (path.charAt(i) > 0xff) {
+        return RamUsageEstimator.sizeOf(path);
+      }
+    }
+    return STRING_INSTANCE_SIZE + RamUsageEstimator.sizeOfByteArray(path.length());
+  }
+
   /** Heap occupied by a file handle and its stored path. */
   public static long getFileRamBytes(File file) {
-    return file == null ? 0 : FILE_INSTANCE_SIZE + RamUsageEstimator.sizeOf(file.getPath());
+    return file == null ? 0 : FILE_INSTANCE_SIZE + getFilePathRamBytes(file.getPath());
   }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MemUtils.class);

@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.CommonUtils;
 
@@ -35,8 +34,6 @@ import org.apache.tsfile.utils.FilePathUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -61,8 +58,6 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
           RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
               + Integer.BYTES
               + 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF);
-
-  private static final Logger logger = LoggerFactory.getLogger(ArrayDeviceTimeIndex.class);
 
   public static final int INIT_ARRAY_SIZE = 64;
 
@@ -441,19 +436,6 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   @Override
   public long getMaxEndTime() {
     return maxEndTime;
-  }
-
-  @Override
-  public int compareDegradePriority(ITimeIndex timeIndex) {
-    if (timeIndex instanceof ArrayDeviceTimeIndex) {
-      return Long.compare(getMinStartTime(), timeIndex.getMinStartTime());
-    } else if (timeIndex instanceof FileTimeIndex) {
-      return -1;
-    } else {
-      logger.error(StorageEngineMessages.WRONG_TIME_INDEX_TYPE_LOG, timeIndex.getClass().getName());
-      throw new RuntimeException(
-          StorageEngineMessages.WRONG_TIME_INDEX_TYPE + timeIndex.getClass().getName());
-    }
   }
 
   @Override

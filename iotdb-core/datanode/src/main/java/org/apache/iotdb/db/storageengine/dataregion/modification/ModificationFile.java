@@ -65,12 +65,21 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class ModificationFile implements AutoCloseable, Accountable {
 
+  // The read/write synchronizer adds three references and the first reader's hold count to
+  // its AQS state. It also owns a ThreadLocal for read holds.
+  private static final long LOCK_SYNC_SIZE =
+      RamUsageEstimator.alignObjectSize(
+              RamUsageEstimator.shallowSizeOfInstance(AbstractQueuedSynchronizer.class)
+                  + 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF
+                  + Integer.BYTES)
+          + RamUsageEstimator.shallowSizeOfInstance(ThreadLocal.class);
+
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ModificationFile.class)
           + RamUsageEstimator.shallowSizeOfInstance(ReentrantReadWriteLock.class)
           + RamUsageEstimator.shallowSizeOfInstance(ReentrantReadWriteLock.ReadLock.class)
           + RamUsageEstimator.shallowSizeOfInstance(ReentrantReadWriteLock.WriteLock.class)
-          + RamUsageEstimator.shallowSizeOfInstance(AbstractQueuedSynchronizer.class);
+          + LOCK_SYNC_SIZE;
 
   public static final String FILE_SUFFIX = ".mods2";
   public static final String COMPACTION_FILE_SUFFIX = ".compaction.mods2";

@@ -50,7 +50,6 @@ import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
@@ -68,6 +67,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -78,6 +78,8 @@ import static org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceMana
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -598,7 +600,7 @@ public class ResourceManagerTest {
     File file = resource.getTsFile();
     return resource.calculateRamSize()
         + REGISTRATION_RAM_BYTES
-        + (file.isAbsolute() ? 0 : RamUsageEstimator.sizeOf(file.getAbsolutePath()));
+        + (file.isAbsolute() ? 0 : MemUtils.getFilePathRamBytes(file.getAbsolutePath()));
   }
 
   @Test
@@ -714,5 +716,127 @@ public class ResourceManagerTest {
     assertEquals(0, registered.degradeTimeIndex());
     assertEquals(0, tsFileResourceManager.getDegradedTimeIndexNum());
     assertEquals(registeredSize(registered), tsFileResourceManager.getTotalTimeIndexMemCost());
+  }
+
+  @Test
+  public void testFirstModsHandlesProceedDuringAnotherRegistrationScan() throws Exception {
+    tsFileResourceManager.setTimeIndexMemoryThreshold(Long.MAX_VALUE);
+    TsFileResource queried = spy(new TsFileResource(new File("target/0-51-0-0.tsfile")));
+    queried.close();
+    tsFileResourceManager.registerSealedTsFileResource(queried);
+    doAnswer(
+            call -> {
+              Assert.assertFalse(
+                  "mods accounting held the resource monitor", Thread.holdsLock(queried));
+              return call.callRealMethod();
+            })
+        .when(queried)
+        .calculateMetadataRamSize();
+
+    TsFileResource registering = new TsFileResource(new File("target/0-52-0-0.tsfile"));
+    ArrayDeviceTimeIndex original = spy(new ArrayDeviceTimeIndex());
+    registering.setTimeIndex(original);
+    registering.close();
+    CountDownLatch measured = new CountDownLatch(1);
+    CountDownLatch resume = new CountDownLatch(1);
+    doAnswer(
+            call -> {
+              long bytes = (long) call.callRealMethod();
+              measured.countDown();
+              assertTrue(resume.await(20, TimeUnit.SECONDS));
+              return bytes;
+            })
+        .when(original)
+        .calculateRamSize();
+
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    try {
+      Future<?> registration =
+          pool.submit(() -> tsFileResourceManager.registerSealedTsFileResource(registering));
+      assertTrue(measured.await(10, TimeUnit.SECONDS));
+      Future<?> handles =
+          pool.submit(
+              () -> {
+                Assert.assertNotNull(queried.getExclusiveModFile());
+                Assert.assertNotNull(queried.getCompactionModFile());
+              });
+      handles.get(10, TimeUnit.SECONDS);
+      registering.setTimeIndex(new FileTimeIndex(1, 2));
+      resume.countDown();
+      registration.get(10, TimeUnit.SECONDS);
+      assertEquals(1, tsFileResourceManager.getDegradedTimeIndexNum());
+      assertEquals(
+          registeredSize(queried) + registeredSize(registering),
+          tsFileResourceManager.getTotalTimeIndexMemCost());
+    } finally {
+      resume.countDown();
+      pool.shutdownNow();
+      assertTrue(pool.awaitTermination(10, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  public void testRegistrationRemeasuresResizedDeviceIndex() {
+    tsFileResourceManager.setTimeIndexMemoryThreshold(Long.MAX_VALUE);
+    TsFileResource resource = new TsFileResource(new File("target/0-53-0-0.tsfile"));
+    ArrayDeviceTimeIndex index = spy(new ArrayDeviceTimeIndex());
+    resource.setTimeIndex(index);
+    resource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d"), 1);
+    resource.setStatus(TsFileResourceStatus.NORMAL);
+    doAnswer(
+            call -> {
+              long bytes = (long) call.callRealMethod();
+              // Trim both arrays without changing the index identity or device count.
+              index.close();
+              return bytes;
+            })
+        .doCallRealMethod()
+        .when(index)
+        .calculateRamSize();
+    tsFileResourceManager.registerSealedTsFileResource(resource);
+    assertEquals(registeredSize(resource), tsFileResourceManager.getTotalTimeIndexMemCost());
+  }
+
+  @Test
+  public void testRegistrationRechecksFileOwnershipAfterMeasurement() {
+    tsFileResourceManager.setTimeIndexMemoryThreshold(Long.MAX_VALUE);
+    File target = new File("target/0-55-0-0.tsfile");
+    TsFileResource owner = new TsFileResource(target.getAbsoluteFile());
+    TsFileResource moving = new TsFileResource(new File("target/0-54-0-0.tsfile"));
+    ArrayDeviceTimeIndex index = spy(new ArrayDeviceTimeIndex());
+    moving.setTimeIndex(index);
+    doAnswer(
+            call -> {
+              long bytes = (long) call.callRealMethod();
+              moving.setFile(target);
+              tsFileResourceManager.registerSealedTsFileResource(owner);
+              return bytes;
+            })
+        .when(index)
+        .calculateRamSize();
+
+    tsFileResourceManager.registerSealedTsFileResource(moving);
+    Assert.assertNull(moving.getMemoryRegistration());
+    assertEquals(1, tsFileResourceManager.getPriorityQueueSize());
+    assertEquals(registeredSize(owner), tsFileResourceManager.getTotalTimeIndexMemCost());
+  }
+
+  @Test
+  public void testBudgetDegradationStopsOnDetachedRegistration() {
+    tsFileResourceManager.setTimeIndexMemoryThreshold(Long.MAX_VALUE);
+    TsFileResource orphan = spy(new TsFileResource(new File("target/0-61-0-0.tsfile")));
+    tsFileResourceManager.registerSealedTsFileResource(orphan);
+    orphan.setMemoryRegistration(null);
+    // Fail immediately if the manager attempts a swap whose callback cannot release this charge.
+    doThrow(new AssertionError("attempted to degrade a detached registration"))
+        .when(orphan)
+        .replaceDeviceTimeIndexWithFileTimeIndex();
+    tsFileResourceManager.setTimeIndexMemoryThreshold(0);
+    TsFileResource other = new TsFileResource(new File("target/0-62-0-0.tsfile"));
+    tsFileResourceManager.registerSealedTsFileResource(other);
+    verify(orphan, never()).replaceDeviceTimeIndexWithFileTimeIndex();
+    tsFileResourceManager.removeTsFileResource(orphan);
+    tsFileResourceManager.removeTsFileResource(other);
+    assertEquals(0, tsFileResourceManager.getTotalTimeIndexMemCost());
   }
 }

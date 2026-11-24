@@ -26,7 +26,9 @@ import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.MemUtils;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
@@ -62,7 +64,10 @@ public class TsFileResourceManager {
   private long degradedTimeIndexNum;
   private boolean degrading;
 
-  /** The manager monitor protects the priority key, measured index and charged bytes. */
+  /**
+   * After publication the manager monitor protects the priority key, measured index and charged
+   * bytes.
+   */
   public static final class Registration {
     private final TsFileResource resource;
     private File file;
@@ -132,26 +137,70 @@ public class TsFileResourceManager {
     return sealedTsFileResources.size();
   }
 
-  public synchronized void registerSealedTsFileResource(TsFileResource resource) {
+  // Device IDs are appended to a live index, and close() can trim its time arrays in place.
+  private record DeviceIndexShape(
+      ArrayDeviceTimeIndex index, int deviceCount, int startCapacity, int endCapacity) {
+    private DeviceIndexShape(ArrayDeviceTimeIndex index) {
+      this(
+          index,
+          index.getDeviceToIndex().size(),
+          index.getStartTimes().length,
+          index.getEndTimes().length);
+    }
+
+    private boolean changed() {
+      return deviceCount != index.getDeviceToIndex().size()
+          || startCapacity != index.getStartTimes().length
+          || endCapacity != index.getEndTimes().length;
+    }
+  }
+
+  public void registerSealedTsFileResource(TsFileResource resource) {
+    if (resource.getMemoryRegistration() != null) {
+      return;
+    }
+    Registration entry;
+    synchronized (this) {
+      File file = resource.getTsFile();
+      String path = file.getAbsolutePath();
+      if (registrationsByPath.containsKey(path)) {
+        return;
+      }
+      entry = new Registration(resource, file, path);
+    }
+
+    // Measure device IDs while the entry is private, outside the monitor shared with queries.
+    DeviceIndexShape shape =
+        entry.index instanceof ArrayDeviceTimeIndex deviceIndex
+            ? new DeviceIndexShape(deviceIndex)
+            : null;
+    entry.indexBytes = entry.index == null ? 0 : entry.index.calculateRamSize();
+    publishRegistration(entry, shape);
+  }
+
+  private synchronized void publishRegistration(Registration entry, DeviceIndexShape shape) {
+    TsFileResource resource = entry.resource;
     if (resource.getMemoryRegistration() != null) {
       return;
     }
     File file = resource.getTsFile();
-    String path = file.getAbsolutePath();
-    if (registrationsByPath.containsKey(path)) {
+    if (entry.file != file) {
+      entry.file = file;
+      entry.path = file.getAbsolutePath();
+    }
+    if (registrationsByPath.putIfAbsent(entry.path, entry) != null) {
       return;
     }
-    Registration entry = new Registration(resource, file, path);
-    registrationsByPath.put(path, entry);
     sealedTsFileResources.add(entry);
     if (entry.hasFileIndex()) {
       degradedTimeIndexNum++;
     }
-    // Publish before sampling so a concurrent metadata change cannot miss its charge.
+    // Publish before validating the sample so subsequent mutations deliver their own refresh.
     resource.setMemoryRegistration(entry);
     boolean charged = false;
     try {
-      refresh(entry, true);
+      // refresh also remeasures if the resource now holds a different index object.
+      refresh(entry, shape != null && shape.changed());
       charged = true;
     } finally {
       if (!charged) {
@@ -231,7 +280,7 @@ public class TsFileResourceManager {
     }
     entry.indexBytes = indexBytes;
     // A relative File retains its own path string in addition to the map's absolute key.
-    long pathBytes = file.isAbsolute() ? 0 : RamUsageEstimator.sizeOf(entry.path);
+    long pathBytes = file.isAbsolute() ? 0 : MemUtils.getFilePathRamBytes(entry.path);
     long bytes =
         REGISTRATION_RAM_BYTES + pathBytes + resource.calculateMetadataRamSize() + indexBytes;
     long delta = bytes - entry.bytes;
@@ -267,6 +316,10 @@ public class TsFileResourceManager {
       Registration entry = sealedTsFileResources.first();
       if (!entry.canDegrade()) {
         logger.debug(StorageEngineMessages.CANNOT_DEGRADE_TIME_INDEX_ALL_FILE_LEVEL);
+        return;
+      }
+      if (entry.resource.getMemoryRegistration() != entry) {
+        // Its degradation callback cannot release this entry's charge.
         return;
       }
       logger.debug(StorageEngineMessages.DEGRADE_TSFILE_RESOURCE, entry.file);
