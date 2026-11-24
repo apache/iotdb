@@ -49,8 +49,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

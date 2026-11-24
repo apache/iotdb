@@ -25,7 +25,7 @@ import org.apache.iotdb.db.pipe.event.common.watermark.PipeWatermarkEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.google.common.math.LongMath.saturatedAdd;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 public class DataRegionWatermarkInjector {
 

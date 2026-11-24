@@ -36,7 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
-import com.google.common.base.VerifyException;
+import org.apache.ratis.thirdparty.com.google.common.base.VerifyException;
 
 import javax.annotation.Nullable;
 

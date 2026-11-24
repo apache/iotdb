@@ -30,7 +30,7 @@ import org.apache.iotdb.db.protocol.client.DataNodeInternalClient;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
-import static com.google.common.util.concurrent.Futures.successfulAsList;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.successfulAsList;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
 

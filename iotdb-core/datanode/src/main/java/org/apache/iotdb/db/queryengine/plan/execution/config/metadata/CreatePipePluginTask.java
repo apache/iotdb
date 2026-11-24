@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
 public class CreatePipePluginTask implements IConfigTask {
 

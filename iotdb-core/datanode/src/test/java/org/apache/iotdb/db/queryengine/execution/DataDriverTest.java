@@ -53,9 +53,9 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;

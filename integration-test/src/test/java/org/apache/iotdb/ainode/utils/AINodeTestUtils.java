@@ -23,7 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Constant;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

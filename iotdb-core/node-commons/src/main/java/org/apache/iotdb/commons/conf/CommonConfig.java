@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.rpc.RpcUtils;
 
-import com.google.common.util.concurrent.RateLimiter;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedCo
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Map;

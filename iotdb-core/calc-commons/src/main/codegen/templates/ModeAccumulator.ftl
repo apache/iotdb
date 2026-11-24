@@ -25,8 +25,9 @@
 
 package org.apache.iotdb.calc.execution.aggregation;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.external.commons.collections4.comparators.ComparatorChain;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -45,7 +46,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 /*
 * This class is generated using freemarker and the ${.template_name} template.

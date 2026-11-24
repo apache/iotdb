@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array;
 
-import com.google.common.primitives.Shorts;
+import org.apache.ratis.thirdparty.com.google.common.primitives.Shorts;
 
 import java.util.Arrays;
 

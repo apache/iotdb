@@ -34,7 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 
-import com.google.common.util.concurrent.MoreExecutors;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

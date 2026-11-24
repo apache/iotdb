@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.ratis.thirdparty.com.google.common.annotations.VisibleForTesting;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

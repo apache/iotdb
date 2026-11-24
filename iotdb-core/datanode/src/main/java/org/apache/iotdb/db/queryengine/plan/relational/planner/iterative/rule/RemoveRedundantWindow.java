@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesN
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.window;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.isEmpty;

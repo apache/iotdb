@@ -76,13 +76,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Streams;
 import com.google.errorprone.annotations.Immutable;
+import org.apache.ratis.thirdparty.com.google.common.collect.ArrayListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.Multimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.Streams;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.TimeDuration;
@@ -103,17 +103,17 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet.toImmutableSet;
 
 public class Analysis implements IAnalysis {
 

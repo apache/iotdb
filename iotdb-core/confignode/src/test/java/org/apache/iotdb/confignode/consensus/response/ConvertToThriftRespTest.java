@@ -41,7 +41,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.junit.Assert;
 import org.junit.Test;
 

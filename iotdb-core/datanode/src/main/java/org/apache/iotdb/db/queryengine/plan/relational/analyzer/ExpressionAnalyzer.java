@@ -107,12 +107,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFound
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StackableAstVisitor;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.LinkedHashMultimap;
-import com.google.common.collect.Multimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.HashMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.Iterables;
+import org.apache.ratis.thirdparty.com.google.common.collect.LinkedHashMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.Multimap;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
@@ -137,12 +137,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
-import static com.google.common.collect.Iterables.getOnlyElement;
-import static com.google.common.collect.Iterators.getOnlyElement;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Locale.ENGLISH;
@@ -167,6 +161,12 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Windo
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet.toImmutableSet;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Iterables.getOnlyElement;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Iterators.getOnlyElement;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;

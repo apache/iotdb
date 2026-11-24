@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Project
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.collect.ListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ListMultimap;
 
 import java.util.List;
 

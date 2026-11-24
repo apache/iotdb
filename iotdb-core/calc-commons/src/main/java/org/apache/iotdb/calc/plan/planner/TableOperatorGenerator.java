@@ -161,10 +161,10 @@ import org.apache.iotdb.udf.api.IoTDBLocal;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ListMultimap;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -187,10 +187,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.calc.execution.operator.process.rowpattern.PhysicalValuePointer.CLASSIFIER;
@@ -216,6 +212,10 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Iterables.getOnlyElement;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;

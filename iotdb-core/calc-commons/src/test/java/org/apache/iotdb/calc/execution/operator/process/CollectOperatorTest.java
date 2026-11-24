@@ -24,9 +24,9 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 
-import com.google.common.util.concurrent.ForwardingListenableFuture;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ForwardingListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;

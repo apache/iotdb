@@ -38,7 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 
 import java.util.ArrayList;
 import java.util.Collections;

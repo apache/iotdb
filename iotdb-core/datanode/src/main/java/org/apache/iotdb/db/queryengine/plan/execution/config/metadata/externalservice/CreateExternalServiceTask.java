@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.Locale;
 

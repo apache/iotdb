@@ -30,8 +30,8 @@ import org.apache.iotdb.calc.execution.operator.process.window.partition.Partiti
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrLabel;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrRowPattern;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Test;

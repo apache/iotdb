@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorTyp
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.base.Joiner;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;

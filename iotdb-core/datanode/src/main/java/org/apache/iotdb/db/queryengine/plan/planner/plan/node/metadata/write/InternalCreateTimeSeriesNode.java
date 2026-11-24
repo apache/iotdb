@@ -31,7 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

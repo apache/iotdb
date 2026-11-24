@@ -203,6 +203,11 @@
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
         </dependency>
+        <!-- Included in the shared node template. -->
+        <dependency>
+            <groupId>org.apache.ratis</groupId>
+            <artifactId>ratis-thirdparty-misc</artifactId>
+        </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

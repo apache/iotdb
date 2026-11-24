@@ -41,7 +41,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.Uninterruptibles;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
 import org.junit.Test;

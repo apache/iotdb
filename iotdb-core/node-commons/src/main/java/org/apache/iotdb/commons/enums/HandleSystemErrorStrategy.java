@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 
-import com.google.common.base.CharMatcher;
+import org.apache.ratis.thirdparty.com.google.common.base.CharMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

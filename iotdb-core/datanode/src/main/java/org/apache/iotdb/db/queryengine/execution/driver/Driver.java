@@ -31,10 +31,10 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.queryengine.metric.QueryMetricsManager;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,14 +51,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Throwables.throwIfUnchecked;
-import static com.google.common.base.Verify.verify;
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
 import static org.apache.iotdb.calc.execution.operator.Operator.NOT_BLOCKED;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.DRIVER_INTERNAL_PROCESS;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
+import static org.apache.ratis.thirdparty.com.google.common.base.Throwables.throwIfUnchecked;
+import static org.apache.ratis.thirdparty.com.google.common.base.Verify.verify;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public abstract class Driver implements IDriver {
 

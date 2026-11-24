@@ -26,7 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 
 public class StartPipeTask implements IConfigTask {
 
