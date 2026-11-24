@@ -81,6 +81,15 @@ The release script builds all dependencies in this environment, runs tests and
 rejects unexpected shared-library dependencies or GLIBC requirements above 2.28.
 A build on a newer host is a development build, not evidence of glibc 2.28 compatibility.
 Release scope is Linux x86_64 and Windows x64 (Windows 10/11, Server 2016+).
+The ODBC package workflow uses the C++ SDK's manylinux baseline and Windows
+runner/generator pairs: VS2022 on `windows-2022` and VS2026 on
+`windows-2025-vs2026`. Each Windows toolchain builds, tests and packages the driver;
+its extracted ZIP is then tested against a real server with plain, TLS and mutual
+TLS connections, including .NET ODBC and MSDASQL/ADO consumers. Artifact names
+include `vs2022` or `vs2026` to keep the two builds separate; the ZIP platform
+classifier remains `windows-x86_64`. Parent POM changes also trigger these checks.
+macOS ODBC packaging is excluded because this driver currently supports only
+Windows/Linux x64; the C++ SDK's macOS support does not establish driver support.
 Packages and SHA-512 checksums are written into the CMake build directory.
 The dependency URLs, versions and checksums are exposed as `ODBC_CURL_*` and
 `ODBC_JSON_*` CMake cache variables for controlled mirrors or version updates.
