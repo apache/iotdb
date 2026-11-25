@@ -68,6 +68,57 @@ zone = session.get_time_zone()
 session.close()
 ```
 
+### Export TsFiles with Subscription
+
+`SubscriptionSession` manages topics and creates pull consumers. A pull consumer downloads a
+Subscription TsFile to `file_save_dir/group_id/consumer_id/topic_name/` and returns a
+`SubscriptionMessage`. Call `commit(message)` after processing the file so IoTDB can advance the
+consumer's progress.
+
+```python
+import uuid
+
+from iotdb.subscription import SubscriptionSession
+
+topic_name = "python_export_{}".format(uuid.uuid4().hex)
+topic_attributes = {
+    "mode": "snapshot",
+    "format": "SubscriptionTsFileHandler",
+    "strict": "false",
+    "loose-range": "",
+    "start-time": "2025-01-01T00:00:00Z",
+    "end-time": "2025-02-01T00:00:00Z",
+}
+
+with SubscriptionSession(
+    node_urls=["127.0.0.1:6667"],
+    username="root",
+    password="root",
+    sql_dialect="table",
+) as session:
+    session.create_topic(topic_name, topic_attributes)
+    try:
+        consumer = session.create_pull_consumer(
+            file_save_dir="./exported-tsfiles",
+            heartbeat_interval_ms=30000,
+        )
+        with consumer:
+            consumer.subscribe(topic_name)
+            while not consumer.all_topic_messages_have_been_consumed():
+                for message in consumer.poll(timeout_ms=1000):
+                    print(message.file_path)
+                    consumer.commit(message)
+    finally:
+        session.drop_topic(topic_name, if_exists=True)
+```
+
+`get_subscriptions(topic_name)` returns the server-reported Subscription identifiers and consumer
+groups for that topic. Use `drop_subscription_if_exists(subscription.subscription_id)` to remove a
+stale Subscription before dropping its Topic.
+
+Set `sql_dialect="tree"` for tree-model topics. Tree topics can be filtered with the `path`
+attribute, while table topics can use `database` and `table` attributes.
+
 ### Initialization
 
 * Initialize a Session
