@@ -36,6 +36,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertQueryFails;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -95,10 +96,7 @@ public class AINodeBasicIT {
   private void errorTest(String sql, String errorMessage) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
-      try (ResultSet ignored = statement.executeQuery(sql)) {
-        fail("There should be an exception");
-      }
+      assertEquals(errorMessage, assertQueryFails(statement, sql).getMessage());
     } catch (SQLException e) {
       assertEquals(errorMessage, e.getMessage());
     }
