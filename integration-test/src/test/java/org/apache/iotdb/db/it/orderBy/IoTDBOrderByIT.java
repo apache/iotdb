@@ -38,6 +38,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertQueryFails;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -1282,7 +1283,7 @@ public class IoTDBOrderByIT {
   private void errorTest(String sql, String error) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
+      assertEquals(error, assertQueryFails(statement, sql).getMessage());
     } catch (Exception e) {
       assertEquals(error, e.getMessage());
     }

@@ -296,11 +296,25 @@ public class TestUtils {
       BaseEnv env, String sql, String errMsg, String userName, String password) {
     try (Connection connection = env.getConnection(userName, password);
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
-      fail("No exception!");
+      SQLException exception = assertQueryFails(statement, sql);
+      Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(errMsg));
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
+  }
+
+  public static SQLException assertQueryFails(final Statement statement, final String sql) {
+    return Assert.assertThrows(
+        SQLException.class,
+        () -> {
+          try (final ResultSet resultSet = statement.executeQuery(sql)) {
+            drainResultSet(resultSet);
+          }
+        });
+  }
+
+  public static void drainResultSet(final ResultSet resultSet) throws SQLException {
+    while (resultSet.next()) {}
   }
 
   public static void assertNonQueryTestFail(String sql, String errMsg) {
