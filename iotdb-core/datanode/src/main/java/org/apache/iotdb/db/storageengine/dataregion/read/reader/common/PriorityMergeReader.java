@@ -137,9 +137,8 @@ public class PriorityMergeReader implements IPointReader {
         continue;
       }
       e.next();
-      if (e.currTime() == topNextTime) {
+      if (canSkipOverwrittenNext() && topNext != null && e.currTime() == topNextTime) {
         // if the next value of the peek will be overwritten by the next of the top, skip it
-        fillNullValue(topNext, e.getTimeValuePair());
         if (e.hasNext()) {
           e.next();
           heap.add(e);
@@ -156,6 +155,14 @@ public class PriorityMergeReader implements IPointReader {
         heap.add(e);
       }
     }
+  }
+
+  /**
+   * Whether a lower-priority reader's next point at topNextTime can be skipped immediately. Aligned
+   * readers must return false so all readers at that timestamp are merged in strict priority order.
+   */
+  protected boolean canSkipOverwrittenNext() {
+    return true;
   }
 
   /** this method only take effect for aligned time series, so the override version. */

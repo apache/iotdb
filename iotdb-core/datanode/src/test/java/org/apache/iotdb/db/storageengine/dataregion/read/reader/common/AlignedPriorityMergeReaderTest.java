@@ -19,12 +19,20 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.utils.TsPrimitiveType.TsInt;
+import org.apache.tsfile.utils.TsPrimitiveType.TsLong;
 import org.apache.tsfile.utils.TsPrimitiveType.TsVector;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class AlignedPriorityMergeReaderTest {
 
@@ -86,5 +94,165 @@ public class AlignedPriorityMergeReaderTest {
     assertEquals(10, v.getValue().getVector()[0].getInt());
     assertEquals(20, v.getValue().getVector()[1].getInt());
     assertEquals(30, v.getValue().getVector()[2].getInt());
+  }
+
+  /**
+   * Regression test for issue #19392 (ascending scan): oldest and newest readers both have rows at
+   * t=10 and t=20, while a middle-priority reader starts at t=20 with a newer value for y. Merging
+   * t=10 must not eagerly fill t=20's null y with the oldest reader's stale value.
+   */
+  @Test
+  public void testAscScanMergesMiddlePriorityReaderAtNextTimestamp() throws IOException {
+    AlignedPriorityMergeReader reader = new AlignedPriorityMergeReader();
+    reader.addReader(
+        new ListAlignedPointReader(
+            Arrays.asList(alignedRow(10, null, 100L), alignedRow(20, null, 200L))),
+        new MergeReaderPriority(1, 1, 0, false),
+        20);
+    reader.addReader(
+        new ListAlignedPointReader(Arrays.asList(alignedRow(20, null, 220L))),
+        new MergeReaderPriority(2, 1, 0, false),
+        20);
+    reader.addReader(
+        new ListAlignedPointReader(
+            Arrays.asList(alignedRow(10, 110L, null), alignedRow(20, 120L, null))),
+        new MergeReaderPriority(3, 1, 0, false),
+        20);
+
+    assertTrue(reader.hasNextTimeValuePair());
+    TimeValuePair row1 = reader.nextTimeValuePair();
+    assertEquals(10L, row1.getTimestamp());
+    assertEquals(110L, row1.getValue().getVector()[0].getLong());
+    assertEquals(100L, row1.getValue().getVector()[1].getLong());
+
+    assertTrue(reader.hasNextTimeValuePair());
+    TimeValuePair row2 = reader.nextTimeValuePair();
+    assertEquals(20L, row2.getTimestamp());
+    assertEquals(120L, row2.getValue().getVector()[0].getLong());
+    assertEquals(220L, row2.getValue().getVector()[1].getLong());
+
+    assertFalse(reader.hasNextTimeValuePair());
+    assertEquals(0L, reader.getUsedMemorySize());
+  }
+
+  /**
+   * Symmetric regression test for descending aligned scans: processing t=20 must not eagerly fill
+   * t=10's null y with the oldest reader's stale value before the middle-priority reader at t=10 is
+   * visited.
+   */
+  @Test
+  public void testDescScanMergesMiddlePriorityReaderAtNextTimestamp() throws IOException {
+    AlignedDescPriorityMergeReader reader = new AlignedDescPriorityMergeReader();
+    reader.addReader(
+        new ListAlignedPointReader(
+            Arrays.asList(alignedRow(20, null, 200L), alignedRow(10, null, 100L))),
+        new MergeReaderPriority(1, 1, 0, false),
+        10);
+    reader.addReader(
+        new ListAlignedPointReader(Arrays.asList(alignedRow(10, null, 120L))),
+        new MergeReaderPriority(2, 1, 0, false),
+        10);
+    reader.addReader(
+        new ListAlignedPointReader(
+            Arrays.asList(alignedRow(20, 210L, null), alignedRow(10, 110L, null))),
+        new MergeReaderPriority(3, 1, 0, false),
+        10);
+
+    assertTrue(reader.hasNextTimeValuePair());
+    TimeValuePair row1 = reader.nextTimeValuePair();
+    assertEquals(20L, row1.getTimestamp());
+    assertEquals(210L, row1.getValue().getVector()[0].getLong());
+    assertEquals(200L, row1.getValue().getVector()[1].getLong());
+
+    assertTrue(reader.hasNextTimeValuePair());
+    TimeValuePair row2 = reader.nextTimeValuePair();
+    assertEquals(10L, row2.getTimestamp());
+    assertEquals(110L, row2.getValue().getVector()[0].getLong());
+    assertEquals(120L, row2.getValue().getVector()[1].getLong());
+
+    assertFalse(reader.hasNextTimeValuePair());
+    assertEquals(0L, reader.getUsedMemorySize());
+  }
+
+  /**
+   * Verifies that when three readers contribute distinct columns at t=20, each column takes the
+   * highest-priority non-null value (x from newest, y from middle, z from oldest).
+   */
+  @Test
+  public void testAscScanPreservesOlderColumnsWhileMiddleOverridesOverlappingColumn()
+      throws IOException {
+    AlignedPriorityMergeReader reader = new AlignedPriorityMergeReader();
+    reader.addReader(
+        new ListAlignedPointReader(
+            Arrays.asList(alignedRow(10, null, 100L, 1000L), alignedRow(20, null, 200L, 2000L))),
+        new MergeReaderPriority(1, 1, 0, false),
+        20);
+    reader.addReader(
+        new ListAlignedPointReader(Arrays.asList(alignedRow(20, null, 220L, null))),
+        new MergeReaderPriority(2, 1, 0, false),
+        20);
+    reader.addReader(
+        new ListAlignedPointReader(
+            Arrays.asList(alignedRow(10, 110L, null, null), alignedRow(20, 120L, null, null))),
+        new MergeReaderPriority(3, 1, 0, false),
+        20);
+
+    TimeValuePair row1 = reader.nextTimeValuePair();
+    assertEquals(10L, row1.getTimestamp());
+    assertEquals(110L, row1.getValue().getVector()[0].getLong());
+    assertEquals(100L, row1.getValue().getVector()[1].getLong());
+    assertEquals(1000L, row1.getValue().getVector()[2].getLong());
+
+    TimeValuePair row2 = reader.nextTimeValuePair();
+    assertEquals(20L, row2.getTimestamp());
+    assertEquals(120L, row2.getValue().getVector()[0].getLong());
+    assertEquals(220L, row2.getValue().getVector()[1].getLong());
+    assertEquals(2000L, row2.getValue().getVector()[2].getLong());
+
+    assertFalse(reader.hasNextTimeValuePair());
+    assertEquals(0L, reader.getUsedMemorySize());
+  }
+
+  private static TimeValuePair alignedRow(long timestamp, Long... values) {
+    TsPrimitiveType[] vector = new TsPrimitiveType[values.length];
+    for (int i = 0; i < values.length; i++) {
+      if (values[i] != null) {
+        vector[i] = new TsLong(values[i]);
+      }
+    }
+    return new TimeValuePair(timestamp, new TsVector(vector));
+  }
+
+  private static class ListAlignedPointReader implements IPointReader {
+
+    private final List<TimeValuePair> points;
+    private int index = 0;
+
+    ListAlignedPointReader(List<TimeValuePair> points) {
+      this.points = points;
+    }
+
+    @Override
+    public boolean hasNextTimeValuePair() {
+      return index < points.size();
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() {
+      return points.get(index++);
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() {
+      return points.get(index);
+    }
+
+    @Override
+    public long getUsedMemorySize() {
+      return points.size();
+    }
+
+    @Override
+    public void close() {}
   }
 }

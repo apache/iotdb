@@ -39,6 +39,11 @@ public class AlignedPriorityMergeReader extends PriorityMergeReader {
     fillNullValueInAligned(v, c);
   }
 
+  @Override
+  protected boolean canSkipOverwrittenNext() {
+    return false;
+  }
+
   static void fillNullValueInAligned(TimeValuePair to, TimeValuePair from) {
     TsPrimitiveType[] toArray = to.getValue().getVector();
     TsPrimitiveType[] fromArray = from.getValue().getVector();

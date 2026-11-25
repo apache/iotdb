@@ -37,4 +37,9 @@ public class AlignedDescPriorityMergeReader extends DescPriorityMergeReader {
   protected void fillNullValue(TimeValuePair v, TimeValuePair c) {
     AlignedPriorityMergeReader.fillNullValueInAligned(v, c);
   }
+
+  @Override
+  protected boolean canSkipOverwrittenNext() {
+    return false;
+  }
 }
