@@ -3695,4 +3695,109 @@ public class IoTDBAlignedSeriesQueryTableIT {
               .contains("The second parameter time interval should be a positive integer."));
     }
   }
+
+  /**
+   * Regression test for issue #19392: partial-column updates across three separate flushes must
+   * merge fields in strict priority order during both ascending and descending scans, as well as
+   * value-filtered scans.
+   */
+  @Test
+  public void partialUpdateMergeAcrossMultipleFlushesTest() throws SQLException {
+    String tableName = "merge_lookahead_bug";
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(USE_DB);
+      statement.execute("DROP TABLE IF EXISTS " + tableName);
+      statement.execute(
+          "CREATE TABLE " + tableName + " (d STRING TAG, x INT64 FIELD, y INT64 FIELD)");
+
+      try {
+        // Ascending-scan scenario (issue #19392):
+        // Flush 1: y at t=10 (100) and t=20 (200)
+        // Flush 2: y updated only at t=20 (220)
+        // Batch 3: x at t=10 (110) and t=20 (120)
+        statement.execute(
+            "INSERT INTO " + tableName + " (time, d, y) VALUES (10, 'd1', 100), (20, 'd1', 200)");
+        statement.execute("FLUSH");
+        statement.execute("INSERT INTO " + tableName + " (time, d, y) VALUES (20, 'd1', 220)");
+        statement.execute("FLUSH");
+        statement.execute(
+            "INSERT INTO " + tableName + " (time, d, x) VALUES (10, 'd1', 110), (20, 'd1', 120)");
+
+        // Verify d1 before flushing the third batch (2 TsFiles + memtable)
+        assertAscPartialUpdateMergeQueries(statement, tableName);
+
+        // Verify d1 after flushing the third batch (3 separate TsFiles)
+        statement.execute("FLUSH");
+        assertAscPartialUpdateMergeQueries(statement, tableName);
+
+        // Symmetric descending-scan scenario on d2:
+        // Flush 1: y at t=10 (100) and t=20 (200)
+        // Flush 2: y updated only at t=10 (120)
+        // Batch 3: x at t=10 (110) and t=20 (210)
+        statement.execute(
+            "INSERT INTO " + tableName + " (time, d, y) VALUES (10, 'd2', 100), (20, 'd2', 200)");
+        statement.execute("FLUSH");
+        statement.execute("INSERT INTO " + tableName + " (time, d, y) VALUES (10, 'd2', 120)");
+        statement.execute("FLUSH");
+        statement.execute(
+            "INSERT INTO " + tableName + " (time, d, x) VALUES (10, 'd2', 110), (20, 'd2', 210)");
+
+        // Verify d2 before and after flushing the third batch
+        assertDescPartialUpdateMergeQueries(statement, tableName);
+        statement.execute("FLUSH");
+        assertDescPartialUpdateMergeQueries(statement, tableName);
+      } finally {
+        statement.execute("DROP TABLE IF EXISTS " + tableName);
+      }
+    }
+  }
+
+  private void assertAscPartialUpdateMergeQueries(Statement statement, String tableName)
+      throws SQLException {
+    assertTimeXYRows(
+        statement,
+        "SELECT time, x, y FROM " + tableName + " WHERE d = 'd1' AND time = 20",
+        new String[] {"20,120,220"});
+    assertTimeXYRows(
+        statement,
+        "SELECT time, x, y FROM " + tableName + " WHERE d = 'd1' ORDER BY time",
+        new String[] {"10,110,100", "20,120,220"});
+    assertTimeXYRows(
+        statement,
+        "SELECT time, x, y FROM " + tableName + " WHERE d = 'd1' ORDER BY time DESC",
+        new String[] {"20,120,220", "10,110,100"});
+    assertTimeXYRows(
+        statement,
+        "SELECT time, x, y FROM " + tableName + " WHERE x = 120 AND y = 220 ORDER BY time",
+        new String[] {"20,120,220"});
+  }
+
+  private void assertDescPartialUpdateMergeQueries(Statement statement, String tableName)
+      throws SQLException {
+    assertTimeXYRows(
+        statement,
+        "SELECT time, x, y FROM " + tableName + " WHERE d = 'd2' ORDER BY time DESC",
+        new String[] {"20,210,200", "10,110,120"});
+    assertTimeXYRows(
+        statement,
+        "SELECT time, x, y FROM "
+            + tableName
+            + " WHERE d = 'd2' AND x = 110 AND y = 120 ORDER BY time DESC",
+        new String[] {"10,110,120"});
+  }
+
+  private void assertTimeXYRows(Statement statement, String sql, String[] expectedRows)
+      throws SQLException {
+    try (ResultSet resultSet = statement.executeQuery(sql)) {
+      int cnt = 0;
+      while (resultSet.next()) {
+        String actual =
+            resultSet.getLong(1) + "," + resultSet.getString(2) + "," + resultSet.getString(3);
+        assertEquals("Mismatch for query: " + sql, expectedRows[cnt], actual);
+        cnt++;
+      }
+      assertEquals("Row count mismatch for query: " + sql, expectedRows.length, cnt);
+    }
+  }
 }
