@@ -3699,92 +3699,58 @@ public class IoTDBAlignedSeriesQueryTableIT {
     }
   }
 
-  /**
-   * Regression test for issue #19392: partial-column updates across three flushes must merge in
-   * strict priority order for ascending, descending, and value-filtered table scans.
-   */
+  /** Regression test for #19392: partial updates across flushes merge in strict priority order. */
   @Test
   public void partialUpdateMergeAcrossMultipleFlushesTest() throws SQLException {
-    String table = "merge_lookahead_bug";
     try (Connection conn = EnvFactory.getEnv().getTableConnection();
-        Statement stmt = conn.createStatement()) {
-      stmt.execute(USE_DB);
-      stmt.execute("DROP TABLE IF EXISTS " + table);
-      stmt.execute("CREATE TABLE " + table + " (d STRING TAG, x INT64 FIELD, y INT64 FIELD)");
-
+        Statement s = conn.createStatement()) {
+      s.execute(USE_DB);
+      s.execute("DROP TABLE IF EXISTS merge_lookahead_bug");
+      s.execute("CREATE TABLE merge_lookahead_bug (d STRING TAG, x INT64 FIELD, y INT64 FIELD)");
       try {
-        // Ascending-scan scenario (issue #19392) on d1
-        stmt.execute(
-            "INSERT INTO " + table + " (time, d, y) VALUES (10, 'd1', 100), (20, 'd1', 200)");
-        stmt.execute("FLUSH");
-        stmt.execute("INSERT INTO " + table + " (time, d, y) VALUES (20, 'd1', 220)");
-        stmt.execute("FLUSH");
-        stmt.execute(
-            "INSERT INTO " + table + " (time, d, x) VALUES (10, 'd1', 110), (20, 'd1', 120)");
-        assertAscPartialUpdateMergeQueries(stmt, table);
-        stmt.execute("FLUSH");
-        assertAscPartialUpdateMergeQueries(stmt, table);
+        // Ascending-scan scenario (#19392) on d1: verify before and after 3rd flush
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (10,'d1',100),(20,'d1',200)");
+        s.execute("FLUSH");
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (20,'d1',220)");
+        s.execute("FLUSH");
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,x) VALUES (10,'d1',110),(20,'d1',120)");
+        for (int i = 0; i < 2; i++) {
+          if (i == 1) {
+            s.execute("FLUSH");
+          }
+          assertMergeRows(s, "d='d1' AND time=20", "20,120,220");
+          assertMergeRows(s, "d='d1' ORDER BY time", "10,110,100", "20,120,220");
+          assertMergeRows(s, "d='d1' ORDER BY time DESC", "20,120,220", "10,110,100");
+          assertMergeRows(s, "x=120 AND y=220 ORDER BY time", "20,120,220");
+        }
 
-        // Symmetric descending-scan scenario on d2
-        stmt.execute(
-            "INSERT INTO " + table + " (time, d, y) VALUES (10, 'd2', 100), (20, 'd2', 200)");
-        stmt.execute("FLUSH");
-        stmt.execute("INSERT INTO " + table + " (time, d, y) VALUES (10, 'd2', 120)");
-        stmt.execute("FLUSH");
-        stmt.execute(
-            "INSERT INTO " + table + " (time, d, x) VALUES (10, 'd2', 110), (20, 'd2', 210)");
-        assertDescPartialUpdateMergeQueries(stmt, table);
-        stmt.execute("FLUSH");
-        assertDescPartialUpdateMergeQueries(stmt, table);
+        // Symmetric descending-scan scenario on d2: verify before and after 3rd flush
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (10,'d2',100),(20,'d2',200)");
+        s.execute("FLUSH");
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,y) VALUES (10,'d2',120)");
+        s.execute("FLUSH");
+        s.execute("INSERT INTO merge_lookahead_bug(time,d,x) VALUES (10,'d2',110),(20,'d2',210)");
+        for (int i = 0; i < 2; i++) {
+          if (i == 1) {
+            s.execute("FLUSH");
+          }
+          assertMergeRows(s, "d='d2' ORDER BY time DESC", "20,210,200", "10,110,120");
+          assertMergeRows(s, "d='d2' AND x=110 AND y=120 ORDER BY time DESC", "10,110,120");
+        }
       } finally {
-        stmt.execute("DROP TABLE IF EXISTS " + table);
+        s.execute("DROP TABLE IF EXISTS merge_lookahead_bug");
       }
     }
   }
 
-  private void assertAscPartialUpdateMergeQueries(Statement stmt, String table)
-      throws SQLException {
-    assertTimeXYRows(
-        stmt, "SELECT time, x, y FROM " + table + " WHERE d = 'd1' AND time = 20", "20,120,220");
-    assertTimeXYRows(
-        stmt,
-        "SELECT time, x, y FROM " + table + " WHERE d = 'd1' ORDER BY time",
-        "10,110,100",
-        "20,120,220");
-    assertTimeXYRows(
-        stmt,
-        "SELECT time, x, y FROM " + table + " WHERE d = 'd1' ORDER BY time DESC",
-        "20,120,220",
-        "10,110,100");
-    assertTimeXYRows(
-        stmt,
-        "SELECT time, x, y FROM " + table + " WHERE x = 120 AND y = 220 ORDER BY time",
-        "20,120,220");
-  }
-
-  private void assertDescPartialUpdateMergeQueries(Statement stmt, String table)
-      throws SQLException {
-    assertTimeXYRows(
-        stmt,
-        "SELECT time, x, y FROM " + table + " WHERE d = 'd2' ORDER BY time DESC",
-        "20,210,200",
-        "10,110,120");
-    assertTimeXYRows(
-        stmt,
-        "SELECT time, x, y FROM "
-            + table
-            + " WHERE d = 'd2' AND x = 110 AND y = 120 ORDER BY time DESC",
-        "10,110,120");
-  }
-
-  private void assertTimeXYRows(Statement stmt, String sql, String... expectedRows)
-      throws SQLException {
+  private void assertMergeRows(Statement s, String where, String... expected) throws SQLException {
+    String sql = "SELECT time, x, y FROM merge_lookahead_bug WHERE " + where;
     List<String> actual = new ArrayList<>();
-    try (ResultSet rs = stmt.executeQuery(sql)) {
+    try (ResultSet rs = s.executeQuery(sql)) {
       while (rs.next()) {
         actual.add(rs.getLong(1) + "," + rs.getString(2) + "," + rs.getString(3));
       }
     }
-    assertEquals("Mismatch for query: " + sql, Arrays.asList(expectedRows), actual);
+    assertEquals("Mismatch for query: " + sql, Arrays.asList(expected), actual);
   }
 }

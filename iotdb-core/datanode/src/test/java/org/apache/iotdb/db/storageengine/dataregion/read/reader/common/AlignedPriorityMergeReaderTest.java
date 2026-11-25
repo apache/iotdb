@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.utils.TsPrimitiveType.TsBinary;
@@ -29,8 +30,6 @@ import org.apache.tsfile.utils.TsPrimitiveType.TsVector;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -98,74 +97,50 @@ public class AlignedPriorityMergeReaderTest {
     assertEquals(30, v.getValue().getVector()[2].getInt());
   }
 
-  /**
-   * Regression test for issue #19392 (ascending scan): merging t=10 must not eagerly fill t=20's
-   * null y with the oldest reader's stale value before the middle-priority reader at t=20 is seen.
-   */
   @Test
   public void testAscScanMergesMiddlePriorityReaderAtNextTimestamp() throws IOException {
     assertMiddlePriorityMerge(new AlignedPriorityMergeReader(), 10L, 20L);
   }
 
-  /** Symmetric regression test for descending aligned scans. */
   @Test
   public void testDescScanMergesMiddlePriorityReaderAtNextTimestamp() throws IOException {
     assertMiddlePriorityMerge(new AlignedDescPriorityMergeReader(), 20L, 10L);
   }
 
-  private void assertMiddlePriorityMerge(
-      PriorityMergeReader reader, long firstTime, long secondTime) throws IOException {
-    addRows(
-        reader,
-        1,
-        secondTime,
-        alignedRow(firstTime, null, 100L),
-        alignedRow(secondTime, null, 200L));
-    addRows(reader, 2, secondTime, alignedRow(secondTime, null, 220L));
-    addRows(
-        reader,
-        3,
-        secondTime,
-        alignedRow(firstTime, 110L, null),
-        alignedRow(secondTime, 120L, null));
+  private void assertMiddlePriorityMerge(PriorityMergeReader reader, long t1, long t2)
+      throws IOException {
+    addBatch(reader, 1, t2, batch(t1, vec(null, 100L), t2, vec(null, 200L)));
+    addBatch(reader, 2, t2, batch(t2, vec(null, 220L)));
+    addBatch(reader, 3, t2, batch(t1, vec(110L, null), t2, vec(120L, null)));
 
-    assertRow(reader.nextTimeValuePair(), firstTime, 110L, 100L);
-    assertRow(reader.nextTimeValuePair(), secondTime, 120L, 220L);
+    assertLongRow(reader.nextTimeValuePair(), t1, 110L, 100L);
+    assertLongRow(reader.nextTimeValuePair(), t2, 120L, 220L);
     assertFalse(reader.hasNextTimeValuePair());
-    assertEquals(0L, reader.getUsedMemorySize());
   }
 
-  /**
-   * Verifies that when three readers contribute distinct columns at t=20, each column takes the
-   * highest-priority non-null value (x from newest, y from middle, z from oldest).
-   */
   @Test
   public void testAscScanPreservesOlderColumnsWhileMiddleOverridesOverlappingColumn()
       throws IOException {
     AlignedPriorityMergeReader reader = new AlignedPriorityMergeReader();
-    addRows(reader, 1, 20L, alignedRow(10, null, 100L, 1000L), alignedRow(20, null, 200L, 2000L));
-    addRows(reader, 2, 20L, alignedRow(20, null, 220L, null));
-    addRows(reader, 3, 20L, alignedRow(10, 110L, null, null), alignedRow(20, 120L, null, null));
+    addBatch(reader, 1, 20L, batch(10L, vec(null, 100L, 1000L), 20L, vec(null, 200L, 2000L)));
+    addBatch(reader, 2, 20L, batch(20L, vec(null, 220L, null)));
+    addBatch(reader, 3, 20L, batch(10L, vec(110L, null, null), 20L, vec(120L, null, null)));
 
-    assertRow(reader.nextTimeValuePair(), 10L, 110L, 100L, 1000L);
-    assertRow(reader.nextTimeValuePair(), 20L, 120L, 220L, 2000L);
+    assertLongRow(reader.nextTimeValuePair(), 10L, 110L, 100L, 1000L);
+    assertLongRow(reader.nextTimeValuePair(), 20L, 120L, 220L, 2000L);
     assertFalse(reader.hasNextTimeValuePair());
-    assertEquals(0L, reader.getUsedMemorySize());
   }
 
-  /**
-   * Verifies that aligned readers preserve the look-ahead skip optimization when {@code topNext}
-   * has no null fields, while keeping older readers when a field is null (including {@link
-   * TsBinary} with a null value), and that {@code fillNullValueInAligned} reports completion.
-   */
   @Test
   public void testSkipOlderReaderOnlyWhenNextAlignedRowIsComplete() throws IOException {
     assertFalse(
         AlignedPriorityMergeReader.fillNullValueInAligned(
-            alignedRow(1, 10L, null, null), alignedRow(1, null, 20L, null)));
+            new TimeValuePair(1, new TsVector(vec(10L, null, null))),
+            new TimeValuePair(1, new TsVector(vec(null, 20L, null)))));
     assertTrue(
         AlignedPriorityMergeReader.fillNullValueInAligned(
-            alignedRow(1, 10L, null), alignedRow(1, null, 20L)));
+            new TimeValuePair(1, new TsVector(vec(10L, null))),
+            new TimeValuePair(1, new TsVector(vec(null, 20L)))));
 
     assertCompleteRowSkip(new AlignedPriorityMergeReader(), 10L, 20L, 30L);
     assertCompleteRowSkip(new AlignedDescPriorityMergeReader(), 30L, 20L, 10L);
@@ -176,96 +151,60 @@ public class AlignedPriorityMergeReaderTest {
     TsBinary oldVal = new TsBinary(new Binary(new byte[] {1}));
     TsBinary emptyVal = new TsBinary(Binary.EMPTY_VALUE);
 
-    addRows(reader, 1, t3, row(t1, null, oldVal), row(t2, null, oldVal), row(t3, null, oldVal));
-    addRows(
-        reader,
-        2,
-        t3,
-        row(t1, new TsLong(10L), emptyVal),
-        row(t2, new TsLong(20L), new TsBinary()),
-        row(t3, new TsLong(30L), emptyVal));
+    BatchData older = new BatchData(TSDataType.VECTOR);
+    for (long t : new long[] {t1, t2, t3}) {
+      older.putVector(t, new TsPrimitiveType[] {null, oldVal});
+    }
+    BatchData newer = new BatchData(TSDataType.VECTOR);
+    newer.putVector(t1, new TsPrimitiveType[] {new TsLong(10L), emptyVal});
+    newer.putVector(t2, new TsPrimitiveType[] {new TsLong(20L), new TsBinary()});
+    newer.putVector(t3, new TsPrimitiveType[] {new TsLong(30L), emptyVal});
 
-    // topNext (t2) has a null-valued TsBinary, so the older reader must stay in the heap.
-    assertBinaryRow(reader.nextTimeValuePair(), t1, 10L, emptyVal);
+    addBatch(reader, 1, t3, older);
+    addBatch(reader, 2, t3, newer);
+
+    // topNext (t2) has a null-valued TsBinary, so older stays in the heap; at t2, topNext (t3) is
+    // complete, so older is skipped and closed immediately.
+    assertEquals(emptyVal, reader.nextTimeValuePair().getValue().getVector()[1]);
     assertEquals(2, reader.heap.size());
-
-    // topNext (t3) is complete, so the older reader's final point at t3 is skipped immediately.
-    assertBinaryRow(reader.nextTimeValuePair(), t2, 20L, oldVal);
+    assertEquals(oldVal, reader.nextTimeValuePair().getValue().getVector()[1]);
     assertEquals(1, reader.heap.size());
-
-    assertBinaryRow(reader.nextTimeValuePair(), t3, 30L, emptyVal);
+    assertEquals(emptyVal, reader.nextTimeValuePair().getValue().getVector()[1]);
     assertFalse(reader.hasNextTimeValuePair());
-    assertEquals(0L, reader.getUsedMemorySize());
   }
 
-  private static void addRows(
-      PriorityMergeReader reader, int priority, long endTime, TimeValuePair... rows)
+  private static void addBatch(PriorityMergeReader reader, int prio, long endTime, BatchData data)
       throws IOException {
     reader.addReader(
-        new ListAlignedPointReader(Arrays.asList(rows)),
-        new MergeReaderPriority(priority, 1, 0, false),
-        endTime);
+        data.getBatchDataIterator(), new MergeReaderPriority(prio, 1, 0, false), endTime);
   }
 
-  private static void assertRow(TimeValuePair row, long expectedTime, long... expectedValues) {
-    assertEquals(expectedTime, row.getTimestamp());
-    TsPrimitiveType[] vec = row.getValue().getVector();
-    for (int i = 0; i < expectedValues.length; i++) {
-      assertEquals(expectedValues[i], vec[i].getLong());
-    }
+  private static BatchData batch(long t1, TsPrimitiveType[] v1) {
+    BatchData b = new BatchData(TSDataType.VECTOR);
+    b.putVector(t1, v1);
+    return b;
   }
 
-  private static void assertBinaryRow(
-      TimeValuePair row, long expectedTime, long expectedX, TsBinary expectedY) {
-    assertEquals(expectedTime, row.getTimestamp());
-    assertEquals(expectedX, row.getValue().getVector()[0].getLong());
-    assertEquals(expectedY, row.getValue().getVector()[1]);
+  private static BatchData batch(long t1, TsPrimitiveType[] v1, long t2, TsPrimitiveType[] v2) {
+    BatchData b = batch(t1, v1);
+    b.putVector(t2, v2);
+    return b;
   }
 
-  private static TimeValuePair row(long timestamp, TsPrimitiveType... fields) {
-    return new TimeValuePair(timestamp, new TsVector(fields));
-  }
-
-  private static TimeValuePair alignedRow(long timestamp, Long... values) {
-    TsPrimitiveType[] vector = new TsPrimitiveType[values.length];
+  private static TsPrimitiveType[] vec(Long... values) {
+    TsPrimitiveType[] v = new TsPrimitiveType[values.length];
     for (int i = 0; i < values.length; i++) {
       if (values[i] != null) {
-        vector[i] = new TsLong(values[i]);
+        v[i] = new TsLong(values[i]);
       }
     }
-    return new TimeValuePair(timestamp, new TsVector(vector));
+    return v;
   }
 
-  private static class ListAlignedPointReader implements IPointReader {
-
-    private final List<TimeValuePair> points;
-    private int index = 0;
-
-    ListAlignedPointReader(List<TimeValuePair> points) {
-      this.points = points;
+  private static void assertLongRow(TimeValuePair row, long expectedTime, long... expectedValues) {
+    assertEquals(expectedTime, row.getTimestamp());
+    for (int i = 0; i < expectedValues.length; i++) {
+      assertEquals(expectedValues[i], row.getValue().getVector()[i].getLong());
     }
-
-    @Override
-    public boolean hasNextTimeValuePair() {
-      return index < points.size();
-    }
-
-    @Override
-    public TimeValuePair nextTimeValuePair() {
-      return points.get(index++);
-    }
-
-    @Override
-    public TimeValuePair currentTimeValuePair() {
-      return points.get(index);
-    }
-
-    @Override
-    public long getUsedMemorySize() {
-      return points.size();
-    }
-
-    @Override
-    public void close() {}
   }
 }

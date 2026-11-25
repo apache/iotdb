@@ -163,18 +163,12 @@ public class PriorityMergeReader implements IPointReader {
     e.close();
   }
 
-  /**
-   * Whether {@code topNext} completely overwrites any lower-priority point at the same timestamp,
-   * allowing lower-priority readers at {@code topNext.getTimestamp()} to be skipped immediately.
-   */
+  /** Whether {@code topNext} completely overwrites lower-priority points at its timestamp. */
   protected boolean canSkipOverwrittenNext(TimeValuePair topNext) {
     return true;
   }
 
-  /**
-   * Fills null sub-sensor slots in {@code v} from {@code c} for aligned series. Returns {@code
-   * true} when {@code v} has no null slots remaining.
-   */
+  /** Fills null sub-sensor slots in {@code v} from {@code c}; returns true when none remain. */
   protected boolean fillNullValue(TimeValuePair v, TimeValuePair c) {
     return true;
   }
