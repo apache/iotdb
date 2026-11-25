@@ -459,14 +459,10 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
           partitionStatistics = new HistoricalTsFileExtractionStatistics();
           extractTsFilesInPartition(snapshot, partitionStatistics);
           if (!isTsFilePartitionSnapshotCurrent(tsFileManager, timePartition, snapshot)) {
-            final Exception retryUnpinException = unpinTsFilesInPartition(snapshot);
-            if (retryUnpinException != null) {
-              throw new PipeException(retryUnpinException.getMessage(), retryUnpinException);
-            }
-            throw new PipeException(
+            LOGGER.warn(
                 String.format(
                     DataNodePipeMessages
-                        .EXCEPTION_PIPE_ARG_ARG_TIME_PARTITION_ARG_CHANGED_DURING_HISTORICAL_TSFILE_EXTRACTION_AFTER_ONE_REFRESH_AF060BD3,
+                        .LOG_PIPE_ARG_ARG_TIME_PARTITION_ARG_CHANGED_DURING_HISTORICAL_TSFILE_EXTRACTION_AFTER_ONE_REFRESH_AF060BD3,
                     pipeName,
                     creationTime,
                     timePartition));
@@ -547,7 +543,6 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
     try {
       resource.readLock();
       resourceReadLockAcquired = true;
-      final boolean wasUnclosed = !resource.isClosed();
       if (!shouldExtractTsFileResource(resource, statistics)) {
         return;
       }
@@ -568,9 +563,6 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       } catch (final IOException e) {
         ++statistics.pinFailedCount;
         LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
-        if (wasUnclosed) {
-          throw new PipeException(e.getMessage(), e);
-        }
       }
     } finally {
       if (resourceReadLockAcquired) {
