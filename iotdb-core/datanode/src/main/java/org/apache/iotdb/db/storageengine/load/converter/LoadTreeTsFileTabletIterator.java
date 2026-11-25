@@ -42,6 +42,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.tsfile.exception.PathParseException;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -667,8 +668,7 @@ class LoadTreeTsFileTabletIterator
       final Map<String, Long> expectedPointCounts)
       throws IOException {
     final List<ChunkMetadata> valueChunkMetadata = new ArrayList<>();
-    for (final org.apache.tsfile.file.metadata.IChunkMetadata metadata :
-        alignedChunkMetadata.getValueChunkMetadataList()) {
+    for (final IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
       valueChunkMetadata.add(metadata == null ? null : (ChunkMetadata) metadata);
     }
     if (valueChunkMetadata.size() != measurements.size()) {
@@ -736,7 +736,7 @@ class LoadTreeTsFileTabletIterator
       if (values[column] != null) {
         final String measurement = measurements.get(column);
         parsedPointCounts.merge(measurement, 1L, Long::sum);
-        if (!isDeletedByMods(pageData.currentTime(), modsInfos.get(column))) {
+        if (!ModsOperationUtil.isDelete(pageData.currentTime(), modsInfos.get(column))) {
           expectedPointCounts.merge(measurement, 1L, Long::sum);
         }
       }
@@ -759,7 +759,7 @@ class LoadTreeTsFileTabletIterator
             final BatchData pageData = chunkReader.nextPageData();
             while (pageData.hasCurrent()) {
               parsedPointCounts.merge(measurement, 1L, Long::sum);
-              if (!isDeletedByMods(pageData.currentTime(), modsInfos.get(index))) {
+              if (!ModsOperationUtil.isDelete(pageData.currentTime(), modsInfos.get(index))) {
                 expectedPointCounts.merge(measurement, 1L, Long::sum);
               }
               pageData.next();
@@ -768,22 +768,6 @@ class LoadTreeTsFileTabletIterator
         }
       }
     }
-  }
-
-  private boolean isDeletedByMods(final long timestamp, final ModsInfo modsInfo) {
-    final List<ModEntry> modifications = modsInfo.getMods();
-    int left = 0;
-    int right = modifications.size();
-    while (left < right) {
-      final int middle = left + (right - left) / 2;
-      if (modifications.get(middle).getTimeRange().getMax() < timestamp) {
-        left = middle + 1;
-      } else {
-        right = middle;
-      }
-    }
-    return left < modifications.size()
-        && modifications.get(left).getTimeRange().getMin() <= timestamp;
   }
 
   private void verifyParsedPointCounts(
@@ -985,13 +969,19 @@ class LoadTreeTsFileTabletIterator
           queryFallbackPointCountsByDevice.getOrDefault(
               deviceEntry.getKey(), Collections.emptyMap());
       for (final Map.Entry<String, Long> measurementEntry : deviceEntry.getValue().entrySet()) {
-        if (!Objects.equals(
-            measurementEntry.getValue(),
-            queriedPointCounts.getOrDefault(measurementEntry.getKey(), 0L))) {
+        final long expectedPointCount = measurementEntry.getValue();
+        final long queriedPointCount =
+            queriedPointCounts.getOrDefault(measurementEntry.getKey(), 0L);
+        if (expectedPointCount != queriedPointCount) {
           unrecoverableQueryFailure =
               new IllegalStateException(
-                  StorageEngineMessages
-                      .EXCEPTION_FAILED_TO_ITERATE_TABLETS_WHILE_LOADING_TSFILE_4E6289F3);
+                  String.format(
+                      StorageEngineMessages
+                          .EXCEPTION_QUERY_FALLBACK_POINT_COUNT_MISMATCH_FOR_DEVICE_ARG_MEASUREMENT_ARG_EXPECTED_ARG_POINTS_BUT_RECOVERED_ARG_POINTS_0BEC4004,
+                      deviceEntry.getKey(),
+                      measurementEntry.getKey(),
+                      expectedPointCount,
+                      queriedPointCount));
           return;
         }
       }

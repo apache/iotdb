@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -657,6 +658,15 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
 
     Assert.assertTrue(status.isPresent());
     Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.get().getCode());
+    Assert.assertEquals(
+        String.format(
+            StorageEngineMessages
+                .EXCEPTION_QUERY_FALLBACK_POINT_COUNT_MISMATCH_FOR_DEVICE_ARG_MEASUREMENT_ARG_EXPECTED_ARG_POINTS_BUT_RECOVERED_ARG_POINTS_0BEC4004,
+            ALIGNED_DEVICE,
+            "s0",
+            3,
+            2),
+        status.get().getMessage());
     assertBooleanSeriesData(loadedPointData, ALIGNED_DEVICE + ".s0", "0=true", "1=false", "2=true");
     assertBooleanSeriesData(
         loadedPointData, ALIGNED_DEVICE + ".s1", "0=false", "1=true", "2=false", "3=true");
