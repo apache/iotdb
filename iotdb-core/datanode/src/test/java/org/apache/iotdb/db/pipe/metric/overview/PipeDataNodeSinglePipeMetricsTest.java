@@ -97,13 +97,13 @@ public class PipeDataNodeSinglePipeMetricsTest {
           "1",
           realtimeSource.getPipeTaskMeta(),
           1,
-          "1",
+          1L,
           realtimeSource.getSourceId(),
           mock(CommitterKey.class));
       metrics.markDataRegionCompletionInvalid(
           pipeName,
           creationTime,
-          1,
+          "1",
           realtimeSource.getPipeTaskMeta(),
           realtimeSource.getSourceId());
       metrics.deregister(realtimeSource, assigner);
