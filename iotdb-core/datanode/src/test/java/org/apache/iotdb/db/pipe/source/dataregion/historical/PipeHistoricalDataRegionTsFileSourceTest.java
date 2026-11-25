@@ -409,7 +409,7 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
           Collections.emptyList(),
           System.currentTimeMillis());
 
-      Assert.assertEquals(1, source.getPendingQueueSize());
+      Assert.assertEquals(0, source.getPendingQueueSize());
       Assert.assertFalse(
           ((Set<TsFileResource>) getPrivateField(source, "filteredTsFileResources"))
               .contains(resource));
