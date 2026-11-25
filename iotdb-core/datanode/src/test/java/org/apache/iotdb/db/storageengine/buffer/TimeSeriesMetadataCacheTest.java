@@ -476,7 +476,7 @@ public class TimeSeriesMetadataCacheTest {
     try {
       String filePath = "target/batch-absent-device-bloom.tsfile";
       IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.absent");
-      Set<String> allSensors = Collections.singleton("");
+      Set<String> allSensors = new HashSet<>(Arrays.asList("", "s1", "s2"));
 
       TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
       fileReaderManager.setReaderForTest(tsFileID, true, reader);
@@ -484,9 +484,13 @@ public class TimeSeriesMetadataCacheTest {
       Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class)))
           .thenReturn(BloomFilter.getEmptyBloomFilter(0.05, 1));
 
+      QueryContext context = new QueryContext(false, false);
       Map<String, TimeseriesMetadata> result =
-          getTimeseriesMetadata(cache, filePath, tsFileID, deviceID, allSensors, false);
+          cache.getTimeseriesMetadata(
+              filePath, tsFileID, deviceID, allSensors, false, false, context, null);
       assertNull(result);
+      assertEquals(1, context.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount().get());
+      assertEquals(0, context.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize().get());
       Mockito.verify(reader, Mockito.never())
           .readTimeseriesMetadataForMeasurements(
               Mockito.any(),
@@ -1200,6 +1204,11 @@ public class TimeSeriesMetadataCacheTest {
         assertNotNull(measurement, result.get(measurement));
         assertEquals(measurement, result.get(measurement).getMeasurementId());
       }
+      long lookupsBefore =
+          EnvironmentUtils.TEST_QUERY_FI_CONTEXT
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataFromDiskCount()
+              .get();
       assertNull(
           cache.getTimeseriesMetadata(
               filePath,
@@ -1210,6 +1219,12 @@ public class TimeSeriesMetadataCacheTest {
               false,
               EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
               null));
+      assertEquals(
+          lookupsBefore + 1,
+          EnvironmentUtils.TEST_QUERY_FI_CONTEXT
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataFromDiskCount()
+              .get());
     } finally {
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setQueryDataSourceType(
           QueryDataSourceType.SERIES_SCAN);

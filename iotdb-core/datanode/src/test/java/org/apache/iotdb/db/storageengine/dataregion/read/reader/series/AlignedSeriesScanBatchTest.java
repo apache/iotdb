@@ -44,6 +44,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -56,10 +57,12 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.LongConsumer;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createChunkWriter;
@@ -168,6 +171,30 @@ public class AlignedSeriesScanBatchTest {
     try {
       metadataCache.clear();
       bloomFilterCache.clear();
+      TsFileSequenceReader reader = Mockito.spy(new TsFileSequenceReader(file.getAbsolutePath()));
+      FileReaderManager.getInstance().setReaderForTest(resource.getTsFileID(), true, reader);
+      BloomFilter filter = reader.readBloomFilter();
+      Set<String> expected = new HashSet<>(scanPath.getAllSensors());
+      expected.removeIf(measurement -> !filter.contains(DEVICE + "." + measurement));
+      Assert.assertTrue(
+          "The fixture must exclude at least one projected column",
+          expected.size() < COLUMN_COUNT + 1);
+
+      List<Set<String>> readerRequests = new ArrayList<>();
+      Mockito.doAnswer(
+              invocation -> {
+                // The cache removes entries from pending after the reader returns.
+                readerRequests.add(new HashSet<>(invocation.<Collection<String>>getArgument(2)));
+                return invocation.callRealMethod();
+              })
+          .when(reader)
+          .readTimeseriesMetadataForMeasurements(
+              Mockito.eq(DEVICE),
+              Mockito.<long[]>isNull(),
+              Mockito.anyCollection(),
+              Mockito.anySet(),
+              Mockito.anyBoolean(),
+              Mockito.any(LongConsumer.class));
       long diskReadsBefore =
           EnvironmentUtils.TEST_QUERY_FI_CONTEXT
               .getQueryStatistics()
@@ -194,18 +221,15 @@ public class AlignedSeriesScanBatchTest {
         }
       }
 
-      // the bloom filter excludes the 270 absent columns; a few may survive as false positives,
-      // but the sparse projection must still look up far fewer series than it selects
+      Assert.assertEquals(Collections.singletonList(expected), readerRequests);
+      // All projected measurements missed the cache, including those excluded by the filter.
       long diskReads =
           EnvironmentUtils.TEST_QUERY_FI_CONTEXT
                   .getQueryStatistics()
                   .getLoadTimeSeriesMetadataFromDiskCount()
                   .get()
               - diskReadsBefore;
-      // per-series counters: bloom-excluded measurements count as disk lookups, as they did on the
-      // per-column path
-      Assert.assertTrue("disk lookups: " + diskReads, diskReads >= 1);
-      Assert.assertTrue("disk lookups: " + diskReads, diskReads <= COLUMN_COUNT + 1);
+      Assert.assertEquals(COLUMN_COUNT + 1, diskReads);
     } finally {
       EnvironmentUtils.TEST_QUERY_FI_CONTEXT.setIgnoreAllNullRows(previousIgnoreAllNullRows);
       cleanup(file, resource, metadataCache, bloomFilterCache);

@@ -336,8 +336,8 @@ public class TimeSeriesMetadataCache {
    *
    * <p>The returned map holds copies of the cached (or freshly read) metadata, so the caller may
    * apply {@code setModified} and {@code setChunkMetadataLoader} without corrupting cached entries.
-   * Load statistics are counted per requested measurement. A cached absent time column resolves the
-   * whole device in one lookup.
+   * Load statistics count only the time-column lookup when the cache or BloomFilter rules out the
+   * whole device before the value columns are checked.
    *
    * @param requested selected measurements, including the time column ({@code ""})
    * @param deviceMetadataIndexNodeOffset non-null for external tsfiles, which address the device
@@ -398,6 +398,7 @@ public class TimeSeriesMetadataCache {
             deviceName = device.toString();
             devicePrefix = deviceName + IoTDBConstant.PATH_SEPARATOR;
             if (!bloomFilter.contains(devicePrefix)) {
+              lookupCount = 1;
               return null;
             }
           }
@@ -492,6 +493,7 @@ public class TimeSeriesMetadataCache {
         if (bloomFilter != null) {
           String devicePrefix = device.toString() + IoTDBConstant.PATH_SEPARATOR;
           if (!bloomFilter.contains(devicePrefix)) {
+            lookupCount = 1;
             return null;
           }
           bloomAbsentMeasurements(
@@ -517,7 +519,7 @@ public class TimeSeriesMetadataCache {
           timeSeriesMetadataIoSizeRecorder);
     } finally {
       long endTime = nanoTime();
-      // BloomFilter rejections count as misses; columns skipped by a cache hit do not.
+      // BloomFilter rejections count as misses; value columns skipped by the device check do not.
       long diskLookupCount = lookupCount - cacheHitCount;
       long cacheLookupTime;
       long diskLookupTime;
