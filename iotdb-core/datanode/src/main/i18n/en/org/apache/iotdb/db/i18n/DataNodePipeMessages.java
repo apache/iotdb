@@ -3188,4 +3188,12 @@ public final class DataNodePipeMessages {
       "Deletion resource manager for DataRegion %s is closed or deleted.";
   public static final String LOG_DELETION_PERSIST_ARG_TIMED_OUT_WAITING_FOR_ARG_DELETIONS_TO_FLUSH_BEFORE_SHUTDOWN_52469B0D =
       "Deletion persist-{}: timed out waiting for {} deletions to flush before shutdown.";
+  public static final String MESSAGE_PIPE_TRANSFER_CRC_MISMATCH_CRC_MISMATCH_EXPECTED_ARG_BUT_RECEIVED_ARG_AD3D3CBD =
+      "[PIPE_TRANSFER_CRC_MISMATCH] CRC mismatch: expected %d but received %d";
+  public static final String LOG_RECEIVER_REPORTED_STRUCTURAL_CORRUPTION_IN_TSFILE_ARG_SENDER_SHA_256_ARG_RECEIVER_STATUS_ARG_026A14BB =
+      "Receiver reported structural corruption in TsFile {}; sender SHA-256: {}; receiver status: {}";
+  public static final String LOG_CRC_MISMATCH_WHILE_TRANSFERRING_TSFILE_ARG_SENDER_SHA_256_ARG_NETWORK_TRANSMISSION_CORRUPTED_THE_PAYLOAD_ARG_DE6B6FAD =
+      "CRC mismatch while transferring TsFile {} (sender SHA-256: {}); network transmission corrupted the payload: {}";
+  public static final String LOG_FAILED_TO_ENFORCE_MAXIMUM_SIZE_FOR_ACTIVE_LOAD_FAILURE_DIRECTORY_ARG_D2F9631D =
+      "Failed to enforce maximum size for active load failure directory {}.";
 }

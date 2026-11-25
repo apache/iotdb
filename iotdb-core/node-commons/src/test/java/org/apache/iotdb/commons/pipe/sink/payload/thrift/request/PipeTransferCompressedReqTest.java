@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.sink.payload.thrift.request;
 
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.utils.BytesUtils;
@@ -96,6 +97,31 @@ public class PipeTransferCompressedReqTest {
         maxDecompressedLength - compressedBodySize,
         PipeTransferCompressedReq.getMaxAdditionalDecompressedLengthInBytes(compressedReq));
     Assert.assertEquals(0, compressedReq.body.position());
+  }
+
+  @Test
+  public void testCompressedRequestRecalculatesCrcForCompressedFrame() throws IOException {
+    final TPipeTransferReq originalReq = new TPipeTransferReq();
+    originalReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    originalReq.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
+    originalReq.body = ByteBuffer.wrap(new byte[] {1, 2, 3, 4});
+    PipeTransferIntegrityUtils.setCrc32(originalReq);
+
+    final TPipeTransferReq compressedReq =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            originalReq,
+            Collections.singletonList(
+                PipeCompressorFactory.getCompressor(
+                    PipeCompressor.PipeCompressionType.GZIP.getIndex())));
+
+    Assert.assertTrue(compressedReq.isSetCrc32());
+    Assert.assertEquals(
+        PipeTransferIntegrityUtils.calculateCrc32(compressedReq), compressedReq.getCrc32());
+    final TPipeTransferReq decompressedReq =
+        PipeTransferCompressedReq.fromTPipeTransferReq(compressedReq);
+    Assert.assertTrue(decompressedReq.isSetCrc32());
+    Assert.assertEquals(
+        PipeTransferIntegrityUtils.calculateCrc32(decompressedReq), decompressedReq.getCrc32());
   }
 
   @Test

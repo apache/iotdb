@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeSnapsho
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -53,6 +54,7 @@ import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -104,6 +106,22 @@ public class IoTDBDataNodeReceiverTest {
           .getConfig()
           .setDataRegionConsensusProtocolClass(originalProtocol);
     }
+  }
+
+  @Test
+  public void testReceiverRejectsRequestWithMismatchedCrcBeforeDispatch() {
+    final TPipeTransferReq request = new TPipeTransferReq();
+    request.setVersion((byte) 1);
+    request.setType((short) 100);
+    request.setBody(new byte[] {1, 2, 3});
+    PipeTransferIntegrityUtils.setCrc32(request);
+    request.setBody(new byte[] {1, 2, 4});
+
+    final TPipeTransferResp response = new TestingDataNodeReceiver().receive(request);
+
+    Assert.assertEquals(
+        TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
+    Assert.assertTrue(PipeTransferIntegrityUtils.isCrcMismatch(response.getStatus().getMessage()));
   }
 
   @Test
@@ -706,6 +724,21 @@ public class IoTDBDataNodeReceiverTest {
             true,
             true,
             true));
+    Assert.assertFalse(
+        IoTDBDataNodeReceiver.shouldTakeOverToAsyncLoad(
+            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+                .setMessage(PipeTransferIntegrityUtils.STRUCTURE_CORRUPTION_MARKER),
+            false,
+            true,
+            true,
+            true));
+  }
+
+  @Test
+  public void testCrcRetryCapableSenderUsesSynchronousLoad() {
+    Assert.assertFalse(IoTDBDataNodeReceiver.shouldLoadTsFileAsynchronously(true, true));
+    Assert.assertFalse(IoTDBDataNodeReceiver.shouldLoadTsFileAsynchronously(false, true));
+    Assert.assertTrue(IoTDBDataNodeReceiver.shouldLoadTsFileAsynchronously(true, false));
   }
 
   @Test

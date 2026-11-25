@@ -44,6 +44,7 @@ import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistr
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
@@ -117,6 +118,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaSta
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadTsFileLoader;
 import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
@@ -128,15 +130,22 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -148,6 +157,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -268,6 +278,19 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp receiveInternal(final TPipeTransferReq req) {
     try {
       final long startTime = System.nanoTime();
+      if (req.isSetCrc32()) {
+        final long actualCrc32 = PipeTransferIntegrityUtils.calculateCrc32(req);
+        if (actualCrc32 != req.getCrc32()) {
+          return new TPipeTransferResp(
+              RpcUtils.getStatus(
+                  TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                  String.format(
+                      DataNodePipeMessages
+                          .MESSAGE_PIPE_TRANSFER_CRC_MISMATCH_CRC_MISMATCH_EXPECTED_ARG_BUT_RECEIVED_ARG_AD3D3CBD,
+                      req.getCrc32(),
+                      actualCrc32)));
+        }
+      }
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
         final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
@@ -775,7 +798,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
       throws IOException {
-    return isUsingAsyncLoadTsFileStrategy.get()
+    return shouldLoadTsFileAsynchronously(
+            isUsingAsyncLoadTsFileStrategy.get(), supportsCrcRetry.get())
         ? loadTsFileAsync(null, Collections.singletonList(fileAbsolutePath), false, null)
         : loadTsFileSync(null, fileAbsolutePath, false);
   }
@@ -802,7 +826,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     PipeTsFileConversionTaskManager.enter(taskId);
     try {
       final TSStatus status;
-      if (isUsingAsyncLoadTsFileStrategy.get()) {
+      if (shouldLoadTsFileAsynchronously(
+          isUsingAsyncLoadTsFileStrategy.get(), supportsCrcRetry.get())) {
         status =
             loadTsFileAsync(databaseName, fileAbsolutePaths, shouldWaitForSchemaBeforeLoad, taskId);
       } else {
@@ -815,7 +840,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (!isUsingAsyncLoadTsFileStrategy.get()) {
+        if (!shouldLoadTsFileAsynchronously(
+            isUsingAsyncLoadTsFileStrategy.get(), supportsCrcRetry.get())) {
           PipeTsFileConversionTaskManager.markSuccess(taskId);
         }
         return status;
@@ -823,7 +849,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
       if (shouldTakeOverToAsyncLoad(
           status,
-          isUsingAsyncLoadTsFileStrategy.get(),
+          shouldLoadTsFileAsynchronously(
+              isUsingAsyncLoadTsFileStrategy.get(), supportsCrcRetry.get()),
           shouldConvertDataTypeOnTypeMismatch,
           asyncLoadOnTypeMismatch,
           PipeTsFileConversionTaskManager.isTypeMismatchDetected(taskId))) {
@@ -870,8 +897,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return !usingAsyncLoadStrategy
         && shouldConvertOnTypeMismatch
         && asyncLoadOnTypeMismatch
+        && (status == null
+            || !PipeTransferIntegrityUtils.isStructureCorruption(status.getMessage()))
         && !isLoadTemporarilyUnavailable(status)
         && typeMismatchDetected;
+  }
+
+  static boolean shouldLoadTsFileAsynchronously(
+      final boolean usingAsyncLoadStrategy, final boolean supportsCrcRetry) {
+    return usingAsyncLoadStrategy && !supportsCrcRetry;
   }
 
   private static boolean isLoadTemporarilyUnavailable(final TSStatus status) {
@@ -936,6 +970,77 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         || (task.getState() != PipeTsFileConversionTaskManager.State.PENDING
             && task.getState() != PipeTsFileConversionTaskManager.State.RUNNING
             && task.getState() != PipeTsFileConversionTaskManager.State.PAUSED);
+  }
+
+  @Override
+  protected boolean onFileStructureLoadFailure(
+      final List<String> fileAbsolutePaths, final TSStatus status) {
+    synchronized (ActiveLoadTsFileLoader.class) {
+      return archiveStructureCorruptedFiles(fileAbsolutePaths, status);
+    }
+  }
+
+  private boolean archiveStructureCorruptedFiles(
+      final List<String> fileAbsolutePaths, final TSStatus status) {
+    final File failDirectory = new File(IOTDB_CONFIG.getLoadActiveListeningFailDir());
+    for (final String filePath : fileAbsolutePaths) {
+      if (filePath == null || !filePath.endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+        continue;
+      }
+      final File tsFile = new File(filePath);
+      if (!tsFile.isFile()) {
+        continue;
+      }
+
+      File stagingDirectory = null;
+      final File targetDirectory = new File(failDirectory, "pipe-structure-" + UUID.randomUUID());
+      try {
+        Files.createDirectories(failDirectory.toPath());
+        stagingDirectory =
+            Files.createTempDirectory(failDirectory.toPath(), ".pipe-structure-staging-").toFile();
+        final List<File> files =
+            List.of(
+                tsFile,
+                new File(LoadUtil.getTsFileResourcePath(filePath)),
+                new File(LoadUtil.getTsFileModsV1Path(filePath)),
+                new File(LoadUtil.getTsFileModsV2Path(filePath)));
+        for (final File file : files) {
+          if (file.isFile()) {
+            Files.copy(file.toPath(), stagingDirectory.toPath().resolve(file.getName()));
+          }
+        }
+        Files.writeString(
+            stagingDirectory.toPath().resolve(tsFile.getName() + ".load-failure"),
+            status.getMessage(),
+            StandardCharsets.UTF_8);
+        try {
+          Files.move(
+              stagingDirectory.toPath(), targetDirectory.toPath(), StandardCopyOption.ATOMIC_MOVE);
+        } catch (final AtomicMoveNotSupportedException e) {
+          Files.move(stagingDirectory.toPath(), targetDirectory.toPath());
+        }
+        stagingDirectory = null;
+        if (!ActiveLoadTsFileLoader.enforceFailureDirectoryMaxSize(
+            failDirectory, targetDirectory)) {
+          return false;
+        }
+      } catch (final IOException e) {
+        LOGGER.warn(
+            DataNodePipeMessages
+                .LOG_FAILED_TO_ENFORCE_MAXIMUM_SIZE_FOR_ACTIVE_LOAD_FAILURE_DIRECTORY_ARG_D2F9631D,
+            failDirectory,
+            e);
+        if (stagingDirectory != null && stagingDirectory.exists()) {
+          try {
+            FileUtils.deleteDirectory(stagingDirectory);
+          } catch (final IOException cleanupException) {
+            e.addSuppressed(cleanupException);
+          }
+        }
+        return false;
+      }
+    }
+    return true;
   }
 
   static Map<String, String> buildLoadTsFileAttributesForAsync(
@@ -1199,14 +1304,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TPipeTransferResp receiveNestedRequest(
       final TPipeTransferReq req, final boolean strictUnidirectional) {
-    return receive(
-        strictUnidirectional
-            ? new AirGapPseudoTPipeTransferRequest()
-                .setStrictUnidirectional(true)
-                .setVersion(req.version)
-                .setType(req.type)
-                .setBody(req.body)
-            : req);
+    if (!strictUnidirectional) {
+      return receive(req);
+    }
+    final AirGapPseudoTPipeTransferRequest airGapRequest =
+        new AirGapPseudoTPipeTransferRequest().setStrictUnidirectional(true);
+    airGapRequest.setVersion(req.version);
+    airGapRequest.setType(req.type);
+    airGapRequest.setBody(req.body);
+    if (req.isSetCrc32()) {
+      airGapRequest.setCrc32(req.getCrc32());
+    }
+    return receive(airGapRequest);
   }
 
   private TPipeTransferResp handleTransferSlice(

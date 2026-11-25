@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.RetryUtils;
@@ -568,7 +569,6 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       throws PipeException, IOException {
 
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
-    final TPipeTransferResp resp;
     final String conversionTaskId =
         shouldAsyncLoadTsFileOnTypeMismatch
             ? PipeTransferTsFileSealWithModReq.generateConversionTaskId(
@@ -579,81 +579,42 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
                 Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver())
             : null;
 
-    // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
-    if (Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver()) {
-      transferFilePieces(pipeName2WeightMap, modFile, clientAndStatus, true);
-      transferFilePieces(pipeName2WeightMap, tsFile, clientAndStatus, true);
-
-      // 2. Transfer file seal signal with mod, which means the file is transferred completely
-      try {
-        final TPipeTransferReq req =
-            compressIfNeeded(
-                PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        modFile.getName(),
-                        modFile.length(),
-                        tsFile.getName(),
-                        tsFile.length(),
-                        dataBaseName,
-                        shouldWaitForSchemaBeforeLoad)
-                    .setConversionTaskInfo(conversionTaskId, shouldAsyncLoadTsFileOnTypeMismatch));
-
-        pipeName2WeightMap.forEach(
-            (pipePair, weight) ->
-                rateLimitIfNeeded(
-                    pipePair.getLeft(),
-                    pipePair.getRight(),
-                    clientAndStatus.getLeft().getEndPoint(),
-                    (long) (req.getBody().length * weight)));
-
-        resp = clientAndStatus.getLeft().pipeTransfer(req);
-      } catch (final Exception e) {
-        clientAndStatus.setRight(false);
-        clientManager.adjustTimeoutIfNecessary(e);
-        throw new PipeConnectionException(
-            String.format(
-                DataNodePipeMessages
-                    .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_SEAL_FILE_S_BECAUSE_S_DC87F263,
-                tsFile,
-                e.getMessage()),
-            e);
+    final boolean transferMod =
+        Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver();
+    TPipeTransferResp resp = null;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      final boolean crcEnabled = attempt > 0;
+      if (transferMod) {
+        transferFilePieces(pipeName2WeightMap, modFile, clientAndStatus, true, crcEnabled);
       }
-    } else {
-      transferFilePieces(pipeName2WeightMap, tsFile, clientAndStatus, false);
-
-      // 2. Transfer file seal signal without mod, which means the file is transferred completely
-      try {
-        final TPipeTransferReq req =
-            compressIfNeeded(
-                PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        tsFile.getName(),
-                        tsFile.length(),
-                        dataBaseName,
-                        shouldWaitForSchemaBeforeLoad)
-                    .setConversionTaskInfo(conversionTaskId, shouldAsyncLoadTsFileOnTypeMismatch));
-
-        pipeName2WeightMap.forEach(
-            (pipePair, weight) ->
-                rateLimitIfNeeded(
-                    pipePair.getLeft(),
-                    pipePair.getRight(),
-                    clientAndStatus.getLeft().getEndPoint(),
-                    (long) (req.getBody().length * weight)));
-
-        resp = clientAndStatus.getLeft().pipeTransfer(req);
-      } catch (final Exception e) {
-        clientAndStatus.setRight(false);
-        clientManager.adjustTimeoutIfNecessary(e);
-        throw new PipeConnectionException(
-            String.format(
-                DataNodePipeMessages
-                    .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_SEAL_FILE_S_BECAUSE_S_DC87F263,
-                tsFile,
-                e.getMessage()),
-            e);
+      transferFilePieces(pipeName2WeightMap, tsFile, clientAndStatus, transferMod, crcEnabled);
+      resp =
+          transferTsFileSeal(
+              pipeName2WeightMap,
+              clientAndStatus,
+              tsFile,
+              modFile,
+              transferMod,
+              dataBaseName,
+              conversionTaskId,
+              crcEnabled);
+      if (attempt == 0
+          && PipeTransferIntegrityUtils.isStructureCorruption(resp.getStatus().getMessage())) {
+        logReceiverReportedStructureCorruption(tsFile, resp.getStatus());
+        continue;
       }
+      break;
     }
 
     final TSStatus status = resp.getStatus();
+    if (PipeTransferIntegrityUtils.isCrcMismatch(status.getMessage())) {
+      logCrcMismatch(tsFile, status);
+      receiverStatusHandler.handle(status, status.getMessage(), tsFile.getName());
+      throw new PipeException(status.getMessage());
+    }
+    if (PipeTransferIntegrityUtils.isStructureCorruption(status.getMessage())) {
+      logReceiverReportedStructureCorruption(tsFile, status);
+    }
     // Only handle the failed statuses to avoid string format performance overhead
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -669,12 +630,93 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     LOGGER.info(DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE, tsFile);
   }
 
+  private TPipeTransferResp transferTsFileSeal(
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final File tsFile,
+      final File modFile,
+      final boolean transferMod,
+      final String dataBaseName,
+      final String conversionTaskId,
+      final boolean crcEnabled)
+      throws PipeException {
+    try {
+      final TPipeTransferReq uncompressedReq =
+          transferMod
+              ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                      modFile.getName(),
+                      modFile.length(),
+                      tsFile.getName(),
+                      tsFile.length(),
+                      dataBaseName,
+                      shouldWaitForSchemaBeforeLoad)
+                  .setConversionTaskInfo(conversionTaskId, shouldAsyncLoadTsFileOnTypeMismatch)
+              : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                      tsFile.getName(),
+                      tsFile.length(),
+                      dataBaseName,
+                      shouldWaitForSchemaBeforeLoad)
+                  .setConversionTaskInfo(conversionTaskId, shouldAsyncLoadTsFileOnTypeMismatch);
+      if (crcEnabled) {
+        PipeTransferIntegrityUtils.setCrc32(uncompressedReq);
+      }
+      final TPipeTransferReq req = compressIfNeeded(uncompressedReq);
+      pipeName2WeightMap.forEach(
+          (pipePair, weight) ->
+              rateLimitIfNeeded(
+                  pipePair.getLeft(),
+                  pipePair.getRight(),
+                  clientAndStatus.getLeft().getEndPoint(),
+                  (long) (req.getBody().length * weight)));
+      return clientAndStatus.getLeft().pipeTransfer(req);
+    } catch (final Exception e) {
+      clientAndStatus.setRight(false);
+      clientManager.adjustTimeoutIfNecessary(e);
+      throw new PipeConnectionException(
+          String.format(
+              DataNodePipeMessages.PIPE_EXCEPTION_NETWORK_ERROR_WHEN_SEAL_FILE_S_BECAUSE_S_DC87F263,
+              tsFile,
+              e.getMessage()),
+          e);
+    }
+  }
+
+  private void logReceiverReportedStructureCorruption(final File tsFile, final TSStatus status) {
+    LOGGER.warn(
+        DataNodePipeMessages
+            .LOG_RECEIVER_REPORTED_STRUCTURAL_CORRUPTION_IN_TSFILE_ARG_SENDER_SHA_256_ARG_RECEIVER_STATUS_ARG_026A14BB,
+        tsFile,
+        PipeTransferIntegrityUtils.calculateSha256OrUnavailable(
+            tsFile, DataNodePipeMessages.MESSAGE_UNKNOWN_AD921D60),
+        status);
+  }
+
+  private void logCrcMismatch(final File tsFile, final TSStatus status) {
+    LOGGER.error(
+        DataNodePipeMessages
+            .LOG_CRC_MISMATCH_WHILE_TRANSFERRING_TSFILE_ARG_SENDER_SHA_256_ARG_NETWORK_TRANSMISSION_CORRUPTED_THE_PAYLOAD_ARG_DE6B6FAD,
+        tsFile,
+        PipeTransferIntegrityUtils.calculateSha256OrUnavailable(
+            tsFile, DataNodePipeMessages.MESSAGE_UNKNOWN_AD921D60),
+        status);
+  }
+
   @Override
   protected void transferFilePieces(
       final Map<Pair<String, Long>, Double> pipe2WeightMap,
       final File file,
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
       final boolean isMultiFile)
+      throws PipeException, IOException {
+    transferFilePieces(pipe2WeightMap, file, clientAndStatus, isMultiFile, false);
+  }
+
+  private void transferFilePieces(
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
+      final File file,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final boolean isMultiFile,
+      final boolean crcEnabled)
       throws PipeException, IOException {
     final int readFileBufferSize = getReadFileBufferSize(file);
     try (final PipeTsFileMemoryBlock ignored =
@@ -695,6 +737,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
                 file,
                 clientAndStatus,
                 isMultiFile,
+                crcEnabled,
                 readBuffer,
                 position,
                 readLength,
@@ -717,6 +760,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       final File file,
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
       final boolean isMultiFile,
+      final boolean crcEnabled,
       final byte[] readBuffer,
       final long position,
       final int readLength,
@@ -724,7 +768,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       throws PipeException, IOException {
     final byte[] payLoad = buildFilePiecePayload(readBuffer, readLength);
     final PipeTransferFilePieceResp resp =
-        doTransferFilePiece(pipe2WeightMap, file, clientAndStatus, isMultiFile, payLoad, position);
+        doTransferFilePiece(
+            pipe2WeightMap, file, clientAndStatus, isMultiFile, crcEnabled, payLoad, position);
     return handleTransferFilePieceResp(file, clientAndStatus, reader, position + readLength, resp);
   }
 
@@ -739,15 +784,19 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       final File file,
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
       final boolean isMultiFile,
+      final boolean crcEnabled,
       final byte[] payLoad,
       final long position)
       throws PipeException, IOException {
     try {
-      final TPipeTransferReq req =
-          compressIfNeeded(
-              isMultiFile
-                  ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
-                  : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
+      final TPipeTransferReq uncompressedReq =
+          isMultiFile
+              ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
+              : getTransferSingleFilePieceReq(file.getName(), position, payLoad);
+      if (crcEnabled) {
+        PipeTransferIntegrityUtils.setCrc32(uncompressedReq);
+      }
+      final TPipeTransferReq req = compressIfNeeded(uncompressedReq);
       pipe2WeightMap.forEach(
           (namePair, weight) ->
               rateLimitIfNeeded(
@@ -777,6 +826,11 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       final PipeTransferFilePieceResp resp)
       throws PipeException, IOException {
     final TSStatus status = resp.getStatus();
+    if (PipeTransferIntegrityUtils.isCrcMismatch(status.getMessage())) {
+      logCrcMismatch(file, status);
+      receiverStatusHandler.handle(status, status.getMessage(), file.getName());
+      throw new PipeException(status.getMessage());
+    }
     if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
       reader.seek(resp.getEndWritingOffset());
       LOGGER.info(DataNodePipeMessages.REDIRECT_FILE_POSITION_TO, resp.getEndWritingOffset());

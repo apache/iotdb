@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorFactory;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.utils.BytesUtils;
@@ -78,6 +79,9 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
       compressedReq.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
+    if (originalReq.isSetCrc32()) {
+      PipeTransferIntegrityUtils.setCrc32(compressedReq);
+    }
     return compressedReq;
   }
 
@@ -109,6 +113,9 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     decompressedReq.version = ReadWriteIOUtils.readByte(decompressedBuffer);
     decompressedReq.type = ReadWriteIOUtils.readShort(decompressedBuffer);
     decompressedReq.body = decompressedBuffer.slice();
+    if (transferReq.isSetCrc32()) {
+      PipeTransferIntegrityUtils.setCrc32(decompressedReq);
+    }
 
     return decompressedReq;
   }

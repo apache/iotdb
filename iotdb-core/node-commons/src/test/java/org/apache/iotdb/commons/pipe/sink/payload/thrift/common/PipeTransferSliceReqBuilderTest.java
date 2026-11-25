@@ -83,6 +83,22 @@ public class PipeTransferSliceReqBuilderTest {
   }
 
   @Test
+  public void testCrcEnabledRequestsCarryCrcOnEverySlice() throws Exception {
+    final TPipeTransferReq req = createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 10);
+    PipeTransferIntegrityUtils.setCrc32(req);
+    final int bodySizeLimit = PipeTransferSliceReqBuilder.getBodySizeLimit();
+    final int sliceCount = PipeTransferSliceReqBuilder.getSliceCount(req, bodySizeLimit);
+
+    for (int sliceIndex = 0; sliceIndex < sliceCount; sliceIndex++) {
+      final PipeTransferSliceReq sliceReq =
+          PipeTransferSliceReqBuilder.buildSliceReq(
+              req, 123, sliceIndex, sliceCount, bodySizeLimit);
+      Assert.assertTrue(sliceReq.isSetCrc32());
+      Assert.assertEquals(PipeTransferIntegrityUtils.calculateCrc32(sliceReq), sliceReq.getCrc32());
+    }
+  }
+
+  @Test
   public void testShouldSliceOnlyForVersion1RequestsAboveThreshold() {
     final int bodySizeLimit = PipeTransferSliceReqBuilder.getBodySizeLimit();
 
@@ -161,6 +177,26 @@ public class PipeTransferSliceReqBuilderTest {
     final byte[] assembledBody = new byte[assembledReq.body.remaining()];
     assembledReq.body.get(assembledBody);
     Assert.assertArrayEquals(new byte[] {0, 1, 2, 3, 4, 5}, assembledBody);
+  }
+
+  @Test
+  public void testSliceReqHandlerPreservesCrcForCompleteRequest() throws IOException {
+    final TPipeTransferReq req = createReq(IoTDBSinkRequestVersion.VERSION_1.getVersion(), 6);
+    PipeTransferIntegrityUtils.setCrc32(req);
+    final int bodySizeLimit = 4;
+    final int sliceCount = PipeTransferSliceReqBuilder.getSliceCount(req, bodySizeLimit);
+    final PipeTransferSliceReqHandler handler = new PipeTransferSliceReqHandler();
+
+    for (int sliceIndex = 0; sliceIndex < sliceCount; sliceIndex++) {
+      final PipeTransferSliceReq sliceReq =
+          PipeTransferSliceReqBuilder.buildSliceReq(req, 7, sliceIndex, sliceCount, bodySizeLimit);
+      Assert.assertTrue(handler.receiveSlice(PipeTransferSliceReq.fromTPipeTransferReq(sliceReq)));
+    }
+
+    final TPipeTransferReq assembledReq = handler.makeReqIfComplete().orElseThrow();
+    Assert.assertTrue(assembledReq.isSetCrc32());
+    Assert.assertEquals(
+        PipeTransferIntegrityUtils.calculateCrc32(assembledReq), assembledReq.getCrc32());
   }
 
   @Test

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -95,6 +96,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private long position;
   private boolean transferringModFile;
   private boolean transferringTsFile;
+  private boolean crcEnabled;
+  private boolean crcRetryAttempted;
 
   private RandomAccessFile reader;
 
@@ -255,6 +258,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                         sink.shouldWaitForSchemaBeforeLoad())
                     .setConversionTaskInfo(
                         conversionTaskId, sink.shouldAsyncLoadTsFileOnTypeMismatch());
+        if (crcEnabled) {
+          PipeTransferIntegrityUtils.setCrc32(uncompressedReq);
+        }
         final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
@@ -282,6 +288,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                 currentFile.getName(), position, payload)
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload);
+    if (crcEnabled) {
+      PipeTransferIntegrityUtils.setCrc32(uncompressedReq);
+    }
     final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
     pipeName2WeightMap.forEach(
@@ -331,6 +340,25 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     if (isSealSignalSent.get()) {
       try {
         final TSStatus status = response.getStatus();
+        if (PipeTransferIntegrityUtils.isStructureCorruption(status.getMessage())) {
+          logReceiverReportedStructureCorruption(status);
+          if (!crcRetryAttempted) {
+            crcRetryAttempted = true;
+            crcEnabled = true;
+            transferringModFile = false;
+            transferringTsFile = false;
+            position = 0;
+            isSealSignalSent.set(false);
+            currentFile = effectiveTransferMod ? modFile : tsFile;
+            transfer(clientManager, client);
+            return false;
+          }
+        }
+        if (PipeTransferIntegrityUtils.isCrcMismatch(status.getMessage())) {
+          logCrcMismatch(status);
+          sink.statusHandler().handle(status, status.getMessage(), tsFile.getName());
+          throw new PipeException(status.getMessage());
+        }
         // Only handle the failed statuses to avoid string format performance overhead
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -397,6 +425,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         LOGGER.info(DataNodePipeMessages.REDIRECT_FILE_POSITION_TO, position);
       } else {
         final TSStatus status = response.getStatus();
+        if (PipeTransferIntegrityUtils.isCrcMismatch(status.getMessage())) {
+          logCrcMismatch(status);
+          sink.statusHandler().handle(status, status.getMessage(), tsFile.getName());
+          throw new PipeException(status.getMessage());
+        }
         // Only handle the failed statuses to avoid string format performance overhead
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -411,6 +444,26 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     return false; // due to seal transfer not yet completed
+  }
+
+  private void logReceiverReportedStructureCorruption(final TSStatus status) {
+    LOGGER.warn(
+        DataNodePipeMessages
+            .LOG_RECEIVER_REPORTED_STRUCTURAL_CORRUPTION_IN_TSFILE_ARG_SENDER_SHA_256_ARG_RECEIVER_STATUS_ARG_026A14BB,
+        tsFile,
+        PipeTransferIntegrityUtils.calculateSha256OrUnavailable(
+            tsFile, DataNodePipeMessages.MESSAGE_UNKNOWN_AD921D60),
+        status);
+  }
+
+  private void logCrcMismatch(final TSStatus status) {
+    LOGGER.error(
+        DataNodePipeMessages
+            .LOG_CRC_MISMATCH_WHILE_TRANSFERRING_TSFILE_ARG_SENDER_SHA_256_ARG_NETWORK_TRANSMISSION_CORRUPTED_THE_PAYLOAD_ARG_DE6B6FAD,
+        tsFile,
+        PipeTransferIntegrityUtils.calculateSha256OrUnavailable(
+            tsFile, DataNodePipeMessages.MESSAGE_UNKNOWN_AD921D60),
+        status);
   }
 
   @Override

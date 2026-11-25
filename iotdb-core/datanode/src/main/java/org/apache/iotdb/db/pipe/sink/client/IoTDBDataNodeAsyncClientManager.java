@@ -309,6 +309,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           Boolean.toString(shouldReceiverConvertOnTypeMismatch));
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CRC_RETRY, Boolean.toString(true));
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID,
           String.valueOf(userEntity.getUserId()));

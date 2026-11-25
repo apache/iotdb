@@ -44,6 +44,7 @@ public class PipeTransferSliceReqHandler {
   private int sliceCount = -1;
   private final List<byte[]> sliceBodies = new ArrayList<>();
   private long receivedBodySize = 0;
+  private boolean allSlicesHaveCrc32 = true;
 
   public boolean receiveSlice(final PipeTransferSliceReq req) {
     if (!isValidSliceReq(req)) {
@@ -125,6 +126,7 @@ public class PipeTransferSliceReqHandler {
 
     sliceBodies.add(req.getSliceBody());
     receivedBodySize += req.getSliceBody().length;
+    allSlicesHaveCrc32 &= req.isSetCrc32();
 
     if (sliceBodies.size() == sliceCount && receivedBodySize != originBodySize) {
       LOGGER.warn(
@@ -161,6 +163,9 @@ public class PipeTransferSliceReqHandler {
     sliceBodies.forEach(body::put);
     body.flip();
     req.body = body;
+    if (allSlicesHaveCrc32) {
+      PipeTransferIntegrityUtils.setCrc32(req);
+    }
 
     return Optional.of(req);
   }
@@ -172,5 +177,6 @@ public class PipeTransferSliceReqHandler {
     sliceCount = -1;
     sliceBodies.clear();
     receivedBodySize = 0;
+    allSlicesHaveCrc32 = true;
   }
 }

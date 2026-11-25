@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingDatabaseException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -74,6 +76,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -259,6 +262,34 @@ public class LoadTsFileAnalyzerDiagnosticsTest {
     Assert.assertTrue(status.getMessage().contains(file.getPath()));
     Assert.assertTrue(status.getMessage().contains("cannot read TsFile footer"));
     Assert.assertFalse(status.getMessage().contains("original analysis failure"));
+  }
+
+  @Test
+  public void testStructureCorruptionReportsCurrentReaderOffset() throws Exception {
+    final File file = temporaryFolder.newFile("corrupted-metadata.tsfile");
+    final EOFException corruption = new EOFException("truncated TsFile metadata");
+    final TsFileSequenceReader reader = mock(TsFileSequenceReader.class);
+    when(reader.getTableSchemaMap()).thenThrow(corruption);
+    when(reader.position()).thenReturn(37L);
+    PowerMockito.whenNew(TsFileSequenceReader.class)
+        .withArguments(file.getAbsolutePath())
+        .thenReturn(reader);
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(file.getPath()),
+            false,
+            new MPPQueryContext(new QueryId("load_corrupted_metadata")))) {
+      try {
+        Whitebox.invokeMethod(analyzer, "analyzeSingleTsFile", file, 0);
+        Assert.fail("Expected malformed metadata to fail analysis");
+      } catch (final LoadFileException e) {
+        Assert.assertTrue(e.getMessage().contains("offset 37"));
+        Assert.assertTrue(
+            e.getMessage().contains(PipeTransferIntegrityUtils.calculateSha256(file)));
+        Assert.assertSame(corruption, e.getCause());
+      }
+    }
   }
 
   @Test

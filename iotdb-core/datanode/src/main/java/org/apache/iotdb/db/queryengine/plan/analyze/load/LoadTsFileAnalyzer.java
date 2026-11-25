@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferIntegrityUtils;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingDatabaseException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeMissingSchemaException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
@@ -51,6 +53,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileTableSchemaRegistrationUtils;
+import org.apache.iotdb.db.storageengine.load.TsFileStructureCorruptionUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.converter.PipeTsFileConversionTaskManager;
@@ -437,77 +440,104 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private void analyzeSingleTsFile(final File tsFile, int i) throws Exception {
     final SessionInfo sessionInfo = context.getSession();
-    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      // check whether the tsfile is tree-model or not
-      final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
-      final boolean isTableModelFile = detectTableModelTsFile(reader, tableSchemaMap);
-      if (isGeneratedByPipe) {
-        LOGGER.debug(
-            DataNodeQueryMessages.TSFILE_ARG_IS_A_ARG_MODEL_FILE,
-            tsFile.getPath(),
-            isTableModelFile ? "table" : "tree");
-      } else {
-        LOGGER.info(
-            DataNodeQueryMessages.TSFILE_ARG_IS_A_ARG_MODEL_FILE,
-            tsFile.getPath(),
-            isTableModelFile ? "table" : "tree");
-      }
-
-      // can be reused when constructing tsfile resource
-      final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
-          new TsFileSequenceReaderTimeseriesMetadataIterator(
-              reader,
-              !isTableModelFile, // currently we only need chunk metadata for tree model files
-              IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount());
-
-      // check if the tsfile is empty
-      if (!timeseriesMetadataIterator.hasNext()) {
-        throw new LoadEmptyFileException(tsFile.getAbsolutePath());
-      }
-
-      // check whether the encrypt type of the tsfile is supported
-      final EncryptParameter param = reader.getEncryptParam();
-      if (!Objects.equals(param.getType(), EncryptUtils.getEncryptParameter().getType())
-          || !Arrays.equals(param.getKey(), EncryptUtils.getEncryptParameter().getKey())) {
-        throw new SemanticException(DataNodeQueryMessages.THE_ENCRYPTION_WAY_OF_THE_TSFILE_IS_NOT);
-      }
-
-      this.isTableModelTsFile.set(i, isTableModelFile);
-      this.isTableModelTsFileReliableIndex = i;
-
-      if (0 <= tabletConversionThresholdBytes
-          && tsFile.length() <= tabletConversionThresholdBytes) {
-        if (!isTableModelFile
-            && !isConvertOnTypeMismatch
-            && treeSchemaAutoCreatorAndVerifier != null) {
-          treeSchemaAutoCreatorAndVerifier.flush();
+    try {
+      final TsFileSequenceReader reader;
+      try {
+        reader = new TsFileSequenceReader(tsFile.getAbsolutePath());
+      } catch (final Exception e) {
+        if (TsFileStructureCorruptionUtils.isStructureCorruption(e)) {
+          throw new LoadFileException(
+              TsFileStructureCorruptionUtils.createDiagnosticMessage(tsFile, -1, e), e);
         }
-        final long startTime = System.nanoTime();
+        throw e;
+      }
+      try (reader) {
         try {
-          if (!isTableModelFile) {
-            checkMiniFileTreeWritePermission(tsFile, reader);
+          // check whether the tsfile is tree-model or not
+          final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
+          final boolean isTableModelFile = detectTableModelTsFile(reader, tableSchemaMap);
+          if (isGeneratedByPipe) {
+            LOGGER.debug(
+                DataNodeQueryMessages.TSFILE_ARG_IS_A_ARG_MODEL_FILE,
+                tsFile.getPath(),
+                isTableModelFile ? "table" : "tree");
+          } else {
+            LOGGER.info(
+                DataNodeQueryMessages.TSFILE_ARG_IS_A_ARG_MODEL_FILE,
+                tsFile.getPath(),
+                isTableModelFile ? "table" : "tree");
           }
-          if (handleSingleMiniFile(i)) {
-            return;
-          }
-        } finally {
-          LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
-              LoadTsFileCostMetricsSet.ANALYSIS_CAST_TABLETS, System.nanoTime() - startTime);
-        }
-      }
 
-      if (isTableModelFile) {
-        final SessionInfo newSessionInfo =
-            new SessionInfo(sessionInfo, sessionInfo.getZoneId(), SqlDialect.TABLE);
-        context.setSession(newSessionInfo);
-        doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
-      } else {
-        final SessionInfo newSessionInfo =
-            new SessionInfo(sessionInfo, sessionInfo.getZoneId(), SqlDialect.TREE);
-        context.setSession(newSessionInfo);
-        doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
+          // can be reused when constructing tsfile resource
+          final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
+              new TsFileSequenceReaderTimeseriesMetadataIterator(
+                  reader,
+                  !isTableModelFile, // currently we only need chunk metadata for tree model files
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount());
+
+          // check if the tsfile is empty
+          if (!timeseriesMetadataIterator.hasNext()) {
+            throw new LoadEmptyFileException(tsFile.getAbsolutePath());
+          }
+
+          // check whether the encrypt type of the tsfile is supported
+          final EncryptParameter param = reader.getEncryptParam();
+          if (!Objects.equals(param.getType(), EncryptUtils.getEncryptParameter().getType())
+              || !Arrays.equals(param.getKey(), EncryptUtils.getEncryptParameter().getKey())) {
+            throw new SemanticException(
+                DataNodeQueryMessages.THE_ENCRYPTION_WAY_OF_THE_TSFILE_IS_NOT);
+          }
+          this.isTableModelTsFile.set(i, isTableModelFile);
+          this.isTableModelTsFileReliableIndex = i;
+
+          if (0 <= tabletConversionThresholdBytes
+              && tsFile.length() <= tabletConversionThresholdBytes) {
+            if (!isTableModelFile
+                && !isConvertOnTypeMismatch
+                && treeSchemaAutoCreatorAndVerifier != null) {
+              treeSchemaAutoCreatorAndVerifier.flush();
+            }
+            final long startTime = System.nanoTime();
+            try {
+              if (!isTableModelFile) {
+                checkMiniFileTreeWritePermission(tsFile, reader);
+              }
+              if (handleSingleMiniFile(i)) {
+                return;
+              }
+            } finally {
+              LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+                  LoadTsFileCostMetricsSet.ANALYSIS_CAST_TABLETS, System.nanoTime() - startTime);
+            }
+          }
+
+          if (isTableModelFile) {
+            final SessionInfo newSessionInfo =
+                new SessionInfo(sessionInfo, sessionInfo.getZoneId(), SqlDialect.TABLE);
+            context.setSession(newSessionInfo);
+            doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
+          } else {
+            final SessionInfo newSessionInfo =
+                new SessionInfo(sessionInfo, sessionInfo.getZoneId(), SqlDialect.TREE);
+            context.setSession(newSessionInfo);
+            doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
+          }
+        } catch (final Exception e) {
+          if (TsFileStructureCorruptionUtils.isStructureCorruption(e)
+              && !TsFileStructureCorruptionUtils.hasDiagnosticMessage(e)) {
+            long corruptionOffset = -1;
+            try {
+              corruptionOffset = reader.position();
+            } catch (final IOException ignored) {
+            }
+            throw new LoadFileException(
+                TsFileStructureCorruptionUtils.createDiagnosticMessage(tsFile, corruptionOffset, e),
+                e);
+          }
+          throw e;
+        }
       }
     } catch (final LoadEmptyFileException loadEmptyFileException) {
       LOGGER.warn(
@@ -550,7 +580,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
   }
 
-  private boolean handleSingleMiniFile(final int i) throws FileNotFoundException {
+  private boolean handleSingleMiniFile(final int i)
+      throws FileNotFoundException, LoadFileException {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
         new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
@@ -570,6 +601,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           tsFiles.get(i).getPath(),
           isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
           status);
+      if (status != null && PipeTransferIntegrityUtils.isStructureCorruption(status.getMessage())) {
+        throw new LoadFileException(status.getMessage());
+      }
       return false;
     }
 

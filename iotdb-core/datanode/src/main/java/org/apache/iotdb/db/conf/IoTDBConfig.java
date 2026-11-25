@@ -1234,6 +1234,7 @@ public class IoTDBConfig implements DefaultEncodingProvider {
           + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
           + File.separator
           + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME;
+  private long loadActiveListeningFailDirMaxSizeInBytes = 100L * 1024 * 1024;
   private long loadActiveListeningCheckIntervalSeconds = 5L;
 
   private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
@@ -4453,6 +4454,16 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public void setLoadActiveListeningFailDir(String loadActiveListeningFailDir) {
     this.loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
+  }
+
+  public long getLoadActiveListeningFailDirMaxSizeInBytes() {
+    return loadActiveListeningFailDirMaxSizeInBytes;
+  }
+
+  public void setLoadActiveListeningFailDirMaxSizeInBytes(
+      final long loadActiveListeningFailDirMaxSizeInBytes) {
+    this.loadActiveListeningFailDirMaxSizeInBytes =
+        Math.max(0, loadActiveListeningFailDirMaxSizeInBytes);
   }
 
   public String getLoadActiveListeningPipeDir() {

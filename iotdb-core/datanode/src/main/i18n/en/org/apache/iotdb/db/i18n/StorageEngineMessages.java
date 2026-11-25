@@ -1906,4 +1906,6 @@ public final class StorageEngineMessages {
       "source files are cleaned up";
 
   public static final String EXCEPTION_TASK_FINISHED_A075ACB1 = "task finished";
+  public static final String EXCEPTION_TSFILE_STRUCTURE_CORRUPTION_TSFILE_ARG_IS_STRUCTURALLY_CORRUPTED_AT_OFFSET_ARG_1_MEANS_UNKNOWN_SHA_256_ARG_ARG_71F6105D =
+      "[TSFILE_STRUCTURE_CORRUPTION] TsFile %s is structurally corrupted at offset %d (-1 means unknown; SHA-256: %s): %s";
 }

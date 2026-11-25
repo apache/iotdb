@@ -128,6 +128,9 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
 
     sliceReq.version = transferReq.version;
     sliceReq.type = transferReq.type;
+    if (transferReq.isSetCrc32()) {
+      sliceReq.setCrc32(transferReq.getCrc32());
+    }
 
     return sliceReq;
   }

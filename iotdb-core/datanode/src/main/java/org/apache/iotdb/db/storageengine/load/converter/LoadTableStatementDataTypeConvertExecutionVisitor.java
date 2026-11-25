@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.converter;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.storageengine.load.TsFileStructureCorruptionUtils;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileParserMemoryManager;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -163,16 +165,30 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
           loadTsFileStatement);
       return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (final Exception e) {
+      Exception conversionException = e;
+      if (conversionContext.parser != null
+          && TsFileStructureCorruptionUtils.isStructureCorruption(e)) {
+        final List<File> files = loadTsFileStatement.getTsFiles();
+        if (!files.isEmpty()) {
+          final File tsFile = files.get(Math.min(conversionContext.fileIndex, files.size() - 1));
+          conversionException =
+              new LoadFileException(
+                  TsFileStructureCorruptionUtils.createDiagnosticMessage(
+                      tsFile, conversionContext.parser.getCurrentOffset(), e),
+                  e);
+        }
+      }
       LOGGER.warn(
           StorageEngineMessages
               .STORAGE_LOG_FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT_5D132E57,
           loadTsFileStatement,
-          e);
+          conversionException);
       final TSStatus status =
           LoadTsFileDataTypeConverter.TABLE_STATEMENT_EXCEPTION_VISITOR.process(
-              loadTsFileStatement, e);
+              loadTsFileStatement, conversionException);
       shouldReleaseContext =
-          !isManagedTask || !LoadTsFileDataTypeConverter.isMemoryPressureException(e);
+          !isManagedTask
+              || !LoadTsFileDataTypeConverter.isMemoryPressureException(conversionException);
       return Optional.of(status);
     } finally {
       if (shouldReleaseContext) {

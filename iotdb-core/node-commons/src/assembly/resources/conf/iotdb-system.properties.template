@@ -2517,6 +2517,8 @@ load_active_listening_pipe_dir=ext/load/pipe
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 load_active_listening_fail_dir=ext/load/failed
+# Soft maximum total size in bytes of failed LOAD files retained in the failure directory. The newest complete failure group is kept even if it exceeds this limit. 0 means unlimited.
+load_active_listening_fail_dir_max_size_in_bytes=104857600
 
 # The maximum number of threads that can be used to load tsfile actively.
 # The default value, when this parameter is commented out or <= 0, use CPU core number.
