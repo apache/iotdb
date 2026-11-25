@@ -26,16 +26,16 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNo
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.Ordering;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.match;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.Util.orderingSchemeMatches;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
 
 public class LimitMatcher implements Matcher {
   private final long limit;

@@ -1,0 +1,4490 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.external.caffeine.cache;
+
+import org.apache.iotdb.commons.external.caffeine.cache.LinkedDeque.PeekingIterator;
+import org.apache.iotdb.commons.external.caffeine.cache.Policy.CacheEntry;
+import org.apache.iotdb.commons.external.caffeine.cache.stats.StatsCounter;
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
+import com.google.errorprone.annotations.Var;
+import com.google.errorprone.annotations.concurrent.GuardedBy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.util.AbstractCollection;
+import java.util.AbstractSet;
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.OptionalLong;
+import java.util.Set;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import static java.lang.invoke.ConstantBootstraps.fieldVarHandle;
+import static java.util.Locale.US;
+import static java.util.Objects.requireNonNull;
+import static java.util.Spliterator.DISTINCT;
+import static java.util.Spliterator.IMMUTABLE;
+import static java.util.Spliterator.NONNULL;
+import static java.util.Spliterator.ORDERED;
+import static org.apache.iotdb.commons.external.caffeine.cache.Caffeine.calculateHashMapCapacity;
+import static org.apache.iotdb.commons.external.caffeine.cache.Caffeine.ceilingPowerOfTwo;
+import static org.apache.iotdb.commons.external.caffeine.cache.Caffeine.requireArgument;
+import static org.apache.iotdb.commons.external.caffeine.cache.Caffeine.requireState;
+import static org.apache.iotdb.commons.external.caffeine.cache.Caffeine.toUnchecked;
+import static org.apache.iotdb.commons.external.caffeine.cache.LocalLoadingCache.newBulkMappingFunction;
+import static org.apache.iotdb.commons.external.caffeine.cache.LocalLoadingCache.newMappingFunction;
+import static org.apache.iotdb.commons.external.caffeine.cache.Node.PROBATION;
+import static org.apache.iotdb.commons.external.caffeine.cache.Node.PROTECTED;
+import static org.apache.iotdb.commons.external.caffeine.cache.Node.WINDOW;
+
+/**
+ * An in-memory cache implementation that supports full concurrency of retrievals, a high expected
+ * concurrency for updates, and multiple ways to bound the cache.
+ *
+ * <p>This class is abstract and code generated subclasses provide the complete implementation for a
+ * particular configuration. This is to ensure that only the fields and execution paths necessary
+ * for a given configuration are used.
+ *
+ * @author ben.manes@gmail.com (Ben Manes)
+ * @param <K> the type of keys maintained by this cache
+ * @param <V> the type of mapped values
+ */
+@SuppressWarnings({"all", "RedundantSuppression", "ResultOfMethodCallIgnored", "serial", "unused"})
+abstract class BoundedLocalCache<K, V> extends BLCHeader.DrainStatusRef
+    implements LocalCache<K, V> {
+
+  /*
+   * This class performs a best-effort bounding of a ConcurrentHashMap using a page-replacement
+   * algorithm to determine which entries to evict when the capacity is exceeded.
+   *
+   * Concurrency:
+   * ------------
+   * The page replacement algorithms are kept eventually consistent with the map. An update to the
+   * map and recording of reads may not be immediately reflected in the policy's data structures.
+   * These structures are guarded by a lock, and operations are applied in batches to avoid lock
+   * contention. The penalty of applying the batches is spread across threads, so that the amortized
+   * cost is slightly higher than performing just the ConcurrentHashMap operation [1].
+   *
+   * A memento of the reads and writes that were performed on the map is recorded in buffers. These
+   * buffers are drained at the first opportunity after a write or when a read buffer is full. The
+   * reads are offered to a buffer that will reject additions if contended on or if it is full. Due
+   * to the concurrent nature of the read and write operations, a strict policy ordering is not
+   * possible, but it may be observably strict when single-threaded. The buffers are drained
+   * asynchronously to minimize the request latency and uses a state machine to determine when to
+   * schedule this work on an executor.
+   *
+   * Due to a lack of a strict ordering guarantee, a task can be executed out-of-order, such as a
+   * removal followed by its addition. The state of the entry is encoded using the key field to
+   * avoid additional memory usage. An entry is "alive" if it is in both the hash table and the page
+   * replacement policy. It is "retired" if it is not in the hash table and is pending removal from
+   * the page replacement policy. Finally, an entry transitions to the "dead" state when it is
+   * neither in the hash table nor the page replacement policy. Both the retired and dead states are
+   * represented by a sentinel key that should not be used for map operations.
+   *
+   * Eviction:
+   * ---------
+   * Maximum size is implemented using the Window TinyLfu policy [2] due to its high hit rate, O(1)
+   * time complexity, and small footprint. A new entry starts in the admission window and remains
+   * there as long as it has high temporal locality (recency). Eventually an entry will slip from
+   * the window into the main space. If the main space is already full, then a historic frequency
+   * filter determines whether to evict the newly admitted entry or the victim entry chosen by the
+   * eviction policy. This process ensures that the entries in the window were very recently used,
+   * while entries in the main space are accessed very frequently and remain moderately recent. The
+   * windowing allows the policy to have a high hit rate when entries exhibit a bursty access
+   * pattern, while the filter ensures that popular items are retained. The admission window uses
+   * LRU and the main space uses Segmented LRU.
+   *
+   * The optimal size of the window vs. main spaces is workload dependent [3]. A large admission
+   * window is favored by recency-biased workloads, while a small one favors frequency-biased
+   * workloads. When the window is too small, then recent arrivals are prematurely evicted, but when
+   * it is too large, then they pollute the cache and force the eviction of more popular entries.
+   * The optimal configuration is dynamically determined by using hill climbing to walk the hit
+   * rate curve. For modestly sized caches this samples the hit rate and adjusts the window size
+   * in the direction that is improving, decaying the step until the climber converges and
+   * restarting when a large change indicates that the workload altered. Tiny caches allow the
+   * sample period to grow as its step decays to avoid getting stuck at a poor configuration.
+   * Larger caches instead compare the regions' hit densities within a single sample, which is
+   * immune to the hit rate swings of a phasey workload, and take a proportional step towards the
+   * balance point. As that signal only observes the hits that the current split earns, a region
+   * that earns almost nothing cannot measure what a different split would, so those samples are
+   * never trusted to hold position: the climber probes out of the blind state by hit rate,
+   * accepts the new position if the density signal validates it, and otherwise undoes the probe
+   * with exponentially longer pauses between attempts.
+   *
+   * The historic usage is retained in a compact popularity sketch, which uses hashing to
+   * probabilistically estimate an item's frequency. This exposes a flaw where an adversary could
+   * use hash flooding [4] to artificially raise the frequency of the main space's victim and cause
+   * all candidates to be rejected. In the worst case, by exploiting hash collisions, an attacker
+   * could cause the cache to never hit and hold only worthless items, resulting in a
+   * denial-of-service attack against the underlying resource. This is mitigated by introducing
+   * jitter, allowing candidates that are at least moderately popular to have a small, random chance
+   * of being admitted. This causes the victim to be evicted, but in a way that marginally impacts
+   * the hit rate.
+   *
+   * Expiration:
+   * -----------
+   * Expiration is implemented in O(1) time complexity. The time-to-idle policy uses an access-order
+   * queue, the time-to-live policy uses a write-order queue, and variable expiration uses a
+   * hierarchical timer wheel [5]. The queuing policies allow for peeking at the oldest entry to
+   * determine if it has expired. If it has not, then the younger entries must not have expired
+   * either. If a maximum size is set, then expiration will share the queues, minimizing the
+   * per-entry footprint. The timer wheel based policy uses hashing and cascading in a manner that
+   * amortizes the penalty of sorting to achieve a similar algorithmic cost.
+   *
+   * The expiration updates are applied in a best effort fashion. The reordering of variable or
+   * access-order expiration may be discarded by the read buffer if it is full or contended.
+   * Similarly, recording the touch for expiration to extend its lifetime may be ignored for an
+   * entry if the last update was within a short time window. This is done to avoid overwhelming the
+   * write buffer and to avoid false sharing on reads due to modifying the access time. The
+   * expiration scan compensates by moving a stale-positioned head to the back of the queue when its
+   * timestamp is fresher than the tail, so subsequent passes can resume from the next-oldest entry.
+   *
+   * [1] BP-Wrapper: A Framework Making Any Replacement Algorithms (Almost) Lock Contention Free
+   * https://web.njit.edu/~dingxn/papers/BP-Wrapper.pdf
+   * [2] TinyLFU: A Highly Efficient Cache Admission Policy
+   * https://dl.acm.org/citation.cfm?id=3149371
+   * [3] Adaptive Software Cache Management
+   * https://dl.acm.org/citation.cfm?id=3274816
+   * [4] Denial of Service via Algorithmic Complexity Attack
+   * https://www.usenix.org/legacy/events/sec03/tech/full_papers/crosby/crosby.pdf
+   * [5] Hashed and Hierarchical Timing Wheels
+   * http://www.cs.columbia.edu/~nahum/w6998/papers/ton97-timing-wheels.pdf
+   */
+
+  static final Logger LOGGER = LoggerFactory.getLogger(BoundedLocalCache.class);
+
+  /** The number of CPUs */
+  static final int NCPU = Runtime.getRuntime().availableProcessors();
+
+  /** The initial capacity of the write buffer. */
+  static final int WRITE_BUFFER_MIN = 4;
+
+  /** The maximum capacity of the write buffer. */
+  static final int WRITE_BUFFER_MAX = 128 * ceilingPowerOfTwo(NCPU);
+
+  /** The maximum weighted capacity of the map. */
+  static final long MAXIMUM_CAPACITY = Long.MAX_VALUE - Integer.MAX_VALUE;
+
+  /** The initial percent of the maximum weighted capacity dedicated to the main space. */
+  static final double PERCENT_MAIN = 0.99d;
+
+  /** The percent of the maximum weighted capacity dedicated to the main's protected space. */
+  static final double PERCENT_MAIN_PROTECTED = 0.80d;
+
+  /** The minimum popularity for allowing randomized admission. */
+  static final int ADMIT_HASHDOS_THRESHOLD = 6;
+
+  /** The maximum number of entries that can be transferred between queues. */
+  static final int QUEUE_TRANSFER_THRESHOLD = 1_000;
+
+  /** The maximum number of entries that can be expired per maintenance cycle. */
+  static final int EXPIRATION_THRESHOLD = 1_000;
+
+  /** The maximum number of collected references that can be drained per maintenance cycle. */
+  static final int REFERENCE_THRESHOLD = 1_000;
+
+  /** The maximum time window between touches for expiration updates. */
+  static final long EXPIRE_TOLERANCE = TimeUnit.SECONDS.toNanos(1);
+
+  /** The maximum duration before an entry expires. */
+  static final long MAXIMUM_EXPIRY = (Long.MAX_VALUE >> 1); // 150 years
+
+  /** The duration to wait on the eviction lock before warning of a possible misuse. */
+  static final long WARN_AFTER_LOCK_WAIT_NANOS = TimeUnit.SECONDS.toNanos(30);
+
+  /** The number of retries before computing to validate the entry's integrity; pow2 modulus. */
+  static final int MAX_PUT_SPIN_WAIT_ATTEMPTS = 1024 - 1;
+
+  final RemovalListener<K, V> evictionListener;
+  final CacheLoader<K, V> cacheLoader;
+
+  final MpscGrowableArrayQueue<Runnable> writeBuffer;
+  final ConcurrentHashMap<Object, Node<K, V>> data;
+  final PerformCleanupTask drainBuffersTask;
+  final Consumer<Node<K, V>> accessPolicy;
+  final NodeFactory<K, V> nodeFactory;
+  final ReentrantLock evictionLock;
+  final Weigher<K, V> weigher;
+  final Executor executor;
+
+  final boolean isWeighted;
+
+  volatile Buffer<Node<K, V>> readBuffer;
+
+  Set<K> keySet;
+  Collection<V> values;
+  Set<Entry<K, V>> entrySet;
+
+  /** Creates an instance based on the builder's configuration. */
+  @SuppressWarnings("GuardedBy")
+  protected BoundedLocalCache(
+      Caffeine<K, V> builder, CacheLoader<K, V> cacheLoader, boolean isAsync) {
+    this.cacheLoader = cacheLoader;
+    executor = builder.getExecutor();
+    isWeighted = builder.isWeighted();
+    evictionLock = new ReentrantLock();
+    weigher = builder.getWeigher();
+    drainBuffersTask = new PerformCleanupTask(this);
+    nodeFactory = NodeFactory.newFactory(builder, false);
+    evictionListener = builder.getEvictionListener();
+    data = new ConcurrentHashMap<>(builder.getInitialCapacity());
+    writeBuffer = new MpscGrowableArrayQueue<>(WRITE_BUFFER_MIN, WRITE_BUFFER_MAX);
+    boolean tracksAccess = evicts() || collectKeys() || collectValues() || expiresAfterAccess();
+    readBuffer = (tracksAccess && !fastpath()) ? new BoundedBuffer<>() : Buffer.disabled();
+    accessPolicy =
+        (evicts() || expiresAfterAccess()) ? node -> onAccess(node, Access.HIT) : node -> {};
+
+    if (evicts()) {
+      setMaximumSize(builder.getMaximum());
+    }
+  }
+
+  /** Ensures that the node is alive during the map operation. */
+  void requireIsAlive(Object key, Node<?, ?> node) {
+    if (!node.isAlive()) {
+      throw new IllegalStateException(brokenEqualityMessage(key, node));
+    }
+  }
+
+  /** Logs if the node cannot be found in the map but is still alive. */
+  void logIfAlive(Node<?, ?> node) {
+    if (node.isAlive()) {
+      String message = brokenEqualityMessage(node.getKeyReference(), node);
+      LOGGER.error(message, new IllegalStateException());
+    }
+  }
+
+  /** Returns the formatted broken equality error message. */
+  String brokenEqualityMessage(Object key, Node<?, ?> node) {
+    return String.format(
+        US,
+        CommonMessages
+            .EXCEPTION_AN_INVALID_STATE_WAS_DETECTED_OCCURRING_WHEN_THE_KEY_S_EQUALS_OR_HASHCODE_WAS_MODIFIED_WHILE_RESIDING_IN_THE_CACHE_THIS_VIOLATION_OF_THE_MAP_CONTRACT_CAN_LEAD_TO_NON_DETERMINISTIC_BEHAVIOR_KEY_ARG_KEY_TYPE_ARG_NODE_TYPE_ARG_CACHE_TYPE_ARG_CAA99713,
+        key,
+        key.getClass().getName(),
+        node.getClass().getSimpleName(),
+        getClass().getSimpleName());
+  }
+
+  /* --------------- Shared --------------- */
+
+  /** Returns if the node's value is currently being computed asynchronously. */
+  final boolean isComputingAsync(V value) {
+    return false;
+  }
+
+  @GuardedBy("evictionLock")
+  protected AccessOrderDeque<Node<K, V>> accessOrderWindowDeque() {
+    throw new UnsupportedOperationException();
+  }
+
+  @GuardedBy("evictionLock")
+  protected AccessOrderDeque<Node<K, V>> accessOrderProbationDeque() {
+    throw new UnsupportedOperationException();
+  }
+
+  @GuardedBy("evictionLock")
+  protected AccessOrderDeque<Node<K, V>> accessOrderProtectedDeque() {
+    throw new UnsupportedOperationException();
+  }
+
+  @GuardedBy("evictionLock")
+  protected WriteOrderDeque<Node<K, V>> writeOrderDeque() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public final Executor executor() {
+    return executor;
+  }
+
+  @Override
+  public Object referenceKey(K key) {
+    return nodeFactory.newLookupKey(key);
+  }
+
+  @Override
+  public boolean isPendingEviction(K key) {
+    Node<K, V> node = data.get(nodeFactory.newLookupKey(key));
+    if (node == null) {
+      return false;
+    }
+    boolean expired = hasExpired(node, expirationTicker().read());
+    V value = node.getValue();
+    return (value == null) || (expired && !isComputingAsync(value));
+  }
+
+  /* --------------- Stats Support --------------- */
+
+  @Override
+  public boolean isRecordingStats() {
+    return false;
+  }
+
+  @Override
+  public StatsCounter statsCounter() {
+    return StatsCounter.disabledStatsCounter();
+  }
+
+  @Override
+  public Ticker statsTicker() {
+    return Ticker.disabledTicker();
+  }
+
+  /* --------------- Removal Listener Support --------------- */
+
+  @Override
+  public RemovalListener<K, V> removalListener() {
+    return null;
+  }
+
+  @Override
+  public void notifyRemoval(K key, V value, RemovalCause cause) {
+    var removalListener = removalListener();
+    if (removalListener == null) {
+      return;
+    }
+    Runnable task =
+        () -> {
+          try {
+            removalListener.onRemoval(key, value, cause);
+          } catch (Throwable t) {
+            if (t instanceof InterruptedException) {
+              Thread.currentThread().interrupt();
+            }
+            LOGGER.warn(CommonMessages.LOG_EXCEPTION_THROWN_BY_REMOVAL_LISTENER_2D0BFC36, t);
+          }
+        };
+    try {
+      executor.execute(task);
+    } catch (Throwable t) {
+      LOGGER.error(
+          CommonMessages.LOG_EXCEPTION_THROWN_WHEN_SUBMITTING_REMOVAL_LISTENER_1A41327E, t);
+      task.run();
+    }
+  }
+
+  /* --------------- Eviction Listener Support --------------- */
+
+  void notifyEviction(K key, V value, RemovalCause cause) {
+    if (evictionListener == null) {
+      return;
+    }
+    try {
+      evictionListener.onRemoval(key, value, cause);
+    } catch (Throwable t) {
+      if (t instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      LOGGER.warn(CommonMessages.LOG_EXCEPTION_THROWN_BY_EVICTION_LISTENER_E6D3BA60, t);
+    }
+  }
+
+  /* --------------- Reference Support --------------- */
+
+  @Override
+  public boolean collectKeys() {
+    return false;
+  }
+
+  /** Returns if the values are weak or soft reference garbage collected. */
+  protected boolean collectValues() {
+    return false;
+  }
+
+  @SuppressWarnings({"DataFlowIssue", "NullAway"})
+  protected ReferenceQueue<K> keyReferenceQueue() {
+    return null;
+  }
+
+  @SuppressWarnings({"DataFlowIssue", "NullAway"})
+  protected ReferenceQueue<V> valueReferenceQueue() {
+    return null;
+  }
+
+  /* --------------- Expiration Support --------------- */
+
+  /** Returns the {@link Pacer} used to schedule the maintenance task. */
+  protected Pacer pacer() {
+    return null;
+  }
+
+  /** Returns if the cache expires entries by any of its policies. */
+  final boolean expires() {
+    return expiresAfterAccess() || expiresAfterWrite() || expiresVariable();
+  }
+
+  /** Returns if a read may extend when the entry expires. */
+  final boolean expiresAfterRead() {
+    return expiresAfterAccess() || expiresVariable();
+  }
+
+  /** Returns if the cache expires entries after a variable time threshold. */
+  protected boolean expiresVariable() {
+    return false;
+  }
+
+  /** Returns if the cache expires entries after an access time threshold. */
+  protected boolean expiresAfterAccess() {
+    return false;
+  }
+
+  /** Returns how long after the last access to an entry the map will retain that entry. */
+  protected long expiresAfterAccessNanos() {
+    throw new UnsupportedOperationException();
+  }
+
+  protected void setExpiresAfterAccessNanos(long expireAfterAccessNanos) {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns if the cache expires entries after a write time threshold. */
+  protected boolean expiresAfterWrite() {
+    return false;
+  }
+
+  /** Returns how long after the last write to an entry the map will retain that entry. */
+  protected long expiresAfterWriteNanos() {
+    throw new UnsupportedOperationException();
+  }
+
+  protected void setExpiresAfterWriteNanos(long expireAfterWriteNanos) {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns if the cache refreshes entries after a write time threshold. */
+  protected boolean refreshAfterWrite() {
+    return false;
+  }
+
+  /** Returns how long after the last write an entry becomes a candidate for refresh. */
+  protected long refreshAfterWriteNanos() {
+    throw new UnsupportedOperationException();
+  }
+
+  protected void setRefreshAfterWriteNanos(long refreshAfterWriteNanos) {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns the {@link Ticker} used by this cache for expiration. */
+  public Ticker expirationTicker() {
+    return Ticker.disabledTicker();
+  }
+
+  /* --------------- Eviction Support --------------- */
+
+  /** Returns if the cache evicts entries due to a maximum size or weight threshold. */
+  protected boolean evicts() {
+    return false;
+  }
+
+  /** Returns if entries may be assigned different weights. */
+  protected boolean isWeighted() {
+    return isWeighted && (weigher != Weigher.singletonWeigher());
+  }
+
+  protected FrequencySketch frequencySketch() {
+    throw new UnsupportedOperationException();
+  }
+
+  @GuardedBy("evictionLock")
+  protected WindowClimber climber() {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns if an access to an entry can skip notifying the eviction policy. */
+  protected boolean fastpath() {
+    return false;
+  }
+
+  /** Returns the maximum weighted size. */
+  protected long maximum() {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns the maximum weighted size. */
+  protected long maximumAcquire() {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns the maximum weighted size of the window space. */
+  protected long windowMaximum() {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns the maximum weighted size of the main's protected space. */
+  protected long mainProtectedMaximum() {
+    throw new UnsupportedOperationException();
+  }
+
+  @GuardedBy("evictionLock")
+  protected void setMaximum(long maximum) {
+    throw new UnsupportedOperationException();
+  }
+
+  @GuardedBy("evictionLock")
+  protected void setWindowMaximum(long maximum) {
+    throw new UnsupportedOperationException();
+  }
+
+  @GuardedBy("evictionLock")
+  protected void setMainProtectedMaximum(long maximum) {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns the combined weight of the values in the cache (may be negative). */
+  protected long weightedSize() {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns the combined weight of the values in the cache (may be negative). */
+  protected long weightedSizeAcquire() {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns the uncorrected combined weight of the values in the window space. */
+  protected long windowWeightedSize() {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns the uncorrected combined weight of the values in the main's protected space. */
+  protected long mainProtectedWeightedSize() {
+    throw new UnsupportedOperationException();
+  }
+
+  @GuardedBy("evictionLock")
+  protected void setWeightedSize(long weightedSize) {
+    throw new UnsupportedOperationException();
+  }
+
+  @GuardedBy("evictionLock")
+  protected void setWindowWeightedSize(long weightedSize) {
+    throw new UnsupportedOperationException();
+  }
+
+  @GuardedBy("evictionLock")
+  protected void setMainProtectedWeightedSize(long weightedSize) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Sets the maximum weighted size of the cache. The caller may need to perform a maintenance cycle
+   * to eagerly evicts entries until the cache shrinks to the appropriate size.
+   */
+  @GuardedBy("evictionLock")
+  @SuppressWarnings({"ConstantValue", "Varifier"})
+  void setMaximumSize(long maximum) {
+    requireArgument(maximum >= 0, CommonMessages.EXCEPTION_MAXIMUM_MUST_NOT_BE_NEGATIVE_99D76153);
+    long max = Math.min(maximum, MAXIMUM_CAPACITY);
+    if (max == maximum()) {
+      return;
+    }
+
+    long window = max - (long) (PERCENT_MAIN * max);
+    long mainProtected = (long) (PERCENT_MAIN_PROTECTED * (max - window));
+
+    setMaximum(max);
+    setWindowMaximum(window);
+    setMainProtectedMaximum(mainProtected);
+
+    if (climber() != null) {
+      // null during the super constructor's initial sizing; the generated constructor replays this
+      climber().resized(maximum());
+    }
+
+    if ((frequencySketch() != null) && !isWeighted() && (weightedSize() >= (max >>> 1))) {
+      // Lazily initialize when close to the maximum size
+      frequencySketch().ensureCapacity(max);
+      recordReads();
+    }
+  }
+
+  /** Evicts entries if the cache exceeds the maximum. */
+  @GuardedBy("evictionLock")
+  void evictEntries(long now) {
+    if (!evicts()) {
+      return;
+    }
+    var candidate = evictFromWindow();
+    evictFromMain(candidate, now);
+  }
+
+  /**
+   * Evicts entries from the window space into the main space while the window size exceeds a
+   * maximum, transferring at most a bounded number of entries per maintenance cycle.
+   *
+   * @return the first candidate promoted into the probation space
+   */
+  @GuardedBy("evictionLock")
+  Node<K, V> evictFromWindow() {
+    @Var Node<K, V> first = null;
+    @Var int remaining = QUEUE_TRANSFER_THRESHOLD;
+    @Var Node<K, V> node = accessOrderWindowDeque().peekFirst();
+    while (windowWeightedSize() > windowMaximum()) {
+      // The pending operations will adjust the size to reflect the correct weight
+      if (node == null) {
+        break;
+      }
+      if (remaining == 0) {
+        // A resize can leave the window arbitrarily oversized, so the transfer is bounded per
+        // maintenance cycle and re-armed to drain the backlog across cycles
+        setDrainStatusOpaque(PROCESSING_TO_REQUIRED);
+        break;
+      }
+
+      Node<K, V> next = node.getNextInAccessOrder();
+      long weight = node.getPolicyWeight();
+      if (weight != 0) {
+        transfer(node, weight, WINDOW, PROBATION);
+        if (first == null) {
+          first = node;
+        }
+        remaining--;
+      }
+      node = next;
+    }
+
+    return first;
+  }
+
+  /**
+   * Evicts entries from the main space if the cache exceeds the maximum capacity. The main space
+   * determines whether admitting an entry (coming from the window space) is preferable to retaining
+   * the eviction policy's victim. This decision is made using a frequency filter so that the least
+   * frequently used entry is removed.
+   *
+   * <p>The window space's candidates were previously promoted to the probation space at its MRU
+   * position and the eviction policy's victim starts at the LRU position. The candidates are
+   * evaluated in promotion order while an eviction is required, and if exhausted then additional
+   * entries are retrieved from the window space. Likewise, if the victim selection exhausts the
+   * probation space then additional entries are retrieved from the protected space. The queues are
+   * consumed in LRU order and the evicted entry is the one with a lower relative frequency, where
+   * the preference is to retain the main space's victims versus the window space's candidates on a
+   * tie.
+   *
+   * @param candidate the first candidate promoted into the probation space
+   * @param now the current time, in nanoseconds
+   */
+  @GuardedBy("evictionLock")
+  void evictFromMain(@Var Node<K, V> candidate, long now) {
+    @Var int victimQueue = PROBATION;
+    @Var int candidateQueue = PROBATION;
+    @Var Node<K, V> victim = accessOrderProbationDeque().peekFirst();
+    while (weightedSize() > maximum()) {
+      // Search the admission window for additional candidates
+      if ((candidate == null) && (candidateQueue == PROBATION)) {
+        candidate = accessOrderWindowDeque().peekFirst();
+        candidateQueue = WINDOW;
+      }
+
+      // Try evicting from the protected and window queues
+      if ((candidate == null) && (victim == null)) {
+        if (victimQueue == PROBATION) {
+          victim = accessOrderProtectedDeque().peekFirst();
+          victimQueue = PROTECTED;
+          continue;
+        } else if (victimQueue == PROTECTED) {
+          victim = accessOrderWindowDeque().peekFirst();
+          victimQueue = WINDOW;
+          continue;
+        }
+
+        // The pending operations will adjust the size to reflect the correct weight
+        break;
+      }
+
+      // Skip over entries with zero weight
+      if ((victim != null) && (victim.getPolicyWeight() == 0)) {
+        victim = victim.getNextInAccessOrder();
+        continue;
+      } else if ((candidate != null) && (candidate.getPolicyWeight() == 0)) {
+        candidate = candidate.getNextInAccessOrder();
+        continue;
+      }
+
+      // Evict immediately if only one of the entries is present
+      if (victim == null) {
+        requireNonNull(candidate);
+        candidate = evictAndAdvance(candidate, now, RemovalCause.SIZE);
+        continue;
+      } else if (candidate == null) {
+        victim = evictAndAdvance(victim, now, RemovalCause.SIZE);
+        continue;
+      }
+
+      // Evict immediately if both selected the same entry
+      if (candidate == victim) {
+        victim = evictAndAdvance(victim, now, RemovalCause.SIZE);
+        candidate = null;
+        continue;
+      }
+
+      // Evict immediately if an entry was collected
+      var victimKeyRef = victim.getKeyReferenceOrNull();
+      var candidateKeyRef = candidate.getKeyReferenceOrNull();
+      if (victimKeyRef == null) {
+        victim = evictAndAdvance(victim, now, RemovalCause.COLLECTED);
+        continue;
+      } else if (candidateKeyRef == null) {
+        candidate = evictAndAdvance(candidate, now, RemovalCause.COLLECTED);
+        continue;
+      }
+
+      // Evict immediately if an entry was removed
+      if (!victim.isAlive()) {
+        victim = evictAndAdvance(victim, now, RemovalCause.SIZE);
+        continue;
+      } else if (!candidate.isAlive()) {
+        candidate = evictAndAdvance(candidate, now, RemovalCause.SIZE);
+        continue;
+      }
+
+      // Evict immediately if the candidate's weight exceeds the maximum
+      if (candidate.getPolicyWeight() > maximum()) {
+        candidate = evictAndAdvance(candidate, now, RemovalCause.SIZE);
+        continue;
+      }
+
+      // Evict the entry with the lowest frequency
+      if (admit(candidateKeyRef, victimKeyRef)) {
+        victim = evictAndAdvance(victim, now, RemovalCause.SIZE);
+        candidate = candidate.getNextInAccessOrder();
+      } else {
+        candidate = evictAndAdvance(candidate, now, RemovalCause.SIZE);
+      }
+    }
+  }
+
+  /** Evicts the entry and returns its successor, or {@code null} if it was the last. */
+  @GuardedBy("evictionLock")
+  Node<K, V> evictAndAdvance(Node<K, V> node, long now, RemovalCause cause) {
+    Node<K, V> next = node.getNextInAccessOrder();
+    evictEntry(node, cause, now);
+    return next;
+  }
+
+  /**
+   * Determines if the candidate should be accepted into the main space, as determined by its
+   * frequency relative to the victim. A small amount of randomness is used to protect against hash
+   * collision attacks, where the victim's frequency is artificially raised so that no new entries
+   * are admitted.
+   *
+   * @param candidateKeyRef the keyRef for the entry being proposed for long term retention
+   * @param victimKeyRef the keyRef for the entry chosen by the eviction policy for replacement
+   * @return if the candidate should be admitted and the victim ejected
+   */
+  @GuardedBy("evictionLock")
+  boolean admit(Object candidateKeyRef, Object victimKeyRef) {
+    int candidateFreq = frequencySketch().frequency(candidateKeyRef);
+    int victimFreq = frequencySketch().frequency(victimKeyRef);
+    if (candidateFreq > victimFreq) {
+      return true;
+    } else if (candidateFreq >= ADMIT_HASHDOS_THRESHOLD) {
+      // The maximum frequency is 15 and halved to 7 after a reset to age the history. An attack
+      // exploits that a hot candidate is rejected in favor of a hot victim. The threshold of a warm
+      // candidate reduces the number of random acceptances to minimize the impact on the hit rate.
+      int random = ThreadLocalRandom.current().nextInt();
+      return ((random & 127) == 0);
+    }
+    return false;
+  }
+
+  /** Expires entries that have expired by access, write, or variable. */
+  @GuardedBy("evictionLock")
+  void expireEntries(long now) {
+    expireAfterAccessEntries(now);
+    expireAfterWriteEntries(now);
+    expireVariableEntries(now);
+
+    Pacer pacer = pacer();
+    if (pacer != null) {
+      long delay = getExpirationDelay(now);
+      if (delay == Long.MAX_VALUE) {
+        pacer.cancel();
+      } else {
+        pacer.schedule(executor, drainBuffersTask, now, delay);
+      }
+    }
+  }
+
+  /** Expires entries in the access-order queue. */
+  @GuardedBy("evictionLock")
+  void expireAfterAccessEntries(long now) {
+    if (!expiresAfterAccess()) {
+      return;
+    }
+
+    @Var int remaining = EXPIRATION_THRESHOLD;
+    remaining = expireAfterAccessEntries(now, WINDOW, accessOrderWindowDeque(), remaining);
+    if (evicts()) {
+      remaining = expireAfterAccessEntries(now, PROBATION, accessOrderProbationDeque(), remaining);
+      remaining = expireAfterAccessEntries(now, PROTECTED, accessOrderProtectedDeque(), remaining);
+    }
+    if (remaining == 0) {
+      setDrainStatusOpaque(PROCESSING_TO_REQUIRED);
+    }
+  }
+
+  /**
+   * Expires entries in an access-order queue, up to the {@code remaining} budget, and returns the
+   * unused budget. When exhausted the caller re-arms maintenance to process the backlog.
+   */
+  @GuardedBy("evictionLock")
+  int expireAfterAccessEntries(
+      long now, int queueType, AccessOrderDeque<Node<K, V>> accessOrderDeque, @Var int remaining) {
+    var head = accessOrderDeque.peekFirst();
+    if (head == null) {
+      return remaining;
+    }
+    long duration = expiresAfterAccessNanos();
+    var last = requireNonNull(accessOrderDeque.peekLast());
+    for (var node = head; (node != null) && (remaining > 0); ) {
+      var next = (node == last) ? null : node.getNextInAccessOrder();
+      if ((now - node.getAccessTime()) < duration) {
+        boolean stalePosition = ((last.getAccessTime() - node.getAccessTime()) < 0);
+        if (stalePosition || isComputingAsync(node.getValue())) {
+          accessOrderDeque.moveToBack(node);
+          node = next;
+          continue;
+        }
+        return remaining;
+      }
+      evictEntry(node, RemovalCause.EXPIRED, now);
+      remaining--;
+
+      // Reentrant maintenance can unlink or move any entry, so the scan resumes from the head and
+      // stops if the captured tail that ends the walk left the deque
+      node = (node == last) ? null : accessOrderDeque.peekFirst();
+      boolean bounded = (last.getQueueType() == queueType) && accessOrderDeque.contains(last);
+      if ((node != null) && !bounded) {
+        return 0;
+      }
+    }
+    return remaining;
+  }
+
+  /** Expires entries on the write-order queue. */
+  @GuardedBy("evictionLock")
+  void expireAfterWriteEntries(long now) {
+    if (!expiresAfterWrite()) {
+      return;
+    }
+
+    var head = writeOrderDeque().peekFirst();
+    if (head == null) {
+      return;
+    }
+    long duration = expiresAfterWriteNanos();
+    @Var int remaining = EXPIRATION_THRESHOLD;
+    var last = requireNonNull(writeOrderDeque().peekLast());
+    for (var node = head; (node != null) && (remaining > 0); ) {
+      var next = (node == last) ? null : node.getNextInWriteOrder();
+      if ((now - node.getWriteTime()) < duration) {
+        boolean stalePosition = ((last.getWriteTime() - node.getWriteTime()) < 0);
+        if (stalePosition || isComputingAsync(node.getValue())) {
+          writeOrderDeque().moveToBack(node);
+          node = next;
+          continue;
+        }
+        return;
+      }
+      evictEntry(node, RemovalCause.EXPIRED, now);
+      remaining--;
+
+      // Reentrant maintenance can unlink or move any entry, so the scan resumes from the head and
+      // stops if the captured tail that ends the walk left the deque
+      node = (node == last) ? null : writeOrderDeque().peekFirst();
+      if ((node != null) && !writeOrderDeque().contains(last)) {
+        remaining = 0;
+        break;
+      }
+    }
+    if (remaining == 0) {
+      setDrainStatusOpaque(PROCESSING_TO_REQUIRED);
+    }
+  }
+
+  /** Expires entries in the timer wheel. */
+  @GuardedBy("evictionLock")
+  void expireVariableEntries(long now) {}
+
+  /** Returns the duration until the next item expires, or {@link Long#MAX_VALUE} if none. */
+  @GuardedBy("evictionLock")
+  long getExpirationDelay(long now) {
+    @Var long delay = Long.MAX_VALUE;
+    if (expiresAfterAccess()) {
+      @Var Node<K, V> node = accessOrderWindowDeque().peekFirst();
+      if (node != null) {
+        long age = Math.max(0, now - node.getAccessTime());
+        delay = Math.min(delay, expiresAfterAccessNanos() - age);
+      }
+      if (evicts()) {
+        node = accessOrderProbationDeque().peekFirst();
+        if (node != null) {
+          long age = Math.max(0, now - node.getAccessTime());
+          delay = Math.min(delay, expiresAfterAccessNanos() - age);
+        }
+        node = accessOrderProtectedDeque().peekFirst();
+        if (node != null) {
+          long age = Math.max(0, now - node.getAccessTime());
+          delay = Math.min(delay, expiresAfterAccessNanos() - age);
+        }
+      }
+    }
+    if (expiresAfterWrite()) {
+      Node<K, V> node = writeOrderDeque().peekFirst();
+      if (node != null) {
+        long age = Math.max(0, now - node.getWriteTime());
+        delay = Math.min(delay, expiresAfterWriteNanos() - age);
+      }
+    }
+    return delay;
+  }
+
+  /** Returns if the entry has expired. The caller must exempt an in-flight asynchronous load. */
+  @SuppressWarnings("ShortCircuitBoolean")
+  boolean hasExpired(Node<K, V> node, long now) {
+    if (!expires()) {
+      return false;
+    }
+    boolean expired =
+        (expiresAfterAccess() && (now - node.getAccessTime() >= expiresAfterAccessNanos()))
+            | (expiresAfterWrite() && (now - node.getWriteTime() >= expiresAfterWriteNanos()))
+            | (expiresVariable() && (now - node.getVariableTime() >= 0));
+    VarHandle.loadLoadFence();
+    return expired;
+  }
+
+  /**
+   * Attempts to evict the entry based on the given removal cause. A removal may be ignored if the
+   * entry was updated and is no longer eligible for eviction.
+   *
+   * @param node the entry to evict
+   * @param cause the reason to evict
+   * @param now the current time, used only if expiring
+   * @return if the entry was evicted
+   */
+  @GuardedBy("evictionLock")
+  @SuppressWarnings({"GuardedByChecker", "SynchronizationOnLocalVariableOrMethodParameter"})
+  boolean evictEntry(Node<K, V> node, RemovalCause cause, long now) {
+    K key = node.getKey();
+    var ctx = new EvictContext<V>();
+    var keyReference = node.getKeyReference();
+
+    data.computeIfPresent(
+        keyReference,
+        (k, n) -> {
+          if (n != node) {
+            return n;
+          }
+          synchronized (node) {
+            ctx.value = node.getValue();
+            boolean expired = hasExpired(node, now);
+            boolean computing = isComputingAsync(ctx.value);
+            if ((key == null) || (ctx.value == null)) {
+              ctx.cause = RemovalCause.COLLECTED;
+            } else if (cause == RemovalCause.COLLECTED) {
+              ctx.resurrect = true;
+              return node;
+            } else if (expired && !computing) {
+              ctx.cause = RemovalCause.EXPIRED;
+            } else {
+              ctx.cause = cause;
+            }
+
+            if (ctx.cause == RemovalCause.EXPIRED) {
+              if (!expired) {
+                ctx.resurrect = true;
+                return node;
+              }
+            } else if (ctx.cause == RemovalCause.SIZE) {
+              int weight = node.getWeight();
+              if (weight == 0) {
+                ctx.resurrect = true;
+                return node;
+              }
+            }
+
+            notifyEviction(key, ctx.value, ctx.cause);
+            ctx.removed = true;
+            node.retire();
+            return null;
+          }
+        });
+
+    // The entry is no longer eligible for eviction
+    if (ctx.resurrect) {
+      return false;
+    }
+
+    // If the eviction fails due to a concurrent removal of the victim, that removal may cancel out
+    // the addition that triggered this eviction. The victim is eagerly unlinked and the size
+    // decremented before the removal task so that if an eviction is still required then a new
+    // victim will be chosen for removal.
+    unlink(node);
+
+    synchronized (node) {
+      logIfAlive(node);
+      makeDead(node);
+    }
+
+    if (ctx.removed) {
+      var removeCause = requireNonNull(ctx.cause);
+      statsCounter().recordEviction(node.getWeight(), removeCause);
+      notifyRemoval(key, ctx.value, removeCause);
+    }
+
+    return true;
+  }
+
+  /** Adapts the eviction policy to towards the optimal recency / frequency configuration. */
+  @GuardedBy("evictionLock")
+  @SuppressWarnings("UnnecessaryReturnStatement")
+  void climb() {
+    if (!evicts()) {
+      return;
+    }
+
+    if (frequencySketch().isNotInitialized()) {
+      climber().resetSample();
+    } else if (weightedSize() >= (maximum() >>> 1)) {
+      climber()
+          .determineAdjustment(
+              maximum(), windowMaximum(), mainProtectedMaximum(), frequencySketch().sampleSize);
+    } else {
+      climber().discardSample(maximum(), frequencySketch().sampleSize);
+    }
+
+    demoteFromMainProtected();
+    long amount = climber().adjustment();
+    if (amount == 0) {
+      return;
+    } else if (amount > 0) {
+      increaseWindow();
+    } else {
+      decreaseWindow();
+    }
+  }
+
+  /**
+   * Increases the size of the admission window by shrinking the portion allocated to the main
+   * space. As the main space is partitioned into probation and protected regions (80% / 20%), for
+   * simplicity only the protected is reduced. If the regions exceed their maximums, this may cause
+   * protected items to be demoted to the probation region and probation items to be demoted to the
+   * admission window.
+   */
+  @GuardedBy("evictionLock")
+  void increaseWindow() {
+    if (mainProtectedMaximum() == 0) {
+      return;
+    }
+
+    @SuppressWarnings("MathClampLong")
+    @Var
+    long quota = Math.min(climber().adjustment(), mainProtectedMaximum());
+    setMainProtectedMaximum(mainProtectedMaximum() - quota);
+    setWindowMaximum(windowMaximum() + quota);
+    demoteFromMainProtected();
+
+    for (int i = 0; i < QUEUE_TRANSFER_THRESHOLD; i++) {
+      @Var Node<K, V> candidate = accessOrderProbationDeque().peekFirst();
+      @Var boolean probation = true;
+      if ((candidate == null) || (quota < candidate.getPolicyWeight())) {
+        candidate = accessOrderProtectedDeque().peekFirst();
+        probation = false;
+      }
+      if (candidate == null) {
+        break;
+      }
+
+      long weight = candidate.getPolicyWeight();
+      if (quota < weight) {
+        break;
+      }
+
+      quota -= weight;
+      transfer(candidate, weight, probation ? PROBATION : PROTECTED, WINDOW);
+    }
+
+    setMainProtectedMaximum(mainProtectedMaximum() + quota);
+    setWindowMaximum(windowMaximum() - quota);
+    climber().carryOver(quota);
+  }
+
+  /** Decreases the size of the admission window and increases the main's protected region. */
+  @GuardedBy("evictionLock")
+  void decreaseWindow() {
+    if (windowMaximum() <= 1) {
+      return;
+    }
+
+    @SuppressWarnings("MathClampLong")
+    @Var
+    long quota = Math.min(-climber().adjustment(), Math.max(0, windowMaximum() - 1));
+    setMainProtectedMaximum(mainProtectedMaximum() + quota);
+    setWindowMaximum(windowMaximum() - quota);
+
+    for (int i = 0; i < QUEUE_TRANSFER_THRESHOLD; i++) {
+      Node<K, V> candidate = accessOrderWindowDeque().peekFirst();
+      if (candidate == null) {
+        break;
+      }
+
+      long weight = candidate.getPolicyWeight();
+      if (quota < weight) {
+        break;
+      }
+
+      quota -= weight;
+      transfer(candidate, weight, WINDOW, PROBATION);
+    }
+
+    setMainProtectedMaximum(mainProtectedMaximum() - quota);
+    setWindowMaximum(windowMaximum() + quota);
+    climber().carryOver(-quota);
+  }
+
+  /** Transfers the nodes from the protected to the probation region if it exceeds the maximum. */
+  @GuardedBy("evictionLock")
+  void demoteFromMainProtected() {
+    long mainProtectedMaximum = mainProtectedMaximum();
+    @Var int remaining = QUEUE_TRANSFER_THRESHOLD;
+    while (mainProtectedWeightedSize() > mainProtectedMaximum) {
+      Node<K, V> demoted = accessOrderProtectedDeque().peekFirst();
+      if (demoted == null) {
+        break;
+      }
+      if (remaining == 0) {
+        setDrainStatusOpaque(PROCESSING_TO_REQUIRED);
+        break;
+      }
+      transfer(demoted, demoted.getPolicyWeight(), PROTECTED, PROBATION);
+      remaining--;
+    }
+  }
+
+  /**
+   * Moves the node into another region of the eviction policy, adjusting the weighted size of each
+   * region that tracks its own.
+   */
+  @GuardedBy("evictionLock")
+  void transfer(Node<K, V> node, long weight, int from, int to) {
+    if (from == WINDOW) {
+      setWindowWeightedSize(windowWeightedSize() - weight);
+      accessOrderWindowDeque().remove(node);
+    } else if (from == PROBATION) {
+      accessOrderProbationDeque().remove(node);
+    } else {
+      setMainProtectedWeightedSize(mainProtectedWeightedSize() - weight);
+      accessOrderProtectedDeque().remove(node);
+    }
+
+    if (to == WINDOW) {
+      setWindowWeightedSize(windowWeightedSize() + weight);
+      accessOrderWindowDeque().offerLast(node);
+      node.makeWindow();
+    } else if (to == PROBATION) {
+      accessOrderProbationDeque().offerLast(node);
+      node.makeMainProbation();
+    } else {
+      setMainProtectedWeightedSize(mainProtectedWeightedSize() + weight);
+      accessOrderProtectedDeque().offerLast(node);
+      node.makeMainProtected();
+    }
+  }
+
+  /**
+   * Performs the post-processing work required after a read.
+   *
+   * @param node the entry in the page replacement policy
+   * @param now the current time, in nanoseconds
+   * @param recordHit if the hit count should be incremented
+   * @return the refreshed value if immediately loaded, else null
+   */
+  V afterRead(Node<K, V> node, long now, boolean recordHit) {
+    if (recordHit) {
+      statsCounter().recordHits(1);
+    }
+
+    boolean delayable = (readBuffer.offer(node) != Buffer.FULL);
+    if (shouldDrainBuffers(delayable)) {
+      scheduleDrainBuffers();
+    }
+    return null;
+  }
+
+  /** Enables the read buffer (disabled if fastpath until the frequency sketch is initialized). */
+  @GuardedBy("evictionLock")
+  void recordReads() {
+    if (readBuffer == Buffer.<Node<K, V>>disabled()) {
+      readBuffer = new BoundedBuffer<>();
+    }
+  }
+
+  void setAccessTime(Node<K, V> node, long now) {
+    if (!expiresAfterAccess()) {
+      return;
+    }
+    long tolerance = EXPIRE_TOLERANCE;
+    long accessTime = node.getAccessTime();
+    if ((expiresAfterAccessNanos() <= tolerance) || (Math.abs(now - accessTime) > tolerance)) {
+      node.setAccessTime(now);
+    }
+  }
+
+  void setWriteTime(Node<K, V> node, long now) {
+    if (expiresAfterWrite() || refreshAfterWrite()) {
+      // The write time reserves its low bit to mark that a refresh is in flight, so a recorded time
+      // is always even and an age must be measured against an evenly truncated clock
+      node.setWriteTime(toWriteTime(now));
+    }
+  }
+
+  void setVariableTime(Node<K, V> node, long expirationTime) {
+    if (expiresVariable()) {
+      node.setVariableTime(expirationTime);
+    }
+  }
+
+  /** Returns if the entry's expiration is still deferred to its value's completion. */
+  boolean isExpirationDeferred(Node<K, V> node, long now) {
+    return expiresVariable() && ((node.getVariableTime() - now) > MAXIMUM_EXPIRY);
+  }
+
+  /** Returns if the entry's write time would exceed the minimum expiration reorder threshold. */
+  boolean exceedsWriteTimeTolerance(Node<K, V> node, long varTime, long now) {
+    long variableTime = node.getVariableTime();
+    long writeTime = node.getWriteTime();
+    long tolerance = EXPIRE_TOLERANCE;
+    return (expiresAfterWrite()
+            && ((expiresAfterWriteNanos() <= tolerance) || (Math.abs(now - writeTime) > tolerance)))
+        || (refreshAfterWrite()
+            && ((refreshAfterWriteNanos() <= tolerance) || (Math.abs(now - writeTime) > tolerance)))
+        || (expiresVariable() && (Math.abs(varTime - variableTime) > tolerance));
+  }
+
+  /** Returns the expiration time for a duration. */
+  long expiresAt(long now, long duration) {
+    return now + Math.min(duration, MAXIMUM_EXPIRY);
+  }
+
+  /** Returns the time to record on the entry. */
+  long expirationTimeFor(V value, long now) {
+    return now;
+  }
+
+  /** Returns the time truncated to the write time's granularity. */
+  static long toWriteTime(long time) {
+    return (time & ~1L);
+  }
+
+  /** Returns the entry's write time, with the refresh marker removed. */
+  static long writeTimeOf(Node<?, ?> node) {
+    return toWriteTime(node.getWriteTime());
+  }
+
+  /** Returns if a refresh is in flight for the entry that recorded this write time. */
+  static boolean isRefreshing(long writeTime) {
+    return ((writeTime & 1L) != 0L);
+  }
+
+  /** Returns the write time marked as having a refresh in flight. */
+  static long markRefreshing(long writeTime) {
+    return (writeTime | 1L);
+  }
+
+  /**
+   * Performs the post-processing work required after a write.
+   *
+   * @param task the pending operation to be applied
+   */
+  void afterWrite(Runnable task) {
+    if (writeBuffer.offer(task)) {
+      scheduleAfterWrite();
+      return;
+    }
+
+    // In scenarios where the writing threads cannot make progress then they attempt to provide
+    // assistance by performing the eviction work directly. This can resolve cases where the
+    // maintenance task is scheduled but not running. That might occur due to all of the executor's
+    // threads being busy (perhaps writing into this cache), the write rate greatly exceeds the
+    // consuming rate, priority inversion, or if the executor silently discarded the maintenance
+    // task. Unfortunately this cannot resolve when the eviction is blocked waiting on a long-
+    // running computation due to an eviction listener, the victim is being computed on by a writer,
+    // or the victim residing in the same hash bin as a computing entry. In those cases a warning is
+    // logged to encourage the application to decouple these computations from the map operations.
+    lock();
+    try {
+      maintenance(task);
+    } catch (RuntimeException e) {
+      LOGGER.error(
+          CommonMessages.LOG_EXCEPTION_THROWN_WHEN_PERFORMING_THE_MAINTENANCE_TASK_8B817F20, e);
+    } finally {
+      evictionLock.unlock();
+    }
+    rescheduleCleanUpIfIncomplete();
+  }
+
+  /** Acquires the eviction lock. */
+  void lock() {
+    @Var long remainingNanos = WARN_AFTER_LOCK_WAIT_NANOS;
+    long end = System.nanoTime() + remainingNanos;
+    @Var boolean interrupted = false;
+    try {
+      for (; ; ) {
+        try {
+          if (evictionLock.tryLock(remainingNanos, TimeUnit.NANOSECONDS)) {
+            return;
+          }
+          LOGGER.warn(
+              CommonMessages
+                  .LOG_THE_CACHE_IS_EXPERIENCING_EXCESSIVE_WAIT_TIMES_FOR_ACQUIRING_THE_EVICTION_LOCK_THIS_MAY_INDICATE_THAT_A_LONG_RUNNING_COMPUTATION_HAS_HALTED_EVICTION_WHEN_TRYING_TO_REMOVE_THE_VICTIM_ENTRY_E115E498,
+              new TimeoutException());
+          evictionLock.lock();
+          return;
+        } catch (InterruptedException e) {
+          remainingNanos = end - System.nanoTime();
+          interrupted = true;
+        }
+      }
+    } finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  /**
+   * Conditionally schedules the asynchronous maintenance task after a write operation. If the task
+   * status was IDLE or REQUIRED then the maintenance task is scheduled immediately. If it is
+   * already processing then it is set to transition to REQUIRED upon completion so that a new
+   * execution is triggered by the next operation.
+   */
+  void scheduleAfterWrite() {
+    @Var int drainStatus = drainStatusOpaque();
+    for (; ; ) {
+      switch (drainStatus) {
+        case IDLE:
+          if (casDrainStatus(IDLE, REQUIRED)) {
+            scheduleDrainBuffers();
+            return;
+          }
+          drainStatus = drainStatusAcquire();
+          continue;
+        case REQUIRED:
+          scheduleDrainBuffers();
+          return;
+        case PROCESSING_TO_IDLE:
+          if (casDrainStatus(PROCESSING_TO_IDLE, PROCESSING_TO_REQUIRED)) {
+            return;
+          }
+          drainStatus = drainStatusAcquire();
+          continue;
+        case PROCESSING_TO_REQUIRED:
+          return;
+        default:
+          throw new IllegalStateException(
+              String.format(
+                  CommonMessages.EXCEPTION_INVALID_DRAIN_STATUS_ARG_583D1358, drainStatus));
+      }
+    }
+  }
+
+  /**
+   * Attempts to schedule an asynchronous task to apply the pending operations to the page
+   * replacement policy. If the executor rejects the task then it is run directly.
+   */
+  void scheduleDrainBuffers() {
+    if (drainStatusOpaque() >= PROCESSING_TO_IDLE) {
+      return;
+    }
+    if (evictionLock.tryLock()) {
+      try {
+        int drainStatus = drainStatusOpaque();
+        if (drainStatus >= PROCESSING_TO_IDLE) {
+          return;
+        }
+        setDrainStatusRelease(PROCESSING_TO_IDLE);
+        executor.execute(drainBuffersTask);
+      } catch (Throwable t) {
+        LOGGER.warn(
+            CommonMessages.LOG_EXCEPTION_THROWN_WHEN_SUBMITTING_MAINTENANCE_TASK_C1E55928, t);
+        maintenance(/* ignored */ null);
+      } finally {
+        evictionLock.unlock();
+      }
+    }
+  }
+
+  @Override
+  public void cleanUp() {
+    try {
+      performCleanUp(/* ignored */ null);
+    } catch (RuntimeException e) {
+      LOGGER.error(
+          CommonMessages.LOG_EXCEPTION_THROWN_WHEN_PERFORMING_THE_MAINTENANCE_TASK_8B817F20, e);
+    }
+  }
+
+  /**
+   * Performs the maintenance work, blocking until the lock is acquired.
+   *
+   * @param task an additional pending task to run, or {@code null} if not present
+   */
+  void performCleanUp(Runnable task) {
+    evictionLock.lock();
+    try {
+      maintenance(task);
+    } finally {
+      evictionLock.unlock();
+    }
+    rescheduleCleanUpIfIncomplete();
+  }
+
+  /**
+   * If there remains pending operations that were not handled by the prior clean up then try to
+   * schedule an asynchronous maintenance task. This may occur due to a concurrent write after the
+   * maintenance work had started or if the amortized threshold of work per clean up was reached.
+   */
+  @SuppressWarnings("resource")
+  void rescheduleCleanUpIfIncomplete() {
+    if (drainStatusOpaque() != REQUIRED) {
+      return;
+    }
+
+    // An immediate scheduling cannot be performed on a custom executor because it may use a
+    // caller-runs policy. This could cause the caller's penalty to exceed the amortized threshold,
+    // e.g. repeated concurrent writes could result in a retry loop.
+    if (executor == ForkJoinPool.commonPool()) {
+      scheduleDrainBuffers();
+      return;
+    }
+
+    // If a scheduler was configured then the maintenance can be deferred onto the custom executor
+    // and run in the near future. Otherwise, it will be handled due to other cache activity.
+    var pacer = pacer();
+    if ((pacer != null) && !pacer.isScheduled() && evictionLock.tryLock()) {
+      try {
+        if ((drainStatusOpaque() == REQUIRED) && !pacer.isScheduled()) {
+          pacer.schedule(executor, drainBuffersTask, expirationTicker().read(), Pacer.TOLERANCE);
+        }
+      } finally {
+        evictionLock.unlock();
+      }
+    }
+  }
+
+  /**
+   * Performs the pending maintenance work and sets the state flags during processing to avoid
+   * excess scheduling attempts. The read buffer, write buffer, and reference queues are drained,
+   * followed by expiration, and size-based eviction.
+   *
+   * @param task an additional pending task to run, or {@code null} if not present
+   */
+  @GuardedBy("evictionLock")
+  void maintenance(Runnable task) {
+    setDrainStatusRelease(PROCESSING_TO_IDLE);
+
+    try {
+      try {
+        drainReadBuffer();
+        drainWriteBuffer();
+      } finally {
+        if (task != null) {
+          task.run();
+        }
+      }
+
+      drainKeyReferences();
+      drainValueReferences();
+
+      long now = expirationTicker().read();
+      expireEntries(now);
+      evictEntries(now);
+
+      climb();
+    } finally {
+      if ((drainStatusOpaque() != PROCESSING_TO_IDLE)
+          || !casDrainStatus(PROCESSING_TO_IDLE, IDLE)) {
+        setDrainStatusOpaque(REQUIRED);
+      }
+    }
+  }
+
+  /** Drains the weak key references queue. */
+  @GuardedBy("evictionLock")
+  void drainKeyReferences() {}
+
+  /** Drains the weak / soft value references queue. */
+  @GuardedBy("evictionLock")
+  void drainValueReferences() {}
+
+  /** Drains the read buffer. */
+  @GuardedBy("evictionLock")
+  void drainReadBuffer() {
+    readBuffer.drainTo(accessPolicy);
+  }
+
+  /**
+   * Updates the node's location in the page replacement policy and credits the access.
+   *
+   * <p>A quiet access reorders but does not record the usage with the admission filter or the
+   * adaptive climber's sample, as an asynchronous cache's load completion finalizes the entry's
+   * weight rather than conveying a usage; counting it once per load skews the admission frequencies
+   * and misattributes window hits.
+   */
+  @GuardedBy("evictionLock")
+  void onAccess(Node<K, V> node, Access access) {
+    if (evicts()) {
+      var keyRef = node.getKeyReferenceOrNull();
+      if ((keyRef == null) || !node.isAlive()) {
+        return;
+      }
+      if (access.recordsUsage()) {
+        frequencySketch().increment(keyRef);
+      }
+      boolean inWindow = node.inWindow();
+      boolean inProbation = !inWindow && node.inMainProbation();
+      if (inWindow) {
+        reorder(accessOrderWindowDeque(), node);
+      } else if (inProbation) {
+        reorderProbation(node);
+      } else {
+        reorder(accessOrderProtectedDeque(), node);
+      }
+      if (access.recordsHit() && (node.getPolicyWeight() != 0)) {
+        // a zero-weight entry (an in-flight async load, a pinned entry) earns hits with no
+        // capacity, so it must not steer the sizing; the sketch still observes the key
+        climber().recordHit(inWindow, inProbation);
+      }
+    } else if (expiresAfterAccess()) {
+      reorder(accessOrderWindowDeque(), node);
+    }
+  }
+
+  /** Promote the node from probation to protected on an access. */
+  @GuardedBy("evictionLock")
+  void reorderProbation(Node<K, V> node) {
+    if (!accessOrderProbationDeque().contains(node)) {
+      // Ignore stale accesses for an entry that is no longer present
+      return;
+    } else if (node.getPolicyWeight() > mainProtectedMaximum()) {
+      reorder(accessOrderProbationDeque(), node);
+      return;
+    }
+
+    // If the protected space exceeds its maximum, the LRU items are demoted to the probation space.
+    // This is deferred to the adaption phase at the end of the maintenance cycle.
+    transfer(node, node.getPolicyWeight(), PROBATION, PROTECTED);
+  }
+
+  /** Updates the node's location in the policy's deque, unless it is no longer linked. */
+  static <K, V> void reorder(LinkedDeque<Node<K, V>> deque, Node<K, V> node) {
+    // An entry may be scheduled for reordering despite having been removed. This can occur when the
+    // entry was concurrently read while a writer was removing it. If the entry is no longer linked
+    // then it does not need to be processed.
+    if (deque.contains(node)) {
+      deque.moveToBack(node);
+    }
+  }
+
+  /** Drains the write buffer. */
+  @GuardedBy("evictionLock")
+  void drainWriteBuffer() {
+    for (int i = 0; i <= WRITE_BUFFER_MAX; i++) {
+      Runnable task = writeBuffer.relaxedPoll();
+      if (task == null) {
+        return;
+      }
+      task.run();
+    }
+    setDrainStatusOpaque(PROCESSING_TO_REQUIRED);
+  }
+
+  /** Removes the node from the policy's queues. */
+  @GuardedBy("evictionLock")
+  void unlink(Node<K, V> node) {
+    if (node.inWindow() && (evicts() || expiresAfterAccess())) {
+      accessOrderWindowDeque().remove(node);
+    } else if (evicts()) {
+      if (node.inMainProbation()) {
+        accessOrderProbationDeque().remove(node);
+      } else {
+        accessOrderProtectedDeque().remove(node);
+      }
+    }
+    if (expiresAfterWrite()) {
+      writeOrderDeque().remove(node);
+    }
+  }
+
+  /**
+   * Atomically transitions the node to the <code>dead</code> state and decrements the <code>
+   * weightedSize</code>.
+   *
+   * @param node the entry in the page replacement policy
+   */
+  @GuardedBy("evictionLock")
+  @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+  void makeDead(Node<K, V> node) {
+    synchronized (node) {
+      if (node.isDead()) {
+        return;
+      }
+      if (evicts()) {
+        // The node's policy weight may be out of sync due to a pending update waiting to be
+        // processed. At this point the node's weight is finalized, so the weight can be safely
+        // taken from the node's perspective and the sizes will be adjusted correctly.
+        if (node.inWindow()) {
+          setWindowWeightedSize(windowWeightedSize() - node.getWeight());
+        } else if (node.inMainProtected()) {
+          setMainProtectedWeightedSize(mainProtectedWeightedSize() - node.getWeight());
+        }
+        setWeightedSize(weightedSize() - node.getWeight());
+      }
+      node.die();
+    }
+  }
+
+  /** Adds the node to the page replacement policy. */
+  final class AddTask implements Runnable {
+    final Node<K, V> node;
+    final int weight;
+
+    AddTask(Node<K, V> node, int weight) {
+      this.weight = weight;
+      this.node = node;
+    }
+
+    @Override
+    @GuardedBy("evictionLock")
+    public void run() {
+      if (evicts()) {
+        setWeightedSize(weightedSize() + weight);
+        setWindowWeightedSize(windowWeightedSize() + weight);
+        node.setPolicyWeight(node.getPolicyWeight() + weight);
+
+        long maximum = maximum();
+        if (weightedSize() >= (maximum >>> 1)) {
+          if (weightedSize() > MAXIMUM_CAPACITY) {
+            evictEntries(expirationTicker().read());
+          } else {
+            // Lazily initialize when close to the maximum
+            long capacity = isWeighted() ? data.mappingCount() : maximum;
+            frequencySketch().ensureCapacity(capacity);
+            recordReads();
+          }
+        }
+
+        climber().recordMiss();
+      }
+
+      // ignore out-of-order write operations
+      boolean isAlive;
+      synchronized (node) {
+        isAlive = node.isAlive();
+      }
+      if (isAlive) {
+        if (expiresAfterWrite()) {
+          writeOrderDeque().offerLast(node);
+        }
+        if (evicts()) {
+          var keyRef = node.getKeyReferenceOrNull();
+          if ((keyRef != null) && node.isAlive()) {
+            frequencySketch().increment(keyRef);
+          }
+          if (weight > windowMaximum()) {
+            accessOrderWindowDeque().offerFirst(node);
+          } else {
+            accessOrderWindowDeque().offerLast(node);
+          }
+          if (weight > maximum()) {
+            evictEntry(node, RemovalCause.SIZE, expirationTicker().read());
+          }
+        } else if (expiresAfterAccess()) {
+          accessOrderWindowDeque().offerLast(node);
+        }
+      }
+    }
+  }
+
+  /** Removes a node from the page replacement policy. */
+  final class RemovalTask implements Runnable {
+    final Node<K, V> node;
+
+    RemovalTask(Node<K, V> node) {
+      this.node = node;
+    }
+
+    @Override
+    @GuardedBy("evictionLock")
+    public void run() {
+      // add may not have been processed yet
+      unlink(node);
+      makeDead(node);
+    }
+  }
+
+  /** Updates the weighted size. */
+  final class UpdateTask implements Runnable {
+    final int weightDifference;
+    final Node<K, V> node;
+    final Access access;
+
+    public UpdateTask(Node<K, V> node, int weightDifference) {
+      this(node, weightDifference, Access.HIT);
+    }
+
+    public UpdateTask(Node<K, V> node, int weightDifference, Access access) {
+      this.weightDifference = weightDifference;
+      this.access = access;
+      this.node = node;
+    }
+
+    @Override
+    @GuardedBy("evictionLock")
+    public void run() {
+      if (expiresAfterWrite()) {
+        reorder(writeOrderDeque(), node);
+      }
+      if (evicts()) {
+        if (access.recordsMiss()) {
+          climber().recordMiss();
+        }
+        long oldWeightedSize = node.getPolicyWeight();
+        node.setPolicyWeight(oldWeightedSize + weightDifference);
+        if (node.inWindow()) {
+          setWindowWeightedSize(windowWeightedSize() + weightDifference);
+          if (node.getPolicyWeight() > maximum()) {
+            evictEntry(node, RemovalCause.SIZE, expirationTicker().read());
+          } else if (node.getPolicyWeight() <= windowMaximum()) {
+            onAccess(node, access);
+          } else if (accessOrderWindowDeque().contains(node)) {
+            accessOrderWindowDeque().moveToFront(node);
+          }
+        } else if (node.inMainProbation()) {
+          if (node.getPolicyWeight() <= maximum()) {
+            onAccess(node, access);
+          } else {
+            evictEntry(node, RemovalCause.SIZE, expirationTicker().read());
+          }
+        } else {
+          setMainProtectedWeightedSize(mainProtectedWeightedSize() + weightDifference);
+          if (node.getPolicyWeight() <= maximum()) {
+            onAccess(node, access);
+          } else {
+            evictEntry(node, RemovalCause.SIZE, expirationTicker().read());
+          }
+        }
+
+        setWeightedSize(weightedSize() + weightDifference);
+        if (weightedSize() > MAXIMUM_CAPACITY) {
+          evictEntries(expirationTicker().read());
+        }
+      } else if (expiresAfterAccess()) {
+        onAccess(node, access);
+      }
+    }
+  }
+
+  /** What an access records beyond the reorder. */
+  enum Access {
+    HIT(/* usage= */ true, /* hit= */ true, /* miss= */ false),
+    RELOAD(/* usage= */ true, /* hit= */ false, /* miss= */ true),
+    QUIET(/* usage= */ false, /* hit= */ false, /* miss= */ false);
+
+    private final boolean hit;
+    private final boolean miss;
+    private final boolean usage;
+
+    Access(boolean usage, boolean hit, boolean miss) {
+      this.usage = usage;
+      this.hit = hit;
+      this.miss = miss;
+    }
+
+    /** Returns whether the admission filter observes the key. */
+    boolean recordsUsage() {
+      return usage;
+    }
+
+    /** Returns whether the climber's sample earns a hit. */
+    boolean recordsHit() {
+      return hit;
+    }
+
+    /** Returns whether the climber's sample takes the miss an insertion would have recorded. */
+    boolean recordsMiss() {
+      return miss;
+    }
+  }
+
+  /* --------------- Concurrent Map Support --------------- */
+
+  @Override
+  public boolean isEmpty() {
+    return data.isEmpty();
+  }
+
+  @Override
+  public int size() {
+    return data.size();
+  }
+
+  @Override
+  public long estimatedSize() {
+    return data.mappingCount();
+  }
+
+  @Override
+  public void clear() {
+    Deque<Node<K, V>> entries;
+    evictionLock.lock();
+    try {
+      // Discard all pending reads
+      readBuffer.drainTo(e -> {});
+
+      // Apply the pending writes
+      for (var task = writeBuffer.relaxedPoll(); task != null; task = writeBuffer.relaxedPoll()) {
+        task.run();
+      }
+
+      // Cancel the scheduled cleanup
+      Pacer pacer = pacer();
+      if (pacer != null) {
+        pacer.cancel();
+      }
+
+      // Discard all entries, falling back to one-by-one to avoid excessive lock hold times
+      long now = expirationTicker().read();
+      int threshold = (WRITE_BUFFER_MAX / 2);
+      entries = new ArrayDeque<>(data.values());
+      while (writeBuffer.size() < threshold) {
+        var node = entries.pollFirst();
+        if (node == null) {
+          break;
+        }
+        removeNode(node, now);
+      }
+    } finally {
+      evictionLock.unlock();
+    }
+
+    // Remove any stragglers if released early to more aggressively flush incoming writes
+    @Var boolean cleanUp = false;
+    for (var node : entries) {
+      var key = node.getKey();
+      if (key == null) {
+        cleanUp = true;
+      } else {
+        remove(key);
+      }
+    }
+    if (collectKeys() && cleanUp) {
+      cleanUp();
+    } else {
+      rescheduleCleanUpIfIncomplete();
+    }
+  }
+
+  @GuardedBy("evictionLock")
+  @SuppressWarnings({"GuardedByChecker", "SynchronizationOnLocalVariableOrMethodParameter"})
+  void removeNode(Node<K, V> node, long now) {
+    K key = node.getKey();
+    var ctx = new EvictContext<V>();
+    var keyReference = node.getKeyReference();
+
+    data.computeIfPresent(
+        keyReference,
+        (k, n) -> {
+          if (n != node) {
+            return n;
+          }
+          synchronized (node) {
+            ctx.value = node.getValue();
+            ctx.oldWeight = node.getWeight();
+
+            if ((key == null) || (ctx.value == null)) {
+              ctx.cause = RemovalCause.COLLECTED;
+            } else if (hasExpired(node, now) && !isComputingAsync(ctx.value)) {
+              ctx.cause = RemovalCause.EXPIRED;
+            } else {
+              ctx.cause = RemovalCause.EXPLICIT;
+            }
+
+            if (ctx.cause.wasEvicted()) {
+              notifyEviction(key, ctx.value, ctx.cause);
+            }
+            node.retire();
+            return null;
+          }
+        });
+
+    unlink(node);
+
+    synchronized (node) {
+      logIfAlive(node);
+      makeDead(node);
+    }
+
+    if (ctx.cause != null) {
+      if (ctx.cause.wasEvicted()) {
+        statsCounter().recordEviction(ctx.oldWeight, ctx.cause);
+      }
+      notifyRemoval(key, ctx.value, ctx.cause);
+    }
+  }
+
+  @Override
+  public boolean containsKey(Object key) {
+    requireNonNull(key);
+
+    Node<K, V> node = data.get(nodeFactory.newLookupKey(key));
+    if (node == null) {
+      return false;
+    }
+    boolean expired = hasExpired(node, expirationTicker().read());
+    V value = node.getValue();
+    if ((value == null) || (expired && !isComputingAsync(value))) {
+      scheduleDrainBuffers();
+      return false;
+    }
+    return true;
+  }
+
+  @Override
+  public boolean containsValue(Object value) {
+    requireNonNull(value);
+
+    long now = expirationTicker().read();
+    for (Node<K, V> node : data.values()) {
+      boolean expired = hasExpired(node, now);
+      V nodeValue = node.getValue();
+      if ((node.getKey() == null)
+          || (nodeValue == null)
+          || (expired && !isComputingAsync(nodeValue))) {
+        scheduleDrainBuffers();
+      } else if (node.isAlive() && node.containsValue(value)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  public V get(Object key) {
+    requireNonNull(key);
+    return getIfPresent(key, /* recordStats= */ false);
+  }
+
+  @Override
+  public V getIfPresent(Object key, boolean recordStats) {
+    Node<K, V> node = data.get(nodeFactory.newLookupKey(key));
+    if (node == null) {
+      if (recordStats) {
+        statsCounter().recordMisses(1);
+      }
+      if (drainStatusOpaque() == REQUIRED) {
+        scheduleDrainBuffers();
+      }
+      return null;
+    }
+
+    long now = expirationTicker().read();
+    boolean expired = hasExpired(node, now);
+    V value = node.getValue();
+    if ((value == null) || (expired && !isComputingAsync(value))) {
+      if (recordStats) {
+        statsCounter().recordMisses(1);
+      }
+      scheduleDrainBuffers();
+      return null;
+    }
+
+    if (expiresAfterRead() && !isComputingAsync(value)) {
+      @SuppressWarnings("unchecked")
+      var castedKey = (K) key;
+      setAccessTime(node, now);
+    }
+    V refreshed = afterRead(node, now, recordStats);
+    return (refreshed == null) ? value : refreshed;
+  }
+
+  @Override
+  public V getIfPresentQuietly(Object key) {
+    Node<K, V> node = data.get(nodeFactory.newLookupKey(key));
+    if (node == null) {
+      return null;
+    }
+    boolean expired = hasExpired(node, expirationTicker().read());
+    V value = node.getValue();
+    if ((value == null) || (expired && !isComputingAsync(value))) {
+      return null;
+    }
+    return value;
+  }
+
+  /**
+   * Returns the key associated with the mapping in this cache, or {@code null} if there is none.
+   *
+   * @param key the key whose canonical instance is to be returned
+   * @return the key used by the mapping, or {@code null} if this cache does not contain a mapping
+   *     for the key
+   * @throws NullPointerException if the specified key is null
+   */
+  public K getKey(K key) {
+    Node<K, V> node = data.get(nodeFactory.newLookupKey(key));
+    if (node == null) {
+      if (drainStatusOpaque() == REQUIRED) {
+        scheduleDrainBuffers();
+      }
+      return null;
+    }
+    afterRead(node, /* now= */ 0L, /* recordHit= */ false);
+    return node.getKey();
+  }
+
+  @Override
+  public int getAllPresent(Map<K, V> result, boolean retainAbsent) {
+    @Var int absent = 0;
+    @Var boolean drain = false;
+    int uniqueKeys = result.size();
+    long now = expirationTicker().read();
+    for (var iter = result.entrySet().iterator(); iter.hasNext(); ) {
+      var entry = iter.next();
+      Node<K, V> node = data.get(nodeFactory.newLookupKey(entry.getKey()));
+      if (node != null) {
+        boolean expired = hasExpired(node, now);
+        V value = node.getValue();
+        if ((value != null) && !expired) {
+          setAccessTime(node, now);
+          V refreshed = afterRead(node, now, /* recordHit= */ false);
+          entry.setValue((refreshed == null) ? value : refreshed);
+          continue;
+        }
+        drain = true;
+      }
+      absent++;
+      if (!retainAbsent) {
+        iter.remove();
+      }
+    }
+    if (drain) {
+      scheduleDrainBuffers();
+    }
+    statsCounter().recordHits(uniqueKeys - absent);
+    statsCounter().recordMisses(absent);
+    return absent;
+  }
+
+  @Override
+  public void putAll(Map<? extends K, ? extends V> map) {
+    map.forEach(this::put);
+  }
+
+  @Override
+  public V put(K key, V value) {
+    return put(key, value, /* onlyIfAbsent= */ false);
+  }
+
+  @Override
+  public V putIfAbsent(K key, V value) {
+    return put(key, value, /* onlyIfAbsent= */ true);
+  }
+
+  /**
+   * Adds a node to the policy and the data store. If an existing node is found, then its value is
+   * updated if allowed.
+   *
+   * @param key key with which the specified value is to be associated
+   * @param value value to be associated with the specified key
+   * @param expiry the calculator for the write expiration time
+   * @param onlyIfAbsent a write is performed only if the key is not already associated with a value
+   * @return the prior value in or null if no mapping was found
+   */
+  @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+  V put(K key, V value, boolean onlyIfAbsent) {
+    requireNonNull(key);
+    requireNonNull(value);
+
+    @Var int newWeight = -1;
+    @Var Object keyRef = null;
+    @Var Node<K, V> node = null;
+    Object lookupKey = nodeFactory.newLookupKey(key);
+    for (int attempts = 1; ; attempts++) {
+      @Var Node<K, V> prior = data.get(lookupKey);
+      if (prior == null) {
+        if (node == null) {
+          if (newWeight < 0) {
+            newWeight = weigher.weigh(key, value);
+          }
+          long now = expirationTicker().read();
+          keyRef = nodeFactory.newReferenceKey(key, keyReferenceQueue());
+          node = nodeFactory.newNode(keyRef, value, valueReferenceQueue(), newWeight, now);
+          long expirationTime = expirationTimeFor(value, now);
+          setVariableTime(node, 0L);
+          setAccessTime(node, expirationTime);
+          setWriteTime(node, expirationTime);
+        }
+        var newNode = node;
+        var newKeyRef = requireNonNull(keyRef);
+        prior =
+            (cacheLoader == null)
+                ? data.putIfAbsent(newKeyRef, newNode)
+                : data.computeIfAbsent(
+                    newKeyRef,
+                    k -> {
+                      return newNode;
+                    });
+        if ((prior == null) || (prior == node)) {
+          afterWrite(new AddTask(node, newWeight));
+          return null;
+        }
+      }
+      if (onlyIfAbsent) {
+        // An optimistic fast path to avoid unnecessary locking
+        long now = expirationTicker().read();
+        boolean expired = hasExpired(prior, now);
+        V currentValue = prior.getValue();
+        if ((currentValue != null) && (!expired || isComputingAsync(currentValue))) {
+          if (!isComputingAsync(currentValue)) {
+            setAccessTime(prior, now);
+          }
+          afterRead(prior, now, /* recordHit= */ false);
+          return currentValue;
+        }
+      }
+
+      // A read may race with the entry's removal, so that after the entry is acquired it may no
+      // longer be usable. A retry will reread from the map and either find an absent mapping, a
+      // new entry, or a stale entry.
+      if (!prior.isAlive()) {
+        // A reread of the stale entry may occur if the state transition occurred but the map
+        // removal was delayed by a context switch, so that this thread spin waits until resolved.
+        if ((attempts & MAX_PUT_SPIN_WAIT_ATTEMPTS) != 0) {
+          Thread.onSpinWait();
+          continue;
+        }
+
+        // If the spin wait attempts are exhausted then fallback to a map computation in order to
+        // deschedule this thread until the entry's removal completes. If the key was modified
+        // while in the map so that its equals or hashCode changed then the contents may be
+        // corrupted, where the cache holds an evicted (dead) entry that could not be removed.
+        // That is a violation of the Map contract, so we check that the mapping is in the "alive"
+        // state while in the computation.
+        data.computeIfPresent(
+            lookupKey,
+            (k, n) -> {
+              requireIsAlive(key, n);
+              return n;
+            });
+        continue;
+      }
+
+      long now;
+      V oldValue;
+      long varTime;
+      int oldWeight;
+      @Var boolean expired = false;
+      @Var boolean mayUpdate = true;
+      @Var boolean exceedsTolerance = false;
+      if (newWeight < 0) {
+        newWeight = weigher.weigh(key, value);
+      }
+      synchronized (prior) {
+        if (!prior.isAlive()) {
+          continue;
+        }
+        oldValue = prior.getValue();
+        oldWeight = prior.getWeight();
+        now = expirationTicker().read();
+        if (oldValue == null) {
+          varTime = 0L;
+          notifyEviction(key, null, RemovalCause.COLLECTED);
+        } else if (hasExpired(prior, now) && !isComputingAsync(oldValue)) {
+          expired = true;
+          varTime = 0L;
+          notifyEviction(key, oldValue, RemovalCause.EXPIRED);
+        } else if (onlyIfAbsent) {
+          mayUpdate = false;
+          varTime = 0L;
+        } else {
+          varTime = 0L;
+        }
+
+        long expirationTime = expirationTimeFor(mayUpdate ? value : oldValue, now);
+        if (mayUpdate) {
+          exceedsTolerance = exceedsWriteTimeTolerance(prior, varTime, expirationTime);
+          prior.setValue(value, valueReferenceQueue());
+          prior.setWeight(newWeight);
+          if (expired || (oldValue == null) || exceedsTolerance) {
+            setWriteTime(prior, expirationTime);
+          }
+        }
+
+        setVariableTime(prior, varTime);
+        setAccessTime(prior, expirationTime);
+      }
+
+      if (expired) {
+        statsCounter().recordEviction(oldWeight, RemovalCause.EXPIRED);
+        notifyRemoval(key, oldValue, RemovalCause.EXPIRED);
+      } else if (oldValue == null) {
+        statsCounter().recordEviction(oldWeight, RemovalCause.COLLECTED);
+        notifyRemoval(key, /* value= */ null, RemovalCause.COLLECTED);
+      } else if (mayUpdate) {
+        notifyOnReplace(key, oldValue, value);
+      }
+
+      int weightedDifference = mayUpdate ? (newWeight - oldWeight) : 0;
+      if ((oldValue == null) || (weightedDifference != 0) || expired) {
+        var access = (expired || (oldValue == null)) ? Access.RELOAD : Access.HIT;
+        afterWrite(new UpdateTask(prior, weightedDifference, access));
+      } else if (!onlyIfAbsent && exceedsTolerance) {
+        afterWrite(new UpdateTask(prior, weightedDifference));
+      } else {
+        afterRead(prior, now, /* recordHit= */ false);
+      }
+
+      return expired ? null : oldValue;
+    }
+  }
+
+  @Override
+  @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+  public V remove(Object key) {
+    requireNonNull(key);
+
+    var ctx = new RemoveContext<K, V>();
+    Object lookupKey = nodeFactory.newLookupKey(key);
+    data.compute(
+        lookupKey,
+        (k, n) -> {
+          if (n == null) {
+            return null;
+          }
+          synchronized (n) {
+            requireIsAlive(key, n);
+            ctx.oldKey = n.getKey();
+            ctx.oldValue = n.getValue();
+            ctx.oldWeight = n.getWeight();
+            RemovalCause actualCause;
+            if ((ctx.oldKey == null) || (ctx.oldValue == null)) {
+              actualCause = RemovalCause.COLLECTED;
+            } else if (hasExpired(n, expirationTicker().read())
+                && !isComputingAsync(ctx.oldValue)) {
+              actualCause = RemovalCause.EXPIRED;
+            } else {
+              actualCause = RemovalCause.EXPLICIT;
+            }
+            if (actualCause.wasEvicted()) {
+              notifyEviction(ctx.oldKey, ctx.oldValue, actualCause);
+            }
+            ctx.cause = actualCause;
+            ctx.node = n;
+            n.retire();
+            return null;
+          }
+        });
+
+    if (ctx.cause != null) {
+      afterWrite(new RemovalTask(requireNonNull(ctx.node)));
+      if (ctx.cause.wasEvicted()) {
+        statsCounter().recordEviction(ctx.oldWeight, ctx.cause);
+      }
+      notifyRemoval(ctx.oldKey, ctx.oldValue, ctx.cause);
+    }
+    return (ctx.cause == RemovalCause.EXPLICIT) ? ctx.oldValue : null;
+  }
+
+  @Override
+  @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+  public boolean remove(Object key, Object value) {
+    requireNonNull(key);
+    if (value == null) {
+      return false;
+    }
+
+    var ctx = new RemoveContext<K, V>();
+    Object lookupKey = nodeFactory.newLookupKey(key);
+    data.computeIfPresent(
+        lookupKey,
+        (kR, node) -> {
+          synchronized (node) {
+            requireIsAlive(key, node);
+            ctx.oldKey = node.getKey();
+            ctx.oldValue = node.getValue();
+            ctx.oldWeight = node.getWeight();
+            if ((ctx.oldKey == null) || (ctx.oldValue == null)) {
+              ctx.cause = RemovalCause.COLLECTED;
+            } else if (hasExpired(node, expirationTicker().read())
+                && !isComputingAsync(ctx.oldValue)) {
+              ctx.cause = RemovalCause.EXPIRED;
+            } else if (node.containsValue(value)) {
+              ctx.cause = RemovalCause.EXPLICIT;
+            } else {
+              return node;
+            }
+            if (ctx.cause.wasEvicted()) {
+              notifyEviction(ctx.oldKey, ctx.oldValue, ctx.cause);
+            }
+            ctx.node = node;
+            node.retire();
+            return null;
+          }
+        });
+
+    if (ctx.node == null) {
+      return false;
+    }
+    var removeCause = requireNonNull(ctx.cause);
+    afterWrite(new RemovalTask(ctx.node));
+    if (removeCause.wasEvicted()) {
+      statsCounter().recordEviction(ctx.oldWeight, removeCause);
+    }
+    notifyRemoval(ctx.oldKey, ctx.oldValue, removeCause);
+
+    return (removeCause == RemovalCause.EXPLICIT);
+  }
+
+  @Override
+  @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+  public V replace(K key, V value) {
+    requireNonNull(key);
+    requireNonNull(value);
+    var ctx = new ReplaceContext<K, V>();
+    int weight = weigher.weigh(key, value);
+    Node<K, V> node =
+        data.computeIfPresent(
+            nodeFactory.newLookupKey(key),
+            (k, n) -> {
+              synchronized (n) {
+                requireIsAlive(key, n);
+                ctx.nodeKey = n.getKey();
+                ctx.oldValue = n.getValue();
+                ctx.oldWeight = n.getWeight();
+                if ((ctx.nodeKey == null)
+                    || (ctx.oldValue == null)
+                    || (hasExpired(n, ctx.now = expirationTicker().read())
+                        && !isComputingAsync(ctx.oldValue))) {
+                  ctx.oldValue = null;
+                  ctx.garbage = true;
+                  return n;
+                }
+
+                long varTime = 0L;
+                n.setValue(value, valueReferenceQueue());
+                n.setWeight(weight);
+
+                long expirationTime = expirationTimeFor(value, ctx.now);
+                ctx.exceedsTolerance = exceedsWriteTimeTolerance(n, varTime, expirationTime);
+                if (ctx.exceedsTolerance) {
+                  setWriteTime(n, expirationTime);
+                }
+                setAccessTime(n, expirationTime);
+                setVariableTime(n, varTime);
+                return n;
+              }
+            });
+
+    if ((node == null) || (ctx.nodeKey == null) || (ctx.oldValue == null)) {
+      if (ctx.garbage) {
+        scheduleDrainBuffers();
+      }
+      return null;
+    }
+
+    int weightedDifference = (weight - ctx.oldWeight);
+    if (ctx.exceedsTolerance || (weightedDifference != 0)) {
+      afterWrite(new UpdateTask(node, weightedDifference));
+    } else {
+      afterRead(node, ctx.now, /* recordHit= */ false);
+    }
+
+    notifyOnReplace(ctx.nodeKey, ctx.oldValue, value);
+    return ctx.oldValue;
+  }
+
+  @Override
+  @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+  public boolean replace(
+      K key, V oldValue, V newValue, boolean shouldDiscardRefresh, boolean quietly) {
+    requireNonNull(key);
+    requireNonNull(oldValue);
+    requireNonNull(newValue);
+    var ctx = new ReplaceContext<K, V>();
+    int weight = weigher.weigh(key, newValue);
+    Node<K, V> node =
+        data.computeIfPresent(
+            nodeFactory.newLookupKey(key),
+            (k, n) -> {
+              synchronized (n) {
+                requireIsAlive(key, n);
+                ctx.nodeKey = n.getKey();
+                ctx.oldValue = n.getValue();
+                ctx.oldWeight = n.getWeight();
+                if ((ctx.nodeKey == null)
+                    || (ctx.oldValue == null)
+                    || (hasExpired(n, ctx.now = expirationTicker().read())
+                        && !isComputingAsync(ctx.oldValue))) {
+                  ctx.oldValue = null;
+                  ctx.garbage = true;
+                  return n;
+                } else if (!n.containsValue(oldValue)) {
+                  ctx.oldValue = null;
+                  return n;
+                }
+
+                // A completion finalizes only what the insertion deferred. Its caller reads the
+                // future's
+                // readiness before the write, so a value that becomes available in between is
+                // evaluated by
+                // the insertion, and evaluating it again would charge that creation as an update.
+                long varTime =
+                    (quietly && !isExpirationDeferred(n, ctx.now)) ? n.getVariableTime() : 0L;
+                n.setValue(newValue, valueReferenceQueue());
+                n.setWeight(weight);
+
+                long expirationTime = expirationTimeFor(newValue, ctx.now);
+                ctx.exceedsTolerance = exceedsWriteTimeTolerance(n, varTime, expirationTime);
+                if (ctx.exceedsTolerance) {
+                  setWriteTime(n, expirationTime);
+                }
+                setAccessTime(n, expirationTime);
+                setVariableTime(n, varTime);
+              }
+              return n;
+            });
+
+    if ((node == null) || (ctx.nodeKey == null) || (ctx.oldValue == null)) {
+      if (ctx.garbage) {
+        scheduleDrainBuffers();
+      }
+      return false;
+    }
+
+    int weightedDifference = (weight - ctx.oldWeight);
+    if (ctx.exceedsTolerance || (weightedDifference != 0)) {
+      afterWrite(new UpdateTask(node, weightedDifference, quietly ? Access.QUIET : Access.HIT));
+    } else if (!quietly) {
+      afterRead(node, ctx.now, /* recordHit= */ false);
+    }
+
+    notifyOnReplace(ctx.nodeKey, ctx.oldValue, newValue);
+    return true;
+  }
+
+  @Override
+  public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
+    requireNonNull(function);
+
+    BiFunction<K, V, V> remappingFunction =
+        (key, oldValue) -> requireNonNull(function.apply(key, requireNonNull(oldValue)));
+    for (K key : keySet()) {
+      Object lookupKey = nodeFactory.newLookupKey(key);
+      remap(
+          key, lookupKey, remappingFunction, new ComputeContext<>(), /* computeIfAbsent= */ false);
+    }
+  }
+
+  @Override
+  public V computeIfAbsent(
+      K key,
+      @Var Function<? super K, ? extends V> mappingFunction,
+      boolean recordStats,
+      boolean recordLoad) {
+    requireNonNull(key);
+    requireNonNull(mappingFunction);
+
+    // An optimistic fast path to avoid unnecessary locking
+    Node<K, V> node = data.get(nodeFactory.newLookupKey(key));
+    if (node != null) {
+      long now = expirationTicker().read();
+      boolean expired = hasExpired(node, now);
+      V value = node.getValue();
+      if ((value != null) && (!expired || isComputingAsync(value))) {
+        if (expiresAfterRead() && !isComputingAsync(value)) {
+          setAccessTime(node, now);
+        }
+        var refreshed = afterRead(node, now, /* recordHit= */ recordStats);
+        return (refreshed == null) ? value : refreshed;
+      }
+    }
+    if (recordStats) {
+      mappingFunction = statsAware(mappingFunction, recordLoad);
+    }
+    Object keyRef = nodeFactory.newReferenceKey(key, keyReferenceQueue());
+    return doComputeIfAbsent(key, keyRef, mappingFunction, new ComputeContext<>(), recordStats);
+  }
+
+  /** Returns the current value from a computeIfAbsent invocation. */
+  @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+  V doComputeIfAbsent(
+      K key,
+      Object keyRef,
+      Function<? super K, ? extends V> mappingFunction,
+      ComputeContext<K, V> ctx,
+      boolean recordStats) {
+    Node<K, V> node =
+        data.compute(
+            keyRef,
+            (k, n) -> {
+              if (n == null) {
+                ctx.newValue = mappingFunction.apply(key);
+                if (ctx.newValue == null) {
+                  return null;
+                }
+                ctx.now = expirationTicker().read();
+                ctx.newWeight = weigher.weigh(key, ctx.newValue);
+                var created =
+                    nodeFactory.newNode(
+                        k, ctx.newValue, valueReferenceQueue(), ctx.newWeight, ctx.now);
+                long expirationTime = expirationTimeFor(ctx.newValue, ctx.now);
+                setVariableTime(created, 0L);
+                setAccessTime(created, expirationTime);
+                setWriteTime(created, expirationTime);
+                return created;
+              }
+
+              synchronized (n) {
+                requireIsAlive(key, n);
+                ctx.nodeKey = n.getKey();
+                ctx.oldValue = n.getValue();
+                ctx.oldWeight = n.getWeight();
+                RemovalCause actualCause;
+                if ((ctx.nodeKey == null) || (ctx.oldValue == null)) {
+                  actualCause = RemovalCause.COLLECTED;
+                } else if (hasExpired(n, ctx.now = expirationTicker().read())
+                    && !isComputingAsync(ctx.oldValue)) {
+                  actualCause = RemovalCause.EXPIRED;
+                } else {
+                  return n;
+                }
+
+                ctx.cause = actualCause;
+                notifyEviction(ctx.nodeKey, ctx.oldValue, actualCause);
+
+                try {
+                  ctx.newValue = mappingFunction.apply(key);
+                  if (ctx.newValue == null) {
+                    ctx.removed = n;
+                    n.retire();
+                    return null;
+                  }
+                  ctx.now = expirationTicker().read();
+                  ctx.newWeight = weigher.weigh(key, ctx.newValue);
+                  long varTime = 0L;
+
+                  n.setValue(ctx.newValue, valueReferenceQueue());
+                  n.setWeight(ctx.newWeight);
+
+                  long expirationTime = expirationTimeFor(ctx.newValue, ctx.now);
+                  setAccessTime(n, expirationTime);
+                  setWriteTime(n, expirationTime);
+                  setVariableTime(n, varTime);
+                  return n;
+                } catch (Throwable e) {
+                  ctx.newValue = null;
+                  ctx.exception = e;
+                  ctx.removed = n;
+                  n.retire();
+                  return null;
+                }
+              }
+            });
+
+    if (ctx.cause != null) {
+      statsCounter().recordEviction(ctx.oldWeight, ctx.cause);
+      notifyRemoval(ctx.nodeKey, ctx.oldValue, ctx.cause);
+    }
+    if (node == null) {
+      if (ctx.removed != null) {
+        afterWrite(new RemovalTask(ctx.removed));
+      }
+      if (ctx.exception != null) {
+        throw toUnchecked(ctx.exception);
+      }
+      return null;
+    }
+    if ((ctx.oldValue != null) && (ctx.newValue == null)) {
+      if (!isComputingAsync(ctx.oldValue)) {
+        setAccessTime(node, ctx.now);
+      }
+
+      var refreshed = afterRead(node, ctx.now, /* recordHit= */ recordStats);
+      return (refreshed == null) ? ctx.oldValue : refreshed;
+    }
+    if ((ctx.oldValue == null) && (ctx.cause == null)) {
+      afterWrite(new AddTask(node, ctx.newWeight));
+    } else {
+      int weightedDifference = (ctx.newWeight - ctx.oldWeight);
+      afterWrite(new UpdateTask(node, weightedDifference, Access.RELOAD));
+    }
+
+    return ctx.newValue;
+  }
+
+  @Override
+  public V computeIfPresent(
+      K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+    requireNonNull(key);
+    requireNonNull(remappingFunction);
+
+    // An optimistic fast path to avoid unnecessary locking
+    Object lookupKey = nodeFactory.newLookupKey(key);
+    var node = data.get(lookupKey);
+    if (node == null) {
+      return null;
+    }
+    boolean expired = hasExpired(node, expirationTicker().read());
+    V value = node.getValue();
+    if ((value == null) || expired) {
+      scheduleDrainBuffers();
+      return null;
+    }
+
+    @SuppressWarnings("NullAway")
+    BiFunction<? super K, ? super V, ? extends V> statsAwareRemappingFunction =
+        statsAware(remappingFunction, /* recordLoad= */ true);
+    return remap(
+        key,
+        lookupKey,
+        statsAwareRemappingFunction,
+        new ComputeContext<>(),
+        /* computeIfAbsent= */ false);
+  }
+
+  @Override
+  public V compute(
+      K key,
+      BiFunction<? super K, ? super V, ? extends V> remappingFunction,
+      boolean recordLoad,
+      RemapHints hints) {
+    requireNonNull(key);
+    requireNonNull(remappingFunction);
+
+    Object keyRef = nodeFactory.newReferenceKey(key, keyReferenceQueue());
+    var ctx = new ComputeContext<K, V>();
+    ctx.hints = hints;
+    return remap(
+        key, keyRef, statsAware(remappingFunction, recordLoad), ctx, /* computeIfAbsent= */ true);
+  }
+
+  @Override
+  public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+    requireNonNull(key);
+    requireNonNull(value);
+    requireNonNull(remappingFunction);
+
+    Object keyRef = nodeFactory.newReferenceKey(key, keyReferenceQueue());
+    BiFunction<? super V, ? super V, ? extends V> f = statsAware(remappingFunction);
+    return remap(
+        key,
+        keyRef,
+        (k, oldValue) -> (oldValue == null) ? value : f.apply(oldValue, value),
+        new ComputeContext<>(),
+        /* computeIfAbsent= */ true);
+  }
+
+  /**
+   * Attempts to compute a mapping for the specified key and its current mapped value (or {@code
+   * null} if there is no current mapping).
+   *
+   * <p>An entry that has expired or been reference collected is evicted and the computation
+   * continues as if the entry had not been present. This method does not pre-screen and does not
+   * wrap the remappingFunction to be statistics aware.
+   *
+   * @param key key with which the specified value is to be associated
+   * @param keyRef the key to associate with or a lookup only key if not {@code computeIfAbsent}
+   * @param remappingFunction the function to compute a value
+   * @param expiry the calculator for the expiration time
+   * @param ctx the mutable context for passing state to and from the compute lambda
+   * @param computeIfAbsent if an absent entry can be computed
+   * @return the new value associated with the specified key, or null if none
+   */
+  @SuppressWarnings({"StatementWithEmptyBody", "SynchronizationOnLocalVariableOrMethodParameter"})
+  V remap(
+      K key,
+      Object keyRef,
+      BiFunction<? super K, ? super V, ? extends V> remappingFunction,
+      ComputeContext<K, V> ctx,
+      boolean computeIfAbsent) {
+    Node<K, V> node =
+        data.compute(
+            keyRef,
+            (kr, n) -> {
+              if (n == null) {
+                if (!computeIfAbsent) {
+                  return null;
+                }
+                ctx.newValue = remappingFunction.apply(key, null);
+                if (ctx.newValue == null) {
+                  // A stale refresh whose entry is absent leaves a successor's registration intact
+                  return null;
+                }
+                ctx.now = expirationTicker().read();
+                ctx.newWeight = weigher.weigh(key, ctx.newValue);
+                var created =
+                    nodeFactory.newNode(
+                        keyRef, ctx.newValue, valueReferenceQueue(), ctx.newWeight, ctx.now);
+
+                long expirationTime = expirationTimeFor(ctx.newValue, ctx.now);
+                setAccessTime(created, expirationTime);
+                setWriteTime(created, expirationTime);
+                setVariableTime(created, 0L);
+                return created;
+              }
+
+              synchronized (n) {
+                requireIsAlive(key, n);
+                ctx.nodeKey = n.getKey();
+                ctx.oldValue = n.getValue();
+                ctx.oldWeight = n.getWeight();
+                if ((ctx.nodeKey == null) || (ctx.oldValue == null)) {
+                  ctx.cause = RemovalCause.COLLECTED;
+                } else if (hasExpired(n, expirationTicker().read())
+                    && !isComputingAsync(ctx.oldValue)) {
+                  ctx.cause = RemovalCause.EXPIRED;
+                }
+                if (ctx.cause != null) {
+                  notifyEviction(ctx.nodeKey, ctx.oldValue, ctx.cause);
+                  if (!computeIfAbsent) {
+                    ctx.removed = n;
+                    n.retire();
+                    return null;
+                  }
+                }
+
+                boolean wasEvicted = (ctx.cause != null);
+                try {
+                  ctx.newValue =
+                      remappingFunction.apply(key, (ctx.cause == null) ? ctx.oldValue : null);
+
+                  if (ctx.newValue == null) {
+                    if (ctx.cause == null) {
+                      ctx.cause = RemovalCause.EXPLICIT;
+                    }
+                    // A stale refresh whose entry was evicted leaves a successor's registration
+                    // intact
+                    ctx.removed = n;
+                    n.retire();
+                    return null;
+                  }
+
+                  // If the caller flagged a same-instance return as a no-op (e.g., a refresh was
+                  // rejected
+                  // and should not touch the entry), skip the metadata updates below.
+                  if ((ctx.hints != null)
+                      && ctx.hints.preserveTimestamps
+                      && (ctx.newValue == ctx.oldValue)
+                      && (ctx.cause == null)) {
+                    ctx.unmodified = true;
+                    return n;
+                  }
+
+                  long varTime = 0L;
+                  ctx.newWeight = weigher.weigh(key, ctx.newValue);
+                  ctx.now = expirationTicker().read();
+                  if ((ctx.cause == null) && (ctx.newValue != ctx.oldValue)) {
+                    ctx.cause = RemovalCause.REPLACED;
+                  }
+
+                  if (ctx.newValue != ctx.oldValue) {
+                    n.setValue(ctx.newValue, valueReferenceQueue());
+                  }
+                  n.setWeight(ctx.newWeight);
+
+                  long expirationTime = expirationTimeFor(ctx.newValue, ctx.now);
+                  ctx.exceedsTolerance = exceedsWriteTimeTolerance(n, varTime, expirationTime);
+                  if (((ctx.cause != null) && ctx.cause.wasEvicted()) || ctx.exceedsTolerance) {
+                    setWriteTime(n, expirationTime);
+                  }
+                  setAccessTime(n, expirationTime);
+                  setVariableTime(n, varTime);
+                  return n;
+                } catch (Throwable e) {
+                  if (!wasEvicted) {
+                    throw e;
+                  }
+                  ctx.newValue = null;
+                  ctx.exception = e;
+                  ctx.removed = n;
+                  n.retire();
+                  return null;
+                }
+              }
+            });
+
+    if (ctx.cause != null) {
+      if (ctx.cause == RemovalCause.REPLACED) {
+        requireNonNull(ctx.newValue);
+        notifyOnReplace(key, ctx.oldValue, ctx.newValue);
+      } else {
+        if (ctx.cause.wasEvicted()) {
+          statsCounter().recordEviction(ctx.oldWeight, ctx.cause);
+        }
+        notifyRemoval(ctx.nodeKey, ctx.oldValue, ctx.cause);
+      }
+    }
+
+    if (ctx.removed != null) {
+      afterWrite(new RemovalTask(ctx.removed));
+    } else if (node == null) {
+      // absent and not computable
+    } else if (ctx.unmodified) {
+      // caller flagged a same-instance return as a no-op
+    } else if ((ctx.oldValue == null) && (ctx.cause == null)) {
+      afterWrite(new AddTask(node, ctx.newWeight));
+    } else {
+      int weightedDifference = ctx.newWeight - ctx.oldWeight;
+      boolean quietly = (ctx.hints != null) && ctx.hints.quietly;
+      boolean reload = (ctx.cause != null) && ctx.cause.wasEvicted();
+      if (ctx.exceedsTolerance || (weightedDifference != 0) || (evicts() && !quietly && reload)) {
+        var access = quietly ? Access.QUIET : (reload ? Access.RELOAD : Access.HIT);
+        afterWrite(new UpdateTask(node, weightedDifference, access));
+      } else {
+        if (!quietly) {
+          afterRead(node, ctx.now, /* recordHit= */ false);
+        }
+        if (reload) {
+          scheduleDrainBuffers();
+        }
+      }
+    }
+
+    if (ctx.exception != null) {
+      throw toUnchecked(ctx.exception);
+    }
+    return ctx.newValue;
+  }
+
+  @Override
+  public void forEach(BiConsumer<? super K, ? super V> action) {
+    requireNonNull(action);
+
+    for (var iterator = new EntryIterator<>(this); iterator.hasNext(); ) {
+      action.accept(requireNonNull(iterator.key), requireNonNull(iterator.value));
+      iterator.advance();
+    }
+  }
+
+  @Override
+  public Set<K> keySet() {
+    Set<K> ks = keySet;
+    return (ks == null) ? (keySet = new KeySetView<>(this)) : ks;
+  }
+
+  @Override
+  public Collection<V> values() {
+    Collection<V> vs = values;
+    return (vs == null) ? (values = new ValuesView<>(this)) : vs;
+  }
+
+  @Override
+  public Set<Entry<K, V>> entrySet() {
+    Set<Entry<K, V>> es = entrySet;
+    return (es == null) ? (entrySet = new EntrySetView<>(this)) : es;
+  }
+
+  /**
+   * Object equality requires reflexive, symmetric, transitive, and consistency properties. Of
+   * these, symmetry and consistency require further clarification for how they are upheld.
+   *
+   * <p>The <i>consistency</i> property between invocations requires that the results are the same
+   * if there are no modifications to the information used. Therefore, usages should expect that
+   * this operation may return misleading results if either the maps or the data held by them is
+   * modified during the execution of this method. This characteristic allows for comparing the map
+   * sizes and assuming stable mappings, as done by {@link java.util.AbstractMap}-based maps.
+   *
+   * <p>The <i>symmetric</i> property requires that the result is the same for all implementations
+   * of {@link Map#equals(Object)}. That contract is defined in terms of the stable mappings
+   * provided by {@link #entrySet()}, meaning that the {@link #size()} optimization forces that the
+   * count is consistent with the mappings when used for an equality check.
+   *
+   * <p>The cache's {@link #size()} method may include entries that have expired or have been
+   * reference collected, but have not yet been removed from the backing map. An iteration over the
+   * map may trigger the removal of these dead entries when skipped over during traversal. To ensure
+   * consistency and symmetry, usages should call {@link #cleanUp()} before this method while no
+   * other concurrent operations are being performed on this cache. This is not done implicitly by
+   * {@link #size()} as many usages assume it to be instantaneous and lock-free. As a postcondition
+   * the iteration count is verified against the prescreened {@link #size()} so that a concurrent
+   * maintenance pass that drops dead entries during traversal is detected and reported as not
+   * equal, rather than silently returning {@code true} on the surviving subset.
+   */
+  @Override
+  public boolean equals(Object o) {
+    if (o == this) {
+      return true;
+    } else if (!(o instanceof Map)) {
+      return false;
+    }
+
+    var map = (Map<?, ?>) o;
+    int expectedSize = size();
+    if (map.size() != expectedSize) {
+      return false;
+    }
+
+    try {
+      @Var int count = 0;
+      long now = expirationTicker().read();
+      for (var node : data.values()) {
+        boolean expired = hasExpired(node, now);
+        K key = node.getKey();
+        V value = node.getValue();
+        if ((key == null)
+            || (value == null)
+            || !node.isAlive()
+            || (expired && !isComputingAsync(value))) {
+          scheduleDrainBuffers();
+          return false;
+        } else {
+          var val = map.get(key);
+          if ((val == null) || ((val != value) && !val.equals(value))) {
+            return false;
+          }
+        }
+        count++;
+      }
+      return (count == expectedSize);
+    } catch (ClassCastException | NullPointerException ignored) {
+      return false;
+    }
+  }
+
+  @Override
+  public int hashCode() {
+    @Var int hash = 0;
+    @Var boolean drain = false;
+    long now = expirationTicker().read();
+    for (var node : data.values()) {
+      boolean expired = hasExpired(node, now);
+      K key = node.getKey();
+      V value = node.getValue();
+      if ((key == null)
+          || (value == null)
+          || !node.isAlive()
+          || (expired && !isComputingAsync(value))) {
+        drain = true;
+      } else {
+        hash += key.hashCode() ^ value.hashCode();
+      }
+    }
+    if (drain) {
+      scheduleDrainBuffers();
+    }
+    return hash;
+  }
+
+  @Override
+  public String toString() {
+    @Var boolean drain = false;
+    long now = expirationTicker().read();
+    var result = new StringBuilder().append('{');
+    for (var node : data.values()) {
+      boolean expired = hasExpired(node, now);
+      K key = node.getKey();
+      V value = node.getValue();
+      if ((key == null)
+          || (value == null)
+          || !node.isAlive()
+          || (expired && !isComputingAsync(value))) {
+        drain = true;
+      } else {
+        if (result.length() != 1) {
+          result.append(',').append(' ');
+        }
+        result.append((key == this) ? "(this Map)" : key);
+        result.append('=');
+        result.append((value == this) ? "(this Map)" : value);
+      }
+    }
+    if (drain) {
+      scheduleDrainBuffers();
+    }
+    return result.append('}').toString();
+  }
+
+  /**
+   * Returns the computed result from the ordered traversal of the cache entries.
+   *
+   * @param hottest the coldest or hottest iteration order
+   * @param transformer a function that unwraps the value
+   * @param mappingFunction the mapping function to compute a value
+   * @return the computed value
+   */
+  @SuppressWarnings("GuardedByChecker")
+  <T> T evictionOrder(
+      boolean hottest,
+      Function<V, V> transformer,
+      Function<Stream<CacheEntry<K, V>>, T> mappingFunction) {
+    Comparator<Node<K, V>> comparator =
+        Comparator.comparingInt(
+            node -> {
+              var keyRef = node.getKeyReferenceOrNull();
+              return ((keyRef == null) || !node.isAlive())
+                  ? 0
+                  : frequencySketch().frequency(keyRef);
+            });
+    Iterable<Node<K, V>> iterable;
+    if (hottest) {
+      iterable =
+          () -> {
+            var secondary =
+                PeekingIterator.comparing(
+                    accessOrderProbationDeque().descendingIterator(),
+                    accessOrderWindowDeque().descendingIterator(),
+                    comparator);
+            return PeekingIterator.concat(
+                accessOrderProtectedDeque().descendingIterator(), secondary);
+          };
+    } else {
+      iterable =
+          () -> {
+            var primary =
+                PeekingIterator.comparing(
+                    accessOrderWindowDeque().iterator(),
+                    accessOrderProbationDeque().iterator(),
+                    comparator.reversed());
+            return PeekingIterator.concat(primary, accessOrderProtectedDeque().iterator());
+          };
+    }
+    return snapshot(iterable, transformer, mappingFunction);
+  }
+
+  /**
+   * Returns the computed result from the ordered traversal of the cache entries.
+   *
+   * @param oldest the youngest or oldest iteration order
+   * @param transformer a function that unwraps the value
+   * @param mappingFunction the mapping function to compute a value
+   * @return the computed value
+   */
+  @SuppressWarnings("GuardedByChecker")
+  <T> T expireAfterAccessOrder(
+      boolean oldest,
+      Function<V, V> transformer,
+      Function<Stream<CacheEntry<K, V>>, T> mappingFunction) {
+    Iterable<Node<K, V>> iterable;
+    if (evicts()) {
+      iterable =
+          () -> {
+            @Var
+            Comparator<Node<K, V>> comparator =
+                (n1, n2) -> Long.signum(n1.getAccessTime() - n2.getAccessTime());
+            PeekingIterator<Node<K, V>> first;
+            PeekingIterator<Node<K, V>> second;
+            PeekingIterator<Node<K, V>> third;
+            if (oldest) {
+              comparator = comparator.reversed();
+              first = accessOrderWindowDeque().iterator();
+              second = accessOrderProbationDeque().iterator();
+              third = accessOrderProtectedDeque().iterator();
+            } else {
+              first = accessOrderWindowDeque().descendingIterator();
+              second = accessOrderProbationDeque().descendingIterator();
+              third = accessOrderProtectedDeque().descendingIterator();
+            }
+            return PeekingIterator.comparing(
+                PeekingIterator.comparing(first, second, comparator), third, comparator);
+          };
+    } else {
+      iterable = oldest ? accessOrderWindowDeque() : accessOrderWindowDeque()::descendingIterator;
+    }
+    return snapshot(iterable, transformer, mappingFunction);
+  }
+
+  /**
+   * Returns the computed result from the ordered traversal of the cache entries.
+   *
+   * @param iterable the supplier of the entries in the cache
+   * @param transformer a function that unwraps the value
+   * @param mappingFunction the mapping function to compute a value
+   * @return the computed value
+   */
+  @SuppressWarnings("MathClampLong")
+  <T> T snapshot(
+      Iterable<Node<K, V>> iterable,
+      Function<V, V> transformer,
+      Function<Stream<CacheEntry<K, V>>, T> mappingFunction) {
+    requireNonNull(mappingFunction);
+    requireNonNull(transformer);
+    requireNonNull(iterable);
+
+    evictionLock.lock();
+    try {
+      maintenance(/* ignored */ null);
+
+      // Obtain the iterator as late as possible for modification count checking
+      try (var stream =
+          StreamSupport.stream(
+              Spliterators.spliteratorUnknownSize(
+                  iterable.iterator(), DISTINCT | ORDERED | NONNULL | IMMUTABLE),
+              /* parallel= */ false)) {
+        boolean[] open = {true};
+        return mappingFunction.apply(
+            stream
+                .onClose(() -> open[0] = false)
+                .peek(
+                    ignored ->
+                        requireState(
+                            open[0],
+                            CommonMessages.EXCEPTION_STREAM_HAS_ALREADY_BEEN_CLOSED_069DDD3D))
+                .map(
+                    node ->
+                        nodeToCacheEntry(
+                            node,
+                            transformer,
+                            (int)
+                                Math.max(0L, Math.min(node.getPolicyWeight(), Integer.MAX_VALUE))))
+                .filter(Objects::nonNull));
+      }
+    } finally {
+      evictionLock.unlock();
+      rescheduleCleanUpIfIncomplete();
+    }
+  }
+
+  /**
+   * Returns an entry for the given node if it can be used externally, else null. The weight is the
+   * caller's best-effort reading and the timestamps are read after the value, so either may belong
+   * to a concurrent update.
+   */
+  CacheEntry<K, V> nodeToCacheEntry(Node<K, V> node, Function<V, V> transformer, int weight) {
+    long now = expirationTicker().read();
+    boolean expired = hasExpired(node, now);
+    V rawValue = node.getValue();
+    if (rawValue == null) {
+      return null;
+    }
+    V value = transformer.apply(rawValue);
+    K key = node.getKey();
+    if ((key == null) || (value == null) || !node.isAlive() || expired) {
+      return null;
+    }
+
+    @Var long expiresAfter = Long.MAX_VALUE;
+    if (expiresAfterAccess()) {
+      expiresAfter =
+          Math.min(
+              expiresAfter, expiresAfterAccessNanos() - Math.max(0L, now - node.getAccessTime()));
+    }
+    if (expiresAfterWrite()) {
+      expiresAfter =
+          Math.min(
+              expiresAfter,
+              expiresAfterWriteNanos() - Math.max(0L, toWriteTime(now) - writeTimeOf(node)));
+    }
+    if (expiresVariable()) {
+      expiresAfter = node.getVariableTime() - now;
+    }
+
+    long refreshableAfter =
+        refreshAfterWrite()
+            ? refreshAfterWriteNanos() - Math.max(0L, now - writeTimeOf(node))
+            : Long.MAX_VALUE;
+    return SnapshotEntry.forEntry(
+        key, value, now, isWeighted ? weight : 1, now + expiresAfter, now + refreshableAfter);
+  }
+
+  /** Mutable context for passing state between a lambda and the caller. */
+  static final class EvictContext<V> {
+    RemovalCause cause;
+    V value;
+    boolean resurrect;
+    boolean removed;
+    int oldWeight;
+  }
+
+  /** Mutable context for passing state between a lambda and the caller. */
+  static final class RemoveContext<K, V> {
+    K oldKey;
+    V oldValue;
+    Node<K, V> node;
+    RemovalCause cause;
+    int oldWeight;
+  }
+
+  /** Mutable context for passing state between a lambda and the caller. */
+  static final class ReplaceContext<K, V> {
+    K nodeKey;
+    V oldValue;
+
+    long now;
+    int oldWeight;
+    boolean garbage;
+    boolean exceedsTolerance;
+  }
+
+  /** Mutable context for passing state between a lambda and the caller. */
+  static final class ComputeContext<K, V> {
+    K nodeKey;
+    V oldValue;
+    V newValue;
+    RemapHints hints;
+    Node<K, V> removed;
+    RemovalCause cause;
+    Throwable exception;
+
+    long now;
+    int oldWeight;
+    int newWeight;
+    boolean unmodified;
+    boolean exceedsTolerance;
+  }
+
+  /** A function that produces an unmodifiable map up to the limit in stream order. */
+  static final class SizeLimiter<K, V> implements Function<Stream<CacheEntry<K, V>>, Map<K, V>> {
+    private final int expectedSize;
+    private final long limit;
+
+    SizeLimiter(int expectedSize, long limit) {
+      requireArgument(
+          limit >= 0, CommonMessages.EXCEPTION_LIMIT_CANNOT_BE_NEGATIVE_ARG_D4D15053, limit);
+      this.expectedSize = expectedSize;
+      this.limit = limit;
+    }
+
+    @Override
+    public Map<K, V> apply(Stream<CacheEntry<K, V>> stream) {
+      var map = new LinkedHashMap<K, V>(calculateHashMapCapacity(expectedSize));
+      stream.limit(limit).forEach(entry -> map.put(entry.getKey(), entry.getValue()));
+      return Collections.unmodifiableMap(map);
+    }
+  }
+
+  /** A function that produces an unmodifiable map up to the weighted limit in stream order. */
+  static final class WeightLimiter<K, V> implements Function<Stream<CacheEntry<K, V>>, Map<K, V>> {
+    private final long weightLimit;
+
+    long weightedSize;
+
+    WeightLimiter(long weightLimit) {
+      requireArgument(
+          weightLimit >= 0,
+          CommonMessages.EXCEPTION_WEIGHT_LIMIT_CANNOT_BE_NEGATIVE_ARG_2263B8E8,
+          weightLimit);
+      this.weightLimit = weightLimit;
+    }
+
+    @Override
+    public Map<K, V> apply(Stream<CacheEntry<K, V>> stream) {
+      var map = new LinkedHashMap<K, V>();
+      stream
+          .takeWhile(
+              entry -> {
+                weightedSize += entry.weight();
+                if (weightedSize < 0) {
+                  weightedSize = Long.MAX_VALUE;
+                }
+                return (weightedSize <= weightLimit);
+              })
+          .forEach(entry -> map.put(entry.getKey(), entry.getValue()));
+      return Collections.unmodifiableMap(map);
+    }
+  }
+
+  /** An adapter to safely externalize the keys. */
+  static final class KeySetView<K, V> extends AbstractSet<K> {
+    final BoundedLocalCache<K, V> cache;
+
+    KeySetView(BoundedLocalCache<K, V> cache) {
+      this.cache = requireNonNull(cache);
+    }
+
+    @Override
+    public int size() {
+      return cache.size();
+    }
+
+    @Override
+    public void clear() {
+      cache.clear();
+    }
+
+    @Override
+    @SuppressWarnings("SuspiciousMethodCalls")
+    public boolean contains(Object o) {
+      return cache.containsKey(o);
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> collection) {
+      requireNonNull(collection);
+      if (collection != this) {
+        for (Object o : collection) {
+          if ((o == null) || !contains(o)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      if (cache.collectKeys() || ((collection instanceof Set<?>) && (collection.size() > size()))) {
+        for (K key : this) {
+          if (collection.contains(key)) {
+            modified |= remove(key);
+          }
+        }
+      } else {
+        for (var item : collection) {
+          modified |= (item != null) && remove(item);
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    public boolean remove(Object o) {
+      return (cache.remove(o) != null);
+    }
+
+    @Override
+    public boolean removeIf(Predicate<? super K> filter) {
+      requireNonNull(filter);
+      @Var boolean modified = false;
+      for (K key : this) {
+        if (filter.test(key) && remove(key)) {
+          modified = true;
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      for (K key : this) {
+        if (!collection.contains(key) && remove(key)) {
+          modified = true;
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    public Iterator<K> iterator() {
+      return new KeyIterator<>(cache);
+    }
+
+    @Override
+    public Spliterator<K> spliterator() {
+      return new KeySpliterator<>(cache);
+    }
+  }
+
+  /** An adapter to safely externalize the key iterator. */
+  static final class KeyIterator<K, V> implements Iterator<K> {
+    final EntryIterator<K, V> iterator;
+
+    KeyIterator(BoundedLocalCache<K, V> cache) {
+      this.iterator = new EntryIterator<>(cache);
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+
+    @Override
+    public K next() {
+      return iterator.nextKey();
+    }
+
+    @Override
+    public void remove() {
+      iterator.remove();
+    }
+  }
+
+  /** An adapter to safely externalize the key spliterator. */
+  static final class KeySpliterator<K, V> implements Spliterator<K> {
+    final Spliterator<Node<K, V>> spliterator;
+    final BoundedLocalCache<K, V> cache;
+
+    KeySpliterator(BoundedLocalCache<K, V> cache) {
+      this(cache, cache.data.values().spliterator());
+    }
+
+    KeySpliterator(BoundedLocalCache<K, V> cache, Spliterator<Node<K, V>> spliterator) {
+      this.spliterator = requireNonNull(spliterator);
+      this.cache = requireNonNull(cache);
+    }
+
+    @Override
+    public void forEachRemaining(Consumer<? super K> action) {
+      requireNonNull(action);
+      Consumer<Node<K, V>> consumer =
+          node -> {
+            long now = cache.expirationTicker().read();
+            boolean expired = cache.hasExpired(node, now);
+            K key = node.getKey();
+            V value = node.getValue();
+            if ((key == null) || (value == null) || (expired && !cache.isComputingAsync(value))) {
+              cache.scheduleDrainBuffers();
+            } else if (node.isAlive()) {
+              action.accept(key);
+            }
+          };
+      spliterator.forEachRemaining(consumer);
+    }
+
+    @Override
+    public boolean tryAdvance(Consumer<? super K> action) {
+      requireNonNull(action);
+      boolean[] advanced = {false};
+      Consumer<Node<K, V>> consumer =
+          node -> {
+            long now = cache.expirationTicker().read();
+            boolean expired = cache.hasExpired(node, now);
+            K key = node.getKey();
+            V value = node.getValue();
+            if ((key == null) || (value == null) || (expired && !cache.isComputingAsync(value))) {
+              cache.scheduleDrainBuffers();
+            } else if (node.isAlive()) {
+              action.accept(key);
+              advanced[0] = true;
+            }
+          };
+      while (spliterator.tryAdvance(consumer)) {
+        if (advanced[0]) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public Spliterator<K> trySplit() {
+      Spliterator<Node<K, V>> split = spliterator.trySplit();
+      return (split == null) ? null : new KeySpliterator<>(cache, split);
+    }
+
+    @Override
+    public long estimateSize() {
+      return spliterator.estimateSize();
+    }
+
+    @Override
+    public int characteristics() {
+      return DISTINCT | CONCURRENT | NONNULL;
+    }
+  }
+
+  /** An adapter to safely externalize the values. */
+  static final class ValuesView<K, V> extends AbstractCollection<V> {
+    final BoundedLocalCache<K, V> cache;
+
+    ValuesView(BoundedLocalCache<K, V> cache) {
+      this.cache = requireNonNull(cache);
+    }
+
+    @Override
+    public int size() {
+      return cache.size();
+    }
+
+    @Override
+    public void clear() {
+      cache.clear();
+    }
+
+    @Override
+    @SuppressWarnings("SuspiciousMethodCalls")
+    public boolean contains(Object o) {
+      return cache.containsValue(o);
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> collection) {
+      requireNonNull(collection);
+      if (collection != this) {
+        for (Object o : collection) {
+          if ((o == null) || !contains(o)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      for (var iterator = new EntryIterator<>(cache); iterator.hasNext(); ) {
+        var key = requireNonNull(iterator.key);
+        var value = requireNonNull(iterator.value);
+        if (collection.contains(value) && cache.remove(key, value)) {
+          modified = true;
+        }
+        iterator.advance();
+      }
+      return modified;
+    }
+
+    @Override
+    public boolean remove(Object o) {
+      if (o == null) {
+        return false;
+      }
+      for (var iterator = new EntryIterator<>(cache); iterator.hasNext(); ) {
+        var key = requireNonNull(iterator.key);
+        var node = requireNonNull(iterator.next);
+        var value = requireNonNull(iterator.value);
+        if (node.containsValue(o) && cache.remove(key, value)) {
+          return true;
+        }
+        iterator.advance();
+      }
+      return false;
+    }
+
+    @Override
+    public boolean removeIf(Predicate<? super V> filter) {
+      requireNonNull(filter);
+      @Var boolean modified = false;
+      for (var iterator = new EntryIterator<>(cache); iterator.hasNext(); ) {
+        var value = requireNonNull(iterator.value);
+        if (filter.test(value)) {
+          var key = requireNonNull(iterator.key);
+          modified |= cache.remove(key, value);
+        }
+        iterator.advance();
+      }
+      return modified;
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      for (var iterator = new EntryIterator<>(cache); iterator.hasNext(); ) {
+        var key = requireNonNull(iterator.key);
+        var value = requireNonNull(iterator.value);
+        if (!collection.contains(value) && cache.remove(key, value)) {
+          modified = true;
+        }
+        iterator.advance();
+      }
+      return modified;
+    }
+
+    @Override
+    public Iterator<V> iterator() {
+      return new ValueIterator<>(cache);
+    }
+
+    @Override
+    public Spliterator<V> spliterator() {
+      return new ValueSpliterator<>(cache);
+    }
+  }
+
+  /** An adapter to safely externalize the value iterator. */
+  static final class ValueIterator<K, V> implements Iterator<V> {
+    final EntryIterator<K, V> iterator;
+
+    ValueIterator(BoundedLocalCache<K, V> cache) {
+      this.iterator = new EntryIterator<>(cache);
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+
+    @Override
+    public V next() {
+      return iterator.nextValue();
+    }
+
+    @Override
+    public void remove() {
+      iterator.remove();
+    }
+  }
+
+  /** An adapter to safely externalize the value spliterator. */
+  static final class ValueSpliterator<K, V> implements Spliterator<V> {
+    final Spliterator<Node<K, V>> spliterator;
+    final BoundedLocalCache<K, V> cache;
+
+    ValueSpliterator(BoundedLocalCache<K, V> cache) {
+      this(cache, cache.data.values().spliterator());
+    }
+
+    ValueSpliterator(BoundedLocalCache<K, V> cache, Spliterator<Node<K, V>> spliterator) {
+      this.spliterator = requireNonNull(spliterator);
+      this.cache = requireNonNull(cache);
+    }
+
+    @Override
+    public void forEachRemaining(Consumer<? super V> action) {
+      requireNonNull(action);
+      Consumer<Node<K, V>> consumer =
+          node -> {
+            long now = cache.expirationTicker().read();
+            boolean expired = cache.hasExpired(node, now);
+            K key = node.getKey();
+            V value = node.getValue();
+            if ((key == null) || (value == null) || (expired && !cache.isComputingAsync(value))) {
+              cache.scheduleDrainBuffers();
+            } else if (node.isAlive()) {
+              action.accept(value);
+            }
+          };
+      spliterator.forEachRemaining(consumer);
+    }
+
+    @Override
+    public boolean tryAdvance(Consumer<? super V> action) {
+      requireNonNull(action);
+      boolean[] advanced = {false};
+      Consumer<Node<K, V>> consumer =
+          node -> {
+            long now = cache.expirationTicker().read();
+            boolean expired = cache.hasExpired(node, now);
+            K key = node.getKey();
+            V value = node.getValue();
+            if ((key == null) || (value == null) || (expired && !cache.isComputingAsync(value))) {
+              cache.scheduleDrainBuffers();
+            } else if (node.isAlive()) {
+              action.accept(value);
+              advanced[0] = true;
+            }
+          };
+      while (spliterator.tryAdvance(consumer)) {
+        if (advanced[0]) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public Spliterator<V> trySplit() {
+      Spliterator<Node<K, V>> split = spliterator.trySplit();
+      return (split == null) ? null : new ValueSpliterator<>(cache, split);
+    }
+
+    @Override
+    public long estimateSize() {
+      return spliterator.estimateSize();
+    }
+
+    @Override
+    public int characteristics() {
+      return CONCURRENT | NONNULL;
+    }
+  }
+
+  /** An adapter to safely externalize the entries. */
+  static final class EntrySetView<K, V> extends AbstractSet<Entry<K, V>> {
+    final BoundedLocalCache<K, V> cache;
+
+    EntrySetView(BoundedLocalCache<K, V> cache) {
+      this.cache = requireNonNull(cache);
+    }
+
+    @Override
+    public int size() {
+      return cache.size();
+    }
+
+    @Override
+    public void clear() {
+      cache.clear();
+    }
+
+    @Override
+    public boolean contains(Object o) {
+      if (!(o instanceof Entry<?, ?>)) {
+        return false;
+      }
+      var entry = (Entry<?, ?>) o;
+      var key = entry.getKey();
+      var value = entry.getValue();
+      if ((key == null) || (value == null)) {
+        return false;
+      }
+      Node<K, V> node = cache.data.get(cache.nodeFactory.newLookupKey(key));
+      if (node == null) {
+        return false;
+      }
+      boolean expired = cache.hasExpired(node, cache.expirationTicker().read());
+      V nodeValue = node.getValue();
+      return (nodeValue != null)
+          && node.containsValue(value)
+          && (!expired || cache.isComputingAsync(nodeValue));
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> collection) {
+      requireNonNull(collection);
+      if (collection != this) {
+        for (Object o : collection) {
+          if ((o == null) || !contains(o)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      if (cache.collectKeys()
+          || cache.collectValues()
+          || ((collection instanceof Set<?>) && (collection.size() > size()))) {
+        for (var entry : this) {
+          if (collection.contains(entry)) {
+            modified |= remove(entry);
+          }
+        }
+      } else {
+        for (var item : collection) {
+          modified |= remove(item);
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    @SuppressWarnings("SuspiciousMethodCalls")
+    public boolean remove(Object o) {
+      if (!(o instanceof Entry<?, ?>)) {
+        return false;
+      }
+      var entry = (Entry<?, ?>) o;
+      var key = entry.getKey();
+      return (key != null) && cache.remove(key, entry.getValue());
+    }
+
+    @Override
+    public boolean removeIf(Predicate<? super Entry<K, V>> filter) {
+      requireNonNull(filter);
+      @Var boolean modified = false;
+      for (var iterator = new EntryIterator<>(cache); iterator.hasNext(); ) {
+        var key = requireNonNull(iterator.key);
+        var value = requireNonNull(iterator.value);
+        if (filter.test(Map.entry(key, value))) {
+          modified |= cache.remove(key, value);
+        }
+        iterator.advance();
+      }
+      return modified;
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      for (var entry : this) {
+        if (!collection.contains(entry) && remove(entry)) {
+          modified = true;
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    public Iterator<Entry<K, V>> iterator() {
+      return new EntryIterator<>(cache);
+    }
+
+    @Override
+    public Spliterator<Entry<K, V>> spliterator() {
+      return new EntrySpliterator<>(cache);
+    }
+  }
+
+  /** An adapter to safely externalize the entry iterator. */
+  static final class EntryIterator<K, V> implements Iterator<Entry<K, V>> {
+    final BoundedLocalCache<K, V> cache;
+    final Iterator<Node<K, V>> iterator;
+
+    K key;
+    V value;
+    K removalKey;
+    Node<K, V> next;
+
+    EntryIterator(BoundedLocalCache<K, V> cache) {
+      this.iterator = cache.data.values().iterator();
+      this.cache = cache;
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (next != null) {
+        return true;
+      }
+
+      long now = cache.expirationTicker().read();
+      while (iterator.hasNext()) {
+        next = iterator.next();
+        boolean expired = cache.hasExpired(next, now);
+        value = next.getValue();
+        key = next.getKey();
+
+        boolean evictable =
+            (key == null) || (value == null) || (expired && !cache.isComputingAsync(value));
+        if (evictable || !next.isAlive()) {
+          if (evictable) {
+            cache.scheduleDrainBuffers();
+          }
+          advance();
+          continue;
+        }
+        return true;
+      }
+      return false;
+    }
+
+    /** Invalidates the current position so that the iterator may compute the next position. */
+    void advance() {
+      value = null;
+      next = null;
+      key = null;
+    }
+
+    K nextKey() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      removalKey = key;
+      advance();
+      return requireNonNull(removalKey);
+    }
+
+    V nextValue() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      removalKey = key;
+      V val = value;
+      advance();
+      return requireNonNull(val);
+    }
+
+    @Override
+    public Entry<K, V> next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      var entry = new WriteThroughEntry<K, V>(cache, requireNonNull(key), requireNonNull(value));
+      removalKey = key;
+      advance();
+      return entry;
+    }
+
+    @Override
+    public void remove() {
+      if (removalKey == null) {
+        throw new IllegalStateException();
+      }
+      cache.remove(removalKey);
+      removalKey = null;
+    }
+  }
+
+  /** An adapter to safely externalize the entry spliterator. */
+  static final class EntrySpliterator<K, V> implements Spliterator<Entry<K, V>> {
+    final Spliterator<Node<K, V>> spliterator;
+    final BoundedLocalCache<K, V> cache;
+
+    EntrySpliterator(BoundedLocalCache<K, V> cache) {
+      this(cache, cache.data.values().spliterator());
+    }
+
+    EntrySpliterator(BoundedLocalCache<K, V> cache, Spliterator<Node<K, V>> spliterator) {
+      this.spliterator = requireNonNull(spliterator);
+      this.cache = requireNonNull(cache);
+    }
+
+    @Override
+    public void forEachRemaining(Consumer<? super Entry<K, V>> action) {
+      requireNonNull(action);
+      Consumer<Node<K, V>> consumer =
+          node -> {
+            long now = cache.expirationTicker().read();
+            boolean expired = cache.hasExpired(node, now);
+            K key = node.getKey();
+            V value = node.getValue();
+            if ((key == null) || (value == null) || (expired && !cache.isComputingAsync(value))) {
+              cache.scheduleDrainBuffers();
+            } else if (node.isAlive()) {
+              action.accept(new WriteThroughEntry<>(cache, key, value));
+            }
+          };
+      spliterator.forEachRemaining(consumer);
+    }
+
+    @Override
+    public boolean tryAdvance(Consumer<? super Entry<K, V>> action) {
+      requireNonNull(action);
+      boolean[] advanced = {false};
+      Consumer<Node<K, V>> consumer =
+          node -> {
+            long now = cache.expirationTicker().read();
+            boolean expired = cache.hasExpired(node, now);
+            K key = node.getKey();
+            V value = node.getValue();
+            if ((key == null) || (value == null) || (expired && !cache.isComputingAsync(value))) {
+              cache.scheduleDrainBuffers();
+            } else if (node.isAlive()) {
+              action.accept(new WriteThroughEntry<>(cache, key, value));
+              advanced[0] = true;
+            }
+          };
+      while (spliterator.tryAdvance(consumer)) {
+        if (advanced[0]) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public Spliterator<Entry<K, V>> trySplit() {
+      Spliterator<Node<K, V>> split = spliterator.trySplit();
+      return (split == null) ? null : new EntrySpliterator<>(cache, split);
+    }
+
+    @Override
+    public long estimateSize() {
+      return spliterator.estimateSize();
+    }
+
+    @Override
+    public int characteristics() {
+      return DISTINCT | CONCURRENT | NONNULL;
+    }
+  }
+
+  /** A reusable task that performs the maintenance work. */
+  static final class PerformCleanupTask extends WeakReference<BoundedLocalCache<?, ?>>
+      implements Runnable {
+
+    PerformCleanupTask(BoundedLocalCache<?, ?> cache) {
+      super(cache);
+    }
+
+    @Override
+    public void run() {
+      BoundedLocalCache<?, ?> cache = get();
+      if (cache != null) {
+        try {
+          cache.performCleanUp(/* ignored */ null);
+        } catch (Throwable t) {
+          LOGGER.error(
+              CommonMessages.LOG_EXCEPTION_THROWN_WHEN_PERFORMING_THE_MAINTENANCE_TASK_8B817F20, t);
+        }
+      }
+    }
+
+    @Override
+    public void clear() {}
+
+    @Override
+    public boolean enqueue() {
+      return false;
+    }
+  }
+
+  /* --------------- Manual Cache --------------- */
+
+  static class BoundedLocalManualCache<K, V> implements LocalManualCache<K, V> {
+
+    final BoundedLocalCache<K, V> cache;
+
+    Policy<K, V> policy;
+
+    BoundedLocalManualCache(Caffeine<K, V> builder) {
+      this(builder, null);
+    }
+
+    BoundedLocalManualCache(Caffeine<K, V> builder, CacheLoader<? super K, V> loader) {
+      cache = LocalCacheFactory.newBoundedLocalCache(builder, loader, /* isAsync= */ false);
+    }
+
+    @Override
+    public final BoundedLocalCache<K, V> cache() {
+      return cache;
+    }
+
+    @Override
+    public final Policy<K, V> policy() {
+      @Var var p = policy;
+      if (p == null) {
+        Function<V, V> identity = v -> v;
+        p = new BoundedPolicy<>(cache, identity);
+        policy = p;
+      }
+      return p;
+    }
+  }
+
+  @SuppressWarnings({
+    "NullableOptional",
+    "OptionalAssignedToNull",
+    "OptionalUsedAsFieldOrParameterType"
+  })
+  static final class BoundedPolicy<K, V> implements Policy<K, V> {
+    final Function<V, V> transformer;
+    final BoundedLocalCache<K, V> cache;
+
+    Optional<Eviction<K, V>> eviction;
+    Optional<FixedExpiration<K, V>> afterWrite;
+    Optional<FixedExpiration<K, V>> afterAccess;
+
+    BoundedPolicy(BoundedLocalCache<K, V> cache, Function<V, V> transformer) {
+      this.transformer = transformer;
+      this.cache = cache;
+    }
+
+    @Override
+    public boolean isRecordingStats() {
+      return cache.isRecordingStats();
+    }
+
+    @Override
+    public V getIfPresentQuietly(K key) {
+      return transformer.apply(cache.getIfPresentQuietly(key));
+    }
+
+    @SuppressWarnings("GuardedByChecker")
+    @Override
+    public CacheEntry<K, V> getEntryIfPresentQuietly(K key) {
+      Node<K, V> node = cache.data.get(cache.nodeFactory.newLookupKey(key));
+      return (node == null) ? null : cache.nodeToCacheEntry(node, transformer, node.getWeight());
+    }
+
+    @Override
+    public Optional<Eviction<K, V>> eviction() {
+      if (!cache.evicts()) {
+        return Optional.empty();
+      }
+      var e = eviction;
+      return (e == null) ? (eviction = Optional.of(new BoundedEviction())) : e;
+    }
+
+    @Override
+    public Optional<FixedExpiration<K, V>> expireAfterAccess() {
+      if (!cache.expiresAfterAccess()) {
+        return Optional.empty();
+      }
+      var e = afterAccess;
+      return (e == null) ? (afterAccess = Optional.of(new BoundedExpireAfterAccess())) : e;
+    }
+
+    @Override
+    public Optional<FixedExpiration<K, V>> expireAfterWrite() {
+      if (!cache.expiresAfterWrite()) {
+        return Optional.empty();
+      }
+      var e = afterWrite;
+      return (e == null) ? (afterWrite = Optional.of(new BoundedExpireAfterWrite())) : e;
+    }
+
+    final class BoundedEviction implements Eviction<K, V> {
+      @Override
+      public boolean isWeighted() {
+        return cache.isWeighted;
+      }
+
+      @Override
+      public OptionalInt weightOf(K key) {
+        requireNonNull(key);
+        if (!cache.isWeighted) {
+          return OptionalInt.empty();
+        }
+        Node<K, V> node = cache.data.get(cache.nodeFactory.newLookupKey(key));
+        if (node == null) {
+          return OptionalInt.empty();
+        }
+        boolean expired = cache.hasExpired(node, cache.expirationTicker().read());
+        if (expired) {
+          return OptionalInt.empty();
+        }
+        synchronized (node) {
+          V value = node.getValue();
+          return ((value != null) && node.isAlive() && !cache.isComputingAsync(value))
+              ? OptionalInt.of(node.getWeight())
+              : OptionalInt.empty();
+        }
+      }
+
+      @Override
+      public OptionalLong weightedSize() {
+        return cache.isWeighted
+            ? OptionalLong.of(Math.max(0, cache.weightedSizeAcquire()))
+            : OptionalLong.empty();
+      }
+
+      @Override
+      public long getMaximum() {
+        return cache.maximumAcquire();
+      }
+
+      @Override
+      public void setMaximum(long maximum) {
+        cache.evictionLock.lock();
+        try {
+          cache.setMaximumSize(maximum);
+          cache.maintenance(/* ignored */ null);
+        } finally {
+          cache.evictionLock.unlock();
+          cache.rescheduleCleanUpIfIncomplete();
+        }
+      }
+
+      @Override
+      public Map<K, V> coldest(int limit) {
+        int expectedSize = Math.min(limit, cache.size());
+        var limiter = new SizeLimiter<K, V>(expectedSize, limit);
+        return cache.evictionOrder(/* hottest= */ false, transformer, limiter);
+      }
+
+      @Override
+      public Map<K, V> coldestWeighted(long weightLimit) {
+        var limiter =
+            isWeighted()
+                ? new WeightLimiter<K, V>(weightLimit)
+                : new SizeLimiter<K, V>((int) Math.min(weightLimit, cache.size()), weightLimit);
+        return cache.evictionOrder(/* hottest= */ false, transformer, limiter);
+      }
+
+      @Override
+      public <T> T coldest(Function<Stream<CacheEntry<K, V>>, T> mappingFunction) {
+        requireNonNull(mappingFunction);
+        return cache.evictionOrder(/* hottest= */ false, transformer, mappingFunction);
+      }
+
+      @Override
+      public Map<K, V> hottest(int limit) {
+        int expectedSize = Math.min(limit, cache.size());
+        var limiter = new SizeLimiter<K, V>(expectedSize, limit);
+        return cache.evictionOrder(/* hottest= */ true, transformer, limiter);
+      }
+
+      @Override
+      public Map<K, V> hottestWeighted(long weightLimit) {
+        var limiter =
+            isWeighted()
+                ? new WeightLimiter<K, V>(weightLimit)
+                : new SizeLimiter<K, V>((int) Math.min(weightLimit, cache.size()), weightLimit);
+        return cache.evictionOrder(/* hottest= */ true, transformer, limiter);
+      }
+
+      @Override
+      public <T> T hottest(Function<Stream<CacheEntry<K, V>>, T> mappingFunction) {
+        requireNonNull(mappingFunction);
+        return cache.evictionOrder(/* hottest= */ true, transformer, mappingFunction);
+      }
+    }
+
+    @SuppressWarnings("PreferJavaTimeOverload")
+    final class BoundedExpireAfterAccess implements FixedExpiration<K, V> {
+      @Override
+      public OptionalLong ageOf(K key, TimeUnit unit) {
+        requireNonNull(key);
+        requireNonNull(unit);
+        Object lookupKey = cache.nodeFactory.newLookupKey(key);
+        Node<K, V> node = cache.data.get(lookupKey);
+        if (node == null) {
+          return OptionalLong.empty();
+        }
+        long now = cache.expirationTicker().read();
+        boolean expired = cache.hasExpired(node, now);
+        V value = node.getValue();
+        if ((value == null) || expired || cache.isComputingAsync(value)) {
+          return OptionalLong.empty();
+        }
+        long age = now - node.getAccessTime();
+        return (age < 0)
+            ? OptionalLong.empty()
+            : OptionalLong.of(unit.convert(age, TimeUnit.NANOSECONDS));
+      }
+
+      @Override
+      public long getExpiresAfter(TimeUnit unit) {
+        return unit.convert(cache.expiresAfterAccessNanos(), TimeUnit.NANOSECONDS);
+      }
+
+      @Override
+      public void setExpiresAfter(long duration, TimeUnit unit) {
+        requireArgument(
+            duration >= 0,
+            CommonMessages.EXCEPTION_DURATION_CANNOT_BE_NEGATIVE_ARG_ARG_3C151FCA,
+            duration,
+            unit);
+        cache.setExpiresAfterAccessNanos(unit.toNanos(duration));
+        cache.scheduleAfterWrite();
+      }
+
+      @Override
+      public Map<K, V> oldest(int limit) {
+        return oldest(new SizeLimiter<>(Math.min(limit, cache.size()), limit));
+      }
+
+      @Override
+      public <T> T oldest(Function<Stream<CacheEntry<K, V>>, T> mappingFunction) {
+        return cache.expireAfterAccessOrder(/* oldest= */ true, transformer, mappingFunction);
+      }
+
+      @Override
+      public Map<K, V> youngest(int limit) {
+        return youngest(new SizeLimiter<>(Math.min(limit, cache.size()), limit));
+      }
+
+      @Override
+      public <T> T youngest(Function<Stream<CacheEntry<K, V>>, T> mappingFunction) {
+        return cache.expireAfterAccessOrder(/* oldest= */ false, transformer, mappingFunction);
+      }
+    }
+
+    @SuppressWarnings("PreferJavaTimeOverload")
+    final class BoundedExpireAfterWrite implements FixedExpiration<K, V> {
+      @Override
+      public OptionalLong ageOf(K key, TimeUnit unit) {
+        requireNonNull(key);
+        requireNonNull(unit);
+        Object lookupKey = cache.nodeFactory.newLookupKey(key);
+        Node<K, V> node = cache.data.get(lookupKey);
+        if (node == null) {
+          return OptionalLong.empty();
+        }
+        long now = cache.expirationTicker().read();
+        boolean expired = cache.hasExpired(node, now);
+        V value = node.getValue();
+        if ((value == null) || expired || cache.isComputingAsync(value)) {
+          return OptionalLong.empty();
+        }
+        long age = toWriteTime(now) - writeTimeOf(node);
+        return (age < 0)
+            ? OptionalLong.empty()
+            : OptionalLong.of(unit.convert(age, TimeUnit.NANOSECONDS));
+      }
+
+      @Override
+      public long getExpiresAfter(TimeUnit unit) {
+        return unit.convert(cache.expiresAfterWriteNanos(), TimeUnit.NANOSECONDS);
+      }
+
+      @Override
+      public void setExpiresAfter(long duration, TimeUnit unit) {
+        requireArgument(
+            duration >= 0,
+            CommonMessages.EXCEPTION_DURATION_CANNOT_BE_NEGATIVE_ARG_ARG_3C151FCA,
+            duration,
+            unit);
+        cache.setExpiresAfterWriteNanos(unit.toNanos(duration));
+        cache.scheduleAfterWrite();
+      }
+
+      @Override
+      public Map<K, V> oldest(int limit) {
+        return oldest(new SizeLimiter<>(Math.min(limit, cache.size()), limit));
+      }
+
+      @SuppressWarnings("GuardedByChecker")
+      @Override
+      public <T> T oldest(Function<Stream<CacheEntry<K, V>>, T> mappingFunction) {
+        return cache.snapshot(cache.writeOrderDeque(), transformer, mappingFunction);
+      }
+
+      @Override
+      public Map<K, V> youngest(int limit) {
+        return youngest(new SizeLimiter<>(Math.min(limit, cache.size()), limit));
+      }
+
+      @SuppressWarnings("GuardedByChecker")
+      @Override
+      public <T> T youngest(Function<Stream<CacheEntry<K, V>>, T> mappingFunction) {
+        return cache.snapshot(
+            cache.writeOrderDeque()::descendingIterator, transformer, mappingFunction);
+      }
+    }
+  }
+
+  /* --------------- Loading Cache --------------- */
+
+  static final class BoundedLocalLoadingCache<K, V> extends BoundedLocalManualCache<K, V>
+      implements LocalLoadingCache<K, V> {
+    final Function<K, V> mappingFunction;
+    final Function<Set<? extends K>, Map<K, V>> bulkMappingFunction;
+
+    BoundedLocalLoadingCache(Caffeine<K, V> builder, CacheLoader<? super K, V> loader) {
+      super(builder, loader);
+      requireNonNull(loader);
+      mappingFunction = newMappingFunction(loader);
+      bulkMappingFunction = newBulkMappingFunction(loader);
+    }
+
+    @Override
+    @SuppressWarnings({"DataFlowIssue", "NullAway"})
+    public CacheLoader<? super K, V> cacheLoader() {
+      return cache.cacheLoader;
+    }
+
+    @Override
+    public Function<K, V> mappingFunction() {
+      return mappingFunction;
+    }
+
+    @Override
+    public Function<Set<? extends K>, Map<K, V>> bulkMappingFunction() {
+      return bulkMappingFunction;
+    }
+  }
+}
+
+/** The namespace for field padding through inheritance. */
+@SuppressWarnings({"all", "IdentifierName", "MultiVariableDeclaration"})
+final class BLCHeader {
+
+  private BLCHeader() {}
+
+  @SuppressWarnings("unused")
+  static class PadDrainStatus {
+    byte p000, p001, p002, p003, p004, p005, p006, p007;
+    byte p008, p009, p010, p011, p012, p013, p014, p015;
+    byte p016, p017, p018, p019, p020, p021, p022, p023;
+    byte p024, p025, p026, p027, p028, p029, p030, p031;
+    byte p032, p033, p034, p035, p036, p037, p038, p039;
+    byte p040, p041, p042, p043, p044, p045, p046, p047;
+    byte p048, p049, p050, p051, p052, p053, p054, p055;
+    byte p056, p057, p058, p059, p060, p061, p062, p063;
+    byte p064, p065, p066, p067, p068, p069, p070, p071;
+    byte p072, p073, p074, p075, p076, p077, p078, p079;
+    byte p080, p081, p082, p083, p084, p085, p086, p087;
+    byte p088, p089, p090, p091, p092, p093, p094, p095;
+    byte p096, p097, p098, p099, p100, p101, p102, p103;
+    byte p104, p105, p106, p107, p108, p109, p110, p111;
+    byte p112, p113, p114, p115, p116, p117, p118, p119;
+  }
+
+  /** Enforces a memory layout to avoid false sharing by padding the drain status. */
+  abstract static class DrainStatusRef extends PadDrainStatus {
+    static final VarHandle DRAIN_STATUS =
+        fieldVarHandle(
+            MethodHandles.lookup(),
+            "drainStatus",
+            VarHandle.class,
+            DrainStatusRef.class,
+            int.class);
+
+    /** A drain is not taking place. */
+    static final int IDLE = 0;
+
+    /** A drain is required due to a pending write modification. */
+    static final int REQUIRED = 1;
+
+    /** A drain is in progress and will transition to idle. */
+    static final int PROCESSING_TO_IDLE = 2;
+
+    /** A drain is in progress and will transition to required. */
+    static final int PROCESSING_TO_REQUIRED = 3;
+
+    /** The draining status of the buffers. */
+    volatile int drainStatus = IDLE;
+
+    /**
+     * Returns whether maintenance work is needed.
+     *
+     * @param delayable if draining the read buffer can be delayed
+     */
+    @SuppressWarnings("StatementSwitchToExpressionSwitch")
+    boolean shouldDrainBuffers(boolean delayable) {
+      switch (drainStatusOpaque()) {
+        case IDLE:
+          return !delayable;
+        case REQUIRED:
+          return true;
+        case PROCESSING_TO_IDLE:
+        case PROCESSING_TO_REQUIRED:
+          return false;
+        default:
+          throw new IllegalStateException(
+              String.format(
+                  CommonMessages.EXCEPTION_INVALID_DRAIN_STATUS_ARG_583D1358, drainStatus));
+      }
+    }
+
+    int drainStatusOpaque() {
+      return (int) DRAIN_STATUS.getOpaque(this);
+    }
+
+    int drainStatusAcquire() {
+      return (int) DRAIN_STATUS.getAcquire(this);
+    }
+
+    void setDrainStatusOpaque(int drainStatus) {
+      DRAIN_STATUS.setOpaque(this, drainStatus);
+    }
+
+    void setDrainStatusRelease(int drainStatus) {
+      DRAIN_STATUS.setRelease(this, drainStatus);
+    }
+
+    boolean casDrainStatus(int expect, int update) {
+      return DRAIN_STATUS.compareAndSet(this, expect, update);
+    }
+  }
+}

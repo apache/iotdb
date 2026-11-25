@@ -21,6 +21,10 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodePipeMessages {
   public static final String
+      EXCEPTION_CANNOT_DETERMINE_TABLE_NAMES_BECAUSE_THE_NON_EMPTY_TSFILE_RESOURCE_HAS_NO_DEVICE_METADATA_6A0CBC2B =
+          "非空 TsFile 资源缺少设备元数据，无法确定表名。";
+
+  public static final String
       LOG_AIR_GAP_UDP_RECEIVE_BUFFER_IS_ARG_BYTES_BELOW_THE_REQUESTED_ARG_BYTES_INCREASE_THE_OPERATING_SYSTEM_RECEIVE_BUFFER_LIMIT_AND_RESTART_THE_DATANODE_TO_REDUCE_PACKET_LOSS_89B20AFC =
           "Air gap UDP 接收缓冲区实际为 {} 字节，小于请求的 {} 字节。请提高操作系统接收缓冲区上限并重启 DataNode，以减少丢包。";
 
@@ -617,6 +621,9 @@ public final class DataNodePipeMessages {
       "Pipe {}@{}：unpin TsFileResource after creating event, original path: {} 失败";
   public static final String PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_DROPPING =
       "Pipe {}@{}：unpin TsFileResource after dropping pipe, original path: {} 失败";
+  public static final String
+      EXCEPTION_PIPE_ARG_ARG_TIME_PARTITION_ARG_CHANGED_DURING_HISTORICAL_TSFILE_EXTRACTION_AFTER_ONE_REFRESH_AF060BD3 =
+          "Pipe {}@{}：历史 TsFile 提取期间，时间分区 {} 在刷新一次后仍发生变化";
   public static final String PIPE_FINISH_TO_EXTRACT_DELETIONS_EXTRACT_DELETIONS =
       "Pipe {}@{}：finish to extract deletions, extract deletions count {}/{}, took {} ms";
   public static final String PIPE_FINISH_TO_EXTRACT_HISTORICAL_TSFILE_EXTRACTED =

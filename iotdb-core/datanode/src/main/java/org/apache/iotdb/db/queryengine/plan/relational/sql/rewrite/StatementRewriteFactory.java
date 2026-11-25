@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 
 public class StatementRewriteFactory {
   private final StatementRewrite statementRewrite;

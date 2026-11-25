@@ -31,17 +31,17 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.Iterables;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TimeDuration;
 
 import java.util.List;
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.and;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
 
 public class AsofJoinOn extends JoinOn {
   private static final long INSTANCE_SIZE =

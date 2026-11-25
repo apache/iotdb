@@ -180,6 +180,7 @@ public class FragmentInstanceManager {
                                     DriverTask.computeDeadlineTimeInMs(instance.getTimeOut()),
                                     instance.isDebug(),
                                     instance.isVerbose());
+                            createdContext.setExchangeDeadlineMs(instance.getQueryDeadlineMs());
                             createdContext.adoptUDFQueryScope(instance.claimUDFQueryScope());
                             return createdContext;
                           } catch (Throwable t) {
@@ -356,6 +357,7 @@ public class FragmentInstanceManager {
                                   DriverTask.computeDeadlineTimeInMs(instance.getTimeOut()),
                                   instance.isDebug(),
                                   instance.isVerbose());
+                          createdContext.setExchangeDeadlineMs(instance.getQueryDeadlineMs());
                           createdContext.adoptUDFQueryScope(instance.claimUDFQueryScope());
                           return createdContext;
                         } catch (Throwable t) {

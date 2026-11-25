@@ -29,6 +29,9 @@
     <artifactId>iotdb-examples</artifactId>
     <packaging>pom</packaging>
     <name>IoTDB: Examples</name>
+    <properties>
+        <sonar.skip>true</sonar.skip>
+    </properties>
     <modules>
         <module>jdbc</module>
         <module>mqtt</module>

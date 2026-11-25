@@ -38,10 +38,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import org.apache.ratis.thirdparty.com.google.gson.Gson;
+import org.apache.ratis.thirdparty.com.google.gson.GsonBuilder;
+import org.apache.ratis.thirdparty.com.google.gson.JsonArray;
+import org.apache.ratis.thirdparty.com.google.gson.JsonObject;
 
 import java.util.ArrayList;
 import java.util.List;

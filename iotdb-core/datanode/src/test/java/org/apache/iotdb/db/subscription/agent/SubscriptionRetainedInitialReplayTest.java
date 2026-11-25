@@ -62,7 +62,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 import org.apache.iotdb.session.subscription.util.PollTimer;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
@@ -526,7 +525,7 @@ public class SubscriptionRetainedInitialReplayTest {
                     Whitebox.getInternalState(subscription.queue, "states"));
         doReturn(true).when(spiedStates).shouldPrefetch();
         Whitebox.setInternalState(subscription.queue, "states", spiedStates);
-        doReturn(Optional.of(ImmutableSet.of(1, 2)))
+        doReturn(Optional.of(Set.of(1, 2)))
             .when(subscription.queue)
             .getExpectedDataRegionIds("pipe", 1L);
 
@@ -628,7 +627,7 @@ public class SubscriptionRetainedInitialReplayTest {
         // Still unproven because expected region set lookup returned Optional.empty().
         assertFalse(subscription.queue.isCompleted());
 
-        doReturn(Optional.of(ImmutableSet.of(1, 2)))
+        doReturn(Optional.of(Set.of(1, 2)))
             .when(subscription.queue)
             .getExpectedDataRegionIds("pipe", 2L);
         subscription.queue.executePrefetchV2();

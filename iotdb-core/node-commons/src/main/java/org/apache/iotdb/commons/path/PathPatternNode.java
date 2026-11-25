@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.path;
 
-import com.google.common.collect.Sets;
+import org.apache.ratis.thirdparty.com.google.common.collect.Sets;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;

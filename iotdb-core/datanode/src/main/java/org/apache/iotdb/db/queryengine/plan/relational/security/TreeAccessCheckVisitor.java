@@ -177,7 +177,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuot
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 import java.io.IOException;
 import java.util.ArrayList;

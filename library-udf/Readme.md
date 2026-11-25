@@ -20,7 +20,8 @@
 -->
 # README
 
-In order to package a jar with all dependencies, please use the following command:
+Use the following command to build the UDF JAR with its bundled dependencies.
+The DataNode supplies `ratis-thirdparty-misc` at runtime.
 
 ```sh
 mvn clean package -DskipTests -P get-jar-with-dependencies

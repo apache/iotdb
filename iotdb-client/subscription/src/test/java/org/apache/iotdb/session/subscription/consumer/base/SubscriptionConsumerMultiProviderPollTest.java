@@ -112,6 +112,60 @@ public class SubscriptionConsumerMultiProviderPollTest {
   }
 
   @Test
+  public void testEmptyProviderDoesNotConsumeWholePollTimeout() throws SubscriptionException {
+    final TestPullConsumer consumer = new TestPullConsumer(2, 0, false, false, 3, false, true);
+    final long timeoutMs = 5_000L;
+    try {
+      consumer.open();
+      consumer.subscribeTopic();
+
+      final List<SubscriptionMessage> messages = consumer.pollForTest(timeoutMs);
+
+      Assert.assertEquals(1, messages.size());
+      Assert.assertEquals(1, consumer.getPollCount(2));
+      Assert.assertTrue(consumer.getPollTimeout(1) < timeoutMs);
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testShortTimeoutStillPollsEveryProvider() throws SubscriptionException {
+    final TestPullConsumer consumer = new TestPullConsumer(3, 0, false, false, 3, false, true);
+    try {
+      consumer.open();
+      consumer.subscribeTopic();
+
+      final List<SubscriptionMessage> messages = consumer.pollForTest(300L);
+
+      Assert.assertEquals(1, messages.size());
+      Assert.assertEquals(1, consumer.getPollCount(1));
+      Assert.assertEquals(1, consumer.getPollCount(2));
+      Assert.assertEquals(1, consumer.getPollCount(3));
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
+  public void testZeroTimeoutStillPollsEveryProvider() throws SubscriptionException {
+    final TestPullConsumer consumer = new TestPullConsumer(3, 0, false, false, 3, false, true);
+    try {
+      consumer.open();
+      consumer.subscribeTopic();
+
+      final List<SubscriptionMessage> messages = consumer.pollForTest(0L);
+
+      Assert.assertEquals(1, messages.size());
+      Assert.assertEquals(1, consumer.getPollCount(1));
+      Assert.assertEquals(1, consumer.getPollCount(2));
+      Assert.assertEquals(1, consumer.getPollCount(3));
+    } finally {
+      consumer.close();
+    }
+  }
+
+  @Test
   public void testPollBacksOffAfterAllProvidersAreEmpty() throws SubscriptionException {
     final TestPullConsumer consumer = new TestPullConsumer(1, 1);
     try {
@@ -1684,6 +1738,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
   private static class TestPullConsumer extends AbstractSubscriptionPullConsumer {
 
     private final Map<Integer, Integer> pollCounts = new HashMap<>();
+    private final Map<Integer, Long> pollTimeouts = new ConcurrentHashMap<>();
     private final List<SubscriptionCommitContext> acknowledgedCommitContexts = new ArrayList<>();
     private final AtomicInteger createdProviderCount = new AtomicInteger();
     private final List<TestSubscriptionProvider> createdProviders = new CopyOnWriteArrayList<>();
@@ -1693,6 +1748,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
     private final int emptyPollsBeforeData;
     private final boolean emptyTabletBatch;
     private final int providerCount;
+    private final boolean waitForEmptyPollTimeout;
     private int backoffCount;
 
     private TestPullConsumer(final int dataProviderId, final int emptyPollsBeforeData) {
@@ -1726,6 +1782,24 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final boolean failFirstPoll,
         final int providerCount,
         final boolean autoCommit) {
+      this(
+          dataProviderId,
+          emptyPollsBeforeData,
+          emptyTabletBatch,
+          failFirstPoll,
+          providerCount,
+          autoCommit,
+          false);
+    }
+
+    private TestPullConsumer(
+        final int dataProviderId,
+        final int emptyPollsBeforeData,
+        final boolean emptyTabletBatch,
+        final boolean failFirstPoll,
+        final int providerCount,
+        final boolean autoCommit,
+        final boolean waitForEmptyPollTimeout) {
       super(
           new AbstractSubscriptionPullConsumerBuilder()
               .host(HOST)
@@ -1741,6 +1815,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
       this.emptyTabletBatch = emptyTabletBatch;
       this.failFirstPoll = new AtomicBoolean(failFirstPoll);
       this.providerCount = providerCount;
+      this.waitForEmptyPollTimeout = waitForEmptyPollTimeout;
     }
 
     @Override
@@ -1771,11 +1846,13 @@ public class SubscriptionConsumerMultiProviderPollTest {
               heartbeatIntervalMs,
               connectionTimeoutInMs,
               pollCounts,
+              pollTimeouts,
               dataProviderId,
               emptyPollsBeforeData,
               emptyTabletBatch,
               failFirstPoll,
-              providerCount);
+              providerCount,
+              waitForEmptyPollTimeout);
       provider.handshakeAction = () -> handshakeAction.run();
       createdProviders.add(provider);
       return provider;
@@ -1799,6 +1876,10 @@ public class SubscriptionConsumerMultiProviderPollTest {
 
     private int getPollCount(final int dataNodeId) {
       return pollCounts.getOrDefault(dataNodeId, 0);
+    }
+
+    private long getPollTimeout(final int dataNodeId) {
+      return pollTimeouts.get(dataNodeId);
     }
 
     private int getBackoffCount() {
@@ -1851,11 +1932,13 @@ public class SubscriptionConsumerMultiProviderPollTest {
 
     private final int dataNodeId;
     private final Map<Integer, Integer> pollCounts;
+    private final Map<Integer, Long> pollTimeouts;
     private final int dataProviderId;
     private final int emptyPollsBeforeData;
     private final boolean emptyTabletBatch;
     private final AtomicBoolean failFirstPoll;
     private final int providerCount;
+    private final boolean waitForEmptyPollTimeout;
 
     private TestSubscriptionProvider(
         final TEndPoint endPoint,
@@ -1870,11 +1953,13 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final long heartbeatIntervalMs,
         final int connectionTimeoutInMs,
         final Map<Integer, Integer> pollCounts,
+        final Map<Integer, Long> pollTimeouts,
         final int dataProviderId,
         final int emptyPollsBeforeData,
         final boolean emptyTabletBatch,
         final AtomicBoolean failFirstPoll,
-        final int providerCount) {
+        final int providerCount,
+        final boolean waitForEmptyPollTimeout) {
       super(
           endPoint,
           username,
@@ -1889,11 +1974,13 @@ public class SubscriptionConsumerMultiProviderPollTest {
           connectionTimeoutInMs);
       this.dataNodeId = endPoint.port - FIRST_PORT + 1;
       this.pollCounts = pollCounts;
+      this.pollTimeouts = pollTimeouts;
       this.dataProviderId = dataProviderId;
       this.emptyPollsBeforeData = emptyPollsBeforeData;
       this.emptyTabletBatch = emptyTabletBatch;
       this.failFirstPoll = failFirstPoll;
       this.providerCount = providerCount;
+      this.waitForEmptyPollTimeout = waitForEmptyPollTimeout;
     }
 
     @Override
@@ -1970,6 +2057,7 @@ public class SubscriptionConsumerMultiProviderPollTest {
         final Map<String, TopicProgress> progressByTopic)
         throws SubscriptionException {
       final int currentPollCount = pollCounts.merge(dataNodeId, 1, Integer::sum);
+      pollTimeouts.put(dataNodeId, timeoutMs);
       if (pollHandler != null) {
         return pollHandler.apply(topicNames, currentPollCount);
       }
@@ -1978,6 +2066,13 @@ public class SubscriptionConsumerMultiProviderPollTest {
         throw new SubscriptionConnectionException("poll timed out");
       }
       if (dataNodeId != dataProviderId || pollCounts.get(dataNodeId) <= emptyPollsBeforeData) {
+        if (waitForEmptyPollTimeout) {
+          try {
+            Thread.sleep(timeoutMs);
+          } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        }
         return Collections.emptyList();
       }
       final SubscriptionCommitContext commitContext =

@@ -776,8 +776,8 @@ public class TestUtils {
             EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use " + databaseName);
-      statement.executeQuery(sql);
-      fail("No exception!");
+      SQLException exception = assertQueryFails(statement, sql);
+      Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(errMsg));
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
@@ -788,11 +788,31 @@ public class TestUtils {
     try (Connection connection =
             EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
-      fail("No exception!");
+      SQLException exception = assertQueryFails(statement, sql);
+      Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(errMsg));
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
+  }
+
+  /** Executes a query expected to fail, consuming every result batch before accepting the error. */
+  public static SQLException assertQueryFails(final Statement statement, final String sql) {
+    return Assert.assertThrows(
+        SQLException.class,
+        () -> {
+          try (final ResultSet resultSet = statement.executeQuery(sql)) {
+            drainResultSet(resultSet);
+          }
+        });
+  }
+
+  /**
+   * Reads to the end of the result set so the JDBC client fetches every result batch. A query can
+   * return its initial rows successfully and report an execution error only when a later batch is
+   * requested by {@link ResultSet#next()}.
+   */
+  public static void drainResultSet(final ResultSet resultSet) throws SQLException {
+    while (resultSet.next()) {}
   }
 
   public static void resultSetEqualTest(
@@ -914,8 +934,8 @@ public class TestUtils {
       BaseEnv env, String sql, String errMsg, String userName, String password) {
     try (Connection connection = env.getConnection(userName, password);
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
-      fail("No exception!");
+      SQLException exception = assertQueryFails(statement, sql);
+      Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(errMsg));
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
@@ -934,8 +954,8 @@ public class TestUtils {
       if (Objects.nonNull(db)) {
         statement.execute("use " + "\"" + db + "\"");
       }
-      statement.executeQuery(sql);
-      fail("No exception!");
+      SQLException exception = assertQueryFails(statement, sql);
+      Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(errMsg));
     } catch (final SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
@@ -2259,9 +2279,7 @@ public class TestUtils {
       final BaseEnv env, final String sql, final long consistentSeconds) {
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      assertAlways(
-          consistentSeconds,
-          () -> Assert.assertThrows(SQLException.class, () -> statement.executeQuery(sql)));
+      assertAlways(consistentSeconds, () -> assertQueryFails(statement, sql));
     } catch (final Exception e) {
       fail(e.getMessage());
     }

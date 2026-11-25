@@ -30,7 +30,7 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.DataNodeExceptionMetrics;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
-import com.google.common.io.BaseEncoding;
+import org.apache.ratis.thirdparty.com.google.common.io.BaseEncoding;
 import org.apache.ratis.util.MemoizedCheckedSupplier;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;

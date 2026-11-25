@@ -22,6 +22,8 @@ package org.apache.iotdb.db.storageengine.load;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.external.caffeine.cache.Cache;
+import org.apache.iotdb.commons.external.caffeine.cache.Caffeine;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
@@ -38,8 +40,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.exception.write.PageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

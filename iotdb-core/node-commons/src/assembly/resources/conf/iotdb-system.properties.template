@@ -2381,6 +2381,11 @@ procedure_completed_clean_interval=30
 # Datatype: int
 procedure_completed_evict_ttl=60
 
+# Whether to wait for DROP TABLE, ALTER TABLE DROP COLUMN, and DELETE TIMESERIES procedures to finish before returning.
+# effectiveMode: restart
+# Datatype: boolean
+enable_sync_schema_deletion=false
+
 # Maximum number of tree-model timeseries deletion tasks waiting to execute on the ConfigNode.
 # effectiveMode: restart
 # Datatype: int, greater than 0

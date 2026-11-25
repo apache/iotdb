@@ -1,0 +1,1279 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.external.caffeine.cache;
+
+import org.apache.iotdb.commons.external.caffeine.cache.stats.StatsCounter;
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.errorprone.annotations.Var;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.AbstractCollection;
+import java.util.AbstractSet;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.Spliterator;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
+import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.external.caffeine.cache.LocalCache.castNonNull;
+import static org.apache.iotdb.commons.external.caffeine.cache.LocalLoadingCache.newBulkMappingFunction;
+import static org.apache.iotdb.commons.external.caffeine.cache.LocalLoadingCache.newMappingFunction;
+
+/**
+ * An in-memory cache that has no capabilities for bounding the map. This implementation provides a
+ * lightweight wrapper on top of {@link ConcurrentHashMap}.
+ *
+ * @author ben.manes@gmail.com (Ben Manes)
+ */
+@SuppressWarnings({"all", "serial"})
+final class UnboundedLocalCache<K, V> implements LocalCache<K, V> {
+  static final Logger LOGGER = LoggerFactory.getLogger(UnboundedLocalCache.class);
+  final RemovalListener<K, V> removalListener;
+  final ConcurrentHashMap<K, V> data;
+  final StatsCounter statsCounter;
+  final boolean isRecordingStats;
+  final Executor executor;
+
+  Set<K> keySet;
+  Collection<V> values;
+  Set<Entry<K, V>> entrySet;
+
+  UnboundedLocalCache(Caffeine<? super K, ? super V> builder) {
+    this.data = new ConcurrentHashMap<>(builder.getInitialCapacity());
+    this.statsCounter = builder.getStatsCounterSupplier().get();
+    this.removalListener = builder.getRemovalListener();
+    this.isRecordingStats = builder.isRecordingStats();
+    this.executor = builder.getExecutor();
+  }
+
+  @Override
+  public RemovalListener<K, V> removalListener() {
+    return removalListener;
+  }
+
+  @Override
+  public boolean collectKeys() {
+    return false;
+  }
+
+  @Override
+  @CanIgnoreReturnValue
+  public Object referenceKey(K key) {
+    return key;
+  }
+
+  @Override
+  public boolean isPendingEviction(K key) {
+    return false;
+  }
+
+  /* --------------- Cache --------------- */
+
+  @Override
+  @SuppressWarnings("SuspiciousMethodCalls")
+  public V getIfPresent(Object key, boolean recordStats) {
+    V value = data.get(key);
+
+    if (recordStats) {
+      if (value == null) {
+        statsCounter.recordMisses(1);
+      } else {
+        statsCounter.recordHits(1);
+      }
+    }
+    return value;
+  }
+
+  @Override
+  @SuppressWarnings("SuspiciousMethodCalls")
+  public V getIfPresentQuietly(Object key) {
+    return data.get(key);
+  }
+
+  @Override
+  public long estimatedSize() {
+    return data.mappingCount();
+  }
+
+  @Override
+  public int getAllPresent(Map<K, V> result, boolean retainAbsent) {
+    @Var int absent = 0;
+    int uniqueKeys = result.size();
+    for (var iter = result.entrySet().iterator(); iter.hasNext(); ) {
+      Map.Entry<K, V> entry = iter.next();
+      V value = data.get(entry.getKey());
+      if (value != null) {
+        entry.setValue(value);
+        continue;
+      }
+      absent++;
+      if (!retainAbsent) {
+        iter.remove();
+      }
+    }
+    statsCounter.recordHits(uniqueKeys - absent);
+    statsCounter.recordMisses(absent);
+    return absent;
+  }
+
+  @Override
+  public void cleanUp() {}
+
+  @Override
+  public StatsCounter statsCounter() {
+    return statsCounter;
+  }
+
+  @Override
+  @SuppressWarnings("PMD.AvoidInstanceofChecksInCatchClause")
+  public void notifyRemoval(K key, V value, RemovalCause cause) {
+    var removalListener = removalListener();
+    if (removalListener == null) {
+      return;
+    }
+    Runnable task =
+        () -> {
+          try {
+            removalListener.onRemoval(key, value, cause);
+          } catch (Throwable t) {
+            if (t instanceof InterruptedException) {
+              Thread.currentThread().interrupt();
+            }
+            LOGGER.warn(CommonMessages.LOG_EXCEPTION_THROWN_BY_REMOVAL_LISTENER_2D0BFC36, t);
+          }
+        };
+    try {
+      executor.execute(task);
+    } catch (Throwable t) {
+      LOGGER.error(
+          CommonMessages.LOG_EXCEPTION_THROWN_WHEN_SUBMITTING_REMOVAL_LISTENER_1A41327E, t);
+      task.run();
+    }
+  }
+
+  @Override
+  public boolean isRecordingStats() {
+    return isRecordingStats;
+  }
+
+  @Override
+  public Executor executor() {
+    return executor;
+  }
+
+  @Override
+  public Ticker statsTicker() {
+    return isRecordingStats ? Ticker.systemTicker() : Ticker.disabledTicker();
+  }
+
+  /* --------------- JDK8+ Map extensions --------------- */
+
+  @Override
+  public void forEach(BiConsumer<? super K, ? super V> action) {
+    data.forEach(action);
+  }
+
+  @Override
+  @SuppressWarnings("ResultOfMethodCallIgnored")
+  public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
+    requireNonNull(function);
+
+    BiFunction<K, V, V> remappingFunction =
+        (key, oldValue) -> requireNonNull(function.apply(key, requireNonNull(oldValue)));
+    for (K key : data.keySet()) {
+      remap(key, remappingFunction, /* hints= */ null, /* computeIfAbsent= */ false);
+    }
+  }
+
+  @Override
+  public V computeIfAbsent(
+      K key,
+      Function<? super K, ? extends V> mappingFunction,
+      boolean recordStats,
+      boolean recordLoad) {
+    requireNonNull(mappingFunction);
+
+    // An optimistic fast path to avoid unnecessary locking
+    @Var V value = data.get(key);
+    if (value != null) {
+      if (recordStats) {
+        statsCounter.recordHits(1);
+      }
+      return value;
+    }
+
+    boolean[] missed = new boolean[1];
+    value =
+        data.computeIfAbsent(
+            key,
+            k -> {
+              missed[0] = true;
+              V computed =
+                  recordStats
+                      ? statsAware(mappingFunction, recordLoad).apply(k)
+                      : mappingFunction.apply(k);
+              return castNonNull(computed);
+            });
+    if (!missed[0] && recordStats) {
+      statsCounter.recordHits(1);
+    }
+    return value;
+  }
+
+  @Override
+  public V computeIfPresent(
+      K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+    requireNonNull(remappingFunction);
+
+    // An optimistic fast path to avoid unnecessary locking
+    if (!data.containsKey(key)) {
+      return null;
+    }
+
+    // ensures that the removal notification is processed after the removal has completed
+    @SuppressWarnings({"rawtypes", "unchecked", "Varifier"})
+    V[] oldValue = (V[]) new Object[1];
+    V nv =
+        data.computeIfPresent(
+            key,
+            (K k, V value) -> {
+              BiFunction<? super K, ? super V, ? extends V> function =
+                  statsAware(remappingFunction, /* recordLoad= */ true);
+              try {
+                V newValue = function.apply(k, value);
+                if (newValue != value) {
+                  oldValue[0] = value;
+                }
+                return newValue;
+              } catch (Throwable t) {
+                throw t;
+              }
+            });
+    if (nv != null) {
+      notifyOnReplace(key, oldValue[0], nv);
+    } else if (oldValue[0] != null) {
+      notifyRemoval(key, oldValue[0], RemovalCause.EXPLICIT);
+    }
+    return nv;
+  }
+
+  @Override
+  public V compute(
+      K key,
+      BiFunction<? super K, ? super V, ? extends V> remappingFunction,
+      boolean recordLoad,
+      RemapHints hints) {
+    requireNonNull(remappingFunction);
+    return remap(
+        key, statsAware(remappingFunction, recordLoad), hints, /* computeIfAbsent= */ true);
+  }
+
+  @Override
+  public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+    requireNonNull(remappingFunction);
+    requireNonNull(value);
+
+    return remap(
+        key,
+        (K k, V oldValue) ->
+            (oldValue == null) ? value : statsAware(remappingFunction).apply(oldValue, value),
+        /* hints= */ null,
+        /* computeIfAbsent= */ true);
+  }
+
+  /**
+   * A {@link Map#compute(Object, BiFunction)} that does not directly record any cache statistics.
+   *
+   * @param key key with which the specified value is to be associated
+   * @param remappingFunction the function to compute a value
+   * @param hints flags from a query-style caller, or {@code null} if not present
+   * @param computeIfAbsent whether the caller may create an entry when the key is absent
+   * @return the new value associated with the specified key, or null if none
+   */
+  V remap(
+      K key,
+      BiFunction<? super K, ? super V, ? extends V> remappingFunction,
+      RemapHints hints,
+      boolean computeIfAbsent) {
+    // ensures that the removal notification is processed after the removal has completed
+    @SuppressWarnings({"rawtypes", "unchecked", "Varifier"})
+    V[] oldValue = (V[]) new Object[1];
+    V nv =
+        data.compute(
+            key,
+            (K k, V value) -> {
+              if ((value == null) && !computeIfAbsent) {
+                return null;
+              }
+              try {
+                V newValue = remappingFunction.apply(k, value);
+                if ((value == null) && (newValue == null)) {
+                  // A stale refresh whose entry is absent leaves a successor's registration intact
+                  return null;
+                }
+
+                if (newValue != value) {
+                  oldValue[0] = value;
+                }
+
+                // A query-style caller may flag a same-instance return as a no-op that must leave
+                // any
+                // in-flight refresh intact whereas a real mutation discards a racing refresh so
+                // that a
+                // stale reload cannot overwrite the new mapping.
+                return newValue;
+              } catch (Throwable t) {
+                if (value != null) {}
+                throw t;
+              }
+            });
+    if (nv != null) {
+      notifyOnReplace(key, oldValue[0], nv);
+    } else if (oldValue[0] != null) {
+      notifyRemoval(key, oldValue[0], RemovalCause.EXPLICIT);
+    }
+    return nv;
+  }
+
+  /* --------------- Concurrent Map --------------- */
+
+  @Override
+  public boolean isEmpty() {
+    return data.isEmpty();
+  }
+
+  @Override
+  public int size() {
+    return data.size();
+  }
+
+  @Override
+  @SuppressWarnings("ResultOfMethodCallIgnored")
+  public void clear() {
+    var keys = (removalListener == null) ? data.keySet() : List.copyOf(data.keySet());
+    for (K key : keys) {
+      remove(key);
+    }
+  }
+
+  @Override
+  public boolean containsKey(Object key) {
+    requireNonNull(key);
+    return data.containsKey(key);
+  }
+
+  @Override
+  public boolean containsValue(Object value) {
+    requireNonNull(value);
+    return data.containsValue(value);
+  }
+
+  @Override
+  public V get(Object key) {
+    requireNonNull(key);
+    return getIfPresent(key, /* recordStats= */ false);
+  }
+
+  @Override
+  public V put(K key, V value) {
+    requireNonNull(value);
+
+    @SuppressWarnings({"rawtypes", "unchecked", "Varifier"})
+    V[] oldValue = (V[]) new Object[1];
+    data.compute(
+        key,
+        (K k, V v) -> {
+          oldValue[0] = v;
+          return value;
+        });
+    if (oldValue[0] != null) {
+      notifyOnReplace(key, oldValue[0], value);
+    }
+    return oldValue[0];
+  }
+
+  @Override
+  public V putIfAbsent(K key, V value) {
+    requireNonNull(value);
+
+    // An optimistic fast path to avoid unnecessary locking
+    var v = data.get(key);
+    if (v != null) {
+      return v;
+    }
+
+    var added = new boolean[1];
+    var val =
+        data.computeIfAbsent(
+            key,
+            k -> {
+              added[0] = true;
+              return value;
+            });
+    return added[0] ? null : val;
+  }
+
+  @Override
+  @SuppressWarnings("ResultOfMethodCallIgnored")
+  public void putAll(Map<? extends K, ? extends V> map) {
+    map.forEach(this::put);
+  }
+
+  @Override
+  public V remove(Object key) {
+    requireNonNull(key);
+
+    @SuppressWarnings("unchecked")
+    var castKey = (K) key;
+    @SuppressWarnings({"rawtypes", "unchecked", "Varifier"})
+    V[] oldValue = (V[]) new Object[1];
+    data.compute(
+        castKey,
+        (k, v) -> {
+          oldValue[0] = v;
+          return null;
+        });
+
+    if (oldValue[0] != null) {
+      notifyRemoval(castKey, oldValue[0], RemovalCause.EXPLICIT);
+    }
+
+    return oldValue[0];
+  }
+
+  @Override
+  public boolean remove(Object key, Object value) {
+    requireNonNull(key);
+    if (value == null) {
+      return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    var castKey = (K) key;
+    @SuppressWarnings({"rawtypes", "unchecked", "Varifier"})
+    V[] oldValue = (V[]) new Object[1];
+
+    data.computeIfPresent(
+        castKey,
+        (k, v) -> {
+          if (Objects.equals(value, v)) {
+            oldValue[0] = v;
+            return null;
+          }
+          return v;
+        });
+
+    if (oldValue[0] != null) {
+      notifyRemoval(castKey, oldValue[0], RemovalCause.EXPLICIT);
+      return true;
+    }
+    return false;
+  }
+
+  @Override
+  public V replace(K key, V value) {
+    requireNonNull(value);
+
+    @SuppressWarnings({"rawtypes", "unchecked", "Varifier"})
+    V[] oldValue = (V[]) new Object[1];
+    data.computeIfPresent(
+        key,
+        (k, v) -> {
+          oldValue[0] = v;
+          return value;
+        });
+
+    notifyOnReplace(key, oldValue[0], value);
+    return oldValue[0];
+  }
+
+  @Override
+  public boolean replace(
+      K key, V oldValue, V newValue, boolean shouldDiscardRefresh, boolean quietly) {
+    requireNonNull(oldValue);
+    requireNonNull(newValue);
+
+    @SuppressWarnings({"rawtypes", "unchecked", "Varifier"})
+    V[] prev = (V[]) new Object[1];
+    data.computeIfPresent(
+        key,
+        (k, v) -> {
+          if (Objects.equals(oldValue, v)) {
+            prev[0] = v;
+            return newValue;
+          }
+          return v;
+        });
+
+    notifyOnReplace(key, prev[0], newValue);
+    return (prev[0] != null);
+  }
+
+  @Override
+  @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
+  public boolean equals(Object o) {
+    if (o == this) {
+      return true;
+    }
+    try {
+      return data.equals(o);
+    } catch (ClassCastException | NullPointerException ignored) {
+      return false;
+    }
+  }
+
+  @Override
+  public int hashCode() {
+    return data.hashCode();
+  }
+
+  @Override
+  public String toString() {
+    var result = new StringBuilder(50).append('{');
+    data.forEach(
+        (key, value) -> {
+          if (result.length() != 1) {
+            result.append(", ");
+          }
+          result
+              .append((key == this) ? "(this Map)" : key)
+              .append('=')
+              .append((value == this) ? "(this Map)" : value);
+        });
+    return result.append('}').toString();
+  }
+
+  @Override
+  public Set<K> keySet() {
+    Set<K> ks = keySet;
+    return (ks == null) ? (keySet = new KeySetView<>(this)) : ks;
+  }
+
+  @Override
+  public Collection<V> values() {
+    Collection<V> vs = values;
+    return (vs == null) ? (values = new ValuesView<>(this)) : vs;
+  }
+
+  @Override
+  public Set<Entry<K, V>> entrySet() {
+    Set<Entry<K, V>> es = entrySet;
+    return (es == null) ? (entrySet = new EntrySetView<>(this)) : es;
+  }
+
+  /** An adapter to safely externalize the keys. */
+  static final class KeySetView<K> extends AbstractSet<K> {
+    final UnboundedLocalCache<K, ?> cache;
+
+    KeySetView(UnboundedLocalCache<K, ?> cache) {
+      this.cache = requireNonNull(cache);
+    }
+
+    @Override
+    public boolean isEmpty() {
+      return cache.isEmpty();
+    }
+
+    @Override
+    public int size() {
+      return cache.size();
+    }
+
+    @Override
+    public void clear() {
+      cache.clear();
+    }
+
+    @Override
+    @SuppressWarnings("SuspiciousMethodCalls")
+    public boolean contains(Object o) {
+      return cache.containsKey(o);
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> collection) {
+      requireNonNull(collection);
+      if (collection != this) {
+        for (Object o : collection) {
+          if ((o == null) || !contains(o)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      if ((collection instanceof Set<?>) && (collection.size() > size())) {
+        for (K key : this) {
+          if (collection.contains(key)) {
+            modified |= remove(key);
+          }
+        }
+      } else {
+        for (var o : collection) {
+          modified |= (o != null) && remove(o);
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    public boolean remove(Object o) {
+      return (cache.remove(o) != null);
+    }
+
+    @Override
+    public boolean removeIf(Predicate<? super K> filter) {
+      requireNonNull(filter);
+      @Var boolean modified = false;
+      for (K key : this) {
+        if (filter.test(key) && remove(key)) {
+          modified = true;
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      for (K key : this) {
+        if (!collection.contains(key) && remove(key)) {
+          modified = true;
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    public void forEach(Consumer<? super K> action) {
+      cache.data.keySet().forEach(action);
+    }
+
+    @Override
+    public Iterator<K> iterator() {
+      return new KeyIterator<>(cache);
+    }
+
+    @Override
+    public Spliterator<K> spliterator() {
+      return new KeySpliterator<>(cache);
+    }
+
+    @Override
+    public Object[] toArray() {
+      return cache.data.keySet().toArray();
+    }
+
+    @Override
+    public <T> T[] toArray(T[] array) {
+      return cache.data.keySet().toArray(array);
+    }
+  }
+
+  /** An adapter to safely externalize the key iterator. */
+  static final class KeyIterator<K> implements Iterator<K> {
+    final UnboundedLocalCache<K, ?> cache;
+    final Iterator<K> iterator;
+    K current;
+
+    KeyIterator(UnboundedLocalCache<K, ?> cache) {
+      this.iterator = cache.data.keySet().iterator();
+      this.cache = cache;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+
+    @Override
+    public K next() {
+      current = iterator.next();
+      return current;
+    }
+
+    @Override
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public void remove() {
+      if (current == null) {
+        throw new IllegalStateException();
+      }
+      cache.remove(current);
+      current = null;
+    }
+  }
+
+  /** An adapter to safely externalize the key spliterator. */
+  static final class KeySpliterator<K> implements Spliterator<K> {
+    final Spliterator<K> spliterator;
+
+    KeySpliterator(UnboundedLocalCache<K, ?> cache) {
+      this(cache.data.keySet().spliterator());
+    }
+
+    KeySpliterator(Spliterator<K> spliterator) {
+      this.spliterator = requireNonNull(spliterator);
+    }
+
+    @Override
+    public void forEachRemaining(Consumer<? super K> action) {
+      requireNonNull(action);
+      spliterator.forEachRemaining(action);
+    }
+
+    @Override
+    public boolean tryAdvance(Consumer<? super K> action) {
+      requireNonNull(action);
+      return spliterator.tryAdvance(action);
+    }
+
+    @Override
+    public KeySpliterator<K> trySplit() {
+      Spliterator<K> split = spliterator.trySplit();
+      return (split == null) ? null : new KeySpliterator<>(split);
+    }
+
+    @Override
+    public long estimateSize() {
+      return spliterator.estimateSize();
+    }
+
+    @Override
+    public int characteristics() {
+      return DISTINCT | CONCURRENT | NONNULL;
+    }
+  }
+
+  /** An adapter to safely externalize the values. */
+  static final class ValuesView<K, V> extends AbstractCollection<V> {
+    final UnboundedLocalCache<K, V> cache;
+
+    ValuesView(UnboundedLocalCache<K, V> cache) {
+      this.cache = requireNonNull(cache);
+    }
+
+    @Override
+    public boolean isEmpty() {
+      return cache.isEmpty();
+    }
+
+    @Override
+    public int size() {
+      return cache.size();
+    }
+
+    @Override
+    public void clear() {
+      cache.clear();
+    }
+
+    @Override
+    @SuppressWarnings("SuspiciousMethodCalls")
+    public boolean contains(Object o) {
+      return cache.containsValue(o);
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> collection) {
+      requireNonNull(collection);
+      if (collection != this) {
+        for (Object o : collection) {
+          if ((o == null) || !contains(o)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      for (var entry : cache.data.entrySet()) {
+        if (collection.contains(entry.getValue())
+            && cache.remove(entry.getKey(), entry.getValue())) {
+          modified = true;
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    public boolean remove(Object o) {
+      if (o == null) {
+        return false;
+      }
+      for (var entry : cache.data.entrySet()) {
+        if (o.equals(entry.getValue()) && cache.remove(entry.getKey(), entry.getValue())) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public boolean removeIf(Predicate<? super V> filter) {
+      requireNonNull(filter);
+      @Var boolean removed = false;
+      for (var entry : cache.data.entrySet()) {
+        if (filter.test(entry.getValue())) {
+          removed |= cache.remove(entry.getKey(), entry.getValue());
+        }
+      }
+      return removed;
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      for (var entry : cache.data.entrySet()) {
+        if (!collection.contains(entry.getValue())
+            && cache.remove(entry.getKey(), entry.getValue())) {
+          modified = true;
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    public void forEach(Consumer<? super V> action) {
+      cache.data.values().forEach(action);
+    }
+
+    @Override
+    public Iterator<V> iterator() {
+      return new ValueIterator<>(cache);
+    }
+
+    @Override
+    public Spliterator<V> spliterator() {
+      return new ValueSpliterator<>(cache);
+    }
+
+    @Override
+    public Object[] toArray() {
+      return cache.data.values().toArray();
+    }
+
+    @Override
+    public <T> T[] toArray(T[] array) {
+      return cache.data.values().toArray(array);
+    }
+  }
+
+  /** An adapter to safely externalize the value iterator. */
+  static final class ValueIterator<K, V> implements Iterator<V> {
+    final UnboundedLocalCache<K, V> cache;
+    final Iterator<Entry<K, V>> iterator;
+    Entry<K, V> entry;
+
+    ValueIterator(UnboundedLocalCache<K, V> cache) {
+      this.iterator = cache.data.entrySet().iterator();
+      this.cache = cache;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+
+    @Override
+    public V next() {
+      entry = iterator.next();
+      return entry.getValue();
+    }
+
+    @Override
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public void remove() {
+      if (entry == null) {
+        throw new IllegalStateException();
+      }
+      cache.remove(entry.getKey());
+      entry = null;
+    }
+  }
+
+  /** An adapter to safely externalize the value spliterator. */
+  static final class ValueSpliterator<V> implements Spliterator<V> {
+    final Spliterator<V> spliterator;
+
+    ValueSpliterator(UnboundedLocalCache<?, V> cache) {
+      this(cache.data.values().spliterator());
+    }
+
+    ValueSpliterator(Spliterator<V> spliterator) {
+      this.spliterator = requireNonNull(spliterator);
+    }
+
+    @Override
+    public void forEachRemaining(Consumer<? super V> action) {
+      requireNonNull(action);
+      spliterator.forEachRemaining(action);
+    }
+
+    @Override
+    public boolean tryAdvance(Consumer<? super V> action) {
+      requireNonNull(action);
+      return spliterator.tryAdvance(action);
+    }
+
+    @Override
+    public ValueSpliterator<V> trySplit() {
+      Spliterator<V> split = spliterator.trySplit();
+      return (split == null) ? null : new ValueSpliterator<>(split);
+    }
+
+    @Override
+    public long estimateSize() {
+      return spliterator.estimateSize();
+    }
+
+    @Override
+    public int characteristics() {
+      return CONCURRENT | NONNULL;
+    }
+  }
+
+  /** An adapter to safely externalize the entries. */
+  static final class EntrySetView<K, V> extends AbstractSet<Entry<K, V>> {
+    final UnboundedLocalCache<K, V> cache;
+
+    EntrySetView(UnboundedLocalCache<K, V> cache) {
+      this.cache = requireNonNull(cache);
+    }
+
+    @Override
+    public boolean isEmpty() {
+      return cache.isEmpty();
+    }
+
+    @Override
+    public int size() {
+      return cache.size();
+    }
+
+    @Override
+    public void clear() {
+      cache.clear();
+    }
+
+    @Override
+    @SuppressWarnings("SuspiciousMethodCalls")
+    public boolean contains(Object o) {
+      if (!(o instanceof Entry<?, ?>)) {
+        return false;
+      }
+      var entry = (Entry<?, ?>) o;
+      var key = entry.getKey();
+      var value = entry.getValue();
+      if ((key == null) || (value == null)) {
+        return false;
+      }
+      V cachedValue = cache.get(key);
+      return value.equals(cachedValue);
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> collection) {
+      requireNonNull(collection);
+      if (collection != this) {
+        for (Object o : collection) {
+          if ((o == null) || !contains(o)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      if ((collection instanceof Set<?>) && (collection.size() > size())) {
+        for (var entry : this) {
+          if (collection.contains(entry)) {
+            modified |= remove(entry);
+          }
+        }
+      } else {
+        for (var o : collection) {
+          modified |= remove(o);
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    @SuppressWarnings("SuspiciousMethodCalls")
+    public boolean remove(Object o) {
+      if (!(o instanceof Entry<?, ?>)) {
+        return false;
+      }
+      var entry = (Entry<?, ?>) o;
+      var key = entry.getKey();
+      return (key != null) && cache.remove(key, entry.getValue());
+    }
+
+    @Override
+    public boolean removeIf(Predicate<? super Entry<K, V>> filter) {
+      requireNonNull(filter);
+      @Var boolean removed = false;
+      for (var entry : cache.data.entrySet()) {
+        var key = entry.getKey();
+        var value = entry.getValue();
+        if (filter.test(Map.entry(key, value))) {
+          removed |= cache.remove(key, value);
+        }
+      }
+      return removed;
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> collection) {
+      requireNonNull(collection);
+      @Var boolean modified = false;
+      for (var entry : this) {
+        if (!collection.contains(entry) && remove(entry)) {
+          modified = true;
+        }
+      }
+      return modified;
+    }
+
+    @Override
+    public Iterator<Entry<K, V>> iterator() {
+      return new EntryIterator<>(cache);
+    }
+
+    @Override
+    public Spliterator<Entry<K, V>> spliterator() {
+      return new EntrySpliterator<>(cache);
+    }
+  }
+
+  /** An adapter to safely externalize the entry iterator. */
+  static final class EntryIterator<K, V> implements Iterator<Entry<K, V>> {
+    final UnboundedLocalCache<K, V> cache;
+    final Iterator<Entry<K, V>> iterator;
+    Entry<K, V> entry;
+
+    EntryIterator(UnboundedLocalCache<K, V> cache) {
+      this.iterator = cache.data.entrySet().iterator();
+      this.cache = cache;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+
+    @Override
+    public Entry<K, V> next() {
+      entry = iterator.next();
+      return new WriteThroughEntry<>(cache, entry.getKey(), entry.getValue());
+    }
+
+    @Override
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public void remove() {
+      if (entry == null) {
+        throw new IllegalStateException();
+      }
+      cache.remove(entry.getKey());
+      entry = null;
+    }
+  }
+
+  /** An adapter to safely externalize the entry spliterator. */
+  static final class EntrySpliterator<K, V> implements Spliterator<Entry<K, V>> {
+    final Spliterator<Entry<K, V>> spliterator;
+    final UnboundedLocalCache<K, V> cache;
+
+    EntrySpliterator(UnboundedLocalCache<K, V> cache) {
+      this(cache, cache.data.entrySet().spliterator());
+    }
+
+    EntrySpliterator(UnboundedLocalCache<K, V> cache, Spliterator<Entry<K, V>> spliterator) {
+      this.spliterator = requireNonNull(spliterator);
+      this.cache = requireNonNull(cache);
+    }
+
+    @Override
+    public void forEachRemaining(Consumer<? super Entry<K, V>> action) {
+      requireNonNull(action);
+      spliterator.forEachRemaining(
+          entry -> {
+            var e = new WriteThroughEntry<>(cache, entry.getKey(), entry.getValue());
+            action.accept(e);
+          });
+    }
+
+    @Override
+    public boolean tryAdvance(Consumer<? super Entry<K, V>> action) {
+      requireNonNull(action);
+      return spliterator.tryAdvance(
+          entry -> {
+            var e = new WriteThroughEntry<>(cache, entry.getKey(), entry.getValue());
+            action.accept(e);
+          });
+    }
+
+    @Override
+    public EntrySpliterator<K, V> trySplit() {
+      Spliterator<Entry<K, V>> split = spliterator.trySplit();
+      return (split == null) ? null : new EntrySpliterator<>(cache, split);
+    }
+
+    @Override
+    public long estimateSize() {
+      return spliterator.estimateSize();
+    }
+
+    @Override
+    public int characteristics() {
+      return DISTINCT | CONCURRENT | NONNULL;
+    }
+  }
+
+  /* --------------- Manual Cache --------------- */
+
+  static class UnboundedLocalManualCache<K, V> implements LocalManualCache<K, V> {
+
+    final UnboundedLocalCache<K, V> cache;
+    Policy<K, V> policy;
+
+    UnboundedLocalManualCache(Caffeine<K, V> builder) {
+      cache = new UnboundedLocalCache<>(builder);
+    }
+
+    @Override
+    public final UnboundedLocalCache<K, V> cache() {
+      return cache;
+    }
+
+    @Override
+    public final Policy<K, V> policy() {
+      @Var var p = policy;
+      if (p == null) {
+        Function<V, V> identity = v -> v;
+        p = new UnboundedPolicy<>(cache, identity);
+        policy = p;
+      }
+      return p;
+    }
+  }
+
+  /** An eviction policy that supports no bounding. */
+  static final class UnboundedPolicy<K, V> implements Policy<K, V> {
+    final Function<V, V> transformer;
+    final UnboundedLocalCache<K, V> cache;
+
+    UnboundedPolicy(UnboundedLocalCache<K, V> cache, Function<V, V> transformer) {
+      this.transformer = transformer;
+      this.cache = cache;
+    }
+
+    @Override
+    public boolean isRecordingStats() {
+      return cache.isRecordingStats;
+    }
+
+    @Override
+    public V getIfPresentQuietly(K key) {
+      return transformer.apply(cache.data.get(key));
+    }
+
+    @Override
+    public CacheEntry<K, V> getEntryIfPresentQuietly(K key) {
+      V value = transformer.apply(cache.data.get(key));
+      return (value == null) ? null : SnapshotEntry.forEntry(key, value);
+    }
+
+    @Override
+    public Optional<Eviction<K, V>> eviction() {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<FixedExpiration<K, V>> expireAfterAccess() {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<FixedExpiration<K, V>> expireAfterWrite() {
+      return Optional.empty();
+    }
+  }
+
+  /* --------------- Loading Cache --------------- */
+
+  static final class UnboundedLocalLoadingCache<K, V> extends UnboundedLocalManualCache<K, V>
+      implements LocalLoadingCache<K, V> {
+    final Function<K, V> mappingFunction;
+    final CacheLoader<? super K, V> cacheLoader;
+    final Function<Set<? extends K>, Map<K, V>> bulkMappingFunction;
+
+    UnboundedLocalLoadingCache(Caffeine<K, V> builder, CacheLoader<? super K, V> cacheLoader) {
+      super(builder);
+      this.cacheLoader = cacheLoader;
+      this.mappingFunction = newMappingFunction(cacheLoader);
+      this.bulkMappingFunction = newBulkMappingFunction(cacheLoader);
+    }
+
+    @Override
+    public CacheLoader<? super K, V> cacheLoader() {
+      return cacheLoader;
+    }
+
+    @Override
+    public Function<K, V> mappingFunction() {
+      return mappingFunction;
+    }
+
+    @Override
+    public Function<Set<? extends K>, Map<K, V>> bulkMappingFunction() {
+      return bulkMappingFunction;
+    }
+  }
+}

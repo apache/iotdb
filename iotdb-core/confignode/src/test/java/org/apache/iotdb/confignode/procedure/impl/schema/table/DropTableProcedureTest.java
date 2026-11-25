@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.procedure.NoopProcedureStore;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.impl.schema.ModFileDeletionProgress;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -261,7 +262,7 @@ public class DropTableProcedureTest {
 
     Assert.assertEquals(
         new TDropTableModProgress(7).setRemainingModFileCount(10),
-        TableDeletionModProgress.aggregateModFileProgress(targets, responses));
+        ModFileDeletionProgress.aggregateModFileProgress(targets, responses));
   }
 
   @Test
@@ -284,7 +285,7 @@ public class DropTableProcedureTest {
                         new TDropTableModProgress(0))));
 
     final TDropTableModProgress progress =
-        TableDeletionModProgress.aggregateModFileProgress(targets, responses);
+        ModFileDeletionProgress.aggregateModFileProgress(targets, responses);
     Assert.assertEquals(2, progress.getWrittenModFileCount());
     Assert.assertFalse(progress.isSetRemainingModFileCount());
   }
@@ -296,12 +297,12 @@ public class DropTableProcedureTest {
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
             new TDataNodeLocation().setDataNodeId(1));
     Assert.assertNull(
-        TableDeletionModProgress.aggregateModFileProgress(targets, Collections.emptyMap()));
+        ModFileDeletionProgress.aggregateModFileProgress(targets, Collections.emptyMap()));
     Assert.assertNull(
-        TableDeletionModProgress.aggregateModFileProgress(
+        ModFileDeletionProgress.aggregateModFileProgress(
             targets, Map.of(1, new TGetDropTableModProgressResp(StatusUtils.OK))));
     Assert.assertNull(
-        TableDeletionModProgress.aggregateModFileProgress(
+        ModFileDeletionProgress.aggregateModFileProgress(
             targets,
             Map.of(
                 1,
@@ -314,7 +315,7 @@ public class DropTableProcedureTest {
     final DropTableProcedure procedure =
         new DropTableProcedure("database", "table", "query", false);
     final Field futureField =
-        TableDeletionModProgress.class.getDeclaredField("modProgressRefreshFuture");
+        ModFileDeletionProgress.class.getDeclaredField("modProgressRefreshFuture");
     futureField.setAccessible(true);
     final CountDownLatch waitingQueryStarted = new CountDownLatch(1);
     final CompletableFuture<Void> refreshFuture =
@@ -353,7 +354,7 @@ public class DropTableProcedureTest {
         final DropTableProcedure procedure =
             new DropTableProcedure("database", "table", "query", isGeneratedByPipe);
         final Field progressField =
-            TableDeletionModProgress.class.getDeclaredField("modFileProgress");
+            ModFileDeletionProgress.class.getDeclaredField("modFileProgress");
         progressField.setAccessible(true);
         progressField.set(modProgress(procedure), progress);
         final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -386,10 +387,10 @@ public class DropTableProcedureTest {
     Assert.assertFalse(buffer.hasRemaining());
   }
 
-  private static TableDeletionModProgress modProgress(final DropTableProcedure procedure)
+  private static ModFileDeletionProgress modProgress(final DropTableProcedure procedure)
       throws Exception {
     final Field field = DropTableProcedure.class.getDeclaredField("modProgress");
     field.setAccessible(true);
-    return (TableDeletionModProgress) field.get(procedure);
+    return (ModFileDeletionProgress) field.get(procedure);
   }
 }

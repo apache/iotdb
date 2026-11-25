@@ -20,7 +20,6 @@
 package org.apache.iotdb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.JsonParser;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -39,6 +38,7 @@ import java.util.Map;
 
 public class HttpsExample {
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpsExample.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static final String UTF8 = "utf-8";
 
@@ -63,7 +63,7 @@ public class HttpsExample {
       response = httpClient.execute(httpGet);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      String result = JsonParser.parseString(message).getAsJsonObject().toString();
+      String result = MAPPER.readTree(message).toString();
       LOGGER.info(result);
 
     } catch (IOException e) {
@@ -100,7 +100,7 @@ public class HttpsExample {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      String result = JsonParser.parseString(message).getAsJsonObject().toString();
+      String result = MAPPER.readTree(message).toString();
       LOGGER.info(result);
     } catch (IOException e) {
       LOGGER.error("Https insertTablet rest api failed", e);
@@ -125,8 +125,7 @@ public class HttpsExample {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      ObjectMapper mapper = new ObjectMapper();
-      LOGGER.info("message = {}", mapper.readValue(message, Map.class));
+      LOGGER.info("message = {}", MAPPER.readValue(message, Map.class));
     } catch (IOException e) {
       LOGGER.error("Https query rest api failed", e);
     } finally {
@@ -151,8 +150,7 @@ public class HttpsExample {
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, UTF8);
-      ObjectMapper mapper = new ObjectMapper();
-      LOGGER.info("message with time zone = {}", mapper.readValue(message, Map.class));
+      LOGGER.info("message with time zone = {}", MAPPER.readValue(message, Map.class));
     } catch (IOException e) {
       LOGGER.error("Https query with time zone rest api failed", e);
     } finally {

@@ -383,23 +383,25 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected void flushAlignedPageToChunkWriter(
       AlignedChunkWriterImpl alignedChunkWriter,
-      ByteBuffer compressedTimePageData,
-      PageHeader timePageHeader,
-      List<ByteBuffer> compressedValuePageDatas,
-      List<PageHeader> valuePageHeaders,
+      AlignedPageElement alignedPageElement,
       int subTaskId)
       throws IOException, PageException {
+    PageHeader timePageHeader = alignedPageElement.getTimePageHeader();
+    List<PageHeader> valuePageHeaders = alignedPageElement.getValuePageHeaders();
+    List<ByteBuffer> compressedValuePageDatas = alignedPageElement.getValuePageDataList();
     // seal current page
     alignedChunkWriter.sealCurrentPage();
     // flush new time page to chunk writer directly
-    alignedChunkWriter.writePageHeaderAndDataIntoTimeBuff(compressedTimePageData, timePageHeader);
+    alignedChunkWriter.writePageHeaderAndDataIntoTimeBuff(
+        alignedPageElement.getTimePageData(), timePageHeader);
 
     long writtenValuePageSize = 0;
     // flush new value pages to chunk writer directly
     for (int i = 0; i < valuePageHeaders.size(); i++) {
       PageHeader valuePageHeader = valuePageHeaders.get(i);
       if (valuePageHeader == null) {
-        // sub sensor does not exist in current file or value page has been deleted completely
+        // sub sensor does not exist in current file or value page has been deleted completely;
+        // write an empty page, which is excluded from the size accounting below
         alignedChunkWriter.getValueChunkWriterByIndex(i).writeEmptyPageToPageBuffer();
         continue;
       }

@@ -28,9 +28,9 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanNodeSearcher.searchFrom;
 import static org.apache.iotdb.rpc.TSStatusCode.SEMANTIC_ERROR;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
 
 public class CheckSubqueryNodesAreRewritten implements PlanOptimizer {
   @Override

@@ -1,0 +1,255 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.external.caffeine.cache;
+
+import org.apache.iotdb.commons.external.caffeine.cache.stats.StatsCounter;
+
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+
+/**
+ * An in-memory cache providing thread safety and atomicity guarantees. This interface provides an
+ * extension to {@link ConcurrentMap} for use with skeletal implementations.
+ *
+ * @author ben.manes@gmail.com (Ben Manes)
+ */
+@SuppressWarnings("all")
+interface LocalCache<K, V> extends ConcurrentMap<K, V> {
+
+  /** Returns whether this cache has statistics enabled. */
+  boolean isRecordingStats();
+
+  /** Returns the {@link StatsCounter} used by this cache. */
+  StatsCounter statsCounter();
+
+  /** Asynchronously sends a removal notification to the listener. */
+  void notifyRemoval(K key, V value, RemovalCause cause);
+
+  /** Returns the removal listener, or {@code null} if none is configured. */
+  RemovalListener<K, V> removalListener();
+
+  /** Returns the {@link Executor} used by this cache. */
+  Executor executor();
+
+  /** Returns the {@link Ticker} used by this cache for statistics. */
+  Ticker statsTicker();
+
+  /** See {@link Cache#estimatedSize()}. */
+  long estimatedSize();
+
+  /** Returns if the keys are weak reference garbage collected. */
+  boolean collectKeys();
+
+  /** Returns the reference key. */
+  Object referenceKey(K key);
+
+  /**
+   * Returns whether an absent entry has expired or has been reference collected but has not yet
+   * been removed from the cache.
+   */
+  boolean isPendingEviction(K key);
+
+  /**
+   * See {@link Cache#getIfPresent(Object)}. This method differs by accepting a parameter of whether
+   * to record the hit-and-miss statistics based on the success of this operation.
+   */
+  V getIfPresent(K key, boolean recordStats);
+
+  /**
+   * See {@link Cache#getIfPresent(Object)}. This method differs by not recording the access with
+   * the statistics nor the eviction policy.
+   */
+  V getIfPresentQuietly(Object key);
+
+  /**
+   * See {@link Cache#getAllPresent}. This method differs by setting the present values on the given
+   * mapping's entries, where an absent key's entry is removed or, if {@code retainAbsent}, left
+   * unchanged. Returns the number of absent keys.
+   */
+  @CanIgnoreReturnValue
+  int getAllPresent(Map<K, V> result, boolean retainAbsent);
+
+  @Override
+  default boolean replace(K key, V oldValue, V newValue) {
+    return replace(key, oldValue, newValue, /* shouldDiscardRefresh= */ true, /* quietly= */ false);
+  }
+
+  /**
+   * See {@link ConcurrentMap#replace(Object, Object, Object)}. This method differs by optionally
+   * not discarding an in-flight refresh for the entry if replaced and, when quiet, by not recording
+   * the update as an access with the eviction policy.
+   */
+  @CanIgnoreReturnValue
+  boolean replace(K key, V oldValue, V newValue, boolean shouldDiscardRefresh, boolean quietly);
+
+  @Override
+  default V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+    return compute(key, remappingFunction, /* recordLoad= */ true, /* hints= */ null);
+  }
+
+  V compute(
+      K key,
+      BiFunction<? super K, ? super V, ? extends V> remappingFunction,
+      boolean recordLoad,
+      RemapHints hints);
+
+  @Override
+  default V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+    return castNonNull(
+        computeIfAbsent(key, mappingFunction, /* recordStats= */ true, /* recordLoad= */ true));
+  }
+
+  /**
+   * See {@link ConcurrentMap#computeIfAbsent}. This method differs by accepting parameters
+   * indicating how to record statistics.
+   */
+  V computeIfAbsent(
+      K key,
+      Function<? super K, ? extends V> mappingFunction,
+      boolean recordStats,
+      boolean recordLoad);
+
+  /** See {@link Cache#invalidateAll(Iterable)}. */
+  default void invalidateAll(Iterable<?> keys) {
+    for (Object key : keys) {
+      remove(key);
+    }
+  }
+
+  /** See {@link Cache#cleanUp}. */
+  void cleanUp();
+
+  /** Notify the removal listener of a replacement if the value reference was changed. */
+  @SuppressWarnings({"FutureReturnValueIgnored", "UnnecessaryReturnStatement"})
+  default void notifyOnReplace(K key, V oldValue, V newValue) {
+    if ((oldValue != null) && (oldValue != newValue) && (removalListener() != null)) {
+      notifyRemoval(key, oldValue, RemovalCause.REPLACED);
+    }
+  }
+
+  /** Decorates the mapping function to record statistics if enabled, recording a miss if called. */
+  default <T, R> Function<? super T, ? extends R> statsAware(
+      Function<? super T, ? extends R> mappingFunction, boolean recordLoad) {
+    if (!isRecordingStats()) {
+      return mappingFunction;
+    }
+    return key -> {
+      R value;
+      statsCounter().recordMisses(1);
+      long startTime = statsTicker().read();
+      try {
+        value = mappingFunction.apply(key);
+      } catch (Throwable t) {
+        statsCounter().recordLoadFailure(statsTicker().read() - startTime);
+        throw t;
+      }
+      if (recordLoad) {
+        long loadTime = statsTicker().read() - startTime;
+        if (value == null) {
+          statsCounter().recordLoadFailure(loadTime);
+        } else {
+          statsCounter().recordLoadSuccess(loadTime);
+        }
+      }
+      return value;
+    };
+  }
+
+  /** Decorates the remapping function to record statistics if enabled. */
+  default <T, U, R> BiFunction<? super T, ? super U, ? extends R> statsAware(
+      BiFunction<? super T, ? super U, ? extends R> remappingFunction) {
+    return statsAware(remappingFunction, /* recordLoad= */ true);
+  }
+
+  /** Decorates the remapping function to record statistics if enabled. */
+  default <T, U, R> BiFunction<? super T, ? super U, ? extends R> statsAware(
+      BiFunction<? super T, ? super U, ? extends R> remappingFunction, boolean recordLoad) {
+    if (!isRecordingStats() || !recordLoad) {
+      return remappingFunction;
+    }
+    return (t, u) -> {
+      R result;
+      long startTime = statsTicker().read();
+      try {
+        result = remappingFunction.apply(t, u);
+      } catch (Throwable e) {
+        statsCounter().recordLoadFailure(statsTicker().read() - startTime);
+        throw e;
+      }
+      long loadTime = statsTicker().read() - startTime;
+      if (result == null) {
+        statsCounter().recordLoadFailure(loadTime);
+      } else {
+        statsCounter().recordLoadSuccess(loadTime);
+      }
+      return result;
+    };
+  }
+
+  /** Returns {@code null} to isolate workarounds due to JSpecify's lack of poly-null support. */
+  @SuppressWarnings({"DataFlowIssue", "NullableProblems", "NullAway"})
+  static <T> T castNonNull(T value) {
+    return value;
+  }
+
+  /** Returns {@code null} to isolate workarounds due to JSpecify's lack of poly-null support. */
+  @SuppressWarnings({
+    "DataFlowIssue",
+    "NullableProblems",
+    "NullAway",
+    "TypeParameterUnusedInFormals"
+  })
+  static <T> T nullRef() {
+    return null;
+  }
+
+  /**
+   * Mutable hints for a remapping. The function may set them when returning the same value instance
+   * to signal a no-op (skip writes to the entry's metadata or leave an in-flight refresh intact),
+   * and a caller may preset {@code quietly} so a completion's update is not recorded as a usage.
+   */
+  final class RemapHints {
+    /**
+     * Skip writes to the entry's metadata (accessTime, writeTime, variableTime, and weight) for a
+     * same-instance return. Used by callers that detect a no-op.
+     */
+    boolean preserveTimestamps;
+
+    /** Additionally, leave any in-flight refresh intact so that no-op paths do not interfere. */
+    boolean preserveRefresh;
+
+    /**
+     * The caller presets this to finalize the write quietly: an update skips the frequency sketch
+     * increment and the eviction policy's hit sampling (a completion is bookkeeping, not a usage).
+     */
+    boolean quietly;
+
+    /** Signals that the remapping did not modify the entry. */
+    void preserveEntry() {
+      preserveTimestamps = true;
+      preserveRefresh = true;
+    }
+  }
+}

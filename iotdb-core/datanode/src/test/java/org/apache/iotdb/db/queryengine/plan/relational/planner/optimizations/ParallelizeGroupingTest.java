@@ -38,9 +38,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 
 import java.nio.file.Path;

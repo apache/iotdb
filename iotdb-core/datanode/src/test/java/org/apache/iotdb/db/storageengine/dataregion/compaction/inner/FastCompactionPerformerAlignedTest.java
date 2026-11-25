@@ -43,15 +43,19 @@ import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -293,6 +297,94 @@ public class FastCompactionPerformerAlignedTest {
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
+  }
+
+  @Test
+  public void testAlignedCompactionWithLazilyLoadedIntermediatePriorityPage() throws Exception {
+    String device = storageGroup + ".d0";
+    List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT64),
+            new MeasurementSchema("s1", TSDataType.INT64));
+    IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device);
+
+    TsFileResource highPriorityResource =
+        writeAlignedTsFile(
+            "1-3-0-0.tsfile",
+            deviceId,
+            schemas,
+            new long[] {1, 2},
+            new Long[][] {{10L, null}, {12L, null}});
+    TsFileResource lowPriorityResource =
+        writeAlignedTsFile(
+            "1-1-0-0.tsfile",
+            deviceId,
+            schemas,
+            new long[] {1, 2},
+            new Long[][] {{null, 11L}, {null, 1L}});
+    TsFileResource intermediatePriorityResource =
+        writeAlignedTsFile(
+            "2-2-0-0.tsfile", deviceId, schemas, new long[] {2}, new Long[][] {{null, 2L}});
+
+    List<TsFileResource> sourceResources =
+        Arrays.asList(highPriorityResource, lowPriorityResource, intermediatePriorityResource);
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceResources, true);
+    performer.setSourceFiles(sourceResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.setSummary(new FastCompactionTaskSummary());
+    performer.perform();
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
+
+    IFullPath alignedPath = new AlignedFullPath(deviceId, Arrays.asList("s0", "s1"), schemas);
+    List<TimeValuePair> compactedData =
+        CompactionCheckerUtils.getDataByQuery(
+                Collections.singletonList(alignedPath),
+                Collections.singletonList(targetResource),
+                Collections.emptyList())
+            .get(alignedPath);
+    TimeValuePair compactedPoint =
+        compactedData.stream().filter(point -> point.getTimestamp() == 2).findFirst().orElse(null);
+
+    Assert.assertNotNull(compactedPoint);
+    Assert.assertEquals(12L, compactedPoint.getValue().getVector()[0].getLong());
+    Assert.assertEquals(2L, compactedPoint.getValue().getVector()[1].getLong());
+  }
+
+  private TsFileResource writeAlignedTsFile(
+      String fileName,
+      IDeviceID deviceId,
+      List<IMeasurementSchema> schemas,
+      long[] timestamps,
+      Long[][] values)
+      throws IOException {
+    TsFileResource resource = new TsFileResource(new File(dataDirectory, fileName));
+    resource.setSeq(true);
+    try (TsFileIOWriter writer = new TsFileIOWriter(resource.getTsFile())) {
+      AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemas);
+      for (int row = 0; row < timestamps.length; row++) {
+        long timestamp = timestamps[row];
+        chunkWriter.getTimeChunkWriter().write(timestamp);
+        for (int column = 0; column < schemas.size(); column++) {
+          Long value = values[row][column];
+          chunkWriter
+              .getValueChunkWriterByIndex(column)
+              .write(timestamp, value == null ? 0 : value, value == null);
+        }
+      }
+      writer.startChunkGroup(deviceId);
+      chunkWriter.writeToFileWriter(writer);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    for (long timestamp : timestamps) {
+      resource.updateStartTime(deviceId, timestamp);
+      resource.updateEndTime(deviceId, timestamp);
+    }
+    resource.close();
+    resource.serialize();
+    return resource;
   }
 
   @Test

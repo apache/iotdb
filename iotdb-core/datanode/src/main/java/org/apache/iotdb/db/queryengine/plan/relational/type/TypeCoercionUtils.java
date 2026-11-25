@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.type;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.common.type.IntType;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;

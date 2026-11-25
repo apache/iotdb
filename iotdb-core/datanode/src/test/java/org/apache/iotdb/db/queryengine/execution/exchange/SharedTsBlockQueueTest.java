@@ -27,8 +27,8 @@ import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReserva
 import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,7 +41,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 
 public class SharedTsBlockQueueTest {
 

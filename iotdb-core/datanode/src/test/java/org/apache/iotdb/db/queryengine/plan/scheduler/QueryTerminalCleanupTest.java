@@ -46,7 +46,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;

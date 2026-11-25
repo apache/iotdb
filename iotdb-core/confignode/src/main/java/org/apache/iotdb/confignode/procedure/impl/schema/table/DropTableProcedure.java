@@ -36,8 +36,10 @@ import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDele
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
+import org.apache.iotdb.confignode.procedure.ProcedureWithPendingCleanup;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.impl.schema.ModFileDeletionProgress;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
@@ -56,12 +58,13 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Map;
 
-public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTableState> {
+public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTableState>
+    implements ProcedureWithPendingCleanup {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTableProcedure.class);
 
-  private final TableDeletionModProgress modProgress =
-      new TableDeletionModProgress(
+  private final ModFileDeletionProgress modProgress =
+      new ModFileDeletionProgress(
           this::getProcId, () -> !isFinished() && getCurrentState() == DropTableState.DELETE_DATA);
 
   public DropTableProcedure(final boolean isGeneratedByPipe) {
@@ -90,6 +93,16 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
   public void updateModFileProgress() {
     modProgress.update();
+  }
+
+  @Override
+  public boolean hasPendingCleanup() {
+    return modProgress.hasPendingCleanup();
+  }
+
+  @Override
+  public void retryPendingCleanup() {
+    updateModFileProgress();
   }
 
   @Override
@@ -206,6 +219,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
 
     if (!relatedDataRegionGroup.isEmpty()) {
       modProgress.setRegionCount(relatedDataRegionGroup.size());
+      modProgress.trackRegionReplicas(relatedDataRegionGroup);
       new TableRegionTaskExecutor<>(
               ProcedureMessages.MESSAGE_DELETE_DATA_FOR_DROP_TABLE_A678391E,
               env,
@@ -215,7 +229,8 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
                 modProgress.trackRegions(dataNodeLocation, consensusGroupIdList);
                 return new TDeleteDataOrDevicesForDropTableReq(
                         new ArrayList<>(consensusGroupIdList), tableName)
-                    .setProcedureId(getProcId());
+                    .setProcedureId(getProcId())
+                    .setTrackModFileProgress(true);
               }))
           .execute();
       modProgress.finish(() -> setNextState(DropTableState.DELETE_DEVICES));
