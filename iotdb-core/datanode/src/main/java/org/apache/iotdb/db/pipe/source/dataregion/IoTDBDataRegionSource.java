@@ -36,6 +36,7 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegio
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionTsFileSource;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -367,19 +368,12 @@ public class IoTDBDataRegionSource extends IoTDBSource {
       if (StorageEngine.getInstance()
               .runIfPresent(
                   dataRegionIdObject,
-                  (dataRegion -> {
-                    dataRegion.writeLock(
-                        String.format("Pipe: starting %s", IoTDBDataRegionSource.class.getName()));
-                    try {
-                      startHistoricalExtractorAndRealtimeExtractor(exceptionHolder);
-                    } finally {
-                      dataRegion.writeUnlock();
-                    }
-                  }))
+                  dataRegion ->
+                      startHistoricalExtractorAndRealtimeExtractor(exceptionHolder, dataRegion))
           || StorageEngine.getInstance()
               .runIfAbsent(
                   dataRegionIdObject,
-                  () -> startHistoricalExtractorAndRealtimeExtractor(exceptionHolder))) {
+                  () -> startHistoricalExtractorAndRealtimeExtractor(exceptionHolder, null))) {
         rethrowExceptionIfAny(exceptionHolder);
 
         LOGGER.info(
@@ -396,14 +390,24 @@ public class IoTDBDataRegionSource extends IoTDBSource {
   }
 
   private void startHistoricalExtractorAndRealtimeExtractor(
-      final AtomicReference<Exception> exceptionHolder) {
+      final AtomicReference<Exception> exceptionHolder, final DataRegion dataRegion) {
     try {
       // Start realtimeExtractor first to avoid losing data. This may cause some
       // retransmission, yet it is OK according to the idempotency of IoTDB.
       // Note: The order of historical collection is flushing data -> adding all tsFile events.
       // There can still be writing when tsFile events are added. If we start
       // realtimeExtractor after the process, then this part of data will be lost.
-      realtimeExtractor.start();
+      if (Objects.nonNull(dataRegion)) {
+        dataRegion.writeLock(
+            String.format("Pipe: starting %s", IoTDBDataRegionSource.class.getName()));
+        try {
+          realtimeExtractor.start();
+        } finally {
+          dataRegion.writeUnlock();
+        }
+      } else {
+        realtimeExtractor.start();
+      }
       historicalExtractor.start();
     } catch (final Exception e) {
       exceptionHolder.set(e);

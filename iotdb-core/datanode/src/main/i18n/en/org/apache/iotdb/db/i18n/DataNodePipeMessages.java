@@ -22,6 +22,10 @@ package org.apache.iotdb.db.i18n;
 public final class DataNodePipeMessages {
 
   public static final String
+      EXCEPTION_PIPE_ARG_ARG_TIME_PARTITION_ARG_CHANGED_DURING_HISTORICAL_TSFILE_EXTRACTION_AFTER_ONE_REFRESH_AF060BD3 =
+          "Pipe %s@%s: time partition %s changed during historical TsFile extraction after one refresh";
+
+  public static final String
       MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431 =
           "Subscription is disabled when data region consensus protocol is Ratis.";
 

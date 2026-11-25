@@ -45,6 +45,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
@@ -58,6 +59,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -140,6 +142,79 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  public void testHistoricalExtractionRefreshesReplacedPartitionSnapshot() throws Exception {
+    final File tempDir = Files.createTempDirectory("pipeHistoricalSnapshotRefresh").toFile();
+    final PipeHistoricalDataRegionTsFileSource source = new PipeHistoricalDataRegionTsFileSource();
+    final String pipeName = "historical_snapshot_refresh";
+    final long creationTime = 1L;
+    final String resourcePipeName =
+        PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
+    final PipeTsFileResourceManager resourceManager = PipeDataNodeResourceManager.tsfile();
+    try {
+      final File dataDir = new File(tempDir, "sequence/root.db/0/0");
+      Assert.assertTrue(dataDir.mkdirs());
+      final TsFileResource staleResource =
+          createClosedTsFileResource(dataDir, "1-1-0-0.tsfile", new SimpleProgressIndex(0, 1));
+      final TsFileResource refreshedResource =
+          createClosedTsFileResource(dataDir, "2-1-0-0.tsfile", new SimpleProgressIndex(0, 2));
+      final TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+      final List<TsFileResource> refreshedSequenceResources =
+          Collections.singletonList(refreshedResource);
+      Mockito.when(tsFileManager.getAllTsFileListForQuery(Mockito.anyList(), Mockito.isNull()))
+          .thenReturn(
+              new Pair<>(refreshedSequenceResources, Collections.emptyList()),
+              new Pair<>(refreshedSequenceResources, Collections.emptyList()),
+              new Pair<>(refreshedSequenceResources, Collections.emptyList()));
+
+      setPrivateField(source, "isHistoricalSourceEnabled", true);
+      setPrivateField(source, "shouldExtractInsertion", true);
+      setPrivateField(source, "isDbNameCoveredByPattern", true);
+      setPrivateField(source, "pipeName", pipeName);
+      setPrivateField(source, "creationTime", creationTime);
+      setPrivateField(source, "dataRegionId", 1);
+      setPrivateField(source, "pipeNameWithCreationTime", resourcePipeName);
+      setPrivateField(source, "startIndex", MinimumProgressIndex.INSTANCE);
+
+      final Method extractTsFiles =
+          PipeHistoricalDataRegionTsFileSource.class.getDeclaredMethod(
+              "extractTsFiles", TsFileManager.class, List.class, List.class, long.class);
+      extractTsFiles.setAccessible(true);
+      extractTsFiles.invoke(
+          source,
+          tsFileManager,
+          Collections.singletonList(staleResource),
+          Collections.emptyList(),
+          System.currentTimeMillis());
+
+      final Set<TsFileResource> filteredResources =
+          (Set<TsFileResource>) getPrivateField(source, "filteredTsFileResources");
+      Assert.assertFalse(filteredResources.contains(staleResource));
+      Assert.assertTrue(filteredResources.contains(refreshedResource));
+      Assert.assertEquals(1, source.getPendingQueueSize());
+
+      final File stalePinnedFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              staleResource.getTsFile(), resourcePipeName);
+      final File refreshedPinnedFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              refreshedResource.getTsFile(), resourcePipeName);
+      Assert.assertEquals(
+          0, resourceManager.getFileReferenceCount(stalePinnedFile, resourcePipeName));
+      Assert.assertEquals(
+          1, resourceManager.getFileReferenceCount(refreshedPinnedFile, resourcePipeName));
+
+      source.close();
+      Assert.assertEquals(
+          0, resourceManager.getFileReferenceCount(refreshedPinnedFile, resourcePipeName));
+    } finally {
+      source.close();
+      resourceManager.cleanPipeTsFileDir(resourcePipeName);
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test
   public void testClosingTsFileKeepsTimeFiltering() throws Exception {
     // A closing sequence file can temporarily look wholly inside the extraction window even
     // though the eventual file also contains rows outside it.
@@ -206,6 +281,7 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
           new ArrayDeque<TsFileResource>(Collections.singletonList(resource)));
 
       manager.pinTsFileResource(resource, false, resourcePipeName);
+      ((Set<TsFileResource>) getPrivateField(source, "resourcesWithPinnedTsFile")).add(resource);
       final File pinnedFile =
           PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
               resource.getTsFile(), resourcePipeName);
