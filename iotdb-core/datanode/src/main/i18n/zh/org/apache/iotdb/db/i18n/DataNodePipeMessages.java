@@ -22,6 +22,10 @@ package org.apache.iotdb.db.i18n;
 public final class DataNodePipeMessages {
 
   public static final String
+      LOG_PIPE_ARG_ARG_TIME_PARTITION_ARG_CHANGED_DURING_HISTORICAL_TSFILE_EXTRACTION_AFTER_ONE_REFRESH_AF060BD3 =
+          "Pipe %s@%s：历史 TsFile 提取期间，时间分区 %s 在刷新一次后仍发生变化";
+
+  public static final String
       MESSAGE_SUBSCRIPTION_IS_DISABLED_WHEN_DATA_REGION_CONSENSUS_PROTOCOL_IS_RATIS_194CE431 =
           "当数据区域共识协议为 Ratis 时，Subscription 功能不可用。";
 
