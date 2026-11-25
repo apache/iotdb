@@ -167,15 +167,18 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private static final String REGISTER_INTERRUPTION =
       "Unexpected interruption when waiting to register to the cluster";
 
-  private boolean schemaRegionConsensusStarted = false;
-  private boolean dataRegionConsensusStarted = false;
+  // Internal RPC handlers must observe these startup flags across threads.
+  private volatile boolean schemaRegionConsensusStarted = false;
+  private volatile boolean dataRegionConsensusStarted = false;
   private long schemaEngineRecoveryTimeInMs;
   private static Thread watcherThread;
+  private DataNodeContext context;
 
   public DataNode() {
     super("DataNode");
     // We do not init anything here, so that we can re-initialize the instance in IT.
     DataNodeHolder.INSTANCE = this;
+    context = new DataNodeContext();
   }
 
   // TODO: This needs removal of statics ...
@@ -812,7 +815,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   /** Set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
-    registerManager.register(DataNodeInternalRPCService.getInstance());
+    DataNodeInternalRPCService internalRPCService = DataNodeInternalRPCService.getInstance();
+    internalRPCService.setDataNodeContext(context);
+    registerManager.register(internalRPCService);
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
@@ -1235,6 +1240,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     private DataNodeHolder() {
       // Empty constructor
+    }
+  }
+
+  public class DataNodeContext {
+    public boolean isAllConsensusStarted() {
+      return dataRegionConsensusStarted && schemaRegionConsensusStarted;
     }
   }
 }
