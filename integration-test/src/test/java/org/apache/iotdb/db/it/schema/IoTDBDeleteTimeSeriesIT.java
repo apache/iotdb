@@ -111,15 +111,14 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
       try (ResultSet result = statement.executeQuery("SHOW TIMESERIES " + device + ".*")) {
         Assert.assertFalse(result.next());
       }
-      // A nonexistent path is accepted too; the error belongs to the asynchronous task.
-      statement.execute(sql);
-      try {
-        TestUtils.waitForTimeSeriesDeletion(statement, sql);
-        Assert.fail("Expected the task to fail for a nonexistent path");
-      } catch (SQLException e) {
-        Assert.assertTrue(
-            e.getMessage().contains(Integer.toString(TSStatusCode.PATH_NOT_EXIST.getStatusCode())));
-      }
+      final SQLException exception =
+          Assert.assertThrows(SQLException.class, () -> statement.execute(sql));
+      Assert.assertTrue(
+          exception
+              .getMessage()
+              .contains(Integer.toString(TSStatusCode.PATH_NOT_EXIST.getStatusCode())));
+      Assert.assertTrue(exception.getMessage().contains(firstPath));
+      Assert.assertTrue(exception.getMessage().contains(secondPath));
     }
   }
 
