@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -315,8 +316,7 @@ public class ConfigNodeTestUtils {
     clusterParameters.setClusterName("defaultCluster");
     clusterParameters.setConfigNodeConsensusProtocolClass(
         "org.apache.iotdb.consensus.simple.SimpleConsensus");
-    clusterParameters.setDataRegionConsensusProtocolClass(
-        "org.apache.iotdb.consensus.simple.SimpleConsensus");
+    clusterParameters.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS_V2);
     clusterParameters.setSchemaRegionConsensusProtocolClass(
         "org.apache.iotdb.consensus.simple.SimpleConsensus");
     clusterParameters.setSeriesPartitionSlotNum(1000);

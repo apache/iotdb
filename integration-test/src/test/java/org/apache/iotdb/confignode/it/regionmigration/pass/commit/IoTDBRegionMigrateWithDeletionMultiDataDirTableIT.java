@@ -26,12 +26,12 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.env.CommonConfig;
 
 import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -61,13 +61,12 @@ import static org.apache.iotdb.confignode.it.regionmigration.pass.commit.RegionM
 @Category({TableClusterIT.class})
 public class IoTDBRegionMigrateWithDeletionMultiDataDirTableIT {
 
-  @Before
-  public void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setDataReplicationFactor(2)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+  private void startCluster(String protocol, String mode) throws Exception {
+    final CommonConfig config = EnvFactory.getEnv().getConfig().getCommonConfig();
+    config.setDataReplicationFactor(2).setDataRegionConsensusProtocolClass(protocol);
+    if (ConsensusFactory.IOT_CONSENSUS_V2.equals(protocol)) {
+      config.setIoTConsensusV2Mode(mode);
+    }
     EnvFactory.getEnv().getConfig().getDataNodeConfig().setDnDataDirs(MULTI_DATA_DIRS);
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
   }
@@ -79,6 +78,23 @@ public class IoTDBRegionMigrateWithDeletionMultiDataDirTableIT {
 
   @Test
   public void testRegionMigratePreservesDeletionWithMultiDataDirs() throws Exception {
+    startCluster(ConsensusFactory.IOT_CONSENSUS, null);
+    assertRegionMigratePreservesDeletion();
+  }
+
+  @Test
+  public void testIoTV2BatchRegionMigratePreservesDeletion() throws Exception {
+    startCluster(ConsensusFactory.IOT_CONSENSUS_V2, ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE);
+    assertRegionMigratePreservesDeletion();
+  }
+
+  @Test
+  public void testIoTV2StreamRegionMigratePreservesDeletion() throws Exception {
+    startCluster(ConsensusFactory.IOT_CONSENSUS_V2, ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE);
+    assertRegionMigratePreservesDeletion();
+  }
+
+  private void assertRegionMigratePreservesDeletion() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE test");

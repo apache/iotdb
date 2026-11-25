@@ -35,6 +35,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.deletion.HistoricalDeletionProgressReportEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
@@ -264,7 +265,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               // been released, and the progress of the event can not be reported.
               && !outputEventCollector.isFailedToIncreaseReferenceCount()
               // Events generated from consensusPipe's transferred data should never be reported.
-              && !(pipeProcessor instanceof IoTConsensusV2Processor);
+              && (!(pipeProcessor instanceof IoTConsensusV2Processor)
+                  || event instanceof HistoricalDeletionProgressReportEvent);
       if (shouldReport
           && event instanceof EnrichedEvent
           && outputEventCollector.hasNoCollectInvocationAfterReset()) {

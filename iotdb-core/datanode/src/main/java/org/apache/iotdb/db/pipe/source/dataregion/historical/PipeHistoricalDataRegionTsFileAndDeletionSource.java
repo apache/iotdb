@@ -50,6 +50,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
+import org.apache.iotdb.db.pipe.event.common.deletion.HistoricalDeletionProgressReportEvent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -186,6 +187,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private ProgressIndex maxSuppliedHistoricalProgressReportIndex = MinimumProgressIndex.INSTANCE;
   private ProgressIndex pendingHistoricalProgressIndexToReport;
   private boolean shouldReportMaxHistoricalProgressIndex = false;
+  private ProgressIndex historicalDeletionProgress = MinimumProgressIndex.INSTANCE;
   private int extractedHistoricalTsFileCount = 0;
   private int extractedHistoricalDeletionCount = 0;
 
@@ -537,6 +539,15 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
   }
 
+  public boolean shouldReportHistoricalDeletionProgress(final DataRegion dataRegion) {
+    return pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+        && shouldExtractInsertion
+        && shouldExtractDeletion
+        && isHistoricalSourceEnabled
+        && shouldTransferModFile
+        && !startIndex.isEqualOrAfter(dataRegion.getAppliedLocalDeletionProgress());
+  }
+
   @Override
   public synchronized void start() {
     if (!shouldExtractInsertion && !shouldExtractDeletion) {
@@ -555,6 +566,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     maxSuppliedHistoricalProgressReportIndex = MinimumProgressIndex.INSTANCE;
     pendingHistoricalProgressIndexToReport = null;
     shouldReportMaxHistoricalProgressIndex = false;
+    historicalDeletionProgress = MinimumProgressIndex.INSTANCE;
     historicalProgressReportResources.clear();
 
     final DataRegion dataRegion =
@@ -576,6 +588,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       if (dataRegion.isDeleted()) {
         pendingQueue = new ArrayDeque<>();
         return;
+      }
+      if (shouldReportHistoricalDeletionProgress(dataRegion)) {
+        historicalDeletionProgress = dataRegion.getAppliedLocalDeletionProgress();
       }
       if (shouldExtractInsertion) {
         flushTsFilesForExtraction(dataRegion);
@@ -897,6 +912,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     }
     originalResourceList.addAll(extractedSequenceResources);
     originalResourceList.addAll(extractedUnsequenceResources);
+    if (statistics.pinFailedCount > 0) {
+      historicalDeletionProgress = MinimumProgressIndex.INSTANCE;
+    }
     extractedHistoricalTsFileCount = filteredTsFileResources2TableNames.size();
 
     LOGGER.info(
@@ -1401,6 +1419,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     while (true) {
       final PersistentResource resource = pendingQueue.peek();
       if (resource == null) {
+        if (!(historicalDeletionProgress instanceof MinimumProgressIndex)) {
+          final ProgressIndex progress = historicalDeletionProgress;
+          historicalDeletionProgress = MinimumProgressIndex.INSTANCE;
+          return supplyProgressReportEvent(
+              new HistoricalDeletionProgressReportEvent(pipeName, creationTime, pipeTaskMeta),
+              progress);
+        }
         if (shouldReportMaxHistoricalProgressIndex) {
           shouldReportMaxHistoricalProgressIndex = false;
           if (!maxSuppliedHistoricalProgressReportIndex.isEqualOrAfter(
@@ -1414,6 +1439,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       if (resource instanceof TsFileResource) {
         final TsFileResource tsFileResource = (TsFileResource) resource;
         if (consumeSkippedHistoricalTsFileEventIfNecessary(tsFileResource)) {
+          // The realtime source owns this file; the historical commit cannot cover it.
+          historicalDeletionProgress = MinimumProgressIndex.INSTANCE;
           clearReplicateIndexForResource(tsFileResource);
           pendingQueue.poll();
           if (shouldUseHistoricalTsFileQueryPriorityOrder()) {
@@ -1513,8 +1540,12 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   protected Event supplyProgressReportEvent(final ProgressIndex progressIndex) {
-    final ProgressReportEvent progressReportEvent =
-        new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
+    return supplyProgressReportEvent(
+        new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta), progressIndex);
+  }
+
+  private Event supplyProgressReportEvent(
+      final ProgressReportEvent progressReportEvent, final ProgressIndex progressIndex) {
     progressReportEvent.bindProgressIndex(progressIndex);
     final boolean isReferenceCountIncreased =
         progressReportEvent.increaseReferenceCount(

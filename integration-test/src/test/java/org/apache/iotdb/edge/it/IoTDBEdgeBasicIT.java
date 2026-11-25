@@ -385,7 +385,7 @@ public class IoTDBEdgeBasicIT {
         "org.apache.iotdb.consensus.ratis.RatisConsensus",
         variables.get("SchemaRegionConsensusProtocolClass"));
     assertEquals(
-        "org.apache.iotdb.consensus.iot.IoTConsensus",
+        "org.apache.iotdb.consensus.iot.IoTConsensusV2",
         variables.get("DataRegionConsensusProtocolClass"));
   }
 

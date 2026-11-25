@@ -64,6 +64,7 @@ public class RemoteServerEnv implements BaseEnv {
 
   private final String ip_addr = System.getProperty("RemoteIp", "127.0.0.1");
   private final String port = System.getProperty("RemotePort", "6667");
+  private final String restPort = System.getProperty("RemoteRestPort", "18080");
   private final String configNodeMetricPort =
       System.getProperty("RemoteConfigNodeMetricPort", "9091");
 
@@ -231,6 +232,11 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public List<DataNodeWrapper> getDataNodeWrapperList() {
     return null;
+  }
+
+  @Override
+  public List<String> getRestUrls() {
+    return Collections.singletonList("http://" + remoteEndpointUrl(restPort));
   }
 
   @Override

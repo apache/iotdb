@@ -21,7 +21,6 @@ package org.apache.iotdb.db.it;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -73,7 +72,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 public class IoTDBRestServiceIT {
 
-  private static int port = 18080;
+  private static String restUrl;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -81,8 +80,7 @@ public class IoTDBRestServiceIT {
     baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
     baseEnv.getConfig().getCommonConfig().setEnforceStrongPassword(false);
     baseEnv.initClusterEnvironment();
-    DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
-    port = portConflictDataNodeWrapper.getRestServicePort();
+    restUrl = baseEnv.getRestUrls().get(0);
   }
 
   @AfterClass
@@ -124,7 +122,7 @@ public class IoTDBRestServiceIT {
   @Test
   public void ping() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    HttpGet httpGet = new HttpGet("http://127.0.0.1:" + port + "/ping");
+    HttpGet httpGet = new HttpGet(restUrl + "/ping");
     CloseableHttpResponse response = null;
     try {
       for (int i = 0; i < 30; i++) {
@@ -285,16 +283,10 @@ public class IoTDBRestServiceIT {
     CloseableHttpResponse response = null;
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     try {
-      for (int i = 0; i < EnvFactory.getEnv().getDataNodeWrapperList().size(); i++) {
-        DataNodeWrapper wrapper = EnvFactory.getEnv().getDataNodeWrapperList().get(i);
+      final List<String> restUrls = EnvFactory.getEnv().getRestUrls();
+      for (int i = 0; i < restUrls.size(); i++) {
         try {
-          HttpPost httpPost =
-              getHttpPost(
-                  "http://"
-                      + wrapper.getIp()
-                      + ":"
-                      + wrapper.getRestServicePort()
-                      + "/rest/v2/insertRecords");
+          HttpPost httpPost = getHttpPost(restUrls.get(i) + "/rest/v2/insertRecords");
           String json =
               "{\"timestamps\":["
                   + i
@@ -338,9 +330,7 @@ public class IoTDBRestServiceIT {
 
         ResultSet resultSet = statement.executeQuery("select count(s33) from root.s1");
         resultSet.next();
-        assertEquals(
-            EnvFactory.getEnv().getDataNodeWrapperList().size(),
-            resultSet.getInt("count(root.s1.s33)"));
+        assertEquals(restUrls.size(), resultSet.getInt("count(root.s1.s33)"));
       }
     } finally {
       cleanupAllData();
@@ -374,7 +364,7 @@ public class IoTDBRestServiceIT {
   public void rightInsertTablet(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v1/insertTablet");
       String json =
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
@@ -440,7 +430,7 @@ public class IoTDBRestServiceIT {
     CloseableHttpResponse response = null;
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v1/insertTablet");
       String json =
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
@@ -480,8 +470,8 @@ public class IoTDBRestServiceIT {
   }
 
   public void perData(CloseableHttpClient httpClient) {
-    HttpPost httpPost2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
-    HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+    HttpPost httpPost2 = getHttpPost(restUrl + "/rest/v1/nonQuery");
+    HttpPost httpPostV2 = getHttpPost(restUrl + "/rest/v2/nonQuery");
 
     nonQuery(httpClient, "{\"sql\":\"CREATE USER `root1` 'rooT@11234567'\"}", httpPost2);
     nonQuery(httpClient, "{\"sql\":\"GRANT WRITE ON  root.** to user root1\"}", httpPostV2);
@@ -759,8 +749,8 @@ public class IoTDBRestServiceIT {
         nonQuery_error_json_list_v2.add(
             "{\"sql\":\"insert into root.aa(time,root) values(111,1)\"}");
       }
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
-      HttpPost httpPost1 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v1/insertTablet");
+      HttpPost httpPost1 = getHttpPost_1(restUrl + "/rest/v1/insertTablet");
 
       List<HttpPost> httpPosts = new ArrayList<>();
       httpPosts.add(httpPost);
@@ -774,8 +764,8 @@ public class IoTDBRestServiceIT {
         }
       }
 
-      HttpPost httpPost3 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
-      HttpPost httpPost4 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      HttpPost httpPost3 = getHttpPost(restUrl + "/rest/v1/nonQuery");
+      HttpPost httpPost4 = getHttpPost_1(restUrl + "/rest/v1/nonQuery");
       List<HttpPost> httpPosts1 = new ArrayList<>();
       httpPosts1.add(httpPost3);
       httpPosts1.add(httpPost4);
@@ -789,14 +779,14 @@ public class IoTDBRestServiceIT {
         }
       }
 
-      HttpPost httpPost5 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertRecords");
-      HttpPost httpPost6 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertRecords");
+      HttpPost httpPost5 = getHttpPost(restUrl + "/rest/v1/insertRecords");
+      HttpPost httpPost6 = getHttpPost_1(restUrl + "/rest/v1/insertRecords");
       List<HttpPost> httpPosts2 = new ArrayList<>();
       httpPosts2.add(httpPost5);
       httpPosts2.add(httpPost6);
 
-      HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
-      HttpPost httpPost1V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
+      HttpPost httpPostV2 = getHttpPost(restUrl + "/rest/v2/insertTablet");
+      HttpPost httpPost1V2 = getHttpPost_1(restUrl + "/rest/v2/insertTablet");
 
       List<HttpPost> httpPostsV2 = new ArrayList<>();
       httpPostsV2.add(httpPostV2);
@@ -810,8 +800,8 @@ public class IoTDBRestServiceIT {
         }
       }
 
-      HttpPost httpPost3V2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
-      HttpPost httpPost4V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+      HttpPost httpPost3V2 = getHttpPost(restUrl + "/rest/v2/nonQuery");
+      HttpPost httpPost4V2 = getHttpPost_1(restUrl + "/rest/v2/nonQuery");
       List<HttpPost> httpPosts1V2 = new ArrayList<>();
       httpPosts1V2.add(httpPost3V2);
       httpPosts1V2.add(httpPost4V2);
@@ -824,8 +814,8 @@ public class IoTDBRestServiceIT {
         }
       }
 
-      HttpPost httpPost5V2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertRecords");
-      HttpPost httpPost6V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/insertRecords");
+      HttpPost httpPost5V2 = getHttpPost(restUrl + "/rest/v2/insertRecords");
+      HttpPost httpPost6V2 = getHttpPost_1(restUrl + "/rest/v2/insertRecords");
       List<HttpPost> httpPosts2V2 = new ArrayList<>();
       httpPosts2V2.add(httpPost5V2);
       httpPosts2V2.add(httpPost6V2);
@@ -855,7 +845,7 @@ public class IoTDBRestServiceIT {
     CloseableHttpResponse response = null;
     try {
       CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-      HttpPost httpPost = new HttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      HttpPost httpPost = new HttpPost(restUrl + "/rest/v1/query");
       httpPost.addHeader("Content-type", "application/json; charset=utf-8");
       httpPost.setHeader("Accept", "application/json");
       String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
@@ -900,7 +890,7 @@ public class IoTDBRestServiceIT {
     CloseableHttpResponse response = null;
     try {
       CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-      HttpPost httpPost = new HttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      HttpPost httpPost = new HttpPost(restUrl + "/rest/v1/query");
       httpPost.addHeader("Content-type", "application/json; charset=utf-8");
       httpPost.setHeader("Accept", "application/json");
       String authorization = getAuthorization("abc", "def");
@@ -949,7 +939,7 @@ public class IoTDBRestServiceIT {
     TestUtils.executeNonQuery("create user abcd 'strongPassword@1234'");
     try {
       final CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-      final HttpPost httpPost = new HttpPost("http://127.0.0.1:" + port + "/rest/v2/fastLastQuery");
+      final HttpPost httpPost = new HttpPost(restUrl + "/rest/v2/fastLastQuery");
       httpPost.addHeader("Content-type", "application/json; charset=utf-8");
       httpPost.setHeader("Accept", "application/json");
       final String authorization = getAuthorization("abcd", "strongPassword@1234");
@@ -1011,7 +1001,7 @@ public class IoTDBRestServiceIT {
   public void query(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v1/query");
       String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
@@ -1113,7 +1103,7 @@ public class IoTDBRestServiceIT {
   public void queryGroupByLevel(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v1/query");
       String sql =
           "{\"sql\":\"select count(s4) from root.sg25 group by([1635232143960,1635232153960),1s),level=1\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
@@ -1147,7 +1137,7 @@ public class IoTDBRestServiceIT {
   public void queryRowLimit(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v1/query");
       String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\",\"rowLimit\":1}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
@@ -1172,7 +1162,7 @@ public class IoTDBRestServiceIT {
   public Map queryMetaData(CloseableHttpClient httpClient, String sql) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v1/query");
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -1674,7 +1664,7 @@ public class IoTDBRestServiceIT {
   public void queryV2(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v2/query");
       String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
@@ -1775,12 +1765,12 @@ public class IoTDBRestServiceIT {
 
   public void selectFastLast(CloseableHttpClient httpClient) {
     // Only used in 1D scenarios
-    if (EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+    if (EnvFactory.getEnv().getRestUrls().size() > 1) {
       return;
     }
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/fastLastQuery");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v2/fastLastQuery");
       String sql = "{\"prefix_paths\":[\"root\",\"sg25\"]}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
@@ -1868,7 +1858,7 @@ public class IoTDBRestServiceIT {
   public void queryGroupByLevelV2(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v2/query");
       String sql =
           "{\"sql\":\"select count(s4) from root.sg25 group by([1635232143960,1635232153960),1s),level=1\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
@@ -1902,7 +1892,7 @@ public class IoTDBRestServiceIT {
   public void queryRowLimitV2(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v2/query");
       String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\",\"row_limit\":1}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
@@ -1927,7 +1917,7 @@ public class IoTDBRestServiceIT {
   public Map queryMetaDataV2(CloseableHttpClient httpClient, String sql) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v2/query");
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -2429,8 +2419,8 @@ public class IoTDBRestServiceIT {
 
   public void insertDate() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    HttpPost httpPost2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
-    HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+    HttpPost httpPost2 = getHttpPost(restUrl + "/rest/v1/nonQuery");
+    HttpPost httpPostV2 = getHttpPost(restUrl + "/rest/v2/nonQuery");
     nonQuery(
         httpClient,
         "{\"sql\":\"CREATE TIMESERIES root.sg1.d1.s4 WITH DATATYPE=DATE, ENCODING=PLAIN, COMPRESSOR=SNAPPY\"}",
@@ -2450,7 +2440,7 @@ public class IoTDBRestServiceIT {
   public void queryDateAndBlob(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v1/query");
       String sql = "{\"sql\":\"select s4,s5 from root.sg1.d1\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
@@ -2511,7 +2501,7 @@ public class IoTDBRestServiceIT {
   public void queryDateAndBlobV2(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v2/query");
       String sql = "{\"sql\":\"select s4,s5 from root.sg1.d1\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
@@ -2574,7 +2564,7 @@ public class IoTDBRestServiceIT {
     try {
       long expectedTimestamp =
           ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
-      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      HttpPost insertPost = getHttpPost(restUrl + "/rest/v1/nonQuery");
       String insertSql =
           String.format(
               "{\"sql\":\"INSERT INTO root.sg_tz.d2(timestamp, s3) VALUES(%d, 10.5)\"}",
@@ -2583,7 +2573,7 @@ public class IoTDBRestServiceIT {
       try (CloseableHttpResponse insertResponse = httpClient.execute(insertPost)) {
         assertEquals(200, insertResponse.getStatusLine().getStatusCode());
       }
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v1/query");
       httpPost.setHeader("Time-Zone", "+05:00");
       String sql =
           "{\"sql\":\"SELECT count(s3) FROM root.sg_tz.d2 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
@@ -2616,20 +2606,20 @@ public class IoTDBRestServiceIT {
   public void nonQueryWithValidTimeZoneHeader(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost createPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      HttpPost createPost = getHttpPost(restUrl + "/rest/v1/nonQuery");
       nonQuery(
           httpClient,
           "{\"sql\":\"CREATE TIMESERIES root.sg_tz.d1.s1 WITH DATATYPE=INT32\"}",
           createPost);
 
-      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      HttpPost insertPost = getHttpPost(restUrl + "/rest/v1/nonQuery");
       insertPost.setHeader("Time-Zone", "+05:00");
       nonQuery(
           httpClient,
           "{\"sql\":\"INSERT INTO root.sg_tz.d1(time, s1) VALUES (2026-03-28T00:00:00, 123)\"}",
           insertPost);
 
-      HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      HttpPost queryPost = getHttpPost(restUrl + "/rest/v1/query");
       queryPost.setEntity(
           new StringEntity("{\"sql\":\"SELECT s1 FROM root.sg_tz.d1\"}", StandardCharsets.UTF_8));
       response = httpClient.execute(queryPost);
@@ -2659,7 +2649,7 @@ public class IoTDBRestServiceIT {
     try {
       long expectedTimestamp =
           ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
-      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      HttpPost insertPost = getHttpPost(restUrl + "/rest/v1/nonQuery");
       String insertSql =
           String.format(
               "{\"sql\":\"INSERT INTO root.sg_tz.d3(timestamp, s3) VALUES(%d, 10.5)\"}",
@@ -2668,7 +2658,7 @@ public class IoTDBRestServiceIT {
       try (CloseableHttpResponse insertResponse = httpClient.execute(insertPost)) {
         assertEquals(200, insertResponse.getStatusLine().getStatusCode());
       }
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v2/query");
       httpPost.setHeader("Time-Zone", "+05:00");
       String sql =
           "{\"sql\":\"SELECT count(s3) FROM root.sg_tz.d3 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
@@ -2701,20 +2691,20 @@ public class IoTDBRestServiceIT {
   public void nonQueryWithValidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost createPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+      HttpPost createPost = getHttpPost(restUrl + "/rest/v2/nonQuery");
       nonQuery(
           httpClient,
           "{\"sql\":\"CREATE TIMESERIES root.sg_tz.d2.s1 WITH DATATYPE=INT32\"}",
           createPost);
 
-      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+      HttpPost insertPost = getHttpPost(restUrl + "/rest/v2/nonQuery");
       insertPost.setHeader("Time-Zone", "+05:00");
       nonQuery(
           httpClient,
           "{\"sql\":\"INSERT INTO root.sg_tz.d2(time, s1) VALUES (2026-03-28T00:00:00, 123)\"}",
           insertPost);
 
-      HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      HttpPost queryPost = getHttpPost(restUrl + "/rest/v2/query");
       queryPost.setEntity(
           new StringEntity("{\"sql\":\"SELECT s1 FROM root.sg_tz.d2\"}", StandardCharsets.UTF_8));
       response = httpClient.execute(queryPost);
@@ -2742,7 +2732,7 @@ public class IoTDBRestServiceIT {
   public void queryWithInvalidTimeZoneHeader(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v1/query");
       httpPost.setHeader("Time-Zone", "Invalid/Zone");
       String sql = "{\"sql\":\"SELECT s3 FROM root.sg25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
@@ -2770,7 +2760,7 @@ public class IoTDBRestServiceIT {
   public void queryWithInvalidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v2/query");
       httpPost.setHeader("Time-Zone", "Invalid/Zone");
       String sql = "{\"sql\":\"SELECT s3 FROM root.sg25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
@@ -2799,20 +2789,20 @@ public class IoTDBRestServiceIT {
     nonQuery(
         httpClient,
         "{\"database\":\"\", \"sql\":\"CREATE DATABASE table_tz\"}",
-        getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery"));
+        getHttpPost(restUrl + "/rest/table/v1/nonQuery"));
     nonQuery(
         httpClient,
         "{\"database\":\"table_tz\", \"sql\":\"CREATE TABLE d1 (s1 INT32)\"}",
-        getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery"));
+        getHttpPost(restUrl + "/rest/table/v1/nonQuery"));
 
-    HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery");
+    HttpPost insertPost = getHttpPost(restUrl + "/rest/table/v1/nonQuery");
     insertPost.setHeader("Time-Zone", "+05:00");
     nonQuery(
         httpClient,
         "{\"database\":\"table_tz\", \"sql\":\"INSERT INTO d1(time, s1) VALUES ('2026-03-28T00:00:00', 123)\"}",
         insertPost);
 
-    HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/query");
+    HttpPost queryPost = getHttpPost(restUrl + "/rest/table/v1/query");
     queryPost.setEntity(
         new StringEntity(
             "{\"database\":\"table_tz\", \"sql\":\"SELECT time, s1 FROM d1\"}",
@@ -2832,7 +2822,7 @@ public class IoTDBRestServiceIT {
   }
 
   private void queryWithValidTimeZoneHeaderTableV1(CloseableHttpClient httpClient) {
-    HttpPost preparePost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery");
+    HttpPost preparePost = getHttpPost(restUrl + "/rest/table/v1/nonQuery");
     nonQuery(httpClient, "{\"database\":\"\", \"sql\":\"CREATE DATABASE table_tz2\"}", preparePost);
     nonQuery(
         httpClient,
@@ -2847,7 +2837,7 @@ public class IoTDBRestServiceIT {
             absoluteTimestamp);
     nonQuery(httpClient, insertSql, preparePost);
 
-    HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/query");
+    HttpPost queryPost = getHttpPost(restUrl + "/rest/table/v1/query");
     queryPost.setHeader("Time-Zone", "+05:00");
     String sql =
         "{\"database\":\"table_tz2\", \"sql\":\"SELECT COUNT(s1) FROM d2 WHERE time = 2026-03-28T00:00:00\"}";
@@ -2864,7 +2854,7 @@ public class IoTDBRestServiceIT {
   }
 
   private void queryWithInvalidTimeZoneHeaderTableV1(CloseableHttpClient httpClient) {
-    HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/query");
+    HttpPost queryPost = getHttpPost(restUrl + "/rest/table/v1/query");
     queryPost.setHeader("Time-Zone", "Invalid/Zone");
     String sql = "{\"database\":\"table_tz\", \"sql\":\"SELECT 1\"}";
     queryPost.setEntity(new StringEntity(sql, StandardCharsets.UTF_8));

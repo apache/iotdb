@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -62,15 +61,14 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 public class GrafanaApiServiceIT {
 
-  private static int port = 18080;
+  private static String restUrl;
 
   @BeforeClass
   public static void setUp() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
     baseEnv.initClusterEnvironment();
-    DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
-    port = portConflictDataNodeWrapper.getRestServicePort();
+    restUrl = baseEnv.getRestUrls().get(0);
   }
 
   @AfterClass
@@ -112,7 +110,7 @@ public class GrafanaApiServiceIT {
   @Test
   public void login() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    HttpGet httpGet = new HttpGet("http://127.0.0.1:" + port + "/grafana/v1/login");
+    HttpGet httpGet = new HttpGet(restUrl + "/grafana/v1/login");
     CloseableHttpResponse response = null;
     try {
       String authorization = getAuthorization("root", "root");
@@ -158,7 +156,7 @@ public class GrafanaApiServiceIT {
   public void rightInsertTablet(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
+      HttpPost httpPost = getHttpPost(restUrl + "/rest/v1/insertTablet");
       String json =
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s4\",\"s5\"],\"dataTypes\":[\"INT32\",\"INT32\"],\"values\":[[11,2],[15,13]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
@@ -199,7 +197,7 @@ public class GrafanaApiServiceIT {
   public void expressionGroupByLevel(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/grafana/v1/query/expression");
+      HttpPost httpPost = getHttpPost(restUrl + "/grafana/v1/query/expression");
       String sql =
           "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by([1635232143960,1635232153960),1s),level=1\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
@@ -233,7 +231,7 @@ public class GrafanaApiServiceIT {
   public void expression(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/grafana/v1/query/expression");
+      HttpPost httpPost = getHttpPost(restUrl + "/grafana/v1/query/expression");
       String sql =
           "{\"expression\":[\"s4\",\"s5\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
@@ -286,7 +284,7 @@ public class GrafanaApiServiceIT {
   public void expressionWithControl(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/grafana/v1/query/expression");
+      HttpPost httpPost = getHttpPost(restUrl + "/grafana/v1/query/expression");
       String sql =
           "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
@@ -340,7 +338,7 @@ public class GrafanaApiServiceIT {
   public void expressionWithConditionControl(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/grafana/v1/query/expression");
+      HttpPost httpPost = getHttpPost(restUrl + "/grafana/v1/query/expression");
       String sql =
           "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"condition\":\"timestamp=1635232143960\",\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
@@ -391,7 +389,7 @@ public class GrafanaApiServiceIT {
   public void variable(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/grafana/v1/variable");
+      HttpPost httpPost = getHttpPost(restUrl + "/grafana/v1/variable");
       String sql = "{\"sql\":\"show child paths root.sg25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
