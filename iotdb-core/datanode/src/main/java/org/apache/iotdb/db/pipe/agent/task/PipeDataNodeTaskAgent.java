@@ -820,13 +820,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
    */
   public Optional<Set<Integer>> getExpectedDataRegionIds(
       final String pipeName, final long creationTime) {
+    if (pipeName == null) {
+      return Optional.of(Collections.emptySet());
+    }
     if (!tryReadLockWithTimeOutInMs(10)) {
       return Optional.empty();
     }
     try {
-      if (pipeName == null) {
-        return Optional.of(Collections.emptySet());
-      }
       final PipeMeta pipeMeta =
           creationTime == 0
               ? pipeMetaKeeper.getPipeMeta(pipeName)
