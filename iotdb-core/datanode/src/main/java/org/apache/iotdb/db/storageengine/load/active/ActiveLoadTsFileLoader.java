@@ -76,6 +76,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.Consumer;
 
 public class ActiveLoadTsFileLoader {
 
@@ -240,6 +241,18 @@ public class ActiveLoadTsFileLoader {
   private void clearFailedFileIndex() {
     failedFileSnapshots.clear();
     indexedFailDir.set(null);
+  }
+
+  private void invalidateFailedFileIndexForGroup(final File deletedGroup) {
+    synchronized (indexedFailDir) {
+      for (final Map.Entry<String, FailedFileSnapshot> entry : failedFileSnapshots.entrySet()) {
+        if (entry.getValue().publishedGroup.equals(deletedGroup)
+            && failedFileSnapshots.remove(entry.getKey(), entry.getValue())) {
+          pendingQueue.clearFailedFile(entry.getKey());
+        }
+      }
+      indexedFailDir.set(null);
+    }
   }
 
   private void tryLoadPendingTsFiles() {
@@ -506,14 +519,20 @@ public class ActiveLoadTsFileLoader {
       return;
     }
 
-    if (!enforceFailureDirectoryMaxSize(failDirectory, targetDirectory)) {
+    if (!enforceFailureDirectoryMaxSize(
+        failDirectory, targetDirectory, this::invalidateFailedFileIndexForGroup)) {
       return;
     }
     deletePublishedSourceFiles(filePath, tsFile, sourceFiles, targetDirectory);
   }
 
-  public static synchronized boolean enforceFailureDirectoryMaxSize(
+  public static boolean enforceFailureDirectoryMaxSize(
       final File failDirectory, final File newestGroup) {
+    return enforceFailureDirectoryMaxSize(failDirectory, newestGroup, deletedGroup -> {});
+  }
+
+  private static synchronized boolean enforceFailureDirectoryMaxSize(
+      final File failDirectory, final File newestGroup, final Consumer<File> deletedGroupConsumer) {
     final long maxSize = IOTDB_CONFIG.getLoadActiveListeningFailDirMaxSizeInBytes();
     if (maxSize <= 0) {
       return true;
@@ -551,6 +570,7 @@ public class ActiveLoadTsFileLoader {
         }
         totalSize -= getDirectorySize(group);
         FileUtils.deleteDirectory(group);
+        deletedGroupConsumer.accept(group);
       }
       return totalSize <= maxSize
           || (newestGroup.isDirectory()

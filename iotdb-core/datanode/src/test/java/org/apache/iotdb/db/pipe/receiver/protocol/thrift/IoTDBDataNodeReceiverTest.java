@@ -250,24 +250,20 @@ public class IoTDBDataNodeReceiverTest {
             .getCode());
 
     final TPipeTransferReq sliced = PipeTransferPlanNodeReq.toTPipeTransferReq(node);
+    PipeTransferIntegrityUtils.setCrc32(sliced);
     final ByteBuffer body = sliced.body.duplicate();
     final int midpoint = body.limit() / 2;
+    final PipeTransferSliceReq firstSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(1, sliced.getType(), 0, 2, body, 0, midpoint);
+    PipeTransferIntegrityUtils.setCrc32(firstSlice);
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        receiver
-            .receive(
-                PipeTransferSliceReq.toTPipeTransferReq(
-                    1, sliced.getType(), 0, 2, body, 0, midpoint))
-            .getStatus()
-            .getCode());
-    Assert.assertEquals(
-        expectedCode,
-        receiver
-            .receive(
-                PipeTransferSliceReq.toTPipeTransferReq(
-                    1, sliced.getType(), 1, 2, body, midpoint, body.limit()))
-            .getStatus()
-            .getCode());
+        receiver.receive(firstSlice).getStatus().getCode());
+    final PipeTransferSliceReq secondSlice =
+        PipeTransferSliceReq.toTPipeTransferReq(
+            1, sliced.getType(), 1, 2, body, midpoint, body.limit());
+    PipeTransferIntegrityUtils.setCrc32(secondSlice);
+    Assert.assertEquals(expectedCode, receiver.receive(secondSlice).getStatus().getCode());
     Assert.assertEquals(rejected ? 0 : 4, receiver.executionAttempts);
   }
 

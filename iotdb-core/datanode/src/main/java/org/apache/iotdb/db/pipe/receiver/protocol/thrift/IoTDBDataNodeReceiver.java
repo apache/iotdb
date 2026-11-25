@@ -278,7 +278,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp receiveInternal(final TPipeTransferReq req) {
     try {
       final long startTime = System.nanoTime();
-      if (req.isSetCrc32()) {
+      if (req.isSetCrc32() && req.getType() != PipeRequestType.TRANSFER_SLICE.getType()) {
         final long actualCrc32 = PipeTransferIntegrityUtils.calculateCrc32(req);
         if (actualCrc32 != req.getCrc32()) {
           return new TPipeTransferResp(
