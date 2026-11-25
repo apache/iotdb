@@ -101,6 +101,7 @@ public class DataNodeInternalRPCServiceImplTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
   private static IConsensus instance;
+  private static String originalDataRegionConsensusProtocol;
   private static final int dataNodeId = 0;
   private static final File storageDir = new File("target" + java.io.File.separator + "impl");
   private static DataRegion dataRegion;
@@ -120,8 +121,10 @@ public class DataNodeInternalRPCServiceImplTest {
     SchemaEngine.getInstance().init();
     SchemaEngine.getInstance().createSchemaRegion("root.ln", new SchemaRegionId(0));
     final DataRegionId id = new DataRegionId(1);
-    dataRegion = new DataRegion("root.ln", "1");
     instance = DataRegionConsensusImpl.getInstance();
+    originalDataRegionConsensusProtocol = conf.getDataRegionConsensusProtocolClass();
+    conf.setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+    dataRegion = new DataRegion("root.ln", "1");
     DataRegionConsensusImpl.setInstance(
         ConsensusFactory.getConsensusImpl(
                 ConsensusFactory.IOT_CONSENSUS,
@@ -174,8 +177,14 @@ public class DataNodeInternalRPCServiceImplTest {
   @AfterClass
   public static void tearDownAfterClass() throws IOException, StorageEngineException {
     DataNodeRegionManager.getInstance().clear();
-    DataRegionConsensusImpl.getInstance().stop();
-    DataRegionConsensusImpl.setInstance(instance);
+    try {
+      DataRegionConsensusImpl.getInstance().stop();
+    } finally {
+      DataRegionConsensusImpl.setInstance(instance);
+      if (originalDataRegionConsensusProtocol != null) {
+        conf.setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocol);
+      }
+    }
     SchemaRegionConsensusImpl.getInstance().stop();
     SchemaEngine.getInstance().clear();
     EnvironmentUtils.cleanEnv();

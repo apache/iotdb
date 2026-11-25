@@ -39,6 +39,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -71,9 +72,15 @@ public class TsFileWriterManagerRecoveryTest {
 
   @Before
   public void setUp() {
+    LoadConsensusCompat.setIoTConsensusV2ForTest(false);
     dataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(dataRegion.getDatabaseName()).thenReturn(DATABASE);
     Mockito.when(dataRegion.getDataRegionIdString()).thenReturn("0");
+  }
+
+  @After
+  public void tearDown() {
+    LoadConsensusCompat.setIoTConsensusV2ForTest(null);
   }
 
   @Test

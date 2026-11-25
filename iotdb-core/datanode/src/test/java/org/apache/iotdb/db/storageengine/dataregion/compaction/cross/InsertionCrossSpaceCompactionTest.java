@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -508,8 +509,22 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
   @Test
   public void testInsertionCompactionScheduleWithMultiTimePartitions2()
       throws IOException, InterruptedException {
+    // IoTV1 skips ordinary compaction in the partition that submitted insertion tasks.
+    assertInsertionCompactionSchedule(ConsensusFactory.IOT_CONSENSUS, 3);
+  }
+
+  @Test
+  public void testIoTV2SchedulesOrdinaryCompactionAlongsideInsertion()
+      throws IOException, InterruptedException {
+    assertInsertionCompactionSchedule(ConsensusFactory.IOT_CONSENSUS_V2, 4);
+  }
+
+  private void assertInsertionCompactionSchedule(String protocol, int expectedTaskCount)
+      throws IOException, InterruptedException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     int innerCompactionCandidateFileNum = config.getInnerCompactionCandidateFileNum();
+    String originalProtocol = config.getDataRegionConsensusProtocolClass();
+    config.setDataRegionConsensusProtocolClass(protocol);
     config.setInnerCompactionCandidateFileNum(2);
     try {
       TsFileResource unseqResource1 =
@@ -552,9 +567,9 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
       tsFileManager.getOrCreateUnsequenceListByTimePartition(0).keepOrderInsert(unseqResource2);
       tsFileManager.getOrCreateSequenceListByTimePartition(2808).keepOrderInsert(unseqResource3);
       tsFileManager.getOrCreateSequenceListByTimePartition(2808).keepOrderInsert(unseqResource4);
-      // 2 insertion task + 1 inner task
-      Assert.assertEquals(3, dataRegion.executeCompaction());
+      Assert.assertEquals(expectedTaskCount, dataRegion.executeCompaction());
     } finally {
+      config.setDataRegionConsensusProtocolClass(originalProtocol);
       config.setInnerCompactionCandidateFileNum(innerCompactionCandidateFileNum);
     }
   }
