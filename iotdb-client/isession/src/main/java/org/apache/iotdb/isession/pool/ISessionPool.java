@@ -362,7 +362,7 @@ public interface ISessionPool {
    * Creates aligned and non-aligned time series in one batch. Each alignment flag corresponds to a
    * path, and all paths belonging to the same device must have the same alignment flag. Optional
    * metadata lists may be null; otherwise, they must have the same size as paths. Properties are
-   * only supported for non-aligned time series.
+   * only supported for non-aligned time series; properties supplied for aligned paths are ignored.
    */
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   void createMultiTimeseries(

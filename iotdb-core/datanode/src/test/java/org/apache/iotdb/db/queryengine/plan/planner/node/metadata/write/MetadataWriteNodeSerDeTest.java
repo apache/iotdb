@@ -55,6 +55,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -247,6 +248,34 @@ public class MetadataWriteNodeSerDeTest {
     byteBuffer.flip();
     PlanNode deserializedNode = PlanNodeType.deserialize(byteBuffer);
     Assert.assertEquals(internalCreateMultiTimeSeriesNode, deserializedNode);
+  }
+
+  @Test
+  public void testDeserializeLegacyMeasurementGroupBeforeLongPlanNodeId() {
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    ReadWriteIOUtils.write(1, byteBuffer);
+    ReadWriteIOUtils.write("s1", byteBuffer);
+    byteBuffer.put((byte) TSDataType.INT64.ordinal());
+    byteBuffer.put((byte) TSEncoding.PLAIN.ordinal());
+    byteBuffer.put(CompressionType.GZIP.serialize());
+    byteBuffer.put((byte) -1);
+    byteBuffer.put((byte) -1);
+    byteBuffer.put((byte) -1);
+
+    String planNodeIdValue = "x".repeat(255);
+    int planNodeIdPosition = byteBuffer.position();
+    PlanNodeId planNodeId = new PlanNodeId(planNodeIdValue);
+    planNodeId.serialize(byteBuffer);
+    Assert.assertEquals(255, byteBuffer.getInt(planNodeIdPosition));
+
+    byteBuffer.flip();
+    MeasurementGroup measurementGroup = new MeasurementGroup();
+    measurementGroup.deserialize(byteBuffer);
+
+    Assert.assertEquals(Collections.singletonList("s1"), measurementGroup.getMeasurements());
+    Assert.assertNull(measurementGroup.getPropsList());
+    Assert.assertEquals(planNodeId, PlanNodeId.deserialize(byteBuffer));
+    Assert.assertFalse(byteBuffer.hasRemaining());
   }
 
   @Test

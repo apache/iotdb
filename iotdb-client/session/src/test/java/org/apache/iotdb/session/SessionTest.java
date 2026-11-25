@@ -323,7 +323,7 @@ public class SessionTest {
         Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE, TSDataType.INT64),
         Collections.nCopies(3, TSEncoding.PLAIN),
         Collections.nCopies(3, CompressionType.SNAPPY),
-        Arrays.asList(null, props, null),
+        Arrays.asList(props, props, props),
         Arrays.asList(tags, null, tags),
         null,
         Arrays.asList("alias1", null, "alias2"),
