@@ -137,6 +137,8 @@ the corresponding module file; link to existing guidance instead of copying it.
 - Every new IoTDB-authored file that supports comments MUST include the complete **ASF source header**. Match the comment syntax to the file format. Use `<!-- -->` for Markdown, `/* */` for Java, and `#` for `.properties`, `.py`, Git configuration, and Java SPI descriptors under `META-INF/services`. JSON files are exempt because they have no comment syntax. Preserve third-party license and copyright notices. [ASF source header policy](https://www.apache.org/legal/src-headers.html)
   - Keep license headers intact during bulk replacements and refactors. When adding or repairing a standard ASF header, copy the complete text from an existing IoTDB-authored file and check that the disclaimer is present. ATR checks the header wording separately from Maven RAT. [ATR license checks](https://releases.apache.org/docs/license-checks#lightweight-license-check)
 - **Spotless** with Google Java Format (GOOGLE style). Import order: `org.apache.iotdb`, blank, `javax`, `java`, static.
+- **Java type names.** Prefer simple type names in source code and add explicit imports when needed.
+  Use fully qualified names when necessary to resolve a naming conflict.
 - **Checkstyle** is also configured (see `checkstyle.xml` at project root).
 - Java source/target level is 17 (compiled with `maven.compiler.release=17` on JDK 17+).
 - **Exception context.** Include enough diagnostic context to identify the failed operation and
