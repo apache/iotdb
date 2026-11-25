@@ -123,16 +123,20 @@ public class PriorityMergeReader implements IPointReader {
    */
   protected void updateHeap(TimeValuePair ret, TimeValuePair topNext) throws IOException {
     long topTime = ret.getTimestamp();
-    int canSkipNext = -1;
+    long topNextTime = topNext == null ? 0L : topNext.getTimestamp();
+    int canSkipNext = topNext == null ? 0 : -1;
+    boolean retComplete = false;
     while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
-      fillNullValue(ret, e.getTimeValuePair());
+      if (!retComplete) {
+        retComplete = fillNullValue(ret, e.getTimeValuePair());
+      }
       if (!e.hasNext()) {
         releaseAndCloseElement(e);
         continue;
       }
       e.next();
-      if (topNext != null && e.currTime() == topNext.getTimestamp()) {
+      if (canSkipNext != 0 && e.currTime() == topNextTime) {
         if (canSkipNext < 0) {
           canSkipNext = canSkipOverwrittenNext(topNext) ? 1 : 0;
         }
@@ -162,15 +166,17 @@ public class PriorityMergeReader implements IPointReader {
   /**
    * Whether {@code topNext} completely overwrites any lower-priority point at the same timestamp,
    * allowing lower-priority readers at {@code topNext.getTimestamp()} to be skipped immediately.
-   * Aligned readers must only return true when {@code topNext} has no null sub-sensor fields.
    */
   protected boolean canSkipOverwrittenNext(TimeValuePair topNext) {
     return true;
   }
 
-  /** this method only take effect for aligned time series, so the override version. */
-  protected void fillNullValue(TimeValuePair v, TimeValuePair c) {
-    // do nothing for non-aligned time series
+  /**
+   * Fills null sub-sensor slots in {@code v} from {@code c} for aligned series. Returns {@code
+   * true} when {@code v} has no null slots remaining.
+   */
+  protected boolean fillNullValue(TimeValuePair v, TimeValuePair c) {
+    return true;
   }
 
   @Override
