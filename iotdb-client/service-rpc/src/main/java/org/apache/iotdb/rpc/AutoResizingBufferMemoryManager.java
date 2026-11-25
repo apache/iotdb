@@ -108,7 +108,7 @@ public final class AutoResizingBufferMemoryManager {
       }
     }
     memoryAllocationFailureCount.incrementAndGet();
-    throw new IOException(
+    throw new AutoResizingBufferMemoryAllocationException(
         String.format(
             RpcMessages
                 .EXCEPTION_AUTO_RESIZING_BUFFER_FAILED_TO_ALLOCATE_ARG_BYTES_AFTER_ARG_RETRIES_836DB2FD,

@@ -23,13 +23,20 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkResourceException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
+import org.apache.iotdb.rpc.AutoResizingBufferMemoryAllocationException;
+import org.apache.iotdb.rpc.TElasticFramedTransport;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TConfiguration;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.SocketException;
 
 public class PipeStopStrategyTest {
 
@@ -64,6 +71,78 @@ public class PipeStopStrategyTest {
   }
 
   @Test
+  public void testAutoResizingBufferAllocationFailureDoesNotStopPipe() {
+    final Exception failure =
+        new TTransportException(
+            new AutoResizingBufferMemoryAllocationException("buffer allocation failed"));
+
+    Assert.assertFalse(PipeStopStrategy.accept(failure, null));
+    Assert.assertEquals(
+        PipeResourceFailureType.MEMORY_TIMEOUT,
+        PipeStopStrategy.getResourceFailureType(failure, null));
+  }
+
+  @Test
+  public void testBrokenPipeFromReceiverResourcePressureDoesNotStopPipe() {
+    final Exception failure =
+        retryTimesConfigurableFailure(new TTransportException(new IOException("Broken pipe")));
+
+    Assert.assertFalse(PipeStopStrategy.accept(failure, null));
+    Assert.assertEquals(
+        PipeResourceFailureType.NETWORK_TIMEOUT,
+        PipeStopStrategy.getResourceFailureType(failure, null));
+  }
+
+  @Test
+  public void testPeerClosedTransportDoesNotStopPipe() {
+    final Exception failure =
+        retryTimesConfigurableFailure(
+            new TTransportException(
+                TTransportException.END_OF_FILE, new IOException("Connection reset")));
+
+    Assert.assertFalse(PipeStopStrategy.accept(failure, null));
+    Assert.assertEquals(
+        PipeResourceFailureType.NETWORK_TIMEOUT,
+        PipeStopStrategy.getResourceFailureType(failure, null));
+  }
+
+  @Test
+  public void testElasticFramedTransportResetRemainsRetryable() throws Exception {
+    try (TElasticFramedTransport transport =
+        new TElasticFramedTransport(new ConnectionResetTransport(), 100, 1024, true)) {
+      final TTransportException failure =
+          Assert.assertThrows(TTransportException.class, () -> transport.read(new byte[1], 0, 1));
+
+      Assert.assertEquals(TTransportException.END_OF_FILE, failure.getType());
+      Assert.assertFalse(PipeStopStrategy.accept(failure, null));
+      Assert.assertEquals(
+          PipeResourceFailureType.NETWORK_TIMEOUT,
+          PipeStopStrategy.getResourceFailureType(failure, null));
+    }
+  }
+
+  @Test
+  public void testConnectionResetVariantsRemainRetryableThroughCriticalWrapper() {
+    final Exception unixReset =
+        retryTimesConfigurableFailure(
+            new TTransportException(new SocketException("Connection reset")));
+    Assert.assertFalse(PipeStopStrategy.accept(unixReset, null));
+    Assert.assertEquals(
+        PipeResourceFailureType.NETWORK_TIMEOUT,
+        PipeStopStrategy.getResourceFailureType(unixReset, null));
+
+    final Exception windowsReset =
+        retryTimesConfigurableFailure(
+            new TTransportException(
+                new SocketException(
+                    "An existing connection was forcibly closed by the remote host")));
+    Assert.assertFalse(PipeStopStrategy.accept(windowsReset, null));
+    Assert.assertEquals(
+        PipeResourceFailureType.NETWORK_TIMEOUT,
+        PipeStopStrategy.getResourceFailureType(windowsReset, null));
+  }
+
+  @Test
   public void testOtherFailuresKeepExistingStopPolicy() {
     Assert.assertTrue(PipeStopStrategy.accept(new IOException("network disconnected"), null));
     Assert.assertTrue(
@@ -79,5 +158,47 @@ public class PipeStopStrategyTest {
                 "retry queue exhausted", PipeResourceFailureType.NETWORK_TIMEOUT, true));
 
     Assert.assertTrue(PipeStopStrategy.isResourceFailureRecorded(failure));
+  }
+
+  private static class ConnectionResetTransport extends TTransport {
+
+    @Override
+    public boolean isOpen() {
+      return true;
+    }
+
+    @Override
+    public void open() {}
+
+    @Override
+    public void close() {}
+
+    @Override
+    public int read(final byte[] buffer, final int offset, final int length)
+        throws TTransportException {
+      throw new TTransportException(new SocketException("Connection reset"));
+    }
+
+    @Override
+    public void write(final byte[] buffer, final int offset, final int length) {}
+
+    @Override
+    public TConfiguration getConfiguration() {
+      return new TConfiguration();
+    }
+
+    @Override
+    public void updateKnownMessageSize(final long size) {}
+
+    @Override
+    public void checkReadBytesAvailable(final long numBytes) {}
+  }
+
+  private static PipeRuntimeSinkRetryTimesConfigurableException retryTimesConfigurableFailure(
+      final Throwable cause) {
+    final PipeRuntimeSinkRetryTimesConfigurableException exception =
+        new PipeRuntimeSinkRetryTimesConfigurableException("transfer failed", Integer.MAX_VALUE);
+    exception.initCause(cause);
+    return exception;
   }
 }

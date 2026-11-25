@@ -33,6 +33,7 @@ import org.apache.thrift.transport.TMemoryBuffer;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.junit.Before;
 import org.junit.Test;
@@ -169,7 +170,11 @@ public class ClientPoolIdleEvictionTest {
                         @Override
                         public TTransport getTransport(TTransport transport) {
                           serverConnections.add(transport);
-                          return createTransport(transport);
+                          try {
+                            return createTransport(transport);
+                          } catch (TTransportException e) {
+                            throw new RuntimeException(e);
+                          }
                         }
                       })
                   .protocolFactory(new TBinaryProtocol.Factory())
@@ -276,7 +281,8 @@ public class ClientPoolIdleEvictionTest {
             .getConfig());
   }
 
-  private TElasticFramedTransport createTransport(TTransport underlying) {
+  private TElasticFramedTransport createTransport(TTransport underlying)
+      throws TTransportException {
     return compression
         ? new TSnappyElasticFramedTransport(underlying, INITIAL_BUFFER_SIZE, 65536, true)
         : new TElasticFramedTransport(underlying, INITIAL_BUFFER_SIZE, 65536, true);
