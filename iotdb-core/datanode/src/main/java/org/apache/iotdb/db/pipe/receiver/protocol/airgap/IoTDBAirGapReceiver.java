@@ -36,7 +36,6 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import com.google.common.hash.Hashing;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -55,6 +54,8 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.function.BooleanSupplier;
 import java.util.zip.CRC32;
@@ -561,6 +562,10 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   }
 
   static byte[] calculateUdpRequestFingerprint(final byte[] data) {
-    return Hashing.sha256().hashBytes(data).asBytes();
+    try {
+      return MessageDigest.getInstance("SHA-256").digest(data);
+    } catch (final NoSuchAlgorithmException e) {
+      throw new IllegalStateException(e);
+    }
   }
 }
