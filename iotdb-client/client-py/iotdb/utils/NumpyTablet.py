@@ -72,8 +72,9 @@ class NumpyTablet(object):
         if not self.check_sorted(timestamps):
             index = timestamps.argsort()
             timestamps = timestamps[index]
-            for i in range(len(values)):
-                values[i] = values[i][index]
+            values = [column[index] for column in values]
+            if bitmaps is not None:
+                bitmaps = [self._sort_bitmap(bitmap, index) for bitmap in bitmaps]
 
         if timestamps.dtype != TSDataType.INT64.np_dtype():
             timestamps = timestamps.astype(TSDataType.INT64.np_dtype())
@@ -95,6 +96,17 @@ class NumpyTablet(object):
             )
         else:
             self.__column_types = column_types
+
+    @staticmethod
+    def _sort_bitmap(bitmap, index):
+        if bitmap is None:
+            return None
+        sorted_bitmap = BitMap(bitmap.get_size())
+        if not bitmap.is_all_unmarked():
+            for new_row, old_row in enumerate(index):
+                if bitmap.is_marked(old_row):
+                    sorted_bitmap.mark(new_row)
+        return sorted_bitmap
 
     @staticmethod
     def check_sorted(timestamps):

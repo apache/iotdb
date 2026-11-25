@@ -153,6 +153,29 @@ def test_sort_numpy_tablet():
     assert tablet_.get_binary_values() == np_tablet_.get_binary_values()
 
 
+def test_sort_numpy_tablet_with_null_bitmaps():
+    timestamps = [90, 10, 20, 30, 40, 50, 60, 70, 80]
+    columns = ["a", "b", "c"]
+    types = [TSDataType.INT32] * len(columns)
+    first_nulls = BitMap(len(timestamps))
+    first_nulls.mark(0)  # Time 90 moves from bit 0 to bit 8.
+    second_nulls = BitMap(len(timestamps))
+    second_nulls.mark(1)
+    rows = [(None if t == 90 else t, None if t == 10 else t, t) for t in timestamps]
+    expected = Tablet("root.sg.d", columns, types, rows, timestamps)
+    tablet = NumpyTablet(
+        "root.sg.d",
+        columns,
+        types,
+        [np.array([0 if v is None else v for v in column]) for column in zip(*rows)],
+        np.array(timestamps),
+        [first_nulls, second_nulls, None],
+    )
+
+    assert tablet.get_binary_timestamps() == expected.get_binary_timestamps()
+    assert tablet.get_binary_values() == expected.get_binary_values()
+
+
 def test_numpy_tablet_auto_correct_datatype():
 
     measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]
