@@ -239,6 +239,30 @@ public class AlterTopicProcedureTest {
         procedure.getUpdatedTopicMeta().getConfig().getRealtimeMode());
   }
 
+  @Test
+  public void testRealtimeModeCanReplaceLegacyValue() throws Exception {
+    final String topicName = "test_topic";
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> originalAttributes = new HashMap<>();
+    originalAttributes.put(TopicConstant.PATH_KEY, "root.**");
+    originalAttributes.put(TopicConstant.REALTIME_MODE_KEY, "hybrid");
+    subscriptionInfo.createTopic(
+        new CreateTopicPlan(new TopicMeta(topicName, 1L, originalAttributes)));
+
+    final Map<String, String> updatedAttributes =
+        Map.of(TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE);
+    final AlterTopicProcedure procedure =
+        new AlterTopicProcedure(
+            subscriptionInfo.deepCopyTopicMetaWithUpdatedAttributes(topicName, updatedAttributes),
+            updatedAttributes,
+            new AtomicReference<>(subscriptionInfo));
+    procedure.executeFromValidate(null);
+
+    assertEquals(
+        TopicConstant.REALTIME_MODE_BATCH_VALUE,
+        procedure.getUpdatedTopicMeta().getConfig().getRealtimeMode());
+  }
+
   private static void setField(final Object target, final String name, final Object value)
       throws Exception {
     Class<?> type = target.getClass();

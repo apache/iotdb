@@ -108,6 +108,9 @@ public class TopicConfigTest {
 
   @Test
   public void testRealtimeModeDefaultsToStreamAndSupportsBatch() {
+    Assert.assertEquals(
+        TopicConstant.REALTIME_MODE_DEFAULT_VALUE, TopicConfig.normalizeRealtimeMode(null));
+
     final TopicConfig defaultConfig = new TopicConfig();
     Assert.assertEquals(
         TopicConstant.REALTIME_MODE_STREAM_VALUE,

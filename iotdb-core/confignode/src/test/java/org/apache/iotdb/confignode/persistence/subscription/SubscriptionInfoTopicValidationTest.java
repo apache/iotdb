@@ -595,6 +595,26 @@ public class SubscriptionInfoTopicValidationTest {
   }
 
   @Test
+  public void testAcceptMatchingRealtimeModeAlias() throws Exception {
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(TopicConstant.REALTIME_MODE_KEY, TopicConstant.REALTIME_MODE_BATCH_VALUE);
+    attributes.put(PipeSourceConstant.SOURCE_REALTIME_MODE_KEY, " BATCH ");
+
+    Assert.assertTrue(
+        new SubscriptionInfo()
+            .validateBeforeCreatingTopic(
+                new TCreateTopicReq("batch_topic").setTopicAttributes(attributes)));
+  }
+
+  @Test
+  public void testRejectInvalidRealtimeModeAlias() {
+    final Map<String, String> attributes = newInitialTableTopicAttributes();
+    attributes.put(PipeSourceConstant.SOURCE_REALTIME_MODE_KEY, "hybrid");
+
+    assertCreateRejected(new SubscriptionInfo(), attributes, "hybrid");
+  }
+
+  @Test
   public void testRejectCaseInsensitiveDuplicateRealtimeModeAliases() {
     final Map<String, String> attributes = newInitialTableTopicAttributes();
     attributes.put(PipeSourceConstant.SOURCE_REALTIME_MODE_KEY, "batch");
