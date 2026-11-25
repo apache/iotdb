@@ -373,14 +373,14 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
     final long creationTime = 1L;
     final String resourcePipeName =
         PipeTsFileResourceManager.getPipeTsFileResourcePipeName(pipeName, creationTime);
+    final AtomicBoolean failPathResolution = new AtomicBoolean(true);
     try {
       final File dataDir = new File(tempDir, "sequence/root.db/0/0");
       Assert.assertTrue(dataDir.mkdirs());
       final File tsFile = new File(dataDir, "1-1-0-0.tsfile");
       Assert.assertTrue(tsFile.createNewFile());
       final TsFileResource resource =
-          new TsFileResource(
-              new CanonicalPathFailingFile(tsFile.getPath(), new AtomicBoolean(true)));
+          new TsFileResource(new CanonicalPathFailingFile(tsFile.getPath(), failPathResolution));
       resource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
       resource.updateProgressIndex(new SimpleProgressIndex(0, 1));
       final TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
@@ -395,8 +395,11 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
       setPrivateField(source, "pipeName", pipeName);
       setPrivateField(source, "creationTime", creationTime);
       setPrivateField(source, "dataRegionId", 1);
+      setPrivateField(source, "pipeTaskMeta", new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1));
       setPrivateField(source, "pipeNameWithCreationTime", resourcePipeName);
       setPrivateField(source, "startIndex", MinimumProgressIndex.INSTANCE);
+      setPrivateField(source, "hasBeenStarted", true);
+      setPrivateField(source, "shouldOrderHistoricalTsFileByQueryPriority", false);
 
       final Method extractTsFiles =
           PipeHistoricalDataRegionTsFileSource.class.getDeclaredMethod(
@@ -409,13 +412,20 @@ public class PipeHistoricalDataRegionTsFileSourceTest {
           Collections.emptyList(),
           System.currentTimeMillis());
 
-      Assert.assertEquals(0, source.getPendingQueueSize());
-      Assert.assertFalse(
+      Assert.assertEquals(1, source.getPendingQueueSize());
+      Assert.assertTrue(
           ((Set<TsFileResource>) getPrivateField(source, "filteredTsFileResources"))
               .contains(resource));
       Assert.assertFalse(
           ((Set<TsFileResource>) getPrivateField(source, "resourcesWithPinnedTsFile"))
               .contains(resource));
+
+      try {
+        source.supply();
+        Assert.fail("An unpinned historical TsFile must not be skipped as a progress report");
+      } catch (final PipeException expected) {
+        Assert.assertEquals(1, source.getPendingQueueSize());
+      }
     } finally {
       source.close();
       PipeDataNodeResourceManager.tsfile().cleanPipeTsFileDir(resourcePipeName);

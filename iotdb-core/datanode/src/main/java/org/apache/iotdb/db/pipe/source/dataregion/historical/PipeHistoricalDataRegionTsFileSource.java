@@ -543,6 +543,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
     try {
       resource.readLock();
       resourceReadLockAcquired = true;
+      final boolean wasUnclosed = !resource.isClosed();
       if (!shouldExtractTsFileResource(resource, statistics)) {
         return;
       }
@@ -563,6 +564,9 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
       } catch (final IOException e) {
         ++statistics.pinFailedCount;
         LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
+        if (wasUnclosed) {
+          filteredTsFileResources.add(resource);
+        }
       }
     } finally {
       if (resourceReadLockAcquired) {
@@ -656,6 +660,7 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   private void unpinHistoricalTsFileResource(final TsFileResource resource) throws IOException {
     if (!resourcesWithPinnedTsFile.contains(resource)
         && !resourcesWithPinnedModFile.contains(resource)) {
+      filteredTsFileResources.remove(resource);
       return;
     }
     PipeDataNodeResourceManager.tsfile()
