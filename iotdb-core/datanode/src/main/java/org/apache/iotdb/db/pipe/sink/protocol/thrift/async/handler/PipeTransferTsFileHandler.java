@@ -345,6 +345,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
           if (!crcRetryAttempted) {
             crcRetryAttempted = true;
             crcEnabled = true;
+            if (reader != null) {
+              reader.close();
+              reader = null;
+            }
             transferringModFile = false;
             transferringTsFile = false;
             position = 0;

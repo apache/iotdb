@@ -125,6 +125,30 @@ public class IoTDBDataNodeReceiverTest {
   }
 
   @Test
+  public void testReceiverRejectsCompressedRequestWithMismatchedCrc() throws Exception {
+    final AdmissionTestReceiver receiver = new AdmissionTestReceiver();
+    final TPipeTransferReq originalRequest =
+        PipeTransferPlanNodeReq.toTPipeTransferReq(insertionPlans().get(0));
+    PipeTransferIntegrityUtils.setCrc32(originalRequest);
+    final TPipeTransferReq compressedRequest =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            originalRequest,
+            Collections.singletonList(
+                PipeCompressorFactory.getCompressor(
+                    PipeCompressor.PipeCompressionType.GZIP.getIndex())));
+    final byte[] corruptedBody = compressedRequest.getBody().clone();
+    corruptedBody[corruptedBody.length - 1] ^= 1;
+    compressedRequest.setBody(corruptedBody);
+
+    final TPipeTransferResp response = receiver.receive(compressedRequest);
+
+    Assert.assertEquals(
+        TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
+    Assert.assertTrue(PipeTransferIntegrityUtils.isCrcMismatch(response.getStatus().getMessage()));
+    Assert.assertEquals(0, receiver.executionAttempts);
+  }
+
+  @Test
   public void testRatisAllowsMetadataAndDeletionPlanNodeRequests() throws Exception {
     final String originalProtocol =
         IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
@@ -237,17 +261,15 @@ public class IoTDBDataNodeReceiverTest {
             .setType(plain.getType())
             .setBody(plain.body.duplicate());
     Assert.assertEquals(expectedCode, receiver.receive(airGap).getStatus().getCode());
-    Assert.assertEquals(
-        expectedCode,
-        receiver
-            .receive(
-                PipeTransferCompressedReq.toTPipeTransferReq(
-                    PipeTransferPlanNodeReq.toTPipeTransferReq(node),
-                    Collections.singletonList(
-                        PipeCompressorFactory.getCompressor(
-                            PipeCompressor.PipeCompressionType.GZIP.getIndex()))))
-            .getStatus()
-            .getCode());
+    final TPipeTransferReq compressedPayload = PipeTransferPlanNodeReq.toTPipeTransferReq(node);
+    PipeTransferIntegrityUtils.setCrc32(compressedPayload);
+    final TPipeTransferReq compressedReq =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            compressedPayload,
+            Collections.singletonList(
+                PipeCompressorFactory.getCompressor(
+                    PipeCompressor.PipeCompressionType.GZIP.getIndex())));
+    Assert.assertEquals(expectedCode, receiver.receive(compressedReq).getStatus().getCode());
 
     final TPipeTransferReq sliced = PipeTransferPlanNodeReq.toTPipeTransferReq(node);
     PipeTransferIntegrityUtils.setCrc32(sliced);

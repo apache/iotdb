@@ -205,10 +205,62 @@ public class PipeTransferTsFileHandlerCleanupTest {
     }
   }
 
+  @Test
+  public void testStructuralCorruptionRetryClosesReaderAndRestartsAtBeginning() throws Exception {
+    final File file = Files.createTempFile("pipe-transfer-structural-retry", ".tsfile").toFile();
+    Files.write(file.toPath(), new byte[] {1, 2, 3});
+    final RecordingRetryHandler handler =
+        new RecordingRetryHandler(file, Mockito.mock(PipeTsFileInsertionEvent.class));
+    final RandomAccessFile staleReader = new RandomAccessFile(file, "r");
+    staleReader.seek(file.length());
+    try {
+      setHandlerField(handler, "reader", staleReader);
+      setHandlerField(handler, "transferringTsFile", true);
+      setHandlerField(handler, "position", file.length());
+      markSealSignalSent(handler);
+      final TSStatus status =
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+              .setMessage(PipeTransferIntegrityUtils.STRUCTURE_CORRUPTION_MARKER);
+
+      Assert.assertFalse(handler.onCompleteInternal(new TPipeTransferResp(status)));
+
+      Assert.assertEquals(1, handler.transferCount);
+      Assert.assertNull(getHandlerField(handler, "reader"));
+      Assert.assertEquals(0L, getHandlerField(handler, "position"));
+      Assert.assertFalse((boolean) getHandlerField(handler, "transferringTsFile"));
+      Assert.assertSame(file, getHandlerField(handler, "currentFile"));
+      Assert.assertThrows(IOException.class, staleReader::getFilePointer);
+
+      final Method openNextFile = PipeTransferTsFileHandler.class.getDeclaredMethod("openNextFile");
+      openNextFile.setAccessible(true);
+      Assert.assertTrue((Boolean) openNextFile.invoke(handler));
+      Assert.assertEquals(
+          0L, ((RandomAccessFile) getHandlerField(handler, "reader")).getFilePointer());
+    } finally {
+      handler.close();
+      Files.deleteIfExists(file.toPath());
+    }
+  }
+
   private static void markSealSignalSent(final PipeTransferTsFileHandler handler) throws Exception {
     final Field field = PipeTransferTsFileHandler.class.getDeclaredField("isSealSignalSent");
     field.setAccessible(true);
     ((AtomicBoolean) field.get(handler)).set(true);
+  }
+
+  private static Object getHandlerField(final PipeTransferTsFileHandler handler, final String name)
+      throws Exception {
+    final Field field = PipeTransferTsFileHandler.class.getDeclaredField(name);
+    field.setAccessible(true);
+    return field.get(handler);
+  }
+
+  private static void setHandlerField(
+      final PipeTransferTsFileHandler handler, final String name, final Object value)
+      throws Exception {
+    final Field field = PipeTransferTsFileHandler.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(handler, value);
   }
 
   private PipeTransferTsFileHandler createHandler(final File file, final EnrichedEvent event)
