@@ -146,5 +146,9 @@ public final class ConfigNodeMessages {
   public static final String MESSAGE_UNREADY_NODES_ARG_144B31E1 = "nodes=%s";
   public static final String MESSAGE_MORE_UNREADY_NODES_ARG_C7CDA960 = "...(%d more)";
 
+  public static final String
+      LOG_FAILED_TO_START_ONE_OR_MORE_CONFIGNODE_LEADER_SERVICES_ON_NODE_ARG_AT_ARG_THE_NODE_WILL_CONTINUE_STARTUP_BUT_FAILED_SERVICES_MAY_REMAIN_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_42BDDB32 =
+          "Failed to start one or more ConfigNode leader services on node %d at %s; the node will continue startup, but failed services may remain unavailable until the next leadership transition.";
+
   private ConfigNodeMessages() {}
 }

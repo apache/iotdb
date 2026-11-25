@@ -64,6 +64,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -327,7 +328,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         leaderServiceStartups().stream()
             .map(startup -> startInParallelIfEpochCurrent(epoch, startup))
             .toArray(CompletableFuture[]::new);
-    CompletableFuture.allOf(startups).join();
+    waitForLeaderServiceStartup(startups);
 
     if (!isCurrentLeaderServicesEpoch(epoch)) {
       return;
@@ -359,6 +360,20 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         ConfigNodeMessages.LOG_CONFIGNODE_ARG_AT_ARG_AS_CONFIG_REGION_LEADER_IS_READY_74DFCB26,
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
+  }
+
+  private void waitForLeaderServiceStartup(CompletableFuture<?>[] startups) {
+    try {
+      CompletableFuture.allOf(startups).join();
+    } catch (CompletionException e) {
+      LOGGER.error(
+          String.format(
+              ConfigNodeMessages
+                  .LOG_FAILED_TO_START_ONE_OR_MORE_CONFIGNODE_LEADER_SERVICES_ON_NODE_ARG_AT_ARG_THE_NODE_WILL_CONTINUE_STARTUP_BUT_FAILED_SERVICES_MAY_REMAIN_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_42BDDB32,
+              ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+              currentNodeTEndPoint),
+          e);
+    }
   }
 
   private List<Runnable> leaderServiceStartups() {

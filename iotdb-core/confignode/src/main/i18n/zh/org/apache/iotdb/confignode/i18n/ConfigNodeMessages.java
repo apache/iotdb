@@ -145,5 +145,9 @@ public final class ConfigNodeMessages {
   public static final String MESSAGE_UNREADY_NODES_ARG_144B31E1 = "未就绪节点：%s";
   public static final String MESSAGE_MORE_UNREADY_NODES_ARG_C7CDA960 = "...（另有 %d 个）";
 
+  public static final String
+      LOG_FAILED_TO_START_ONE_OR_MORE_CONFIGNODE_LEADER_SERVICES_ON_NODE_ARG_AT_ARG_THE_NODE_WILL_CONTINUE_STARTUP_BUT_FAILED_SERVICES_MAY_REMAIN_UNAVAILABLE_UNTIL_THE_NEXT_LEADERSHIP_TRANSITION_42BDDB32 =
+          "ConfigNode 节点 %d（%s）启动一个或多个 Leader 服务失败；节点将继续启动，但失败的服务可能会一直不可用，直到下一次 Leader 切换。";
+
   private ConfigNodeMessages() {}
 }

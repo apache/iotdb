@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public class ConfigRegionStateMachineTest {
 
@@ -76,6 +77,20 @@ public class ConfigRegionStateMachineTest {
     filenames.sort(Comparator.comparingLong(ConfigRegionStateMachine::parseEndIndex));
 
     Assert.assertEquals(Arrays.asList("log_1_10", "log_11_20", "log_inprogress_21"), filenames);
+  }
+
+  @Test
+  public void testLeaderServiceStartupFailureDoesNotAbortTransition() throws Exception {
+    ConfigRegionStateMachine stateMachine = new ConfigRegionStateMachine(null, null);
+    CompletableFuture<Void> failedStartup = new CompletableFuture<>();
+    failedStartup.completeExceptionally(new IllegalStateException());
+
+    Method waitForLeaderServiceStartup =
+        ConfigRegionStateMachine.class.getDeclaredMethod(
+            "waitForLeaderServiceStartup", CompletableFuture[].class);
+    waitForLeaderServiceStartup.setAccessible(true);
+    waitForLeaderServiceStartup.invoke(
+        stateMachine, (Object) new CompletableFuture<?>[] {failedStartup});
   }
 
   @Test
