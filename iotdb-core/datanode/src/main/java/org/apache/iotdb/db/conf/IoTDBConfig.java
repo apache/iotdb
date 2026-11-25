@@ -159,6 +159,9 @@ public class IoTDBConfig {
   /** Memory allocated for the pipe */
   private long allocateMemoryForPipe = Runtime.getRuntime().maxMemory() / 10;
 
+  /** Memory allocated for RPC auto-resizing buffers */
+  private long allocateMemoryForAutoResizingBuffer = Runtime.getRuntime().maxMemory() / 20;
+
   private long allocateMemoryPerWalCache = 512 * 1024;
 
   /** Ratio of memory allocated for buffered arrays */
@@ -2229,6 +2232,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForPipe(long allocateMemoryForPipe) {
     this.allocateMemoryForPipe = allocateMemoryForPipe;
+  }
+
+  public long getAllocateMemoryForAutoResizingBuffer() {
+    return allocateMemoryForAutoResizingBuffer;
+  }
+
+  public void setAllocateMemoryForAutoResizingBuffer(long allocateMemoryForAutoResizingBuffer) {
+    this.allocateMemoryForAutoResizingBuffer = allocateMemoryForAutoResizingBuffer;
   }
 
   public long getAllocateMemoryPerWalCache() {

@@ -22,6 +22,8 @@ package org.apache.iotdb.rpc;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransportException;
 
+import java.io.IOException;
+
 /**
  * Note that this class is mainly copied from class {@link
  * org.apache.thrift.transport.AutoExpandingBufferWriteTransport}. since that class does not support
@@ -32,7 +34,7 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
   private final AutoResizingBuffer buf;
   private int pos;
 
-  public AutoScalingBufferWriteTransport(int initialCapacity) {
+  public AutoScalingBufferWriteTransport(int initialCapacity) throws IOException {
     this.buf = new AutoResizingBuffer(initialCapacity);
     this.pos = 0;
   }
@@ -61,7 +63,11 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
     }
     // A small prefix during serialization does not indicate a small frame. Only the complete
     // frame size, supplied after flushing, may trigger shrinking.
-    buf.ensureCapacity((int) requiredCapacity, limit);
+    try {
+      buf.ensureCapacity((int) requiredCapacity, limit);
+    } catch (IOException e) {
+      throw new TTransportException(e);
+    }
     System.arraycopy(toWrite, off, buf.array(), pos, len);
     pos += len;
   }
@@ -86,8 +92,14 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
     pos = 0;
   }
 
-  public void resizeIfNecessary(int size) {
+  public void resizeIfNecessary(int size) throws IOException {
     buf.resizeIfNecessary(size);
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    buf.close();
   }
 
   @Override

@@ -2231,6 +2231,11 @@ public class IoTDBDescriptor {
         if (proportions.length >= 6) {
           conf.setAllocateMemoryForPipe(
               maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
+          conf.setAllocateMemoryForAutoResizingBuffer(
+              maxMemoryAvailable
+                  * Integer.parseInt(proportions[proportions.length - 1].trim())
+                  / proportionSum
+                  / 2);
         } else {
           conf.setAllocateMemoryForPipe(
               (maxMemoryAvailable

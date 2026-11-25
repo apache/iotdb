@@ -19,11 +19,19 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.thrift.async;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkResourceException;
+import org.apache.iotdb.commons.pipe.resource.PipeResourceFailureType;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -31,9 +39,18 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.net.SocketException;
 import java.util.Map;
 
 public class IoTDBDataRegionAsyncSinkTest {
+
+  private static class UnbatchedIoTDBDataRegionAsyncSink extends IoTDBDataRegionAsyncSink {
+
+    private UnbatchedIoTDBDataRegionAsyncSink() {
+      isTabletBatchModeEnabled = false;
+    }
+  }
 
   @Test
   public void testRetryQueueFailureMessageIncludesRootCauseAndIsCleared() {
@@ -69,6 +86,78 @@ public class IoTDBDataRegionAsyncSinkTest {
         event, new PipeException("sink transfer wrapper", new NullPointerException()));
 
     Assert.assertEquals("java.lang.NullPointerException", sink.getLastRetryFailureMessage());
+  }
+
+  @Test
+  public void testConnectionResetIsRetainedAsResourceFailureInRetryQueue() throws Exception {
+    final IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink();
+    final Event event = Mockito.mock(Event.class);
+    final PipeConnectionException failure =
+        new PipeConnectionException(
+            "transfer failed", new TTransportException(new SocketException("Connection reset")));
+
+    sink.addFailureEventToRetryQueue(event, failure);
+
+    final Method getRetryQueueResourceFailureType =
+        IoTDBDataRegionAsyncSink.class.getDeclaredMethod("getRetryQueueResourceFailureType");
+    getRetryQueueResourceFailureType.setAccessible(true);
+    Assert.assertEquals(
+        PipeResourceFailureType.NETWORK_TIMEOUT, getRetryQueueResourceFailureType.invoke(sink));
+    sink.clearRetryEventsReferenceCount();
+  }
+
+  @Test
+  public void testForcedRetryQueueThresholdPreservesTransportResourceFailure() throws Exception {
+    final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+    final int originalTabletQueueSize = config.getPipeAsyncSinkForcedRetryTabletEventQueueSize();
+    final int originalTsFileQueueSize = config.getPipeAsyncSinkForcedRetryTsFileEventQueueSize();
+    final int originalTotalQueueSize = config.getPipeAsyncSinkForcedRetryTotalEventQueueSize();
+    final long originalRetryExecutionTimeMs =
+        config.getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall();
+    final IoTDBDataRegionAsyncSink sink = new UnbatchedIoTDBDataRegionAsyncSink();
+    try {
+      config.setPipeAsyncSinkForcedRetryTabletEventQueueSize(2);
+      config.setPipeAsyncSinkForcedRetryTsFileEventQueueSize(1);
+      config.setPipeAsyncSinkForcedRetryTotalEventQueueSize(2);
+      config.setPipeAsyncSinkMaxRetryExecutionTimeMsPerCall(100);
+
+      final PipeRawTabletInsertionEvent blockedEvent =
+          Mockito.mock(PipeRawTabletInsertionEvent.class);
+      Mockito.when(blockedEvent.increaseReferenceCount(Mockito.anyString()))
+          .thenAnswer(
+              invocation -> {
+                Thread.sleep(150);
+                return false;
+              });
+      sink.addFailureEventToRetryQueue(blockedEvent, null);
+
+      final PipeRawTabletInsertionEvent resourceFailureEvent =
+          Mockito.mock(PipeRawTabletInsertionEvent.class);
+      sink.addFailureEventToRetryQueue(resourceFailureEvent, null);
+
+      final Field resourceFailureTypesField =
+          IoTDBDataRegionAsyncSink.class.getDeclaredField("retryEvent2ResourceFailureType");
+      resourceFailureTypesField.setAccessible(true);
+      @SuppressWarnings("unchecked")
+      final Map<Event, PipeResourceFailureType> resourceFailureTypes =
+          (Map<Event, PipeResourceFailureType>) resourceFailureTypesField.get(sink);
+      resourceFailureTypes.put(resourceFailureEvent, PipeResourceFailureType.NETWORK_TIMEOUT);
+
+      final PipeRuntimeSinkResourceException failure =
+          Assert.assertThrows(
+              PipeRuntimeSinkResourceException.class,
+              () -> sink.transfer(new PipeHeartbeatEvent("-1", false)));
+
+      Assert.assertEquals(PipeResourceFailureType.NETWORK_TIMEOUT, failure.getFailureType());
+      Assert.assertTrue(failure.isFailureRecorded());
+    } finally {
+      sink.clearRetryEventsReferenceCount();
+      sink.close();
+      config.setPipeAsyncSinkForcedRetryTabletEventQueueSize(originalTabletQueueSize);
+      config.setPipeAsyncSinkForcedRetryTsFileEventQueueSize(originalTsFileQueueSize);
+      config.setPipeAsyncSinkForcedRetryTotalEventQueueSize(originalTotalQueueSize);
+      config.setPipeAsyncSinkMaxRetryExecutionTimeMsPerCall(originalRetryExecutionTimeMs);
+    }
   }
 
   @Test

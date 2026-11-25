@@ -108,6 +108,8 @@ import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
+import org.apache.iotdb.rpc.AutoResizingBufferMemoryControl;
+import org.apache.iotdb.rpc.AutoResizingBufferMemoryManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
@@ -129,6 +131,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
@@ -138,6 +141,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static boolean autoResizingBufferMemoryControlInitialized;
 
   private final String mbeanName =
       String.format(
@@ -229,10 +233,51 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
   }
 
+  private static synchronized void activateAutoResizingBufferMemoryControl() {
+    if (autoResizingBufferMemoryControlInitialized) {
+      return;
+    }
+    autoResizingBufferMemoryControlInitialized = true;
+
+    long memoryLimit = config.getAllocateMemoryForAutoResizingBuffer();
+    if (memoryLimit <= 0) {
+      return;
+    }
+
+    AtomicLong usedMemory = new AtomicLong();
+    AutoResizingBufferMemoryManager.setMemoryControl(
+        new AutoResizingBufferMemoryControl() {
+          @Override
+          public boolean allocate(long sizeInBytes) {
+            while (true) {
+              long currentUsedMemory = usedMemory.get();
+              if (sizeInBytes > memoryLimit - currentUsedMemory) {
+                return false;
+              }
+              if (usedMemory.compareAndSet(currentUsedMemory, currentUsedMemory + sizeInBytes)) {
+                return true;
+              }
+            }
+          }
+
+          @Override
+          public void release(long sizeInBytes) {
+            usedMemory.addAndGet(-sizeInBytes);
+          }
+
+          @Override
+          public long getUsedMemoryInBytes() {
+            return usedMemory.get();
+          }
+        },
+        memoryLimit);
+  }
+
   @Override
   protected void start() {
     boolean isFirstStart;
     try {
+      activateAutoResizingBufferMemoryControl();
       // Check if this DataNode is start for the first time and do other pre-checks
       isFirstStart = prepareDataNode();
 

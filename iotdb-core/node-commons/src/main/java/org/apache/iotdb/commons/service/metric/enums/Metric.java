@@ -49,6 +49,7 @@ public enum Metric {
   SESSION_IDLE_TIME("session_idle_time"),
   THRIFT_CONNECTIONS("thrift_connections"),
   THRIFT_ACTIVE_THREADS("thrift_active_threads"),
+  THRIFT_RPC_MEMORY_USAGE("thrift_rpc_memory_usage"),
   CLIENT_MANAGER("client_manager"),
   // consensus related
   STAGE("stage"),
