@@ -39,7 +39,7 @@ public class AlignedDescPriorityMergeReader extends DescPriorityMergeReader {
   }
 
   @Override
-  protected boolean canSkipOverwrittenNext() {
-    return false;
+  protected boolean canSkipOverwrittenNext(TimeValuePair topNext) {
+    return AlignedPriorityMergeReader.hasNoNullFields(topNext);
   }
 }

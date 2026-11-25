@@ -20,7 +20,9 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.utils.TsPrimitiveType.TsBinary;
 import org.apache.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.tsfile.utils.TsPrimitiveType.TsLong;
 import org.apache.tsfile.utils.TsPrimitiveType.TsVector;
@@ -208,6 +210,66 @@ public class AlignedPriorityMergeReaderTest {
     assertEquals(120L, row2.getValue().getVector()[0].getLong());
     assertEquals(220L, row2.getValue().getVector()[1].getLong());
     assertEquals(2000L, row2.getValue().getVector()[2].getLong());
+
+    assertFalse(reader.hasNextTimeValuePair());
+    assertEquals(0L, reader.getUsedMemorySize());
+  }
+
+  /**
+   * Verifies that aligned readers (both ascending and descending) preserve the look-ahead skip
+   * optimization when {@code topNext} has no null fields, while keeping older readers in the heap
+   * whenever {@code topNext} has a null field (including a {@link TsBinary} with a null value).
+   */
+  @Test
+  public void testSkipOlderReaderOnlyWhenNextAlignedRowIsComplete() throws IOException {
+    assertCompleteRowSkip(new AlignedPriorityMergeReader(), 10L, 20L, 30L);
+    assertCompleteRowSkip(new AlignedDescPriorityMergeReader(), 30L, 20L, 10L);
+  }
+
+  private void assertCompleteRowSkip(PriorityMergeReader reader, long t1, long t2, long t3)
+      throws IOException {
+    TsBinary oldVal = new TsBinary(new Binary(new byte[] {1}));
+    TsBinary emptyVal = new TsBinary(Binary.EMPTY_VALUE);
+
+    reader.addReader(
+        new ListAlignedPointReader(
+            Arrays.asList(
+                new TimeValuePair(t1, new TsVector(new TsPrimitiveType[] {null, oldVal})),
+                new TimeValuePair(t2, new TsVector(new TsPrimitiveType[] {null, oldVal})),
+                new TimeValuePair(t3, new TsVector(new TsPrimitiveType[] {null, oldVal})))),
+        new MergeReaderPriority(1, 1, 0, false),
+        t3);
+    reader.addReader(
+        new ListAlignedPointReader(
+            Arrays.asList(
+                new TimeValuePair(
+                    t1, new TsVector(new TsPrimitiveType[] {new TsLong(10L), emptyVal})),
+                new TimeValuePair(
+                    t2, new TsVector(new TsPrimitiveType[] {new TsLong(20L), new TsBinary()})),
+                new TimeValuePair(
+                    t3, new TsVector(new TsPrimitiveType[] {new TsLong(30L), emptyVal})))),
+        new MergeReaderPriority(2, 1, 0, false),
+        t3);
+
+    // At t1, topNext (t2) has a null-valued TsBinary, so the older reader must stay in the heap.
+    TimeValuePair row1 = reader.nextTimeValuePair();
+    assertEquals(t1, row1.getTimestamp());
+    assertEquals(10L, row1.getValue().getVector()[0].getLong());
+    assertEquals(emptyVal, row1.getValue().getVector()[1]);
+    assertEquals(2, reader.heap.size());
+
+    // At t2, the older reader fills t2's null binary field; topNext (t3) is complete, so the older
+    // reader's final point at t3 is skipped and closed immediately.
+    TimeValuePair row2 = reader.nextTimeValuePair();
+    assertEquals(t2, row2.getTimestamp());
+    assertEquals(20L, row2.getValue().getVector()[0].getLong());
+    assertEquals(oldVal, row2.getValue().getVector()[1]);
+    assertEquals(1, reader.heap.size());
+
+    TimeValuePair row3 = reader.nextTimeValuePair();
+    assertEquals(t3, row3.getTimestamp());
+    assertEquals(30L, row3.getValue().getVector()[0].getLong());
+    assertEquals(emptyVal, row3.getValue().getVector()[1]);
 
     assertFalse(reader.hasNextTimeValuePair());
     assertEquals(0L, reader.getUsedMemorySize());

@@ -123,45 +123,48 @@ public class PriorityMergeReader implements IPointReader {
    */
   protected void updateHeap(TimeValuePair ret, TimeValuePair topNext) throws IOException {
     long topTime = ret.getTimestamp();
-    long topNextTime = (topNext == null ? Long.MAX_VALUE : topNext.getTimestamp());
+    int canSkipNext = -1;
     while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
       fillNullValue(ret, e.getTimeValuePair());
       if (!e.hasNext()) {
-        long size = e.getReader().getUsedMemorySize();
-        usedMemorySize -= size;
-        if (memoryReservationManager != null) {
-          memoryReservationManager.releaseMemoryCumulatively(size);
-        }
-        e.getReader().close();
+        releaseAndCloseElement(e);
         continue;
       }
       e.next();
-      if (canSkipOverwrittenNext() && topNext != null && e.currTime() == topNextTime) {
-        // if the next value of the peek will be overwritten by the next of the top, skip it
-        if (e.hasNext()) {
-          e.next();
-          heap.add(e);
-        } else {
-          long size = e.getReader().getUsedMemorySize();
-          usedMemorySize -= size;
-          if (memoryReservationManager != null) {
-            memoryReservationManager.releaseMemoryCumulatively(size);
-          }
-          // the chunk is end
-          e.close();
+      if (topNext != null && e.currTime() == topNext.getTimestamp()) {
+        if (canSkipNext < 0) {
+          canSkipNext = canSkipOverwrittenNext(topNext) ? 1 : 0;
         }
-      } else {
-        heap.add(e);
+        if (canSkipNext == 1) {
+          // if the next value of the peek will be overwritten by the next of the top, skip it
+          if (!e.hasNext()) {
+            // the chunk is end
+            releaseAndCloseElement(e);
+            continue;
+          }
+          e.next();
+        }
       }
+      heap.add(e);
     }
   }
 
+  private void releaseAndCloseElement(Element e) throws IOException {
+    long size = e.getReader().getUsedMemorySize();
+    usedMemorySize -= size;
+    if (memoryReservationManager != null) {
+      memoryReservationManager.releaseMemoryCumulatively(size);
+    }
+    e.close();
+  }
+
   /**
-   * Whether a lower-priority reader's next point at topNextTime can be skipped immediately. Aligned
-   * readers must return false so all readers at that timestamp are merged in strict priority order.
+   * Whether {@code topNext} completely overwrites any lower-priority point at the same timestamp,
+   * allowing lower-priority readers at {@code topNext.getTimestamp()} to be skipped immediately.
+   * Aligned readers must only return true when {@code topNext} has no null sub-sensor fields.
    */
-  protected boolean canSkipOverwrittenNext() {
+  protected boolean canSkipOverwrittenNext(TimeValuePair topNext) {
     return true;
   }
 

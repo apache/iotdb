@@ -67,6 +67,15 @@ public class PriorityMergeReaderTest {
         new long[] {4, 6});
   }
 
+  @Test
+  public void testPointAtLongMaxValueNotSkippedWhenTopEnds() throws IOException {
+    testAscAndDescPriorityMergeReader(
+        new long[] {10, Long.MAX_VALUE},
+        new long[] {2, 1},
+        new long[] {10, Long.MAX_VALUE},
+        new long[] {10});
+  }
+
   private void testAscAndDescPriorityMergeReader(
       long[] retTimestamp, long[] retValue, long[]... sourceTimestamps) throws IOException {
     testAsc(retTimestamp, retValue, sourceTimestamps);
@@ -100,6 +109,7 @@ public class PriorityMergeReaderTest {
       assertEquals(retValue[i], timeValuePair.getValue().getValue());
       i++;
     }
+    assertEquals(retTimestamp.length, i);
   }
 
   private void testDesc(long[] retTimestamp, long[] retValue, long[]... sourceTimestamps)
@@ -129,6 +139,7 @@ public class PriorityMergeReaderTest {
       assertEquals(retValue[i], timeValuePair.getValue().getValue());
       i--;
     }
+    assertEquals(-1, i);
   }
 
   @Test
