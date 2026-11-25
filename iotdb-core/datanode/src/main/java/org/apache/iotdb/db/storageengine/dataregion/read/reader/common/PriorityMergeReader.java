@@ -23,6 +23,8 @@ import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.utils.TsPrimitiveType.TsVector;
 
 import java.io.IOException;
 import java.util.PriorityQueue;
@@ -123,39 +125,51 @@ public class PriorityMergeReader implements IPointReader {
    */
   protected void updateHeap(TimeValuePair ret, TimeValuePair topNext) throws IOException {
     long topTime = ret.getTimestamp();
-    long topNextTime = (topNext == null ? Long.MAX_VALUE : topNext.getTimestamp());
+    Boolean topNextComplete = null;
     while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
       fillNullValue(ret, e.getTimeValuePair());
       if (!e.hasNext()) {
-        long size = e.getReader().getUsedMemorySize();
-        usedMemorySize -= size;
-        if (memoryReservationManager != null) {
-          memoryReservationManager.releaseMemoryCumulatively(size);
-        }
-        e.getReader().close();
+        releaseAndClose(e);
         continue;
       }
       e.next();
-      if (e.currTime() == topNextTime) {
-        // if the next value of the peek will be overwritten by the next of the top, skip it
-        fillNullValue(topNext, e.getTimeValuePair());
-        if (e.hasNext()) {
-          e.next();
-          heap.add(e);
-        } else {
-          long size = e.getReader().getUsedMemorySize();
-          usedMemorySize -= size;
-          if (memoryReservationManager != null) {
-            memoryReservationManager.releaseMemoryCumulatively(size);
-          }
-          // the chunk is end
-          e.close();
+      if (topNext != null && e.currTime() == topNext.getTimestamp()) {
+        // Check the higher-priority row once. Missing fields still need all readers in priority
+        // order.
+        if (topNextComplete == null) {
+          topNextComplete = isComplete(topNext.getValue());
         }
-      } else {
-        heap.add(e);
+        if (topNextComplete) {
+          if (!e.hasNext()) {
+            releaseAndClose(e);
+            continue;
+          }
+          e.next();
+        }
+      }
+      heap.add(e);
+    }
+  }
+
+  private static boolean isComplete(TsPrimitiveType value) {
+    if (value instanceof TsVector) {
+      for (TsPrimitiveType field : value.getVector()) {
+        if (field == null || field.getValue() == null) {
+          return false;
+        }
       }
     }
+    return true;
+  }
+
+  private void releaseAndClose(Element e) throws IOException {
+    long size = e.getReader().getUsedMemorySize();
+    usedMemorySize -= size;
+    if (memoryReservationManager != null) {
+      memoryReservationManager.releaseMemoryCumulatively(size);
+    }
+    e.close();
   }
 
   /** this method only take effect for aligned time series, so the override version. */
