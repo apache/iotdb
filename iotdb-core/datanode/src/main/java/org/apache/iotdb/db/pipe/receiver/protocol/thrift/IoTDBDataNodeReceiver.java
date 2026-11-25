@@ -174,7 +174,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private final List<PipeMemoryBlock> allocatedSliceMemoryBlocks = new ArrayList<>();
-  private boolean requiresPipeHandshake;
   private long authenticatedSessionId = -1;
 
   static {
@@ -220,7 +219,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             }
           case HANDSHAKE_DATANODE_V2:
             {
-              requiresPipeHandshake = true;
               hasPipeHandshakeCredential = false;
               try {
                 if (PipeConfig.getInstance().isPipeEnableMemoryCheck()
@@ -517,8 +515,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     if (clientSession == null
         || !clientSession.isLogin()
         || clientSession.getUsername() == null
-        || clientSession.getUsername().isEmpty()
-        || (requiresPipeHandshake && !hasPipeHandshakeCredential)) {
+        || clientSession.getUsername().isEmpty()) {
       clearSliceReqHandler();
       username = null;
       password = null;
@@ -1450,7 +1447,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   public synchronized void handleExit() {
     clearSliceReqHandler();
-    requiresPipeHandshake = false;
     authenticatedSessionId = -1;
     if (Objects.nonNull(configReceiverId.get())) {
       try {

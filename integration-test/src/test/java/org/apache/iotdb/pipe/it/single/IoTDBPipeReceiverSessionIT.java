@@ -155,6 +155,14 @@ public class IoTDBPipeReceiverSessionIT {
             TSStatusCode.SUCCESS_STATUS.getStatusCode(),
             client.getBackupConfiguration().getStatus().getCode());
         Assert.assertEquals(
+            TSStatusCode.NOT_LOGIN.getStatusCode(),
+            client
+                .pipeTransfer(
+                    PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(
+                        buildHandshakeParams(null, null)))
+                .getStatus()
+                .getCode());
+        Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(),
             client.pipeTransfer(buildTabletReq(2, 2)).getStatus().getCode());
       } finally {
