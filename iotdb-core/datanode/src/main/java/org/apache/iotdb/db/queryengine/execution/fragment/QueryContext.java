@@ -103,6 +103,15 @@ public class QueryContext {
     this.timeout = timeout;
   }
 
+  /**
+   * Whether this query started while the storage engine was recovering its data regions. The
+   * default assumes the input files have completed recovery. Execution contexts that can read
+   * recovering regions must override this method and capture the state when the query starts.
+   */
+  public boolean isStorageEngineRecovering() {
+    return false;
+  }
+
   public boolean isExternalTsFileScan() {
     return false;
   }
