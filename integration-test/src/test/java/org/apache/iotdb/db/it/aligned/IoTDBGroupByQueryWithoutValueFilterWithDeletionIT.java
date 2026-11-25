@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -65,7 +66,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("delete from root.sg1.d1.s1 where time <= 15");
-      statement.execute("delete timeseries root.sg1.d1.s2");
+      TestUtils.deleteTimeSeries(statement, "delete timeseries root.sg1.d1.s2");
       statement.execute("delete from root.sg1.d1.s3 where time > 25");
     } catch (Exception e) {
       e.printStackTrace();

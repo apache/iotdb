@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.ConnectException;
-import java.net.SocketException;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.util.Optional;
 
@@ -106,15 +106,15 @@ public interface ThriftClient {
    * @return true/false
    */
   static boolean isConnectionBroken(Throwable cause) {
-    return (cause instanceof SocketException && cause.getMessage().contains("Broken pipe"))
-        || (cause instanceof TTransportException
+    return (cause instanceof TTransportException
             && (hasExpectedMessage(cause, "Socket is closed by peer")
                 || hasExpectedMessage(cause, "Read call frame size failed")))
         || (cause instanceof IOException
             && (hasExpectedMessage(cause, "Connection reset by peer")
                 || hasExpectedMessage(cause, "Broken pipe")))
-        || (cause instanceof ConnectException && hasExpectedMessage(cause, "Connection refused")
-            || (cause instanceof ClosedChannelException))
+        || (cause instanceof ConnectException && hasExpectedMessage(cause, "Connection refused"))
+        || (cause instanceof ClosedChannelException
+            && !(cause instanceof ClosedByInterruptException))
         || (cause instanceof java.util.concurrent.TimeoutException);
   }
 

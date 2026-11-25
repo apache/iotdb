@@ -27,7 +27,7 @@ import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueu
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

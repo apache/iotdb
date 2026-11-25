@@ -79,6 +79,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     implements TsFileInsertionEvent, ReferenceTrackableEvent {
@@ -891,6 +892,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         return;
       }
       if (isTableModelEvent()) {
+        if (Objects.isNull(tableNames)) {
+          final Set<IDeviceID> devices = resource.getDevices();
+          if (devices.isEmpty() && !resource.isEmpty()) {
+            throw new IOException(
+                DataNodePipeMessages
+                    .EXCEPTION_CANNOT_DETERMINE_TABLE_NAMES_BECAUSE_THE_NON_EMPTY_TSFILE_RESOURCE_HAS_NO_DEVICE_METADATA_6A0CBC2B);
+          }
+          tableNames = devices.stream().map(IDeviceID::getTableName).collect(Collectors.toSet());
+        }
         for (final String table : tableNames) {
           if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
               || !tablePattern.matchesTable(table)) {

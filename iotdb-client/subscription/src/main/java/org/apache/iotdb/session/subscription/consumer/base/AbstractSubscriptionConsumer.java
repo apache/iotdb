@@ -109,6 +109,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private static final long SLEEP_MS = 100L;
   private static final long SLEEP_DELTA_MS = 50L;
+  private static final long MAX_PROVIDER_POLL_TIMEOUT_MS = 250L;
   private static final long TIMER_DELTA_MS = 250L;
   private static final int MAX_COMMIT_RETRIES = 3;
   private static final long COMMIT_RETRY_INTERVAL_MS =
@@ -953,8 +954,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     final List<SubscriptionMessage> messages = new ArrayList<>();
     List<SubscriptionPollResponse> currentResponses = new ArrayList<>();
     final PollTimer timer = new PollTimer(System.currentTimeMillis(), timeoutMs);
-    // Poll every available provider before backing off. Otherwise an idle provider adds the random
-    // backoff latency even when the next provider already has data ready.
+    // Poll every available provider before applying backoff or the timeout safety margin. Otherwise
+    // an idle provider adds latency even when the next provider already has data ready.
     int remainingProvidersBeforeBackoff = getAvailableProviderCount();
 
     try {
@@ -962,7 +963,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         final List<SubscriptionMessage> currentMessages = new ArrayList<>();
         try {
           currentResponses.clear();
-          currentResponses = pollInternal(topicNames, timer.remainingMs());
+          currentResponses =
+              pollInternal(topicNames, getProviderPollTimeoutMs(timer.remainingMs()));
           for (final SubscriptionPollResponse response : currentResponses) {
             final short responseType = response.getResponseType();
             if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
@@ -1038,13 +1040,18 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         timer.update();
 
         if (--remainingProvidersBeforeBackoff <= 0) {
+          if (!timer.notExpired(TIMER_DELTA_MS)) {
+            break;
+          }
           sleepAfterEmptyPollRound();
-          remainingProvidersBeforeBackoff = getAvailableProviderCount();
+          timer.update();
+          remainingProvidersBeforeBackoff =
+              timer.notExpired(TIMER_DELTA_MS) ? getAvailableProviderCount() : 0;
         }
 
         // the use of TIMER_DELTA_MS here slightly reduces the timeout to avoid being interrupted as
         // much as possible
-      } while (timer.notExpired(TIMER_DELTA_MS));
+      } while (remainingProvidersBeforeBackoff > 0 || timer.notExpired(TIMER_DELTA_MS));
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt(); // restore interrupted state
     }
@@ -1077,6 +1084,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     } finally {
       providers.releaseReadLock();
     }
+  }
+
+  private long getProviderPollTimeoutMs(final long remainingTimeoutMs) {
+    final int availableProviderCount = getAvailableProviderCount();
+    if (availableProviderCount <= 1) {
+      return remainingTimeoutMs;
+    }
+    return Math.min(MAX_PROVIDER_POLL_TIMEOUT_MS, remainingTimeoutMs / availableProviderCount);
   }
 
   void sleepAfterEmptyPollRound() throws InterruptedException {

@@ -90,9 +90,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.DISPATCH_READ;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onThriftFrameOversizeException;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.immediateFuture;
 
 public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
@@ -508,13 +508,38 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException, TException {
     checkNotAborted();
+    if (queryContext.getTimeOut() > 0) {
+      instance.setQueryDeadlineFromTimeout(queryContext.getStartTime(), queryContext.getTimeOut());
+    }
+    remainingQueryTimeMs(instance);
     TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
     if (isDispatchedToLocal(endPoint)) {
       prepareAdmission(instance, endPoint, null);
+      remainingQueryTimeMs(instance);
       dispatchLocally(instance);
     } else {
       dispatchRemote(instance, endPoint);
     }
+  }
+
+  private long remainingQueryTimeMs(FragmentInstance instance)
+      throws FragmentInstanceDispatchException {
+    long deadline = instance.getQueryDeadlineMs();
+    if (deadline < 0 || deadline == Long.MAX_VALUE) {
+      return deadline;
+    }
+    long now = System.currentTimeMillis();
+    if (now >= deadline) {
+      throw new FragmentInstanceDispatchException(
+          RpcUtils.getStatus(
+              TSStatusCode.QUERY_TIMEOUT,
+              String.format(
+                  QueryTimeoutRuntimeException.QUERY_TIMEOUT_EXCEPTION_MESSAGE,
+                  queryContext.getStartTime(),
+                  deadline,
+                  now)));
+    }
+    return deadline - now;
   }
 
   private boolean isDispatchedToLocal(TEndPoint endPoint) {
@@ -548,6 +573,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           if (instance.getExecutorType().isStorageExecutor()) {
             sendFragmentInstanceReq.setConsensusGroupId(
                 instance.getRegionReplicaSet().getRegionId());
+          }
+          long remainingMs = remainingQueryTimeMs(instance);
+          if (remainingMs >= 0) {
+            sendFragmentInstanceReq.setRemainingQueryTimeMs(remainingMs);
           }
           final TSendFragmentInstanceResp sendFragmentInstanceResp =
               client.sendFragmentInstance(sendFragmentInstanceReq);
@@ -706,17 +735,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       // If the query has already timed out, do not retry. Re-dispatching the same FragmentInstance
       // may cause it to be executed twice on the remote node (see the REPEATED_RPC_CALL handling in
       // FragmentInstanceManager), so we fail fast with a timeout status instead.
-      long currentTime = System.currentTimeMillis();
-      if (currentTime - queryContext.getStartTime() >= queryContext.getTimeOut()) {
-        throw new FragmentInstanceDispatchException(
-            RpcUtils.getStatus(
-                TSStatusCode.QUERY_TIMEOUT,
-                String.format(
-                    QueryTimeoutRuntimeException.QUERY_TIMEOUT_EXCEPTION_MESSAGE,
-                    queryContext.getStartTime(),
-                    queryContext.getStartTime() + queryContext.getTimeOut(),
-                    currentTime)));
-      }
+      remainingQueryTimeMs(instance);
       // we just retry once to clear stale connection for a restart node.
       checkNotAborted();
       try {

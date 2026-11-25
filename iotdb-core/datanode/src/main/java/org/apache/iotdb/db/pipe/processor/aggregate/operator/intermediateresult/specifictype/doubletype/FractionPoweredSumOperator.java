@@ -36,6 +36,7 @@ import java.util.Map;
 public class FractionPoweredSumOperator implements IntermediateResultOperator {
   private double sum;
   private final transient double power;
+  private final transient boolean absolute;
 
   /**
    * Warning: Do not use fraction values like "1/3" to initiate the operator, unless you know what
@@ -45,12 +46,25 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
    * @param power the power to use
    */
   public FractionPoweredSumOperator(final double power) {
+    this(power, false);
+  }
+
+  public FractionPoweredSumOperator(final double power, final boolean absolute) {
     this.power = power;
+    this.absolute = absolute;
   }
 
   @Override
   public String getName() {
-    return "sum_x" + power;
+    return "sum_" + (absolute ? "abs_" : "") + "x" + formatPower(power);
+  }
+
+  private static String formatPower(final double power) {
+    return power == (int) power ? Integer.toString((int) power) : Double.toString(power);
+  }
+
+  private double poweredValue(final double value) {
+    return Math.pow(absolute ? Math.abs(value) : value, power);
   }
 
   @Override
@@ -65,7 +79,7 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
 
   @Override
   public boolean initAndGetIsSupport(final int initialInput, final long initialTimestamp) {
-    sum = Math.pow(initialInput, power);
+    sum = poweredValue(initialInput);
     return true;
   }
 
@@ -76,19 +90,19 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
 
   @Override
   public boolean initAndGetIsSupport(final long initialInput, final long initialTimestamp) {
-    sum = Math.pow(initialInput, power);
+    sum = poweredValue(initialInput);
     return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(final float initialInput, final long initialTimestamp) {
-    sum = Math.pow(initialInput, power);
+    sum = poweredValue(initialInput);
     return true;
   }
 
   @Override
   public boolean initAndGetIsSupport(final double initialInput, final long initialTimestamp) {
-    sum = Math.pow(initialInput, power);
+    sum = poweredValue(initialInput);
     return true;
   }
 
@@ -110,7 +124,7 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
 
   @Override
   public void updateValue(final int input, final long timestamp) {
-    sum += Math.pow(input, power);
+    sum += poweredValue(input);
   }
 
   @Override
@@ -121,17 +135,17 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
 
   @Override
   public void updateValue(final long input, final long timestamp) {
-    sum += Math.pow(input, power);
+    sum += poweredValue(input);
   }
 
   @Override
   public void updateValue(final float input, final long timestamp) {
-    sum += Math.pow(input, power);
+    sum += poweredValue(input);
   }
 
   @Override
   public void updateValue(final double input, final long timestamp) {
-    sum += Math.pow(input, power);
+    sum += poweredValue(input);
   }
 
   @Override

@@ -22,26 +22,41 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTableModProgress;
 
-/** Counts the distinct mod files processed by one region's current DROP TABLE attempt. */
-public class DropTableModProgress {
-  private static final String PLAN_NODE_ID_PREFIX = "drop-table-";
+import java.io.File;
+import java.util.HashSet;
+import java.util.Set;
+
+/** Counts the distinct mod files processed by one region's schema deletion attempt. */
+public class SchemaDeletionModProgress {
+  private static final String DROP_TABLE_PLAN_NODE_ID_PREFIX = "drop-table-";
+  private static final String DELETE_TIMESERIES_PLAN_NODE_ID_PREFIX = "delete-timeseries-";
 
   private long totalModFileCount = -1;
   private long writtenModFileCount;
+  private Set<File> writtenModFiles;
 
-  public static PlanNodeId planNodeId(final long procedureId) {
+  public static PlanNodeId dropTablePlanNodeId(final long procedureId) {
     // PlanNodeId already travels through consensus. Reuse it so observability does not change
     // the deletion plan, WAL or DAL serialization formats.
-    return new PlanNodeId(PLAN_NODE_ID_PREFIX + procedureId);
+    return new PlanNodeId(DROP_TABLE_PLAN_NODE_ID_PREFIX + procedureId);
+  }
+
+  public static PlanNodeId deleteTimeSeriesPlanNodeId(final long procedureId) {
+    return new PlanNodeId(DELETE_TIMESERIES_PLAN_NODE_ID_PREFIX + procedureId);
   }
 
   public static long procedureId(final PlanNodeId planNodeId) {
     final String id = planNodeId.getId();
-    if (!id.startsWith(PLAN_NODE_ID_PREFIX)) {
+    final String prefix;
+    if (id.startsWith(DROP_TABLE_PLAN_NODE_ID_PREFIX)) {
+      prefix = DROP_TABLE_PLAN_NODE_ID_PREFIX;
+    } else if (id.startsWith(DELETE_TIMESERIES_PLAN_NODE_ID_PREFIX)) {
+      prefix = DELETE_TIMESERIES_PLAN_NODE_ID_PREFIX;
+    } else {
       return -1;
     }
     try {
-      return Long.parseLong(id.substring(PLAN_NODE_ID_PREFIX.length()));
+      return Long.parseLong(id.substring(prefix.length()));
     } catch (final NumberFormatException e) {
       return -1;
     }
@@ -51,8 +66,23 @@ public class DropTableModProgress {
     this.totalModFileCount = totalModFileCount;
   }
 
-  public synchronized void modFileWritten() {
-    ++writtenModFileCount;
+  public static SchemaDeletionModProgress forTimeSeries() {
+    final SchemaDeletionModProgress progress = new SchemaDeletionModProgress();
+    progress.writtenModFiles = new HashSet<>();
+    return progress;
+  }
+
+  public synchronized void modFileWritten(final ModificationFile modFile) {
+    if (writtenModFiles == null || writtenModFiles.add(modFile.getFile())) {
+      ++writtenModFileCount;
+    }
+  }
+
+  public synchronized void finishTimeSeriesDeletion(final boolean succeeded) {
+    if (succeeded) {
+      totalModFileCount = writtenModFileCount;
+    }
+    writtenModFiles = null;
   }
 
   public synchronized TDropTableModProgress snapshot() {

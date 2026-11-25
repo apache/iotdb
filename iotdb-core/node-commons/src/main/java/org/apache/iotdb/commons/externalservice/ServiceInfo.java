@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.externalservice;
 import org.apache.iotdb.commons.i18n.ServiceMessages;
 import org.apache.iotdb.externalservice.api.IExternalService;
 
-import com.google.common.base.Objects;
+import org.apache.ratis.thirdparty.com.google.common.base.Objects;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;

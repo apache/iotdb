@@ -21,8 +21,8 @@ package org.apache.iotdb.commons.pipe.sink.limiter;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
-import com.google.common.util.concurrent.AtomicDouble;
-import com.google.common.util.concurrent.RateLimiter;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.AtomicDouble;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
 
 import java.util.concurrent.TimeUnit;
 

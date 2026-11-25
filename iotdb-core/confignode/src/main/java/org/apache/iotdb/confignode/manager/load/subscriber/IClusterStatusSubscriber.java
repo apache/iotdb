@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.load.subscriber;
 
-import com.google.common.eventbus.AllowConcurrentEvents;
-import com.google.common.eventbus.Subscribe;
+import org.apache.ratis.thirdparty.com.google.common.eventbus.AllowConcurrentEvents;
+import org.apache.ratis.thirdparty.com.google.common.eventbus.Subscribe;
 
 public interface IClusterStatusSubscriber {
 

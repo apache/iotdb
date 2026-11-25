@@ -41,7 +41,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.utils.BytesUtils.bytesToBool;
 import static org.apache.tsfile.utils.BytesUtils.bytesToLongFromOffset;
 

@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RangeQuantifier;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 
 import java.util.List;
 import java.util.Map;

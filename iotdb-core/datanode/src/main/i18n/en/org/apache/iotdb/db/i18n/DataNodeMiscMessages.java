@@ -2009,4 +2009,8 @@ public final class DataNodeMiscMessages {
   public static final String
       LOG_FAILED_TO_CLEAN_UP_INTERNAL_CLIENT_SESSION_AFTER_CONNECTION_CLOSED_9BD1700E =
           "Failed to clean up internal client session after connection closed";
+
+  public static final String
+      EXCEPTION_THE_FIRST_RESPONSE_OF_A_FRAGMENTED_FAST_LAST_RESULT_MUST_NOT_BE_COMPLETE_DEF121D5 =
+          "The first response of a fragmented Fast LAST result must not be complete";
 }

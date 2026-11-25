@@ -57,7 +57,6 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.BlockingQueue;
@@ -597,7 +596,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     allValueColDeletedMap =
         ignoreAllNullRows ? alignedWorkingListForFlush.getAllValueColDeletedMap() : null;
 
-    boolean[] timeDuplicateInfo = null;
+    boolean hasDuplicateTimestamp = false;
 
     List<List<Integer>> chunkRange = new ArrayList<>();
     // Eg. chunkRange: ((0,9,10,12),(13,15)) means this TVList contains 2 chunks,
@@ -640,10 +639,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       }
       if (nextRowIndex != alignedWorkingListForFlush.rowCount()
           && time == alignedWorkingListForFlush.getTime(nextRowIndex)) {
-        if (Objects.isNull(timeDuplicateInfo)) {
-          timeDuplicateInfo = new boolean[alignedWorkingListForFlush.rowCount()];
-        }
-        timeDuplicateInfo[sortedRowIndex] = true;
+        // This flag only selects the dense fast path; duplicates are merged during encoding.
+        hasDuplicateTimestamp = true;
       }
       sortedRowIndex = nextRowIndex - 1;
     }
@@ -658,7 +655,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     handleEncoding(
         ioTaskQueue,
         chunkRange,
-        timeDuplicateInfo,
+        hasDuplicateTimestamp,
         allValueColDeletedMap,
         maxNumberOfPointsInPage,
         activeSchemaList);
@@ -667,142 +664,133 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   private void handleEncoding(
       BlockingQueue<Object> ioTaskQueue,
       List<List<Integer>> chunkRange,
-      boolean[] timeDuplicateInfo,
+      boolean hasDuplicateTimestamp,
       BitMap allValueColDeletedMap,
       int maxNumberOfPointsInPage,
       List<IMeasurementSchema> activeSchemaList) {
-    // Flushing memtables are immutable, so this identity remains stable during encoding.
-    if (activeSchemaList == schemaList) {
-      handleEncodingWithoutDeletedMeasurements(
-          ioTaskQueue,
-          chunkRange,
-          timeDuplicateInfo,
-          allValueColDeletedMap,
-          maxNumberOfPointsInPage);
-      return;
-    }
-    handleEncodingWithDeletedMeasurements(
-        ioTaskQueue,
-        chunkRange,
-        timeDuplicateInfo,
-        allValueColDeletedMap,
-        maxNumberOfPointsInPage,
-        activeSchemaList);
-  }
-
-  private void handleEncodingWithoutDeletedMeasurements(
-      BlockingQueue<Object> ioTaskQueue,
-      List<List<Integer>> chunkRange,
-      boolean[] timeDuplicateInfo,
-      BitMap allValueColDeletedMap,
-      int maxNumberOfPointsInPage) {
-    // No duplicate timestamps, deleted rows, or all-null rows need filtering, so avoid metadata
-    // checks.
     AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
+    // Flushing memtables are immutable, so this identity remains stable during encoding.
     boolean hasTimeDeleted = alignedWorkingListForFlush.getTimeColDeletedMap() != null;
-    if (timeDuplicateInfo == null && allValueColDeletedMap == null && !hasTimeDeleted) {
+    if (!hasDuplicateTimestamp
+        && allValueColDeletedMap == null
+        && !hasTimeDeleted
+        && activeSchemaList == schemaList) {
       handleEncodingWithoutDeletedMeasurementsFastPath(ioTaskQueue, chunkRange);
       return;
     }
+    encodePages(
+        ioTaskQueue, chunkRange, allValueColDeletedMap, maxNumberOfPointsInPage, activeSchemaList);
+  }
 
-    List<TSDataType> dataTypes = alignedWorkingListForFlush.getTsDataTypes();
-    List<TypeServices.AlignedTVListChunkWriter> valueWriters = new ArrayList<>(dataTypes.size());
-    for (TSDataType dataType : dataTypes) {
-      valueWriters.add(
+  /** Encode pages in one row-major pass, merging duplicate timestamps into groups. */
+  private void encodePages(
+      BlockingQueue<Object> ioTaskQueue,
+      List<List<Integer>> chunkRange,
+      BitMap allValueColDeletedMap,
+      int maxNumberOfPointsInPage,
+      List<IMeasurementSchema> activeSchemaList) {
+    AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
+    int columnCount = activeSchemaList.size();
+    List<Integer> columnIndexList = buildColumnIndexList(activeSchemaList);
+    // Unbox the column mapping once instead of on every row/column access.
+    int[] columnIndexes = new int[columnCount];
+    for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+      columnIndexes[columnIndex] = columnIndexList.get(columnIndex);
+    }
+    TypeServices.AlignedTVListChunkWriter[] valueWriters =
+        new TypeServices.AlignedTVListChunkWriter[columnCount];
+    for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+      valueWriters[columnIndex] =
           TypeServices.StorageEngine.ALIGNED_TV_LIST_CHUNK_WRITER_SERVICE.call(
-              Type.fromTsDataType(dataType)));
+              Type.fromTsDataType(activeSchemaList.get(columnIndex).getType()));
     }
-    long[] lastValidPointTimeForTimeDupCheck =
-        timeDuplicateInfo == null ? null : new long[dataTypes.size()];
-    int[] lastValidPointIndexForTimeDupCheck =
-        timeDuplicateInfo == null ? null : new int[dataTypes.size()];
-    if (lastValidPointIndexForTimeDupCheck != null) {
-      Arrays.fill(lastValidPointIndexForTimeDupCheck, -1);
-    }
-    for (List<Integer> pageRange : chunkRange) {
+    int[] lastValidPointIndex = new int[columnCount];
+    Arrays.fill(lastValidPointIndex, -1);
+    // write() only reads [0, pointsInPage), so one array can back every page of this encode.
+    long[] times =
+        new long[Math.min(maxNumberOfPointsInPage, alignedWorkingListForFlush.rowCount())];
+
+    boolean hasPendingGroup = false;
+    long pendingTime = 0;
+    int pendingLastRowValueIndex = -1;
+
+    for (int chunkIndex = 0; chunkIndex < chunkRange.size(); chunkIndex++) {
+      List<Integer> pageRange = chunkRange.get(chunkIndex);
       AlignedChunkWriterImpl alignedChunkWriter =
-          new AlignedChunkWriterImpl(schemaList, encryptParameter);
-      for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
-        for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-          TypeServices.AlignedTVListChunkWriter valueWriter = valueWriters.get(columnIndex);
-          ValueChunkWriter valueChunkWriter =
-              alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
-          for (int sortedRowIndex = pageRange.get(pageNum * 2);
-              sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
-              sortedRowIndex++) {
-            int valueIndex = alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
-            // skip empty row
-            if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(valueIndex)) {
-              continue;
-            }
-            // Keep value pages aligned with the time page when an entire timestamp is deleted.
-            if (alignedWorkingListForFlush.isTimeDeleted(valueIndex, false)) {
-              continue;
-            }
-            // skip time duplicated rows
-            long time = alignedWorkingListForFlush.getTime(sortedRowIndex);
-            boolean currentValueIsNull = false;
-            if (timeDuplicateInfo != null) {
-              currentValueIsNull = alignedWorkingListForFlush.isNullValue(valueIndex, columnIndex);
-              if (!currentValueIsNull) {
-                lastValidPointTimeForTimeDupCheck[columnIndex] = time;
-                lastValidPointIndexForTimeDupCheck[columnIndex] = valueIndex;
-              }
-              if (timeDuplicateInfo[sortedRowIndex]) {
-                continue;
-              }
-            }
-
-            // The part of code solves the following problem:
-            // Time: 1,2,2,3
-            // Value: 1,2,null,null
-            // When rowIndex:1, no valid duplicate value, timeDuplicateInfo:false, write(T:1,V:1)
-            // When rowIndex:2, last valid point=(2,2), timeDuplicateInfo:true, skip writing value
-            // When rowIndex:3, last valid point=(2,2), T:2 matches, write(T:2,V:2)
-            // When rowIndex:4, last valid point=(2,2), T:3 doesn't match,
-            // write(T:3,V:null)
-
-            int originRowIndex;
-            if (timeDuplicateInfo != null
-                && lastValidPointIndexForTimeDupCheck[columnIndex] >= 0
-                && time == lastValidPointTimeForTimeDupCheck[columnIndex]) {
-              originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex];
-            } else {
-              originRowIndex = valueIndex;
-            }
-
-            boolean isNull =
-                timeDuplicateInfo == null
-                    ? alignedWorkingListForFlush.isNullValue(originRowIndex, columnIndex)
-                    : originRowIndex == valueIndex && currentValueIsNull;
-            valueWriter.write(
-                valueChunkWriter,
-                time,
-                alignedWorkingListForFlush,
-                originRowIndex,
-                columnIndex,
-                isNull);
-          }
-          alignedChunkWriter.nextColumn();
-        }
-
-        long[] times =
-            new long[Math.min(maxNumberOfPointsInPage, alignedWorkingListForFlush.rowCount())];
+          new AlignedChunkWriterImpl(activeSchemaList, encryptParameter);
+      ValueChunkWriter[] valueChunkWriters = new ValueChunkWriter[columnCount];
+      for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+        valueChunkWriters[columnIndex] = alignedChunkWriter.getValueChunkWriterByIndex(columnIndex);
+      }
+      int pageCount = pageRange.size() / 2;
+      for (int pageNum = 0; pageNum < pageCount; pageNum++) {
+        int pageStart = pageRange.get(pageNum * 2);
+        int pageEnd = pageRange.get(pageNum * 2 + 1);
         int pointsInPage = 0;
-        for (int sortedRowIndex = pageRange.get(pageNum * 2);
-            sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
-            sortedRowIndex++) {
-          // skip empty row
-          if (((allValueColDeletedMap != null
-                  && allValueColDeletedMap.isMarked(
-                      alignedWorkingListForFlush.getValueIndex(sortedRowIndex)))
-              || (alignedWorkingListForFlush.isTimeDeleted(sortedRowIndex)))) {
+
+        for (int sortedRowIndex = pageStart; sortedRowIndex <= pageEnd; sortedRowIndex++) {
+          int valueIndex = alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
+          // Skip empty and deleted rows.
+          if ((allValueColDeletedMap != null && allValueColDeletedMap.isMarked(valueIndex))
+              || alignedWorkingListForFlush.isTimeDeleted(valueIndex, false)) {
             continue;
           }
-          if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
-            times[pointsInPage++] = alignedWorkingListForFlush.getTime(sortedRowIndex);
+          long time = alignedWorkingListForFlush.getTime(sortedRowIndex);
+          if (hasPendingGroup && time != pendingTime) {
+            pointsInPage =
+                appendPendingGroup(
+                    alignedWorkingListForFlush,
+                    pendingTime,
+                    pendingLastRowValueIndex,
+                    lastValidPointIndex,
+                    columnIndexes,
+                    valueWriters,
+                    valueChunkWriters,
+                    times,
+                    pointsInPage);
+            hasPendingGroup = false;
+          }
+          if (!hasPendingGroup) {
+            hasPendingGroup = true;
+            pendingTime = time;
+          }
+          pendingLastRowValueIndex = valueIndex;
+          for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+            int tvListColumnIndex = columnIndexes[columnIndex];
+            if (tvListColumnIndex >= 0
+                && !alignedWorkingListForFlush.isNullValue(valueIndex, tvListColumnIndex)) {
+              lastValidPointIndex[columnIndex] = valueIndex;
+            }
           }
         }
+
+        // Page ranges contain only non-deleted rows, so the next page's first row is exactly the
+        // next non-deleted row: the pending group continues iff that row repeats pendingTime.
+        int nextPageStart;
+        if (pageNum + 1 < pageCount) {
+          nextPageStart = pageRange.get((pageNum + 1) * 2);
+        } else if (chunkIndex + 1 < chunkRange.size()) {
+          nextPageStart = chunkRange.get(chunkIndex + 1).get(0);
+        } else {
+          nextPageStart = -1;
+        }
+        if (hasPendingGroup
+            && (nextPageStart < 0
+                || alignedWorkingListForFlush.getTime(nextPageStart) != pendingTime)) {
+          pointsInPage =
+              appendPendingGroup(
+                  alignedWorkingListForFlush,
+                  pendingTime,
+                  pendingLastRowValueIndex,
+                  lastValidPointIndex,
+                  columnIndexes,
+                  valueWriters,
+                  valueChunkWriters,
+                  times,
+                  pointsInPage);
+          hasPendingGroup = false;
+        }
+
         alignedChunkWriter.write(times, pointsInPage, 0);
       }
       alignedChunkWriter.sealCurrentPage();
@@ -813,6 +801,33 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         Thread.currentThread().interrupt();
       }
     }
+  }
+
+  private int appendPendingGroup(
+      AlignedTVList list,
+      long pendingTime,
+      int pendingLastRowValueIndex,
+      int[] lastValidPointIndex,
+      int[] columnIndexes,
+      TypeServices.AlignedTVListChunkWriter[] valueWriters,
+      ValueChunkWriter[] valueChunkWriters,
+      long[] times,
+      int pointsInPage) {
+    for (int columnIndex = 0; columnIndex < columnIndexes.length; columnIndex++) {
+      int tvListColumnIndex = columnIndexes[columnIndex];
+      boolean isNull = tvListColumnIndex < 0 || lastValidPointIndex[columnIndex] < 0;
+      int originRowIndex = isNull ? pendingLastRowValueIndex : lastValidPointIndex[columnIndex];
+      valueWriters[columnIndex].write(
+          valueChunkWriters[columnIndex],
+          pendingTime,
+          list,
+          originRowIndex,
+          tvListColumnIndex,
+          isNull);
+    }
+    times[pointsInPage] = pendingTime;
+    Arrays.fill(lastValidPointIndex, -1);
+    return pointsInPage + 1;
   }
 
   private void handleEncodingWithoutDeletedMeasurementsFastPath(
@@ -945,139 +960,33 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         .write(valueChunkWriter, timestamps, valueArray, bitMap, arrayOffset, pointsInSegment);
   }
 
-  private void handleEncodingWithDeletedMeasurements(
-      BlockingQueue<Object> ioTaskQueue,
-      List<List<Integer>> chunkRange,
-      boolean[] timeDuplicateInfo,
-      BitMap allValueColDeletedMap,
-      int maxNumberOfPointsInPage,
-      List<IMeasurementSchema> activeSchemaList) {
-    AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
-    List<Integer> columnIndexList = buildColumnIndexList(activeSchemaList);
-    long[] lastValidPointTimeForTimeDupCheck =
-        timeDuplicateInfo == null ? null : new long[activeSchemaList.size()];
-    int[] lastValidPointIndexForTimeDupCheck =
-        timeDuplicateInfo == null ? null : new int[activeSchemaList.size()];
-    if (lastValidPointIndexForTimeDupCheck != null) {
-      Arrays.fill(lastValidPointIndexForTimeDupCheck, -1);
-    }
-    for (List<Integer> pageRange : chunkRange) {
-      AlignedChunkWriterImpl alignedChunkWriter =
-          new AlignedChunkWriterImpl(activeSchemaList, encryptParameter);
-      for (int pageNum = 0; pageNum < pageRange.size() / 2; pageNum += 1) {
-        for (int columnIndex = 0; columnIndex < activeSchemaList.size(); columnIndex++) {
-          int tvListColumnIndex = columnIndexList.get(columnIndex);
-          TSDataType tsDataType = activeSchemaList.get(columnIndex).getType();
-          TypeServices.AlignedTVListColumnWriter columnWriter =
-              TypeServices.StorageEngine.ALIGNED_TV_LIST_COLUMN_WRITER_SERVICE.call(
-                  Type.fromTsDataType(tsDataType));
-          for (int sortedRowIndex = pageRange.get(pageNum * 2);
-              sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
-              sortedRowIndex++) {
-            int valueIndex = alignedWorkingListForFlush.getValueIndex(sortedRowIndex);
-            // skip empty row
-            if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(valueIndex)) {
-              continue;
-            }
-            // Keep value pages aligned with the time page when an entire timestamp is deleted.
-            if (alignedWorkingListForFlush.isTimeDeleted(valueIndex, false)) {
-              continue;
-            }
-            // skip time duplicated rows
-            long time = alignedWorkingListForFlush.getTime(sortedRowIndex);
-            boolean currentValueIsNull = true;
-            if (timeDuplicateInfo != null && tvListColumnIndex >= 0) {
-              currentValueIsNull =
-                  alignedWorkingListForFlush.isNullValue(valueIndex, tvListColumnIndex);
-              if (!currentValueIsNull) {
-                lastValidPointTimeForTimeDupCheck[columnIndex] = time;
-                lastValidPointIndexForTimeDupCheck[columnIndex] = valueIndex;
-              }
-            }
-            if (timeDuplicateInfo != null) {
-              if (timeDuplicateInfo[sortedRowIndex]) {
-                continue;
-              }
-            }
-
-            // The part of code solves the following problem:
-            // Time: 1,2,2,3
-            // Value: 1,2,null,null
-            // When rowIndex:1, no valid duplicate value, timeDuplicateInfo:false, write(T:1,V:1)
-            // When rowIndex:2, last valid point=(2,2), timeDuplicateInfo:true, skip writing value
-            // When rowIndex:3, last valid point=(2,2), T:2 matches, write(T:2,V:2)
-            // When rowIndex:4, last valid point=(2,2), T:3 doesn't match,
-            // write(T:3,V:null)
-
-            int originRowIndex;
-            if (tvListColumnIndex >= 0
-                && timeDuplicateInfo != null
-                && lastValidPointIndexForTimeDupCheck[columnIndex] >= 0
-                && time == lastValidPointTimeForTimeDupCheck[columnIndex]) {
-              originRowIndex = lastValidPointIndexForTimeDupCheck[columnIndex];
-            } else {
-              originRowIndex = valueIndex;
-            }
-
-            boolean isNull;
-            if (tvListColumnIndex < 0) {
-              isNull = true;
-            } else if (timeDuplicateInfo == null) {
-              isNull = alignedWorkingListForFlush.isNullValue(originRowIndex, tvListColumnIndex);
-            } else {
-              isNull = originRowIndex == valueIndex && currentValueIsNull;
-            }
-            columnWriter.write(
-                alignedChunkWriter,
-                time,
-                alignedWorkingListForFlush,
-                originRowIndex,
-                tvListColumnIndex,
-                isNull);
-          }
-          alignedChunkWriter.nextColumn();
-        }
-
-        long[] times =
-            new long[Math.min(maxNumberOfPointsInPage, alignedWorkingListForFlush.rowCount())];
-        int pointsInPage = 0;
-        for (int sortedRowIndex = pageRange.get(pageNum * 2);
-            sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
-            sortedRowIndex++) {
-          // skip empty row
-          if (((allValueColDeletedMap != null
-                  && allValueColDeletedMap.isMarked(
-                      alignedWorkingListForFlush.getValueIndex(sortedRowIndex)))
-              || (alignedWorkingListForFlush.isTimeDeleted(sortedRowIndex)))) {
-            continue;
-          }
-          if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
-            times[pointsInPage++] = alignedWorkingListForFlush.getTime(sortedRowIndex);
-          }
-        }
-        alignedChunkWriter.write(times, pointsInPage, 0);
-      }
-      alignedChunkWriter.sealCurrentPage();
-      alignedChunkWriter.clearPageWriter();
-      try {
-        ioTaskQueue.put(alignedChunkWriter);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
-  }
-
   @Override
   public void encode(
       BlockingQueue<Object> ioTaskQueue,
       BatchEncodeInfo encodeInfo,
       long[] times,
       boolean ignoreAllNullRows) {
-    encodeInfo.maxNumberOfPointsInChunk =
-        Math.min(
-            encodeInfo.maxNumberOfPointsInChunk,
-            (encodeInfo.targetChunkSize / getAvgPointSizeOfLargestColumn()));
+    // The cap is derived from this memchunk's largest column. BatchEncodeInfo is shared by all
+    // devices of a flush task, so keep the narrowed cap local to this encode call and restore the
+    // original value afterwards; otherwise one wide TEXT column would shrink the chunk size of
+    // every following device in the same flush.
+    long originalMaxNumberOfPointsInChunk = encodeInfo.maxNumberOfPointsInChunk;
+    try {
+      encodeInfo.maxNumberOfPointsInChunk =
+          Math.min(
+              originalMaxNumberOfPointsInChunk,
+              (encodeInfo.targetChunkSize / getAvgPointSizeOfLargestColumn()));
+      encodeWithComputedChunkCap(ioTaskQueue, encodeInfo, times, ignoreAllNullRows);
+    } finally {
+      encodeInfo.maxNumberOfPointsInChunk = originalMaxNumberOfPointsInChunk;
+    }
+  }
 
+  private void encodeWithComputedChunkCap(
+      BlockingQueue<Object> ioTaskQueue,
+      BatchEncodeInfo encodeInfo,
+      long[] times,
+      boolean ignoreAllNullRows) {
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingAlignedTVList(
           ioTaskQueue,
@@ -1116,32 +1025,42 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       }
 
       if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk) {
-        alignedChunkWriter.sealCurrentPage();
-        alignedChunkWriter.clearPageWriter();
-        try {
-          ioTaskQueue.put(alignedChunkWriter);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
+        flushPendingPageAndEnqueueChunk(ioTaskQueue, alignedChunkWriter, encodeInfo, times);
         alignedChunkWriter = new AlignedChunkWriterImpl(activeSchemaList, encryptParameter);
-        encodeInfo.reset();
       }
     }
 
     // last batch of points
     if (encodeInfo.pointNumInChunk > 0) {
-      if (encodeInfo.pointNumInPage > 0) {
-        alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
-      }
-      alignedChunkWriter.sealCurrentPage();
-      alignedChunkWriter.clearPageWriter();
-      try {
-        ioTaskQueue.put(alignedChunkWriter);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-      encodeInfo.reset();
+      flushPendingPageAndEnqueueChunk(ioTaskQueue, alignedChunkWriter, encodeInfo, times);
     }
+  }
+
+  /**
+   * Flush the pending page, if any, and seal the chunk before enqueueing it for IO.
+   *
+   * <p>{@code encodeBatch} may return with a partially filled page: when the chunk cap is reached
+   * in the middle of a page, the values of that page have already been written into the value chunk
+   * writers, while the corresponding time page has not been written yet. Sealing the chunk without
+   * flushing the partial page first would make the time chunk contain one page less than the value
+   * chunks, so the rows of that page could never be read and the chunk statistics would diverge.
+   */
+  private void flushPendingPageAndEnqueueChunk(
+      BlockingQueue<Object> ioTaskQueue,
+      AlignedChunkWriterImpl alignedChunkWriter,
+      BatchEncodeInfo encodeInfo,
+      long[] times) {
+    if (encodeInfo.pointNumInPage > 0) {
+      alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
+    }
+    alignedChunkWriter.sealCurrentPage();
+    alignedChunkWriter.clearPageWriter();
+    try {
+      ioTaskQueue.put(alignedChunkWriter);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+    encodeInfo.reset();
   }
 
   @Override

@@ -28,17 +28,17 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NumericParameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TypeParameter;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Collections;
 import java.util.Locale;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureParameter.numericParameter;
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureParameter.typeParameter;
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureParameter.typeVariable;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class TypeSignatureTranslator {
 

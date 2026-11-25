@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -36,6 +37,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.record.Tablet;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -51,6 +53,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.junit.Assert.assertEquals;
@@ -425,8 +428,8 @@ public class IoTDBAuthenticationTableIT {
         // grant an irrelevant privilege so that the new users can use database
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userC");
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE \"汉化\" TO USER userD");
-        sessionC.executeNonQueryStatement("USE \"汉化\"");
-        sessionD.executeNonQueryStatement("USE \"汉化\"");
+        awaitDatabaseAccess(sessionC, "USE \"汉化\"", "汉化");
+        awaitDatabaseAccess(sessionD, "USE \"汉化\"", "汉化");
         // userC no privilege
         try {
           sessionC.executeNonQueryStatement(
@@ -867,8 +870,8 @@ public class IoTDBAuthenticationTableIT {
         // grant an irrelevant privilege so that the new users can use database
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userC");
         sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userD");
-        sessionC.executeNonQueryStatement("USE test2");
-        sessionD.executeNonQueryStatement("USE test2");
+        awaitDatabaseAccess(sessionC, "USE test2", "test2");
+        awaitDatabaseAccess(sessionD, "USE test2", "test2");
         // userC no privilege
         try {
           sessionC.executeNonQueryStatement("DELETE FROM table1");
@@ -1154,5 +1157,26 @@ public class IoTDBAuthenticationTableIT {
         sessionB.executeNonQueryStatement("ALTER TABLE t1 ALTER COLUMN c1 SET DATA TYPE FLOAT");
       }
     }
+  }
+
+  private static void awaitDatabaseAccess(
+      final ITableSession session, final String useStatement, final String database)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              try {
+                session.executeNonQueryStatement(useStatement);
+              } catch (StatementExecutionException e) {
+                if (e.getStatusCode() == TSStatusCode.NO_PERMISSION.getStatusCode()
+                    && e.getMessage() != null
+                    && e.getMessage().contains("Access Denied: DATABASE " + database)) {
+                  throw new AssertionError("Database access has not propagated for " + database, e);
+                }
+                throw e;
+              }
+            });
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -462,7 +463,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       }
       Assert.assertTrue(expectedResult.isEmpty());
 
-      statement.execute("DELETE TIMESERIES root.**.s1");
+      TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES root.**.s1");
 
       expectedResult =
           new HashSet<>(
@@ -634,7 +635,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
             e.getMessage());
       }
 
-      statement.execute("DELETE TIMESERIES root.sg1.d1.s");
+      TestUtils.deleteTimeSeries(statement, "DELETE TIMESERIES root.sg1.d1.s");
 
       statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1.d1");
       expectedResult = new String[] {"root.sg1.d1"};

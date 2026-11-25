@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 
-import com.google.common.primitives.Bytes;
+import org.apache.ratis.thirdparty.com.google.common.primitives.Bytes;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.ArrayList;

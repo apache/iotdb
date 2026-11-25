@@ -62,6 +62,50 @@ import java.util.zip.CRC32;
 
 public class IoTDBDataRegionAirGapSinkTest {
   @Test
+  public void testStrictUdpDefaultPacketSizeAndExplicitOverrides() throws Exception {
+    for (final String packetSizeKey :
+        Arrays.asList(
+            null,
+            PipeSinkConstant.CONNECTOR_AIR_GAP_UDP_PACKET_SIZE_KEY,
+            PipeSinkConstant.SINK_AIR_GAP_UDP_PACKET_SIZE_KEY)) {
+      try (final DatagramSocket receiverSocket = new DatagramSocket(0);
+          final UdpTestingIoTDBDataRegionAirGapSink sink =
+              new UdpTestingIoTDBDataRegionAirGapSink()) {
+        final PipeParameters parameters = buildParameters(false);
+        parameters.getAttribute().put(PipeSinkConstant.SINK_AIR_GAP_TRANSPORT_KEY, "udp");
+        parameters
+            .getAttribute()
+            .put(PipeSinkConstant.SINK_AIR_GAP_STRICT_UNIDIRECTIONAL_KEY, "true");
+        if (packetSizeKey != null) {
+          parameters.getAttribute().put(packetSizeKey, "4096");
+        }
+        sink.validate(new PipeParameterValidator(parameters));
+        sink.customize(
+            parameters,
+            new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+
+        final byte[] request = new byte[2500];
+        request[0] = 1;
+        request[2] = (byte) PipeRequestType.TRANSFER_TABLET_RAW.getType();
+        Assert.assertTrue(sink.sendUdp(receiverSocket.getLocalPort(), request));
+        receiverSocket.setSoTimeout(1000);
+        final int packetCount = packetSizeKey == null ? 2 : 1;
+        for (int i = 0; i < packetCount; i++) {
+          final byte[] buffer = new byte[4097];
+          final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+          receiverSocket.receive(packet);
+          Assert.assertTrue(packet.getLength() <= (packetSizeKey == null ? 1400 : 4096));
+          Assert.assertEquals(
+              packetSizeKey == null
+                  ? PipeRequestType.TRANSFER_SLICE.getType()
+                  : PipeRequestType.TRANSFER_TABLET_RAW.getType(),
+              decodeAirGapDatagram(buffer, packet.getLength()).type);
+        }
+      }
+    }
+  }
+
+  @Test
   public void testStrictUdpSendIntervalIsValidatedAndAppliedToEverySlice() throws Exception {
     for (final String key :
         Arrays.asList(
@@ -266,9 +310,20 @@ public class IoTDBDataRegionAirGapSinkTest {
         sink.customize(
             parameters,
             new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+        final byte[] request = new byte[2500];
+        request[0] = 1;
+        request[2] = (byte) PipeRequestType.TRANSFER_TABLET_RAW.getType();
         Assert.assertThrows(
             SocketTimeoutException.class,
-            () -> sink.sendUdp(receiverSocket.getLocalPort(), new byte[] {1, 0, 11}));
+            () -> sink.sendUdp(receiverSocket.getLocalPort(), request));
+        receiverSocket.setSoTimeout(1000);
+        final byte[] buffer = new byte[3000];
+        final DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+        receiverSocket.receive(packet);
+        Assert.assertEquals(request.length + 3 * Long.BYTES, packet.getLength());
+        Assert.assertEquals(
+            PipeRequestType.TRANSFER_TABLET_RAW.getType(),
+            decodeAirGapDatagram(buffer, packet.getLength()).type);
       }
     }
   }

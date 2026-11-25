@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.i18n.CommonMessages;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -266,6 +266,8 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
       final long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
       final int length = ReadWriteIOUtils.readInt(byteBuffer);
       if (length < 0) {
+        timeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap.put(
+            timeSeries, new Pair<>(timestamp, null));
         continue;
       }
       final byte[] body = new byte[length];
@@ -288,6 +290,8 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
       final long timestamp = ReadWriteIOUtils.readLong(stream);
       final int length = ReadWriteIOUtils.readInt(stream);
       if (length < 0) {
+        timeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap.put(
+            timeSeries, new Pair<>(timestamp, null));
         continue;
       }
       final byte[] body = new byte[length];

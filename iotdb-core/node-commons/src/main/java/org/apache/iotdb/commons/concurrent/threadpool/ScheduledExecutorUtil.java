@@ -20,7 +20,7 @@ package org.apache.iotdb.commons.concurrent.threadpool;
 
 import org.apache.iotdb.commons.i18n.CommonMessages;
 
-import com.google.common.base.Throwables;
+import org.apache.ratis.thirdparty.com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

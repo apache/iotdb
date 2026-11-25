@@ -26,7 +26,7 @@ For setup and compatibility notes, see [Coding agents](CONTRIBUTING.md#coding-ag
 
 ## Project Overview
 
-Apache IoTDB is a time series database for IoT data. It uses a distributed architecture with ConfigNodes (metadata/coordination) and DataNodes (storage/query). Data is stored in TsFile columnar format (separate repo: https://github.com/apache/tsfile). Current version is 2.0.11-SNAPSHOT.
+Apache IoTDB is a time series database for IoT data. It uses a distributed architecture with ConfigNodes (metadata/coordination) and DataNodes (storage/query). Data is stored in TsFile columnar format (separate repo: https://github.com/apache/tsfile). Current version is 2.0.13-SNAPSHOT.
 
 ## Pull Request Descriptions
 
@@ -134,10 +134,19 @@ the corresponding module file; link to existing guidance instead of copying it.
 
 ## Code Style
 
-- **Apache License header**: Every new file committed to the repository MUST include the Apache License 2.0 header. Use the comment syntax appropriate for the file type (e.g., `<!-- -->` for `.md`, `/* */` for `.java`, `#` for `.properties`/`.py`). JSON files are exempt (no comment syntax). Refer to existing files in the repo for the exact format.
+- Every new IoTDB-authored file that supports comments MUST include the complete **ASF source header**. Match the comment syntax to the file format. Use `<!-- -->` for Markdown, `/* */` for Java, and `#` for `.properties`, `.py`, Git configuration, and Java SPI descriptors under `META-INF/services`. JSON files are exempt because they have no comment syntax. Preserve third-party license and copyright notices. [ASF source header policy](https://www.apache.org/legal/src-headers.html)
+  - Keep license headers intact during bulk replacements and refactors. When adding or repairing a standard ASF header, copy the complete text from an existing IoTDB-authored file and check that the disclaimer is present. ATR checks the header wording separately from Maven RAT. [ATR license checks](https://releases.apache.org/docs/license-checks#lightweight-license-check)
 - **Spotless** with Google Java Format (GOOGLE style). Import order: `org.apache.iotdb`, blank, `javax`, `java`, static.
+- **Java type names.** Prefer simple type names in source code and add explicit imports when needed.
+  Use fully qualified names when necessary to resolve a naming conflict.
 - **Checkstyle** is also configured (see `checkstyle.xml` at project root).
 - Java source/target level is 17 (compiled with `maven.compiler.release=17` on JDK 17+).
+- **Exception context.** Include enough diagnostic context to identify the failed operation and
+  condition, such as the field being decoded, the expected condition, and the actual value or
+  available input length when safe. Avoid empty or generic exceptions such as `throw new IOException()`
+  when useful context is available. Preserve the cause when wrapping another exception. Do not include
+  secrets or entire payloads in messages. User-facing exception messages must follow the i18n rules
+  below.
 
 ## Architecture
 
@@ -211,9 +220,9 @@ Generated source directories that need to be on the source path:
 
 ### Build
 
-- **Missing Thrift compiler**: The local machine may not have the `thrift` binary installed. Running `mvn clean package -pl <module> -am -DskipTests` will fail at the `iotdb-thrift` module. **Workaround**: To verify your changes compile, use `mvn compile -pl <module>` (without `-am` or `clean`) to leverage existing target caches.
+- **Thrift code generation needs no local `thrift` binary**: the root `pom.xml` carries a self-activating `.thrift-generation` profile. It turns on for any module containing `src/main/thrift`, unpacks `org.apache.iotdb.tools:iotdb-tools-thrift` (version `${iotdb-tools-thrift.version}` in the root pom, currently `0.25.0.0`) with the classifier of the current OS (`mac-aarch64`, `mac-x86_64`, `linux-x86_64`, `linux-aarch64`, `windows-x86_64`, `windows-aarch64`) into that module's `target/thrift/`, and runs `thrift-maven-plugin` against it. So `mvn clean package -pl <module> -am -DskipTests` succeeds on a machine with no `thrift` on `PATH`, and no compile workaround is needed. The zip is downloaded once and cached in the local Maven repository, so the first build on a machine (and any offline `-o` build) still requires that download to have happened; a platform without a published classifier cannot generate sources at all.
 - **Pre-existing compilation errors in unrelated modules**: The datanode module may have pre-existing compile errors in other subsystems (e.g., pipe, copyto) that cause `mvn clean test -pl iotdb-core/datanode -Dtest=XxxTest` to fail during compilation. **Workaround**: First run `mvn compile -pl iotdb-core/datanode` to confirm your changed files compile successfully. If the errors are in files you did not modify, they are pre-existing and do not affect your changes.
-- **Single-module / no-`clean` compiles hide cross-module and i18n errors**: `mvn compile -pl <module>` (the thrift workaround above) builds only that module against the **installed** jars in `~/.m2` and the existing `target/` classes; an incremental `mvn test-compile` without `clean` reuses stale `target/*.class`. If you add/rename a `*Messages` constant (or any cross-module API) in module B but `~/.m2`/`target/` still holds B's old artifact, module A referencing the new symbol compiles fine against the stale class — the real `cannot find symbol` only surfaces in CI or a clean build. **Workaround**: for i18n / cross-module edits, verify with a full-reactor compile (no `-pl`, no `clean`): `mvn test-compile -DskipTests` and `mvn test-compile -DskipTests -P with-zh-locale`. Capture the maven exit code directly (`mvn ... ; echo $?`), not via `mvn ... && echo OK` — `set -e` does NOT fail on a command inside a `&&` list, so a `&&` chain can print a false success.
+- **Single-module / no-`clean` compiles hide cross-module and i18n errors**: `mvn compile -pl <module>` (no `-am`) builds only that module against the **installed** jars in `~/.m2` and the existing `target/` classes; an incremental `mvn test-compile` without `clean` reuses stale `target/*.class`. If you add/rename a `*Messages` constant (or any cross-module API) in module B but `~/.m2`/`target/` still holds B's old artifact, module A referencing the new symbol compiles fine against the stale class — the real `cannot find symbol` only surfaces in CI or a clean build. **Workaround**: for i18n / cross-module edits, verify with a full-reactor compile (no `-pl`, no `clean`): `mvn test-compile -DskipTests` and `mvn test-compile -DskipTests -P with-zh-locale`. Capture the maven exit code directly (`mvn ... ; echo $?`), not via `mvn ... && echo OK` — `set -e` does NOT fail on a command inside a `&&` list, so a `&&` chain can print a false success.
 
 ### i18n (Chinese Messages)
 

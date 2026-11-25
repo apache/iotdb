@@ -40,6 +40,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.Callable;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertQueryFails;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
@@ -573,8 +574,11 @@ public class IoTDBTableAuthHAIT {
               EnvFactory.getEnv().getConnection(dn, user, password, BaseEnv.TABLE_SQL_DIALECT);
           final Statement stmt = conn.createStatement()) {
         stmt.execute("USE " + databaseName);
-        stmt.executeQuery(sql);
-        Assert.fail("SELECT should fail");
+        final SQLException exception = assertQueryFails(stmt, sql);
+        assertTrue(
+            exception.getMessage(),
+            exception.getMessage().contains("No permissions")
+                || exception.getMessage().contains("Access Denied"));
       } catch (final SQLException e) {
         assertTrue(
             e.getMessage(),

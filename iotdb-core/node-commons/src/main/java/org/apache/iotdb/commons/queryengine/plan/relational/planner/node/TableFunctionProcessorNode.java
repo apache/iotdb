@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganiza
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -42,8 +42,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Iterables.getOnlyElement;
 
 public class TableFunctionProcessorNode extends SingleChildProcessNode {
 

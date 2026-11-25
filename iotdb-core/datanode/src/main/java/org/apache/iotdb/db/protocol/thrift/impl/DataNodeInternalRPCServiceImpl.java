@@ -219,7 +219,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.DropTableModProgress;
+import org.apache.iotdb.db.storageengine.dataregion.modification.SchemaDeletionModProgress;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -254,6 +254,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TConsensusSubscriptionQueueReadiness;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
@@ -358,7 +359,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
@@ -398,7 +399,6 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -520,6 +520,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(final TSendFragmentInstanceReq req) {
+    long receivedAtMs = System.currentTimeMillis();
     LOGGER.debug(DataNodeMiscMessages.RECEIVE_FRAGMENT_INSTANCE, req.getConsensusGroupId());
 
     // Deserialize ConsensusGroupId
@@ -564,6 +565,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       FragmentInstance.deserializeFrom(
                           fragmentInstanceId, req.fragmentInstance.body));
       fragmentInstance.attachUDFQueryScope(queryScope);
+      if (req.isSetRemainingQueryTimeMs()) {
+        fragmentInstance.setQueryDeadlineFromTimeout(receivedAtMs, req.getRemainingQueryTimeMs());
+      }
       if (req.isSetQueryAttemptId() && req.isSetAdmissionToken()) {
         fragmentInstance.setQueryAttempt(req.getQueryAttemptId(), req.getAdmissionToken());
       }
@@ -956,6 +960,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final List<MeasurementPath> pathList =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()))
             .getAllPathPatterns(true);
+    final PlanNodeId planNodeId =
+        req.isSetProcedureId() && req.isSetTrackModFileProgress() && req.isTrackModFileProgress()
+            ? SchemaDeletionModProgress.deleteTimeSeriesPlanNodeId(req.getProcedureId())
+            : new PlanNodeId("");
     return executeInternalSchemaTask(
         req.getDataRegionIdList(),
         consensusGroupId ->
@@ -967,9 +975,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
                         ? new PipeEnrichedDeleteDataNode(
                             new DeleteDataNode(
-                                new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
-                        : new DeleteDataNode(
-                            new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
+                                planNodeId, pathList, Long.MIN_VALUE, Long.MAX_VALUE))
+                        : new DeleteDataNode(planNodeId, pathList, Long.MIN_VALUE, Long.MAX_VALUE))
                 .getStatus());
   }
 
@@ -1736,9 +1743,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           SubscriptionAgent.broker().collectAllRegionCommitProgress(dataNodeId);
       final Map<String, ByteBuffer> subscriptionProgress =
           SubscriptionAgent.broker().collectAllProgressSnapshots();
-      return new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
-          .setCommitRegionProgress(regionProgress)
-          .setSubscriptionProgress(subscriptionProgress);
+      final TPullCommitProgressResp response =
+          new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+              .setCommitRegionProgress(regionProgress)
+              .setSubscriptionProgress(subscriptionProgress);
+      if (req.isSetIncludeConsensusQueueReadiness() && req.isIncludeConsensusQueueReadiness()) {
+        final List<TConsensusSubscriptionQueueReadiness> consensusQueueReadiness =
+            new ArrayList<>();
+        for (final ConsensusSubscriptionSetupHandler.QueueReadiness readiness :
+            ConsensusSubscriptionSetupHandler.getQueueReadiness()) {
+          consensusQueueReadiness.add(
+              new TConsensusSubscriptionQueueReadiness(
+                  readiness.topicName(), readiness.consumerGroupId(), readiness.tableModel()));
+        }
+        response.setConsensusQueueReadiness(consensusQueueReadiness);
+      }
+      return response;
     } catch (Exception e) {
       LOGGER.warn(
           DataNodeMiscMessages.MISC_LOG_ERROR_OCCURRED_WHEN_PULLING_COMMIT_PROGRESS_48C12E4B, e);
@@ -1808,83 +1828,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private TSStatus executeSchemaBlackListTask(
       final List<TConsensusGroupId> consensusGroupIdList,
       final Function<TConsensusGroupId, TSStatus> executeOnOneRegion) {
-    // Not guarantee sequence
-    final List<TSStatus> statusList = Collections.synchronizedList(new ArrayList<>());
-    final AtomicBoolean hasFailure = new AtomicBoolean(false);
-
-    final Set<Future<?>> schemaFuture = new HashSet<>();
-
-    consensusGroupIdList.forEach(
-        consensusGroupId ->
-            schemaFuture.add(
-                schemaExecutor.submit(
-                    () -> {
-                      final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
-                      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                          && status.getCode() != TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
-                        hasFailure.set(true);
-                      }
-                      statusList.add(status);
-                    })));
-
-    for (final Future<?> future : schemaFuture) {
-      try {
-        future.get();
-      } catch (final ExecutionException | InterruptedException e) {
-        LOGGER.warn(DataNodeMiscMessages.EXCEPTION_EXECUTING_INTERNAL_SCHEMA_TASK, e);
-        statusList.add(
-            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-                .setMessage(e.toString()));
-      }
-    }
-
-    if (hasFailure.get()) {
-      return RpcUtils.getStatus(statusList);
-    } else {
-      return statusList.stream()
-          .filter(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
-          .findFirst()
-          .orElse(new TSStatus(TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()));
-    }
+    return InternalSchemaTaskExecutor.executeSchemaBlackListTask(
+        consensusGroupIdList, executeOnOneRegion, schemaExecutor);
   }
 
   private TSStatus executeInternalSchemaTask(
       final List<TConsensusGroupId> consensusGroupIdList,
       final Function<TConsensusGroupId, TSStatus> executeOnOneRegion) {
-    // Not guarantee sequence
-    final List<TSStatus> statusList = Collections.synchronizedList(new ArrayList<>());
-    final AtomicBoolean hasFailure = new AtomicBoolean(false);
-
-    final Set<Future<?>> schemaFuture = new HashSet<>();
-
-    consensusGroupIdList.forEach(
-        consensusGroupId ->
-            schemaFuture.add(
-                schemaExecutor.submit(
-                    () -> {
-                      final TSStatus status = executeOnOneRegion.apply(consensusGroupId);
-                      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        hasFailure.set(true);
-                      }
-                      statusList.add(status);
-                    })));
-
-    for (final Future<?> future : schemaFuture) {
-      try {
-        future.get();
-      } catch (final ExecutionException | InterruptedException e) {
-        LOGGER.warn(DataNodeMiscMessages.EXCEPTION_EXECUTING_INTERNAL_SCHEMA_TASK, e);
-        statusList.add(
-            new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-                .setMessage(e.toString()));
-      }
-    }
-
-    if (hasFailure.get()) {
-      return RpcUtils.getStatus(statusList);
-    } else {
-      return RpcUtils.SUCCESS_STATUS;
-    }
+    return InternalSchemaTaskExecutor.executeInternalSchemaTask(
+        consensusGroupIdList, executeOnOneRegion, schemaExecutor);
   }
 
   @Override
@@ -2078,7 +2030,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     new DataRegionId(consensusGroupId.getId()),
                     new RelationalDeleteDataNode(
                         req.isSetProcedureId()
-                            ? DropTableModProgress.planNodeId(req.getProcedureId())
+                                && req.isSetTrackModFileProgress()
+                                && req.isTrackModFileProgress()
+                            ? SchemaDeletionModProgress.dropTablePlanNodeId(req.getProcedureId())
                             : new PlanNodeId(""),
                         new TableDeletionEntry(
                             new DeletionPredicate(req.getTableName()),
@@ -2091,18 +2045,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TGetDropTableModProgressResp getDropTableModProgress(
       final TGetDropTableModProgressReq req) {
+    final boolean clearProgress = req.isSetClearProgress() && req.isClearProgress();
     final Map<Integer, TDropTableModProgress> progress = new HashMap<>();
     for (final TConsensusGroupId regionId : req.getRegionIdList()) {
       final DataRegion region =
           StorageEngine.getInstance().getDataRegion(new DataRegionId(regionId.getId()));
       if (region != null) {
         final TDropTableModProgress regionProgress =
-            region.getDropTableModProgress(req.getProcedureId());
+            region.getDropTableModProgress(req.getProcedureId(), clearProgress);
         // Regions in the same deletion request execute sequentially. Report zero written and
         // an unknown total until this region starts, so other regions' live counts are visible.
-        progress.put(
-            regionId.getId(),
-            regionProgress == null ? new TDropTableModProgress(0) : regionProgress);
+        if (regionProgress != null) {
+          progress.put(regionId.getId(), regionProgress);
+        } else if (!clearProgress) {
+          progress.put(regionId.getId(), new TDropTableModProgress(0));
+        }
       }
     }
     return new TGetDropTableModProgressResp(StatusUtils.OK).setRegionProgress(progress);
@@ -2307,7 +2264,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     .execute(
                         new DataRegionId(consensusGroupId.getId()),
                         new RelationalDeleteDataNode(
-                            new PlanNodeId(""),
+                            req.isSetProcedureId()
+                                    && req.isSetTrackModFileProgress()
+                                    && req.isTrackModFileProgress()
+                                ? SchemaDeletionModProgress.dropTablePlanNodeId(
+                                    req.getProcedureId())
+                                : new PlanNodeId(""),
                             new TableDeletionEntry(
                                 new DeletionPredicate(
                                     req.getTableName(),

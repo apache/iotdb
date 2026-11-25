@@ -487,10 +487,24 @@ public class LoadTsFileAnalyzerTest {
                   getVerifyTableDataTypeMethod()
                       .invoke(
                           schemaCache,
-                          createTableSchema(TSDataType.INT64),
-                          createTableSchema(TSDataType.DOUBLE)));
+                          createTableSchema(TSDataType.INT32),
+                          createTableSchema(TSDataType.BOOLEAN)));
 
       Assert.assertTrue(exception.getCause() instanceof LoadAnalyzeTypeMismatchException);
+    } finally {
+      schemaCache.close();
+    }
+  }
+
+  @Test
+  public void testTableSchemaCacheAllowsCompatibleDataType() throws Exception {
+    final LoadTsFileTableSchemaCache schemaCache = createTableSchemaCache(true);
+    try {
+      getVerifyTableDataTypeMethod()
+          .invoke(
+              schemaCache,
+              createTableSchema(TSDataType.INT32),
+              createTableSchema(TSDataType.INT64));
     } finally {
       schemaCache.close();
     }
@@ -504,8 +518,8 @@ public class LoadTsFileAnalyzerTest {
       getVerifyTableDataTypeMethod()
           .invoke(
               schemaCache,
-              createTableSchema(TSDataType.INT64),
-              createTableSchema(TSDataType.DOUBLE));
+              createTableSchema(TSDataType.INT32),
+              createTableSchema(TSDataType.BOOLEAN));
     } finally {
       schemaCache.close();
     }
@@ -553,6 +567,41 @@ public class LoadTsFileAnalyzerTest {
       if (tsFile.exists()) {
         Assert.assertTrue(tsFile.delete());
       }
+    }
+  }
+
+  @Test
+  public void testTreeSchemaVerifierAllowsCompatibleDataType() throws Exception {
+    final File tsFile = File.createTempFile("load-tree-compatible-type", ".tsfile");
+
+    try (final LoadTsFileAnalyzer analyzer =
+        new LoadTsFileAnalyzer(
+            LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()),
+            false,
+            new MPPQueryContext(new QueryId("load_tree_compatible_type_test")))) {
+      final TreeSchemaAutoCreatorAndVerifier verifier =
+          new TreeSchemaAutoCreatorAndVerifier(analyzer);
+      try {
+        final IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1");
+        getTreeSchemaCache(verifier)
+            .addTimeSeries(device, new MeasurementSchema("s1", TSDataType.INT32));
+        getTreeSchemaCache(verifier).addIsAlignedCache(device, true, true);
+
+        final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+        schemaTree.appendSingleMeasurement(
+            new PartialPath("root.sg.d1.s1"),
+            new MeasurementSchema("s1", TSDataType.INT64),
+            null,
+            null,
+            null,
+            true);
+
+        getVerifyTreeSchemaMethod().invoke(verifier, schemaTree);
+      } finally {
+        verifier.close();
+      }
+    } finally {
+      Assert.assertTrue(tsFile.delete());
     }
   }
 

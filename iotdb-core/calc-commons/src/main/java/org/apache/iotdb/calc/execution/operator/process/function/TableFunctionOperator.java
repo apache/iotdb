@@ -34,7 +34,7 @@ import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -54,7 +54,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 // only one input source is supported now
 public class TableFunctionOperator extends AbstractOperator implements ProcessOperator {
@@ -181,7 +181,12 @@ public class TableFunctionOperator extends AbstractOperator implements ProcessOp
           processor.beforeStart(ioTDBLocal);
         }
       }
-      partitionCache.addSlice(slice);
+      // the cached slices are only needed when the output has
+      // columns declared as pass-through. Without them every output column is written by the
+      // processor, so the input block should not be retained in the partitionCache
+      if (needPassThrough) {
+        partitionCache.addSlice(slice);
+      }
       Iterator<Record> recordIterator = slice.getRequiredRecordIterator(requireRecordSnapshot);
       while (recordIterator.hasNext()) {
         processor.process(

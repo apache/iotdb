@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.commons.utils.function.CheckedTriConsumer;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -228,12 +228,20 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
       }
     } finally {
       if (!dispatched && client != null && clientManager instanceof ClientManager) {
-        ((ClientManager<TEndPoint, Client>) clientManager).returnClient(endPoint, client);
+        try {
+          restoreClientTimeoutIfNecessary(client);
+        } finally {
+          ((ClientManager<TEndPoint, Client>) clientManager).returnClient(endPoint, client);
+        }
       }
     }
   }
 
   protected void adjustClientTimeoutIfNecessary(RequestType type, Client client, Long timeoutInMs) {
+    // In default, no need to do this
+  }
+
+  protected void restoreClientTimeoutIfNecessary(Client client) {
     // In default, no need to do this
   }
 

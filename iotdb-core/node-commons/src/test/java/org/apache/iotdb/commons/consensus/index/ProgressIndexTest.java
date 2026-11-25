@@ -25,10 +25,17 @@ import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ProgressIndexTest {
 
@@ -78,5 +85,41 @@ public class ProgressIndexTest {
         simpleProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
             timeWindowStateProgressIndex);
     Assert.assertEquals(blendedProgressIndex, reverseBlendedProgressIndex);
+  }
+
+  @Test
+  public void testTimeWindowStateProgressIndexPreservesNullWindowBuffersAfterRestore()
+      throws IOException {
+    final Map<String, Pair<Long, ByteBuffer>> timeSeries2WindowState = new HashMap<>();
+    timeSeries2WindowState.put("root.sg.d.completed", new Pair<>(10L, null));
+    timeSeries2WindowState.put(
+        "root.sg.d.open", new Pair<>(20L, ByteBuffer.wrap(new byte[] {1, 2, 3})));
+    final TimeWindowStateProgressIndex progressIndex =
+        new TimeWindowStateProgressIndex(timeSeries2WindowState);
+
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    progressIndex.serialize(outputStream);
+    final byte[] serialized = outputStream.toByteArray();
+
+    assertRestoredWindowStates(ProgressIndexType.deserializeFrom(ByteBuffer.wrap(serialized)));
+    assertRestoredWindowStates(
+        ProgressIndexType.deserializeFrom(new ByteArrayInputStream(serialized)));
+  }
+
+  private void assertRestoredWindowStates(final ProgressIndex restoredProgressIndex) {
+    final TimeWindowStateProgressIndex restored =
+        restoredProgressIndex
+            .getProgressIndexByType(TimeWindowStateProgressIndex.class)
+            .orElse(null);
+    Assert.assertNotNull(restored);
+
+    final Map<String, Pair<Long, ByteBuffer>> restoredStates =
+        restored.getTimeSeries2TimestampWindowBufferPairMap();
+    Assert.assertEquals(2, restoredStates.size());
+    Assert.assertEquals(Long.valueOf(10L), restoredStates.get("root.sg.d.completed").getLeft());
+    Assert.assertNull(restoredStates.get("root.sg.d.completed").getRight());
+    Assert.assertEquals(Long.valueOf(20L), restoredStates.get("root.sg.d.open").getLeft());
+    Assert.assertArrayEquals(
+        new byte[] {1, 2, 3}, restoredStates.get("root.sg.d.open").getRight().array());
   }
 }
