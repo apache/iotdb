@@ -331,6 +331,17 @@ License: https://github.com/apache/commons-collections/blob/master/LICENSE.txt
 
 --------------------------------------------------------------------------------
 
+The following files include code modified from Caffeine project.
+
+./iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/external/caffeine/*
+
+Caffeine is open source software licensed under the Apache License 2.0.
+Copyright 2014 Ben Manes. All Rights Reserved.
+Project page: https://github.com/ben-manes/caffeine
+License: https://github.com/ben-manes/caffeine/blob/master/LICENSE
+
+--------------------------------------------------------------------------------
+
 The following files include code modified from LMax Disruptor project.
 
 ./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/source/dataregion/realtime/disruptor/*
