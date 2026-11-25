@@ -37,6 +37,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertQueryFails;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertTrue;
@@ -502,8 +503,8 @@ public class IoTDBLocalIT {
                       dataNode, LIMITED_USER, LIMITED_PASSWORD, BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         statement.execute("USE " + DATABASE_NAME);
-        statement.executeQuery(sql);
-        fail("No exception: " + sql);
+        SQLException exception = assertQueryFails(statement, sql);
+        assertTrue(exception.getMessage(), exception.getMessage().contains("Access Denied"));
       } catch (SQLException e) {
         assertTrue(e.getMessage(), e.getMessage().contains("Access Denied"));
       }

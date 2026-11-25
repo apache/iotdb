@@ -48,6 +48,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertQueryFails;
 import static org.apache.iotdb.relational.it.query.old.aligned.TableUtils.USE_DB;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -1327,7 +1328,7 @@ public class IoTDBOrderByTableViewIT {
   private void errorTest(String sql, String error) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
+      assertEquals(error, assertQueryFails(statement, sql).getMessage());
     } catch (Exception e) {
       assertEquals(error, e.getMessage());
     }
