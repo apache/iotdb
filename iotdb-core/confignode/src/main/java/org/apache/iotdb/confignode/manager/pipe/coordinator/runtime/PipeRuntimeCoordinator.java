@@ -109,7 +109,8 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
       /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent,
       /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
       /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent,
-      /* @Nullable */ final List<Map<String, Long>> pipeRecentFailureListFromAgent) {
+      /* @Nullable */ final List<Map<String, Long>> pipeRecentFailureListFromAgent,
+      /* @Nullable */ final List<Integer> pipeDegradedStatusListFromAgent) {
     pipeHeartbeatScheduler.parseHeartbeat(
         dataNodeId,
         new PipeHeartbeat(
@@ -117,6 +118,7 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
             pipeCompletedListFromAgent,
             pipeRemainingEventCountListFromAgent,
             pipeRemainingTimeListFromAgent,
-            pipeRecentFailureListFromAgent));
+            pipeRecentFailureListFromAgent,
+            pipeDegradedStatusListFromAgent));
   }
 }

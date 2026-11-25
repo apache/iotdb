@@ -60,6 +60,9 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   private final String treeModelDatabaseName;
 
   private final EnrichedEvent sourceEvent;
+  private final PipeTsFileInsertionEvent sourceTsFileInsertionEvent;
+  private final AtomicBoolean generatedEventRegisteredWithSource = new AtomicBoolean(false);
+  private final AtomicBoolean generatedEventOutcomeReported = new AtomicBoolean(false);
   private boolean needToReport;
 
   private final PipeTabletMemoryBlock allocatedMemoryBlock;
@@ -91,6 +94,12 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     this.tableModelDatabaseName = tableModelDatabaseName;
     this.treeModelDatabaseName = treeModelDatabaseName;
     this.sourceEvent = sourceEvent;
+    this.sourceTsFileInsertionEvent =
+        sourceEvent instanceof PipeTsFileInsertionEvent
+            ? (PipeTsFileInsertionEvent) sourceEvent
+            : sourceEvent instanceof PipeRawTabletInsertionEvent
+                ? ((PipeRawTabletInsertionEvent) sourceEvent).getSourceTsFileInsertionEvent()
+                : null;
     this.needToReport = needToReport;
     inheritSourceEventReportSkippingIfNecessary();
 
@@ -98,11 +107,17 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
-    if (needToReport) {
+    if (needToReport || sourceTsFileInsertionEvent != null) {
       addOnCommittedHook(
           () -> {
-            if (shouldReportOnCommit) {
+            // The last generated tablet still owns the progress-index cleanup. Other generated
+            // tablets only contribute to the transfer completion of their source TsFile.
+            if (shouldReportOnCommit && needToReport) {
               eliminateProgressIndex();
+            }
+            if (sourceTsFileInsertionEvent != null
+                && generatedEventOutcomeReported.compareAndSet(false, true)) {
+              sourceTsFileInsertionEvent.markGeneratedTabletInsertionEventAsTransferred();
             }
           });
     }
@@ -259,6 +274,22 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     return true;
   }
 
+  /** Marks this generated tablet as accepted by the processor output collector. */
+  public void markAsGeneratedEventRegisteredWithSource() {
+    generatedEventRegisteredWithSource.set(true);
+  }
+
+  @Override
+  public boolean clearReferenceCount(final String holderMessage) {
+    final boolean cleared = super.clearReferenceCount(holderMessage);
+    if (generatedEventRegisteredWithSource.get()
+        && generatedEventOutcomeReported.compareAndSet(false, true)
+        && sourceTsFileInsertionEvent != null) {
+      sourceTsFileInsertionEvent.markGeneratedTabletInsertionEventAsDiscarded();
+    }
+    return cleared;
+  }
+
   protected void eliminateProgressIndex() {
     if (sourceEvent instanceof PipeTsFileInsertionEvent) {
       ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
@@ -334,7 +365,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   }
 
   public void markAsNeedToReport() {
-    if (!needToReport) {
+    if (!needToReport && !(sourceEvent instanceof PipeTsFileInsertionEvent)) {
       addOnCommittedHook(
           () -> {
             if (shouldReportOnCommit) {
@@ -399,6 +430,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     return tableModelDatabaseName != null
         ? tableModelDatabaseName
         : sourceDatabaseNameFromDataRegion;
+  }
+
+  /** Returns the original TsFile, including when a processor has transformed its tablets. */
+  public PipeTsFileInsertionEvent getSourceTsFileInsertionEvent() {
+    return sourceTsFileInsertionEvent;
   }
 
   @Override

@@ -185,6 +185,7 @@ public class ColumnHeaderConstant {
   public static final String REPAIR_DATA_PARTITION_TABLE_STATUS = "Status";
   public static final String REPAIR_DATA_PARTITION_TABLE_PROGRESS = "Progress(%)";
   public static final String REPAIR_DATA_PARTITION_TABLE_MESSAGE = "Message";
+  public static final String IS_DEGRADED = "IsDegraded";
 
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
@@ -453,7 +454,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
           new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT),
-          new ColumnHeader(RECENT_FAILURES, TSDataType.TEXT));
+          new ColumnHeader(RECENT_FAILURES, TSDataType.TEXT),
+          new ColumnHeader(IS_DEGRADED, TSDataType.BOOLEAN));
 
   public static final List<ColumnHeader> showRepairDataPartitionTableProgressColumnHeaders =
       ImmutableList.of(

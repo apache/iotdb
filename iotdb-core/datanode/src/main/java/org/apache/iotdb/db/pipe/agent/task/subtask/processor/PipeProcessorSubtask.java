@@ -165,7 +165,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     try {
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
-        if (event instanceof TabletInsertionEvent) {
+        if (event.shouldSkipProcessing()) {
+          outputEventCollector.collect(event);
+        } else if (event instanceof TabletInsertionEvent) {
           pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
         } else if (event instanceof TsFileInsertionEvent) {
@@ -176,14 +178,16 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                   pipeNameWithCreationTime, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);
-          ((PipeHeartbeatEvent) event).onProcessed();
-          PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         } else {
           pipeProcessor.process(
               event instanceof UserDefinedEnrichedEvent
                   ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
                   : event,
               outputEventCollector);
+        }
+        if (event instanceof PipeHeartbeatEvent) {
+          ((PipeHeartbeatEvent) event).onProcessed();
+          PipeProcessorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
         }
       }
 

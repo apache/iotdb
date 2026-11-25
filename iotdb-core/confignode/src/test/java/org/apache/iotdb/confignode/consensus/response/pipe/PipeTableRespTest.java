@@ -161,11 +161,30 @@ public class PipeTableRespTest {
     final Map<String, Long> secondNodeFailures = new HashMap<>();
     secondNodeFailures.put("network_timeout", 2L);
     temporaryMeta.setRecentFailures(2, secondNodeFailures);
-
     final TShowPipeInfo showPipeInfo =
         pipeTableResp.convertToTShowPipeResp().getPipeInfoList().get(0);
     Assert.assertEquals(Long.valueOf(12), showPipeInfo.getRecentFailures().get("network_timeout"));
     Assert.assertEquals(Long.valueOf(15), showPipeInfo.getRecentFailures().get("memory_timeout"));
+  }
+
+  @Test
+  public void testConvertToTShowPipeRespIncludesDegradedStatus() {
+    final PipeTableResp pipeTableResp = constructPipeTableResp();
+    ((PipeTemporaryMetaInCoordinator) pipeTableResp.getAllPipeMeta().get(0).getTemporaryMeta())
+        .setDegraded(1, true);
+    ((PipeTemporaryMetaInCoordinator) pipeTableResp.getAllPipeMeta().get(1).getTemporaryMeta())
+        .setDegraded(1, false);
+
+    final List<TShowPipeInfo> showPipeResult =
+        pipeTableResp.convertToTShowPipeResp().getPipeInfoList();
+
+    Assert.assertEquals(3, showPipeResult.size());
+    Assert.assertEquals("testPipe", showPipeResult.get(0).getId());
+    Assert.assertTrue(showPipeResult.get(0).isSetIsDegraded());
+    Assert.assertTrue(showPipeResult.get(0).isIsDegraded());
+    Assert.assertTrue(showPipeResult.get(1).isSetIsDegraded());
+    Assert.assertFalse(showPipeResult.get(1).isIsDegraded());
+    Assert.assertFalse(showPipeResult.get(2).isSetIsDegraded());
   }
 
   @Test

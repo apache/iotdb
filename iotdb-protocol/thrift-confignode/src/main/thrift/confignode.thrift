@@ -736,6 +736,7 @@ struct TShowPipeInfo {
   8: optional i64 remainingEventCount
   9: optional double EstimatedRemainingTime
   11: optional map<string, i64> recentFailures
+  10: optional bool isDegraded
 }
 
 struct TGetAllPipeInfoResp {

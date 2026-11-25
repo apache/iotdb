@@ -405,7 +405,7 @@ public class PipeProcessorSubtaskExecutionGuardTest {
           0,
           supplier,
           processor,
-          new PipeEventCollector(outputQueue, 0, 0, true, false));
+          new PipeEventCollector(outputQueue, 0, 0, 0, true, false));
       // Use the production scheduler without creating the process-wide worker thread pool.
       subtaskScheduler = new PipeSubtaskScheduler(mock(PipeSubtaskExecutor.class));
     }

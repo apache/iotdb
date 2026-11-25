@@ -51,6 +51,11 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class PipeTerminateEvent extends EnrichedEvent {
 
+  @Override
+  public boolean isControlEvent() {
+    return true;
+  }
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTerminateEvent.class);
 
   private final int dataRegionId;

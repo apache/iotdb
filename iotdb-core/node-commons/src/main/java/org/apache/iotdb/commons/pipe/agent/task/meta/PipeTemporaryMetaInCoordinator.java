@@ -39,6 +39,7 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
   private final ConcurrentMap<Integer, Double> nodeId2RemainingTimeMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<Integer, RecentFailureSnapshot> nodeId2RecentFailuresMap =
       new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, Boolean> nodeId2IsDegradedMap = new ConcurrentHashMap<>();
 
   public void markDataNodeCompleted(final int dataNodeId) {
     completedDataNodeIds.add(dataNodeId);
@@ -77,6 +78,14 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
     }
   }
 
+  public void setDegraded(final int dataNodeId, final Boolean isDegraded) {
+    if (Objects.isNull(isDegraded)) {
+      nodeId2IsDegradedMap.remove(dataNodeId);
+    } else {
+      nodeId2IsDegradedMap.put(dataNodeId, isDegraded);
+    }
+  }
+
   public Set<Integer> getCompletedDataNodeIds() {
     return completedDataNodeIds;
   }
@@ -106,6 +115,13 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
     return result;
   }
 
+  public Boolean getGlobalDegraded() {
+    if (nodeId2IsDegradedMap.values().stream().anyMatch(Boolean.TRUE::equals)) {
+      return true;
+    }
+    return nodeId2IsDegradedMap.isEmpty() ? null : false;
+  }
+
   @Override
   public boolean equals(final Object o) {
     if (this == o) {
@@ -118,7 +134,8 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
     return Objects.equals(this.completedDataNodeIds, that.completedDataNodeIds)
         && Objects.equals(this.nodeId2RemainingEventMap, that.nodeId2RemainingEventMap)
         && Objects.equals(this.nodeId2RemainingTimeMap, that.nodeId2RemainingTimeMap)
-        && Objects.equals(this.nodeId2RecentFailuresMap, that.nodeId2RecentFailuresMap);
+        && Objects.equals(this.nodeId2RecentFailuresMap, that.nodeId2RecentFailuresMap)
+        && Objects.equals(this.nodeId2IsDegradedMap, that.nodeId2IsDegradedMap);
   }
 
   @Override
@@ -127,7 +144,8 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
         completedDataNodeIds,
         nodeId2RemainingEventMap,
         nodeId2RemainingTimeMap,
-        nodeId2RecentFailuresMap);
+        nodeId2RecentFailuresMap,
+        nodeId2IsDegradedMap);
   }
 
   @Override
@@ -141,6 +159,8 @@ public class PipeTemporaryMetaInCoordinator implements PipeTemporaryMeta {
         + nodeId2RemainingTimeMap
         + ", nodeId2RecentFailuresMap="
         + nodeId2RecentFailuresMap
+        + ", nodeId2IsDegradedMap="
+        + nodeId2IsDegradedMap
         + '}';
   }
 

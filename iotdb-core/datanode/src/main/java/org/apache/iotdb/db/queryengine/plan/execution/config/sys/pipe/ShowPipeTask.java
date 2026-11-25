@@ -128,6 +128,11 @@ public class ShowPipeTask implements IConfigTask {
                       ? new TreeMap<>(tPipeInfo.getRecentFailures()).toString()
                       : "{}",
                   TSFileConfig.STRING_CHARSET));
+      if (tPipeInfo.isSetIsDegraded()) {
+        builder.getColumnBuilder(10).writeBoolean(tPipeInfo.isIsDegraded());
+      } else {
+        builder.getColumnBuilder(10).appendNull();
+      }
       builder.declarePosition();
     }
     final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task.connection;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeRealtimePriorityBlockingQueue;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -47,12 +48,42 @@ public class PipeEventCollectorTest {
     verifyCollectorDoesNotOfferEventsOfDroppedPipe(new PipeRealtimePriorityBlockingQueue());
   }
 
+  @Test
+  public void testRealtimeQueueRetainsRetryHeartbeatAfterCompletionBarrier() {
+    final PipeRealtimePriorityBlockingQueue pendingQueue = new PipeRealtimePriorityBlockingQueue();
+    final PipeHeartbeatEvent completionBarrier = new PipeHeartbeatEvent("1", false, true);
+    final PipeHeartbeatEvent retryHeartbeat = new PipeHeartbeatEvent("1", false);
+    final PipeHeartbeatEvent coalescedHeartbeat = new PipeHeartbeatEvent("1", false);
+    Assert.assertTrue(completionBarrier.increaseReferenceCount(PipeEventCollector.class.getName()));
+    Assert.assertTrue(retryHeartbeat.increaseReferenceCount(PipeEventCollector.class.getName()));
+    Assert.assertTrue(
+        coalescedHeartbeat.increaseReferenceCount(PipeEventCollector.class.getName()));
+
+    try {
+      Assert.assertTrue(pendingQueue.offer(completionBarrier));
+      Assert.assertTrue(pendingQueue.offer(retryHeartbeat));
+      Assert.assertFalse(pendingQueue.offer(coalescedHeartbeat));
+
+      Assert.assertEquals(2, pendingQueue.size());
+      Assert.assertTrue(coalescedHeartbeat.isReleased());
+      Assert.assertSame(completionBarrier, pendingQueue.directPoll());
+      Assert.assertSame(retryHeartbeat, pendingQueue.directPoll());
+      Assert.assertFalse(completionBarrier.isReleased());
+      Assert.assertFalse(retryHeartbeat.isReleased());
+    } finally {
+      pendingQueue.discardAllEvents();
+      completionBarrier.clearReferenceCount(PipeEventCollector.class.getName());
+      retryHeartbeat.clearReferenceCount(PipeEventCollector.class.getName());
+      coalescedHeartbeat.clearReferenceCount(PipeEventCollector.class.getName());
+    }
+  }
+
   private void verifyCollectorDoesNotOfferEventsOfDroppedPipe(
       final UnboundedBlockingPendingQueue<Event> pendingQueue) {
     pendingQueue.discardEventsOfPipe("pipe", 1L, 1);
 
     final PipeEventCollector droppedPipeCollector =
-        new PipeEventCollector(pendingQueue, 1L, 1, false, false);
+        new PipeEventCollector(pendingQueue, 1L, 1, Long.MIN_VALUE, false, false);
     final PipeRawTabletInsertionEvent droppedPipeEvent =
         createPipeRawTabletInsertionEvent("pipe", 1L);
     droppedPipeCollector.collect(droppedPipeEvent);
@@ -61,7 +92,7 @@ public class PipeEventCollectorTest {
     Assert.assertEquals(0, pendingQueue.size());
 
     final PipeEventCollector recreatedPipeCollector =
-        new PipeEventCollector(pendingQueue, 2L, 1, false, false);
+        new PipeEventCollector(pendingQueue, 2L, 1, Long.MIN_VALUE, false, false);
     final PipeRawTabletInsertionEvent recreatedPipeEvent =
         createPipeRawTabletInsertionEvent("pipe", 2L);
     recreatedPipeCollector.collect(recreatedPipeEvent);

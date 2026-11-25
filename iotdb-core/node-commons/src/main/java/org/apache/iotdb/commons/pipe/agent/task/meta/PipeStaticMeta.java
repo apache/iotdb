@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -29,6 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +46,10 @@ public class PipeStaticMeta {
   private PipeParameters extractorParameters;
   private PipeParameters processorParameters;
   private PipeParameters connectorParameters;
+
+  // Derived from static plugin/load parameters once per metadata incarnation; never serialized.
+  // Runtime health, task membership, and extraction state must still be checked on every sample.
+  private boolean supportCompletionMark;
 
   private PipeStaticMeta() {
     // Empty constructor
@@ -57,6 +66,32 @@ public class PipeStaticMeta {
     extractorParameters = new PipeParameters(extractorAttributes);
     processorParameters = new PipeParameters(processorAttributes);
     connectorParameters = new PipeParameters(connectorAttributes);
+    updateCompletionSupport();
+  }
+
+  public boolean supportsCompletionMark() {
+    return supportCompletionMark;
+  }
+
+  private void updateCompletionSupport() {
+    supportCompletionMark =
+        getPipeType() == PipeType.USER
+            && BuiltinPipePlugin.supportsCompletionMark(
+                extractorParameters.getStringOrDefault(
+                    Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()))
+            && BuiltinPipePlugin.supportsCompletionMark(
+                processorParameters.getStringOrDefault(
+                    PipeProcessorConstant.PROCESSOR_KEY,
+                    BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()))
+            && BuiltinPipePlugin.supportsCompletionMark(
+                PipeSinkConstant.getConnectorOrSinkNameWithDefault(connectorParameters))
+            && PipeSinkConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE.equalsIgnoreCase(
+                connectorParameters.getStringOrDefault(
+                    Arrays.asList(
+                        PipeSinkConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_KEY,
+                        PipeSinkConstant.SINK_LOAD_TSFILE_STRATEGY_KEY),
+                    PipeSinkConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE));
   }
 
   public String getPipeName() {
@@ -140,6 +175,7 @@ public class PipeStaticMeta {
       pipeStaticMeta.connectorParameters.getAttribute().put(key, value);
     }
 
+    pipeStaticMeta.updateCompletionSupport();
     return pipeStaticMeta;
   }
 
@@ -172,6 +208,7 @@ public class PipeStaticMeta {
       pipeStaticMeta.connectorParameters.getAttribute().put(key, value);
     }
 
+    pipeStaticMeta.updateCompletionSupport();
     return pipeStaticMeta;
   }
 

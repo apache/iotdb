@@ -55,4 +55,70 @@ public class PipeTemporaryMetaTest {
         Long.valueOf(3), coordinatorMeta.getGlobalRecentFailures().get("network_timeout"));
     Assert.assertFalse(coordinatorMeta.getGlobalRecentFailures().containsKey("memory_timeout"));
   }
+
+  @Test
+  public void testTsFileEpochDegradedStatusCodec() {
+    Assert.assertEquals(
+        PipeTemporaryMeta.TS_FILE_EPOCH_DEGRADED_STATUS_UNKNOWN,
+        PipeTemporaryMeta.encodeTsFileEpochDegradedStatus(null));
+    Assert.assertEquals(
+        PipeTemporaryMeta.TS_FILE_EPOCH_DEGRADED_STATUS_FALSE,
+        PipeTemporaryMeta.encodeTsFileEpochDegradedStatus(false));
+    Assert.assertEquals(
+        PipeTemporaryMeta.TS_FILE_EPOCH_DEGRADED_STATUS_TRUE,
+        PipeTemporaryMeta.encodeTsFileEpochDegradedStatus(true));
+
+    Assert.assertNull(PipeTemporaryMeta.decodeTsFileEpochDegradedStatus(null));
+    Assert.assertNull(
+        PipeTemporaryMeta.decodeTsFileEpochDegradedStatus(
+            PipeTemporaryMeta.TS_FILE_EPOCH_DEGRADED_STATUS_UNKNOWN));
+    Assert.assertEquals(
+        Boolean.FALSE,
+        PipeTemporaryMeta.decodeTsFileEpochDegradedStatus(
+            PipeTemporaryMeta.TS_FILE_EPOCH_DEGRADED_STATUS_FALSE));
+    Assert.assertEquals(
+        Boolean.TRUE,
+        PipeTemporaryMeta.decodeTsFileEpochDegradedStatus(
+            PipeTemporaryMeta.TS_FILE_EPOCH_DEGRADED_STATUS_TRUE));
+  }
+
+  @Test
+  public void testAgentAggregatesTsFileEpochDegradedStatus() {
+    final PipeTemporaryMetaInAgent temporaryMeta = new PipeTemporaryMetaInAgent("test_pipe", 1L);
+
+    Assert.assertNull(temporaryMeta.getGlobalTsFileEpochDegraded());
+
+    temporaryMeta.setTsFileEpochDegraded(1, false);
+    temporaryMeta.setTsFileEpochDegraded(2, false);
+    Assert.assertEquals(Boolean.FALSE, temporaryMeta.getGlobalTsFileEpochDegraded());
+
+    temporaryMeta.setTsFileEpochDegraded(2, true);
+    Assert.assertEquals(Boolean.TRUE, temporaryMeta.getGlobalTsFileEpochDegraded());
+
+    temporaryMeta.clearTsFileEpochDegraded(2);
+    Assert.assertEquals(Boolean.FALSE, temporaryMeta.getGlobalTsFileEpochDegraded());
+
+    temporaryMeta.clearTsFileEpochDegraded(1);
+    Assert.assertNull(temporaryMeta.getGlobalTsFileEpochDegraded());
+  }
+
+  @Test
+  public void testCoordinatorAggregatesNullableDegradedStatus() {
+    final PipeTemporaryMetaInCoordinator temporaryMeta = new PipeTemporaryMetaInCoordinator();
+
+    Assert.assertNull(temporaryMeta.getGlobalDegraded());
+
+    temporaryMeta.setDegraded(1, false);
+    temporaryMeta.setDegraded(2, false);
+    Assert.assertEquals(Boolean.FALSE, temporaryMeta.getGlobalDegraded());
+
+    temporaryMeta.setDegraded(2, true);
+    Assert.assertEquals(Boolean.TRUE, temporaryMeta.getGlobalDegraded());
+
+    temporaryMeta.setDegraded(2, null);
+    Assert.assertEquals(Boolean.FALSE, temporaryMeta.getGlobalDegraded());
+
+    temporaryMeta.setDegraded(1, null);
+    Assert.assertNull(temporaryMeta.getGlobalDegraded());
+  }
 }

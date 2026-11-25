@@ -65,6 +65,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       final long creationTime,
       final PipeParameters pipeProcessorParameters,
       final int regionId,
+      final long sourceId,
       final EventSupplier pipeSourceInputEventSupplier,
       final UnboundedBlockingPendingQueue<Event> pipeSinkOutputPendingQueue,
       final PipeProcessorSubtaskExecutor executor,
@@ -104,7 +105,12 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     final String taskId = pipeName + "_" + regionId + "_" + creationTime;
     final PipeEventCollector pipeSinkOutputEventCollector =
         new PipeEventCollector(
-            pipeSinkOutputPendingQueue, creationTime, regionId, forceTabletFormat, skipParsing);
+            pipeSinkOutputPendingQueue,
+            creationTime,
+            regionId,
+            sourceId,
+            forceTabletFormat,
+            skipParsing);
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
