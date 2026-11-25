@@ -69,6 +69,7 @@ jobs:
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=2 \
+          -DDataNodeMaxDirectMemorySize=768 \
           -pl integration-test \
           -am
       - name: Upload Artifact
@@ -119,6 +120,7 @@ jobs:
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=2 \
+          -DDataNodeMaxDirectMemorySize=768 \
           -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
           -DfailIfNoTests=false \
           -Dfailsafe.failIfNoSpecifiedTests=false \
