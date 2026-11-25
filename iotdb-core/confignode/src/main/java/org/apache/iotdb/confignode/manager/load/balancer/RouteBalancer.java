@@ -644,53 +644,59 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     if (!leaderEpoch.getAsBoolean()) {
       return;
     }
-    final Pair<Long, Map<TConsensusGroupId, TRegionReplicaSet>> routeMapSnapshot;
-    final Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> differentPriorityMap =
-        new TreeMap<>();
-    priorityMapLock.writeLock().lock();
-    try {
-      final PartitionManager partitionManager = getPartitionManager();
-      if (onlyIfMetadataChanged
-          && publishedReplicaSetVersion == partitionManager.getRegionReplicaSetVersion()) {
-        return;
-      }
-      final Pair<Long, List<TRegionReplicaSet>> replicaSets =
-          partitionManager.getAllActiveReplicaSetsSnapshot();
-      final Map<TConsensusGroupId, TRegionReplicaSet> optimalRegionPriorityMap =
-          priorityRouter.generateOptimalRoutePriority(
-              replicaSets.getRight(), getLoadManager().getRegionLeaderMap());
+    final PartitionManager partitionManager = getPartitionManager();
+    while (leaderEpoch == currentLeaderEpoch && leaderEpoch.getAsBoolean()) {
+      Pair<Long, Map<TConsensusGroupId, TRegionReplicaSet>> routeMapSnapshot = null;
+      final Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
+          differentPriorityMap = new TreeMap<>();
+      boolean replicaSetVersionChanged = false;
+      priorityMapLock.writeLock().lock();
+      try {
+        if (onlyIfMetadataChanged
+            && publishedReplicaSetVersion == partitionManager.getRegionReplicaSetVersion()) {
+          return;
+        }
+        final Pair<Long, List<TRegionReplicaSet>> replicaSets =
+            partitionManager.getAllActiveReplicaSetsSnapshot();
+        final Map<TConsensusGroupId, TRegionReplicaSet> optimalRegionPriorityMap =
+            priorityRouter.generateOptimalRoutePriority(
+                replicaSets.getRight(), getLoadManager().getRegionLeaderMap());
 
-      optimalRegionPriorityMap.forEach(
-          (regionGroupId, optimalRegionPriority) -> {
-            TRegionReplicaSet currentRegionPriority = regionPriorityMap.get(regionGroupId);
-            if (!optimalRegionPriority.equals(currentRegionPriority)) {
-              differentPriorityMap.put(
-                  regionGroupId, new Pair<>(currentRegionPriority, optimalRegionPriority));
-            }
-          });
-      if (replicaSets.getLeft() != partitionManager.getRegionReplicaSetVersion()
-          || leaderEpoch != currentLeaderEpoch
-          || !leaderEpoch.getAsBoolean()) {
-        return;
+        optimalRegionPriorityMap.forEach(
+            (regionGroupId, optimalRegionPriority) -> {
+              TRegionReplicaSet currentRegionPriority = regionPriorityMap.get(regionGroupId);
+              if (!optimalRegionPriority.equals(currentRegionPriority)) {
+                differentPriorityMap.put(
+                    regionGroupId, new Pair<>(currentRegionPriority, optimalRegionPriority));
+              }
+            });
+        replicaSetVersionChanged =
+            replicaSets.getLeft() != partitionManager.getRegionReplicaSetVersion();
+        if (!replicaSetVersionChanged
+            && leaderEpoch == currentLeaderEpoch
+            && leaderEpoch.getAsBoolean()) {
+          if (publishedReplicaSetVersion < 0
+              || !differentPriorityMap.isEmpty()
+              || optimalRegionPriorityMap.size() != regionPriorityMap.size()) {
+            updateRegionRouteMapTimestamp();
+            regionPriorityMap.clear();
+            regionPriorityMap.putAll(optimalRegionPriorityMap);
+            routeMapSnapshot = new Pair<>(regionRouteMapTimestamp, optimalRegionPriorityMap);
+          }
+          publishedReplicaSetVersion = replicaSets.getLeft();
+        }
+      } finally {
+        priorityMapLock.writeLock().unlock();
       }
-      if (publishedReplicaSetVersion < 0
-          || !differentPriorityMap.isEmpty()
-          || optimalRegionPriorityMap.size() != regionPriorityMap.size()) {
-        updateRegionRouteMapTimestamp();
-        regionPriorityMap.clear();
-        regionPriorityMap.putAll(optimalRegionPriorityMap);
-        routeMapSnapshot = new Pair<>(regionRouteMapTimestamp, optimalRegionPriorityMap);
-      } else {
-        routeMapSnapshot = null;
-      }
-      publishedReplicaSetVersion = replicaSets.getLeft();
-    } finally {
-      priorityMapLock.writeLock().unlock();
-    }
 
-    if (routeMapSnapshot != null) {
-      recordRegionPriorityMap(differentPriorityMap);
-      broadcastRegionPriorityMap(routeMapSnapshot, leaderEpoch);
+      if (replicaSetVersionChanged) {
+        continue;
+      }
+      if (routeMapSnapshot != null) {
+        recordRegionPriorityMap(differentPriorityMap);
+        broadcastRegionPriorityMap(routeMapSnapshot, leaderEpoch);
+      }
+      return;
     }
   }
 

@@ -74,6 +74,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class PartitionCacheTest {
@@ -446,8 +448,27 @@ public class PartitionCacheTest {
     assertThrows(
         StatementAnalyzeException.class,
         () -> partitionCache.getRegionReplicaSet(List.of(regionId)));
+    verify(routeClient, times(3)).getLatestRegionRouteMap();
     assertTrue(partitionCache.updateGroupIdToReplicaSetMap(200, Map.of(regionId, replicaSet)));
     assertEquals(List.of(replicaSet), partitionCache.getRegionReplicaSet(List.of(regionId)));
+  }
+
+  @Test
+  public void testRouteMapFetchRetriesAfterLeaderWarmingUp() throws Exception {
+    final TConsensusGroupId regionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 9001);
+    final TRegionReplicaSet replicaSet = new TRegionReplicaSet(regionId, List.of());
+    when(routeClient.getLatestRegionRouteMap())
+        .thenReturn(
+            new TRegionRouteMapResp(
+                    new TSStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()))
+                .setTimestamp(300)
+                .setRegionRouteMap(Map.of(regionId, replicaSet)),
+            new TRegionRouteMapResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+                .setTimestamp(301)
+                .setRegionRouteMap(Map.of(regionId, replicaSet)));
+
+    assertEquals(List.of(replicaSet), partitionCache.getRegionReplicaSet(List.of(regionId)));
+    verify(routeClient, times(2)).getLatestRegionRouteMap();
   }
 
   /**

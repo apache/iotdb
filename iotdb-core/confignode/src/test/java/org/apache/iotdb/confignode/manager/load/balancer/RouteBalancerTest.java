@@ -106,9 +106,6 @@ public class RouteBalancerTest {
 
     balancer.refreshRegionPriorityIfNeeded();
 
-    assertNull(balancer.getRegionPriorityMapSnapshot());
-    assertTrue(pushed.isEmpty());
-    balancer.refreshRegionPriorityIfNeeded();
     assertPublished(balancer, 1, Set.of(data.getRegionId(), schema.getRegionId()));
   }
 
@@ -182,9 +179,6 @@ public class RouteBalancerTest {
 
     balancer.refreshRegionPriorityIfNeeded();
 
-    assertNull(balancer.getRegionPriorityMapSnapshot());
-    assertEquals(1, pushed.size());
-    balancer.refreshRegionPriorityIfNeeded();
     final long deletionVersion = assertPublished(balancer, 2, Set.of(kept.getRegionId()));
     assertTrue(deletionVersion > initialVersion);
     partitionInfo.deleteDatabase(new DeleteDatabasePlan(DATABASE));

@@ -702,6 +702,9 @@ public class PartitionCache {
             && resp.isSetRegionRouteMap()) {
           updateGroupIdToReplicaSetMap(
               resp.getTimestamp(), resp.getRegionRouteMap(), invalidationVersion);
+        } else if (isRetryableRegionRouteMapStatus(resp.getStatus())
+            && attempt + 1 < MAX_REGION_ROUTE_MAP_FETCH_ATTEMPTS) {
+          continue;
         } else {
           throw new TException(resp.getStatus().toString());
         }
@@ -737,6 +740,11 @@ public class PartitionCache {
             DataNodeQueryMessages
                 .QUERY_EXCEPTION_FAILED_TO_GET_REPLICASET_OF_CONSENSUS_GROUPS_IDS_S_CC30C7A6,
             consensusGroupIds));
+  }
+
+  private boolean isRetryableRegionRouteMapStatus(TSStatus status) {
+    return status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()
+        || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode();
   }
 
   private List<TRegionReplicaSet> getCachedRegionReplicaSets(
