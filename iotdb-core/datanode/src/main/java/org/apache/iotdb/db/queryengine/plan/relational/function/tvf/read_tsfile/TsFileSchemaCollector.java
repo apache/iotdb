@@ -31,6 +31,8 @@ import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,6 +49,8 @@ import java.util.stream.Stream;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 
 final class TsFileSchemaCollector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileSchemaCollector.class);
+
   private final String specifiedTableName;
   private final MPPQueryContext mppQueryContext;
   private String tableName;
@@ -180,7 +184,7 @@ final class TsFileSchemaCollector {
     } catch (UDFArgumentNotValidException e) {
       throw e;
     } catch (Exception e) {
-      throw failedToReadTableSchemaException(tsFile);
+      throw failedToReadTableSchemaException(tsFile, e);
     }
   }
 
@@ -204,7 +208,7 @@ final class TsFileSchemaCollector {
     } catch (UDFArgumentNotValidException e) {
       throw e;
     } catch (Exception e) {
-      throw failedToReadTableSchemaException(tsFile);
+      throw failedToReadTableSchemaException(tsFile, e);
     }
   }
 
@@ -219,9 +223,11 @@ final class TsFileSchemaCollector {
         DataNodeQueryMessages.FILE_IS_NOT_A_VALID_TSFILE + tsFile.getAbsolutePath());
   }
 
-  private UDFArgumentNotValidException failedToReadTableSchemaException(File tsFile) {
-    return new UDFArgumentNotValidException(
-        DataNodeQueryMessages.FAILED_TO_READ_TABLE_SCHEMA_FROM_TSFILE + tsFile.getAbsolutePath());
+  UDFArgumentNotValidException failedToReadTableSchemaException(File tsFile, Exception cause) {
+    String message =
+        DataNodeQueryMessages.FAILED_TO_READ_TABLE_SCHEMA_FROM_TSFILE + tsFile.getAbsolutePath();
+    LOGGER.warn(message, cause);
+    return new UDFArgumentNotValidException(message, cause);
   }
 
   private static class MergedTableSchemaBuilder {
