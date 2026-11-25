@@ -534,7 +534,7 @@ public class AutoResizingBufferTest {
     try {
       buffer.resizeIfNecessary(200);
       Assert.fail("Expected IOException");
-    } catch (IOException e) {
+    } catch (AutoResizingBufferMemoryAllocationException e) {
       Assert.assertTrue(e.getMessage().contains("100"));
       Assert.assertTrue(e.getMessage().contains("5"));
     } finally {
@@ -542,6 +542,30 @@ public class AutoResizingBufferTest {
       Assert.assertEquals(42, buffer.array()[99]);
       Assert.assertEquals(100, memoryControl.getUsedMemoryInBytes());
       buffer.close();
+    }
+  }
+
+  @Test
+  public void testInterruptedMemoryAllocationRemainsRegularIOException() {
+    memoryControl.setLimit(0);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+    final boolean wasInterrupted = Thread.interrupted();
+
+    try {
+      Thread.currentThread().interrupt();
+      new AutoResizingBuffer(100);
+      Assert.fail("Expected allocation interruption");
+    } catch (IOException e) {
+      Assert.assertFalse(e instanceof AutoResizingBufferMemoryAllocationException);
+      Assert.assertTrue(e.getCause() instanceof InterruptedException);
+      Assert.assertTrue(Thread.currentThread().isInterrupted());
+    } finally {
+      if (wasInterrupted) {
+        Thread.currentThread().interrupt();
+      } else {
+        Thread.interrupted();
+      }
     }
   }
 
