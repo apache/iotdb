@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
 
 public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents {
 

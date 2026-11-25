@@ -94,8 +94,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.StringType;
@@ -109,7 +109,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode.COLUMN_NAME_PREFIX;
@@ -119,6 +118,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGI
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.visibleFields;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice.getDeviceColumnHeaderList;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
 
 public class TableLogicalPlanner {
   private final MPPQueryContext queryContext;

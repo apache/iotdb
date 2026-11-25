@@ -45,7 +45,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.ratis.util.function.CheckedBiFunction;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;

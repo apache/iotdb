@@ -26,7 +26,7 @@ import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskStatus;
 
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.junit.Test;
 
 import java.util.ArrayList;

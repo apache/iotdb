@@ -37,9 +37,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Ada
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.session.Session;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import io.airlift.units.Duration;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +51,6 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.lang.System.nanoTime;
 import static java.util.Objects.requireNonNull;
@@ -61,6 +60,7 @@ import static java.util.stream.Collectors.joining;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector;
 import static org.apache.iotdb.rpc.TSStatusCode.OPTIMIZER_TIMEOUT;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class IterativeOptimizer implements AdaptivePlanOptimizer {
   private static final Logger LOG = LoggerFactory.getLogger(IterativeOptimizer.class);

@@ -43,13 +43,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.math.LongMath.saturatedAdd;
-import static com.google.common.math.LongMath.saturatedSubtract;
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.getWindowStartExact;
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.getWindowStartWithoutOverflow;
 import static org.apache.iotdb.commons.utils.CommonDateTimeUtils.saturateToLong;
 import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedSubtract;
 
 public class HOPTableFunction implements TableFunction {
 

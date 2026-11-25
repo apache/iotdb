@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import com.google.common.collect.Range;
+import org.apache.ratis.thirdparty.com.google.common.collect.Range;
 
 import static java.util.Objects.requireNonNull;
 

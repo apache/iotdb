@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 import java.util.Optional;
 

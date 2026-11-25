@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
-import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.Uninterruptibles;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

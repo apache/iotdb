@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.exchange;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
 
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.mockito.Mockito;
@@ -34,7 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.immediateFuture;
 
 public class Utils {
   public static List<TsBlock> createMockTsBlocks(int numOfTsBlocks, long mockTsBlockSize) {

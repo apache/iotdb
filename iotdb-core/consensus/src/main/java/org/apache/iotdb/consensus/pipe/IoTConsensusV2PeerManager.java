@@ -22,7 +22,7 @@ package org.apache.iotdb.consensus.pipe;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

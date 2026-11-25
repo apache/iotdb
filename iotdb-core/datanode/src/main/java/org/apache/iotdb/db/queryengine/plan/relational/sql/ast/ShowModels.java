@@ -24,12 +24,12 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.ratis.thirdparty.com.google.common.base.MoreObjects.toStringHelper;
 
 public class ShowModels extends Statement {
 

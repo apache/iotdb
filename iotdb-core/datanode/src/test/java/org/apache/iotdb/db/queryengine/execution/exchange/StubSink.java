@@ -22,14 +22,14 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
 public class StubSink implements ISink {
 

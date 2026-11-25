@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 
-import com.google.common.collect.Sets;
+import org.apache.ratis.thirdparty.com.google.common.collect.Sets;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

@@ -28,7 +28,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
-import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.Test;
 

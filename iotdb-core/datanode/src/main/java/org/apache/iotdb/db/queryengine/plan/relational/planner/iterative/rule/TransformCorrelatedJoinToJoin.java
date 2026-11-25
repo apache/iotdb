@@ -30,11 +30,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanNodeDecorrelator;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Pattern.nonEmpty;
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
@@ -43,6 +42,7 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Boole
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.CorrelatedJoin.correlation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.correlatedJoin;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 /**
  * Tries to decorrelate subquery and rewrite it using normal join. Decorrelated predicates are part

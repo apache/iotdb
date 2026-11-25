@@ -22,9 +22,9 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import org.apache.ratis.thirdparty.com.google.common.annotations.VisibleForTesting;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;

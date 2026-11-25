@@ -17,18 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.wal.exception;
+package org.apache.iotdb.rpc;
 
-public class MemTablePinException extends WALException {
-  public MemTablePinException(Throwable cause) {
-    super(cause);
-  }
+import java.io.IOException;
 
-  public MemTablePinException(String message) {
+public final class AutoResizingBufferMemoryAllocationException extends IOException {
+
+  public AutoResizingBufferMemoryAllocationException(final String message) {
     super(message);
-  }
-
-  public MemTablePinException(String message, Throwable cause) {
-    super(message, cause);
   }
 }

@@ -78,7 +78,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 

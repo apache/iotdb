@@ -29,8 +29,8 @@ import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 
-import com.google.common.primitives.Ints;
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.primitives.Ints;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -46,8 +46,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class StreamingAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =

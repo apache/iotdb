@@ -293,7 +293,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
@@ -310,6 +309,7 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.rel
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.MAX_SCHEMA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
+import static org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryContext> {

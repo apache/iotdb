@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFil
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Test;
 

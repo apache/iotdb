@@ -23,7 +23,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Constant;
 
-import com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +48,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertQueryFails;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -158,11 +159,7 @@ public class AINodeTestUtils {
   }
 
   public static void errorTest(Statement statement, String sql, String errorMessage) {
-    try (ResultSet ignored = statement.executeQuery(sql)) {
-      fail("There should be an exception");
-    } catch (SQLException e) {
-      assertEquals(errorMessage, e.getMessage());
-    }
+    assertEquals(errorMessage, assertQueryFails(statement, sql).getMessage());
   }
 
   public static void concurrentInference(

@@ -32,7 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
-import com.google.common.collect.Lists;
+import org.apache.ratis.thirdparty.com.google.common.collect.Lists;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

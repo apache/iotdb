@@ -30,7 +30,7 @@ import org.apache.iotdb.calc.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.RowComparator;
 import org.apache.iotdb.calc.i18n.CalcMessages;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;

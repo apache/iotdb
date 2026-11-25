@@ -30,7 +30,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 
 public class GroupedSumAccumulator implements GroupedAccumulator {
   private static final long INSTANCE_SIZE =

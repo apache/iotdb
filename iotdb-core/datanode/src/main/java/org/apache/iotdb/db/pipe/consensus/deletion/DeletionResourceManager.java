@@ -33,8 +33,8 @@ import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuff
 import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.Striped;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.Striped;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

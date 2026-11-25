@@ -27,10 +27,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatorStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TQueryStatistics;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import org.apache.ratis.thirdparty.com.google.gson.Gson;
+import org.apache.ratis.thirdparty.com.google.gson.GsonBuilder;
+import org.apache.ratis.thirdparty.com.google.gson.JsonArray;
+import org.apache.ratis.thirdparty.com.google.gson.JsonObject;
 
 import java.util.List;
 import java.util.Map;

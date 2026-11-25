@@ -41,7 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.util.List;

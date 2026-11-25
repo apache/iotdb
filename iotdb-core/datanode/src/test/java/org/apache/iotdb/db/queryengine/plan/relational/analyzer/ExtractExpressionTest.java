@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

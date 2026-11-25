@@ -34,10 +34,10 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.Futures;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,6 +127,20 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
           return;
         }
       }
+    }
+
+    if (throwable instanceof Exception && !PipeStopStrategy.accept((Exception) throwable, null)) {
+      final Exception exception = (Exception) throwable;
+      final PipeResourceFailureType failureType =
+          PipeStopStrategy.getResourceFailureType(exception, null);
+      if (lastEvent instanceof EnrichedEvent
+          && !PipeStopStrategy.isResourceFailureRecorded(exception)) {
+        reportResourceFailure((EnrichedEvent) lastEvent, failureType);
+      }
+      super.onFailure(
+          new PipeRuntimeSinkNonReportTimeConfigurableException(
+              throwable.getMessage(), Long.MAX_VALUE));
+      return;
     }
 
     synchronized (this) {

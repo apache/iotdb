@@ -235,16 +235,16 @@ import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecific
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.VerifyException;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.ListMultimap;
-import com.google.common.collect.Streams;
+import org.apache.ratis.thirdparty.com.google.common.base.Joiner;
+import org.apache.ratis.thirdparty.com.google.common.base.VerifyException;
+import org.apache.ratis.thirdparty.com.google.common.collect.ArrayListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet;
+import org.apache.ratis.thirdparty.com.google.common.collect.Iterables;
+import org.apache.ratis.thirdparty.com.google.common.collect.ListMultimap;
+import org.apache.ratis.thirdparty.com.google.common.collect.Streams;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.ObjectType;
@@ -282,14 +282,6 @@ import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.ImmutableMap.toImmutableMap;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
-import static com.google.common.collect.Iterables.getLast;
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.Math.toIntExact;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
@@ -318,6 +310,14 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressi
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkState;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap.toImmutableMap;
+import static org.apache.ratis.thirdparty.com.google.common.collect.ImmutableSet.toImmutableSet;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Iterables.getLast;
+import static org.apache.ratis.thirdparty.com.google.common.collect.Iterables.getOnlyElement;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {

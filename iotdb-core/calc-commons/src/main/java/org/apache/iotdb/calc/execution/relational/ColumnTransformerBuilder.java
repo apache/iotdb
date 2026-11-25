@@ -223,7 +223,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isBlobType;
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isCharType;
 import static org.apache.iotdb.calc.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
@@ -235,6 +234,7 @@ import static org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils
 import static org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils.isStringLiteral;
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.ratis.thirdparty.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;

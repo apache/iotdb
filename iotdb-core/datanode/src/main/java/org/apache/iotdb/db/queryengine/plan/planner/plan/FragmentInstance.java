@@ -46,7 +46,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import static com.google.common.math.LongMath.saturatedAdd;
+import static org.apache.ratis.thirdparty.com.google.common.math.LongMath.saturatedAdd;
 
 public class FragmentInstance implements IConsensusRequest {
 

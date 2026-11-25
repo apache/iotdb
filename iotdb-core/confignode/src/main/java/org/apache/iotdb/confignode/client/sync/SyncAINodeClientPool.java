@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.exception.UncheckedStartupException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableMap;
+import org.apache.ratis.thirdparty.com.google.common.collect.ImmutableMap;
 import org.apache.ratis.util.function.CheckedBiFunction;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
