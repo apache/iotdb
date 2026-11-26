@@ -1547,19 +1547,28 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     }
 
     if (!resourcesWithPinnedTsFile.contains(resource)) {
+      boolean resourceReadLockAcquired = false;
       try {
-        final boolean modFilePinned =
-            PipeDataNodeResourceManager.tsfile()
-                .pinTsFileResource(
-                    resource,
-                    shouldTransferModFile && !resourcesWithPinnedModFile.contains(resource),
-                    pipeNameWithCreationTime);
-        resourcesWithPinnedTsFile.add(resource);
-        if (modFilePinned) {
-          resourcesWithPinnedModFile.add(resource);
+        resource.readLock();
+        resourceReadLockAcquired = true;
+        if (!resourcesWithPinnedTsFile.contains(resource)) {
+          final boolean modFilePinned =
+              PipeDataNodeResourceManager.tsfile()
+                  .pinTsFileResource(
+                      resource,
+                      shouldTransferModFile && !resourcesWithPinnedModFile.contains(resource),
+                      pipeNameWithCreationTime);
+          resourcesWithPinnedTsFile.add(resource);
+          if (modFilePinned) {
+            resourcesWithPinnedModFile.add(resource);
+          }
         }
       } catch (final IOException e) {
         throw new PipeException(e.getMessage(), e);
+      } finally {
+        if (resourceReadLockAcquired) {
+          resource.readUnlock();
+        }
       }
     }
 

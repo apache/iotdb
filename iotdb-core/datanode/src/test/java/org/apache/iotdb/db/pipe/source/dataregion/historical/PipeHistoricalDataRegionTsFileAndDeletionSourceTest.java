@@ -163,6 +163,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
   @Test
   public void testActiveUnclosedTsFilePinFailureKeepsResourceForRetry() throws Exception {
     final AtomicBoolean failPathResolution = new AtomicBoolean(true);
+    final AtomicBoolean observeNextReadLock = new AtomicBoolean(false);
+    final CountDownLatch retryReadLockAttempted = new CountDownLatch(1);
     final File tempDir = Files.createTempDirectory("pipeHistoricalActivePinFailure").toFile();
     final File partitionDir = new File(tempDir, "sequence/db/2147483645/0");
     Assert.assertTrue(partitionDir.mkdirs());
@@ -175,11 +177,22 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
         new TsFileManager("root.db", "2147483645", tempDir.getAbsolutePath());
     final PipeHistoricalDataRegionTsFileAndDeletionSource source =
         new PipeHistoricalDataRegionTsFileAndDeletionSource();
+    final ExecutorService retryExecutor = Executors.newSingleThreadExecutor();
     PipeTsFileInsertionEvent event = null;
     try {
       final TsFileResource previouslyPinnedResource =
           createClosedTsFileResource(partitionDir, "1-1-0-0.tsfile", new SimpleProgressIndex(0, 1));
-      final TsFileResource resource = createTsFileResource(partitionDir, "2-1-0-0.tsfile");
+      final TsFileResource resource =
+          Mockito.spy(createTsFileResource(partitionDir, "2-1-0-0.tsfile"));
+      Mockito.doAnswer(
+              invocation -> {
+                if (observeNextReadLock.get()) {
+                  retryReadLockAttempted.countDown();
+                }
+                return invocation.callRealMethod();
+              })
+          .when(resource)
+          .readLock();
       final File previouslyPinnedTsFile =
           PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
               previouslyPinnedResource.getTsFile(), resourcePipeName);
@@ -250,11 +263,27 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
       Assert.assertTrue(selectedResources.containsKey(resource));
       Assert.assertFalse(pinnedResources.contains(resource));
       Assert.assertEquals(
+          MinimumProgressIndex.INSTANCE,
+          getPrivateField(source, "maxSuppliedHistoricalProgressReportIndex"));
+      Assert.assertEquals(
           0, resourceManager.getFileReferenceCount(unclosedTsFile, resourcePipeName));
       Mockito.verify(processor, Mockito.never()).addCloseFileListener(Mockito.any());
 
       failPathResolution.set(false);
-      event = (PipeTsFileInsertionEvent) source.supply();
+      observeNextReadLock.set(true);
+      final Future<Event> retryEvent;
+      resource.writeLock();
+      try {
+        retryEvent = retryExecutor.submit(source::supply);
+        Assert.assertTrue(retryReadLockAttempted.await(10, TimeUnit.SECONDS));
+        Assert.assertFalse(retryEvent.isDone());
+        Assert.assertEquals(
+            0, resourceManager.getFileReferenceCount(unclosedTsFile, resourcePipeName));
+      } finally {
+        resource.writeUnlock();
+      }
+      observeNextReadLock.set(false);
+      event = (PipeTsFileInsertionEvent) retryEvent.get(10, TimeUnit.SECONDS);
       Assert.assertNotNull(event);
       Assert.assertEquals(0, source.getPendingQueueSize());
       Assert.assertFalse(selectedResources.containsKey(resource));
@@ -265,6 +294,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
       if (event != null) {
         event.clearReferenceCount(getClass().getName());
       }
+      retryExecutor.shutdownNow();
+      retryExecutor.awaitTermination(10, TimeUnit.SECONDS);
       source.close();
       tsFileManager.getTsFileList(true).forEach(resource -> tsFileManager.remove(resource, true));
       resourceManager.cleanPipeTsFileDir(resourcePipeName);
@@ -539,7 +570,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
       final TsFileResource latestResource =
           createClosedTsFileResource(partitionDir, "5-1-0-0.tsfile", new SimpleProgressIndex(0, 5));
       createExclusiveModFile(initialResource);
+      createExclusiveModFile(initialBlockingResource);
       createExclusiveModFile(refreshedResource);
+      createExclusiveModFile(refreshedBlockingResource);
       createExclusiveModFile(latestResource);
 
       tsFileManager.add(initialResource, true);
@@ -627,11 +660,32 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
       final File latestTsFile =
           PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
               latestResource.getTsFile(), resourcePipeName);
+      final File initialModFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              initialResource.getExclusiveModFile().getFile(), resourcePipeName);
+      final File initialBlockedModFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              initialBlockingResource.getExclusiveModFile().getFile(), resourcePipeName);
+      final File refreshedModFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              refreshedResource.getExclusiveModFile().getFile(), resourcePipeName);
+      final File refreshedBlockedModFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              refreshedBlockingResource.getExclusiveModFile().getFile(), resourcePipeName);
+      final File latestModFile =
+          PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
+              latestResource.getExclusiveModFile().getFile(), resourcePipeName);
       Assert.assertEquals(
           0, resourceManager.getFileReferenceCount(initialTsFile, resourcePipeName));
       Assert.assertEquals(
           0, resourceManager.getFileReferenceCount(initialBlockedTsFile, resourcePipeName));
       Assert.assertEquals(0, resourceManager.getFileReferenceCount(latestTsFile, resourcePipeName));
+      Assert.assertEquals(
+          0, resourceManager.getFileReferenceCount(initialModFile, resourcePipeName));
+      Assert.assertEquals(
+          0, resourceManager.getFileReferenceCount(initialBlockedModFile, resourcePipeName));
+      Assert.assertEquals(
+          0, resourceManager.getFileReferenceCount(latestModFile, resourcePipeName));
       if (failRefreshedResourcePin) {
         Assert.assertTrue(originalResources.isEmpty());
         Assert.assertTrue(selectedResources.isEmpty());
@@ -639,6 +693,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
             0, resourceManager.getFileReferenceCount(refreshedTsFile, resourcePipeName));
         Assert.assertEquals(
             0, resourceManager.getFileReferenceCount(refreshedBlockedTsFile, resourcePipeName));
+        Assert.assertEquals(
+            0, resourceManager.getFileReferenceCount(refreshedModFile, resourcePipeName));
+        Assert.assertEquals(
+            0, resourceManager.getFileReferenceCount(refreshedBlockedModFile, resourcePipeName));
       } else {
         Assert.assertEquals(2, originalResources.size());
         Assert.assertTrue(originalResources.contains(refreshedResource));
@@ -650,6 +708,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
             1, resourceManager.getFileReferenceCount(refreshedTsFile, resourcePipeName));
         Assert.assertEquals(
             1, resourceManager.getFileReferenceCount(refreshedBlockedTsFile, resourcePipeName));
+        Assert.assertEquals(
+            1, resourceManager.getFileReferenceCount(refreshedModFile, resourcePipeName));
+        Assert.assertEquals(
+            1, resourceManager.getFileReferenceCount(refreshedBlockedModFile, resourcePipeName));
       }
     } finally {
       failPathResolution.set(false);
