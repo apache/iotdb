@@ -39,6 +39,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class AutoResizingBufferTest {
 
@@ -142,6 +143,89 @@ public class AutoResizingBufferTest {
           Assert.assertEquals(32, requester.writeBuffer.getBuffer().length);
           Assert.assertEquals(56, memoryControl.getUsedMemoryInBytes());
         }
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureReusesPreferredPoolCandidateSnapshot() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport oldest = newServerTransport(pool, new TMemoryBuffer(0));
+          TElasticFramedTransport newer = newServerTransport(pool, new TMemoryBuffer(0));
+          TElasticFramedTransport firstRequester = newServerTransport(pool, new TMemoryBuffer(0));
+          TElasticFramedTransport secondRequester =
+              newServerTransport(pool, new TMemoryBuffer(0))) {
+        oldest.write(new byte[64]);
+        oldest.flush();
+        Thread.sleep(10);
+        newer.write(new byte[64]);
+        newer.flush();
+        memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+
+        firstRequester.write(new byte[16]);
+        firstRequester.flush();
+        Object candidateSnapshot =
+            getFieldValue(
+                pool, AutoResizingBufferMemoryManager.ServerBufferPool.class, "candidateSnapshot");
+        Assert.assertNotNull(candidateSnapshot);
+
+        memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+        secondRequester.write(new byte[16]);
+        secondRequester.flush();
+
+        Assert.assertSame(
+            candidateSnapshot,
+            getFieldValue(
+                pool, AutoResizingBufferMemoryManager.ServerBufferPool.class, "candidateSnapshot"));
+        Assert.assertEquals(8, oldest.writeBuffer.getBuffer().length);
+        Assert.assertEquals(8, newer.writeBuffer.getBuffer().length);
+      }
+    }
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testMemoryPressureReusesOtherPoolCandidateSnapshot() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try (AutoResizingBufferMemoryManager.ServerBufferPool pool =
+        AutoResizingBufferMemoryManager.createServerBufferPool()) {
+      try (TElasticFramedTransport oldest = newServerTransport(pool, new TMemoryBuffer(0));
+          TElasticFramedTransport newer = newServerTransport(pool, new TMemoryBuffer(0));
+          TElasticFramedTransport firstRequester =
+              new TElasticFramedTransport(new TMemoryBuffer(0), 8, 128, true);
+          TElasticFramedTransport secondRequester =
+              new TElasticFramedTransport(new TMemoryBuffer(0), 8, 128, true)) {
+        oldest.write(new byte[64]);
+        oldest.flush();
+        Thread.sleep(10);
+        newer.write(new byte[64]);
+        newer.flush();
+        memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+
+        firstRequester.write(new byte[16]);
+        firstRequester.flush();
+        Object candidateSnapshot =
+            getFieldValue(
+                null, AutoResizingBufferMemoryManager.class, "otherPoolCandidateSnapshot");
+        Assert.assertNotNull(candidateSnapshot);
+
+        memoryControl.setLimit(memoryControl.getUsedMemoryInBytes());
+        secondRequester.write(new byte[16]);
+        secondRequester.flush();
+
+        Assert.assertSame(
+            candidateSnapshot,
+            getFieldValue(
+                null, AutoResizingBufferMemoryManager.class, "otherPoolCandidateSnapshot"));
+        Assert.assertEquals(8, oldest.writeBuffer.getBuffer().length);
+        Assert.assertEquals(8, newer.writeBuffer.getBuffer().length);
       }
     }
     Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
@@ -1044,6 +1128,14 @@ public class AutoResizingBufferTest {
     Field field = AutoResizingBuffer.class.getDeclaredField("lastShrinkTime");
     field.setAccessible(true);
     field.set(buffer, lastShrinkTime);
+  }
+
+  private Object getFieldValue(Object target, Class<?> declaringClass, String fieldName)
+      throws Exception {
+    Field field = declaringClass.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    Object value = field.get(target);
+    return value instanceof AtomicReference<?> reference ? reference.get() : value;
   }
 
   private void setLastShrinkTime(Object transport, long lastShrinkTime) throws Exception {

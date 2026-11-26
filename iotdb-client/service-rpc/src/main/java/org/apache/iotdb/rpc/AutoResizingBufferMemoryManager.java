@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class AutoResizingBufferMemoryManager {
   private static final int MEMORY_ALLOCATE_MAX_RETRIES = 5;
@@ -64,6 +65,9 @@ public final class AutoResizingBufferMemoryManager {
       new ThreadLocal<>();
   private static final AtomicBoolean reclaimingServerBuffers = new AtomicBoolean();
   private static final Set<ServerBufferPool> serverBufferPools = ConcurrentHashMap.newKeySet();
+  private static final AtomicLong serverBufferPoolsVersion = new AtomicLong();
+  private static final AtomicReference<CandidateSnapshot> otherPoolCandidateSnapshot =
+      new AtomicReference<>();
 
   private AutoResizingBufferMemoryManager() {
     // Utility class.
@@ -92,6 +96,8 @@ public final class AutoResizingBufferMemoryManager {
   public static ServerBufferPool createServerBufferPool() {
     ServerBufferPool pool = new ServerBufferPool();
     serverBufferPools.add(pool);
+    serverBufferPoolsVersion.incrementAndGet();
+    otherPoolCandidateSnapshot.set(null);
     return pool;
   }
 
@@ -147,14 +153,9 @@ public final class AutoResizingBufferMemoryManager {
     if (memoryControl.allocate(sizeInBytes)) {
       return true;
     }
-    List<ServerConnectionCandidate> candidates = new ArrayList<>();
-    pool.collectCandidates(candidates, System.nanoTime());
-    candidates.sort(ServerConnectionCandidate.RECLAMATION_ORDER);
-    for (ServerConnectionCandidate candidate : candidates) {
-      long reclaimedBytes = candidate.connection().reclaimIdleBuffers(candidate.idleSinceNanos());
-      if (reclaimedBytes > 0) {
-        pool.invalidateReclamationCandidates();
-      }
+    ServerConnectionCandidate candidate;
+    while ((candidate = pool.nextReclamationCandidate()) != null) {
+      candidate.connection().reclaimIdleBuffers(candidate.idleSinceNanos());
       if (memoryControl.allocate(sizeInBytes)) {
         return true;
       }
@@ -169,24 +170,46 @@ public final class AutoResizingBufferMemoryManager {
     if (memoryControl.allocate(sizeInBytes)) {
       return true;
     }
-    List<ServerConnectionCandidate> candidates = new ArrayList<>();
-    long now = System.nanoTime();
-    for (ServerBufferPool pool : serverBufferPools) {
-      if (pool != preferredPool) {
-        pool.collectCandidates(candidates, now);
-      }
-    }
-    candidates.sort(ServerConnectionCandidate.RECLAMATION_ORDER);
-    for (ServerConnectionCandidate candidate : candidates) {
-      long reclaimedBytes = candidate.connection().reclaimIdleBuffers(candidate.idleSinceNanos());
-      if (reclaimedBytes > 0) {
-        candidate.connection().pool.invalidateReclamationCandidates();
-      }
+    ServerConnectionCandidate candidate;
+    while ((candidate = nextReclamationCandidateFromOtherPools(preferredPool)) != null) {
+      candidate.connection().reclaimIdleBuffers(candidate.idleSinceNanos());
       if (memoryControl.allocate(sizeInBytes)) {
         return true;
       }
     }
     return false;
+  }
+
+  private static ServerConnectionCandidate nextReclamationCandidateFromOtherPools(
+      ServerBufferPool preferredPool) {
+    while (true) {
+      long version = serverBufferPoolsVersion.get();
+      CandidateSnapshot snapshot = otherPoolCandidateSnapshot.get();
+      if (snapshot == null
+          || snapshot.version != version
+          || snapshot.excludedPool != preferredPool) {
+        List<ServerConnectionCandidate> candidates = new ArrayList<>();
+        long now = System.nanoTime();
+        for (ServerBufferPool pool : serverBufferPools) {
+          if (pool != preferredPool) {
+            pool.collectCandidates(candidates, now);
+          }
+        }
+        candidates.sort(ServerConnectionCandidate.RECLAMATION_ORDER);
+        if (version != serverBufferPoolsVersion.get()) {
+          continue;
+        }
+        CandidateSnapshot newSnapshot = new CandidateSnapshot(version, candidates, preferredPool);
+        if (!otherPoolCandidateSnapshot.compareAndSet(snapshot, newSnapshot)) {
+          continue;
+        }
+        snapshot = newSnapshot;
+      }
+      if (version != serverBufferPoolsVersion.get()) {
+        continue;
+      }
+      return snapshot.nextCandidate();
+    }
   }
 
   private static long reclaimIdleBuffers(ServerBufferPool pool, long targetBytes) {
@@ -342,6 +365,8 @@ public final class AutoResizingBufferMemoryManager {
       invalidateReclamationCandidates();
       if (retired) {
         serverBufferPools.add(this);
+        serverBufferPoolsVersion.incrementAndGet();
+        otherPoolCandidateSnapshot.set(null);
       }
     }
 
@@ -371,18 +396,10 @@ public final class AutoResizingBufferMemoryManager {
     }
 
     private long reclaimIdleBuffersInternal(long targetBytes) {
-      List<ServerConnectionCandidate> candidates = new ArrayList<>();
-      collectCandidates(candidates, System.nanoTime());
-      candidates.sort(ServerConnectionCandidate.RECLAMATION_ORDER);
       long reclaimedBytes = 0;
-      for (ServerConnectionCandidate candidate : candidates) {
+      ServerConnectionCandidate candidate;
+      while (reclaimedBytes < targetBytes && (candidate = nextReclamationCandidate()) != null) {
         reclaimedBytes += candidate.connection().reclaimIdleBuffers(candidate.idleSinceNanos());
-        if (reclaimedBytes >= targetBytes) {
-          break;
-        }
-      }
-      if (reclaimedBytes > 0) {
-        invalidateReclamationCandidates();
       }
       return reclaimedBytes;
     }
@@ -397,20 +414,22 @@ public final class AutoResizingBufferMemoryManager {
         List<ServerConnectionCandidate> candidates = new ArrayList<>();
         collectCandidates(candidates, System.nanoTime());
         candidates.sort(ServerConnectionCandidate.RECLAMATION_ORDER);
-        snapshot = new CandidateSnapshot(version, candidates);
+        snapshot = new CandidateSnapshot(version, candidates, null);
         candidateSnapshot = snapshot;
       }
-      if (snapshot.nextCandidateIndex >= snapshot.candidates.size()) {
+      ServerConnectionCandidate candidate = snapshot.nextCandidate();
+      if (candidate == null) {
         candidateSnapshot = null;
         exhaustedCandidateVersion = version;
-        return null;
       }
-      return snapshot.candidates.get(snapshot.nextCandidateIndex++);
+      return candidate;
     }
 
     private void invalidateReclamationCandidates() {
       reclamationCandidatesVersion.incrementAndGet();
       candidateSnapshot = null;
+      serverBufferPoolsVersion.incrementAndGet();
+      otherPoolCandidateSnapshot.set(null);
     }
 
     @Override
@@ -502,11 +521,21 @@ public final class AutoResizingBufferMemoryManager {
   private static final class CandidateSnapshot {
     private final long version;
     private final List<ServerConnectionCandidate> candidates;
+    private final ServerBufferPool excludedPool;
     private int nextCandidateIndex;
 
-    private CandidateSnapshot(long version, List<ServerConnectionCandidate> candidates) {
+    private CandidateSnapshot(
+        long version, List<ServerConnectionCandidate> candidates, ServerBufferPool excludedPool) {
       this.version = version;
       this.candidates = candidates;
+      this.excludedPool = excludedPool;
+    }
+
+    private synchronized ServerConnectionCandidate nextCandidate() {
+      if (nextCandidateIndex >= candidates.size()) {
+        return null;
+      }
+      return candidates.get(nextCandidateIndex++);
     }
   }
 }
