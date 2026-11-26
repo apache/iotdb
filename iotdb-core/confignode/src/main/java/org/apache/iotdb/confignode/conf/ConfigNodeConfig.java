@@ -253,7 +253,7 @@ public class ConfigNodeConfig {
   private boolean enableSyncSchemaDeletion = false;
 
   /** Maximum number of tree-model timeseries deletion tasks waiting to execute. */
-  private int timeseriesDeletionQueueCapacity = 1024;
+  private volatile int timeseriesDeletionQueueCapacity = 1024;
 
   /** Minimum interval between starting tree-model timeseries deletion tasks, in milliseconds. */
   private long timeseriesDeletionExecutionIntervalMs = 1000;
