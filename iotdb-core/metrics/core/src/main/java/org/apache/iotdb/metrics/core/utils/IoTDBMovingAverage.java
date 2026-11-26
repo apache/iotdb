@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.metrics.core.utils;
 
-import com.codahale.metrics.Clock;
-import com.codahale.metrics.EWMA;
-import com.codahale.metrics.MovingAverages;
+import org.apache.ratis.thirdparty.com.codahale.metrics.Clock;
+import org.apache.ratis.thirdparty.com.codahale.metrics.EWMA;
+import org.apache.ratis.thirdparty.com.codahale.metrics.MovingAverages;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;

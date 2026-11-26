@@ -30,9 +30,9 @@ import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import com.codahale.metrics.Clock;
-import com.codahale.metrics.ExponentialMovingAverages;
-import com.codahale.metrics.Meter;
+import org.apache.ratis.thirdparty.com.codahale.metrics.Clock;
+import org.apache.ratis.thirdparty.com.codahale.metrics.ExponentialMovingAverages;
+import org.apache.ratis.thirdparty.com.codahale.metrics.Meter;
 
 import java.util.Collections;
 import java.util.Objects;

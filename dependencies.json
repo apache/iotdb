@@ -25,7 +25,6 @@
         "commons-codec:commons-codec",
         "commons-logging:commons-logging",
         "io.airlift:units",
-        "io.dropwizard.metrics:metrics-core",
         "io.github.classgraph:classgraph",
         "io.micrometer:micrometer-commons",
         "io.micrometer:micrometer-core",
