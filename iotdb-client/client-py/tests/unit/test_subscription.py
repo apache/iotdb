@@ -22,8 +22,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from thrift.Thrift import TMessageType
+from thrift.protocol import TBinaryProtocol
 from thrift.transport import TTransport
 
+from iotdb.Session import Session
 from iotdb.subscription import (
     Subscription,
     SubscriptionError,
@@ -41,6 +44,8 @@ from iotdb.subscription import (
     _write_string,
     _write_string_map,
 )
+from iotdb.thrift.rpc import IClientRPCService
+from iotdb.thrift.rpc.ttypes import TPipeSubscribeReq
 
 
 class _Response(object):
@@ -110,6 +115,32 @@ def _file_seal(file_name, file_length, database_name, context):
 
 
 class SubscriptionProtocolTest(unittest.TestCase):
+    def test_pipe_subscribe_keeps_request_with_accelerated_protocol(self):
+        transport = TTransport.TMemoryBuffer()
+        protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
+        client = IClientRPCService.Client(protocol)
+        response = _Response()
+        client.recv_pipeSubscribe = mock.Mock(return_value=response)
+        session = Session.__new__(Session)
+        session._Session__is_close = False
+        session._Session__client = client
+        request = TPipeSubscribeReq(version=1, type=0, body=b"handshake")
+        fast_encode = protocol._fast_encode
+
+        self.assertIs(response, session._pipe_subscribe(request))
+        self.assertIs(fast_encode, protocol._fast_encode)
+
+        reader = TBinaryProtocol.TBinaryProtocol(
+            TTransport.TMemoryBuffer(transport.getvalue())
+        )
+        method, message_type, sequence_id = reader.readMessageBegin()
+        arguments = IClientRPCService.pipeSubscribe_args()
+        arguments.read(reader)
+        reader.readMessageEnd()
+        self.assertEqual("pipeSubscribe", method)
+        self.assertEqual(TMessageType.CALL, message_type)
+        self.assertEqual(request, arguments.req)
+
     def test_poll_request_matches_subscription_wire_layout(self):
         expected = b"".join(
             [
